@@ -72,7 +72,7 @@ This is generally only recommended for more advanced CMake setups.
 
 As mentioned previously, by default Rerun's CMake script will download and build Arrow during its build.
 Unless configured otherwise (see below) the resulting libraries are part of the `rerun_sdk` install.
-⚠️ This does currently not work for dynamic arrow libraries, i.e. if either one of
+⚠️ This does currently not work for dynamic Arrow libraries, i.e. if either one of
 `RERUN_DOWNLOAD_AND_BUILD_ARROW=OFF` or `RERUN_ARROW_LINK_SHARED=ON` is set,
 the install will use `find_package(Arrow)` to locate the Arrow library on your system.
 
@@ -114,7 +114,7 @@ is expected to be found in the Rerun C++ SDK distribution zip.
 ## RERUN_CPP_SOURCE_DIR
 Path to the Rerun include and source directory, i.e. the directory that contains `rerun.hpp`.
 
-Note that rerun does not have separate folders for header (\*.hpp) and source (\*.cpp) files,
+Note that Rerun does not have separate folders for header (\*.hpp) and source (\*.cpp) files,
 both are found inside `RERUN_CPP_SOURCE_DIR`.
 
 By default is set to an absolute path that is determined by the location of Rerun's `CMakeLists.txt` itself.

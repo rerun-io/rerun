@@ -5,7 +5,7 @@ thumbnail_dimensions = [480, 480]
 tags = ["API example"]
 -->
 
-Demonstrates how rerun can work with the python `multiprocessing` library.
+Demonstrates how Rerun can work with the Python `multiprocessing` library.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/multiprocessing/72bcb7550d84f8e5ed5a39221093239e655f06de/480w.png">
@@ -15,10 +15,10 @@ Demonstrates how rerun can work with the python `multiprocessing` library.
   <img src="https://static.rerun.io/multiprocessing/72bcb7550d84f8e5ed5a39221093239e655f06de/full.png" alt="">
 </picture>
 
-# Used Rerun types
+## Used Rerun types
 [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 This example demonstrates how to use the Rerun SDK with `multiprocessing` to log data from multiple processes to the same Rerun viewer.
 It starts with the definition of the function for logging, the `task`, followed by typical usage of Python's `multiprocessing` library.
 
@@ -51,7 +51,7 @@ def task(child_index: int) -> None:
         )
 ```
 
-The main function initializes rerun with a specific application ID and manages the multiprocessing processes for logging data to the Rerun viewer.
+The main function initializes Rerun with a specific application ID and manages the multiprocessing processes for logging data to the Rerun viewer.
 
 > Caution: Ensure that the `recording id` specified in the main function matches the one used in the logging functions
  ```python
@@ -59,7 +59,7 @@ def main() -> None:
     # … existing code …
 
     rr.init("rerun_example_multiprocessing")
-    rr.spawn(connect=False)  # this is the viewer that each child process will connect to
+    rr.spawn(connect=False)  # this is the Viewer that each child process will connect to
 
     task(0)
 
@@ -69,10 +69,9 @@ def main() -> None:
         p.join()
  ```
 
-# Run the code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun

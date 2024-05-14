@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Open Photogrammetry Format"
+title = "Open photogrammetry format"
 tags = ["2D", "3D", "Camera", "Photogrammetry"]
 thumbnail = "https://static.rerun.io/open-photogrammetry-format/c9bec43a3a3abd725a55ee8eb527a4c0cb01979b/480w.png"
 thumbnail_dimensions = [480, 480]
@@ -81,7 +81,6 @@ rr.log("world/points", rr.Points3D(points.position, colors=points.color), timele
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun

@@ -1,4 +1,4 @@
-# The Rerun viewer
+# The Rerun Viewer
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 

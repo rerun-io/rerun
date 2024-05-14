@@ -105,7 +105,7 @@ cmake --build build -j
 ./build/example_minimal
 ```
 
-Once everything finishes compiling, the application will spawn the rerun viewer and send the data to it:
+Once everything finishes compiling, the application will spawn the Rerun Viewer and send the data to it:
 
 <picture>
   <img src="https://static.rerun.io/intro_cpp_result/398c8fb79766e370a65b051b38eac680671c348a/full.png" alt="">
@@ -115,7 +115,7 @@ Once everything finishes compiling, the application will spawn the rerun viewer 
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/intro_cpp_result/398c8fb79766e370a65b051b38eac680671c348a/1200w.png">
 </picture>
 
-## Using the viewer
+## Using the Viewer
 
 Try out the following to interact with the viewer:
 

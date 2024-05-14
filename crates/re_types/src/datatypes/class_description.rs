@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The description of a semantic Class.
 ///
-/// If an entity is annotated with a corresponding `ClassId`, rerun will use
+/// If an entity is annotated with a corresponding `ClassId`, Rerun will use
 /// the attached `AnnotationInfo` to derive labels and colors.
 ///
 /// Keypoints within an annotation class can similarly be annotated with a

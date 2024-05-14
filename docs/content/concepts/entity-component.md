@@ -22,7 +22,7 @@ Additionally, the Rerun SDKs expose two additional concepts:
 
 ### Logging and viewing data
 
-All the data that you log within rerun is mapped to the concepts of entities and components.
+All the data that you log within Rerun is mapped to the concepts of entities and components.
 For example, consider the case of logging a point:
 
 ```python
@@ -35,15 +35,15 @@ Internally, this archetype builds a set of, in this case, two components: [`Posi
 
 Later, the Space View for spatial types queries the data store for all the entities that have a `Position2D` component.
 In this case it would find the "my_point" entity. This query additionally returns the `Color` component because that
-component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype, which informs the viewer on how to display the corresponding entity.
+component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype, which informs the Viewer on how to display the corresponding entity.
 
 See the [Types](../reference/types.md) reference for a list of archetypes, components, and datatypes.
 
 ### Adding custom data
 
 Although both the SDKs' archetype objects and the space view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collection
-of components. Neither the SDKs nor the viewer enforce or require that an entity should contain a *specific* set of component.
-The Rerun viewer will display any data in a generic form, but its space views will only work on sets of components it can
+of components. Neither the SDKs nor the Viewer enforce or require that an entity should contain a *specific* set of component.
+The Rerun Viewer will display any data in a generic form, but its space views will only work on sets of components it can
 make sense of.
 
 Your entity could have any number of additional components as well. This isn't a problem. Any components that
@@ -71,4 +71,4 @@ of one or more components associated with that entity.
 ## ECS systems
 
 There is a third concept we haven't touched on: *systems* are processes which operate on the entities based on the components they possess.
-Rerun is still settling on the exact form of formalized systems and outside of Rust viewer code it is not yet possible to write your own systems. However, space views work under the hood using a variety of systems. For more information see the [Extend the Viewer in Rust](../howto/extend/extend-ui.md) section.
+Rerun is still settling on the exact form of formalized systems and outside of Rust Viewer code it is not yet possible to write your own systems. However, space views work under the hood using a variety of systems. For more information see the [Extend the Viewer in Rust](../howto/extend/extend-ui.md) section.

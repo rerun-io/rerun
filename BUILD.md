@@ -31,7 +31,7 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.76.0
 ```
 
-## Building and running the viewer
+## Building and running the Viewer
 
 Use this command for building and running the viewer:
 
@@ -57,12 +57,12 @@ Rerun is available as a package on PyPi and can be installed with `pip install r
 
 Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
-If you want to build from source, you can do so easily in the pixi environment:
-* Run `pixi run py-build --release` to build SDK & viewer for python (or `pixi run py-build` for a debug build)
-* Then you can run examples from the repository, either by making the pixi shell active with  `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`
+If you want to build from source, you can do so easily in the Pixi environment:
+* Run `pixi run py-build --release` to build SDK & Viewer for Python (or `pixi run py-build` for a debug build)
+* Then you can run examples from the repository, either by making the Pixi shell active with  `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run Python examples/python/minimal/minimal.py`
 
 
-### Tests & Tooling
+### Tests & tooling
 
 ```sh
 # Run the unit tests
@@ -75,12 +75,12 @@ pixi run py-lint
 pixi run py-fmt
 ```
 
-### Building an installable Python Wheel
+### Building an installable Python wheel
 The `py-wheel` command builds a whl file:
 ```sh
 pixi run py-wheel --release
 ```
-Which you can then install in your own python environment:
+Which you can then install in your own Python environment:
 ```sh
 pip install ./target/wheels/*.whl
 ```
@@ -100,16 +100,16 @@ pixi run cpp-build-all
 
 ## Building the docs
 
-High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
+High-level documentation for Rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
 
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
-- 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).
+- 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the Python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).
 - 🦀 [Rust API docs](https://docs.rs/rerun/) are hosted on  <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`.
 
 ## Building for the web
 
-If you want to build a standalone rerun executable that contains the web-viewer and a websocket server,
-you need to install the `wasm32-unknown-unknown` rust target and ensure the `web_viewer` feature flag is set when building rerun.
+If you want to build a standalone Rerun executable that contains the web-viewer and a websocket server,
+you need to install the `wasm32-unknown-unknown` Rust target and ensure the `web_viewer` feature flag is set when building rerun.
 This is automatically done by this shortcut which builds & runs the web viewer:
 ```
 pixi run rerun-web

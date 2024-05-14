@@ -37,7 +37,7 @@ The Rerun Viewer/SDK will then automatically load the data streamed to the exter
 Like any other `DataLoader`, an external loader will be notified of all file openings, unconditionally.
 To indicate that it does not support a given file, the loader has to exit with a [dedicated status code](https://docs.rs/rerun/latest/rerun/constant.EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE.html).
 
-When the viewer and/or SDK executes an external loader, it will pass to it a set of recommended settings in the form of CLI parameters (in addition to the file path to be loaded, which is passed as the one and only positional argument):
+When the Viewer and/or SDK executes an external loader, it will pass to it a set of recommended settings in the form of CLI parameters (in addition to the file path to be loaded, which is passed as the one and only positional argument):
 
 * `--application-id <application_id>`
 

@@ -15,10 +15,10 @@ Demonstration of logging to Rerun from multiple threads.
   <img src="https://static.rerun.io/multithreading/8521bf95a7ff6004c932e8fb72429683928fbab4/full.png" alt="Multithreading example screenshot">
 </picture>
 
-# Used Rerun types
+## Used Rerun types
 [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d)
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 This example showcases logging from multiple threads, starting with the definition of the function for logging, the `rect_logger`, followed by typical usage of Python's `threading` module in the main function.
 
  ```python
@@ -48,10 +48,9 @@ def main() -> None:
     # … existing code …
 ```
 
-# Run the code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun

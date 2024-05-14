@@ -5,7 +5,7 @@ thumbnail = "https://static.rerun.io/ros-node/93169b35c17f5ec02d94150efb74c7ba06
 thumbnail_dimensions = [480, 480]
 -->
 
-A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls.
+A minimal example of creating a ROS node that subscribes to topics and converts the messages to Rerun log calls.
 
 The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun.
 
@@ -17,23 +17,23 @@ The solution here is mostly a toy example to show how ROS concepts can be mapped
   <img src="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/full.png" alt="">
 </picture>
 
-# Used Rerun types
+## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar)
 
-# Background
+## Background
 The [Robot Operating System (ROS)](https://www.ros.org) helps build robot applications through software libraries and tools.
 Although Rerun doesn't have native ROS support, you can easily create a basic ROS 2 Python node to subscribe to common ROS topics and log them to Rerun.
 In this example, Rerun visualizes simulation data, including robot pose, images, camera position, laser scans, point clouds, and velocities, as the [Turtlebot](http://wiki.ros.org/turtlebot3) navigates the environment.
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 
 Find the detailed code walkthrough and explanation for visualizing this example here: [Using Rerun with ROS 2](https://www.rerun.io/docs/howto/ros2-nav-turtlebot).
 
 For more information on future improved ROS support, see tracking issue: [#1527](https://github.com/rerun-io/rerun/issues/1537)
 
-# Run the code
+## Run the code
 
-## Dependencies
+### Dependencies
 
 > NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
@@ -48,7 +48,6 @@ sudo apt install ros-humble-desktop gazebo ros-humble-navigation2 ros-humble-tur
 
 Make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -66,7 +65,7 @@ source venv/bin/active
 source /opt/ros/humble/setup.bash
 ```
 
-## Run the code
+### Run the code
 
 First, in one terminal launch the nav2 turtlebot demo:
 ```

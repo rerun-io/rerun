@@ -1,10 +1,10 @@
-# Overview
+## Overview
 
 Rerun has limited support for direct embedding within a [Jupyter](https://jupyter.org/) notebook.
 Many additional environments beyond Jupyter are supported such as [Google Colab](https://colab.research.google.com/)
 or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 
-In order to show a rerun viewer inline within the notebook, you can call:
+In order to show a Rerun Viewer inline within the notebook, you can call:
 
 ```python
 rr.init("rerun_example_notebook")
@@ -28,7 +28,7 @@ rec.log(...)
 rr.notebook_show(recording=rec)
 ```
 
-# Running in Jupyter
+## Running in Jupyter
 
 The easiest way to get a feel for working with notebooks is to use it:
 

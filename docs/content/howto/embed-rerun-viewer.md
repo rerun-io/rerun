@@ -23,9 +23,9 @@ For instance:
 <iframe src="https://app.rerun.io/version/0.14.1/?url=https://app.rerun.io/version/0.14.1/examples/arkit_scenes.rrd"></iframe>
 ```
 
-## Using the JavaScript Package
+## Using the JavaScript package
 
-We offer JavaScript bindings to the Rerun Viewer via NPM. This method provides control over the viewer but requires a JavaScript web application setup with a bundler.
+We offer JavaScript bindings to the Rerun Viewer via NPM. This method provides control over the Viewer but requires a JavaScript web application setup with a bundler.
 
 Various packages are available:
 - [@rerun-io/web-viewer](https://www.npmjs.com/package/@rerun-io/web-viewer): Suitable for JS apps without a framework or frameworks without dedicated packages.
@@ -33,7 +33,7 @@ Various packages are available:
 
 > ℹ️ Note: The stability of the `rrd` format is still evolving, so the package version corresponds to the supported Rerun SDK version. Therefore, `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, WebSocket connection, etc.) originating from a Rerun SDK with version `0.10.0`!
 
-### Basic Example
+### Basic example
 
 To begin, install the package ([@rerun-io/web-viewer](https://www.npmjs.com/package/@rerun-io/web-viewer)) from NPM:
 
@@ -55,7 +55,7 @@ const viewer = new WebViewer();
 await viewer.start(rrdUrl, parentElement);
 ```
 
-The viewer creates a `<canvas>` on the provided `parentElement` and executes within it.
+The Viewer creates a `<canvas>` on the provided `parentElement` and executes within it.
 
 The first argument for `start` determines the recordings to open in the viewer. It can be:
 - `null` for an initially empty viewer

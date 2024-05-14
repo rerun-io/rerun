@@ -16,7 +16,7 @@ New Rerun versions are released approximately once every month. Sometimes we do 
 
 ## Library versioning and release cadence
 Each release include new versions of:
-* All rust crates
+* All Rust crates
 * The Python SDK
 * The Rust SDK
 * The C++ SDK
@@ -39,7 +39,7 @@ Our Minimum Supported Rust Version (MSRV) is always _at least_ one minor release
 ## Data and communication versioning
 We have not yet committed to any backwards or forwards compatibility.
 
-We tag all data files (`.rrd` files) and communication protocols with the rerun version number. If there is a version mismatch, a warning is logged, but an attempt is still made to load the older or newer data.
+We tag all data files (`.rrd` files) and communication protocols with the Rerun version number. If there is a version mismatch, a warning is logged, but an attempt is still made to load the older or newer data.
 
 
 ## Releases

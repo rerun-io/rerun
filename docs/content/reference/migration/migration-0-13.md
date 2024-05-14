@@ -16,7 +16,7 @@ line series via [SeriesLine](../types/archetypes/series_line.md).
 
 ## Changes in space view creation heuristics
 
-The overhaul of automatic Space View creation makes the viewer faster and
+The overhaul of automatic Space View creation makes the Viewer faster and
 more predictable but comes with a few changes on how paths are expected to be structured:
 
 * When working with images of different resolutions, the image entities will end up defining the root of the created spaces.

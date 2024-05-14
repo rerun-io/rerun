@@ -2,7 +2,7 @@
 
 \tableofcontents
 
-## Automatically download & build arrow from source (default)
+## Automatically download & build Arrow from source (default)
 
 By default, the Rerun C++ SDK's CMake script (which is part of the SDK's zip artifact that can be fetched via `FetchContent`)
 will download a known compatible version of Arrow from GitHub and add it to the build.
@@ -21,7 +21,7 @@ fact, Rerun uses it for our own internal development dependency management, and 
 of our external examples.
 
 Make sure to use `-DRERUN_DOWNLOAD_AND_BUILD_ARROW=OFF` when building, otherwise Rerun's CMake script
-will download & build arrow instead, ignoring your Pixi install.
+will download & build Arrow instead, ignoring your Pixi install.
 The advantage of using Pixi is that you can rely on pre-built artifacts rather than adding Arrows build to your own.
 Also, Pixi is of course also useful for managing other dependencies like Eigen or OpenCV,
 as well as fr pinning the version of your build tooling.
@@ -49,7 +49,7 @@ If you want to use `pixi` to manage dependencies in your own project, you can si
 project folder. This will create a `pixi.toml` file that manages the project. After that you can run
 `pixi add arrow-cpp==10.0.1` to add arrow-cpp as a dependency to your project.
 
-Now, any pixi tasks added to your project will have access to the `arrow-cpp` library.
+Now, any Pixi tasks added to your project will have access to the `arrow-cpp` library.
 
 Even without tasks, you can run `pixi shell` to create a shell environment where all your project dependencies
 (including `arrow-cpp`) will be available. You can use this `pixi shell` to run you project's build commands.
@@ -61,7 +61,7 @@ Check out the [pixi docs](https://prefix.dev/docs/pixi/basic_usage) for more inf
 The rerun-cpp example: <https://github.com/rerun-io/cpp-example-opencv-eigen> ships with a `pixi.toml` file to manage
 its dependencies, as well as a set of tasks to simplify running it.
 
-If you have pixi installed, all you need to do to run the example is:
+If you have Pixi installed, all you need to do to run the example is:
 ```
 git clone https://github.com/rerun-io/cpp-example-opencv-eigen
 cd cpp-example-opencv-eigen
@@ -71,9 +71,9 @@ pixi run example
 ### Known issues
 
 ⚠️ [#4050](https://github.com/rerun-io/rerun/issues/4050) `arrow-cpp` needs to be held back to 10.0.1 to avoid conflicts
-with the `rerun-sdk` package when installed in the same pixi environment.
+with the `rerun-sdk` package when installed in the same Pixi environment.
 
-⚠️ On Windows pixi only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes.
+⚠️ On Windows Pixi only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes.
 For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html)
 or stick with `RERUN_DOWNLOAD_AND_BUILD_ARROW=ON`.
 

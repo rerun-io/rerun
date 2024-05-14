@@ -49,11 +49,11 @@ TODO(ab)
 
 ## Code generation
 
-Keeping the various SDKs in sync with the Rerun viewer requires automation to be tractable. The Python SDK is no exception, and large parts of its implementation is generated using the `re_types` and `re_types_builder` crates, based on the object definitions found in `crates/re_types/definitions` and the generation code found in `crates/re_types_builder/src/codegen/python.rs`.
+Keeping the various SDKs in sync with the Rerun Viewer requires automation to be tractable. The Python SDK is no exception, and large parts of its implementation is generated using the `re_types` and `re_types_builder` crates, based on the object definitions found in `crates/re_types/definitions` and the generation code found in `crates/re_types_builder/src/codegen/python.rs`.
 
 #### Archetype
 
-In terms of code generation, archetypes are the simplest object. They consist of a native object whose fields are the various components that make up the archetype. The components are stored in their Arrow extension array form, such that they are ready to be sent to the Rerun viewer or saved to a `.rrd` file. The fields always use the respective component's extension array `from_similar()` method as converter.
+In terms of code generation, archetypes are the simplest object. They consist of a native object whose fields are the various components that make up the archetype. The components are stored in their Arrow extension array form, such that they are ready to be sent to the Rerun Viewer or saved to a `.rrd` file. The fields always use the respective component's extension array `from_similar()` method as converter.
 
 The archetype native objects are the primary user-facing API of the Rerun SDK.
 
@@ -120,10 +120,10 @@ See `components/color_ext.py` for an example.
 
 #### Native object Numpy conversion method (`__array__()`)
 
-If an object can be natively converted to a numpy array it should implement the `__array__()` method, which in turn
+If an object can be natively converted to a Numpy array it should implement the `__array__()` method, which in turn
 allows Numpy to automatically ingest instances of that class in a controlled way.
 
-By default, this will be generated automatically for types which only contain a single field which is a numpy array. However,
+By default, this will be generated automatically for types which only contain a single field which is a Numpy array. However,
 other types can still implement this method on the extension class directly, in which case the default implementation will
 be skipped.
 

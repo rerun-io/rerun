@@ -2,7 +2,7 @@
 Crate that combines several development utilities.
 To get an overview over all tools run `pixi run dev-tools --help`.
 
-We keep all smaller rust "scripts" in this single crate so we don't needlessly
+We keep all smaller Rust "scripts" in this single crate so we don't needlessly
 increase the number of such utility crates and to make it easy to get
 an overview over all build tooling written in Rust.
 

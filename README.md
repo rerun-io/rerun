@@ -14,9 +14,9 @@
 
 # Build time aware visualizations of multimodal data
 
-Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun viewer for live visualization or to file for later use.
+Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
-* [Run the Rerun viewer in your browser](https://www.rerun.io/viewer)
+* [Run the Rerun Viewer in your browser](https://www.rerun.io/viewer)
 * [Read about what Rerun is and who it is for](https://www.rerun.io/docs/getting-started/what-is-rerun)
 
 ### A short taste
@@ -52,10 +52,10 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 * [**Python**](https://www.rerun.io/docs/getting-started/quick-start/python): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
 * [**Rust**](https://www.rerun.io/docs/getting-started/quick-start/rust): `cargo add rerun`
 
-### Installing the rerun viewer binary
+### Installing the Rerun Viewer binary
 To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
 It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli`.
-Note that only the Python SDK comes bundled with the viewer whereas C++ & Rust always rely on a separate install.
+Note that only the Python SDK comes bundled with the Viewer whereas C++ & Rust always rely on a separate install.
 
 You should now be able to run `rerun --help` in any terminal.
 

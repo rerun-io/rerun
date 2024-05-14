@@ -40,9 +40,9 @@ rr.log("points3d", rr.Points3D(positions, colors=colors))
 
 ## Logging and viewing in different processes
 
-You can run the viewer and logger in different processes.
+You can run the Viewer and logger in different processes.
 
-In one terminal, start up a viewer with a server that the SDK can connect to:
+In one terminal, start up a Viewer with a server that the SDK can connect to:
 ```sh
 python3 -m rerun
 ```
@@ -61,9 +61,9 @@ We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, downl
 ```sh
 pixi run py-build --release
 ```
-To build SDK & viewer for python (or `pixi run py-build` for a debug build) and install it in the pixi environment.
+To build SDK & Viewer for Python (or `pixi run py-build` for a debug build) and install it in the Pixi environment.
 
-You can then run examples from the repository, either by making the pixi shell active with `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`.
+You can then run examples from the repository, either by making the Pixi shell active with `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`.
 
 Respectively, to build a wheel instead for manual install use:
 ```sh

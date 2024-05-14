@@ -1,4 +1,4 @@
-# 2023-03-15 Component type conversions
+# 2023-03-15 component type conversions
 Status: pre-proposal (not ready to be implemented)
 
 ## Summary

@@ -23,7 +23,7 @@ Goals & philosophy:
 * Automatic resource re-use & caching
 * Lazy loading whenever possible for best startup performance
 * Run great both on the desktop and web
-* No dependencies on `re_viewer` or rerun data store libraries
+* No dependencies on `re_viewer` or Rerun data store libraries
 
 
 ## Debugging
