@@ -22,7 +22,7 @@ pub enum ServerError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum VersionError {
+pub enum VersionError {
     #[error("SDK client is using an older protocol version ({client_version}) than the SDK server ({server_version})")]
     ClientIsOlder {
         client_version: u16,
@@ -37,7 +37,10 @@ enum VersionError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum ConnectionError {
+pub enum ConnectionError {
+    #[error("An unknown client tried to connect")]
+    UnknownClient,
+
     #[error(transparent)]
     VersionError(#[from] VersionError),
 
@@ -190,8 +193,17 @@ fn spawn_client(
                 return;
             }
         }
-        re_log::warn_once!("Closing connection to client at {addr_string}: {err}");
-        let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.to_string().into();
+
+        let log_msg = format!("Closing connection to client at {addr_string}: {err}");
+        if matches!(&err, ConnectionError::UnknownClient) {
+            // An unknown client that probably stumbled onto the wrong port.
+            // Don't log as an error (https://github.com/rerun-io/rerun/issues/5883).
+            re_log::debug!("{log_msg}");
+        } else {
+            re_log::warn_once!("{log_msg}");
+        }
+
+        let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.into();
         tx.quit(Some(err)).ok(); // best-effort at this point
     }
 }
@@ -207,21 +219,37 @@ fn run_client(
     stream.read_exact(&mut client_version)?;
     let client_version = u16::from_le_bytes(client_version);
 
-    match client_version.cmp(&crate::PROTOCOL_VERSION) {
-        std::cmp::Ordering::Less => {
-            return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
-                client_version,
-                server_version: crate::PROTOCOL_VERSION,
-            }));
+    // The server goes into a backward compat mode
+    // if the client sends version 0
+    if client_version == crate::PROTOCOL_VERSION_0 {
+        // Backwards compatibility mode: no protocol header, otherwise the same as version 1.
+        re_log::warn!("Client is using an old protocol version from before 0.16.");
+    } else {
+        // The protocol header was added in version 1
+        let mut protocol_header = [0_u8; crate::PROTOCOL_HEADER.len()];
+        stream.read_exact(&mut protocol_header)?;
+
+        if std::str::from_utf8(&protocol_header) != Ok(crate::PROTOCOL_HEADER) {
+            return Err(ConnectionError::UnknownClient);
         }
-        std::cmp::Ordering::Equal => {}
-        std::cmp::Ordering::Greater => {
-            return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
-                client_version,
-                server_version: crate::PROTOCOL_VERSION,
-            }));
+
+        let server_version = crate::PROTOCOL_VERSION_1;
+        match client_version.cmp(&server_version) {
+            std::cmp::Ordering::Less => {
+                return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
+                    client_version,
+                    server_version,
+                }));
+            }
+            std::cmp::Ordering::Equal => {}
+            std::cmp::Ordering::Greater => {
+                return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
+                    client_version,
+                    server_version,
+                }));
+            }
         }
-    }
+    };
 
     let mut congestion_manager = CongestionManager::new(options.max_latency_sec);
 

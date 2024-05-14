@@ -972,7 +972,23 @@ impl App {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
+                        let log_msg =
+                            format!("Data source {} has left unexpectedly: {err}", msg.source);
+
+                        #[cfg(not(target_arch = "wasm32"))]
+                        if err
+                            .downcast_ref::<re_sdk_comms::ConnectionError>()
+                            .is_some_and(|e| {
+                                matches!(e, re_sdk_comms::ConnectionError::UnknownClient)
+                            })
+                        {
+                            // An unknown client that probably stumbled onto the wrong port.
+                            // Don't log as an error (https://github.com/rerun-io/rerun/issues/5883).
+                            re_log::debug!("{log_msg}");
+                            continue;
+                        }
+
+                        re_log::warn!("{log_msg}");
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }
