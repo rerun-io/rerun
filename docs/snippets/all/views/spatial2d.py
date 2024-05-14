@@ -1,9 +1,8 @@
 """Use a blueprint to customize a Spatial2DView."""
 
+import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
-from numpy.random import default_rng
-import numpy as np
 
 rr.init("rerun_example_spatial_2d", spawn=True)
 
