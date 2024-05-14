@@ -48,7 +48,8 @@ pub struct Identify {
 pub struct ViewerStarted {
     /// The URL on which the web viewer is running.
     ///
-    /// We _only_ collect this on `rerun.io` domains.
+    /// This will be used to populate `hashed_root_domain` property for all urls.
+    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
     pub url: Option<String>,
 
     /// The environment in which the viewer is running.
@@ -61,7 +62,8 @@ pub struct ViewerStarted {
 pub struct OpenRecording {
     /// The URL on which the web viewer is running.
     ///
-    /// We _only_ collect this on `rerun.io` domains.
+    /// This will be used to populate `hashed_root_domain` property for all urls.
+    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
     pub url: Option<String>,
 
     /// The environment in which the viewer is running.
@@ -125,6 +127,7 @@ impl Properties for ServeWasm {
 use std::collections::HashMap;
 
 use re_build_info::BuildInfo;
+use url::Url;
 
 use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
 
@@ -167,12 +170,40 @@ impl Event for ViewerStarted {
     const NAME: &'static str = "viewer_started";
 }
 
+const RERUN_DOMAINS: [&str; 1] = ["rerun.io"];
+
+/// Given a URL, extract the root domain.
+fn extract_root_domain(url: &str) -> Option<String> {
+    let parsed = Url::parse(url).ok()?;
+    let domain = parsed.domain()?;
+    let parts = domain.split('.').collect::<Vec<_>>();
+    if parts.len() >= 2 {
+        Some(parts[parts.len() - 2..].join("."))
+    } else {
+        None
+    }
+}
+
+fn add_sanitized_url_properties(event: &mut AnalyticsEvent, url: Option<String>) {
+    let Some(root_domain) = url.as_ref().and_then(|url| extract_root_domain(url)) else {
+        return;
+    };
+
+    if RERUN_DOMAINS.contains(&root_domain.as_str()) {
+        event.insert_opt("rerun_url", url);
+    }
+
+    let hashed = Property::from(root_domain).hashed();
+    event.insert("hashed_root_domain", hashed);
+}
+
 impl Properties for ViewerStarted {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self { url, app_env } = self;
 
         event.insert("app_env", app_env);
-        event.insert_opt("url", url);
+
+        add_sanitized_url_properties(event, url);
     }
 }
 
@@ -189,7 +220,8 @@ impl Properties for OpenRecording {
             data_source,
         } = self;
 
-        event.insert_opt("url", url);
+        add_sanitized_url_properties(event, url);
+
         event.insert("app_env", app_env);
 
         if let Some(store_info) = store_info {
@@ -253,5 +285,36 @@ impl Properties for CrashSignal {
         build_info.serialize(event);
         event.insert("signal", signal.clone());
         event.insert("callstack", callstack.clone());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_root_domain() {
+        // Valid urls
+        assert_eq!(
+            extract_root_domain("https://rerun.io"),
+            Some("rerun.io".to_owned())
+        );
+        assert_eq!(
+            extract_root_domain("https://ReRun.io"),
+            Some("rerun.io".to_owned())
+        );
+        assert_eq!(
+            extract_root_domain("http://app.rerun.io"),
+            Some("rerun.io".to_owned())
+        );
+        assert_eq!(
+            extract_root_domain("https://www.rerun.io/viewer?url=https://app.rerun.io/version/0.15.1/examples/detect_and_track_objects.rrd"),
+            Some("rerun.io".to_owned())
+        );
+
+        // Invalid urls
+        assert_eq!(extract_root_domain("rerun.io"), None);
+        assert_eq!(extract_root_domain("https:/rerun"), None);
+        assert_eq!(extract_root_domain("https://rerun"), None);
     }
 }
