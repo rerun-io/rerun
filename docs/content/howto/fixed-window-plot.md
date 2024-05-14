@@ -11,7 +11,7 @@ manipulation of the visible time range. This allows you to create a plot that on
 To specify the visible time range, you must pass one or more `VisibleTimeRange` objects to the `time_ranges` parameter of the `TimeSeriesView` blueprint type. If your app only uses a single timeline, you can directly pass a single `VisibleTimeRange` object instead of wrapping it in a list.
 
 The `VisibleTimeRange` object takes three parameters:
-- `timeline`: The timeline that the range will apply to. This must match the timeline used to log your data.
+- `timeline`: The timeline that the range will apply to. This must match the timeline used to log your data, or if you are only using the rerun-provided timestamps, you can use the strings `"log_time"`, or `"log_tick"`.
 - `start`: The start of the visible time range.
 - `end`: The end of the visible time range.
 
@@ -58,3 +58,6 @@ see that the time range is configured as expected.
 </picture>
 
 Alternatively, you can check out a more full-featured example with multiple plot windows [here](https://github.com/rerun-io/rerun/tree/latest/examples/python/live_scrolling_plot?speculative-link).
+
+## Additional notes
+- Any time you log data, it has two timepoints associated with it: "log_time", and "log_tick".
