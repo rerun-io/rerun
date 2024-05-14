@@ -4,7 +4,7 @@ namespace rerun.blueprint.views;
 
 /// A text document view.
 ///
-/// \example views/text_document title="Use a blueprint to show a text document." image="https://static.rerun.io/text_document_view/309a6ee6fe2b22335bc1ce06492e34f9f72179da/1200w.png"
+/// \example views/text_document title="Use a blueprint to show a text document." image="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1200w.png"
 table TextDocumentView (
     "attr.rerun.view_identifier": "TextDocument"
 ) {
