@@ -648,8 +648,6 @@ fn write_view_property(
 ) {
     putln!(o, "### `{}`", field.name);
 
-    // TODO: link to the datatype.
-
     let top_level_docs = field.docs.untagged();
 
     if top_level_docs.is_empty() {
