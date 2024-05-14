@@ -131,6 +131,7 @@ examples = [
   "multiprocess_logging",
   "multithreading",
   "plots",
+  "live_scrolling_plot",
   "raw_mesh",
 ]
 

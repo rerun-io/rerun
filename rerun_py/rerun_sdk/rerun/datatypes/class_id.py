@@ -36,6 +36,9 @@ class ClassId:
     def __int__(self) -> int:
         return int(self.id)
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
 
 if TYPE_CHECKING:
     ClassIdLike = Union[ClassId, int]

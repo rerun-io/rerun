@@ -92,7 +92,11 @@ impl TcpClient {
                 match TcpStream::connect_timeout(&self.addr, timeout) {
                     Ok(mut stream) => {
                         re_log::debug!("Connected to {:?}.", self.addr);
-                        if let Err(err) = stream.write(&crate::PROTOCOL_VERSION.to_le_bytes()) {
+
+                        if let Err(err) = stream
+                            .write(&crate::PROTOCOL_VERSION_1.to_le_bytes())
+                            .and_then(|_| stream.write(crate::PROTOCOL_HEADER.as_bytes()))
+                        {
                             self.stream_state = TcpStreamState::Pending {
                                 start_time,
                                 num_attempts: num_attempts + 1,

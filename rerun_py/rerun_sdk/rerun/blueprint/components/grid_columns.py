@@ -47,6 +47,9 @@ class GridColumns:
     def __int__(self) -> int:
         return int(self.columns)
 
+    def __hash__(self) -> int:
+        return hash(self.columns)
+
 
 if TYPE_CHECKING:
     GridColumnsLike = Union[GridColumns, int]

@@ -39,6 +39,9 @@ class PrimitiveComponent:
     def __int__(self) -> int:
         return int(self.value)
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
 
 PrimitiveComponentLike = PrimitiveComponent
 PrimitiveComponentArrayLike = Union[

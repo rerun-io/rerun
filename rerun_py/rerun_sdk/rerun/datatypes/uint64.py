@@ -36,6 +36,9 @@ class UInt64:
     def __int__(self) -> int:
         return int(self.value)
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
 
 if TYPE_CHECKING:
     UInt64Like = Union[UInt64, int]

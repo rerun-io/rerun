@@ -39,6 +39,9 @@ class FlattenedScalar:
     def __float__(self) -> float:
         return float(self.value)
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
 
 FlattenedScalarLike = FlattenedScalar
 FlattenedScalarArrayLike = Union[

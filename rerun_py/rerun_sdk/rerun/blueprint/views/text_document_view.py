@@ -13,7 +13,76 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class TextDocumentView(SpaceView):
-    """**View**: A text document view."""
+    """
+    **View**: A text document view.
+
+    Example
+    -------
+    ### Use a blueprint to show a text document.:
+    ```python
+    import rerun as rr
+    import rerun.blueprint as rrb
+
+    rr.init("rerun_example_text_document", spawn=True)
+
+    rr.log(
+        "markdown",
+        rr.TextDocument(
+            '''
+    # Hello Markdown!
+    [Click here to see the raw text](recording://markdown:Text).
+
+    Basic formatting:
+
+    | **Feature**       | **Alternative** |
+    | ----------------- | --------------- |
+    | Plain             |                 |
+    | *italics*         | _italics_       |
+    | **bold**          | __bold__        |
+    | ~~strikethrough~~ |                 |
+    | `inline code`     |                 |
+
+    ----------------------------------
+
+    ## Support
+    - [x] [Commonmark](https://commonmark.org/help/) support
+    - [x] GitHub-style strikethrough, tables, and checkboxes
+    - Basic syntax highlighting for:
+      - [x] C and C++
+      - [x] Python
+      - [x] Rust
+      - [ ] Other languages
+
+    ## Links
+    You can link to [an entity](recording://markdown),
+    a [specific instance of an entity](recording://markdown[#0]),
+    or a [specific component](recording://markdown:Text).
+
+    Of course you can also have [normal https links](https://github.com/rerun-io/rerun), e.g. <https://rerun.io>.
+
+    ## Image
+    ![A random image](https://picsum.photos/640/480)
+    '''.strip(),
+            media_type=rr.MediaType.MARKDOWN,
+        ),
+    )
+
+    # Create a text view that displays the markdown.
+    blueprint = rrb.Blueprint(rrb.TextDocumentView(origin="markdown", name="Markdown example"), collapse_panels=True)
+
+    rr.send_blueprint(blueprint)
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1200w.png">
+      <img src="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/full.png" width="640">
+    </picture>
+    </center>
+
+    """
 
     def __init__(
         self,

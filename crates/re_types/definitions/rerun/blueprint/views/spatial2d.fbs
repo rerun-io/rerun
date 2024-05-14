@@ -3,6 +3,8 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.views;
 
 /// A Spatial 2D view.
+///
+/// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1200w.png"
 table Spatial2DView (
     "attr.rerun.view_identifier": "2D"
 ) {
@@ -16,6 +18,8 @@ table Spatial2DView (
     visual_bounds: rerun.blueprint.archetypes.VisualBounds (order: 2000);
 
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    ///
+    /// If not specified, the default is to show the latest state of each component.
+    /// If a timeline is specified more than once, the first entry will be used.
     time_ranges: rerun.blueprint.archetypes.VisibleTimeRanges (order: 10000);
-
 }

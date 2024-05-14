@@ -1,0 +1,12 @@
+[project]
+name = "live_scrolling_plot"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["numpy", "rerun-sdk"]
+
+[project.scripts]
+live_scrolling_plot = "live_scrolling_plot:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

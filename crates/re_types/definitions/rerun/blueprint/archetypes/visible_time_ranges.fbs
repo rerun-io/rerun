@@ -25,6 +25,6 @@ table VisibleTimeRanges (
 ) {
     /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     ///
-    /// If a timeline is listed twice, the first entry will be used.
+    /// If a timeline is specified more than once, the first entry will be used.
     ranges: [rerun.blueprint.components.VisibleTimeRange] ("attr.rerun.component_required", order: 1000);
 }

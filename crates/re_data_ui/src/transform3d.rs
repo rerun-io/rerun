@@ -1,7 +1,7 @@
 use re_types::datatypes::{Scale3D, Transform3D, TranslationAndMat3x3, TranslationRotationScale3D};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use crate::DataUi;
+use crate::{label_for_ui_layout, DataUi};
 
 impl DataUi for re_types::components::Transform3D {
     #[allow(clippy::only_used_in_recursion)]
@@ -16,8 +16,8 @@ impl DataUi for re_types::components::Transform3D {
         match ui_layout {
             UiLayout::List => {
                 // TODO(andreas): Preview some information instead of just a label with hover ui.
-                ui.label("3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiLayout::SelectionPanelLimitHeight, query, db);
+                label_for_ui_layout(ui, ui_layout, "3D transform").on_hover_ui(|ui| {
+                    self.data_ui(ctx, ui, UiLayout::Tooltip, query, db);
                 });
             }
 
@@ -35,9 +35,9 @@ impl DataUi for re_types::components::Transform3D {
                 };
 
                 ui.vertical(|ui| {
-                    ui.label("3D transform");
+                    label_for_ui_layout(ui, ui_layout, "3D transform");
                     ui.indent("transform_repr", |ui| {
-                        ui.label(dir_string);
+                        label_for_ui_layout(ui, ui_layout, dir_string);
                         self.0.data_ui(ctx, ui, ui_layout, query, db);
                     });
                 });

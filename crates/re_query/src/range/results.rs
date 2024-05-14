@@ -642,6 +642,20 @@ pub struct RangeComponentResultsInner {
     pub(crate) cached_dense: Option<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
+impl Clone for RangeComponentResultsInner {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            indices: self.indices.clone(),
+            promises_front: self.promises_front.clone(),
+            promises_back: self.promises_back.clone(),
+            front_status: self.front_status.clone(),
+            back_status: self.back_status.clone(),
+            cached_dense: self.cached_dense.as_ref().map(|dense| dense.dyn_clone()),
+        }
+    }
+}
+
 impl SizeBytes for RangeComponentResultsInner {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -747,9 +761,10 @@ impl RangeComponentResultsInner {
             }),
             "back promises must always be sorted in ascending index order"
         );
-        if let (Some(p_index), Some(i_index)) =
-            (promises_back.last().map(|(index, _)| index), indices.back())
-        {
+        if let (Some(p_index), Some(i_index)) = (
+            promises_back.first().map(|(index, _)| index),
+            indices.back(),
+        ) {
             assert!(
                 i_index < p_index,
                 "the leftmost back promise must have an index larger than the rightmost data index ({i_index:?} < {p_index:?})",
@@ -761,14 +776,22 @@ impl RangeComponentResultsInner {
         }
     }
 
-    /// Returns the time range covered by the cached data.
+    /// Returns the pending time range that will be covered by the cached data.
     ///
     /// Reminder: [`TimeInt::STATIC`] is never included in [`ResolvedTimeRange`]s.
     #[inline]
-    pub fn time_range(&self) -> Option<ResolvedTimeRange> {
-        let first_time = self.indices.front().map(|(t, _)| *t)?;
-        let last_time = self.indices.back().map(|(t, _)| *t)?;
-        Some(ResolvedTimeRange::new(first_time, last_time))
+    pub fn pending_time_range(&self) -> Option<ResolvedTimeRange> {
+        let pending_front_min = self.promises_front.first().map(|((t, _), _)| *t);
+        let pending_front_max = self.promises_front.last().map(|((t, _), _)| *t);
+        let pending_back_max = self.promises_back.last().map(|((t, _), _)| *t);
+
+        let first_time = self.indices.front().map(|(t, _)| *t);
+        let last_time = self.indices.back().map(|(t, _)| *t);
+
+        Some(ResolvedTimeRange::new(
+            pending_front_min.or(first_time)?,
+            pending_back_max.or(last_time).or(pending_front_max)?,
+        ))
     }
 
     #[inline]
@@ -786,7 +809,7 @@ impl RangeComponentResultsInner {
     pub fn truncate_at_time(&mut self, threshold: TimeInt) {
         re_tracing::profile_function!();
 
-        let time_range = self.time_range();
+        let time_range = self.pending_time_range();
 
         let Self {
             indices,

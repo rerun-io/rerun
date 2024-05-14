@@ -27,6 +27,9 @@ class AffixFuzzer9:
     def __str__(self) -> str:
         return str(self.single_string_required)
 
+    def __hash__(self) -> int:
+        return hash(self.single_string_required)
+
 
 AffixFuzzer9Like = AffixFuzzer9
 AffixFuzzer9ArrayLike = Union[
