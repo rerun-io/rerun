@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use std::io::Cursor;
 use std::io::Read;
 
+use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
 use crate::decoder::read_options;
@@ -17,6 +18,11 @@ use super::{DecodeError, VersionPolicy};
 /// Chunks are given to the stream via `StreamDecoder::push_chunk`,
 /// and messages are read back via `StreamDecoder::try_read`.
 pub struct StreamDecoder {
+    /// The Rerun version used to encode the RRD data.
+    ///
+    /// `None` until a Rerun header has been processed.
+    version: Option<CrateVersion>,
+
     /// How to handle version mismatches
     version_policy: VersionPolicy,
 
@@ -72,6 +78,7 @@ enum State {
 impl StreamDecoder {
     pub fn new(version_policy: VersionPolicy) -> Self {
         Self {
+            version: None,
             version_policy,
             compression: Compression::Off,
             chunks: ChunkBuffer::new(),
@@ -89,7 +96,9 @@ impl StreamDecoder {
             State::StreamHeader => {
                 if let Some(header) = self.chunks.try_read(FileHeader::SIZE) {
                     // header contains version and compression options
-                    self.compression = read_options(self.version_policy, header)?.compression;
+                    let (version, options) = read_options(self.version_policy, header)?;
+                    self.version = Some(version);
+                    self.compression = options.compression;
 
                     // we might have data left in the current chunk,
                     // immediately try to read length of the next message
@@ -123,7 +132,15 @@ impl StreamDecoder {
                     let message = rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
 
                     self.state = State::MessageHeader;
-                    return Ok(Some(message));
+
+                    return if let re_log_types::LogMsg::SetStoreInfo(mut msg) = message {
+                        // Propagate the protocol version from the header into the `StoreInfo` so that all
+                        // parts of the app can easily access it.
+                        msg.info.store_version = self.version;
+                        Ok(Some(re_log_types::LogMsg::SetStoreInfo(msg)))
+                    } else {
+                        Ok(Some(message))
+                    };
                 }
             }
         }
@@ -239,6 +256,7 @@ mod tests {
                 is_official_example: false,
                 started: Time::from_ns_since_epoch(0),
                 store_source: StoreSource::Unknown,
+                store_version: None,
             },
         })
     }
