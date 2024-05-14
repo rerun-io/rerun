@@ -209,6 +209,10 @@ pub fn table_for_ui_layout(
     }
 }
 
+/// Show a label while respecting the given UI layout.
+///
+/// Important: for label only, data should use [`crate::data_label_for_ui_layout`] instead.
+// TODO(#6315): must be merged with `data_label_for_ui_layout` and have an improved API
 pub fn label_for_ui_layout(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
@@ -224,4 +228,47 @@ pub fn label_for_ui_layout(
     }
 
     ui.add(label)
+}
+
+/// Show data while respecting the given UI layout.
+///
+/// Import: for data only, labels should use [`crate::label_for_ui_layout`] instead.
+// TODO(#6315): must be merged with `label_for_ui_layout` and have an improved API
+fn data_label_for_ui_layout(ui: &mut egui::Ui, ui_layout: UiLayout, string: impl AsRef<str>) {
+    let string = string.as_ref();
+    let font_id = egui::TextStyle::Monospace.resolve(ui.style());
+    let color = ui.visuals().text_color();
+    let wrap_width = ui.available_width();
+    let mut layout_job =
+        egui::text::LayoutJob::simple(string.to_owned(), font_id, color, wrap_width);
+
+    let mut needs_scroll_area = false;
+
+    match ui_layout {
+        UiLayout::List => {
+            // Elide
+            layout_job.wrap.max_rows = 1;
+            layout_job.wrap.break_anywhere = true;
+        }
+        UiLayout::Tooltip => {
+            layout_job.wrap.max_rows = 3;
+        }
+        UiLayout::SelectionPanelLimitHeight => {
+            let num_newlines = string.chars().filter(|&c| c == '\n').count();
+            needs_scroll_area = 10 < num_newlines || 300 < string.len();
+        }
+        UiLayout::SelectionPanelFull => {
+            needs_scroll_area = false;
+        }
+    }
+
+    let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
+
+    if needs_scroll_area {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.label(galley);
+        });
+    } else {
+        ui.label(galley);
+    }
 }

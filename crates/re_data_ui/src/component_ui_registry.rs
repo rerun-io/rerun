@@ -6,7 +6,7 @@ use re_viewer_context::{ComponentUiRegistry, UiLayout, ViewerContext};
 
 use crate::editors::register_editors;
 
-use super::EntityDataUi;
+use super::{data_label_for_ui_layout, EntityDataUi};
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
     re_tracing::profile_function!();
@@ -90,14 +90,14 @@ fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::A
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(ui, ui_layout, string);
+            data_label_for_ui_layout(ui, ui_layout, string);
             return;
         }
     }
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(ui, ui_layout, string);
+            data_label_for_ui_layout(ui, ui_layout, string);
             return;
         }
     }
@@ -108,7 +108,7 @@ fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::A
         let mut string = String::new();
         let display = arrow2::array::get_display(array, "null");
         if display(&mut string, 0).is_ok() {
-            text_ui(ui, ui_layout, &string);
+            data_label_for_ui_layout(ui, ui_layout, &string);
             return;
         }
     }
@@ -121,47 +121,9 @@ fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::A
 
     if data_type_formatted.len() < 20 {
         // e.g. "4.2 KiB of Float32"
-        text_ui(ui, ui_layout, &format!("{bytes} of {data_type_formatted}"));
+        data_label_for_ui_layout(ui, ui_layout, &format!("{bytes} of {data_type_formatted}"));
     } else {
         // Huge datatype, probably a union horror show
         ui.label(format!("{bytes} of data"));
-    }
-}
-
-fn text_ui(ui: &mut egui::Ui, ui_layout: UiLayout, string: &str) {
-    let font_id = egui::TextStyle::Monospace.resolve(ui.style());
-    let color = ui.visuals().text_color();
-    let wrap_width = ui.available_width();
-    let mut layout_job =
-        egui::text::LayoutJob::simple(string.to_owned(), font_id, color, wrap_width);
-
-    let mut needs_scroll_area = false;
-
-    match ui_layout {
-        UiLayout::List => {
-            // Elide
-            layout_job.wrap.max_rows = 1;
-            layout_job.wrap.break_anywhere = true;
-        }
-        UiLayout::Tooltip => {
-            layout_job.wrap.max_rows = 3;
-        }
-        UiLayout::SelectionPanelLimitHeight => {
-            let num_newlines = string.chars().filter(|&c| c == '\n').count();
-            needs_scroll_area = 10 < num_newlines || 300 < string.len();
-        }
-        UiLayout::SelectionPanelFull => {
-            needs_scroll_area = false;
-        }
-    }
-
-    let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
-
-    if needs_scroll_area {
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.label(galley);
-        });
-    } else {
-        ui.label(galley);
     }
 }

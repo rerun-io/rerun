@@ -7,7 +7,7 @@ use re_types::datatypes::{
 };
 use re_viewer_context::{auto_color, UiLayout, ViewerContext};
 
-use super::{label_for_ui_layout, table_for_ui_layout, DataUi};
+use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
 
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
@@ -79,10 +79,10 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
                     text.push_str(label.as_str());
                 }
 
-                label_for_ui_layout(ui, ui_layout, text);
+                data_label_for_ui_layout(ui, ui_layout, text);
             });
         } else {
-            label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
+            data_label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
         }
     }
 }

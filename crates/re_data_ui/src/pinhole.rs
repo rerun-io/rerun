@@ -1,7 +1,7 @@
 use re_types::components::{PinholeProjection, Resolution};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use crate::{label_for_ui_layout, DataUi};
+use crate::{data_label_for_ui_layout, label_for_ui_layout, DataUi};
 
 impl DataUi for PinholeProjection {
     fn data_ui(
@@ -51,6 +51,6 @@ impl DataUi for Resolution {
         _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;
-        label_for_ui_layout(ui, ui_layout, format!("{x}×{y}"));
+        data_label_for_ui_layout(ui, ui_layout, format!("{x}×{y}"));
     }
 }

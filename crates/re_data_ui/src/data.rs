@@ -6,7 +6,7 @@ use re_format::format_f32;
 use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, Range2D, ViewCoordinates};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use super::{label_for_ui_layout, table_for_ui_layout, DataUi};
+use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
@@ -113,7 +113,7 @@ impl DataUi for re_types::datatypes::Vec2D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -126,7 +126,7 @@ impl DataUi for re_types::datatypes::Vec3D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -139,7 +139,7 @@ impl DataUi for re_types::datatypes::Vec4D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -152,7 +152,7 @@ impl DataUi for re_types::datatypes::UVec2D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -165,7 +165,7 @@ impl DataUi for re_types::datatypes::UVec3D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -178,7 +178,7 @@ impl DataUi for re_types::datatypes::UVec4D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -191,7 +191,7 @@ impl DataUi for Range1D {
         _query: &LatestAtQuery,
         _db: &EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -204,7 +204,7 @@ impl DataUi for Range2D {
         _query: &LatestAtQuery,
         _db: &EntityDb,
     ) {
-        label_for_ui_layout(ui, ui_layout, self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 

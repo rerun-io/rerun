@@ -4,7 +4,7 @@ use re_types::{
 };
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use crate::{label_for_ui_layout, DataUi};
+use crate::{data_label_for_ui_layout, label_for_ui_layout, DataUi};
 
 impl DataUi for components::Rotation3D {
     fn data_ui(
@@ -31,11 +31,12 @@ impl DataUi for datatypes::Rotation3D {
         match self {
             datatypes::Rotation3D::Quaternion(q) => {
                 // TODO(andreas): Better formatting for quaternions.
-                label_for_ui_layout(ui, ui_layout, format!("{q:?}"));
+                data_label_for_ui_layout(ui, ui_layout, format!("{q:?}"));
             }
             datatypes::Rotation3D::AxisAngle(RotationAxisAngle { axis, angle }) => {
                 match ui_layout {
                     UiLayout::List => {
+                        // TODO(#6315): should be mixed label/data formatting
                         label_for_ui_layout(ui, ui_layout, format!("angle: {angle}, axis: {axis}"));
                     }
                     _ => {
