@@ -13,6 +13,9 @@
 //! cargo run-wasm --example depth_cloud
 //! ```
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use std::f32::consts::TAU;
 
 use glam::Vec3;

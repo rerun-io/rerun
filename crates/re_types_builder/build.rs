@@ -70,12 +70,14 @@ fn main() {
 
     // NOTE: This requires `flatc` to be in $PATH, but only for contributors, not end users.
     // Even for contributors, `flatc` won't be needed unless they edit some of the .fbs files.
-    let sh = Shell::new().unwrap();
+    let sh = Shell::new().expect("Shell::new() failed");
+    #[allow(clippy::unwrap_used)] // unwrap is okay here
     cmd!(
         sh,
         "flatc -o src/ --rust --gen-onefile --filename-suffix '' {FBS_REFLECTION_DEFINITION_PATH}"
     )
     .run()
+    .map_err(|e| eprintln!("flatc failed with error: {e:?}"))
     .unwrap();
 
     // NOTE: We're purposefully ignoring the error here.

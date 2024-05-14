@@ -207,9 +207,6 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
-    #[error("Array is smaller than the expected size of {size}")]
-    ArrayInitUnderrun { size: usize, backtrace: _Backtrace },
-
     #[error("serde-based deserialization (`attr.rust.serde_type`) failed: {reason}")]
     SerdeFailure {
         reason: String,
@@ -321,14 +318,6 @@ impl DeserializationError {
     }
 
     #[inline]
-    pub fn array_init_underrun(size: usize) -> Self {
-        Self::ArrayInitUnderrun {
-            size,
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
-        }
-    }
-
-    #[inline]
     pub fn serde_failure(reason: impl AsRef<str>) -> Self {
         Self::SerdeFailure {
             reason: reason.as_ref().into(),
@@ -355,7 +344,6 @@ impl DeserializationError {
             | DeserializationError::DatatypeMismatch { backtrace, .. }
             | DeserializationError::OffsetOutOfBounds { backtrace, .. }
             | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. }
-            | DeserializationError::ArrayInitUnderrun { backtrace, .. }
             | DeserializationError::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
             DeserializationError::DataCellError(_) | DeserializationError::ValidationError(_) => {
                 None

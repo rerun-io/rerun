@@ -1,5 +1,8 @@
 //! Caching datastructures for `re_query`.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 mod cache;
 mod cache_stats;
 mod flat_vec_deque;

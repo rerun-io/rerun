@@ -2,6 +2,9 @@
 //!
 //! To get an overview over all tools run `pixi run dev-tools --help`.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use argh::FromArgs;
 
 mod build_examples;

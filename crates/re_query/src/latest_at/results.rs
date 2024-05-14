@@ -285,5 +285,8 @@ fn downcast<C: Component>(cached: &(dyn ErasedFlatVecDeque + Send + Sync)) -> cr
     if cached.num_entries() != 1 {
         return Err(anyhow::anyhow!("latest_at deque must be single entry").into());
     }
-    Ok(cached.iter().next().expect("checked just above ^^^"))
+    Ok(cached
+        .iter()
+        .next()
+        .expect("checked existence of cached value already"))
 }

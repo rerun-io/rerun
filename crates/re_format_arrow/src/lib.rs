@@ -1,5 +1,8 @@
 //! Formatting for tables of Arrow arrays
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use std::fmt::Formatter;
 
 use arrow2::{

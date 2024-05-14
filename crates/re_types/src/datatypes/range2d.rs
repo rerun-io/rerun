@@ -296,6 +296,7 @@ impl ::re_types_core::Loggable for Range2D {
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
 
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
                                     #[allow(clippy::unwrap_used)]
                                     Ok(array_init::from_iter(data).unwrap())
                                 })
@@ -378,6 +379,7 @@ impl ::re_types_core::Loggable for Range2D {
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
 
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
                                     #[allow(clippy::unwrap_used)]
                                     Ok(array_init::from_iter(data).unwrap())
                                 })

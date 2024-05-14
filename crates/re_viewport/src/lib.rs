@@ -2,6 +2,9 @@
 //!
 //! This crate provides the central panel that contains all space views.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 pub const VIEWPORT_PATH: &str = "viewport";
 
 mod add_space_view_or_container_modal;

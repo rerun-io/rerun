@@ -15,6 +15,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 // ---
 
 /// Describes the interface for interpreting an object as a bundle of [`Component`]s.

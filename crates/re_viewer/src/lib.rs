@@ -3,6 +3,9 @@
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 mod app;
 mod app_blueprint;
 mod app_state;

@@ -549,7 +549,7 @@ fn spawn(
 }
 
 #[pyfunction]
-#[pyo3(signature = (addr = None, flush_timeout_sec=re_sdk::default_flush_timeout().as_secs_f32(), default_blueprint = None, recording = None))]
+#[pyo3(signature = (addr = None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
 fn connect(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,

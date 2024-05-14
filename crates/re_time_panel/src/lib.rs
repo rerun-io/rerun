@@ -3,6 +3,9 @@
 //! This crate provides a panel that shows allows to control time & timelines,
 //! as well as all necessary ui elements that make it up.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 mod data_density_graph;
 mod paint_ticks;
 mod time_axis;
