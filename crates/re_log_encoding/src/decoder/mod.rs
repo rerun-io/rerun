@@ -242,6 +242,8 @@ fn test_encode_decode() {
         Time,
     };
 
+    let rrd_version = CrateVersion::LOCAL;
+
     let messages = vec![LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: RowId::new(),
         info: StoreInfo {
@@ -254,7 +256,7 @@ fn test_encode_decode() {
                 rustc_version: String::new(),
                 llvm_version: String::new(),
             },
-            store_version: Some(CrateVersion::LOCAL),
+            store_version: Some(rrd_version),
         },
     })];
 
@@ -271,7 +273,7 @@ fn test_encode_decode() {
 
     for options in options {
         let mut file = vec![];
-        crate::encoder::encode(options, messages.iter(), &mut file).unwrap();
+        crate::encoder::encode(rrd_version, options, messages.iter(), &mut file).unwrap();
 
         let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
             .unwrap()

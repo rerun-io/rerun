@@ -4619,6 +4619,7 @@ dependencies = [
  "crossbeam",
  "document-features",
  "rand",
+ "re_build_info",
  "re_log",
  "re_log_encoding",
  "re_log_types",

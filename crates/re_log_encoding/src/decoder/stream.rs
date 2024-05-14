@@ -265,7 +265,7 @@ mod tests {
         let messages: Vec<_> = (0..n).map(|_| fake_log_msg()).collect();
 
         let mut buffer = Vec::new();
-        let mut encoder = Encoder::new(options, &mut buffer).unwrap();
+        let mut encoder = Encoder::new(CrateVersion::LOCAL, options, &mut buffer).unwrap();
         for message in &messages {
             encoder.append(message).unwrap();
         }

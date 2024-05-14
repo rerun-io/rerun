@@ -1,3 +1,4 @@
+use re_build_info::CrateVersion;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
@@ -1310,10 +1311,14 @@ fn blueprint_loader() -> BlueprintPersistence {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 
         let messages = blueprint.to_messages(None)?;
+        let rrd_version = blueprint
+            .store_info()
+            .and_then(|info| info.store_version)
+            .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
         // be small & fast to save, but maybe not once we start adding big pieces of user data?
-        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+        crate::saving::encode_to_file(rrd_version, &blueprint_path, messages.iter())?;
 
         re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
 
@@ -1714,6 +1719,11 @@ fn save_recording(
         anyhow::bail!("No recording data to save");
     };
 
+    let rrd_version = entity_db
+        .store_info()
+        .and_then(|info| info.store_version)
+        .unwrap_or(re_build_info::CrateVersion::LOCAL);
+
     let file_name = "data.rrd";
 
     let title = if loop_selection.is_some() {
@@ -1722,9 +1732,13 @@ fn save_recording(
         "Save recording"
     };
 
-    save_entity_db(app, file_name.to_owned(), title.to_owned(), || {
-        entity_db.to_messages(loop_selection)
-    })
+    save_entity_db(
+        app,
+        rrd_version,
+        file_name.to_owned(),
+        title.to_owned(),
+        || entity_db.to_messages(loop_selection),
+    )
 }
 
 fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
@@ -1733,6 +1747,12 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     };
 
     re_tracing::profile_function!();
+
+    let rrd_version = store_context
+        .blueprint
+        .store_info()
+        .and_then(|info| info.store_version)
+        .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
     // We change the recording id to a new random one,
     // otherwise when saving and loading a blueprint file, we can end up
@@ -1751,12 +1771,15 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     );
     let title = "Save blueprint";
 
-    save_entity_db(app, file_name, title.to_owned(), || Ok(messages))
+    save_entity_db(app, rrd_version, file_name, title.to_owned(), || {
+        Ok(messages)
+    })
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
 fn save_entity_db(
     #[allow(unused_variables)] app: &mut App, // only used on native
+    rrd_version: CrateVersion,
     file_name: String,
     title: String,
     to_log_messages: impl FnOnce() -> re_log_types::DataTableResult<Vec<LogMsg>>,
@@ -1788,7 +1811,7 @@ fn save_entity_db(
         if let Some(path) = path {
             let messages = to_log_messages()?;
             app.background_tasks.spawn_file_saver(move || {
-                crate::saving::encode_to_file(&path, messages.iter())?;
+                crate::saving::encode_to_file(rrd_version, &path, messages.iter())?;
                 Ok(path)
             })?;
         }
