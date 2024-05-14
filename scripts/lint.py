@@ -661,13 +661,14 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 
 # -----------------------------------------------------------------------------
 
-force_capitalized_words = [
+force_capitalized = [
+    # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     "2D",
     "3D",
     "Apache",
     "API",
     "APIs",
-    "Arrow",
+    "April",
     "Bevy",
     "C",
     "C++",
@@ -689,13 +690,17 @@ force_capitalized_words = [
     "Rerun",
     "Rust",
     "SAM",
-    "Viewer",
     "Wasm",
     "Windows",
-    "April",
 ]
 
-force_capitalized_words_as_lower = [word.lower() for word in force_capitalized_words]
+allow_capitalized = [
+    "Viewer",  # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
+    "Arrow",  # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
+]
+
+force_capitalized_as_lower = [word.lower() for word in force_capitalized]
+allow_capitalized_as_lower = [word.lower() for word in allow_capitalized]
 
 
 def fix_header_casing(s: str) -> str:
@@ -706,7 +711,9 @@ def fix_header_casing(s: str) -> str:
     last_punctuation = None
     inline_code_block = False
 
-    for i, word in enumerate(s.strip().split(" ")):
+    words = s.strip().split(" ")
+
+    for i, word in enumerate(words):
         if word == "":
             continue
 
@@ -718,27 +725,21 @@ def fix_header_casing(s: str) -> str:
         if last_punctuation:
             word = word.capitalize()
             last_punctuation = None
-        elif not inline_code_block and not word.startswith("`"):
+        elif not inline_code_block and not word.startswith("`") and not word.startswith('"'):
             try:
-                idx = force_capitalized_words_as_lower.index(word.lower())
+                idx = force_capitalized_as_lower.index(word.lower())
             except ValueError:
-                idx = None
-
-            # special case: don't capitalize "web viewer" and "VRS viewer" even though we capitalize "Viewer"
-            if (
-                word.lower() == "viewer"
-                and len(new_words) > 0
-                and (new_words[-1].lower() == "web" or new_words[-1].lower() == "vrs")
-            ):
                 idx = None
 
             if word.endswith("?") or word.endswith("!") or word.endswith("."):
                 last_punctuation = word[-1]
                 word = word[:-1]
             elif idx is not None:
-                word = force_capitalized_words[idx]
+                word = force_capitalized[idx]
             elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
                 pass  # acroym, PascalCase, code, …
+            elif word.lower() in allow_capitalized_as_lower:
+                pass
             elif i == 0:
                 # First word:
                 word = word.capitalize()
@@ -762,20 +763,12 @@ def fix_enforced_upper_case(s: str) -> str:
 
         if word.strip() != "" and not inline_code_block and not word.startswith("`"):
             try:
-                idx = force_capitalized_words_as_lower.index(word.lower())
+                idx = force_capitalized_as_lower.index(word.lower())
             except ValueError:
                 idx = None
 
-            # special case: don't capitalize "web viewer" and "VRS viewer" even though we capitalize "Viewer"
-            if (
-                word.lower() == "viewer"
-                and len(new_words) > 0
-                and (new_words[-1].lower() == "web" or new_words[-1].lower() == "vrs")
-            ):
-                idx = None
-
             if idx is not None:
-                word = force_capitalized_words[idx]
+                word = force_capitalized[idx]
 
         new_words.append(word)
 
