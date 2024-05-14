@@ -88,14 +88,15 @@ export class WebViewer {
    * @see {WebViewer.start}
    *
    * @param {string | string[]} rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param {boolean} [follow_if_http] Whether Rerun should enter "follow" mode when streaming from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
    */
-  open(rrd) {
+  open(rrd, follow_if_http = false) {
     if (!this.#handle) {
       throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
     }
     const urls = Array.isArray(rrd) ? rrd : [rrd];
     for (const url of urls) {
-      this.#handle.add_receiver(url);
+      this.#handle.add_receiver(url, follow_if_http);
       if (this.#handle.has_panicked()) {
         throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
       }

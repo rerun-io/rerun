@@ -101,11 +101,11 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn add_receiver(&self, url: &str) {
+    pub fn add_receiver(&self, url: &str, follow_if_http: Option<bool>) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let follow_if_http = false;
+        let follow_if_http = follow_if_http.unwrap_or(false);
         let rx = url_to_receiver(app.re_ui.egui_ctx.clone(), follow_if_http, url);
         if let Some(rx) = rx.ok_or_log_error() {
             app.add_receiver(rx);
