@@ -440,12 +440,15 @@ impl<'a> ListItem<'a> {
         let bg_rect =
             egui::Rect::from_x_y_ranges(crate::full_span::get_full_span(ui), rect.y_range());
 
-        // we want to be able to select/hover the item across its full span, so we sense that and
-        // update the response accordingly.
+        // we want to be able to select/hover/drag the item across its full span, so we sense that
+        // and update the response accordingly.
         let full_span_response = ui.interact(bg_rect, response.id.with("full_span_check"), sense);
         response.clicked = full_span_response.clicked;
         response.contains_pointer = full_span_response.contains_pointer;
         response.hovered = full_span_response.hovered;
+        response.drag_started = full_span_response.drag_started;
+        response.dragged = full_span_response.dragged;
+        response.drag_stopped = full_span_response.drag_stopped;
 
         // override_hover should not affect the returned response
         let mut style_response = response.clone();
