@@ -78,7 +78,11 @@ impl crate::sink::LogSink for WebViewerSink {
     }
 
     #[inline]
-    fn flush_blocking(&self) {}
+    fn flush_blocking(&self) {
+        if let Err(err) = self.sender.flush_blocking() {
+            re_log::error_once!("Failed to flush: {err}");
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
