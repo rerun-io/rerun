@@ -195,15 +195,29 @@ pub(crate) fn smart_channel_with_stats<T: Send>(
 /// The payload of a [`SmartMessage`].
 ///
 /// Either data or an end-of-stream marker.
-#[derive(Debug)]
 pub enum SmartMessagePayload<T: Send> {
     /// A message sent down the channel.
     Msg(T),
+
+    /// When received, flush anything already received and then call the given callback.
+    Flush {
+        on_flush_done: Box<dyn FnOnce() + Send>,
+    },
 
     /// The [`Sender`] has quit.
     ///
     /// `None` indicates the sender left gracefully, an error indicates otherwise.
     Quit(Option<Box<dyn std::error::Error + Send>>),
+}
+
+impl<T: Send> std::fmt::Debug for SmartMessagePayload<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SmartMessagePayload::Msg(_) => f.write_str("Msg(_)"),
+            SmartMessagePayload::Flush { .. } => f.write_str("Flush"),
+            SmartMessagePayload::Quit(_) => f.write_str("Quit"),
+        }
+    }
 }
 
 impl<T: Send + PartialEq> PartialEq for SmartMessagePayload<T> {
@@ -224,18 +238,16 @@ pub struct SmartMessage<T: Send> {
 
 impl<T: Send> SmartMessage<T> {
     pub fn data(&self) -> Option<&T> {
-        use SmartMessagePayload::{Msg, Quit};
         match &self.payload {
-            Msg(msg) => Some(msg),
-            Quit(_) => None,
+            SmartMessagePayload::Msg(msg) => Some(msg),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
     }
 
     pub fn into_data(self) -> Option<T> {
-        use SmartMessagePayload::{Msg, Quit};
         match self.payload {
-            Msg(msg) => Some(msg),
-            Quit(_) => None,
+            SmartMessagePayload::Msg(msg) => Some(msg),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
     }
 }

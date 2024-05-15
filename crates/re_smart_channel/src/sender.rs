@@ -37,7 +37,7 @@ impl<T: Send> Sender<T> {
         )
         .map_err(|SendError(msg)| match msg {
             SmartMessagePayload::Msg(msg) => SendError(msg),
-            SmartMessagePayload::Quit(_) => unreachable!(),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
         })
     }
 

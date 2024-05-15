@@ -346,6 +346,11 @@ impl ReceiveSetBroadcaster {
 
                     inner.history.push(msg);
                 }
+
+                re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    (on_flush_done)();
+                }
+
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
                         re_log::warn!("Sender {} has left unexpectedly: {err}", msg.source);
