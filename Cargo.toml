@@ -423,12 +423,12 @@ unnested_or_patterns = "warn"
 unused_peekable = "warn"
 unused_rounding = "warn"
 unused_self = "warn"
+unwrap_used = "warn"
 useless_transmute = "warn"
 verbose_file_reads = "warn"
 wildcard_dependencies = "warn"
 wildcard_imports = "warn"
 zero_sized_map_values = "warn"
-unwrap_used = "warn"
 # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 #self_named_module_files = "warn"
 
