@@ -21,7 +21,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types::components::LineStrip2D>(&mut registry);
     add_to_registry::<re_types::components::LineStrip3D>(&mut registry);
     add_to_registry::<re_types::components::Range1D>(&mut registry);
-    add_to_registry::<re_types::components::Range2D>(&mut registry);
     add_to_registry::<re_types::components::Resolution>(&mut registry);
     add_to_registry::<re_types::components::Rotation3D>(&mut registry);
     add_to_registry::<re_types::components::Material>(&mut registry);
@@ -32,6 +31,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     add_to_registry::<re_types_blueprint::blueprint::components::IncludedSpaceView>(&mut registry);
     add_to_registry::<re_types_blueprint::blueprint::components::SpaceViewMaximized>(&mut registry);
+    add_to_registry::<re_types_blueprint::blueprint::components::VisualBounds2D>(&mut registry);
 
     register_editors(&mut registry);
 

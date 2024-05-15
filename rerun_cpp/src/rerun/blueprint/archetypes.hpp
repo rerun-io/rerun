@@ -11,4 +11,4 @@
 #include "blueprint/archetypes/space_view_contents.hpp"
 #include "blueprint/archetypes/viewport_blueprint.hpp"
 #include "blueprint/archetypes/visible_time_ranges.hpp"
-#include "blueprint/archetypes/visual_bounds.hpp"
+#include "blueprint/archetypes/visual_bounds2d.hpp"

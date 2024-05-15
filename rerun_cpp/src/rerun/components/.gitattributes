@@ -36,7 +36,6 @@ position3d.hpp linguist-generated=true
 radius.cpp linguist-generated=true
 radius.hpp linguist-generated=true
 range1d.hpp linguist-generated=true
-range2d.hpp linguist-generated=true
 resolution.hpp linguist-generated=true
 rotation3d.hpp linguist-generated=true
 scalar.cpp linguist-generated=true

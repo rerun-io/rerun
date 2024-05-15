@@ -78,7 +78,7 @@ class Spatial2DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
-        visual_bounds: blueprint_archetypes.VisualBounds | None = None,
+        visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
@@ -124,9 +124,9 @@ class Spatial2DView(SpaceView):
             properties["Background"] = background
 
         if visual_bounds is not None:
-            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds):
-                visual_bounds = blueprint_archetypes.VisualBounds(visual_bounds)
-            properties["VisualBounds"] = visual_bounds
+            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
+                visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
+            properties["VisualBounds2D"] = visual_bounds
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

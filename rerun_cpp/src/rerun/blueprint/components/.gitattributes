@@ -33,3 +33,4 @@ viewer_recommendation_hash.hpp linguist-generated=true
 visible.cpp linguist-generated=true
 visible.hpp linguist-generated=true
 visible_time_range.hpp linguist-generated=true
+visual_bounds2d.hpp linguist-generated=true

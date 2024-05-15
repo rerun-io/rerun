@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..datatypes import Range1DLike
+from ...datatypes import Range1DLike
 
 
-class Range2DExt:
-    """Extension for [Range2D][rerun.components.Range2D]."""
+class VisualBounds2DExt:
+    """Extension for [VisualBounds2D][rerun.blueprint.components.VisualBounds2D]."""
 
     def __init__(
         self: Any,
@@ -15,7 +15,7 @@ class Range2DExt:
         y_range: Range1DLike,
     ):
         """
-        Create a new instance of the Range2D component.
+        Create a new instance of the VisualBounds2D component.
 
         Parameters
         ----------

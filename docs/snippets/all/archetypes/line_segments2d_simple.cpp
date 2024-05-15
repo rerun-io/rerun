@@ -12,5 +12,5 @@ int main() {
     };
     rec.log("segments", rerun::LineStrips2D(points));
 
-    // TODO(#5520): log VisualBounds
+    // TODO(#5520): log VisualBounds2D
 }

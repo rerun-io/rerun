@@ -48,7 +48,7 @@ namespace rerun::archetypes {
     ///             .with_labels({"one strip here", "and one strip there"})
     ///     );
     ///
-    ///     // TODO(#5520): log VisualBounds
+    ///     // TODO(#5520): log VisualBounds2D
     /// }
     /// ```
     struct LineStrips2D {
