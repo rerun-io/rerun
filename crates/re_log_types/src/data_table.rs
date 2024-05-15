@@ -272,67 +272,6 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// │ 2        ┆ 2023-04-05 09:36:47.188855872 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ c                 ┆ [hey]       ┆ -                                ┆ [4294967295]    │
 /// └──────────┴───────────────────────────────┴──────────────────────────────────┴───────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
 /// ```
-///
-/// ## Example
-///
-/// ```rust
-/// # use re_log_types::{
-/// #     example_components::{MyColor, MyLabel, MyPoint},
-/// #     DataRow, DataTable, RowId, TableId, Timeline, TimePoint,
-/// # };
-/// #
-/// # let table_id = TableId::new();
-/// #
-/// # let timepoint = |frame_nr: i64, clock: i64| {
-/// #     TimePoint::from([
-/// #         (Timeline::new_sequence("frame_nr"), frame_nr),
-/// #         (Timeline::new_sequence("clock"), clock),
-/// #     ])
-/// # };
-/// #
-/// let row0 = {
-///     let points: &[MyPoint] = &[MyPoint { x: 10.0, y: 10.0 }, MyPoint { x: 20.0, y: 20.0 }];
-///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
-///     let labels: &[MyLabel] = &[];
-///
-///     DataRow::from_cells3(
-///         RowId::new(),
-///         "a",
-///         timepoint(1, 1),
-///         (points, colors, labels),
-///     ).unwrap()
-/// };
-///
-/// let row1 = {
-///     let colors: &[MyColor] = &[];
-///
-///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), colors).unwrap()
-/// };
-///
-/// let row2 = {
-///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
-///     let labels: &[_] = &[MyLabel("hey".into())];
-///
-///     DataRow::from_cells2(
-///         RowId::new(),
-///         "c",
-///         timepoint(2, 1),
-///         (colors, labels),
-///     ).unwrap()
-/// };
-///
-/// let table_in = DataTable::from_rows(table_id, [row0, row1, row2]);
-/// eprintln!("Table in:\n{table_in}");
-///
-/// let (schema, columns) = table_in.serialize().unwrap();
-/// // eprintln!("{schema:#?}");
-/// eprintln!("Wired chunk:\n{columns:#?}");
-///
-/// let table_out = DataTable::deserialize(table_id, &schema, &columns).unwrap();
-/// eprintln!("Table out:\n{table_out}");
-/// #
-/// # assert_eq!(table_in, table_out);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataTable {
     /// Auto-generated `TUID`, uniquely identifying this batch of data and keeping track of the
@@ -555,7 +494,7 @@ use arrow2::{
     types::NativeType,
 };
 
-pub const METADATA_KIND: &str = "rerun.kind";
+pub const METADATA_KIND: &str = "rerun.field.kind";
 pub const METADATA_KIND_DATA: &str = "data";
 pub const METADATA_KIND_CONTROL: &str = "control";
 pub const METADATA_KIND_TIME: &str = "time";
@@ -871,6 +810,18 @@ impl DataTable {
     ) -> DataTableResult<Self> {
         re_tracing::profile_function!();
 
+        /// The key used to identify a Rerun [`EntityPath`] in chunk-level [`ArrowSchema`] metadata.
+        //
+        // NOTE: Temporarily copied from `re_chunk` while we're transitioning away to the new data
+        // model.
+        const CHUNK_METADATA_KEY_ENTITY_PATH: &str = "rerun.chunk.entity_path";
+
+        let entity_path = schema
+            .metadata
+            .get(CHUNK_METADATA_KEY_ENTITY_PATH)
+            .ok_or_else(|| DataTableError::MissingColumn("metadata:entity_path".to_owned()))?;
+        let entity_path = EntityPath::parse_forgiving(entity_path);
+
         // --- Time ---
 
         let col_timelines: DataTableResult<_> = schema
@@ -917,12 +868,9 @@ impl DataTable {
                 .unwrap()
                 .as_ref(),
         )?;
-        let col_entity_path = EntityPath::from_arrow(
-            chunk
-                .get(control_index(EntityPath::name().as_str())?)
-                .unwrap()
-                .as_ref(),
-        )?;
+        let col_entity_path = std::iter::repeat_with(|| entity_path.clone())
+            .take(col_row_id.len())
+            .collect_vec();
 
         // --- Components ---
 

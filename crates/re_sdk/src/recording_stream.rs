@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::IsTerminal;
 use std::sync::Weak;
@@ -5,13 +6,13 @@ use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
-
 use itertools::Either;
 use parking_lot::Mutex;
+
+use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow};
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, DataCell, DataCellError,
-    DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
-    EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
+    ApplicationId, ArrowChunkReleaseCallback, ArrowMsg, BlueprintActivationCommand, DataCellError,
+    EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, TableId, Time, TimeInt,
     TimePoint, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{AsComponents, ComponentBatch, SerializationError};
@@ -49,9 +50,9 @@ pub enum RecordingStreamError {
     #[error("Failed to create the underlying file sink: {0}")]
     FileSink(#[from] re_log_encoding::FileSinkError),
 
-    /// Error within the underlying table batcher.
+    /// Error within the underlying chunk batcher.
     #[error("Failed to spawn the underlying batcher: {0}")]
-    DataTableBatcher(#[from] DataTableBatcherError),
+    ChunkBatcher(#[from] ChunkBatcherError),
 
     /// Error within the underlying data cell.
     #[error("Failed to instantiate data cell: {0}")]
@@ -112,7 +113,7 @@ pub struct RecordingStreamBuilder {
     default_enabled: bool,
     enabled: Option<bool>,
 
-    batcher_config: Option<DataTableBatcherConfig>,
+    batcher_config: Option<ChunkBatcherConfig>,
 
     is_official_example: bool,
 }
@@ -206,9 +207,9 @@ impl RecordingStreamBuilder {
 
     /// Specifies the configuration of the internal data batching mechanism.
     ///
-    /// See [`DataTableBatcher`] & [`DataTableBatcherConfig`] for more information.
+    /// See [`ChunkBatcher`] & [`ChunkBatcherConfig`] for more information.
     #[inline]
-    pub fn batcher_config(mut self, config: DataTableBatcherConfig) -> Self {
+    pub fn batcher_config(mut self, config: ChunkBatcherConfig) -> Self {
         self.batcher_config = Some(config);
         self
     }
@@ -406,7 +407,7 @@ impl RecordingStreamBuilder {
         }
     }
 
-    /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
+    /// Spawns a new Rerun Viewer process from an execuchunk available in PATH, then creates a new
     /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
     ///
     /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
@@ -425,7 +426,7 @@ impl RecordingStreamBuilder {
         self.spawn_opts(&Default::default(), crate::default_flush_timeout())
     }
 
-    /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
+    /// Spawns a new Rerun Viewer process from an execuchunk available in PATH, then creates a new
     /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
     ///
     /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
@@ -528,7 +529,7 @@ impl RecordingStreamBuilder {
     ///
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
-    pub fn into_args(self) -> (bool, StoreInfo, DataTableBatcherConfig) {
+    pub fn into_args(self) -> (bool, StoreInfo, ChunkBatcherConfig) {
         let enabled = self.is_enabled();
 
         let Self {
@@ -559,11 +560,11 @@ impl RecordingStreamBuilder {
         };
 
         let batcher_config =
-            batcher_config.unwrap_or_else(|| match DataTableBatcherConfig::from_env() {
+            batcher_config.unwrap_or_else(|| match ChunkBatcherConfig::from_env() {
                 Ok(config) => config,
                 Err(err) => {
-                    re_log::error!("Failed to parse DataTableBatcherConfig from env: {}", err);
-                    DataTableBatcherConfig::default()
+                    re_log::error!("Failed to parse ChunkBatcherConfig from env: {}", err);
+                    ChunkBatcherConfig::default()
                 }
             });
 
@@ -681,7 +682,7 @@ struct RecordingStreamInner {
     /// running.
     cmds_tx: Sender<Command>,
 
-    batcher: DataTableBatcher,
+    batcher: ChunkBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
 
     /// Keeps track of the top-level threads that were spawned in order to execute the `DataLoader`
@@ -714,7 +715,7 @@ impl Drop for RecordingStreamInner {
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
         self.batcher.flush_blocking();
-        self.cmds_tx.send(Command::PopPendingTables).ok();
+        self.cmds_tx.send(Command::PopPendingChunks).ok();
         self.cmds_tx.send(Command::Shutdown).ok();
         if let Some(handle) = self.batcher_to_sink_handle.take() {
             handle.join().ok();
@@ -725,11 +726,11 @@ impl Drop for RecordingStreamInner {
 impl RecordingStreamInner {
     fn new(
         info: StoreInfo,
-        batcher_config: DataTableBatcherConfig,
+        batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
         let on_release = batcher_config.hooks.on_release.clone();
-        let batcher = DataTableBatcher::new(batcher_config)?;
+        let batcher = ChunkBatcher::new(batcher_config)?;
 
         {
             re_log::debug!(
@@ -755,7 +756,7 @@ impl RecordingStreamInner {
                 .spawn({
                     let info = info.clone();
                     let batcher = batcher.clone();
-                    move || forwarding_thread(info, sink, cmds_rx, batcher.tables(), on_release)
+                    move || forwarding_thread(info, sink, cmds_rx, batcher.chunks(), on_release)
                 })
                 .map_err(|err| RecordingStreamError::SpawnThread {
                     name: NAME.into(),
@@ -796,7 +797,7 @@ enum Command {
     RecordMsg(LogMsg),
     SwapSink(Box<dyn LogSink>),
     Flush(Sender<()>),
-    PopPendingTables,
+    PopPendingChunks,
     Shutdown,
 }
 
@@ -821,7 +822,7 @@ impl RecordingStream {
     #[must_use = "Recording will get closed automatically once all instances of this object have been dropped"]
     pub fn new(
         info: StoreInfo,
-        batcher_config: DataTableBatcherConfig,
+        batcher_config: ChunkBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
         let sink = (info.store_id.kind == StoreKind::Recording)
@@ -1018,7 +1019,7 @@ impl RecordingStream {
     fn log_component_batches_impl<'a>(
         &self,
         row_id: RowId,
-        ent_path: impl Into<EntityPath>,
+        entity_path: impl Into<EntityPath>,
         static_: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
@@ -1026,39 +1027,29 @@ impl RecordingStream {
             return Ok(()); // silently drop the message
         }
 
-        let ent_path = ent_path.into();
+        let entity_path = entity_path.into();
 
         let comp_batches: Result<Vec<_>, _> = comp_batches
             .into_iter()
             .map(|comp_batch| {
                 comp_batch
                     .to_arrow()
-                    .map(|array| (comp_batch.arrow_field(), array))
+                    .map(|array| (comp_batch.name(), array))
             })
             .collect();
-        let comp_batches = comp_batches?;
-
-        let cells: Result<Vec<_>, _> = comp_batches
-            .into_iter()
-            .map(|(field, array)| {
-                // NOTE: Unreachable, a top-level Field will always be a component, and thus an
-                // extension.
-                use re_log_types::external::arrow2::datatypes::DataType;
-                let DataType::Extension(fqname, _, _) = field.data_type else {
-                    return Err(SerializationError::missing_extension_metadata(field.name).into());
-                };
-                DataCell::try_from_arrow(fqname.into(), array)
-            })
-            .collect();
-        let cells = cells?;
+        let components: BTreeMap<_, _> = comp_batches?.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
         let timepoint = TimePoint::default();
 
-        if !cells.is_empty() {
-            let row = DataRow::from_cells(row_id, timepoint.clone(), ent_path.clone(), cells)?;
-            self.record_row(row, !static_);
+        if !components.is_empty() {
+            let row = PendingRow {
+                row_id,
+                timepoint,
+                components,
+            };
+            self.record_row(entity_path, row, !static_);
         }
 
         Ok(())
@@ -1197,7 +1188,7 @@ fn forwarding_thread(
     info: StoreInfo,
     mut sink: Box<dyn LogSink>,
     cmds_rx: Receiver<Command>,
-    tables: Receiver<DataTable>,
+    chunks: Receiver<Chunk>,
     on_release: Option<ArrowChunkReleaseCallback>,
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
@@ -1246,8 +1237,8 @@ fn forwarding_thread(
                 sink.flush_blocking();
                 drop(oneshot); // signals the oneshot
             }
-            Command::PopPendingTables => {
-                // Wake up and skip the current iteration so that we can drain all pending tables
+            Command::PopPendingChunks => {
+                // Wake up and skip the current iteration so that we can drain all pending chunks
                 // before handling the next command.
             }
             Command::Shutdown => return false,
@@ -1258,40 +1249,60 @@ fn forwarding_thread(
 
     use crossbeam::select;
     loop {
-        // NOTE: Always pop tables first, this is what makes `Command::PopPendingTables` possible,
+        // NOTE: Always pop chunks first, this is what makes `Command::PopPendingChunks` possible,
         // which in turns makes `RecordingStream::flush_blocking` well defined.
-        while let Ok(table) = tables.try_recv() {
-            let mut arrow_msg = match table.to_arrow_msg() {
-                Ok(table) => table,
+        while let Ok(chunk) = chunks.try_recv() {
+            let timepoint_max = chunk.timepoint_max();
+            let chunk = match chunk.to_transport() {
+                Ok(chunk) => chunk,
                 Err(err) => {
-                    re_log::error!(%err,
-                        "couldn't serialize table; data dropped (this is a bug in Rerun!)");
+                    re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
                     continue;
                 }
             };
-            arrow_msg.on_release = on_release.clone();
-            sink.send(LogMsg::ArrowMsg(info.store_id.clone(), arrow_msg));
+
+            sink.send(LogMsg::ArrowMsg(
+                info.store_id.clone(),
+                ArrowMsg {
+                    table_id: TableId::new(),
+                    timepoint_max,
+                    schema: chunk.schema,
+                    chunk: chunk.data,
+                    on_release: on_release.clone(),
+                },
+            ));
         }
 
         select! {
-            recv(tables) -> res => {
-                let Ok(table) = res else {
+            recv(chunks) -> res => {
+                let Ok(chunk) = res else {
                     // The batcher is gone, which can only happen if the `RecordingStream` itself
                     // has been dropped.
                     re_log::trace!("Shutting down forwarding_thread: batcher is gone");
                     break;
                 };
-                let mut arrow_msg = match table.to_arrow_msg() {
-                    Ok(table) => table,
+
+                let timepoint_max = chunk.timepoint_max();
+                let chunk = match chunk.to_transport() {
+                    Ok(chunk) => chunk,
                     Err(err) => {
-                        re_log::error!(%err,
-                            "couldn't serialize table; data dropped (this is a bug in Rerun!)");
+                        re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
                         continue;
                     }
                 };
-                arrow_msg.on_release = on_release.clone();
-                sink.send(LogMsg::ArrowMsg(info.store_id.clone(), arrow_msg));
+
+                sink.send(LogMsg::ArrowMsg(
+                    info.store_id.clone(),
+                    ArrowMsg {
+                        table_id: TableId::new(),
+                        timepoint_max,
+                        schema: chunk.schema,
+                        chunk: chunk.data,
+                        on_release: on_release.clone(),
+                    },
+                ));
             }
+
             recv(cmds_rx) -> res => {
                 let Ok(cmd) = res else {
                     // All command senders are gone, which can only happen if the
@@ -1359,10 +1370,10 @@ impl RecordingStream {
     /// If `inject_time` is set to `true`, the row's timestamp data will be overridden using the
     /// [`RecordingStream`]'s internal clock.
     ///
-    /// Internally, incoming [`DataRow`]s are automatically coalesced into larger [`DataTable`]s to
+    /// Internally, incoming [`DataRow`]s are automatically coalesced into larger [`Chunk`]s to
     /// optimize for transport.
     #[inline]
-    pub fn record_row(&self, mut row: DataRow, inject_time: bool) {
+    pub fn record_row(&self, entity_path: EntityPath, mut row: PendingRow, inject_time: bool) {
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: We're incrementing the current tick still.
             let tick = inner
@@ -1381,7 +1392,7 @@ impl RecordingStream {
                 }
             }
 
-            inner.batcher.push_row(row);
+            inner.batcher.push_row(entity_path, row);
         };
 
         if self.with(f).is_none() {
@@ -1392,7 +1403,7 @@ impl RecordingStream {
     /// Swaps the underlying sink for a new one.
     ///
     /// This guarantees that:
-    /// 1. all pending rows and tables are batched, collected and sent down the current sink,
+    /// 1. all pending rows and chunks are batched, collected and sent down the current sink,
     /// 2. the current sink is flushed if it has pending data in its buffers,
     /// 3. the current sink's backlog, if there's any, is forwarded to the new sink.
     ///
@@ -1413,11 +1424,11 @@ impl RecordingStream {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
-            // 1. Flush the batcher down the table channel
+            // 1. Flush the batcher down the chunk channel
             inner.batcher.flush_blocking();
 
-            // 2. Receive pending tables from the batcher's channel
-            inner.cmds_tx.send(Command::PopPendingTables).ok();
+            // 2. Receive pending chunks from the batcher's channel
+            inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
             // 3. Swap the sink, which will internally make sure to re-ingest the backlog if needed
             inner.cmds_tx.send(Command::SwapSink(sink)).ok();
@@ -1450,15 +1461,15 @@ impl RecordingStream {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
-            // 1. Synchronously flush the batcher down the table channel
+            // 1. Synchronously flush the batcher down the chunk channel
             //
-            // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all tables
+            // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all chunks
             // are ready to be drained by the time this call returns.
             // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
             inner.batcher.flush_blocking();
 
-            // 2. Drain all pending tables from the batcher's channel _before_ any other future command
-            inner.cmds_tx.send(Command::PopPendingTables).ok();
+            // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
+            inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
             // 3. Asynchronously flush everything down the sink
             let (cmd, _) = Command::flush();
@@ -1483,13 +1494,13 @@ impl RecordingStream {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
 
-            // 1. Flush the batcher down the table channel
+            // 1. Flush the batcher down the chunk channel
             inner.batcher.flush_blocking();
 
-            // 2. Drain all pending tables from the batcher's channel _before_ any other future command
-            inner.cmds_tx.send(Command::PopPendingTables).ok();
+            // 2. Drain all pending chunks from the batcher's channel _before_ any other future command
+            inner.cmds_tx.send(Command::PopPendingChunks).ok();
 
-            // 3. Wait for all tables to have been forwarded down the sink
+            // 3. Wait for all chunks to have been forwarded down the sink
             let (cmd, oneshot) = Command::flush();
             inner.cmds_tx.send(cmd).ok();
             oneshot.recv().ok();
@@ -1539,7 +1550,7 @@ impl RecordingStream {
         self.set_sink(Box::new(sink));
     }
 
-    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
+    /// Spawns a new Rerun Viewer process from an execuchunk available in PATH, then swaps the
     /// underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to send data to that
     /// new process.
     ///
@@ -1556,7 +1567,7 @@ impl RecordingStream {
         self.spawn_opts(&Default::default(), crate::default_flush_timeout())
     }
 
-    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
+    /// Spawns a new Rerun Viewer process from an execuchunk available in PATH, then swaps the
     /// underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to send data to that
     /// new process.
     ///
@@ -2063,7 +2074,8 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::{DataTable, RowId};
+    use re_chunk::TransportChunk;
+    use re_log_types::RowId;
 
     use super::*;
 
@@ -2077,16 +2089,15 @@ mod tests {
     fn never_flush() {
         let rec = RecordingStreamBuilder::new("rerun_example_never_flush")
             .enabled(true)
-            .batcher_config(DataTableBatcherConfig::NEVER)
+            .batcher_config(ChunkBatcherConfig::NEVER)
             .buffered()
             .unwrap();
 
         let store_info = rec.store_info().unwrap();
 
-        let mut table = DataTable::example(false);
-        table.compute_all_size_bytes();
-        for row in table.to_rows() {
-            rec.record_row(row.unwrap(), false);
+        let rows = example_rows(false);
+        for row in rows.clone() {
+            rec.record_row("a".into(), row, false);
         }
 
         let storage = rec.memory();
@@ -2117,19 +2128,19 @@ mod tests {
             _ => panic!("expected SetStoreInfo"),
         }
 
-        // Third message is the batched table itself, which was sent as a result of the implicit
+        // Third message is the batched chunk itself, which was sent as a result of the implicit
         // flush when swapping the underlying sink from buffered to in-memory.
         match msgs.pop().unwrap() {
             LogMsg::ArrowMsg(rid, msg) => {
                 assert_eq!(store_info.store_id, rid);
 
-                let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                // TODO(#1760): we shouldn't have to (re)do this!
-                got.compute_all_size_bytes();
-                // NOTE: Override the resulting table's ID so they can be compared.
-                got.table_id = table.table_id;
+                let chunk = Chunk::from_transport(&TransportChunk {
+                    schema: msg.schema.clone(),
+                    data: msg.chunk.clone(),
+                })
+                .unwrap();
 
-                similar_asserts::assert_eq!(table, got);
+                chunk.sanity_check().unwrap();
             }
             _ => panic!("expected ArrowMsg"),
         }
@@ -2140,20 +2151,17 @@ mod tests {
 
     #[test]
     fn always_flush() {
-        use itertools::Itertools as _;
-
         let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
             .enabled(true)
-            .batcher_config(DataTableBatcherConfig::ALWAYS)
+            .batcher_config(ChunkBatcherConfig::ALWAYS)
             .buffered()
             .unwrap();
 
         let store_info = rec.store_info().unwrap();
 
-        let mut table = DataTable::example(false);
-        table.compute_all_size_bytes();
-        for row in table.to_rows() {
-            rec.record_row(row.unwrap(), false);
+        let rows = example_rows(false);
+        for row in rows.clone() {
+            rec.record_row("a".into(), row, false);
         }
 
         let storage = rec.memory();
@@ -2184,32 +2192,22 @@ mod tests {
             _ => panic!("expected SetStoreInfo"),
         }
 
-        let mut rows = {
-            let mut rows: Vec<_> = table.to_rows().try_collect().unwrap();
-            rows.reverse();
-            rows
-        };
+        let mut assert_next_row = || match msgs.pop().unwrap() {
+            LogMsg::ArrowMsg(rid, msg) => {
+                assert_eq!(store_info.store_id, rid);
 
-        let mut assert_next_row = || {
-            match msgs.pop().unwrap() {
-                LogMsg::ArrowMsg(rid, msg) => {
-                    assert_eq!(store_info.store_id, rid);
+                let chunk = Chunk::from_transport(&TransportChunk {
+                    schema: msg.schema.clone(),
+                    data: msg.chunk.clone(),
+                })
+                .unwrap();
 
-                    let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                    // TODO(#1760): we shouldn't have to (re)do this!
-                    got.compute_all_size_bytes();
-                    // NOTE: Override the resulting table's ID so they can be compared.
-                    got.table_id = table.table_id;
-
-                    let expected = DataTable::from_rows(got.table_id, [rows.pop().unwrap()]);
-
-                    similar_asserts::assert_eq!(expected, got);
-                }
-                _ => panic!("expected ArrowMsg"),
+                chunk.sanity_check().unwrap();
             }
+            _ => panic!("expected ArrowMsg"),
         };
 
-        // 3rd, 4th and 5th messages are all the single-row batched tables themselves, which were
+        // 3rd, 4th and 5th messages are all the single-row batched chunks themselves, which were
         // sent as a result of the implicit flush when swapping the underlying sink from buffered
         // to in-memory.
         assert_next_row();
@@ -2224,16 +2222,15 @@ mod tests {
     fn flush_hierarchy() {
         let (rec, storage) = RecordingStreamBuilder::new("rerun_example_flush_hierarchy")
             .enabled(true)
-            .batcher_config(DataTableBatcherConfig::NEVER)
+            .batcher_config(ChunkBatcherConfig::NEVER)
             .memory()
             .unwrap();
 
         let store_info = rec.store_info().unwrap();
 
-        let mut table = DataTable::example(false);
-        table.compute_all_size_bytes();
-        for row in table.to_rows() {
-            rec.record_row(row.unwrap(), false);
+        let rows = example_rows(false);
+        for row in rows.clone() {
+            rec.record_row("a".into(), row, false);
         }
 
         {
@@ -2265,18 +2262,18 @@ mod tests {
 
             // MemorySinkStorage transparently handles flushing during `take()`!
 
-            // The batched table itself, which was sent as a result of the explicit flush above.
+            // The batched chunk itself, which was sent as a result of the explicit flush above.
             match msgs.pop().unwrap() {
                 LogMsg::ArrowMsg(rid, msg) => {
                     assert_eq!(store_info.store_id, rid);
 
-                    let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-                    // TODO(#1760): we shouldn't have to (re)do this!
-                    got.compute_all_size_bytes();
-                    // NOTE: Override the resulting table's ID so they can be compared.
-                    got.table_id = table.table_id;
+                    let chunk = Chunk::from_transport(&TransportChunk {
+                        schema: msg.schema.clone(),
+                        data: msg.chunk.clone(),
+                    })
+                    .unwrap();
 
-                    similar_asserts::assert_eq!(table, got);
+                    chunk.sanity_check().unwrap();
                 }
                 _ => panic!("expected ArrowMsg"),
             }
@@ -2290,14 +2287,13 @@ mod tests {
     fn disabled() {
         let (rec, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
             .enabled(false)
-            .batcher_config(DataTableBatcherConfig::ALWAYS)
+            .batcher_config(ChunkBatcherConfig::ALWAYS)
             .memory()
             .unwrap();
 
-        let mut table = DataTable::example(false);
-        table.compute_all_size_bytes();
-        for row in table.to_rows() {
-            rec.record_row(row.unwrap(), false);
+        let rows = example_rows(false);
+        for row in rows.clone() {
+            rec.record_row("a".into(), row, false);
         }
 
         let mut msgs = {
@@ -2324,5 +2320,94 @@ mod tests {
             .unwrap()
             .join()
             .unwrap();
+    }
+
+    fn example_rows(timeless: bool) -> Vec<PendingRow> {
+        use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+        use re_types_core::Loggable as _;
+
+        let mut tick = 0i64;
+        let mut timepoint = |frame_nr: i64| {
+            let mut tp = TimePoint::default();
+            if !timeless {
+                tp.insert(Timeline::log_time(), Time::now());
+                tp.insert(Timeline::log_tick(), tick);
+                tp.insert(Timeline::new_sequence("frame_nr"), frame_nr);
+            }
+            tick += 1;
+            tp
+        };
+
+        let row0 = {
+            PendingRow {
+                row_id: RowId::new(),
+                timepoint: timepoint(1),
+                components: [
+                    (
+                        MyPoint::name(),
+                        MyPoint::to_arrow([MyPoint::new(10.0, 10.0), MyPoint::new(20.0, 20.0)])
+                            .unwrap(),
+                    ), //
+                    (
+                        MyColor::name(),
+                        MyColor::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                    ), //
+                    (
+                        MyLabel::name(),
+                        MyLabel::to_arrow([] as [MyLabel; 0]).unwrap(),
+                    ), //
+                ]
+                .into_iter()
+                .collect(),
+            }
+        };
+
+        let row1 = {
+            PendingRow {
+                row_id: RowId::new(),
+                timepoint: timepoint(1),
+                components: [
+                    (
+                        MyPoint::name(),
+                        MyPoint::to_arrow([] as [MyPoint; 0]).unwrap(),
+                    ), //
+                    (
+                        MyColor::name(),
+                        MyColor::to_arrow([] as [MyColor; 0]).unwrap(),
+                    ), //
+                    (
+                        MyLabel::name(),
+                        MyLabel::to_arrow([] as [MyLabel; 0]).unwrap(),
+                    ), //
+                ]
+                .into_iter()
+                .collect(),
+            }
+        };
+
+        let row2 = {
+            PendingRow {
+                row_id: RowId::new(),
+                timepoint: timepoint(1),
+                components: [
+                    (
+                        MyPoint::name(),
+                        MyPoint::to_arrow([] as [MyPoint; 0]).unwrap(),
+                    ), //
+                    (
+                        MyColor::name(),
+                        MyColor::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                    ), //
+                    (
+                        MyLabel::name(),
+                        MyLabel::to_arrow([MyLabel("hey".into())]).unwrap(),
+                    ), //
+                ]
+                .into_iter()
+                .collect(),
+            }
+        };
+
+        vec![row0, row1, row2]
     }
 }

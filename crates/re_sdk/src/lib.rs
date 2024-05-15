@@ -74,6 +74,10 @@ pub mod sink {
 
 /// Things directly related to logging.
 pub mod log {
+    pub use re_chunk::{
+        Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkBatcherResult, ChunkError,
+        ChunkResult, PendingRow, TransportChunk,
+    };
     pub use re_log_types::{
         DataCell, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, LogMsg, RowId,
         TableId,

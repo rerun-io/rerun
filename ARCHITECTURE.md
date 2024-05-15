@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/1200w.png">
+  <img src="https://static.rerun.io/crates/bccb05b86d60069bd89981da4225bbade40cb919/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/bccb05b86d60069bd89981da4225bbade40cb919/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/bccb05b86d60069bd89981da4225bbade40cb919/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/bccb05b86d60069bd89981da4225bbade40cb919/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/bccb05b86d60069bd89981da4225bbade40cb919/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -156,12 +156,13 @@ Update instructions:
 
 ### Low-level store
 
-| Crate           | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| re_data_store   | An in-memory time series database for Rerun log data, based on Apache Arrow |
-| re_log_types    | The basic building blocks of the Rerun data types and tables.               |
-| re_types_core   | The core traits and types that power Rerun's data model.                    |
-| re_format_arrow | Formatting of Apache Arrow tables                                           |
+| Crate           | Description                                                                                  |
+|-----------------|----------------------------------------------------------------------------------------------|
+| re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute |
+| re_data_store   | An in-memory time series database for Rerun log data, based on Apache Arrow                  |
+| re_log_types    | The basic building blocks of the Rerun data types and tables.                                |
+| re_types_core   | The core traits and types that power Rerun's data model.                                     |
+| re_format_arrow | Formatting of Apache Arrow tables                                                            |
 
 
 ### Data flow

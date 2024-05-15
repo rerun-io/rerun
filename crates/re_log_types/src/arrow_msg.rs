@@ -14,6 +14,8 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 /// If the [`ArrowMsg`] has been cloned in a bunch of places, the callback will run for each and
 /// every instance.
 /// It is up to the callback implementer to handle this, if needed.
+//
+// TODO(#6412): probably don't need this anymore.
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
 pub struct ArrowChunkReleaseCallback(Arc<dyn Fn(Chunk<Box<dyn Array>>) + Send + Sync>);
