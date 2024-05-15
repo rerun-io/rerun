@@ -70,6 +70,19 @@ impl WebViewerSink {
     }
 }
 
+impl crate::sink::LogSink for WebViewerSink {
+    fn send(&self, msg: LogMsg) {
+        if let Err(err) = self.sender.send(msg) {
+            re_log::error_once!("Failed to send log message to web server: {err}");
+        }
+    }
+
+    #[inline]
+    fn flush_blocking(&self) {}
+}
+
+// ----------------------------------------------------------------------------
+
 /// Helper to spawn an instance of the [`WebViewerServer`].
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 ///
@@ -99,17 +112,6 @@ pub fn host_web_viewer(
     }
 
     Ok(web_server)
-}
-
-impl crate::sink::LogSink for WebViewerSink {
-    fn send(&self, msg: LogMsg) {
-        if let Err(err) = self.sender.send(msg) {
-            re_log::error_once!("Failed to send log message to web server: {err}");
-        }
-    }
-
-    #[inline]
-    fn flush_blocking(&self) {}
 }
 
 // ----------------------------------------------------------------------------
