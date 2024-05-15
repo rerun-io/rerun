@@ -9,7 +9,7 @@
 * 🟦 Customize views in code: We started exposing some view properties in the blueprint!
   * 📋 Included are:
     * Visible time ranges
-      * check this new how-to guide & example that demonstrates this with plots  TODO: insert links
+      * check [this new how-to guide](https://www.rerun.io/docs/howto/fixed-window-plot) & example that demonstrates this with plots
     * Time Series legend & y-axis configuration
     * 2D & 3D View background color
     * 2D View bounds
@@ -33,7 +33,7 @@ As always there's a lot going on under the hood:
 #### 🪵 Log API
 - Sunset `MeshProperties`, introduce `TriangleIndices` and friends [#6169](https://github.com/rerun-io/rerun/pull/6169)
 - Add a new javascript API for submitting an RRD that is stored directly as bytes [#6189](https://github.com/rerun-io/rerun/pull/6189)
-- Keep rerun viewer from dying on ctrl-c by setting sid on unix systems [#6260](https://github.com/rerun-io/rerun/pull/6260)
+- Keep Rerun viewer from dying on ctrl-c by setting sid on unix systems [#6260](https://github.com/rerun-io/rerun/pull/6260)
 - Add a new CLI option / spawn options to hide the welcome screen [#6262](https://github.com/rerun-io/rerun/pull/6262)
 - Make sure all log messages are sent when using `.serve()` [#6335](https://github.com/rerun-io/rerun/pull/6335)
 
@@ -45,17 +45,17 @@ As always there's a lot going on under the hood:
 - Static-aware Python SDK [#5536](https://github.com/rerun-io/rerun/pull/5536)
 - Make rerun-py use an embedded rerun-cli executable [#5996](https://github.com/rerun-io/rerun/pull/5996)
 - Convert Python examples to proper packages [#5966](https://github.com/rerun-io/rerun/pull/5966)
-- Configurable background color from python code (POC for space view properties from code) [#6068](https://github.com/rerun-io/rerun/pull/6068)
-- Codegen for space view python blueprint classes [#6100](https://github.com/rerun-io/rerun/pull/6100)
-- Allow setting view visibility from blueprint api [#6108](https://github.com/rerun-io/rerun/pull/6108)
+- Configurable background color from Python code (POC for space view properties from code) [#6068](https://github.com/rerun-io/rerun/pull/6068)
+- Codegen for space view Python blueprint classes [#6100](https://github.com/rerun-io/rerun/pull/6100)
+- Allow setting view visibility from blueprint API [#6108](https://github.com/rerun-io/rerun/pull/6108)
 - Expose `PlotLegend` and `ScalarAxis` (axis_y) properties on `TimeSeriesView` blueprint [#6114](https://github.com/rerun-io/rerun/pull/6114)
 - Change background of 2D space views from code and/or UI [#6116](https://github.com/rerun-io/rerun/pull/6116)
 - Set visual 2D bounds from code [#6127](https://github.com/rerun-io/rerun/pull/6127)
-- Make visual time range on views a view property that can be set from python code [#6164](https://github.com/rerun-io/rerun/pull/6164)
+- Make visual time range on views a view property that can be set from Python code [#6164](https://github.com/rerun-io/rerun/pull/6164)
 - Introduce new mechanism to incrementally drain from a memory_recording [#6187](https://github.com/rerun-io/rerun/pull/6187)
 - Work around some issues where recording streams leaking context when used with generators [#6240](https://github.com/rerun-io/rerun/pull/6240)
 - Introduce a new BinaryStreamSink that allows reading a stream of encoded bytes [#6242](https://github.com/rerun-io/rerun/pull/6242)
-- Improve new time_ranges property python api & add snippet for time series view, explaining all its options [#6221](https://github.com/rerun-io/rerun/pull/6221)
+- Improve new time_ranges property Python API & add snippet for time series view, explaining all its options [#6221](https://github.com/rerun-io/rerun/pull/6221)
 - Fix possible hang when using torch.multiprocessing [#6271](https://github.com/rerun-io/rerun/pull/6271)
 - Add code examples & screenshots for all blueprint view types [#6304](https://github.com/rerun-io/rerun/pull/6304)
 - Set a minimum version of pillow in `rerun_py/pyproject.toml` [#6327](https://github.com/rerun-io/rerun/pull/6327)
@@ -100,9 +100,9 @@ As always there's a lot going on under the hood:
 - Update the example in configure-viewer-through-code.md to use subclasses of `SpaceView` [#6092](https://github.com/rerun-io/rerun/pull/6092) (thanks [@m-decoster](https://github.com/m-decoster)!)
 
 #### 📚 Docs
-- Update python readme and add `py-wheel` command [#5912](https://github.com/rerun-io/rerun/pull/5912)
+- Update Python readme and add `py-wheel` command [#5912](https://github.com/rerun-io/rerun/pull/5912)
 - Update Python API links to getting-started and tutorial [#5923](https://github.com/rerun-io/rerun/pull/5923) (thanks [@Mxbonn](https://github.com/Mxbonn)!)
-- Fix various links in rust, python and toml files [#5986](https://github.com/rerun-io/rerun/pull/5986)
+- Fix various links in rust, Python and toml files [#5986](https://github.com/rerun-io/rerun/pull/5986)
 - Improve type index pages, codegen now knows about doc categories [#5978](https://github.com/rerun-io/rerun/pull/5978)
 - Generate doc pages for blueprint views [#6121](https://github.com/rerun-io/rerun/pull/6121)
 - Clarify docs on GH release install & C++ source build, remove redundant rerun_cpp_sdk artifact [#6144](https://github.com/rerun-io/rerun/pull/6144)
@@ -137,10 +137,10 @@ As always there's a lot going on under the hood:
 
 #### 🧑‍💻 Dev-experience
 - New data APIs 6: cached archetype queries [#5673](https://github.com/rerun-io/rerun/pull/5673)
-- Remove justfile & fully replace remaining commands with pixi [#5892](https://github.com/rerun-io/rerun/pull/5892)
-- Replace requirements-docs.txt with a python doc pixi environment [#5909](https://github.com/rerun-io/rerun/pull/5909)
+- Remove justfile & fully replace remaining commands with Pixi [#5892](https://github.com/rerun-io/rerun/pull/5892)
+- Replace requirements-docs.txt with a Python doc Pixi environment [#5909](https://github.com/rerun-io/rerun/pull/5909)
 - Update to Rust 1.76 [#5908](https://github.com/rerun-io/rerun/pull/5908)
-- Remove all dev/ci requirements.txt and fully replace with pixi [#5939](https://github.com/rerun-io/rerun/pull/5939)
+- Remove all dev/ci requirements.txt and fully replace with Pixi [#5939](https://github.com/rerun-io/rerun/pull/5939)
 - Markdown linter [#6181](https://github.com/rerun-io/rerun/pull/6181)
 
 #### 🗣 Refactors
