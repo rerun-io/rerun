@@ -94,7 +94,7 @@ impl Drop for WebViewerSink {
             // For small scripts that execute fast we run the risk of finishing
             // before the browser has a chance to connect.
             // Let's give it a little more time:
-            re_log::debug!("Sleeping a short while to give the browser time to connect…");
+            re_log::info!("Sleeping a short while to give the browser time to connect…");
             std::thread::sleep(std::time::Duration::from_millis(1000));
         }
 
