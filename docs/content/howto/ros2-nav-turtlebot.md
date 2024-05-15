@@ -124,7 +124,7 @@ If you are familiar with the turtlebot nav example and rviz, this view will like
 
 ## Code explanation
 
-It may be helpful to open [rerun/examples/python/ros_node/main.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/main.py)
+It may be helpful to open [rerun/examples/python/ros_node/main.py](https://github.com/rerun-io/rerun/blob/latest/examples/python/ros_node/main.py)
 to follow along.
 
 Outside of TF, the node is mostly stateless. At a very high level, for each ROS message we are interested in, we create a
