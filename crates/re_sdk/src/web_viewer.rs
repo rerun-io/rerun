@@ -20,11 +20,13 @@ pub enum WebViewerSinkError {
 /// * A [`re_ws_comms::RerunServer`] to relay messages from the sink to a websocket connection
 /// * A [`WebViewerServer`] to serve the Wasm+HTML
 struct WebViewerSink {
+    open_browser: bool,
+
     /// Sender to send messages to the [`re_ws_comms::RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
 
     /// Rerun websocket server.
-    _rerun_server: RerunServer,
+    rerun_server: RerunServer,
 
     /// The http server serving wasm & html.
     _webviewer_server: WebViewerServer,
@@ -63,8 +65,9 @@ impl WebViewerSink {
         }
 
         Ok(Self {
+            open_browser,
             sender: rerun_tx,
-            _rerun_server: rerun_server,
+            rerun_server,
             _webviewer_server: webviewer_server,
         })
     }
@@ -81,6 +84,17 @@ impl crate::sink::LogSink for WebViewerSink {
     fn flush_blocking(&self) {
         if let Err(err) = self.sender.flush_blocking() {
             re_log::error_once!("Failed to flush: {err}");
+        }
+    }
+}
+
+impl Drop for WebViewerSink {
+    fn drop(&mut self) {
+        if self.open_browser && self.rerun_server.num_accepted_clients() == 0 {
+            // For small scripts that execute fast we run the risk of finishing
+            // before the browser has a chance to connect.
+            // Let's give it a little more time:
+            std::thread::sleep(std::time::Duration::from_millis(1000));
         }
     }
 }

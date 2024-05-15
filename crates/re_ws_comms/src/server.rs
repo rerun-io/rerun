@@ -166,6 +166,11 @@ impl RerunServer {
         server_url(&self.local_addr)
     }
 
+    /// Total count; never decreasing.
+    pub fn num_accepted_clients(&self) -> u64 {
+        self.num_accepted_clients.load(Ordering::Relaxed)
+    }
+
     fn listen_thread_func(
         poller: &Poller,
         listener_socket: &TcpListener,
