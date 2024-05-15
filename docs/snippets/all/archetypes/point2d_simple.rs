@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log("points", &rerun::Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?;
 
-    // TODO(#5521): log VisualBounds
+    // TODO(#5521): log VisualBounds2D
 
     Ok(())
 }

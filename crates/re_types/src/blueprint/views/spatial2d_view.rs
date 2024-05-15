@@ -32,7 +32,7 @@ pub struct Spatial2DView {
     ///
     /// Everything within these bounds are guaranteed to be visible.
     /// Somethings outside of these bounds may also be visible due to letterboxing.
-    pub visual_bounds: crate::blueprint::archetypes::VisualBounds,
+    pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
 
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///
@@ -52,7 +52,7 @@ impl ::re_types_core::SizeBytes for Spatial2DView {
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::Background>::is_pod()
-            && <crate::blueprint::archetypes::VisualBounds>::is_pod()
+            && <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
             && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
     }
 }

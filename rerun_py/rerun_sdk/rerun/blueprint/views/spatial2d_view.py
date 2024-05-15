@@ -48,7 +48,7 @@ class Spatial2DView(SpaceView):
             background=[100, 149, 237],
             # Note that this range is smaller than the range of the points,
             # so some points will not be visible.
-            visual_bounds=rrb.VisualBounds(x_range=[-5, 5], y_range=[-5, 5]),
+            visual_bounds=rrb.VisualBounds2D(x_range=[-5, 5], y_range=[-5, 5]),
         ),
         collapse_panels=True,
     )
@@ -78,7 +78,7 @@ class Spatial2DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
-        visual_bounds: blueprint_archetypes.VisualBounds | None = None,
+        visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
@@ -124,9 +124,9 @@ class Spatial2DView(SpaceView):
             properties["Background"] = background
 
         if visual_bounds is not None:
-            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds):
-                visual_bounds = blueprint_archetypes.VisualBounds(visual_bounds)
-            properties["VisualBounds"] = visual_bounds
+            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
+                visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
+            properties["VisualBounds2D"] = visual_bounds
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

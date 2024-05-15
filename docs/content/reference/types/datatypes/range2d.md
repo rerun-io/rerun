@@ -16,6 +16,3 @@ An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum
  * 🦀 [Rust API docs for `Range2D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Range2D.html?speculative-link)
 
 
-## Used by
-
-* [`Range2D`](../components/range2d.md?speculative-link)

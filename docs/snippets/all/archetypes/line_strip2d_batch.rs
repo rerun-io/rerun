@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_labels(["one strip here", "and one strip there"]),
     )?;
 
-    // TODO(#5521): log VisualBounds
+    // TODO(#5521): log VisualBounds2D
 
     Ok(())
 }

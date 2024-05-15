@@ -3,7 +3,8 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 
 use re_format::format_f32;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, Range2D, ViewCoordinates};
+use re_types::blueprint::components::VisualBounds2D;
+use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, ViewCoordinates};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
@@ -195,7 +196,7 @@ impl DataUi for Range1D {
     }
 }
 
-impl DataUi for Range2D {
+impl DataUi for VisualBounds2D {
     fn data_ui(
         &self,
         _ctx: &ViewerContext<'_>,

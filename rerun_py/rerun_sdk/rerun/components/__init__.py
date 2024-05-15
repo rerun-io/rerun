@@ -44,7 +44,6 @@ from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
 from .range1d import Range1D, Range1DBatch, Range1DType
-from .range2d import Range2D, Range2DBatch, Range2DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
@@ -174,9 +173,6 @@ __all__ = [
     "Range1D",
     "Range1DBatch",
     "Range1DType",
-    "Range2D",
-    "Range2DBatch",
-    "Range2DType",
     "Resolution",
     "ResolutionBatch",
     "ResolutionType",

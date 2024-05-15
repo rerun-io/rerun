@@ -22,7 +22,7 @@ from .archetypes import (
     PlotLegend,
     ScalarAxis,
     # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
-    VisualBounds,
+    VisualBounds2D,
 )
 from .components import (
     BackgroundKind,

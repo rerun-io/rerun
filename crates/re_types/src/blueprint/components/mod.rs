@@ -17,6 +17,8 @@ mod viewer_recommendation_hash_ext;
 mod visible;
 mod visible_ext;
 mod visible_time_range;
+mod visual_bounds2d;
+mod visual_bounds2d_ext;
 
 pub use self::active_tab::ActiveTab;
 pub use self::background_kind::BackgroundKind;
@@ -32,3 +34,4 @@ pub use self::space_view_origin::SpaceViewOrigin;
 pub use self::viewer_recommendation_hash::ViewerRecommendationHash;
 pub use self::visible::Visible;
 pub use self::visible_time_range::VisibleTimeRange;
+pub use self::visual_bounds2d::VisualBounds2D;

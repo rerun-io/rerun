@@ -20,6 +20,7 @@ include "./blueprint/components/space_view_origin.fbs";
 include "./blueprint/components/viewer_recommendation_hash.fbs";
 include "./blueprint/components/visible_time_range.fbs";
 include "./blueprint/components/visible.fbs";
+include "./blueprint/components/visual_bounds2d.fbs";
 
 include "./blueprint/archetypes/background.fbs";
 include "./blueprint/archetypes/container_blueprint.fbs";
@@ -28,7 +29,7 @@ include "./blueprint/archetypes/space_view_blueprint.fbs";
 include "./blueprint/archetypes/space_view_contents.fbs";
 include "./blueprint/archetypes/viewport_blueprint.fbs";
 include "./blueprint/archetypes/visible_time_ranges.fbs";
-include "./blueprint/archetypes/visual_bounds.fbs";
+include "./blueprint/archetypes/visual_bounds2d.fbs";
 
 include "./blueprint/archetypes/plot_legend.fbs";
 include "./blueprint/archetypes/scalar_axis.fbs";

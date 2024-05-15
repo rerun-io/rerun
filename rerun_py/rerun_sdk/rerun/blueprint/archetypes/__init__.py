@@ -11,7 +11,7 @@ from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
 from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
-from .visual_bounds import VisualBounds
+from .visual_bounds2d import VisualBounds2D
 
 __all__ = [
     "Background",
@@ -23,5 +23,5 @@ __all__ = [
     "SpaceViewContents",
     "ViewportBlueprint",
     "VisibleTimeRanges",
-    "VisualBounds",
+    "VisualBounds2D",
 ]
