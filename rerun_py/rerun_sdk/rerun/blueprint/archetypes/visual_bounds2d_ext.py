@@ -29,6 +29,6 @@ class VisualBounds2DExt:
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(range2d=blueprint_components.VisualBounds2D(x_range=x_range, y_range=y_range))
+            self.__attrs_init__(range=blueprint_components.VisualBounds2D(x_range=x_range, y_range=y_range))
             return
         self.__attrs_clear__()
