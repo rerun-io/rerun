@@ -16,7 +16,7 @@ the `Scalar` archetype.
 ## Shown in
 * [TimeSeriesView](../views/time_series_view.md)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `SeriesLine`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesLine.html)
  * 🐍 [Python API docs for `SeriesLine`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SeriesLine)
  * 🦀 [Rust API docs for `SeriesLine`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesLine.html)

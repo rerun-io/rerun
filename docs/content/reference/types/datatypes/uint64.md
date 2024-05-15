@@ -9,7 +9,7 @@ A 64bit unsigned integer.
 
 * value: `u64`
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `UInt64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1UInt64.html)
  * 🐍 [Python API docs for `UInt64`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.UInt64)
  * 🦀 [Rust API docs for `UInt64`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt64.html)

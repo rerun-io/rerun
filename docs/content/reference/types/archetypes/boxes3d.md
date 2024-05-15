@@ -17,7 +17,7 @@ title: "Boxes3D"
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Boxes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Boxes3D.html)
  * 🐍 [Python API docs for `Boxes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Boxes3D)
  * 🦀 [Rust API docs for `Boxes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Boxes3D.html)

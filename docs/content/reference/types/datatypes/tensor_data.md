@@ -22,7 +22,7 @@ the shape has to be the shape of the decoded image.
 * shape: list of [`TensorDimension`](../datatypes/tensor_dimension.md)
 * buffer: [`TensorBuffer`](../datatypes/tensor_buffer.md)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorData.html)
  * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.TensorData)
  * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/latest/rerun/datatypes/struct.TensorData.html)

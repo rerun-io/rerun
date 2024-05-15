@@ -21,7 +21,7 @@ the shape has to be the shape of the decoded image.
 
 * data: [`TensorData`](../datatypes/tensor_data.md)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TensorData.html)
  * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TensorData)
  * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/latest/rerun/components/struct.TensorData.html)

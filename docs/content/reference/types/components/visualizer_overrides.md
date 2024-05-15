@@ -9,7 +9,7 @@ The name of a visualizer.
 
 * value: list of `string`
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `VisualizerOverrides`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VisualizerOverrides.html)
  * 🐍 [Python API docs for `VisualizerOverrides`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VisualizerOverrides)
  * 🦀 [Rust API docs for `VisualizerOverrides`](https://docs.rs/rerun/latest/rerun/components/struct.VisualizerOverrides.html)

@@ -266,7 +266,7 @@ fn object_page(
     }
 
     putln!(page);
-    putln!(page, "## Api reference links");
+    putln!(page, "## API reference links");
     list_links(is_unreleased, &mut page, object);
 
     putln!(page);

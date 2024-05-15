@@ -10,7 +10,7 @@ title: "Scale3D"
 * ThreeD: [`Vec3D`](../datatypes/vec3d.md)
 * Uniform: `f32`
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Scale3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Scale3D.html)
  * 🐍 [Python API docs for `Scale3D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Scale3D)
  * 🦀 [Rust API docs for `Scale3D`](https://docs.rs/rerun/latest/rerun/datatypes/enum.Scale3D.html)

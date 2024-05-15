@@ -13,7 +13,7 @@ A generic n-dimensional Tensor.
 * [TensorView](../views/tensor_view.md)
 * [BarChartView](../views/bar_chart_view.md) (for 1D tensors)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Tensor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Tensor.html)
  * 🐍 [Python API docs for `Tensor`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Tensor)
  * 🦀 [Rust API docs for `Tensor`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Tensor.html)

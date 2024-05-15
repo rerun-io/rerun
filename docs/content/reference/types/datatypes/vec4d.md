@@ -9,7 +9,7 @@ A vector in 4D space.
 
 * xyzw: 4x `f32`
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Vec4D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Vec4D.html)
  * 🐍 [Python API docs for `Vec4D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Vec4D)
  * 🦀 [Rust API docs for `Vec4D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Vec4D.html)

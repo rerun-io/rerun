@@ -20,7 +20,7 @@ the plot-specific archetypes through the blueprint.
 ## Shown in
 * [TimeSeriesView](../views/time_series_view.md)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Scalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Scalar.html)
  * 🐍 [Python API docs for `Scalar`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Scalar)
  * 🦀 [Rust API docs for `Scalar`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Scalar.html)

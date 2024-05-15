@@ -30,7 +30,7 @@ Using these formats can save a lot of bandwidth and memory.
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Image`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Image.html)
  * 🐍 [Python API docs for `Image`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Image)
  * 🦀 [Rust API docs for `Image`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Image.html)
