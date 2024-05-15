@@ -6,7 +6,6 @@ namespace rerun.blueprint.views;
 ///
 /// \example views/timeseries title="Use a blueprint to customize a TimeSeriesView." image="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1200w.png"
 table TimeSeriesView (
-    "attr.docs.unreleased",
     "attr.rerun.view_identifier": "TimeSeries"
 ) {
     /// Configures the vertical axis of the plot.

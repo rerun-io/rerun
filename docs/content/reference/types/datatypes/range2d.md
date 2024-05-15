@@ -11,8 +11,8 @@ An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum
 * y_range: [`Range1D`](../datatypes/range1d.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Range2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Range2D.html?speculative-link)
- * 🐍 [Python API docs for `Range2D`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.Range2D)
- * 🦀 [Rust API docs for `Range2D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Range2D.html?speculative-link)
+ * 🌊 [C++ API docs for `Range2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Range2D.html)
+ * 🐍 [Python API docs for `Range2D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Range2D)
+ * 🦀 [Rust API docs for `Range2D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Range2D.html)
 
 

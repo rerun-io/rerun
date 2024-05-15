@@ -7,7 +7,7 @@ A text document view.
 
 
 ## API reference links
- * 🐍 [Python API docs for `TextDocumentView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.TextDocumentView)
+ * 🐍 [Python API docs for `TextDocumentView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextDocumentView)
 
 ## Example
 
