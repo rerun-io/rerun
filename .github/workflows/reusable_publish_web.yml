@@ -88,35 +88,31 @@ jobs:
 
       - name: Install example dependencies
         run: |
-          pixi run pip install \
-            -r scripts/ci/requirements-examples-nightly.txt \
-            --no-input
+          pixi run -e wheel-test build-examples install --channel "release"
 
-      - name: Install Python dependencies and wheel
+      - name: Install built wheel
         run: |
-          pixi -e wheel-test run pip uninstall rerun-sdk -y
-          pixi -e wheel-test run pip install deprecated '"numpy>=1.23,<2"' pyarrow>=14.0.2 pytest==7.1.2
-          pixi -e wheel-test run pip install rerun-sdk --no-index --find-links wheel
+          pixi run -e wheel-test pip uninstall rerun-sdk -y
+          pixi run -e wheel-test pip install rerun-sdk --no-index --find-links wheel
 
-      - name: Installed wheel version
+      - name: Print wheel version
         run: |
-          pixi -e wheel-test run python -m rerun --version
-          pixi -e wheel-test run which rerun
-          pixi -e wheel-test run rerun --version
+          pixi run -e wheel-test python -m rerun --version
+          pixi run -e wheel-test which rerun
 
       - name: Build web-viewer (release)
         run: |
-          pixi -e wheel-test run rerun-build-web-release
+          pixi run -e wheel-test rerun-build-web-release
 
       - name: Build examples
         run: |
-          pixi -e wheel-test run build-examples rrd \
+          pixi run -e wheel-test build-examples rrd \
             --channel "release" \
             web_viewer/examples
 
       - name: Build examples manifest
         run: |
-          pixi -e wheel-test run build-examples manifest \
+          pixi run -e wheel-test build-examples manifest \
             --base-url "https://app.rerun.io/version/${{inputs.release-version}}" \
             --channel "release" \
             web_viewer/examples_manifest.json
