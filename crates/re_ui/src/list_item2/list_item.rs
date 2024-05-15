@@ -307,11 +307,20 @@ impl<'a> ListItem<'a> {
             };
             content.ui(re_ui, ui, &content_ctx);
 
+            // Ensure the background highlight is drawn over round pixel coordinates. Otherwise,
+            // there could be artifact between consecutive highlighted items when drawn on
+            // fractional pixels.
+            let bg_rect_to_paint = ui.painter().round_rect_to_pixels(bg_rect);
+
             // Draw background on interaction.
             if drag_target {
                 ui.painter().set(
                     background_frame,
-                    Shape::rect_stroke(bg_rect, 0.0, (1.0, ui.visuals().selection.bg_fill)),
+                    Shape::rect_stroke(
+                        bg_rect_to_paint,
+                        0.0,
+                        (1.0, ui.visuals().selection.bg_fill),
+                    ),
                 );
             } else {
                 let bg_fill = if !response.hovered() && ui.rect_contains_pointer(bg_rect) {
@@ -329,8 +338,10 @@ impl<'a> ListItem<'a> {
                 };
 
                 if let Some(bg_fill) = bg_fill {
-                    ui.painter()
-                        .set(background_frame, Shape::rect_filled(bg_rect, 0.0, bg_fill));
+                    ui.painter().set(
+                        background_frame,
+                        Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),
+                    );
                 }
             }
         }
