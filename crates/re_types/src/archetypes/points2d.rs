@@ -43,7 +43,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             .with_radii((0..10).map(|_| rng.gen::<f32>())),
 ///     )?;
 ///
-///     // TODO(#5521): log VisualBounds
+///     // TODO(#5521): log VisualBounds2D
 ///
 ///     Ok(())
 /// }

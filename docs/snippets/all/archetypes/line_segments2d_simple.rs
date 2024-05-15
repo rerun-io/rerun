@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     rec.log("segments", &rerun::LineStrips2D::new(points.chunks(2)))?;
 
-    // TODO(#5521): log VisualBounds
+    // TODO(#5521): log VisualBounds2D
 
     Ok(())
 }

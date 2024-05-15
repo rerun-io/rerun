@@ -52,6 +52,7 @@ from .viewer_recommendation_hash import (
 )
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
+from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch, VisualBounds2DType
 
 __all__ = [
     "ActiveTab",
@@ -140,4 +141,7 @@ __all__ = [
     "VisibleTimeRangeBatch",
     "VisibleTimeRangeType",
     "VisibleType",
+    "VisualBounds2D",
+    "VisualBounds2DBatch",
+    "VisualBounds2DType",
 ]

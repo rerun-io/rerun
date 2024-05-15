@@ -8,5 +8,5 @@ int main() {
 
     rec.log("points", rerun::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}}));
 
-    // TODO(#5520): log VisualBounds
+    // TODO(#5520): log VisualBounds2D
 }

@@ -37,7 +37,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): A Radius component.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
-* [`Range2D`](components/range2d.md): An Axis-Aligned Bounding Box in 2D space.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
 * [`Scalar`](components/scalar.md): A double-precision scalar.

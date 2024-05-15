@@ -5,8 +5,8 @@ use re_entity_db::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{
-    archetypes::Pinhole, blueprint::archetypes::Background, blueprint::archetypes::VisualBounds,
-    components::ViewCoordinates,
+    archetypes::Pinhole, blueprint::archetypes::Background, blueprint::archetypes::VisualBounds2D,
+    blueprint::components as blueprint_components, components::ViewCoordinates,
 };
 use re_viewer_context::{
     gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
@@ -119,13 +119,13 @@ fn ui_from_scene(
     }
 
     re_space_view::edit_blueprint_component::<
-        VisualBounds,
-        re_types::components::Range2D,
+        VisualBounds2D,
+        blueprint_components::VisualBounds2D,
         RectTransform,
     >(
         ctx,
         space_view_id,
-        |range2d: &mut Option<re_types::components::Range2D>| {
+        |range2d: &mut Option<blueprint_components::VisualBounds2D>| {
             // Convert to a Rect
             let mut rect = range2d.map(Rect::from);
 
