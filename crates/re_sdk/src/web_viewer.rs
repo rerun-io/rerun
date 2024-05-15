@@ -1,13 +1,15 @@
 use re_log_types::LogMsg;
-use re_web_viewer_server::{WebViewerServer, WebViewerServerPort};
+use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 use re_ws_comms::{RerunServer, RerunServerPort};
+
+// ----------------------------------------------------------------------------
 
 /// Failure to host a web viewer and/or Rerun server.
 #[derive(thiserror::Error, Debug)]
 pub enum WebViewerSinkError {
     /// Failure to host the web viewer.
     #[error(transparent)]
-    WebViewerServer(#[from] re_web_viewer_server::WebViewerServerError),
+    WebViewerServer(#[from] WebViewerServerError),
 
     /// Failure to host the Rerun WebSocket server.
     #[error(transparent)]
@@ -16,7 +18,7 @@ pub enum WebViewerSinkError {
 
 /// A [`crate::sink::LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
 /// * A [`re_ws_comms::RerunServer`] to relay messages from the sink to a websocket connection
-/// * A [`re_web_viewer_server::WebViewerServer`] to serve the Wasm+HTML
+/// * A [`WebViewerServer`] to serve the Wasm+HTML
 struct WebViewerSink {
     /// Sender to send messages to the [`re_ws_comms::RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
@@ -68,7 +70,7 @@ impl WebViewerSink {
     }
 }
 
-/// Helper to spawn an instance of the [`re_web_viewer_server::WebViewerServer`].
+/// Helper to spawn an instance of the [`WebViewerServer`].
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 ///
 /// Optionally opens a browser with the web-viewer and connects to the provided `target_url`.
@@ -82,8 +84,8 @@ pub fn host_web_viewer(
     force_wgpu_backend: Option<String>,
     open_browser: bool,
     source_url: &str,
-) -> anyhow::Result<re_web_viewer_server::WebViewerServer> {
-    let web_server = re_web_viewer_server::WebViewerServer::new(bind_ip, web_port)?;
+) -> anyhow::Result<WebViewerServer> {
+    let web_server = WebViewerServer::new(bind_ip, web_port)?;
     let http_web_viewer_url = web_server.server_url();
 
     let mut viewer_url = format!("{http_web_viewer_url}?url={source_url}");
