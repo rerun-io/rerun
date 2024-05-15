@@ -43,7 +43,7 @@ opt_out = {
     "space_view_blueprint": ["cpp", "py", "rust"],
     "space_view_contents": ["cpp", "py", "rust"],
     "viewport_blueprint": ["cpp", "py", "rust"],
-    "visual_bounds": ["cpp", "py", "rust"],
+    "visual_bounds2d": ["cpp", "py", "rust"],
 }
 
 
