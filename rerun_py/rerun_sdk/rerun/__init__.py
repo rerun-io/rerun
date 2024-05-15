@@ -166,7 +166,7 @@ def init(
     spawn: bool = False,
     init_logging: bool = True,
     default_enabled: bool = True,
-    strict: bool = False,
+    strict: bool | None = None,
     default_blueprint: BlueprintLike | None = None,
 ) -> None:
     """
@@ -233,8 +233,10 @@ def init(
     init_logging
         Should we initialize the logging for this application?
     strict
-        If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
+        If `True`, an exception is raised on use error (wrong parameter types, etc.).
         If `False`, errors are logged as warnings instead.
+        If unset, this can alternatively be overridden using the RERUN_STRICT environment variable.
+        If not otherwise specified, the default behavior will be equivalent to `False`.
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
@@ -248,7 +250,8 @@ def init(
         random.seed(0)
         np.random.seed(0)
 
-    set_strict_mode(strict)
+    if strict is not None:
+        set_strict_mode(strict)
 
     # Always check whether we are a forked child when calling init. This should have happened
     # via `_register_on_fork` but it's worth being conservative.
