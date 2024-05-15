@@ -233,9 +233,10 @@ def init(
     init_logging
         Should we initialize the logging for this application?
     strict
-        If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
-        If `False`, errors are logged as warnings instead. This is the default.
-        If unset, this can also be overridden using the RERUN_STRICT environment variables.
+        If `True`, an exception is raised on use error (wrong parameter types, etc.).
+        If `False`, errors are logged as warnings instead.
+        If unset, this can alternatively be overridden using the RERUN_STRICT environment variable.
+        If not otherwise specified, the default behavior will be equivalent to `False`.
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
