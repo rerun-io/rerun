@@ -96,6 +96,10 @@ impl Drop for WebViewerSink {
             // Let's give it a little more time:
             std::thread::sleep(std::time::Duration::from_millis(1000));
         }
+
+        if self.rerun_server.num_accepted_clients() == 0 {
+            re_log::info!("Shutting down without any clients ever having connected. Consider sleeping to give them more time to connect");
+        }
     }
 }
 
