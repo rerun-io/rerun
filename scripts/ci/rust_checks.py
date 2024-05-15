@@ -29,17 +29,23 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     print(f"> {cmd_str}")
     start_time = time.time()
 
-    env = os.environ.copy()
-    env["RUSTFLAGS"] = "--deny warnings"
-    env["RUSTDOCFLAGS"] = "--deny warnings"
+    additional_env_vars = {}
+    additional_env_vars["RUSTFLAGS"] = "--deny warnings"
+    additional_env_vars["RUSTDOCFLAGS"] = "--deny warnings"
     if clippy_conf is not None:
-        env["CLIPPY_CONF_DIR"] = (
+        additional_env_vars["CLIPPY_CONF_DIR"] = (
             f"{os.getcwd()}/{clippy_conf}"  # Clippy has issues finding this directory on CI when we're not using an absolute path here.
         )
 
+    env = os.environ.copy()
+    env.update(additional_env_vars)
+
     result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
     if result.returncode != 0:
-        print(f"'{cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}")
+        env_var_string = " ".join([f'{env_var}="{value}"' for env_var, value in additional_env_vars.items()])
+        print(
+            f"'{env_var_string} {cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+        )
         sys.exit(result.returncode)
 
     return Timing(cmd_str, time.time() - start_time)

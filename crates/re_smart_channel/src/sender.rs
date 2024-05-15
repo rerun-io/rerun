@@ -61,6 +61,10 @@ impl<T: Send> Sender<T> {
     }
 
     /// Blocks until all previously sent messages have been received.
+    ///
+    /// Note: This is only implemented for non-wasm targets since we cannot make
+    /// blocking calls on web.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn flush_blocking(&self) -> Result<(), SendError<()>> {
         let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
         self.tx
