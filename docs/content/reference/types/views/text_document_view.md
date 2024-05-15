@@ -6,7 +6,7 @@ title: "TextDocumentView"
 A text document view.
 
 
-## Api reference links
+## API reference links
  * 🐍 [Python API docs for `TextDocumentView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.TextDocumentView)
 
 ## Example

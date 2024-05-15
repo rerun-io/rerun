@@ -9,7 +9,7 @@ An Axis-Aligned Bounding Box in 2D space.
 
 * range2d: [`Range2D`](../datatypes/range2d.md)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Range2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Range2D.html?speculative-link)
  * 🐍 [Python API docs for `Range2D`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Range2D)
  * 🦀 [Rust API docs for `Range2D`](https://docs.rs/rerun/latest/rerun/components/struct.Range2D.html?speculative-link)

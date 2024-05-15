@@ -9,7 +9,7 @@ A 1D range, specifying a lower and upper bound.
 
 * range: 2x `f64`
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Range1D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Range1D.html?speculative-link)
  * 🐍 [Python API docs for `Range1D`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.Range1D)
  * 🦀 [Rust API docs for `Range1D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Range1D.html?speculative-link)

@@ -23,7 +23,7 @@ Configures which range on each timeline is shown by this view (unless specified 
 If not specified, the default is to show the entire timeline.
 If a timeline is specified more than once, the first entry will be used.
 
-## Api reference links
+## API reference links
  * 🐍 [Python API docs for `TimeSeriesView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.TimeSeriesView)
 
 ## Example

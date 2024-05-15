@@ -12,7 +12,7 @@ datastore as provided, when used in the Viewer Quaternions will always be normal
 
 * xyzw: 4x `f32`
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Quaternion`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Quaternion.html)
  * 🐍 [Python API docs for `Quaternion`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Quaternion)
  * 🦀 [Rust API docs for `Quaternion`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Quaternion.html)

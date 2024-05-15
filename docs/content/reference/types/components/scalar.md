@@ -11,7 +11,7 @@ Used for time series plots.
 
 * value: `f64`
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `Scalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Scalar.html)
  * 🐍 [Python API docs for `Scalar`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Scalar)
  * 🦀 [Rust API docs for `Scalar`](https://docs.rs/rerun/latest/rerun/components/struct.Scalar.html)

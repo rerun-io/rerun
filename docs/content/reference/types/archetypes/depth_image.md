@@ -18,7 +18,7 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `DepthImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1DepthImage.html)
  * 🐍 [Python API docs for `DepthImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.DepthImage)
  * 🦀 [Rust API docs for `DepthImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.DepthImage.html)

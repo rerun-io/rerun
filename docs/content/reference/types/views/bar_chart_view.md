@@ -6,7 +6,7 @@ title: "BarChartView"
 A bar chart view.
 
 
-## Api reference links
+## API reference links
  * 🐍 [Python API docs for `BarChartView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.BarChartView)
 
 ## Example

@@ -19,7 +19,7 @@ down, and the Z axis points forward.
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 
-## Api reference links
+## API reference links
  * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1ViewCoordinates.html)
  * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.ViewCoordinates)
  * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/archetypes/struct.ViewCoordinates.html)
