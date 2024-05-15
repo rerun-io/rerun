@@ -163,6 +163,7 @@ impl DataStore {
         }
 
         #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)]
         self.sanity_check().unwrap();
 
         // NOTE: only temporal data and row metadata get purged!

@@ -19,10 +19,10 @@ impl ArrayExt for dyn Array {
     fn get_child_length(&self, child_nr: usize) -> usize {
         self.as_any()
             .downcast_ref::<ListArray<i32>>()
-            .unwrap()
+            .expect("not a ListArray<i32>")
             .offsets()
             .lengths()
             .nth(child_nr)
-            .unwrap()
+            .unwrap_or_else(|| panic!("no child at index {child_nr}"))
     }
 }

@@ -454,7 +454,9 @@ impl IndexedTable {
     pub fn find_bucket(&self, time: TimeInt) -> (TimeInt, &IndexedBucket) {
         // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
-        self.range_buckets_rev(..=time).next().unwrap()
+        self.range_buckets_rev(..=time)
+            .next()
+            .expect("this cannot fail")
     }
 
     /// Returns the indexed bucket whose time range covers the given `time`.
@@ -466,7 +468,9 @@ impl IndexedTable {
     pub fn find_bucket_mut(&mut self, time: TimeInt) -> (TimeInt, &mut IndexedBucket) {
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
-        self.range_bucket_rev_mut(..=time).next().unwrap()
+        self.range_bucket_rev_mut(..=time)
+            .next()
+            .expect("this cannot fail")
     }
 
     /// Returns an iterator that is guaranteed to yield at least one bucket, which is the bucket

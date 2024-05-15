@@ -14,9 +14,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-// TODO(#3408): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 mod arrow_util;
 mod store;
 mod store_arrow;
@@ -34,7 +31,6 @@ mod store_write;
 #[doc(hidden)]
 pub mod test_util;
 
-pub use self::arrow_util::ArrayExt;
 pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
 pub use self::store_event::{StoreDiff, StoreDiffKind, StoreEvent};
 pub use self::store_gc::{GarbageCollectionOptions, GarbageCollectionTarget};
