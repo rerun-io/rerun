@@ -100,12 +100,21 @@ impl WebHandle {
         self.runner.panic_summary().map(|s| s.callstack())
     }
 
+    /// Add a new receiver streaming data from the given url.
+    ///
+    /// If `follow_if_http` is `true`, and the url is an HTTP source, the viewer will open the stream
+    /// in `Following` mode rather than `Playing` mode.
+    ///
+    /// Websocket streams are always opened in `Following` mode.
+    ///
+    /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
-    pub fn add_receiver(&self, url: &str) {
+    pub fn add_receiver(&self, url: &str, follow_if_http: Option<bool>) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let rx = url_to_receiver(app.re_ui.egui_ctx.clone(), url);
+        let follow_if_http = follow_if_http.unwrap_or(false);
+        let rx = url_to_receiver(app.re_ui.egui_ctx.clone(), follow_if_http, url);
         if let Some(rx) = rx.ok_or_log_error() {
             app.add_receiver(rx);
         }
@@ -252,7 +261,10 @@ fn create_app(
     }
 
     if let Some(url) = url {
-        if let Some(receiver) = url_to_receiver(cc.egui_ctx.clone(), url).ok_or_log_error() {
+        let follow_if_http = false;
+        if let Some(receiver) =
+            url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
+        {
             app.add_receiver(receiver);
         }
     } else {

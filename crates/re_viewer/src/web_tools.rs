@@ -144,8 +144,11 @@ pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &
         .flatten()
         .collect();
     if !urls.is_empty() {
+        let follow_if_http = false;
         for url in urls {
-            if let Some(receiver) = url_to_receiver(egui_ctx.clone(), url).ok_or_log_error() {
+            if let Some(receiver) =
+                url_to_receiver(egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
+            {
                 // We may be here because the user clicked Back/Forward in the browser while trying
                 // out examples. If we re-download the same file we should clear out the old data first.
                 command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
@@ -197,6 +200,7 @@ impl EndpointCategory {
 /// Start receiving from the given url.
 pub fn url_to_receiver(
     egui_ctx: egui::Context,
+    follow_if_http: bool,
     url: &str,
 ) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
@@ -208,6 +212,7 @@ pub fn url_to_receiver(
         EndpointCategory::HttpRrd(url) => Ok(
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                 url,
+                follow_if_http,
                 Some(ui_waker),
             ),
         ),

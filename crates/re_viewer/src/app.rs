@@ -793,7 +793,7 @@ impl App {
             .map(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
         {
-            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}?url={url}"),
+            Some(SmartChannelSource::RrdHttpStream { url, .. }) => format!("{href}?url={url}"),
             _ => href,
         };
 
