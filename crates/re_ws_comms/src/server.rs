@@ -9,7 +9,10 @@
 use std::{
     collections::VecDeque,
     net::{TcpListener, TcpStream},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 use parking_lot::Mutex;
@@ -86,6 +89,9 @@ pub struct RerunServer {
     listener_join_handle: Option<std::thread::JoinHandle<()>>,
     poller: Arc<Poller>,
     shutdown_flag: Arc<AtomicBool>,
+
+    /// Total count; never decreasing.
+    num_accepted_clients: Arc<AtomicU64>,
 }
 
 impl RerunServer {
@@ -120,10 +126,12 @@ impl RerunServer {
 
         let poller = Arc::new(Poller::new()?);
         let shutdown_flag = Arc::new(AtomicBool::new(false));
+        let num_accepted_clients = Arc::new(AtomicU64::new(0));
 
         let local_addr = listener_socket.local_addr()?;
         let poller_copy = poller.clone();
         let shutdown_flag_copy = shutdown_flag.clone();
+        let num_clients_copy = num_accepted_clients.clone();
 
         let listener_join_handle = std::thread::Builder::new()
             .name("rerun_ws_server: listener".to_owned())
@@ -133,6 +141,7 @@ impl RerunServer {
                     &listener_socket,
                     &ReceiveSetBroadcaster::new(rerun_rx, server_memory_limit),
                     &shutdown_flag,
+                    &num_accepted_clients,
                 );
             })?;
 
@@ -141,6 +150,7 @@ impl RerunServer {
             poller: poller_copy,
             listener_join_handle: Some(listener_join_handle),
             shutdown_flag: shutdown_flag_copy,
+            num_accepted_clients: num_clients_copy,
         };
 
         re_log::info!(
@@ -156,11 +166,17 @@ impl RerunServer {
         server_url(&self.local_addr)
     }
 
+    /// Total count; never decreasing.
+    pub fn num_accepted_clients(&self) -> u64 {
+        self.num_accepted_clients.load(Ordering::Relaxed)
+    }
+
     fn listen_thread_func(
         poller: &Poller,
         listener_socket: &TcpListener,
         message_broadcaster: &ReceiveSetBroadcaster,
         shutdown_flag: &AtomicBool,
+        num_accepted_clients: &AtomicU64,
     ) {
         // Each socket in `poll::Poller` needs a "name".
         // Doesn't matter much what we're using here, as long as it's not used for something else
@@ -190,6 +206,7 @@ impl RerunServer {
                         message_broadcaster,
                         poller,
                         listener_poll_key,
+                        num_accepted_clients,
                     );
                 }
             }
@@ -201,6 +218,7 @@ impl RerunServer {
         message_broadcaster: &ReceiveSetBroadcaster,
         poller: &Poller,
         listener_poll_key: usize,
+        num_accepted_clients: &AtomicU64,
     ) {
         match listener_socket.accept() {
             Ok((tcp_stream, _)) => {
@@ -214,6 +232,7 @@ impl RerunServer {
                 match tungstenite::accept(tcp_stream) {
                     Ok(ws_stream) => {
                         message_broadcaster.add_client(ws_stream);
+                        num_accepted_clients.fetch_add(1, Ordering::Relaxed);
                     }
                     Err(err) => {
                         re_log::warn!("Error accepting WebSocket connection: {err}");
@@ -251,7 +270,11 @@ impl RerunServer {
 
 impl Drop for RerunServer {
     fn drop(&mut self) {
-        re_log::info!("Shutting down Rerun server on {}", self.server_url());
+        let num_accepted_clients = self.num_accepted_clients.load(Ordering::Relaxed);
+        re_log::info!(
+            "Shutting down Rerun server on {} after serving {num_accepted_clients} client(s)",
+            self.server_url()
+        );
         self.stop_listener();
     }
 }
@@ -328,6 +351,11 @@ impl ReceiveSetBroadcaster {
 
                     inner.history.push(msg);
                 }
+
+                re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    on_flush_done();
+                }
+
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
                         re_log::warn!("Sender {} has left unexpectedly: {err}", msg.source);

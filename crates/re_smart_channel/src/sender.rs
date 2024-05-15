@@ -37,7 +37,7 @@ impl<T: Send> Sender<T> {
         )
         .map_err(|SendError(msg)| match msg {
             SmartMessagePayload::Msg(msg) => SendError(msg),
-            SmartMessagePayload::Quit(_) => unreachable!(),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
         })
     }
 
@@ -58,6 +58,25 @@ impl<T: Send> Sender<T> {
                 payload,
             })
             .map_err(|SendError(msg)| SendError(msg.payload))
+    }
+
+    /// Blocks until all previously sent messages have been received.
+    pub fn flush_blocking(&self) -> Result<(), SendError<()>> {
+        let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
+        self.tx
+            .send(SmartMessage {
+                time: Instant::now(),
+                source: Arc::clone(&self.source),
+                payload: SmartMessagePayload::Flush {
+                    on_flush_done: Box::new(move || {
+                        tx.send(()).ok();
+                    }),
+                },
+            })
+            .map_err(|_ignored| SendError(()))?;
+
+        // Block:
+        rx.recv().map_err(|_ignored| SendError(()))
     }
 
     /// Used to indicate that a sender has left.

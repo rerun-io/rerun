@@ -15,7 +15,7 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module"]
+default = ["extension-module", "web_viewer"]
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
@@ -23,15 +23,15 @@ pypi = ["extension-module", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
-## must make it an opt-in feature.
+## must make it an optional feature.
 ## * <https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror>
 ## * <https://pyo3.rs/main/building-and-distribution#building-python-extension-modules>
 extension-module = ["pyo3/extension-module"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
-## Enabling this adds quite a bit to the compile time and binary size,
-## since it requires compiling and bundling the viewer as wasm.
+## Enabling this adds quite a bit to the binary size,
+## since it requires bundling the viewer as wasm.
 web_viewer = [
   "re_sdk/web_viewer",
   "dep:re_web_viewer_server",
