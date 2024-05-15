@@ -1,13 +1,15 @@
 use re_log_types::LogMsg;
-use re_web_viewer_server::{WebViewerServer, WebViewerServerPort};
+use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 use re_ws_comms::{RerunServer, RerunServerPort};
+
+// ----------------------------------------------------------------------------
 
 /// Failure to host a web viewer and/or Rerun server.
 #[derive(thiserror::Error, Debug)]
 pub enum WebViewerSinkError {
     /// Failure to host the web viewer.
     #[error(transparent)]
-    WebViewerServer(#[from] re_web_viewer_server::WebViewerServerError),
+    WebViewerServer(#[from] WebViewerServerError),
 
     /// Failure to host the Rerun WebSocket server.
     #[error(transparent)]
@@ -16,13 +18,15 @@ pub enum WebViewerSinkError {
 
 /// A [`crate::sink::LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
 /// * A [`re_ws_comms::RerunServer`] to relay messages from the sink to a websocket connection
-/// * A [`re_web_viewer_server::WebViewerServer`] to serve the Wasm+HTML
+/// * A [`WebViewerServer`] to serve the Wasm+HTML
 struct WebViewerSink {
+    open_browser: bool,
+
     /// Sender to send messages to the [`re_ws_comms::RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
 
     /// Rerun websocket server.
-    _rerun_server: RerunServer,
+    rerun_server: RerunServer,
 
     /// The http server serving wasm & html.
     _webviewer_server: WebViewerServer,
@@ -61,14 +65,48 @@ impl WebViewerSink {
         }
 
         Ok(Self {
+            open_browser,
             sender: rerun_tx,
-            _rerun_server: rerun_server,
+            rerun_server,
             _webviewer_server: webviewer_server,
         })
     }
 }
 
-/// Helper to spawn an instance of the [`re_web_viewer_server::WebViewerServer`].
+impl crate::sink::LogSink for WebViewerSink {
+    fn send(&self, msg: LogMsg) {
+        if let Err(err) = self.sender.send(msg) {
+            re_log::error_once!("Failed to send log message to web server: {err}");
+        }
+    }
+
+    #[inline]
+    fn flush_blocking(&self) {
+        if let Err(err) = self.sender.flush_blocking() {
+            re_log::error_once!("Failed to flush: {err}");
+        }
+    }
+}
+
+impl Drop for WebViewerSink {
+    fn drop(&mut self) {
+        if self.open_browser && self.rerun_server.num_accepted_clients() == 0 {
+            // For small scripts that execute fast we run the risk of finishing
+            // before the browser has a chance to connect.
+            // Let's give it a little more time:
+            re_log::info!("Sleeping a short while to give the browser time to connect…");
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+        }
+
+        if self.rerun_server.num_accepted_clients() == 0 {
+            re_log::info!("Shutting down without any clients ever having connected. Consider sleeping to give them more time to connect");
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Helper to spawn an instance of the [`WebViewerServer`].
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 ///
 /// Optionally opens a browser with the web-viewer and connects to the provided `target_url`.
@@ -82,8 +120,8 @@ pub fn host_web_viewer(
     force_wgpu_backend: Option<String>,
     open_browser: bool,
     source_url: &str,
-) -> anyhow::Result<re_web_viewer_server::WebViewerServer> {
-    let web_server = re_web_viewer_server::WebViewerServer::new(bind_ip, web_port)?;
+) -> anyhow::Result<WebViewerServer> {
+    let web_server = WebViewerServer::new(bind_ip, web_port)?;
     let http_web_viewer_url = web_server.server_url();
 
     let mut viewer_url = format!("{http_web_viewer_url}?url={source_url}");
@@ -97,17 +135,6 @@ pub fn host_web_viewer(
     }
 
     Ok(web_server)
-}
-
-impl crate::sink::LogSink for WebViewerSink {
-    fn send(&self, msg: LogMsg) {
-        if let Err(err) = self.sender.send(msg) {
-            re_log::error_once!("Failed to send log message to web server: {err}");
-        }
-    }
-
-    #[inline]
-    fn flush_blocking(&self) {}
 }
 
 // ----------------------------------------------------------------------------

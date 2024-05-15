@@ -10,7 +10,10 @@
 use std::{
     fmt::Display,
     str::FromStr,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
+    },
 };
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
@@ -86,6 +89,7 @@ pub struct WebViewerServer {
 struct WebViewerServerInner {
     server: tiny_http::Server,
     shutdown: AtomicBool,
+    num_wasm_served: AtomicU64,
 
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
@@ -119,6 +123,7 @@ impl WebViewerServer {
         let inner = Arc::new(WebViewerServerInner {
             server,
             shutdown,
+            num_wasm_served: Default::default(),
 
             #[cfg(feature = "analytics")]
             analytics: match re_analytics::Analytics::new(std::time::Duration::from_secs(2)) {
@@ -169,9 +174,12 @@ impl WebViewerServer {
 impl Drop for WebViewerServer {
     fn drop(&mut self) {
         if let Some(thread_handle) = self.thread_handle.take() {
-            self.inner
-                .shutdown
-                .store(true, std::sync::atomic::Ordering::Release);
+            let num_wasm_served = self.inner.num_wasm_served.load(Ordering::Relaxed);
+            re_log::debug!(
+                "Shutting down web server after serving the Wasm {num_wasm_served} time(s)"
+            );
+
+            self.inner.shutdown.store(true, Ordering::Release);
             self.inner.server.unblock();
             thread_handle.join().ok();
         }
@@ -182,7 +190,7 @@ impl WebViewerServerInner {
     fn serve(&self) {
         loop {
             let request = self.server.recv();
-            if self.shutdown.load(std::sync::atomic::Ordering::Acquire) {
+            if self.shutdown.load(Ordering::Acquire) {
                 return;
             }
 
@@ -200,8 +208,10 @@ impl WebViewerServerInner {
         }
     }
 
-    #[cfg(feature = "analytics")]
     fn on_serve_wasm(&self) {
+        self.num_wasm_served.fetch_add(1, Ordering::Relaxed);
+
+        #[cfg(feature = "analytics")]
         if let Some(analytics) = &self.analytics {
             analytics.record(re_analytics::event::ServeWasm);
         }
@@ -229,7 +239,6 @@ impl WebViewerServerInner {
             "/sw.js" => ("text/javascript", data::SW_JS),
             "/re_viewer.js" => ("text/javascript", data::VIEWER_JS),
             "/re_viewer_bg.wasm" => {
-                #[cfg(feature = "analytics")]
                 self.on_serve_wasm();
                 ("application/wasm", data::VIEWER_WASM)
             }

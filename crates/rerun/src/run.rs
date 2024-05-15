@@ -830,6 +830,11 @@ fn assert_receive_into_entity_db(
                         mut_db.add(&msg)?;
                         num_messages += 1;
                     }
+
+                    re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                        on_flush_done();
+                    }
+
                     SmartMessagePayload::Quit(err) => {
                         if let Some(err) = err {
                             anyhow::bail!("data source has disconnected unexpectedly: {err}")

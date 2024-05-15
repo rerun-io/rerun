@@ -971,6 +971,12 @@ impl App {
         while let Some((channel_source, msg)) = self.rx.try_recv() {
             let msg = match msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
+
+                re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    on_flush_done();
+                    continue;
+                }
+
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
                         let log_msg =
