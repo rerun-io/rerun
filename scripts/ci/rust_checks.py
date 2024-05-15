@@ -70,6 +70,7 @@ def main() -> None:
     parser.add_argument("--skip-wasm-checks", help="If true, don't run explicit wasm32 checks.", action="store_true")
     parser.add_argument("--skip-docs", help="If true, don't run doc generation.", action="store_true")
     parser.add_argument("--skip-tests", help="If true, don't run tests.", action="store_true")
+    parser.add_argument("--skip-cargo-deny", help="If true, don't run cargo deny.", action="store_true")
     args = parser.parse_args()
 
     # ----------------------
@@ -90,21 +91,22 @@ def main() -> None:
     timings.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
 
     # Cargo deny
-    # Note: running just `cargo deny check` without a `--target` can result in
-    # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
-    # Installing is quite quick if it's already installed.
-    timings.append(run_cargo("install", "--locked cargo-deny"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-unknown-linux-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target wasm32-unknown-unknown check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-apple-darwin check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-msvc check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-gnu check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-musl check"))
-    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-redox check"))
+    if not args.skip_cargo_deny:
+        # Note: running just `cargo deny check` without a `--target` can result in
+        # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+        # Installing is quite quick if it's already installed.
+        timings.append(run_cargo("install", "--locked cargo-deny"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target i686-unknown-linux-gnu check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target wasm32-unknown-unknown check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-apple-darwin check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-gnu check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-msvc check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-gnu check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-musl check"))
+        timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-redox check"))
 
     if not args.skip_wasm_checks:
         # Check viewer for wasm32
