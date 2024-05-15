@@ -353,7 +353,7 @@ impl ReceiveSetBroadcaster {
                 }
 
                 re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
-                    (on_flush_done)();
+                    on_flush_done();
                 }
 
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
