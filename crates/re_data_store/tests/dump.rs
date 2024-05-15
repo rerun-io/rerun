@@ -1,5 +1,8 @@
 //! Dumping a datastore to log messages and back.
 
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use itertools::Itertools;
 use re_data_store::{
     test_row,

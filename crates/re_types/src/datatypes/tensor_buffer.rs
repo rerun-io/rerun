@@ -320,8 +320,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u8.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let u8_inner_data: Buffer<_> = u8
                             .iter()
@@ -330,7 +329,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::UInt8,
@@ -340,7 +339,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::UInt8, u8_inner_data, u8_inner_bitmap)
                                 .boxed(),
                             u8_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -357,8 +356,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u16.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let u16_inner_data: Buffer<_> = u16
                             .iter()
@@ -367,7 +365,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::UInt16,
@@ -377,7 +375,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::UInt16, u16_inner_data, u16_inner_bitmap)
                                 .boxed(),
                             u16_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -394,8 +392,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u32.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let u32_inner_data: Buffer<_> = u32
                             .iter()
@@ -404,7 +401,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::UInt32,
@@ -414,7 +411,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::UInt32, u32_inner_data, u32_inner_bitmap)
                                 .boxed(),
                             u32_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -431,8 +428,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u64.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let u64_inner_data: Buffer<_> = u64
                             .iter()
@@ -441,7 +437,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::UInt64,
@@ -451,7 +447,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::UInt64, u64_inner_data, u64_inner_bitmap)
                                 .boxed(),
                             u64_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -468,8 +464,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i8.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let i8_inner_data: Buffer<_> = i8
                             .iter()
@@ -478,7 +473,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::Int8,
@@ -488,7 +483,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::Int8, i8_inner_data, i8_inner_bitmap)
                                 .boxed(),
                             i8_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -505,8 +500,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i16.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let i16_inner_data: Buffer<_> = i16
                             .iter()
@@ -515,7 +509,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::Int16,
@@ -525,7 +519,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::Int16, i16_inner_data, i16_inner_bitmap)
                                 .boxed(),
                             i16_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -542,8 +536,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i32.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let i32_inner_data: Buffer<_> = i32
                             .iter()
@@ -552,7 +545,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::Int32,
@@ -562,7 +555,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::Int32, i32_inner_data, i32_inner_bitmap)
                                 .boxed(),
                             i32_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -579,8 +572,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i64.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let i64_inner_data: Buffer<_> = i64
                             .iter()
@@ -589,7 +581,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::Int64,
@@ -599,7 +591,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             PrimitiveArray::new(DataType::Int64, i64_inner_data, i64_inner_bitmap)
                                 .boxed(),
                             i64_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -616,8 +608,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f16.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let f16_inner_data: Buffer<_> = f16
                             .iter()
@@ -626,7 +617,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::Float16,
@@ -640,7 +631,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             )
                             .boxed(),
                             f16_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -657,8 +648,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f32.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let f32_inner_data: Buffer<_> = f32
                             .iter()
@@ -667,7 +657,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::Float32,
@@ -681,7 +671,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             )
                             .boxed(),
                             f32_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -698,8 +688,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f64.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let f64_inner_data: Buffer<_> = f64
                             .iter()
@@ -708,7 +697,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::Float64,
@@ -722,7 +711,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             )
                             .boxed(),
                             f64_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -739,8 +728,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             jpeg.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let jpeg_inner_data: Buffer<_> = jpeg
                             .iter()
@@ -749,7 +737,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::UInt8,
@@ -763,7 +751,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             )
                             .boxed(),
                             jpeg_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -780,8 +768,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             nv12.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let nv12_inner_data: Buffer<_> = nv12
                             .iter()
@@ -790,7 +777,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let nv12_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::UInt8,
@@ -804,7 +791,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             )
                             .boxed(),
                             nv12_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -821,8 +808,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             yuy2.iter().map(|datum| datum.num_instances()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let yuy2_inner_data: Buffer<_> = yuy2
                             .iter()
@@ -831,7 +817,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .concat()
                             .into();
                         let yuy2_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 DataType::UInt8,
@@ -845,7 +831,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             )
                             .boxed(),
                             yuy2_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },

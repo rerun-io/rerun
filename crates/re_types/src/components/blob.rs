@@ -102,8 +102,7 @@ impl ::re_types_core::Loggable for Blob {
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
-                )
-                .unwrap()
+                )?
                 .into();
                 let data0_inner_data: Buffer<_> = data0
                     .iter()
@@ -113,13 +112,13 @@ impl ::re_types_core::Loggable for Blob {
                     .concat()
                     .into();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                ListArray::new(
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     PrimitiveArray::new(DataType::UInt8, data0_inner_data, data0_inner_bitmap)
                         .boxed(),
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })

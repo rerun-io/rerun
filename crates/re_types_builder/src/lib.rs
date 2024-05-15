@@ -100,6 +100,9 @@
 
 // ---
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 // NOTE: Official generated code from flatbuffers; ignore _everything_.
 #[allow(
     warnings,

@@ -4,6 +4,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 #[cfg(feature = "client")]
 mod client;
 use std::{fmt::Display, str::FromStr};

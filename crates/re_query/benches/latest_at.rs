@@ -1,6 +1,9 @@
 //! Contains:
 //! - A 1:1 port of the benchmarks in `crates/re_query/benches/query_benchmarks.rs`, with caching enabled.
 
+// Allow unwrap() in benchmarks
+#![allow(clippy::unwrap_used)]
+
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;

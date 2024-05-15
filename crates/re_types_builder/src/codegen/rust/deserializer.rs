@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use crate::{
     codegen::rust::{
         arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
-        util::is_tuple_struct_from_obj,
+        util::{is_tuple_struct_from_obj, quote_comment},
     },
     ArrowRegistry, Object, ObjectField, ObjectKind, Objects,
 };
@@ -584,6 +584,9 @@ fn quote_arrow_field_deserializer(
                 None,
             );
 
+            let comment_note_unwrap =
+                quote_comment("NOTE: Unwrapping cannot fail: the length must be correct.");
+
             quote! {{
                 let #data_src = #quoted_downcast?;
                 if #data_src.is_empty() {
@@ -651,10 +654,9 @@ fn quote_arrow_field_deserializer(
                                 // .map(|opt| opt.ok_or_else(DeserializationError::missing_data))
                                 // .collect::<DeserializationResult<Vec<_>>>()?;
 
-                                // NOTE: Unwrapping cannot fail: the length must be correct.
-                                let arr = array_init::from_iter(data).unwrap();
-
-                                Ok(arr)
+                                #comment_note_unwrap
+                                #[allow(clippy::unwrap_used)]
+                                Ok(array_init::from_iter(data).unwrap())
                             }).transpose()
                         )
                         #quoted_iter_transparency

@@ -94,12 +94,11 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                )
-                .unwrap()
+                )?
                 .into();
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                ListArray::new(
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     {
@@ -109,7 +108,7 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
                         )?
                     },
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })

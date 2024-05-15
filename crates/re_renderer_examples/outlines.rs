@@ -1,5 +1,8 @@
 //! Demonstrates outline rendering.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use itertools::Itertools;
 use re_renderer::{
     renderer::MeshInstance,

@@ -1,5 +1,8 @@
 //! Keeping track of performance issues/regressions in `arrow2` that directly affect us.
 
+// Allow unwrap() in benchmarks
+#![allow(clippy::unwrap_used)]
+
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

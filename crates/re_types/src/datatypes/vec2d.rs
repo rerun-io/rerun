@@ -188,8 +188,10 @@ impl ::re_types_core::Loggable for Vec2D {
                         let data =
                             unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
                         let data = data.iter().cloned().map(Option::unwrap_or_default);
-                        let arr = array_init::from_iter(data).unwrap();
-                        Ok(arr)
+
+                        // NOTE: Unwrapping cannot fail: the length must be correct.
+                        #[allow(clippy::unwrap_used)]
+                        Ok(array_init::from_iter(data).unwrap())
                     })
                     .transpose()
                 })

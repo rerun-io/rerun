@@ -151,13 +151,12 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             craziness.iter().map(|datum| datum.len()),
-                        )
-                        .unwrap()
+                        )?
                         .into();
                         let craziness_inner_data: Vec<_> =
                             craziness.into_iter().flatten().collect();
                         let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::new(
+                        ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
                                 <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
@@ -171,7 +170,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 )?
                             },
                             craziness_bitmap,
-                        )
+                        )?
                         .boxed()
                     }
                 },
@@ -455,8 +454,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                 .iter()
                                                 .cloned()
                                                 .map(Option::unwrap_or_default);
-                                            let arr = array_init::from_iter(data).unwrap();
-                                            Ok(arr)
+
+                                            // NOTE: Unwrapping cannot fail: the length must be correct.
+                                            #[allow(clippy::unwrap_used)]
+                                            Ok(array_init::from_iter(data).unwrap())
                                         })
                                         .transpose()
                                 })

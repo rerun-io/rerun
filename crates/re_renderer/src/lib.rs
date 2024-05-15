@@ -7,6 +7,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 pub mod config;
 pub mod importer;
 pub mod mesh;

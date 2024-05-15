@@ -124,8 +124,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                             let offsets =
                                 arrow2::offset::Offsets::<i32>::try_from_lengths(name.iter().map(
                                     |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
-                                ))
-                                .map_err(|err| std::sync::Arc::new(err))?
+                                ))?
                                 .into();
                             let inner_data: arrow2::buffer::Buffer<u8> =
                                 name.into_iter().flatten().flat_map(|s| s.0).collect();

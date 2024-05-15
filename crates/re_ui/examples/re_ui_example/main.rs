@@ -98,7 +98,7 @@ pub struct ExampleApp {
 impl ExampleApp {
     fn new(re_ui: re_ui::ReUi) -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
-        re_log::add_boxed_logger(Box::new(logger)).unwrap();
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
 
         let tree = egui_tiles::Tree::new_tabs("my_tree", vec![1, 2, 3]);
 

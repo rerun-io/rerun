@@ -1,5 +1,8 @@
 //! Demonstrates the dedicated picking layer support.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{

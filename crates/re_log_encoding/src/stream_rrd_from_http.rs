@@ -118,6 +118,8 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
 }
 
 #[cfg(target_arch = "wasm32")]
+// TODO(#3408): remove unwrap()
+#[allow(clippy::unwrap_used)]
 mod web_event_listener {
     use super::HttpMessageCallback;
     use js_sys::Uint8Array;
@@ -157,6 +159,8 @@ mod web_event_listener {
 pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
+// TODO(#3408): remove unwrap()
+#[allow(clippy::unwrap_used)]
 pub mod web_decode {
     use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;

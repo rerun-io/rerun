@@ -186,8 +186,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 single_string_required.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
-                            )
-                            .map_err(|err| std::sync::Arc::new(err))?
+                            )?
                             .into();
                             let inner_data: arrow2::buffer::Buffer<u8> = single_string_required
                                 .into_iter()
@@ -226,8 +225,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 single_string_optional.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
-                            )
-                            .map_err(|err| std::sync::Arc::new(err))?
+                            )?
                             .into();
                             let inner_data: arrow2::buffer::Buffer<u8> = single_string_optional
                                 .into_iter()
@@ -267,8 +265,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 many_floats_optional.iter().map(|opt| {
                                     opt.as_ref().map_or(0, |datum| datum.num_instances())
                                 }),
-                            )
-                            .unwrap()
+                            )?
                             .into();
                             let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
                                 .iter()
@@ -279,7 +276,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .into();
                             let many_floats_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float32,
@@ -293,7 +290,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 )
                                 .boxed(),
                                 many_floats_optional_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },
@@ -317,8 +314,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 many_strings_required
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )
-                            .unwrap()
+                            )?
                             .into();
                             let many_strings_required_inner_data: Vec<_> = many_strings_required
                                 .into_iter()
@@ -327,7 +323,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .collect();
                             let many_strings_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Utf8,
@@ -339,8 +335,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         many_strings_required_inner_data
                                             .iter()
                                             .map(|datum| datum.len()),
-                                    )
-                                    .map_err(|err| std::sync::Arc::new(err))?
+                                    )?
                                     .into();
                                     let inner_data: arrow2::buffer::Buffer<u8> =
                                         many_strings_required_inner_data
@@ -359,7 +354,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     .boxed()
                                 },
                                 many_strings_required_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },
@@ -384,8 +379,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 many_strings_optional
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )
-                            .unwrap()
+                            )?
                             .into();
                             let many_strings_optional_inner_data: Vec<_> = many_strings_optional
                                 .into_iter()
@@ -394,7 +388,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .collect();
                             let many_strings_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Utf8,
@@ -406,8 +400,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         many_strings_optional_inner_data
                                             .iter()
                                             .map(|datum| datum.len()),
-                                    )
-                                    .map_err(|err| std::sync::Arc::new(err))?
+                                    )?
                                     .into();
                                     let inner_data: arrow2::buffer::Buffer<u8> =
                                         many_strings_optional_inner_data
@@ -426,7 +419,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     .boxed()
                                 },
                                 many_strings_optional_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },

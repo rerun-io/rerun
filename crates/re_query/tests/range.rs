@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use itertools::Itertools as _;
 
 use re_data_store::{DataStore, RangeQuery, ResolvedTimeRange, StoreSubscriber as _, TimeInt};

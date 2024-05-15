@@ -1,5 +1,8 @@
 //! Example with several independent views, using various primitives.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use std::f32::consts::TAU;
 
 use framework::Example;

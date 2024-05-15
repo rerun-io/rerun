@@ -1,3 +1,5 @@
+use std::{fmt::Display, ops::Deref};
+
 use crate::ComponentName;
 
 // ---
@@ -34,8 +36,8 @@ pub enum SerializationError {
     },
 
     /// E.g. too many values (overflows i32).
-    #[error("Arrow error")]
-    ArrowError(#[from] std::sync::Arc<arrow2::error::Error>),
+    #[error(transparent)]
+    ArrowError(#[from] ArcArrowError),
 }
 
 impl std::fmt::Debug for SerializationError {
@@ -90,6 +92,41 @@ impl SerializationError {
             | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
             Self::ArrowError { .. } | Self::Context { .. } => None,
         }
+    }
+}
+
+/// A cloneable wrapper around `arrow2::error::Error`, for easier use.
+///
+/// The motivation behind this type is that we often use code that can return a `arrow2::error::Error`
+/// inside functions that return a `SerializationError`. By wrapping it we can use the ? operator and simplify the code.
+/// Second, normally also `arrow2::error::Error` isn't clonable, but `SerializationError` is.
+#[derive(Clone, Debug)]
+pub struct ArcArrowError(std::sync::Arc<arrow2::error::Error>);
+
+impl From<arrow2::error::Error> for ArcArrowError {
+    fn from(e: arrow2::error::Error) -> Self {
+        Self(std::sync::Arc::new(e))
+    }
+}
+
+impl From<arrow2::error::Error> for SerializationError {
+    fn from(e: arrow2::error::Error) -> Self {
+        SerializationError::ArrowError(ArcArrowError::from(e))
+    }
+}
+
+impl Deref for ArcArrowError {
+    type Target = arrow2::error::Error;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
+impl Display for ArcArrowError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 

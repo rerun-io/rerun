@@ -573,8 +573,7 @@ fn quote_arrow_field_serializer(
                 quote! {
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
-                    )
-                    .map_err(|err| std::sync::Arc::new(err))?
+                    )?
                     .into();
 
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
@@ -586,8 +585,7 @@ fn quote_arrow_field_serializer(
                 quote! {
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter() #quoted_transparent_length
-                    )
-                    .map_err(|err| std::sync::Arc::new(err))?
+                    )?
                     .into();
 
                     let inner_data: arrow2::buffer::Buffer<u8> =
@@ -775,7 +773,7 @@ fn quote_arrow_field_serializer(
                     quote! {
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             #data_src.iter(). #map_to_length
-                        ).unwrap().into();
+                        )?.into();
                     }
                 }
             } else {
@@ -787,12 +785,12 @@ fn quote_arrow_field_serializer(
                     quote! {}
                 } else {
                     quote! {
-                        ListArray::new(
+                        ListArray::try_new(
                             #quoted_datatype,
                             offsets,
                             #quoted_inner,
                             #bitmap_src,
-                        ).boxed()
+                        )?.boxed()
                     }
                 }
             } else {
@@ -847,18 +845,18 @@ fn quote_arrow_field_serializer(
 
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 buffers.iter().map(|opt| opt.as_ref().map_or(0, |buf| buf.len()))
-                            ).unwrap().into();
+                            )?.into();
 
                             #quoted_inner_bitmap
 
                             let #quoted_inner_data: Buffer<u8> = buffers.into_iter().flatten().collect::<Vec<_>>().concat().into();
 
-                            ListArray::new(
+                            ListArray::try_new(
                                 #quoted_datatype,
                                 offsets,
                                 #quoted_inner,
                                 #bitmap_src,
-                            ).boxed()
+                            )?.boxed()
                         }}
                     } else {
                         quote! {{

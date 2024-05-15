@@ -12,7 +12,7 @@ use crate::{rerun_if_changed, rerun_if_changed_or_doesnt_exist};
 fn encode_hex(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len() * 2);
     for &b in bytes {
-        write!(&mut s, "{b:02x}").unwrap();
+        write!(&mut s, "{b:02x}").expect("writing to string should never fail");
     }
     s
 }

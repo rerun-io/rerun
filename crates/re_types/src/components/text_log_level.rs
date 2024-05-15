@@ -113,8 +113,7 @@ impl ::re_types_core::Loggable for TextLogLevel {
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
-                )
-                .map_err(|err| std::sync::Arc::new(err))?
+                )?
                 .into();
                 let inner_data: arrow2::buffer::Buffer<u8> = data0
                     .into_iter()

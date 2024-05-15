@@ -2,6 +2,9 @@
 //!
 //! They're awful, but sometimes you just have to…
 
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use re_data_store::{DataStore, DataStoreConfig};
 use re_log_types::{
     build_frame_nr, example_components::MyIndex, DataRow, EntityPath, RowId, TimePoint,

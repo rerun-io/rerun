@@ -1,3 +1,6 @@
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 /// Implements the codegen pass.
 pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].

@@ -104,12 +104,11 @@ impl ::re_types_core::Loggable for LineStrip3D {
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                )
-                .unwrap()
+                )?
                 .into();
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                ListArray::new(
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     {
@@ -136,7 +135,7 @@ impl ::re_types_core::Loggable for LineStrip3D {
                         .boxed()
                     },
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })
@@ -224,8 +223,10 @@ impl ::re_types_core::Loggable for LineStrip3D {
                                             .get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

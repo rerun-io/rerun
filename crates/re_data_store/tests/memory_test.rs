@@ -1,5 +1,8 @@
 //! Measures the memory overhead of the data store.
 
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
 thread_local! {

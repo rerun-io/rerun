@@ -15,7 +15,7 @@ fn main() {
 
         #[cfg(not(target_os = "windows"))]
         let rerun_bin = std::env::current_dir()
-            .unwrap()
+            .expect("std::env::current_dir() failed")
             .join("rerun_sdk/rerun_cli/rerun");
 
         if !rerun_bin.exists() {

@@ -3,6 +3,9 @@
 //! It is easiest to call this using `just codegen`,
 //! which will set up the necessary tools.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };

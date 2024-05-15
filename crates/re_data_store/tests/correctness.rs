@@ -2,6 +2,9 @@
 //!
 //! Bending and twisting the datastore APIs in all kinds of weird ways to try and break them.
 
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use rand::Rng;
 
 use re_data_store::{

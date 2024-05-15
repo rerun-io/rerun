@@ -166,8 +166,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 keypoint_annotations
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )
-                            .unwrap()
+                            )?
                             .into();
                             let keypoint_annotations_inner_data: Vec<_> = keypoint_annotations
                                 .into_iter()
@@ -176,7 +175,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .collect();
                             let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::datatypes::AnnotationInfo>::arrow_datatype(),
@@ -190,7 +189,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                     )?
                                 },
                                 keypoint_annotations_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },
@@ -214,8 +213,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 keypoint_connections
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )
-                            .unwrap()
+                            )?
                             .into();
                             let keypoint_connections_inner_data: Vec<_> = keypoint_connections
                                 .into_iter()
@@ -224,7 +222,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .collect();
                             let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::datatypes::KeypointPair>::arrow_datatype(),
@@ -238,7 +236,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                     )?
                                 },
                                 keypoint_connections_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },
