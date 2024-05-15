@@ -1,3 +1,4 @@
+use arrow2::datatypes::Metadata;
 use re_format::{format_bytes, format_uint};
 use re_log_types::TimeInt;
 use re_types_core::SizeBytes as _;
@@ -138,9 +139,10 @@ impl std::fmt::Display for IndexedBucket {
             re_log::error_once!("couldn't display indexed bucket: {err}");
             std::fmt::Error
         })?;
-        re_format_arrow::format_table(
-            columns.columns(),
-            schema.fields.iter().map(|field| field.name.as_str()),
+        re_format_arrow::format_dataframe(
+            Metadata::default(),
+            &schema.fields,
+            columns.columns().iter().map(|array| &**array),
         )
         .fmt(f)?;
 
@@ -170,9 +172,10 @@ impl std::fmt::Display for StaticTable {
             re_log::error_once!("couldn't display static table: {err}");
             std::fmt::Error
         })?;
-        re_format_arrow::format_table(
-            columns.columns(),
-            schema.fields.iter().map(|field| field.name.as_str()),
+        re_format_arrow::format_dataframe(
+            Metadata::default(),
+            &schema.fields,
+            columns.columns().iter().map(|array| &**array),
         )
         .fmt(f)?;
 

@@ -1,11 +1,12 @@
 //! Methods for handling Arrow datamodel log ingest
 
 use arrow2::{array::Array, datatypes::Field, ffi};
-use itertools::Itertools as _;
 use pyo3::{
     exceptions::PyValueError, ffi::Py_uintptr_t, types::PyDict, types::PyString, PyAny, PyResult,
 };
-use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimePoint};
+
+use re_chunk::PendingRow;
+use re_log_types::{RowId, TimePoint};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -44,12 +45,11 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
     }
 }
 
-/// Build a [`DataRow`] given a '**kwargs'-style dictionary of component arrays.
-pub fn build_data_row_from_components(
-    entity_path: &EntityPath,
+/// Build a [`PendingRow`] given a '**kwargs'-style dictionary of component arrays.
+pub fn build_row_from_components(
     components: &PyDict,
     time_point: &TimePoint,
-) -> PyResult<DataRow> {
+) -> PyResult<PendingRow> {
     // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     // TODO(emilk): move to before we arrow-serialize the data
     let row_id = RowId::new();
@@ -62,14 +62,15 @@ pub fn build_data_row_from_components(
         |iter| iter.unzip(),
     )?;
 
-    let cells = arrays
+    let components = arrays
         .into_iter()
         .zip(fields)
-        .map(|(value, field)| DataCell::from_arrow(field.name.into(), value))
-        .collect_vec();
+        .map(|(value, field)| (field.name.into(), value))
+        .collect();
 
-    let row = DataRow::from_cells(row_id, time_point.clone(), entity_path.clone(), cells)
-        .map_err(|err| PyValueError::new_err(err.to_string()))?;
-
-    Ok(row)
+    Ok(PendingRow {
+        row_id,
+        timepoint: time_point.clone(),
+        components,
+    })
 }
