@@ -50,7 +50,7 @@ disallowed-methods = [
 
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)
-  # so we do that in `clipppy_wasm.toml` instead.
+  # so we do that in `clippy_wasm.toml` instead.
 ]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names
