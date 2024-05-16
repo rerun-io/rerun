@@ -33,7 +33,7 @@ As always there's a lot going on under the hood:
 #### 🪵 Log API
 - Sunset `MeshProperties`, introduce `TriangleIndices` and friends [#6169](https://github.com/rerun-io/rerun/pull/6169)
 - Add a new javascript API for submitting an RRD that is stored directly as bytes [#6189](https://github.com/rerun-io/rerun/pull/6189)
-- Keep Rerun viewer from dying on ctrl-c by setting sid on unix systems [#6260](https://github.com/rerun-io/rerun/pull/6260)
+- Keep Rerun viewer from dying on ctrl-c by setting `sid` on unix systems [#6260](https://github.com/rerun-io/rerun/pull/6260)
 - Add a new CLI option / spawn options to hide the welcome screen [#6262](https://github.com/rerun-io/rerun/pull/6262)
 - Make sure all log messages are sent when using `.serve()` [#6335](https://github.com/rerun-io/rerun/pull/6335)
 
@@ -59,7 +59,7 @@ As always there's a lot going on under the hood:
 - Fix possible hang when using torch.multiprocessing [#6271](https://github.com/rerun-io/rerun/pull/6271)
 - Add code examples & screenshots for all blueprint view types [#6304](https://github.com/rerun-io/rerun/pull/6304)
 - Set a minimum version of pillow in `rerun_py/pyproject.toml` [#6327](https://github.com/rerun-io/rerun/pull/6327)
-- Respect the RERUN_STRICT environment variable if not specified in rr.init [#6341](https://github.com/rerun-io/rerun/pull/6341)
+- Respect the `RERUN_STRICT` environment variable if not specified in `rr.init` [#6341](https://github.com/rerun-io/rerun/pull/6341)
 
 #### 🦀 Rust API
 - Static-aware Rust SDK [#5540](https://github.com/rerun-io/rerun/pull/5540)
