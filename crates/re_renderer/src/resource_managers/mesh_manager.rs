@@ -18,7 +18,7 @@ pub struct MeshManager {
 
 impl MeshManager {
     pub(crate) fn new() -> Self {
-        MeshManager {
+        Self {
             manager: Default::default(),
         }
     }

@@ -58,10 +58,10 @@ impl Ord for NonMinI64 {
 }
 
 impl NonMinI64 {
-    pub const ZERO: NonMinI64 = unsafe { Self::new_unchecked(0) };
-    pub const ONE: NonMinI64 = unsafe { Self::new_unchecked(1) };
-    pub const MIN: NonMinI64 = unsafe { Self::new_unchecked(i64::MIN + 1) };
-    pub const MAX: NonMinI64 = unsafe { Self::new_unchecked(i64::MAX) };
+    pub const ZERO: Self = unsafe { Self::new_unchecked(0) };
+    pub const ONE: Self = unsafe { Self::new_unchecked(1) };
+    pub const MIN: Self = unsafe { Self::new_unchecked(i64::MIN + 1) };
+    pub const MAX: Self = unsafe { Self::new_unchecked(i64::MAX) };
 
     /// Creates a new non-min if the given value is not the minimum value.
     #[inline]
@@ -114,18 +114,18 @@ impl core::convert::TryFrom<i64> for NonMinI64 {
     }
 }
 
-impl core::ops::BitAnd<NonMinI64> for NonMinI64 {
-    type Output = NonMinI64;
+impl core::ops::BitAnd<Self> for NonMinI64 {
+    type Output = Self;
 
     #[inline]
-    fn bitand(self, rhs: NonMinI64) -> Self::Output {
-        unsafe { NonMinI64::new_unchecked(self.get() & rhs.get()) }
+    fn bitand(self, rhs: Self) -> Self::Output {
+        unsafe { Self::new_unchecked(self.get() & rhs.get()) }
     }
 }
 
-impl core::ops::BitAndAssign<NonMinI64> for NonMinI64 {
+impl core::ops::BitAndAssign<Self> for NonMinI64 {
     #[inline]
-    fn bitand_assign(&mut self, rhs: NonMinI64) {
+    fn bitand_assign(&mut self, rhs: Self) {
         *self = *self & rhs;
     }
 }
@@ -186,7 +186,7 @@ impl serde::Serialize for NonMinI64 {
 #[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for NonMinI64 {
     #[inline]
-    fn deserialize<D>(deserializer: D) -> Result<NonMinI64, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {

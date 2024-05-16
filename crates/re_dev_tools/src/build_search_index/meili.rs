@@ -21,7 +21,7 @@ impl SearchClient {
     /// `master_key` can be obtained via the Meilisearch could console,
     /// or set via the `--master-key` option when running a local instance.
     pub fn connect(url: &str, master_key: &str) -> anyhow::Result<Self> {
-        let this = SearchClient {
+        let this = Self {
             url: url.into(),
             master_key: master_key.into(),
             agent: ureq::agent(),
@@ -211,9 +211,9 @@ enum Method {
 impl Method {
     fn as_str(&self) -> &'static str {
         match self {
-            Method::Get => "GET",
-            Method::Post => "POST",
-            Method::Delete => "DELETE",
+            Self::Get => "GET",
+            Self::Post => "POST",
+            Self::Delete => "DELETE",
         }
     }
 }

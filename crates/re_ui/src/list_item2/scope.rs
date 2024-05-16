@@ -59,21 +59,21 @@ impl LayoutStatistics {
     /// Should be called at the beginning of the frame.
     fn reset(ctx: &egui::Context, scope_id: egui::Id) {
         ctx.data_mut(|writer| {
-            writer.insert_temp(scope_id, LayoutStatistics::default());
+            writer.insert_temp(scope_id, Self::default());
         });
     }
 
     /// Read the saved accumulated value.
-    fn read(ctx: &egui::Context, scope_id: egui::Id) -> LayoutStatistics {
+    fn read(ctx: &egui::Context, scope_id: egui::Id) -> Self {
         ctx.data(|reader| reader.get_temp(scope_id).unwrap_or_default())
     }
 
     /// Update the accumulator.
     ///
     /// Used by [`LayoutInfo`]'s methods.
-    fn update(ctx: &egui::Context, scope_id: egui::Id, update: impl FnOnce(&mut LayoutStatistics)) {
+    fn update(ctx: &egui::Context, scope_id: egui::Id, update: impl FnOnce(&mut Self)) {
         ctx.data_mut(|writer| {
-            let stats: &mut LayoutStatistics = writer.get_temp_mut_or_default(scope_id);
+            let stats: &mut Self = writer.get_temp_mut_or_default(scope_id);
             update(stats);
         });
     }
@@ -174,14 +174,14 @@ pub(crate) struct LayoutInfoStack(Vec<LayoutInfo>);
 impl LayoutInfoStack {
     fn push(ctx: &egui::Context, state: LayoutInfo) {
         ctx.data_mut(|writer| {
-            let stack: &mut LayoutInfoStack = writer.get_temp_mut_or_default(egui::Id::NULL);
+            let stack: &mut Self = writer.get_temp_mut_or_default(egui::Id::NULL);
             stack.0.push(state);
         });
     }
 
     fn pop(ctx: &egui::Context) -> Option<LayoutInfo> {
         ctx.data_mut(|writer| {
-            let stack: &mut LayoutInfoStack = writer.get_temp_mut_or_default(egui::Id::NULL);
+            let stack: &mut Self = writer.get_temp_mut_or_default(egui::Id::NULL);
             stack.0.pop()
         })
     }
@@ -194,7 +194,7 @@ impl LayoutInfoStack {
     /// [`list_item_scope`].
     pub(crate) fn top(ctx: &egui::Context) -> LayoutInfo {
         ctx.data_mut(|writer| {
-            let stack: &mut LayoutInfoStack = writer.get_temp_mut_or_default(egui::Id::NULL);
+            let stack: &mut Self = writer.get_temp_mut_or_default(egui::Id::NULL);
             let state = stack.0.last();
             if state.is_none() {
                 re_log::warn_once!(

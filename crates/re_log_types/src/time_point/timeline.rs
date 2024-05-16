@@ -79,7 +79,7 @@ impl Timeline {
     /// which point the data was logged (according to the client's wall-clock).
     #[inline]
     pub fn log_time() -> Self {
-        Timeline::new("log_time", TimeType::Time)
+        Self::new("log_time", TimeType::Time)
     }
 
     /// The log tick timeline to which all API functions will always log.
@@ -90,7 +90,7 @@ impl Timeline {
     /// methods on a `RecordingStream`.
     #[inline]
     pub fn log_tick() -> Self {
-        Timeline::new("log_tick", TimeType::Sequence)
+        Self::new("log_tick", TimeType::Sequence)
     }
 
     /// Returns a formatted string of `time_range` on this `Timeline`.

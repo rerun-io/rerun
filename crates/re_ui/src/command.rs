@@ -343,7 +343,7 @@ impl UICommand {
     }
 
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
-    pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<UICommand> {
+    pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Self> {
         use strum::IntoEnumIterator as _;
 
         let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
@@ -351,7 +351,7 @@ impl UICommand {
             return None; // e.g. we're typing in a TextField
         }
 
-        let mut commands: Vec<(KeyboardShortcut, UICommand)> = Self::iter()
+        let mut commands: Vec<(KeyboardShortcut, Self)> = Self::iter()
             .filter_map(|cmd| cmd.kb_shortcut().map(|kb_shortcut| (kb_shortcut, cmd)))
             .collect();
 

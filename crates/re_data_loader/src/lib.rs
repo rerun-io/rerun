@@ -300,7 +300,7 @@ impl DataLoaderError {
     pub fn is_path_not_found(&self) -> bool {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            DataLoaderError::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
+            Self::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
             _ => false,
         }
     }
@@ -332,14 +332,14 @@ impl From<DataRow> for LoadedData {
 impl From<ArrowMsg> for LoadedData {
     #[inline]
     fn from(value: ArrowMsg) -> Self {
-        LoadedData::ArrowMsg(value)
+        Self::ArrowMsg(value)
     }
 }
 
 impl From<LogMsg> for LoadedData {
     #[inline]
     fn from(value: LogMsg) -> Self {
-        LoadedData::LogMsg(value)
+        Self::LogMsg(value)
     }
 }
 

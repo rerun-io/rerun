@@ -272,22 +272,22 @@ impl CanAddToSpaceView {
     /// Can be generally added but space view might already have this element.
     pub fn is_compatible(&self) -> bool {
         match self {
-            CanAddToSpaceView::Compatible { .. } => true,
-            CanAddToSpaceView::No { .. } => false,
+            Self::Compatible { .. } => true,
+            Self::No { .. } => false,
         }
     }
 
     /// Can be added and spaceview doesn't have it already.
     pub fn is_compatible_and_missing(&self) -> bool {
-        self == &CanAddToSpaceView::Compatible {
+        self == &Self::Compatible {
             already_added: false,
         }
     }
 
-    pub fn join(&self, other: &CanAddToSpaceView) -> CanAddToSpaceView {
+    pub fn join(&self, other: &Self) -> Self {
         match self {
-            CanAddToSpaceView::Compatible { already_added } => {
-                let already_added = if let CanAddToSpaceView::Compatible {
+            Self::Compatible { already_added } => {
+                let already_added = if let Self::Compatible {
                     already_added: already_added_other,
                 } = other
                 {
@@ -295,9 +295,9 @@ impl CanAddToSpaceView {
                 } else {
                     *already_added
                 };
-                CanAddToSpaceView::Compatible { already_added }
+                Self::Compatible { already_added }
             }
-            CanAddToSpaceView::No { .. } => other.clone(),
+            Self::No { .. } => other.clone(),
         }
     }
 }

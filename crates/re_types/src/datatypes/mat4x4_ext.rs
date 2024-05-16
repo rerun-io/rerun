@@ -7,7 +7,7 @@ impl Mat4x4 {
     /// The identity matrix.
     ///
     /// The multiplicative identity, representing no transform.
-    pub const IDENTITY: Mat4x4 = Mat4x4([
+    pub const IDENTITY: Self = Self([
         1.0, 0.0, 0.0, 0.0,
         0.0, 1.0, 0.0, 0.0,
         0.0, 0.0, 1.0, 0.0,

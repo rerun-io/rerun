@@ -800,7 +800,7 @@ impl PyMemorySinkStorage {
     /// Note: This will do a blocking flush before returning!
     fn concat_as_bytes<'p>(
         &self,
-        concat: Option<&PyMemorySinkStorage>,
+        concat: Option<&Self>,
         py: Python<'p>,
     ) -> PyResult<&'p PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.

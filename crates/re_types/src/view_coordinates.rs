@@ -212,7 +212,7 @@ impl std::str::FromStr for SignedAxis3 {
 impl From<SignedAxis3> for glam::Vec3 {
     #[inline]
     fn from(signed_axis: SignedAxis3) -> Self {
-        glam::Vec3::from(signed_axis.as_vec3())
+        Self::from(signed_axis.as_vec3())
     }
 }
 
@@ -238,9 +238,9 @@ impl Handedness {
     #[inline]
     pub const fn from_right_handed(right_handed: bool) -> Self {
         if right_handed {
-            Handedness::Right
+            Self::Right
         } else {
-            Handedness::Left
+            Self::Left
         }
     }
 }

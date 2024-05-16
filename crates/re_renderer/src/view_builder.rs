@@ -127,7 +127,7 @@ pub enum Projection {
 impl Projection {
     fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
         match self {
-            Projection::Perspective {
+            Self::Perspective {
                 vertical_fov,
                 near_plane_distance,
                 aspect_ratio,
@@ -141,7 +141,7 @@ impl Projection {
                     near_plane_distance,
                 )
             }
-            Projection::Orthographic {
+            Self::Orthographic {
                 camera_mode,
                 vertical_world_size,
                 far_plane_distance,
@@ -174,7 +174,7 @@ impl Projection {
 
     fn tan_half_fov(&self) -> glam::Vec2 {
         match self {
-            Projection::Perspective {
+            Self::Perspective {
                 vertical_fov,
                 aspect_ratio,
                 ..
@@ -187,7 +187,7 @@ impl Projection {
                     (vertical_fov * 0.5).tan(),
                 )
             }
-            Projection::Orthographic { .. } => glam::vec2(f32::MAX, f32::MAX), // Can't use infinity in shaders
+            Self::Orthographic { .. } => glam::vec2(f32::MAX, f32::MAX), // Can't use infinity in shaders
         }
     }
 }
@@ -306,7 +306,7 @@ impl ViewBuilder {
     ///
     /// In rare cases, pipelines may want to enable alpha to coverage and/or sample masks.
     pub const MAIN_TARGET_DEFAULT_MSAA_STATE: wgpu::MultisampleState = wgpu::MultisampleState {
-        count: ViewBuilder::MAIN_TARGET_SAMPLE_COUNT,
+        count: Self::MAIN_TARGET_SAMPLE_COUNT,
         mask: !0,
         alpha_to_coverage_enabled: false,
     };

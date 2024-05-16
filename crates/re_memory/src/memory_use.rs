@@ -58,7 +58,7 @@ impl std::ops::Sub for MemoryUse {
             Some(a? - b?)
         }
 
-        MemoryUse {
+        Self {
             resident: sub(self.resident, rhs.resident),
             counted: sub(self.counted, rhs.counted),
         }

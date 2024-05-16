@@ -58,7 +58,7 @@ mod gpu_data {
             let shader_start_location = mesh_vertices::next_free_shader_location();
 
             VertexBufferLayout {
-                array_stride: std::mem::size_of::<InstanceData>() as _,
+                array_stride: std::mem::size_of::<Self>() as _,
                 step_mode: wgpu::VertexStepMode::Instance,
                 attributes: VertexBufferLayout::attributes_from_formats(
                     shader_start_location,
@@ -154,13 +154,13 @@ impl MeshDrawData {
     pub fn new(
         ctx: &RenderContext,
         instances: &[MeshInstance],
-    ) -> Result<MeshDrawData, ResourceManagerError> {
+    ) -> Result<Self, ResourceManagerError> {
         re_tracing::profile_function!();
 
         let _mesh_renderer = ctx.renderer::<MeshRenderer>();
 
         if instances.is_empty() {
-            return Ok(MeshDrawData {
+            return Ok(Self {
                 batches: Vec::new(),
                 instance_buffer: None,
             });
@@ -265,7 +265,7 @@ impl MeshDrawData {
             )?;
         }
 
-        Ok(MeshDrawData {
+        Ok(Self {
             batches,
             instance_buffer: Some(instance_buffer),
         })
@@ -387,7 +387,7 @@ impl Renderer for MeshRenderer {
             },
         );
 
-        MeshRenderer {
+        Self {
             render_pipeline_shaded,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,

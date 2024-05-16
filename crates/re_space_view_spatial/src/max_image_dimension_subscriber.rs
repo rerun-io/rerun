@@ -44,7 +44,7 @@ impl MaxImageDimensionSubscriber {
         static SUBSCRIPTION: OnceCell<re_data_store::StoreSubscriberHandle> = OnceCell::new();
         *SUBSCRIPTION.get_or_init(|| {
             re_data_store::DataStore::register_subscriber(
-                Box::<MaxImageDimensionSubscriber>::default(),
+                Box::<Self>::default(),
             )
         })
     }

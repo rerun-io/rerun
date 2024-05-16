@@ -430,18 +430,18 @@ enum ItemKind {
 impl Display for ItemKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            ItemKind::Module => "module",
-            ItemKind::Struct => "struct",
-            ItemKind::Enum => "enum",
-            ItemKind::Trait => "trait",
-            ItemKind::Function => "fn",
-            ItemKind::Type => "type",
-            ItemKind::Constant => "constant",
-            ItemKind::Macro => "macro",
-            ItemKind::Inherent(ParentItemKind::Trait, InherentItemKind::Method) => "tymethod",
-            ItemKind::Inherent(_, InherentItemKind::Method) => "method",
-            ItemKind::Inherent(_, InherentItemKind::Constant) => "associatedconstant",
-            ItemKind::Inherent(_, InherentItemKind::Type) => "associatedtype",
+            Self::Module => "module",
+            Self::Struct => "struct",
+            Self::Enum => "enum",
+            Self::Trait => "trait",
+            Self::Function => "fn",
+            Self::Type => "type",
+            Self::Constant => "constant",
+            Self::Macro => "macro",
+            Self::Inherent(ParentItemKind::Trait, InherentItemKind::Method) => "tymethod",
+            Self::Inherent(_, InherentItemKind::Method) => "method",
+            Self::Inherent(_, InherentItemKind::Constant) => "associatedconstant",
+            Self::Inherent(_, InherentItemKind::Type) => "associatedtype",
         };
         f.write_str(s)
     }
@@ -497,9 +497,9 @@ enum ParentItemKind {
 impl Display for ParentItemKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            ParentItemKind::Struct => "struct",
-            ParentItemKind::Enum => "enum",
-            ParentItemKind::Trait => "trait",
+            Self::Struct => "struct",
+            Self::Enum => "enum",
+            Self::Trait => "trait",
         };
         f.write_str(s)
     }
@@ -566,7 +566,7 @@ trait WithItemExt<T> {
 
 impl<T: Clone> WithItemExt<T> for Vec<T> {
     fn with_item(&self, v: T) -> Self {
-        let mut out = Vec::with_capacity(self.len() + 1);
+        let mut out = Self::with_capacity(self.len() + 1);
         out.extend_from_slice(self);
         out.push(v);
         out

@@ -37,8 +37,8 @@ impl From<(f32, f32)> for Vec2D {
 // slices, because Rust cannot keep track of the inherent `Copy` capability of it all across all the
 // layers of `Into`/`IntoIterator`.
 
-impl<'a> From<&'a Vec2D> for Vec2D {
-    fn from(v: &'a Vec2D) -> Self {
+impl<'a> From<&'a Self> for Vec2D {
+    fn from(v: &'a Self) -> Self {
         Self(v.0)
     }
 }

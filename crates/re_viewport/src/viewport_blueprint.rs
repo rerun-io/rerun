@@ -152,7 +152,7 @@ impl ViewportBlueprint {
             .into_iter()
             .collect();
 
-        ViewportBlueprint {
+        Self {
             space_views,
             containers,
             root_container,

@@ -223,7 +223,7 @@ impl GpuReadbackBelt {
     /// TODO(andreas): Shrinking after usage spikes (e.g. screenshots of different sizes!)
     pub fn new(chunk_size: wgpu::BufferSize) -> Self {
         let (sender, receiver) = mpsc::channel();
-        GpuReadbackBelt {
+        Self {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_ALIGNMENT),
             active_chunks: Vec::new(),
             free_chunks: Vec::new(),

@@ -99,7 +99,7 @@ impl FromStr for InstancePath {
 
         let instance = instance.unwrap_or(Instance::ALL);
 
-        Ok(InstancePath {
+        Ok(Self {
             entity_path,
             instance,
         })

@@ -130,7 +130,7 @@ impl Default for TimePanel {
 
 impl TimePanel {
     pub fn new_blueprint_panel() -> Self {
-        TimePanel {
+        Self {
             source: TimePanelSource::Blueprint,
             ..Default::default()
         }
