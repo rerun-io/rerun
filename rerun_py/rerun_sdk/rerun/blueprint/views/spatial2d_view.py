@@ -35,10 +35,7 @@ class Spatial2DView(SpaceView):
     angle = np.linspace(0, 10 * np.pi, n)
     spiral_radius = np.linspace(0.0, 3.0, n) ** 2
     positions = np.column_stack((np.cos(angle) * spiral_radius, np.sin(angle) * spiral_radius))
-    r = np.linspace(255, 255, n).astype(int)
-    g = np.linspace(255, 0, n).astype(int)
-    b = np.linspace(0, 255, n).astype(int)
-    colors = np.dstack((r, g, b))[0]
+    colors = np.dstack((np.linspace(255, 255, n), np.linspace(255, 0, n), np.linspace(0, 255, n)))[0].astype(int)
     radii = np.linspace(0.01, 0.7, n)
 
     rr.log("points", rr.Points2D(positions, colors=colors, radii=radii))
