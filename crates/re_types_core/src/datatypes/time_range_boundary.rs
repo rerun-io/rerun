@@ -108,9 +108,9 @@ impl crate::Loggable for TimeRangeBoundary {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(TimeRangeBoundary::CursorRelative(_)) => 1i8,
-                    Some(TimeRangeBoundary::Absolute(_)) => 2i8,
-                    Some(TimeRangeBoundary::Infinite) => 3i8,
+                    Some(Self::CursorRelative(_)) => 1i8,
+                    Some(Self::Absolute(_)) => 2i8,
+                    Some(Self::Infinite) => 3i8,
                 })
                 .collect();
             let fields = vec![
@@ -119,7 +119,7 @@ impl crate::Loggable for TimeRangeBoundary {
                     let cursor_relative: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TimeRangeBoundary::CursorRelative(v)) => Some(v.clone()),
+                            Some(Self::CursorRelative(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -135,7 +135,7 @@ impl crate::Loggable for TimeRangeBoundary {
                     let absolute: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TimeRangeBoundary::Absolute(v)) => Some(v.clone()),
+                            Some(Self::Absolute(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -150,9 +150,7 @@ impl crate::Loggable for TimeRangeBoundary {
                 NullArray::new(
                     DataType::Null,
                     data.iter()
-                        .filter(|datum| {
-                            matches!(datum.as_deref(), Some(TimeRangeBoundary::Infinite))
-                        })
+                        .filter(|datum| matches!(datum.as_deref(), Some(Self::Infinite)))
                         .count(),
                 )
                 .boxed(),
@@ -169,17 +167,17 @@ impl crate::Loggable for TimeRangeBoundary {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(TimeRangeBoundary::CursorRelative(_)) => {
+                        Some(Self::CursorRelative(_)) => {
                             let offset = cursor_relative_offset;
                             cursor_relative_offset += 1;
                             offset
                         }
-                        Some(TimeRangeBoundary::Absolute(_)) => {
+                        Some(Self::Absolute(_)) => {
                             let offset = absolute_offset;
                             absolute_offset += 1;
                             offset
                         }
-                        Some(TimeRangeBoundary::Infinite) => {
+                        Some(Self::Infinite) => {
                             let offset = infinite_offset;
                             infinite_offset += 1;
                             offset

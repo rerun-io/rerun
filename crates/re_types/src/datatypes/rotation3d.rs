@@ -103,8 +103,8 @@ impl ::re_types_core::Loggable for Rotation3D {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(Rotation3D::Quaternion(_)) => 1i8,
-                    Some(Rotation3D::AxisAngle(_)) => 2i8,
+                    Some(Self::Quaternion(_)) => 1i8,
+                    Some(Self::AxisAngle(_)) => 2i8,
                 })
                 .collect();
             let fields = vec![
@@ -113,7 +113,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                     let quaternion: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
+                            Some(Self::Quaternion(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -146,7 +146,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                     let axis_angle: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
+                            Some(Self::AxisAngle(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -170,12 +170,12 @@ impl ::re_types_core::Loggable for Rotation3D {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(Rotation3D::Quaternion(_)) => {
+                        Some(Self::Quaternion(_)) => {
                             let offset = quaternion_offset;
                             quaternion_offset += 1;
                             offset
                         }
-                        Some(Rotation3D::AxisAngle(_)) => {
+                        Some(Self::AxisAngle(_)) => {
                             let offset = axis_angle_offset;
                             axis_angle_offset += 1;
                             offset

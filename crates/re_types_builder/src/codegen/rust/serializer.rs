@@ -246,8 +246,6 @@ pub fn quote_arrow_serializer(
                         .collect();
                 };
 
-                let quoted_obj_name = format_ident!("{}", obj.name);
-
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
                     let quoted_obj_field_name = format_ident!("{}", obj_field.pascal_case_name());
 
@@ -258,7 +256,7 @@ pub fn quote_arrow_serializer(
                                 DataType::Null,
                                 #data_src
                                     .iter()
-                                    .filter(|datum| matches!(datum.as_deref(), Some(#quoted_obj_name::#quoted_obj_field_name)))
+                                    .filter(|datum| matches!(datum.as_deref(), Some(Self::#quoted_obj_field_name)))
                                     .count(),
                             ).boxed()
                         };
@@ -289,7 +287,7 @@ pub fn quote_arrow_serializer(
                         let #data_dst: Vec<_> = data
                             .iter()
                             .filter_map(|datum| match datum.as_deref() {
-                                Some(#quoted_obj_name::#quoted_obj_field_name(v)) => Some(v.clone()),
+                                Some(Self::#quoted_obj_field_name(v)) => Some(v.clone()),
                                 _ => None,
                             })
                             .collect();
@@ -311,9 +309,9 @@ pub fn quote_arrow_serializer(
 
                 let get_match_case_for_field = |typ, quoted_obj_field_name| {
                     if typ == &crate::Type::Unit {
-                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name))
+                        quote!(Some(Self::#quoted_obj_field_name))
                     } else {
-                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name(_)))
+                        quote!(Some(Self::#quoted_obj_field_name(_)))
                     }
                 };
 

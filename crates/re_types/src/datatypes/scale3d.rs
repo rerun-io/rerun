@@ -95,8 +95,8 @@ impl ::re_types_core::Loggable for Scale3D {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(Scale3D::ThreeD(_)) => 1i8,
-                    Some(Scale3D::Uniform(_)) => 2i8,
+                    Some(Self::ThreeD(_)) => 1i8,
+                    Some(Self::Uniform(_)) => 2i8,
                 })
                 .collect();
             let fields = vec![
@@ -105,7 +105,7 @@ impl ::re_types_core::Loggable for Scale3D {
                     let three_d: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Scale3D::ThreeD(v)) => Some(v.clone()),
+                            Some(Self::ThreeD(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -135,7 +135,7 @@ impl ::re_types_core::Loggable for Scale3D {
                     let uniform: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Scale3D::Uniform(v)) => Some(v.clone()),
+                            Some(Self::Uniform(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -159,12 +159,12 @@ impl ::re_types_core::Loggable for Scale3D {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(Scale3D::ThreeD(_)) => {
+                        Some(Self::ThreeD(_)) => {
                             let offset = three_d_offset;
                             three_d_offset += 1;
                             offset
                         }
-                        Some(Scale3D::Uniform(_)) => {
+                        Some(Self::Uniform(_)) => {
                             let offset = uniform_offset;
                             uniform_offset += 1;
                             offset

@@ -104,8 +104,8 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(AffixFuzzer4::SingleRequired(_)) => 1i8,
-                    Some(AffixFuzzer4::ManyRequired(_)) => 2i8,
+                    Some(Self::SingleRequired(_)) => 1i8,
+                    Some(Self::ManyRequired(_)) => 2i8,
                 })
                 .collect();
             let fields = vec![
@@ -114,7 +114,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     let single_required: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(AffixFuzzer4::SingleRequired(v)) => Some(v.clone()),
+                            Some(Self::SingleRequired(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -130,7 +130,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     let many_required: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(AffixFuzzer4::ManyRequired(v)) => Some(v.clone()),
+                            Some(Self::ManyRequired(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -174,12 +174,12 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(AffixFuzzer4::SingleRequired(_)) => {
+                        Some(Self::SingleRequired(_)) => {
                             let offset = single_required_offset;
                             single_required_offset += 1;
                             offset
                         }
-                        Some(AffixFuzzer4::ManyRequired(_)) => {
+                        Some(Self::ManyRequired(_)) => {
                             let offset = many_required_offset;
                             many_required_offset += 1;
                             offset
