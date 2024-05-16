@@ -67,6 +67,13 @@ impl Mesh3DVisualizer {
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
+            // Skip over empty meshes.
+            // Note that we can deal with zero normals/colors/texcoords/indices just fine (we generate them),
+            // but re_renderer insists on having at a non-zero vertex list.
+            if data.vertex_positions.is_empty() {
+                continue;
+            }
+
             let mesh = ctx.cache.entry(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
