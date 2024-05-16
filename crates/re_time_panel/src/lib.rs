@@ -780,10 +780,30 @@ impl TimePanel {
                             timeline.name()
                         )));
                     } else {
-                        ui.label(format!("Number of events: {total_num_messages}"));
+                        re_ui::ListItem::new(
+                            ctx.re_ui,
+                            format!(
+                                "{} component, logged {}",
+                                if is_static { "Static" } else { "Temporal" },
+                                if total_num_messages == 1 {
+                                    "once".to_owned()
+                                } else {
+                                    format!("{} times", re_format::format_uint(total_num_messages))
+                                },
+                            ),
+                        )
+                        .with_icon(if is_static {
+                            &re_ui::icons::COMPONENT_STATIC
+                        } else {
+                            &re_ui::icons::COMPONENT_TEMPORAL
+                        })
+                        .interactive(false)
+                        .show_flat(ui);
 
                         // Static components are not displayed at all on the timeline, so cannot be
                         // previewed there. So we display their content in this tooltip instead.
+                        // Conversely, temporal components change over time, and so showing a specific instance here
+                        // can be confusing.
                         if is_static {
                             let query = re_data_store::LatestAtQuery::new(
                                 *time_ctrl.timeline(),

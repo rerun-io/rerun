@@ -55,13 +55,23 @@ impl DataUi for EntityLatestAtResults {
 
         // Display data time and additional diagnostic information for static components.
         if ui_layout != UiLayout::List {
-            ui.label(format!(
-                "Data time: {}",
-                query
+            let time = self.results.index().0;
+            if time.is_static() {
+                re_ui::ListItem::new(ctx.re_ui, "Static component")
+                    .with_icon(&re_ui::icons::COMPONENT_STATIC)
+                    .interactive(false)
+                    .show_flat(ui);
+            } else {
+                let formatted_time = query
                     .timeline()
                     .typ()
-                    .format(self.results.index().0, ctx.app_options.time_zone),
-            ));
+                    .format(time, ctx.app_options.time_zone);
+                let text = format!("Temporal component at {formatted_time}");
+                re_ui::ListItem::new(ctx.re_ui, text)
+                    .with_icon(&re_ui::icons::COMPONENT_TEMPORAL)
+                    .interactive(false)
+                    .show_flat(ui);
+            }
 
             // if the component is static, we display extra diagnostic information
             if self.results.is_static() {
