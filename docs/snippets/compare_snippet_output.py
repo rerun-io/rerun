@@ -45,8 +45,7 @@ class Example:
         for key in [self.subdir, self.subdir + "/" + self.name]:
             if key in EXTRA_ARGS:
                 return [
-                    arg.replace("$config_dir", str(Path(__file__).parent.parent.absolute()))
-                    for arg in EXTRA_ARGS.get(key, [])
+                    arg.replace("$config_dir", str(Path(__file__).parent.absolute())) for arg in EXTRA_ARGS.get(key, [])
                 ]
         return []
 
