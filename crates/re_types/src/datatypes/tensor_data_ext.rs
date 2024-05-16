@@ -50,11 +50,22 @@ impl TensorData {
         let mut shape_short = self.shape.as_slice();
 
         // Ignore trailing dimensions of size 1:
-        while 3 < shape_short.len() && shape_short.last().map_or(false, |d| d.size == 1) {
+        while 2 < shape_short.len() && shape_short.last().map_or(false, |d| d.size == 1) {
             shape_short = &shape_short[..shape_short.len() - 1];
         }
-        // Ignore leading dimensions of size 1:
-        while 3 < shape_short.len() && shape_short.first().map_or(false, |d| d.size == 1) {
+
+        // If the trailing dimension looks like a channel we ignore leading dimensions of size 1 down to
+        // a minimum of 3 dimensions. Otherwise we ignore leading dimensions of size 1 down to 2 dimensions.
+        let shrink_to = if shape_short
+            .last()
+            .map_or(false, |d| matches!(d.size, 1 | 3 | 4))
+        {
+            3
+        } else {
+            2
+        };
+
+        while shrink_to < shape_short.len() && shape_short.first().map_or(false, |d| d.size == 1) {
             shape_short = &shape_short[1..];
         }
 
@@ -864,6 +875,11 @@ fn test_image_height_width_channels() {
         // h=1, w=1, RGB:
         (vec![1, 1, 3], Some([1, 1, 3])),
         (vec![1, 1, 1, 3], Some([1, 1, 3])),
+        (vec![1, 1, 3, 1], Some([1, 1, 3])),
+        //
+        // h=1, w=3, Mono:
+        (vec![1, 3, 1], Some([1, 3, 1])),
+        (vec![1, 3, 1, 1], Some([1, 3, 1])),
     ];
 
     for (shape, expected_hwc) in test_cases {
