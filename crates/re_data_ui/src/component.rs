@@ -57,10 +57,7 @@ impl DataUi for EntityLatestAtResults {
         if ui_layout != UiLayout::List {
             let time = self.results.index().0;
             if time.is_static() {
-                re_ui::ListItem::new(ctx.re_ui, "Static component")
-                    .with_icon(&re_ui::icons::COMPONENT_STATIC)
-                    .interactive(false)
-                    .show_flat(ui);
+                // No need to show anything here. We already tell the user this is a static component elsewhere.
             } else {
                 let formatted_time = query
                     .timeline()
