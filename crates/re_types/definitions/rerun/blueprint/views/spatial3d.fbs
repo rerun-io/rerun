@@ -2,7 +2,7 @@ include "rerun/attributes.fbs";
 
 namespace rerun.blueprint.views;
 
-/// A Spatial 3D view.
+/// For viewing spatial 3D data.
 ///
 /// \example views/spatial3d title="Use a blueprint to customize a Spatial3DView." image="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1200w.png"
 table Spatial3DView (
