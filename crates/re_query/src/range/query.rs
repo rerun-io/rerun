@@ -242,6 +242,9 @@ impl RangeCache {
                 per_data_time
                     .promises_front
                     .push(((data_time, row_id), Promise::new(cell)));
+            }
+            {
+                re_tracing::profile_scope!("sort front");
                 per_data_time
                     .promises_front
                     .sort_by_key(|(index, _)| *index);
@@ -267,6 +270,9 @@ impl RangeCache {
                 per_data_time
                     .promises_back
                     .push(((data_time, row_id), Promise::new(cell)));
+            }
+            {
+                re_tracing::profile_scope!("sort back");
                 per_data_time.promises_back.sort_by_key(|(index, _)| *index);
             }
         }

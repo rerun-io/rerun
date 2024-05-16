@@ -52,7 +52,7 @@ impl<T: Send> ReceiveSet<T> {
             // retain only sources which:
             // - aren't network sources
             // - don't point at the given `uri`
-            SmartChannelSource::RrdHttpStream { url } => url != uri,
+            SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
             SmartChannelSource::WsClient { ws_server_url } => ws_server_url != uri,
             _ => true,
         });

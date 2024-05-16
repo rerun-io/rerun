@@ -18,7 +18,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 class Spatial3DView(SpaceView):
     """
-    **View**: A Spatial 3D view.
+    **View**: For viewing spatial 3D data.
 
     Example
     -------

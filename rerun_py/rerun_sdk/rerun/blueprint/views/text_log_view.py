@@ -14,7 +14,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 class TextLogView(SpaceView):
     """
-    **View**: A text log view.
+    **View**: A view of a text log, for use with the `TextLog` archetype.
 
     Example
     -------

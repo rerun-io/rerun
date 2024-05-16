@@ -147,7 +147,7 @@ py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
 py-build = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
-  "rerun-build",
+  "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 # Python example utilities

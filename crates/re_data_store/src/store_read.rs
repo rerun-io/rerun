@@ -454,6 +454,7 @@ impl IndexedTable {
     pub fn find_bucket(&self, time: TimeInt) -> (TimeInt, &IndexedBucket) {
         // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
+        #[allow(clippy::unwrap_used)]
         self.range_buckets_rev(..=time).next().unwrap()
     }
 
@@ -466,6 +467,7 @@ impl IndexedTable {
     pub fn find_bucket_mut(&mut self, time: TimeInt) -> (TimeInt, &mut IndexedBucket) {
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
+        #[allow(clippy::unwrap_used)]
         self.range_bucket_rev_mut(..=time).next().unwrap()
     }
 

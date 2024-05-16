@@ -15,11 +15,16 @@ impl Icon {
     }
 
     #[inline]
-    pub fn as_image(&self) -> Image<'static> {
-        Image::new(ImageSource::Bytes {
+    pub fn as_image_source(&self) -> ImageSource<'static> {
+        ImageSource::Bytes {
             uri: self.id.into(),
             bytes: self.png_bytes.into(),
-        })
+        }
+    }
+
+    #[inline]
+    pub fn as_image(&self) -> Image<'static> {
+        Image::new(self.as_image_source())
     }
 }
 
@@ -143,7 +148,8 @@ pub const ENTITY_EMPTY: Icon = Icon::new(
     include_bytes!("../data/icons/entity_empty.png"),
 );
 pub const LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
-pub const COMPONENT: Icon = Icon::new("component", include_bytes!("../data/icons/component.png"));
+pub const COMPONENT_TEMPORAL: Icon =
+    Icon::new("component", include_bytes!("../data/icons/component.png"));
 pub const COMPONENT_STATIC: Icon = Icon::new(
     "component_static",
     include_bytes!("../data/icons/component_static.png"),

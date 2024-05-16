@@ -401,6 +401,7 @@ impl IndexedBucket {
         *size_bytes += size_bytes_added;
 
         #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)]
         {
             drop(inner);
             self.sanity_check().unwrap();
@@ -534,6 +535,7 @@ impl IndexedBucket {
 
         // sanity checks
         #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)]
         {
             drop(inner1); // sanity checking will grab the lock!
             self.sanity_check().unwrap();

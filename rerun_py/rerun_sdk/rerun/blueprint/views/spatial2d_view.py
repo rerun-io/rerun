@@ -18,7 +18,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 class Spatial2DView(SpaceView):
     """
-    **View**: A Spatial 2D view.
+    **View**: For viewing spatial 2D data.
 
     Example
     -------
@@ -31,24 +31,25 @@ class Spatial2DView(SpaceView):
     rr.init("rerun_example_spatial_2d", spawn=True)
 
     # Create a spiral of points:
-    theta = np.linspace(0, 10 * np.pi, 300)
-    radius = np.linspace(0, 10, 300)
-    positions = np.column_stack((np.cos(theta) * radius, np.sin(theta) * radius))
-    colors = np.random.randint(0, 255, size=(len(theta), 3))
+    n = 150
+    angle = np.linspace(0, 10 * np.pi, n)
+    spiral_radius = np.linspace(0.0, 3.0, n) ** 2
+    positions = np.column_stack((np.cos(angle) * spiral_radius, np.sin(angle) * spiral_radius))
+    colors = np.dstack((np.linspace(255, 255, n), np.linspace(255, 0, n), np.linspace(0, 255, n)))[0].astype(int)
+    radii = np.linspace(0.01, 0.7, n)
 
-    rr.log("points", rr.Points2D(positions, colors=colors, radii=0.1))
-    rr.log("box", rr.Boxes2D(half_sizes=[3, 3], colors=0))
+    rr.log("points", rr.Points2D(positions, colors=colors, radii=radii))
 
     # Create a Spatial2D view to display the points.
     blueprint = rrb.Blueprint(
         rrb.Spatial2DView(
             origin="/",
             name="2D Scene",
-            # Set the background color to light blue.
-            background=[100, 149, 237],
+            # Set the background color
+            background=[105, 20, 105],
             # Note that this range is smaller than the range of the points,
             # so some points will not be visible.
-            visual_bounds=rrb.VisualBounds(x_range=[-5, 5], y_range=[-5, 5]),
+            visual_bounds=rrb.VisualBounds2D(x_range=[-5, 5], y_range=[-5, 5]),
         ),
         collapse_panels=True,
     )
@@ -57,11 +58,11 @@ class Spatial2DView(SpaceView):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1200w.png">
-      <img src="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1200w.png">
+      <img src="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/full.png" width="640">
     </picture>
     </center>
 
@@ -78,7 +79,7 @@ class Spatial2DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
-        visual_bounds: blueprint_archetypes.VisualBounds | None = None,
+        visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
@@ -124,9 +125,9 @@ class Spatial2DView(SpaceView):
             properties["Background"] = background
 
         if visual_bounds is not None:
-            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds):
-                visual_bounds = blueprint_archetypes.VisualBounds(visual_bounds)
-            properties["VisualBounds"] = visual_bounds
+            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
+                visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
+            properties["VisualBounds2D"] = visual_bounds
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

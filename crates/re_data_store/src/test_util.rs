@@ -66,12 +66,14 @@ pub fn sanity_unwrap(store: &DataStore) {
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
         eprintln!("{store}");
+        #[allow(clippy::unwrap_used)] // we want to panic here
         err.unwrap();
     }
 }
 
 // We very often re-use RowIds when generating test data.
 pub fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
+    #[allow(clippy::unwrap_used)] // ok for tests
     for row in table.to_rows() {
         let mut row = row.unwrap();
         loop {

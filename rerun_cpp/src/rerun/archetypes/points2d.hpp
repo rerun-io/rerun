@@ -63,7 +63,7 @@ namespace rerun::archetypes {
     ///
     ///     rec.log("random", rerun::Points2D(points2d).with_colors(colors).with_radii(radii));
     ///
-    ///     // TODO(#5520): log VisualBounds
+    ///     // TODO(#5520): log VisualBounds2D
     /// }
     /// ```
     struct Points2D {

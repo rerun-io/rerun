@@ -26,7 +26,6 @@
 #include "components/position3d.hpp"
 #include "components/radius.hpp"
 #include "components/range1d.hpp"
-#include "components/range2d.hpp"
 #include "components/resolution.hpp"
 #include "components/rotation3d.hpp"
 #include "components/scalar.hpp"

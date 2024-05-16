@@ -14,7 +14,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 class TensorView(SpaceView):
     """
-    **View**: A tensor view.
+    **View**: A view on a tensor of any dimensionality.
 
     Example
     -------

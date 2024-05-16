@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **View**: A tensor view.
+/// **View**: A view on a tensor of any dimensionality.
 #[derive(Clone, Debug)]
 pub struct TensorView {}
 
