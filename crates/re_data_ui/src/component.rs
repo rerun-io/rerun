@@ -63,11 +63,10 @@ impl DataUi for EntityLatestAtResults {
                     .timeline()
                     .typ()
                     .format(time, ctx.app_options.time_zone);
-                let text = format!("Temporal component at {formatted_time}");
-                re_ui::ListItem::new(ctx.re_ui, text)
-                    .with_icon(&re_ui::icons::COMPONENT_TEMPORAL)
-                    .interactive(false)
-                    .show_flat(ui);
+                ui.horizontal(|ui| {
+                    ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
+                    ui.label(format!("Temporal component at {formatted_time}"));
+                });
             }
 
             // if the component is static, we display extra diagnostic information
