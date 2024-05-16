@@ -55,6 +55,6 @@ impl From<Rotation3D> for mint::Quaternion<f32> {
 impl From<mint::Quaternion<f32>> for Rotation3D {
     #[inline]
     fn from(val: mint::Quaternion<f32>) -> Self {
-        Rotation3D::Quaternion(val.into())
+        Self::Quaternion(val.into())
     }
 }
