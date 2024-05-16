@@ -5,7 +5,12 @@
 
   "exclude": [
     "**/node_modules",
-    "**/__pycache__"
+    "**/__pycache__",
+    "target*",
+    "venv*",
+    ".nox",
+    ".pixi",
+    "build"
   ],
 
   "ignore": [
