@@ -878,15 +878,15 @@ fn test_image_height_width_channels() {
         //
         // h=1, w=3, Mono:
         (vec![1, 3, 1], Some([1, 3, 1])),
-        (vec![1, 3, 1, 1], Some([1, 3, 1])),
         //
         // Ambiguous cases.
         //
-        // This could validly be RGB or Mono. This is here to show how the current implementation
-        // behaves, not to suggest that it is a commitment to preserving this behavior going forward.
+        // These are here to show how the current implementation behaves, not to suggest that it is a
+        // commitment to preserving this behavior going forward.
         // If you need to change this test, it's ok but we should still communicate the subtle change
         // in behavior.
-        (vec![1, 1, 3, 1], Some([1, 1, 3])),
+        (vec![1, 1, 3, 1], Some([1, 1, 3])), // Could be [1, 3, 1]
+        (vec![1, 3, 1, 1], Some([1, 3, 1])), // Could be [3, 1, 1]
     ];
 
     for (shape, expected_hwc) in test_cases {
