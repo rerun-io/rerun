@@ -1936,7 +1936,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => TensorBuffer::U8({
+                                1i8 => Self::U8({
                                     if offset as usize >= u8.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -1951,7 +1951,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U8")?
                                 }),
-                                2i8 => TensorBuffer::U16({
+                                2i8 => Self::U16({
                                     if offset as usize >= u16.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -1966,7 +1966,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U16")?
                                 }),
-                                3i8 => TensorBuffer::U32({
+                                3i8 => Self::U32({
                                     if offset as usize >= u32.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -1981,7 +1981,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U32")?
                                 }),
-                                4i8 => TensorBuffer::U64({
+                                4i8 => Self::U64({
                                     if offset as usize >= u64.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -1996,7 +1996,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U64")?
                                 }),
-                                5i8 => TensorBuffer::I8({
+                                5i8 => Self::I8({
                                     if offset as usize >= i8.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2011,7 +2011,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I8")?
                                 }),
-                                6i8 => TensorBuffer::I16({
+                                6i8 => Self::I16({
                                     if offset as usize >= i16.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2026,7 +2026,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I16")?
                                 }),
-                                7i8 => TensorBuffer::I32({
+                                7i8 => Self::I32({
                                     if offset as usize >= i32.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2041,7 +2041,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I32")?
                                 }),
-                                8i8 => TensorBuffer::I64({
+                                8i8 => Self::I64({
                                     if offset as usize >= i64.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2056,7 +2056,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I64")?
                                 }),
-                                9i8 => TensorBuffer::F16({
+                                9i8 => Self::F16({
                                     if offset as usize >= f16.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2071,7 +2071,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F16")?
                                 }),
-                                10i8 => TensorBuffer::F32({
+                                10i8 => Self::F32({
                                     if offset as usize >= f32.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2086,7 +2086,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F32")?
                                 }),
-                                11i8 => TensorBuffer::F64({
+                                11i8 => Self::F64({
                                     if offset as usize >= f64.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2101,7 +2101,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F64")?
                                 }),
-                                12i8 => TensorBuffer::Jpeg({
+                                12i8 => Self::Jpeg({
                                     if offset as usize >= jpeg.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2116,7 +2116,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#JPEG")?
                                 }),
-                                13i8 => TensorBuffer::Nv12({
+                                13i8 => Self::Nv12({
                                     if offset as usize >= nv12.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2131,7 +2131,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                 }),
-                                14i8 => TensorBuffer::Yuy2({
+                                14i8 => Self::Yuy2({
                                     if offset as usize >= yuy2.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

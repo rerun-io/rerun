@@ -315,7 +315,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => AffixFuzzer4::SingleRequired({
+                                1i8 => Self::SingleRequired({
                                     if offset as usize >= single_required.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -334,7 +334,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                             "rerun.testing.datatypes.AffixFuzzer4#single_required",
                                         )?
                                 }),
-                                2i8 => AffixFuzzer4::ManyRequired({
+                                2i8 => Self::ManyRequired({
                                     if offset as usize >= many_required.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

@@ -325,7 +325,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Rotation3D::Quaternion({
+                                1i8 => Self::Quaternion({
                                     if offset as usize >= quaternion.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -340,7 +340,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                 }),
-                                2i8 => Rotation3D::AxisAngle({
+                                2i8 => Self::AxisAngle({
                                     if offset as usize >= axis_angle.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

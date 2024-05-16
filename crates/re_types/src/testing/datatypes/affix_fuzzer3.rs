@@ -471,7 +471,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 Some(
                                     match typ {
                                         1i8 => {
-                                            AffixFuzzer3::Degrees({
+                                            Self::Degrees({
                                                 if offset as usize >= degrees.len() {
                                                     return Err(
                                                             DeserializationError::offset_oob(offset as _, degrees.len()),
@@ -491,7 +491,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             })
                                         }
                                         2i8 => {
-                                            AffixFuzzer3::Craziness({
+                                            Self::Craziness({
                                                 if offset as usize >= craziness.len() {
                                                     return Err(
                                                             DeserializationError::offset_oob(
@@ -514,7 +514,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             })
                                         }
                                         3i8 => {
-                                            AffixFuzzer3::FixedSizeShenanigans({
+                                            Self::FixedSizeShenanigans({
                                                 if offset as usize >= fixed_size_shenanigans.len() {
                                                     return Err(
                                                             DeserializationError::offset_oob(
@@ -538,7 +538,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                     )?
                                             })
                                         }
-                                        4i8 => AffixFuzzer3::EmptyVariant,
+                                        4i8 => Self::EmptyVariant,
                                         _ => {
                                             return Err(
                                                 DeserializationError::missing_union_arm(

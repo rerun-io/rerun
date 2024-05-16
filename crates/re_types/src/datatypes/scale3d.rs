@@ -322,7 +322,7 @@ impl ::re_types_core::Loggable for Scale3D {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Scale3D::ThreeD({
+                                1i8 => Self::ThreeD({
                                     if offset as usize >= three_d.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -337,7 +337,7 @@ impl ::re_types_core::Loggable for Scale3D {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Scale3D#ThreeD")?
                                 }),
-                                2i8 => Scale3D::Uniform({
+                                2i8 => Self::Uniform({
                                     if offset as usize >= uniform.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

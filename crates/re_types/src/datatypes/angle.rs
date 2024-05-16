@@ -246,7 +246,7 @@ impl ::re_types_core::Loggable for Angle {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Angle::Radians({
+                                1i8 => Self::Radians({
                                     if offset as usize >= radians.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -261,7 +261,7 @@ impl ::re_types_core::Loggable for Angle {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Angle#Radians")?
                                 }),
-                                2i8 => Angle::Degrees({
+                                2i8 => Self::Degrees({
                                     if offset as usize >= degrees.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

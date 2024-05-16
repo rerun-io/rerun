@@ -275,7 +275,7 @@ impl crate::Loggable for TimeRangeBoundary {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => TimeRangeBoundary::CursorRelative({
+                                1i8 => Self::CursorRelative({
                                     if offset as usize >= cursor_relative.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -294,7 +294,7 @@ impl crate::Loggable for TimeRangeBoundary {
                                             "rerun.datatypes.TimeRangeBoundary#CursorRelative",
                                         )?
                                 }),
-                                2i8 => TimeRangeBoundary::Absolute({
+                                2i8 => Self::Absolute({
                                     if offset as usize >= absolute.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -313,7 +313,7 @@ impl crate::Loggable for TimeRangeBoundary {
                                             "rerun.datatypes.TimeRangeBoundary#Absolute",
                                         )?
                                 }),
-                                3i8 => TimeRangeBoundary::Infinite,
+                                3i8 => Self::Infinite,
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(
                                         Self::arrow_datatype(),

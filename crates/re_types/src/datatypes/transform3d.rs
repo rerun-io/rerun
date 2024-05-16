@@ -242,7 +242,7 @@ impl ::re_types_core::Loggable for Transform3D {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Transform3D::TranslationAndMat3x3({
+                                1i8 => Self::TranslationAndMat3x3({
                                     if offset as usize >= translation_and_mat3x3.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -261,7 +261,7 @@ impl ::re_types_core::Loggable for Transform3D {
                                             "rerun.datatypes.Transform3D#TranslationAndMat3x3",
                                         )?
                                 }),
-                                2i8 => Transform3D::TranslationRotationScale({
+                                2i8 => Self::TranslationRotationScale({
                                     if offset as usize >= translation_rotation_scale.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
