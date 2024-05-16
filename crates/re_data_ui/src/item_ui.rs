@@ -401,7 +401,7 @@ pub fn component_path_button_to(
         if is_component_static {
             &icons::COMPONENT_STATIC
         } else {
-            &icons::COMPONENT
+            &icons::COMPONENT_TEMPORAL
         },
         text,
         ctx.selection().contains_item(&item),

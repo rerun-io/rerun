@@ -750,7 +750,7 @@ impl TimePanel {
                     .with_icon(if is_static {
                         &re_ui::icons::COMPONENT_STATIC
                     } else {
-                        &re_ui::icons::COMPONENT
+                        &re_ui::icons::COMPONENT_TEMPORAL
                     })
                     .show_hierarchical(ui);
 

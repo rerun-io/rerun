@@ -367,7 +367,7 @@ fn what_is_selected_ui(
                 Some(if is_static {
                     &icons::COMPONENT_STATIC
                 } else {
-                    &icons::COMPONENT
+                    &icons::COMPONENT_TEMPORAL
                 }),
                 &format!(
                     "Component {} of entity '{}'",
