@@ -299,6 +299,7 @@ jobs:
           ref: ${{ needs.version.outputs.release-commit }}
           # `secrets.GITHUB_TOKEN` is used here so that the `git push ... doc-latest`
           # below can trigger a workflow run of the `on_push_docs.yml` workflow
+          # https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update latest branch
