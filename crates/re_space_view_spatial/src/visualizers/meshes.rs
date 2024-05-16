@@ -68,7 +68,7 @@ impl Mesh3DVisualizer {
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
             // Skip over empty meshes.
-            // Note that we can deal with zero normals/colors/texcoords/indicies just fine (we generate them),
+            // Note that we can deal with zero normals/colors/texcoords/indices just fine (we generate them),
             // but re_renderer insists on having at a non-zero vertex list.
             if data.vertex_positions.is_empty() {
                 continue;
