@@ -171,12 +171,12 @@ impl ::re_types_core::Loggable for EnumTest {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(EnumTest::Up)),
-                    2 => Ok(Some(EnumTest::Down)),
-                    3 => Ok(Some(EnumTest::Right)),
-                    4 => Ok(Some(EnumTest::Left)),
-                    5 => Ok(Some(EnumTest::Forward)),
-                    6 => Ok(Some(EnumTest::Back)),
+                    1 => Ok(Some(Self::Up)),
+                    2 => Ok(Some(Self::Down)),
+                    3 => Ok(Some(Self::Right)),
+                    4 => Ok(Some(Self::Left)),
+                    5 => Ok(Some(Self::Forward)),
+                    6 => Ok(Some(Self::Back)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

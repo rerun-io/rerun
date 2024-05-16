@@ -157,10 +157,10 @@ impl ::re_types_core::Loggable for Corner2D {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(Corner2D::LeftTop)),
-                    2 => Ok(Some(Corner2D::RightTop)),
-                    3 => Ok(Some(Corner2D::LeftBottom)),
-                    4 => Ok(Some(Corner2D::RightBottom)),
+                    1 => Ok(Some(Self::LeftTop)),
+                    2 => Ok(Some(Self::RightTop)),
+                    3 => Ok(Some(Self::LeftBottom)),
+                    4 => Ok(Some(Self::RightBottom)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

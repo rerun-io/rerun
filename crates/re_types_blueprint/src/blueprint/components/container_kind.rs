@@ -144,10 +144,10 @@ impl ::re_types_core::Loggable for ContainerKind {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(ContainerKind::Tabs)),
-                    2 => Ok(Some(ContainerKind::Horizontal)),
-                    3 => Ok(Some(ContainerKind::Vertical)),
-                    4 => Ok(Some(ContainerKind::Grid)),
+                    1 => Ok(Some(Self::Tabs)),
+                    2 => Ok(Some(Self::Horizontal)),
+                    3 => Ok(Some(Self::Vertical)),
+                    4 => Ok(Some(Self::Grid)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",
