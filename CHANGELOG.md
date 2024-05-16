@@ -59,6 +59,7 @@ As always there's a lot going on under the hood:
 - Fix possible hang when using torch.multiprocessing [#6271](https://github.com/rerun-io/rerun/pull/6271)
 - Add code examples & screenshots for all blueprint view types [#6304](https://github.com/rerun-io/rerun/pull/6304)
 - Set a minimum version of pillow in `rerun_py/pyproject.toml` [#6327](https://github.com/rerun-io/rerun/pull/6327)
+- Respect the RERUN_STRICT environment variable if not specified in rr.init [#6341](https://github.com/rerun-io/rerun/pull/6341)
 
 #### 🦀 Rust API
 - Static-aware Rust SDK [#5540](https://github.com/rerun-io/rerun/pull/5540)
