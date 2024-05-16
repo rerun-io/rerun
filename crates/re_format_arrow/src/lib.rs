@@ -164,10 +164,7 @@ impl std::fmt::Display for DisplayDataType {
                 return f.write_str(&s);
             }
             DataType::FixedSizeList(field, len) => {
-                let s = format!(
-                    "fixed-list[{}; {len}]",
-                    Self(field.data_type().clone())
-                );
+                let s = format!("fixed-list[{}; {len}]", Self(field.data_type().clone()));
                 return f.write_str(&s);
             }
             DataType::LargeList(field) => {
@@ -183,10 +180,7 @@ impl std::fmt::Display for DisplayDataType {
             DataType::Decimal(_, _) => "decimal",
             DataType::Decimal256(_, _) => "decimal256",
             DataType::Extension(name, data_type, _) => {
-                let s = format!(
-                    "extension<{name}>[{}]",
-                    Self((**data_type).clone())
-                );
+                let s = format!("extension<{name}>[{}]", Self((**data_type).clone()));
                 return f.write_str(&s);
             }
         };

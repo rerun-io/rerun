@@ -346,9 +346,7 @@ impl DeserializationError {
             | Self::OffsetOutOfBounds { backtrace, .. }
             | Self::OffsetSliceOutOfBounds { backtrace, .. }
             | Self::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
-            Self::DataCellError(_) | Self::ValidationError(_) => {
-                None
-            }
+            Self::DataCellError(_) | Self::ValidationError(_) => None,
         }
     }
 }

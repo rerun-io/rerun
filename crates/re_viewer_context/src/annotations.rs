@@ -33,8 +33,7 @@ impl Annotations {
     pub fn missing_arc() -> Arc<Self> {
         use std::sync::OnceLock;
         static CELL: OnceLock<Arc<Annotations>> = OnceLock::new();
-        CELL.get_or_init(|| Arc::new(Self::missing()))
-            .clone()
+        CELL.get_or_init(|| Arc::new(Self::missing())).clone()
     }
 
     #[inline]

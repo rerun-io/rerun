@@ -679,9 +679,7 @@ impl TensorData {
     ///
     /// This is a convenience function that calls [`DecodedTensor::from_image`].
     #[inline]
-    pub fn from_image(
-        image: impl Into<image::DynamicImage>,
-    ) -> Result<Self, TensorImageLoadError> {
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageLoadError> {
         Self::from_dynamic_image(image.into())
     }
 
@@ -691,9 +689,7 @@ impl TensorData {
     ///
     /// This is a convenience function that calls [`DecodedTensor::from_dynamic_image`].
     #[inline]
-    pub fn from_dynamic_image(
-        image: image::DynamicImage,
-    ) -> Result<Self, TensorImageLoadError> {
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageLoadError> {
         DecodedTensor::from_dynamic_image(image).map(DecodedTensor::into_inner)
     }
 

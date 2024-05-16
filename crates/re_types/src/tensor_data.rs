@@ -457,18 +457,14 @@ impl DecodedTensor {
     /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_image(
-        image: impl Into<image::DynamicImage>,
-    ) -> Result<Self, TensorImageLoadError> {
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageLoadError> {
         Self::from_dynamic_image(image.into())
     }
 
     /// Construct a tensor from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_dynamic_image(
-        image: image::DynamicImage,
-    ) -> Result<Self, TensorImageLoadError> {
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageLoadError> {
         re_tracing::profile_function!();
 
         let (w, h) = (image.width(), image.height());

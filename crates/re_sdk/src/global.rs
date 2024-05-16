@@ -135,10 +135,7 @@ impl RecordingStream {
     // Used from python-bridge.
     #[inline]
     #[doc(hidden)]
-    pub fn get_quiet(
-        kind: StoreKind,
-        overrides: Option<Self>,
-    ) -> Option<Self> {
+    pub fn get_quiet(kind: StoreKind, overrides: Option<Self>) -> Option<Self> {
         let rec = overrides.or_else(|| {
             Self::get_any(RecordingScope::ThreadLocal, kind)
                 .or_else(|| Self::get_any(RecordingScope::Global, kind))
@@ -196,10 +193,7 @@ impl RecordingStream {
     /// Replaces the currently active recording of the specified type in the thread-local scope
     /// with the specified one.
     #[inline]
-    pub fn set_thread_local(
-        kind: StoreKind,
-        rec: Option<Self>,
-    ) -> Option<Self> {
+    pub fn set_thread_local(kind: StoreKind, rec: Option<Self>) -> Option<Self> {
         Self::set_any(RecordingScope::ThreadLocal, kind, rec)
     }
 
@@ -235,11 +229,7 @@ impl RecordingStream {
         }
     }
 
-    fn set_any(
-        scope: RecordingScope,
-        kind: StoreKind,
-        rec: Option<Self>,
-    ) -> Option<Self> {
+    fn set_any(scope: RecordingScope, kind: StoreKind, rec: Option<Self>) -> Option<Self> {
         match kind {
             StoreKind::Recording => match scope {
                 RecordingScope::Global => std::mem::replace(

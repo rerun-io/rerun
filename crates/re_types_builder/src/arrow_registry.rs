@@ -322,9 +322,7 @@ impl From<DataType> for LazyDatatype {
             DataType::FixedSizeList(field, length) => {
                 Self::FixedSizeList(Box::new((*field).clone().into()), length)
             }
-            DataType::LargeList(field) => {
-                Self::LargeList(Box::new((*field).clone().into()))
-            }
+            DataType::LargeList(field) => Self::LargeList(Box::new((*field).clone().into())),
             DataType::Struct(fields) => {
                 Self::Struct(fields.iter().cloned().map(Into::into).collect())
             }
@@ -369,9 +367,7 @@ impl LazyDatatype {
             Self::FixedSizeList(field, length) => {
                 DataType::FixedSizeList(Arc::new(field.resolve(registry)), *length)
             }
-            Self::LargeList(field) => {
-                DataType::LargeList(Arc::new(field.resolve(registry)))
-            }
+            Self::LargeList(field) => DataType::LargeList(Arc::new(field.resolve(registry))),
             Self::Struct(fields) => DataType::Struct(Arc::new(
                 fields.iter().map(|field| field.resolve(registry)).collect(),
             )),

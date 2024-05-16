@@ -298,9 +298,7 @@ impl SizeBytes for DataType {
             | Self::LargeList(field)
             | Self::Map(field, _) => field.total_size_bytes(), // NOTE: Boxed, it's all on the heap
             Self::Struct(fields) => fields.heap_size_bytes(),
-            Self::Union(fields, indices, _) => {
-                fields.heap_size_bytes() + indices.heap_size_bytes()
-            }
+            Self::Union(fields, indices, _) => fields.heap_size_bytes() + indices.heap_size_bytes(),
             Self::Dictionary(_, datatype, _) => datatype.total_size_bytes(), // NOTE: Boxed, it's all on the heap
             Self::Extension(name, datatype, extra) => {
                 name.heap_size_bytes()

@@ -377,13 +377,12 @@ impl Frontmatter {
         };
         let end = start + end;
 
-        let frontmatter: Self =
-            toml::from_str(content[start..end].trim()).map_err(|err| {
-                anyhow::anyhow!(
-                    "Failed to parse TOML metadata of {:?}: {err}",
-                    path.parent().unwrap().file_name().unwrap()
-                )
-            })?;
+        let frontmatter: Self = toml::from_str(content[start..end].trim()).map_err(|err| {
+            anyhow::anyhow!(
+                "Failed to parse TOML metadata of {:?}: {err}",
+                path.parent().unwrap().file_name().unwrap()
+            )
+        })?;
 
         Ok(Some((
             frontmatter,
