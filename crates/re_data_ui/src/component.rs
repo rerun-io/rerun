@@ -55,13 +55,19 @@ impl DataUi for EntityLatestAtResults {
 
         // Display data time and additional diagnostic information for static components.
         if ui_layout != UiLayout::List {
-            ui.label(format!(
-                "Data time: {}",
-                query
+            let time = self.results.index().0;
+            if time.is_static() {
+                // No need to show anything here. We already tell the user this is a static component elsewhere.
+            } else {
+                let formatted_time = query
                     .timeline()
                     .typ()
-                    .format(self.results.index().0, ctx.app_options.time_zone),
-            ));
+                    .format(time, ctx.app_options.time_zone);
+                ui.horizontal(|ui| {
+                    ui.add(re_ui::icons::COMPONENT_TEMPORAL.as_image());
+                    ui.label(format!("Temporal component at {formatted_time}"));
+                });
+            }
 
             // if the component is static, we display extra diagnostic information
             if self.results.is_static() {
