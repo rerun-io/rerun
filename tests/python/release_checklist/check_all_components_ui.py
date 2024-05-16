@@ -128,7 +128,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "Position3DBatch": TestCase(batch=[(0, 3, 4), (1, 4, 5), (2, 5, 6)]),
     "RadiusBatch": TestCase(batch=[4.5, 5, 6, 7]),
     "Range1DBatch": TestCase((0, 5)),
-    "Range2DBatch": TestCase(rr.datatypes.Range2D(x_range=(0, 5), y_range=(0, 5))),
     "ResolutionBatch": TestCase((1920, 1080)),
     "Rotation3DBatch": TestCase(
         alternatives=[
