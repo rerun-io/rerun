@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **View**: A time series view.
+/// **View**: A time series view for scalars over time, for use with the `Scalars` archetype.
 #[derive(Clone, Debug)]
 pub struct TimeSeriesView {
     /// Configures the vertical axis of the plot.

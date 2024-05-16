@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **View**: A Spatial 2D view.
+/// **View**: For viewing spatial 2D data.
 #[derive(Clone, Debug)]
 pub struct Spatial2DView {
     /// Configuration for the background of the view.
