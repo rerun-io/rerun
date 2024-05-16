@@ -4,7 +4,7 @@ namespace rerun.blueprint.views;
 
 /// For viewing spatial 2D data.
 ///
-/// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1200w.png"
+/// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1200w.png"
 table Spatial2DView (
     "attr.docs.unreleased",
     "attr.rerun.view_identifier": "2D"
