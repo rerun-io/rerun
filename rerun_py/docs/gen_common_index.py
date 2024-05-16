@@ -2,7 +2,7 @@
 """
 Generate an index table and rendered pages for the common APIs.
 
-NOTE: When changing anything in this file, also consider how it affects `re_build_search_index/src/ingest/python.rs`.
+NOTE: When changing anything in this file, also consider how it affects `crates/re_dev_tools/src/build_search_index/ingest/python.rs`.
 
 The top-level index file should look like
 ```
@@ -27,6 +27,7 @@ The Summary should look like:
 * [Helpers](helpers.md)
 ```
 """
+
 from __future__ import annotations
 
 import re
@@ -49,7 +50,7 @@ def all_archetypes() -> list[str]:
     pattern = r'"([^"]*)"'
 
     # Open the file for reading
-    with open(file_path) as file:
+    with open(file_path, encoding="utf8") as file:
         # Read the file line by line
         for line in file:
             # Use re.findall to find all quoted strings in the line
@@ -65,6 +66,7 @@ def all_archetypes() -> list[str]:
 @dataclass
 class Section:
     title: str
+    sub_title: str | None = None
     func_list: list[str] | None = None
     class_list: list[str] | None = None
     gen_page: bool = True
@@ -85,9 +87,11 @@ SECTION_TABLE: Final[list[Section]] = [
             "connect",
             "disconnect",
             "save",
+            "send_blueprint",
             "serve",
             "spawn",
             "memory_recording",
+            "notebook_show",
         ],
     ),
     Section(
@@ -168,7 +172,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Scalar",
             "archetypes.SeriesLine",
             "archetypes.SeriesPoint",
-            "archetypes.TimeSeriesScalar",
         ],
         gen_page=False,
     ),
@@ -214,7 +217,7 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     ################################################################################
-    # Remaining sections of other referenced things
+    # Other referenced things
     Section(
         title="Enums",
         mod_path="rerun",
@@ -231,6 +234,54 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["AsComponents", "ComponentBatchLike"],
         default_filters=False,
     ),
+    ################################################################################
+    # Blueprint APIs
+    Section(
+        title="Blueprint",
+        sub_title="APIs",
+        mod_path="rerun.blueprint",
+        class_list=[
+            "Blueprint",
+            "BlueprintPart",
+            "Container",
+            "ContainerLike",
+            "Horizontal",
+            "Vertical",
+            "Grid",
+            "Tabs",
+            "SpaceView",
+            "BarChartView",
+            "Spatial2DView",
+            "Spatial3DView",
+            "TensorView",
+            "TextDocumentView",
+            "TextLogView",
+            "TimeSeriesView",
+            "BlueprintPanel",
+            "SelectionPanel",
+            "TimePanel",
+        ],
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Archetypes",
+        mod_path="rerun.blueprint.archetypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Components",
+        mod_path="rerun.blueprint.components",
+        show_tables=False,
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Views",
+        mod_path="rerun.blueprint.views",
+        show_tables=False,
+    ),
+    ################################################################################
+    # Remaining sections
     Section(
         title="Script Helpers",
         func_list=[
@@ -255,6 +306,8 @@ SECTION_TABLE: Final[list[Section]] = [
             "start_web_viewer_server",
             "escape_entity_path_part",
             "new_entity_path",
+            "thread_local_stream",
+            "recording_stream_generator_ctx",
         ],
         class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
     ),
@@ -319,8 +372,8 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
-* [Quick start](https://www.rerun.io/docs/getting-started/python)
-* [Tutorial](https://www.rerun.io/docs/getting-started/logging-python)
+* [Quick start](https://www.rerun.io/docs/getting-started/quick-start/python)
+* [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
 * [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
@@ -338,9 +391,14 @@ overview of what's possible and how.
     for section in SECTION_TABLE:
         if section.gen_page:
             # Turn the heading into a slug and add it to the nav
-            md_name = make_slug(section.title)
-            md_file = md_name + ".md"
-            nav[section.title] = md_file
+            if section.sub_title:
+                md_name = make_slug("_".join([section.title, section.sub_title]))
+                md_file = md_name + ".md"
+                nav[(section.title, section.sub_title)] = md_file
+            else:
+                md_name = make_slug(section.title)
+                md_file = md_name + ".md"
+                nav[section.title] = md_file
 
             # Write out the contents of this section
             write_path = common_dir.joinpath(md_file)
@@ -376,6 +434,9 @@ overview of what's possible and how.
                 index_file.write("Class | Description\n")
                 index_file.write("-------- | -----------\n")
                 for class_name in section.class_list:
+                    if section.mod_path != "rerun":
+                        mod_tail = section.mod_path.split(".")[1:]
+                        class_name = ".".join(mod_tail + [class_name])
                     cls = rerun_pkg[class_name]
                     show_class = class_name
                     for maybe_strip in ["archetypes.", "components.", "datatypes."]:

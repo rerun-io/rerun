@@ -16,22 +16,6 @@ namespace rerun {
         return datatype;
     }
 
-    rerun::Error Loggable<components::AffixFuzzer6>::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const components::AffixFuzzer6* elements, size_t num_elements
-    ) {
-        (void)builder;
-        (void)elements;
-        (void)num_elements;
-        if (true) {
-            return rerun::Error(
-                ErrorCode::NotImplemented,
-                "TODO(andreas) Handle nullable extensions"
-            );
-        }
-
-        return Error::ok();
-    }
-
     Result<std::shared_ptr<arrow::Array>> Loggable<components::AffixFuzzer6>::to_arrow(
         const components::AffixFuzzer6* instances, size_t num_instances
     ) {
@@ -50,5 +34,21 @@ namespace rerun {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
         return array;
+    }
+
+    rerun::Error Loggable<components::AffixFuzzer6>::fill_arrow_array_builder(
+        arrow::StructBuilder* builder, const components::AffixFuzzer6* elements, size_t num_elements
+    ) {
+        (void)builder;
+        (void)elements;
+        (void)num_elements;
+        if (true) {
+            return rerun::Error(
+                ErrorCode::NotImplemented,
+                "TODO(andreas) Handle nullable extensions"
+            );
+        }
+
+        return Error::ok();
     }
 } // namespace rerun

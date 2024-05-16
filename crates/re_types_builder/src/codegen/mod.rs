@@ -1,3 +1,6 @@
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 /// Implements the codegen pass.
 pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].
@@ -32,7 +35,7 @@ pub(crate) use macros::autogen_warning; // Hack for declaring macros as `pub(cra
 // ---
 
 pub(crate) mod common;
-use self::common::{get_documentation, StringExt};
+use self::common::StringExt;
 
 mod cpp;
 mod docs;

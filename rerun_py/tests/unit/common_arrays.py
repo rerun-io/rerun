@@ -30,6 +30,9 @@ from rerun.datatypes import (
     Utf8ArrayLike,
     Uuid,
     UuidArrayLike,
+    UVec3D,
+    UVec3DArrayLike,
+    UVec3DBatch,
     Vec2D,
     Vec2DArrayLike,
     Vec2DBatch,
@@ -174,6 +177,41 @@ def vec4ds_expected(obj: Any, type_: Any | None = None) -> Any:
         type_ = Vec4DBatch
 
     expected = none_empty_or_value(obj, [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])
+
+    return type_._optional(expected)
+
+
+uvec3ds_arrays: list[UVec3DArrayLike] = [
+    [],
+    np.array([]),
+    # UVec3DArrayLike: Sequence[Position3DLike]: Position3D
+    [
+        UVec3D([1, 2, 3]),
+        UVec3D([4, 5, 6]),
+    ],
+    # UVec3DArrayLike: Sequence[Position3DLike]: npt.NDArray[np.uint32]
+    [
+        np.array([1, 2, 3], dtype=np.uint32),
+        np.array([4, 5, 6], dtype=np.uint32),
+    ],
+    # UVec3DArrayLike: Sequence[Position3DLike]: Tuple[uint, uint]
+    [(1, 2, 3), (4, 5, 6)],
+    # UVec3DArrayLike: Sequence[Position3DLike]: Sequence[uint]
+    [1, 2, 3, 4, 5, 6],
+    # UVec3DArrayLike: npt.NDArray[np.uint32]
+    np.array([[1, 2, 3], [4, 5, 6]], dtype=np.uint32),
+    # UVec3DArrayLike: npt.NDArray[np.uint32]
+    np.array([1, 2, 3, 4, 5, 6], dtype=np.uint32),
+    # UVec3DArrayLike: npt.NDArray[np.uint32]
+    np.array([1, 2, 3, 4, 5, 6], dtype=np.uint32).reshape((2, 3, 1, 1, 1)),
+]
+
+
+def uvec3ds_expected(obj: Any, type_: Any | None = None) -> Any:
+    if type_ is None:
+        type_ = UVec3DBatch
+
+    expected = none_empty_or_value(obj, [[1, 2, 3], [4, 5, 6]])
 
     return type_._optional(expected)
 

@@ -1,5 +1,4 @@
 use re_data_source::DataSource;
-use re_entity_db::EntityDb;
 use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
@@ -8,23 +7,37 @@ use re_ui::{UICommand, UICommandSender};
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
+    /// Make this the active application.
+    ActivateApp(re_log_types::ApplicationId),
+
+    /// Close this app and all its recordings.
+    CloseApp(re_log_types::ApplicationId),
+
     /// Load some data.
     LoadDataSource(DataSource),
 
-    /// Load some log messages.
-    LoadStoreDb(EntityDb),
+    /// Clear everything that came from this source, and close the source.
+    ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
+
+    AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
 
     /// Reset the `Blueprint` to the default state
-    ResetBlueprint,
+    ClearActiveBlueprint,
 
-    /// Change the active recording-id in the `StoreHub`
-    SetRecordingId(StoreId),
+    /// Clear the blueprint and generate a new one
+    ClearAndGenerateBlueprint,
 
-    /// Close a recording
-    CloseRecordingId(StoreId),
+    /// If this is a recording, switch to it.
+    ActivateRecording(StoreId),
+
+    /// Close a recording or blueprint (free its memory).
+    CloseStore(StoreId),
+
+    /// Close all stores and show the welcome screen again.
+    CloseAllRecordings,
 
     /// Update the blueprint with additional data
     ///
@@ -40,8 +53,8 @@ pub enum SystemCommand {
     /// Enable or disable the experimental dataframe space views.
     EnableExperimentalDataframeSpaceView(bool),
 
-    /// Set the selection in the recording config of the given recording.
-    SetSelection(StoreId, crate::Item),
+    /// Set the item selection.
+    SetSelection(crate::Item),
 
     /// Sets the focus to the given item.
     ///
@@ -66,6 +79,7 @@ pub trait SystemCommandSender {
 // ----------------------------------------------------------------------------
 
 /// Sender that queues up the execution of commands.
+#[derive(Clone)]
 pub struct CommandSender {
     system_sender: std::sync::mpsc::Sender<SystemCommand>,
     ui_sender: std::sync::mpsc::Sender<UICommand>,

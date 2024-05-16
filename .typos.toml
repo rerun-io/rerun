@@ -100,6 +100,7 @@ prologue = "prolog"
 rancour = "rancor"
 realise = "realize"
 recognise = "recognize"
+recognised = "recognized"
 rigour = "rigor"
 rumour = "rumor"
 sabre = "saber"
@@ -108,9 +109,16 @@ saviour = "savior"
 savour = "savor"
 sceptical = "skeptical"
 sceptre = "scepter"
+FUL = "FUL"                       # forward-up-left coordinate system
 sepulchre = "sepulcher"
+serialisation = "serialization"
+serialise = "serialize"
+serialised = "serialized"
 skilful = "skillful"
 sombre = "somber"
+specialisation = "specialization"
+specialise = "specialize"
+specialised = "specialized"
 splendour = "splendor"
 standardise = "standardize"
 sulphur = "sulfur"
@@ -120,8 +128,10 @@ tonne = "ton"
 travelogue = "travelog"
 tumour = "tumor"
 valour = "valor"
+opf = "opf"                       #  Open Photogrammetry Format (OPF) file
 vaporise = "vaporize"
 vigour = "vigor"
+ws = "ws"                         # web-sockets, as in "ws://…"
 
 # null-terminated is the name of the wikipedia article!
 # https://en.wikipedia.org/wiki/Null-terminated_string
@@ -130,8 +140,17 @@ zeroterminated = "null-terminated"
 zero-terminated = "null-terminated"
 
 [default]
-# Work around for typos inside of 8-character hashes. These show up inside of ipynb.
-# e.g. "f4e1caf9" -> `caf` should be `calf`
-# Specifically limit ourselves to exactly 8 chars in a quoted strong.
-# Just don't spell "defaced" wrong.
-extend-ignore-re = ["\"[a-f0-9]{8}\""]
+extend-ignore-re = [
+  # Work around for typos inside of hashes. These show up inside of ipynb.
+  # e.g. "f4e1caf9" -> `caf` should be `calf`
+  # Specifically limit ourselves to exactly 8 chars in a quoted string, or
+  # 16 character hashses following a leading underscore.
+  # Just don't spell "defaced" wrong.
+  "\"[a-f0-9]{8}\"",
+  "_[a-f0-9]{16}",
+
+
+  "np.arange",        # numpy spells "arrange" wrong
+  "phc_[a-zA-Z0-9]*", # Posthog public key
+  "PNG.?",            # Workaround for https://github.com/crate-ci/typos/issues/967
+]

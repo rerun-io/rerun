@@ -11,6 +11,13 @@ from .auto_space_views import (
     AutoSpaceViewsLike,
     AutoSpaceViewsType,
 )
+from .background_kind import (
+    BackgroundKind,
+    BackgroundKindArrayLike,
+    BackgroundKindBatch,
+    BackgroundKindLike,
+    BackgroundKindType,
+)
 from .column_share import ColumnShare, ColumnShareArrayLike, ColumnShareBatch, ColumnShareLike, ColumnShareType
 from .container_kind import (
     ContainerKind,
@@ -30,14 +37,8 @@ from .entity_properties_component import (
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
-from .lock_range_during_zoom import (
-    LockRangeDuringZoom,
-    LockRangeDuringZoomArrayLike,
-    LockRangeDuringZoomBatch,
-    LockRangeDuringZoomLike,
-    LockRangeDuringZoomType,
-)
-from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
+from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
+from .panel_expanded import PanelExpanded, PanelExpandedBatch, PanelExpandedType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
@@ -50,6 +51,8 @@ from .viewer_recommendation_hash import (
     ViewerRecommendationHashType,
 )
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
+from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
+from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch, VisualBounds2DType
 
 __all__ = [
     "ActiveTab",
@@ -65,6 +68,11 @@ __all__ = [
     "AutoSpaceViewsBatch",
     "AutoSpaceViewsLike",
     "AutoSpaceViewsType",
+    "BackgroundKind",
+    "BackgroundKindArrayLike",
+    "BackgroundKindBatch",
+    "BackgroundKindLike",
+    "BackgroundKindType",
     "ColumnShare",
     "ColumnShareArrayLike",
     "ColumnShareBatch",
@@ -97,15 +105,11 @@ __all__ = [
     "IncludedSpaceViewBatch",
     "IncludedSpaceViewType",
     "LockRangeDuringZoom",
-    "LockRangeDuringZoomArrayLike",
     "LockRangeDuringZoomBatch",
-    "LockRangeDuringZoomLike",
     "LockRangeDuringZoomType",
-    "PanelView",
-    "PanelViewArrayLike",
-    "PanelViewBatch",
-    "PanelViewLike",
-    "PanelViewType",
+    "PanelExpanded",
+    "PanelExpandedBatch",
+    "PanelExpandedType",
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",
@@ -133,5 +137,11 @@ __all__ = [
     "VisibleArrayLike",
     "VisibleBatch",
     "VisibleLike",
+    "VisibleTimeRange",
+    "VisibleTimeRangeBatch",
+    "VisibleTimeRangeType",
     "VisibleType",
+    "VisualBounds2D",
+    "VisualBounds2DBatch",
+    "VisualBounds2DType",
 ]

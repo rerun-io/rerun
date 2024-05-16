@@ -1,14 +1,14 @@
 ---
 title: The Entity Path Hierarchy
-order: 1
+order: 200
 ---
 
-## Entity Paths
+## Entity paths
 As mentioned in the [Entity Component](entity-component.md) overview, all entities within Rerun have a unique _entity path_.
 
 The first argument to the `log()` function is this path. Each time you log to a specific entity path you will update the entity, i.e. log a new instance of it along the timeline.
 
-It is possible to log multiple types of archetypes on the same entity path, but you should generally avoid mixing different kinds of geometric primitive. For example, logging a [`Points3D`](../reference/types/archetypes/points3d.md) point cloud on an entity path where a [`Mesh3D`](../reference/types/archetypes/mesh3d.md) was previously logged would overwrite the mesh's [`Position3D`](../reference/types/components/position3d.md) component with the point cloud's, but would leave the [`MeshProperties`](../reference/types/components/mesh_properties.md) component untouched. The Rerun viewer would likely be unable to display the result. See the [Entity Component](entity-component.md) section for more information.
+It is possible to log multiple types of archetypes on the same entity path, but you should generally avoid mixing different kinds of geometric primitive. For example, logging a [`Points3D`](../reference/types/archetypes/points3d.md) point cloud on an entity path where a [`Mesh3D`](../reference/types/archetypes/mesh3d.md) was previously logged would overwrite the mesh's [`Position3D`](../reference/types/components/position3d.md) component with the point cloud's, but would leave the `triangle_indices` component untouched. The Rerun Viewer would likely be unable to display the result. See the [Entity Component](entity-component.md) section for more information.
 
 There _are_ valid reasons to logs different kinds of archetypes to the same entity path, though. For example, it's common to log a [`Transform3D`](../reference/types/archetypes/transform3d.md) along with some geometry it relates to (see the [Spaces and Transforms](spaces-and-transforms.md) for more info).
 
@@ -45,11 +45,11 @@ Any other character should be escaped, including symbols (`\:`, `\$`, …) and w
 
 You can an arbitrary unicode code point into an entity path using `\u{262E}`.
 
-So for instance, `world/3d/My\ Image.jpg/detection` is a valid path (note the escaped space!).
+So for instance, `world/3D/My\ Image.jpg/detection` is a valid path (note the escaped space!).
 
 ⚠️ NOTE: even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which use `\` as a path separator).
 
-### Path Hierarchy Functions
+### Path hierarchy functions
 Path hierarchy plays an important role in a number of different functions within Rerun:
 
  * With the [Transform System](spaces-and-transforms.md) the `transform` component logged to any entity always describes
@@ -60,7 +60,7 @@ the relationship between that entity and its direct parent.
  * In the future, it will also be possible to use path-hierarchy to set default-values for descendants
    ([#1158](https://github.com/rerun-io/rerun/issues/1158)).
 
-### Reserved Paths
+### Reserved paths
 
 The path prefix `rerun/` is considered reserved for use by the Rerun SDK itself and should not be used for logging
 user data. This is where Rerun will log additional information such as warnings.

@@ -12,6 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 
@@ -21,4 +24,5 @@ re_tracing.workspace = true
 
 crossbeam.workspace = true
 parking_lot.workspace = true
+serde.workspace = true
 web-time.workspace = true

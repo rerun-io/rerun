@@ -109,13 +109,11 @@ class AnnotationInfoType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                    pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                    pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.struct([
+                pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                pa.field("color", pa.uint32(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

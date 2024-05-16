@@ -1,6 +1,6 @@
 ---
-title: Log short lived data
-order: 5
+title: Clear out already logged data
+order: 400
 description: How to log data that isn't valid for the whole recording
 ---
 In order to create coherent views of streaming data, the Rerun Viewer shows the latest values for each visible entity at the current timepoint. But some data may not be valid for the entire recording even if there are no updated values. How do you tell Rerun that something you've logged should no longer be shown?
@@ -44,7 +44,7 @@ for frame in sensors.read():
         # same frequency as the input data and thus look strange
         rr.log("input/detections", rr.Rect2D(detection.bounds))
 ```
-You could fix this example by logging `rr.Clear`, but in this case it makes more sense to change what you log to better express what is happening. Re-logging the image to another namespace on only the frames where the detection runs makes it explicit which frame was used as the input to the detector. This will create a second view in the viewer that always allows you to see the frame that was used for the current detection input.
+You could fix this example by logging `rr.Clear`, but in this case it makes more sense to change what you log to better express what is happening. Re-logging the image to another namespace on only the frames where the detection runs makes it explicit which frame was used as the input to the detector. This will create a second view in the Viewer that always allows you to see the frame that was used for the current detection input.
 
 Here is an example fix:
 ```python

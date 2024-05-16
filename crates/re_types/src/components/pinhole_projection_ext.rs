@@ -3,6 +3,7 @@ use crate::datatypes::Vec2D;
 use super::PinholeProjection;
 
 impl PinholeProjection {
+    /// Create a new pinhole projection matrix from a focal length and principal point.
     #[inline]
     pub fn from_focal_length_and_principal_point(
         focal_length: impl Into<Vec2D>,
@@ -15,6 +16,20 @@ impl PinholeProjection {
             [0.0, fl.y(), 0.0],
             [pp.x(), pp.y(), 1.0],
         ])
+    }
+
+    /// Principal point of the pinhole camera,
+    /// i.e. the intersection of the optical axis and the image plane.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn with_principal_point(mut self, principal_point: impl Into<Vec2D>) -> Self {
+        let pp = principal_point.into();
+        let col = 2;
+        self.0.set(0, col, pp.x());
+        self.0.set(1, col, pp.y());
+        self
     }
 
     /// X & Y focal length in pixels.

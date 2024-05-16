@@ -1,0 +1,11 @@
+[project]
+name = "minimal_options"
+version = "0.1.0"
+dependencies = ["numpy", "rerun-sdk"]
+
+[project.scripts]
+minimal_options = "minimal_options:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

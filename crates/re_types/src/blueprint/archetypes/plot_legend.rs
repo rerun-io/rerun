@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -54,27 +55,26 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.PlotLegendIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.Corner2D".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.PlotLegendIndicator".into(),
             "rerun.blueprint.components.Corner2D".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl PlotLegend {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`PlotLegend`] [`::re_types_core::Archetype`]
@@ -165,14 +165,11 @@ impl ::re_types_core::AsComponents for PlotLegend {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        0
-    }
 }
 
 impl PlotLegend {
+    /// Create a new `PlotLegend`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             corner: None,
@@ -180,6 +177,9 @@ impl PlotLegend {
         }
     }
 
+    /// To what corner the legend is aligned.
+    ///
+    /// Defaults to the right bottom corner.
     #[inline]
     pub fn with_corner(
         mut self,
@@ -189,6 +189,9 @@ impl PlotLegend {
         self
     }
 
+    /// Whether the legend is shown at all.
+    ///
+    /// True by default.
     #[inline]
     pub fn with_visible(
         mut self,

@@ -3,18 +3,14 @@ use std::{collections::BTreeMap, time::Duration};
 use ahash::{HashMap, HashSet};
 use web_time::Instant;
 
-use nohash_hasher::IntMap;
 use re_log_types::{
-    DataCell, EntityPath, EntityPathHash, RowId, TimePoint, TimeRange, Timeline,
+    DataCell, EntityPath, EntityPathHash, ResolvedTimeRange, RowId, TimeInt, TimePoint, Timeline,
     VecDequeRemovalExt as _,
 };
 use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
-    store::{
-        ClusterCellCache, IndexedBucketInner, IndexedTable, PersistentIndexedTable,
-        PersistentIndexedTableInner,
-    },
+    store::{IndexedBucketInner, IndexedTable},
     DataStore, DataStoreStats, StoreDiff, StoreDiffKind, StoreEvent,
 };
 
@@ -47,9 +43,6 @@ pub struct GarbageCollectionOptions {
     /// The default is an unbounded time budget (i.e. throughput only).
     pub time_budget: Duration,
 
-    /// Whether to also GC timeless data.
-    pub gc_timeless: bool,
-
     /// How many component revisions to preserve on each timeline.
     pub protect_latest: usize,
 
@@ -70,7 +63,6 @@ impl GarbageCollectionOptions {
         GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
             time_budget: std::time::Duration::MAX,
-            gc_timeless: true,
             protect_latest: 0,
             purge_empty_tables: true,
             dont_protect: Default::default(),
@@ -83,7 +75,7 @@ impl std::fmt::Display for GarbageCollectionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
-                write!(f, "DropAtLeast({:.3}%)", re_format::format_f64(*p * 100.0))
+                write!(f, "DropAtLeast({:.3}%)", *p * 100.0)
             }
             GarbageCollectionTarget::Everything => write!(f, "Everything"),
         }
@@ -127,8 +119,7 @@ impl DataStore {
 
         let stats_before = DataStoreStats::from_store(self);
 
-        let (initial_num_rows, initial_num_bytes) =
-            stats_before.total_rows_and_bytes_with_timeless(options.gc_timeless);
+        let (initial_num_rows, initial_num_bytes) = stats_before.total_rows_and_bytes();
 
         let protected_rows =
             self.find_all_protected_rows(options.protect_latest, &options.dont_protect);
@@ -144,7 +135,7 @@ impl DataStore {
                     kind = "gc",
                     id = self.gc_id,
                     %options.target,
-                    initial_num_rows = re_format::format_number(initial_num_rows as _),
+                    initial_num_rows = re_format::format_uint(initial_num_rows),
                     initial_num_bytes = re_format::format_bytes(initial_num_bytes),
                     target_num_bytes = re_format::format_bytes(target_num_bytes),
                     drop_at_least_num_bytes = re_format::format_bytes(num_bytes_to_drop),
@@ -158,7 +149,7 @@ impl DataStore {
                     kind = "gc",
                     id = self.gc_id,
                     %options.target,
-                    initial_num_rows = re_format::format_number(initial_num_rows as _),
+                    initial_num_rows = re_format::format_uint(initial_num_rows),
                     initial_num_bytes = re_format::format_bytes(initial_num_bytes),
                     "starting GC"
                 );
@@ -172,20 +163,20 @@ impl DataStore {
         }
 
         #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)]
         self.sanity_check().unwrap();
 
         // NOTE: only temporal data and row metadata get purged!
         let stats_after = DataStoreStats::from_store(self);
-        let (new_num_rows, new_num_bytes) =
-            stats_after.total_rows_and_bytes_with_timeless(options.gc_timeless);
+        let (new_num_rows, new_num_bytes) = stats_after.total_rows_and_bytes();
 
         re_log::trace!(
             kind = "gc",
             id = self.gc_id,
             %options.target,
-            initial_num_rows = re_format::format_number(initial_num_rows as _),
+            initial_num_rows = re_format::format_uint(initial_num_rows),
             initial_num_bytes = re_format::format_bytes(initial_num_bytes),
-            new_num_rows = re_format::format_number(new_num_rows as _),
+            new_num_rows = re_format::format_uint(new_num_rows),
             new_num_bytes = re_format::format_bytes(new_num_bytes),
             "GC done"
         );
@@ -242,11 +233,8 @@ impl DataStore {
         let mut batch_is_protected = false;
 
         let Self {
-            cluster_key,
             metadata_registry,
-            cluster_cell_cache,
             tables,
-            timeless_tables,
             ..
         } = self;
 
@@ -265,9 +253,6 @@ impl DataStore {
             let dropped = Self::drop_batch(
                 options,
                 tables,
-                timeless_tables,
-                cluster_cell_cache,
-                *cluster_key,
                 &mut num_bytes_to_drop,
                 &batch,
                 batch_is_protected,
@@ -309,9 +294,6 @@ impl DataStore {
             let dropped = Self::drop_batch(
                 options,
                 tables,
-                timeless_tables,
-                cluster_cell_cache,
-                *cluster_key,
                 &mut num_bytes_to_drop,
                 &batch,
                 batch_is_protected,
@@ -354,17 +336,12 @@ impl DataStore {
     fn drop_batch(
         options: &GarbageCollectionOptions,
         tables: &mut BTreeMap<(EntityPathHash, Timeline), IndexedTable>,
-        timeless_tables: &mut IntMap<EntityPathHash, PersistentIndexedTable>,
-        cluster_cell_cache: &ClusterCellCache,
-        cluster_key: ComponentName,
         num_bytes_to_drop: &mut f64,
         batch: &[(TimePoint, (EntityPathHash, RowId))],
         batch_is_protected: bool,
     ) -> Vec<StoreDiff> {
         let &GarbageCollectionOptions {
-            gc_timeless,
-            enable_batching,
-            ..
+            enable_batching, ..
         } = options;
 
         let mut diffs = Vec::new();
@@ -389,8 +366,7 @@ impl DataStore {
             // NOTE: We _must_  go through all tables no matter what, since the batch might contain
             // any number of distinct entities.
             for ((entity_path_hash, _), table) in &mut *tables {
-                let (removed, num_bytes_removed) =
-                    table.try_drop_bucket(cluster_cell_cache, cluster_key, max_row_id);
+                let (removed, num_bytes_removed) = table.try_drop_bucket(max_row_id);
 
                 *num_bytes_to_drop -= num_bytes_removed as f64;
 
@@ -423,26 +399,7 @@ impl DataStore {
             // find all tables that could possibly contain this `RowId`
             for (&timeline, &time) in timepoint {
                 if let Some(table) = tables.get_mut(&(*entity_path_hash, timeline)) {
-                    let (removed, num_bytes_removed) =
-                        table.try_drop_row(cluster_cell_cache, *row_id, time.as_i64());
-                    if let Some(inner) = diff.as_mut() {
-                        if let Some(removed) = removed {
-                            inner.times.extend(removed.times);
-                        }
-                    } else {
-                        diff = removed;
-                    }
-                    *num_bytes_to_drop -= num_bytes_removed as f64;
-                }
-            }
-
-            // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
-            // first and then remove them in one pass.
-            if timepoint.is_timeless() && gc_timeless {
-                for table in timeless_tables.values_mut() {
-                    // let deleted_comps = deleted.timeless.entry(ent_path.clone()_hash).or_default();
-                    let (removed, num_bytes_removed) =
-                        table.try_drop_row(cluster_cell_cache, *row_id);
+                    let (removed, num_bytes_removed) = table.try_drop_row(*row_id, time);
                     if let Some(inner) = diff.as_mut() {
                         if let Some(removed) = removed {
                             inner.times.extend(removed.times);
@@ -494,7 +451,6 @@ impl DataStore {
             let mut components_to_find: HashMap<ComponentName, usize> = table
                 .all_components
                 .iter()
-                .filter(|c| **c != table.cluster_key)
                 .filter(|c| !dont_protect.contains(*c))
                 .map(|c| (*c, target_count))
                 .collect();
@@ -526,42 +482,6 @@ impl DataStore {
             }
         }
 
-        // Find all protected rows in timeless tables
-        for table in self.timeless_tables.values() {
-            let cluster_key = table.cluster_key;
-            let table = table.inner.read();
-            let mut components_to_find: HashMap<ComponentName, usize> = table
-                .columns
-                .keys()
-                .filter(|c| **c != cluster_key)
-                .filter(|c| !dont_protect.contains(*c))
-                .map(|c| (*c, target_count))
-                .collect();
-
-            for (component, count) in &mut components_to_find {
-                if *count == 0 {
-                    continue;
-                }
-                // TODO(jleibs): If the entire column for a component is empty, we should
-                // make sure the column is dropped so we don't have to iterate over a
-                // bunch of Nones.
-                if let Some(column) = table.columns.get(component) {
-                    for row_id in column
-                        .iter()
-                        .enumerate()
-                        .rev()
-                        .filter_map(|(row_index, cell)| {
-                            cell.as_ref().and_then(|_| table.col_row_id.get(row_index))
-                        })
-                        .take(*count)
-                    {
-                        *count -= 1;
-                        protected_rows.insert(*row_id);
-                    }
-                }
-            }
-        }
-
         protected_rows
     }
 
@@ -572,56 +492,15 @@ impl DataStore {
 
         let mut diffs: BTreeMap<RowId, StoreDiff> = BTreeMap::default();
 
-        // Drop any empty timeless tables
-        self.timeless_tables.retain(|_, table| {
-            let entity_path = &table.ent_path;
-            let mut table = table.inner.write();
-
-            // If any column is non-empty, we need to keep this table…
-            for num in &table.col_num_instances {
-                if num.get() != 0 {
-                    return true;
-                }
-            }
-
-            // …otherwise we can drop it.
-
-            let entity_path = entity_path.clone();
-
-            for i in 0..table.col_row_id.len() {
-                let row_id = table.col_row_id[i];
-
-                let mut diff = StoreDiff::deletion(row_id, entity_path.clone());
-
-                for column in &mut table.columns.values_mut() {
-                    let cell = column[i].take();
-                    if let Some(cell) = cell {
-                        diff.insert(self.cluster_key, &self.cluster_cell_cache, cell);
-                    }
-                }
-
-                let previous_value = diffs.insert(row_id, diff);
-                // Reminder: this is a timeless table, therefore this `RowId` and the data associated
-                // with it cannot exist anywhere else.
-                debug_assert!(previous_value.is_none());
-            }
-
-            false
-        });
-
-        // Drop any empty temporal tables that aren't backed by a timeless table
-        self.tables.retain(|(entity, _), table| {
-            // If the timeless table still exists, this table might be storing empty values
-            // that hide the timeless values, so keep it around.
-            if self.timeless_tables.contains_key(entity) {
-                return true;
-            }
-
+        self.tables.retain(|_, table| {
             // If any bucket has a non-empty component in any column, we keep it…
             for bucket in table.buckets.values() {
                 let inner = bucket.inner.read();
-                for num in &inner.col_num_instances {
-                    if num.get() != 0 {
+                for column in inner.columns.values() {
+                    if column
+                        .iter()
+                        .any(|cell| cell.as_ref().map_or(false, |cell| cell.num_instances() > 0))
+                    {
                         return true;
                     }
                 }
@@ -629,7 +508,7 @@ impl DataStore {
 
             // …otherwise we can drop it.
 
-            let entity_path = table.ent_path.clone();
+            let entity_path = table.entity_path.clone();
 
             for bucket in table.buckets.values() {
                 let mut inner = bucket.inner.write();
@@ -642,12 +521,13 @@ impl DataStore {
                         .entry(row_id)
                         .or_insert_with(|| StoreDiff::deletion(row_id, entity_path.clone()));
 
-                    diff.times.push((bucket.timeline, time.into()));
+                    diff.times
+                        .push((bucket.timeline, TimeInt::new_temporal(time)));
 
                     for column in &mut inner.columns.values_mut() {
                         let cell = column[i].take();
                         if let Some(cell) = cell {
-                            diff.insert(self.cluster_key, &self.cluster_cell_cache, cell);
+                            diff.insert(cell);
                         }
                     }
                 }
@@ -662,15 +542,10 @@ impl DataStore {
 
 impl IndexedTable {
     /// Try to drop an entire bucket at once if it doesn't contain any `RowId` greater than `max_row_id`.
-    fn try_drop_bucket(
-        &mut self,
-        cluster_cache: &ClusterCellCache,
-        cluster_key: ComponentName,
-        max_row_id: RowId,
-    ) -> (Vec<StoreDiff>, u64) {
+    fn try_drop_bucket(&mut self, max_row_id: RowId) -> (Vec<StoreDiff>, u64) {
         re_tracing::profile_function!();
 
-        let ent_path = self.ent_path.clone();
+        let entity_path = self.entity_path.clone();
         let timeline = self.timeline;
 
         let mut diffs: Vec<StoreDiff> = Vec::new();
@@ -699,24 +574,14 @@ impl IndexedTable {
             dropped_bucket_times.insert(*bucket_time);
 
             while let Some(row_id) = col_row_id.pop_front() {
-                let mut diff = StoreDiff::deletion(row_id, ent_path.clone());
+                let mut diff = StoreDiff::deletion(row_id, entity_path.clone());
 
                 if let Some(time) = col_time.pop_front() {
-                    diff.times.push((timeline, time.into()));
+                    diff.times.push((timeline, TimeInt::new_temporal(time)));
                 }
 
                 for (component_name, column) in &mut columns {
                     if let Some(cell) = column.pop_front().flatten() {
-                        if cell.component_name() == cluster_key {
-                            if let Some(cached_cell) = cluster_cache.get(&cell.num_instances()) {
-                                if std::ptr::eq(cell.as_ptr(), cached_cell.as_ptr()) {
-                                    // We don't fire events when inserting autogenerated cluster cells, and
-                                    // therefore must not fire when removing them either.
-                                    continue;
-                                }
-                            }
-                        }
-
                         diff.cells.insert(*component_name, cell);
                     }
                 }
@@ -743,33 +608,20 @@ impl IndexedTable {
     /// specified `time`.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(
-        &mut self,
-        cluster_cache: &ClusterCellCache,
-        row_id: RowId,
-        time: i64,
-    ) -> (Option<StoreDiff>, u64) {
+    fn try_drop_row(&mut self, row_id: RowId, time: TimeInt) -> (Option<StoreDiff>, u64) {
         re_tracing::profile_function!();
 
-        let ent_path = self.ent_path.clone();
+        let entity_path = self.entity_path.clone();
         let timeline = self.timeline;
-        let cluster_key = self.cluster_key;
 
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
-        let (bucket_key, bucket) = self.find_bucket_mut(time.into());
+        let (bucket_key, bucket) = self.find_bucket_mut(time);
         let bucket_num_bytes = bucket.total_size_bytes();
 
         let (diff, mut dropped_num_bytes) = {
             let inner = &mut *bucket.inner.write();
-            inner.try_drop_row(
-                cluster_cache,
-                cluster_key,
-                row_id,
-                timeline,
-                &ent_path,
-                time,
-            )
+            inner.try_drop_row(row_id, timeline, &entity_path, time)
         };
 
         // NOTE: We always need to keep at least one bucket alive, otherwise we have
@@ -801,12 +653,10 @@ impl IndexedBucketInner {
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
     fn try_drop_row(
         &mut self,
-        cluster_cache: &ClusterCellCache,
-        cluster_key: ComponentName,
         row_id: RowId,
         timeline: Timeline,
-        ent_path: &EntityPath,
-        time: i64,
+        entity_path: &EntityPath,
+        time: TimeInt,
     ) -> (Option<StoreDiff>, u64) {
         self.sort();
 
@@ -817,7 +667,6 @@ impl IndexedBucketInner {
             col_insert_id,
             col_row_id,
             max_row_id,
-            col_num_instances,
             columns,
             size_bytes,
         } = self;
@@ -825,8 +674,8 @@ impl IndexedBucketInner {
         let mut diff: Option<StoreDiff> = None;
         let mut dropped_num_bytes = 0u64;
 
-        let mut row_index = col_time.partition_point(|&time2| time2 < time);
-        while col_time.get(row_index) == Some(&time) {
+        let mut row_index = col_time.partition_point(|&time2| time2 < time.as_i64());
+        while col_time.get(row_index) == Some(&time.as_i64()) {
             if col_row_id[row_index] != row_id {
                 row_index += 1;
                 continue;
@@ -835,18 +684,18 @@ impl IndexedBucketInner {
             // Update the time_range min/max:
             if col_time.len() == 1 {
                 // We removed the last row
-                *time_range = TimeRange::EMPTY;
+                *time_range = ResolvedTimeRange::EMPTY;
             } else {
                 *is_sorted = row_index == 0 || row_index.saturating_add(1) == col_row_id.len();
 
                 // We have at least two rows, so we can safely [index] here:
                 if row_index == 0 {
                     // We removed the first row, so the second row holds the new min
-                    time_range.min = col_time[1].into();
+                    time_range.set_min(col_time[1]);
                 }
                 if row_index + 1 == col_time.len() {
                     // We removed the last row, so the penultimate row holds the new max
-                    time_range.max = col_time[row_index - 1].into();
+                    time_range.set_max(col_time[row_index - 1]);
                 }
             }
 
@@ -869,11 +718,6 @@ impl IndexedBucketInner {
                 }
             }
 
-            // col_num_instances
-            if let Some(num_instances) = col_num_instances.swap_remove(row_index) {
-                dropped_num_bytes += num_instances.total_size_bytes();
-            }
-
             // each data column
             for column in columns.values_mut() {
                 let cell = column.0.swap_remove(row_index).flatten();
@@ -884,11 +728,11 @@ impl IndexedBucketInner {
 
                 if let Some(cell) = cell {
                     if let Some(inner) = diff.as_mut() {
-                        inner.insert(cluster_key, cluster_cache, cell);
+                        inner.insert(cell);
                     } else {
-                        let mut d = StoreDiff::deletion(removed_row_id, ent_path.clone());
+                        let mut d = StoreDiff::deletion(removed_row_id, entity_path.clone());
                         d.at_timestamp(timeline, time);
-                        d.insert(cluster_key, cluster_cache, cell);
+                        d.insert(cell);
                         diff = Some(d);
                     }
                 }
@@ -911,103 +755,10 @@ impl IndexedBucketInner {
     }
 }
 
-impl PersistentIndexedTable {
-    /// Tries to drop the given `row_id` from the table.
-    ///
-    /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(
-        &mut self,
-        cluster_cache: &ClusterCellCache,
-        row_id: RowId,
-    ) -> (Option<StoreDiff>, u64) {
-        re_tracing::profile_function!();
-
-        let mut dropped_num_bytes = 0u64;
-
-        let PersistentIndexedTable {
-            ent_path,
-            cluster_key: _,
-            inner,
-        } = self;
-
-        let inner = &mut *inner.write();
-        inner.sort();
-
-        let PersistentIndexedTableInner {
-            col_insert_id,
-            col_row_id,
-            col_num_instances,
-            columns,
-            is_sorted,
-        } = inner;
-
-        let mut diff: Option<StoreDiff> = None;
-
-        if let Ok(row_index) = col_row_id.binary_search(&row_id) {
-            *is_sorted = row_index == 0 || row_index.saturating_add(1) == col_row_id.len();
-
-            // col_row_id
-            let Some(removed_row_id) = col_row_id.swap_remove(row_index) else {
-                return (None, 0);
-            };
-            debug_assert_eq!(row_id, removed_row_id);
-            dropped_num_bytes += removed_row_id.total_size_bytes();
-
-            // col_insert_id (if present)
-            if !col_insert_id.is_empty() {
-                if let Some(insert_id) = col_insert_id.swap_remove(row_index) {
-                    dropped_num_bytes += insert_id.total_size_bytes();
-                }
-            }
-
-            // col_num_instances
-            if let Some(num_instances) = col_num_instances.swap_remove(row_index) {
-                dropped_num_bytes += num_instances.total_size_bytes();
-            }
-
-            // each data column
-            for column in columns.values_mut() {
-                let cell = column.0.swap_remove(row_index).flatten();
-
-                // TODO(#1809): once datatype deduplication is in, we should really not count
-                // autogenerated keys as part of the memory stats (same on write path).
-                dropped_num_bytes += cell.total_size_bytes();
-
-                if let Some(cell) = cell {
-                    if let Some(inner) = diff.as_mut() {
-                        inner.insert(self.cluster_key, cluster_cache, cell);
-                    } else {
-                        let mut d = StoreDiff::deletion(removed_row_id, ent_path.clone());
-                        d.insert(self.cluster_key, cluster_cache, cell);
-                        diff = Some(d);
-                    }
-                }
-            }
-        }
-
-        (diff, dropped_num_bytes)
-    }
-}
-
 // ---
 
 impl StoreDiff {
-    fn insert(
-        &mut self,
-        cluster_key: ComponentName,
-        cluster_cache: &ClusterCellCache,
-        cell: DataCell,
-    ) {
-        if cell.component_name() == cluster_key {
-            if let Some(cached_cell) = cluster_cache.get(&cell.num_instances()) {
-                if std::ptr::eq(cell.as_ptr(), cached_cell.as_ptr()) {
-                    // We don't fire events when inserting of autogenerated cluster cells, and
-                    // therefore must not fire when removing them either.
-                    return;
-                }
-            }
-        }
-
+    fn insert(&mut self, cell: DataCell) {
         self.cells.insert(cell.component_name(), cell);
     }
 }

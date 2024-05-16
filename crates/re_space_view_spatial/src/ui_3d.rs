@@ -12,9 +12,11 @@ use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
     ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
-use re_types::{components::ViewCoordinates, view_coordinates::SignedAxis3};
+use re_types::{
+    blueprint::archetypes::Background, components::ViewCoordinates, view_coordinates::SignedAxis3,
+};
 use re_viewer_context::{
-    gpu_bridge, Item, SelectedSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
+    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
     ViewQuery, ViewerContext,
 };
 
@@ -441,12 +443,12 @@ pub fn view_3d(
 
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
+    // TODO(#5607): what should happen if the promise is still pending?
     let scene_view_coordinates = ctx
-        .entity_db
-        .store()
+        .recording()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538
-        .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
+        .latest_at_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
         .map(|(_, c)| c.value);
 
     let (rect, mut response) =
@@ -508,7 +510,7 @@ pub fn view_3d(
         },
         viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
-        pixels_from_point: ui.ctx().pixels_per_point(),
+        pixels_per_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),
 
         outline_config: query
@@ -550,7 +552,7 @@ pub fn view_3d(
     // Track focused entity if any.
     if let Some(focused_item) = ctx.focused_item {
         let focused_entity = match focused_item {
-            Item::StoreId(_) | Item::Container(_) => None,
+            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::Container(_) => None,
 
             Item::SpaceView(space_view_id) => {
                 if space_view_id == &query.space_view_id {
@@ -612,7 +614,7 @@ pub fn view_3d(
             .ok();
     }
 
-    for selected_context in ctx.selection_state().selected_space_context() {
+    for selected_context in ctx.selection_state().selection_space_contexts() {
         show_projections_from_2d_space(
             &mut line_builder,
             space_cameras,
@@ -663,14 +665,22 @@ pub fn view_3d(
     // Commit ui induced lines.
     view_builder.queue_draw(line_builder.into_draw_data()?);
 
-    // Composite viewbuilder into egui.
-    view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
-        ctx.render_ctx,
-    ));
+    let background = re_space_view::view_property::<Background>(ctx, query.space_view_id)
+        .unwrap_or(Background::DEFAULT_3D);
+    let (background_drawable, clear_color) = crate::configure_background(
+        ctx,
+        background.kind,
+        background.color.unwrap_or(Background::DEFAULT_COLOR_3D),
+    );
+
+    if let Some(background_drawable) = background_drawable {
+        view_builder.queue_draw(background_drawable);
+    }
+
     ui.painter().add(gpu_bridge::new_renderer_callback(
         view_builder,
         rect,
-        re_renderer::Rgba::TRANSPARENT,
+        clear_color,
     ));
 
     // Add egui driven labels on top of re_renderer content.
@@ -784,11 +794,11 @@ fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
-    space_context: &SelectedSpaceContext,
+    space_context: &ItemSpaceContext,
     color: egui::Color32,
 ) {
     match space_context {
-        SelectedSpaceContext::TwoD { space_2d, pos } => {
+        ItemSpaceContext::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 if let Some(pinhole) = cam.pinhole.as_ref() {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
@@ -824,7 +834,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        SelectedSpaceContext::ThreeD {
+        ItemSpaceContext::ThreeD {
             pos: Some(pos),
             tracked_entity: Some(tracked_entity),
             ..
@@ -851,7 +861,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        SelectedSpaceContext::ThreeD { .. } => {}
+        ItemSpaceContext::ThreeD { .. } => {}
     }
 }
 

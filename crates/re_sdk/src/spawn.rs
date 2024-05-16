@@ -18,6 +18,10 @@ pub struct SpawnOptions {
     /// Defaults to `9876`.
     pub port: u16,
 
+    /// If `true`, the call to [`spawn`] will block until the Rerun Viewer
+    /// has successfully bound to the port.
+    pub wait_for_bind: bool,
+
     /// An upper limit on how much memory the Rerun Viewer should use.
     /// When this limit is reached, Rerun will drop the oldest data.
     /// Example: `16GB` or `50%` (of system total).
@@ -40,6 +44,9 @@ pub struct SpawnOptions {
 
     /// Extra arguments that will be passed as-is to the Rerun Viewer process.
     pub extra_args: Vec<String>,
+
+    /// Hide the welcome screen.
+    pub hide_welcome_screen: bool,
 }
 
 // NOTE: No need for .exe extension on windows.
@@ -49,10 +56,12 @@ impl Default for SpawnOptions {
     fn default() -> Self {
         Self {
             port: crate::default_server_addr().port(),
+            wait_for_bind: false,
             memory_limit: "75%".into(),
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
             extra_args: Vec::new(),
+            hide_welcome_screen: false,
         }
     }
 }
@@ -127,7 +136,11 @@ impl std::fmt::Debug for SpawnError {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect`] or use [`crate::RecordingStream::spawn`] directly.
+#[allow(unsafe_code)]
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
+    #[cfg(target_family = "unix")]
+    use std::os::unix::process::CommandExt as _;
+
     use std::{net::TcpStream, process::Command, time::Duration};
 
     // NOTE: These are indented on purpose, it just looks better and reads easier.
@@ -239,17 +252,51 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         }
     }
 
-    let rerun_bin = Command::new(&executable_path)
-        // By default stdin is inherited which may cause issues in some debugger setups.
-        // Also, there's really no reason to forward stdin to the child process in this case.
-        // `stdout`/`stderr` we leave at default inheritance because it can be useful to see the Viewer's output.
+    let mut rerun_bin = Command::new(&executable_path);
+
+    // By default stdin is inherited which may cause issues in some debugger setups.
+    // Also, there's really no reason to forward stdin to the child process in this case.
+    // `stdout`/`stderr` we leave at default inheritance because it can be useful to see the Viewer's output.
+    rerun_bin
         .stdin(std::process::Stdio::null())
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
-        .arg("--skip-welcome-screen")
-        .args(opts.extra_args.clone())
-        .spawn()
-        .map_err(map_err)?;
+        .arg("--expect-data-soon");
+
+    if opts.hide_welcome_screen {
+        rerun_bin.arg("--hide-welcome-screen");
+    }
+
+    rerun_bin.args(opts.extra_args.clone());
+
+    // SAFETY: This code is only run in the child fork, we are not modifying any memory
+    // that is shared with the parent process.
+    #[cfg(target_family = "unix")]
+    unsafe {
+        rerun_bin.pre_exec(|| {
+            // On unix systems, we want to make sure that the child process becomes its
+            // own session leader, so that it doesn't die if the parent process crashes
+            // or is killed.
+            libc::setsid();
+
+            Ok(())
+        })
+    };
+    rerun_bin.spawn().map_err(map_err)?;
+
+    if opts.wait_for_bind {
+        // Give the newly spawned Rerun Viewer some time to bind.
+        //
+        // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
+        // at all, the connection will fail immediately, irrelevant of the timeout configuration.
+        // For that reason we use an extra loop.
+        for _ in 0..5 {
+            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
 
     // Simply forget about the child process, we want it to outlive the parent process if needed.
     _ = rerun_bin;

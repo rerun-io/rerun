@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -37,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_view_coordinates").spawn()?;
 ///
-///     rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
+///     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 ///     rec.log(
 ///         "world/xyz",
 ///         &rerun::Arrows3D::from_vectors(
@@ -61,6 +62,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct ViewCoordinates {
+    /// The directions of the [x, y, z] axes.
     pub xyz: crate::components::ViewCoordinates,
 }
 
@@ -82,20 +84,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ViewCoordinatesIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ViewCoordinates".into(),
             "rerun.components.ViewCoordinatesIndicator".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl ViewCoordinates {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`ViewCoordinates`] [`::re_types_core::Archetype`]
@@ -174,14 +176,11 @@ impl ::re_types_core::AsComponents for ViewCoordinates {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl ViewCoordinates {
+    /// Create a new `ViewCoordinates`.
+    #[inline]
     pub fn new(xyz: impl Into<crate::components::ViewCoordinates>) -> Self {
         Self { xyz: xyz.into() }
     }

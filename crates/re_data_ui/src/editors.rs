@@ -1,16 +1,16 @@
 // TODO(jleibs): Turn this into a trait
 
 use egui::NumExt as _;
-use re_data_store::{DataStore, LatestAtQuery};
-use re_log_types::EntityPath;
-use re_query::ComponentWithInstances;
+use re_data_store::LatestAtQuery;
+use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
+use re_log_types::{EntityPath, Instance};
 use re_types::{
     components::{
         Color, MarkerShape, MarkerSize, Name, Radius, ScalarScattering, StrokeWidth, Text,
     },
     Component, Loggable,
 };
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 // ----
 
@@ -18,21 +18,20 @@ use re_viewer_context::{UiVerbosity, ViewerContext};
 fn edit_color_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_color = component
-        .lookup::<Color>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_color(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<Color>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_color(ctx, query, db, entity_path));
 
-    let [r, g, b, a] = current_color.to_array();
-    let current_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+    let current_color = current_color.into();
     let mut edit_color = current_color;
 
     egui::color_picker::color_edit_button_srgba(
@@ -42,10 +41,7 @@ fn edit_color_ui(
     );
 
     if edit_color != current_color {
-        let [r, g, b, a] = edit_color.to_array();
-        let new_color = Color::from_unmultiplied_rgba(r, g, b, a);
-
-        ctx.save_blueprint_component(override_path, &new_color);
+        ctx.save_blueprint_component(override_path, &Color::from(edit_color));
     }
 }
 
@@ -53,7 +49,7 @@ fn edit_color_ui(
 fn default_color(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> Color {
     Color::from_rgb(255, 255, 255)
@@ -65,18 +61,18 @@ fn default_color(
 fn edit_text_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_text = component
-        .lookup::<Text>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_text(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<Text>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_text(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
     let mut edit_text = current_text.clone();
@@ -94,7 +90,7 @@ fn edit_text_ui(
 fn default_text(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     entity_path: &EntityPath,
 ) -> Text {
     Text::from(entity_path.to_string())
@@ -105,18 +101,18 @@ fn default_text(
 fn edit_name_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_text = component
-        .lookup::<Name>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_name(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<Name>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_name(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
     let mut edit_text = current_text.clone();
@@ -134,7 +130,7 @@ fn edit_name_ui(
 fn default_name(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     entity_path: &EntityPath,
 ) -> Name {
     Name::from(entity_path.to_string())
@@ -146,18 +142,18 @@ fn default_name(
 fn edit_scatter_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_scatter = component
-        .lookup::<ScalarScattering>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_scatter(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<ScalarScattering>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_scatter(ctx, query, db, entity_path));
 
     let current_scatter = current_scatter.0;
     let mut edit_scatter = current_scatter;
@@ -183,7 +179,7 @@ fn edit_scatter_ui(
 fn default_scatter(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> ScalarScattering {
     ScalarScattering::from(false)
@@ -195,18 +191,18 @@ fn default_scatter(
 fn edit_radius_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_radius = component
-        .lookup::<Radius>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_radius(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<Radius>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_radius(ctx, query, db, entity_path));
 
     let current_radius = current_radius.0;
     let mut edit_radius = current_radius;
@@ -230,7 +226,7 @@ fn edit_radius_ui(
 fn default_radius(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> Radius {
     Radius::from(1.0)
@@ -242,44 +238,66 @@ fn default_radius(
 fn edit_marker_shape_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_marker = component
-        .lookup::<MarkerShape>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_marker_shape(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<MarkerShape>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_marker_shape(ctx, query, db, entity_path));
 
     let mut edit_marker = current_marker;
 
     let marker_text = edit_marker.to_string();
 
+    let item_width = 100.0;
+
     egui::ComboBox::from_id_source("marker_shape")
         .selected_text(marker_text) // TODO(emilk): Show marker shape in the selected text
-        .width(100.0)
+        .width(
+            ui.available_width()
+                .at_most(item_width + ui.spacing().menu_margin.sum().x),
+        )
         .height(320.0)
         .show_ui(ui, |ui| {
-            // Hack needed for ListItem to click its highlight bg rect correctly:
-            ui.set_clip_rect(
-                ui.clip_rect()
-                    .with_max_x(ui.max_rect().max.x + ui.spacing().menu_margin.right),
-            );
+            // workaround to force `ui.max_rect()` to reflect the content size
+            ui.set_width(item_width);
 
-            for marker in MarkerShape::ALL {
-                let list_item = re_ui::list_item::ListItem::new(ctx.re_ui, marker.to_string())
-                    .with_icon_fn(|_re_ui, ui, rect, visuals| {
-                        paint_marker(ui, marker.into(), rect, visuals.text_color());
-                    })
-                    .selected(edit_marker == marker);
-                if list_item.show(ui).clicked() {
-                    edit_marker = marker;
+            let background_x_range = ui
+                .spacing()
+                .menu_margin
+                .expand_rect(ui.max_rect())
+                .x_range();
+
+            let list_ui = |ui: &mut egui::Ui| {
+                for marker in MarkerShape::ALL {
+                    let response = ctx
+                        .re_ui
+                        .list_item2()
+                        .selected(edit_marker == marker)
+                        .show_flat(
+                            ui,
+                            re_ui::list_item2::LabelContent::new(marker.to_string())
+                                .min_desired_width(item_width)
+                                .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                                    paint_marker(ui, marker.into(), rect, visuals.text_color());
+                                }),
+                        );
+
+                    if response.clicked() {
+                        edit_marker = marker;
+                    }
                 }
-            }
+            };
+
+            re_ui::full_span::full_span_scope(ui, background_x_range, |ui| {
+                re_ui::list_item2::list_item_scope(ui, "marker_shape", list_ui);
+            });
         });
 
     if edit_marker != current_marker {
@@ -291,7 +309,7 @@ fn edit_marker_shape_ui(
 fn default_marker_shape(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> MarkerShape {
     MarkerShape::default()
@@ -325,18 +343,18 @@ fn paint_marker(
 fn edit_stroke_width_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_stroke_width = component
-        .lookup::<StrokeWidth>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_stroke_width(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<StrokeWidth>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_stroke_width(ctx, query, db, entity_path));
 
     let current_stroke_width = current_stroke_width.0;
     let mut edit_stroke_width = current_stroke_width;
@@ -360,7 +378,7 @@ fn edit_stroke_width_ui(
 fn default_stroke_width(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> StrokeWidth {
     StrokeWidth::from(1.0)
@@ -372,18 +390,18 @@ fn default_stroke_width(
 fn edit_marker_size_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &ComponentWithInstances,
-    instance_key: &re_types::components::InstanceKey,
+    component: &LatestAtComponentResults,
+    instance: &Instance,
 ) {
     let current_marker_size = component
-        .lookup::<MarkerSize>(instance_key)
-        .ok()
-        .unwrap_or_else(|| default_marker_size(ctx, query, store, entity_path));
+        // TODO(#5607): what should happen if the promise is still pending?
+        .instance::<MarkerSize>(db.resolver(), instance.get() as _)
+        .unwrap_or_else(|| default_marker_size(ctx, query, db, entity_path));
 
     let current_marker_size = current_marker_size.0;
     let mut edit_marker_size = current_marker_size;
@@ -407,7 +425,7 @@ fn edit_marker_size_ui(
 fn default_marker_size(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> MarkerSize {
     MarkerSize::from(1.0)
@@ -415,27 +433,27 @@ fn default_marker_size(
 
 // ----
 
-fn register_editor<'a, C: Component + Loggable + 'static>(
+fn register_editor<'a, C>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
-    default: fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> C,
+    default: fn(&ViewerContext<'_>, &LatestAtQuery, &EntityDb, &EntityPath) -> C,
     edit: fn(
         &ViewerContext<'_>,
         &mut egui::Ui,
-        UiVerbosity,
+        UiLayout,
         &LatestAtQuery,
-        &DataStore,
+        &EntityDb,
         &EntityPath,
         &EntityPath,
-        &ComponentWithInstances,
-        &re_types::components::InstanceKey,
+        &LatestAtComponentResults,
+        &Instance,
     ),
 ) where
-    C: Into<::std::borrow::Cow<'a, C>>,
+    C: Component + Loggable + 'static + Into<::std::borrow::Cow<'a, C>>,
 {
     registry.add_editor(
         C::name(),
-        Box::new(move |ctx, query, store, entity_path| {
-            let c = default(ctx, query, store, entity_path);
+        Box::new(move |ctx, query, db, entity_path| {
+            let c = default(ctx, query, db, entity_path);
             [c].into()
         }),
         Box::new(edit),

@@ -1,3 +1,6 @@
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
 thread_local! {
@@ -48,7 +51,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, DataRow, RowId, StoreId, StoreKind};
+use re_log_types::{entity_path, example_components::MyPoint, DataRow, RowId, StoreId, StoreKind};
 
 fn main() {
     log_messages();
@@ -56,7 +59,6 @@ fn main() {
 
 fn log_messages() {
     use re_log_types::{build_frame_nr, LogMsg, TimeInt, TimePoint, Timeline};
-    use re_types::datagen::build_some_positions2d;
 
     // Note: we use Box in this function so that we also count the "static"
     // part of all the data, i.e. its `std::mem::size_of`.
@@ -64,8 +66,13 @@ fn log_messages() {
     fn encode_log_msg(log_msg: &LogMsg) -> Vec<u8> {
         let mut bytes = vec![];
         let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-        re_log_encoding::encoder::encode(encoding_options, std::iter::once(log_msg), &mut bytes)
-            .unwrap();
+        re_log_encoding::encoder::encode(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            std::iter::once(log_msg),
+            &mut bytes,
+        )
+        .unwrap();
         bytes
     }
 
@@ -95,13 +102,13 @@ fn log_messages() {
     let store_id = StoreId::random(StoreKind::Recording);
     let timeline = Timeline::new_sequence("frame_nr");
     let mut time_point = TimePoint::default();
-    time_point.insert(timeline, TimeInt::from(0));
+    time_point.insert(timeline, TimeInt::ZERO);
 
     {
         let used_bytes_start = live_bytes();
         let entity_path = entity_path!("points");
         let used_bytes = live_bytes() - used_bytes_start;
-        println!("Short EntityPath uses {used_bytes} bytes in RAM");
+        println!("Short entity path uses {used_bytes} bytes in RAM");
         drop(entity_path);
     }
 
@@ -111,9 +118,8 @@ fn log_messages() {
             DataRow::from_cells1(
                 RowId::new(),
                 entity_path!("points"),
-                [build_frame_nr(0.into())],
-                1,
-                build_some_positions2d(1),
+                [build_frame_nr(TimeInt::ZERO)],
+                MyPoint::from_iter(0..1),
             )
             .unwrap()
             .into_table(),
@@ -138,9 +144,8 @@ fn log_messages() {
             DataRow::from_cells1(
                 RowId::new(),
                 entity_path!("points"),
-                [build_frame_nr(0.into())],
-                NUM_POINTS as _,
-                build_some_positions2d(NUM_POINTS),
+                [build_frame_nr(TimeInt::ZERO)],
+                MyPoint::from_iter(0..NUM_POINTS as u32),
             )
             .unwrap()
             .into_table(),

@@ -1,6 +1,8 @@
 !Cargo.lock
 .DS_Store
+rerun_sdk/rerun_cli/rerun
+rerun_sdk/rerun_cli/rerun.exe
+site/
 target/
 venv/
 wheels/
-site/

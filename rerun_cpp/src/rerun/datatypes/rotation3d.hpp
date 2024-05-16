@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "quaternion.hpp"
 #include "rotation_axis_angle.hpp"
@@ -84,7 +85,7 @@ namespace rerun::datatypes {
       public:
         // Extensions to generated type defined in 'rotation3d_ext.cpp'
 
-        static const Rotation3D IDENTITY;
+        RERUN_SDK_EXPORT static const Rotation3D IDENTITY;
 
         void swap(Rotation3D& other) noexcept {
             std::swap(this->_tag, other._tag);
@@ -163,15 +164,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::Rotation3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::Rotation3D* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const datatypes::Rotation3D* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::Rotation3D` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::Rotation3D* instances, size_t num_instances
         );
     };
 } // namespace rerun

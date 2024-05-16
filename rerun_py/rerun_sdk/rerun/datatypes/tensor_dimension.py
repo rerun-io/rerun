@@ -68,12 +68,10 @@ class TensorDimensionType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field("size", pa.uint64(), nullable=False, metadata={}),
-                    pa.field("name", pa.utf8(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.struct([
+                pa.field("size", pa.uint64(), nullable=False, metadata={}),
+                pa.field("name", pa.utf8(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 
@@ -83,4 +81,6 @@ class TensorDimensionBatch(BaseBatch[TensorDimensionArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_dimension_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of TensorDimension not implemented: We lack codegen for arrow-serialization of general structs"
+        )  # You need to implement native_to_pa_array_override in tensor_dimension_ext.py

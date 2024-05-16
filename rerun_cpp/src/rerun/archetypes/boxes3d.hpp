@@ -65,6 +65,7 @@ namespace rerun::archetypes {
         /// Optional center positions of the boxes.
         std::optional<Collection<rerun::components::Position3D>> centers;
 
+        /// Optional rotations of the boxes.
         std::optional<Collection<rerun::components::Rotation3D>> rotations;
 
         /// Optional colors for the boxes.
@@ -150,6 +151,7 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
+        /// Optional rotations of the boxes.
         Boxes3D with_rotations(Collection<rerun::components::Rotation3D> _rotations) && {
             rotations = std::move(_rotations);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -184,11 +186,6 @@ namespace rerun::archetypes {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return half_sizes.size();
         }
     };
 

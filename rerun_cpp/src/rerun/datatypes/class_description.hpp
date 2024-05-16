@@ -20,7 +20,7 @@ namespace arrow {
 namespace rerun::datatypes {
     /// **Datatype**: The description of a semantic Class.
     ///
-    /// If an entity is annotated with a corresponding `ClassId`, rerun will use
+    /// If an entity is annotated with a corresponding `ClassId`, Rerun will use
     /// the attached `AnnotationInfo` to derive labels and colors.
     ///
     /// Keypoints within an annotation class can similarly be annotated with a
@@ -77,15 +77,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::ClassDescription` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::ClassDescription* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::StructBuilder* builder, const datatypes::ClassDescription* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::ClassDescription` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::ClassDescription* instances, size_t num_instances
         );
     };
 } // namespace rerun

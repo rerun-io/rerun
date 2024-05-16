@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "clock"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["numpy", "rerun-sdk"]
+
+[project.scripts]
+clock = "clock:main"
+
+[tool.rerun-example]
+#skip = false
+extra-args = ["--steps=200"]

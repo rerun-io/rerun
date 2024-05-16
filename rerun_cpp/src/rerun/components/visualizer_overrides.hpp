@@ -46,15 +46,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::components::VisualizerOverrides` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::VisualizerOverrides* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::ListBuilder* builder, const components::VisualizerOverrides* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::components::VisualizerOverrides` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::VisualizerOverrides* instances, size_t num_instances
         );
     };
 } // namespace rerun

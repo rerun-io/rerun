@@ -4,17 +4,12 @@
 #pragma once
 
 #include "../datatypes/vec2d.hpp"
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <array>
 #include <cstdint>
 #include <memory>
-
-namespace arrow {
-    class Array;
-    class DataType;
-    class FixedSizeListBuilder;
-} // namespace arrow
 
 namespace rerun::components {
     /// **Component**: Pixel resolution width & height, e.g. of a camera sensor.
@@ -26,7 +21,7 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'resolution_ext.cpp'
 
-        static const Resolution IDENTITY;
+        RERUN_SDK_EXPORT static const Resolution IDENTITY;
 
         /// Construct resolution from width and height floats.
         Resolution(float width, float height) : resolution{width, height} {}
@@ -60,8 +55,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::Resolution));
 
     /// \private
     template <>
@@ -69,17 +63,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Resolution";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::Resolution* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::Resolution` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Resolution* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Vec2D>::to_arrow(
+                &instances->resolution,
+                num_instances
+            );
+        }
     };
 } // namespace rerun

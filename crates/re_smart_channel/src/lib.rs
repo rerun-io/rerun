@@ -18,20 +18,29 @@ pub use sender::Sender;
 
 /// Identifies in what context this smart channel was created, and who/what is holding its
 /// receiving end.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum SmartChannelSource {
     /// The channel was created in the context of loading a file from disk (could be
     /// `.rrd` files, or `.glb`, `.png`, …).
     File(std::path::PathBuf),
 
     /// The channel was created in the context of loading an `.rrd` file over http.
-    RrdHttpStream { url: String },
+    ///
+    /// The `follow` flag indicates whether the viewer should open the stream in `Following` mode rather than `Playing` mode.
+    RrdHttpStream { url: String, follow: bool },
 
     /// The channel was created in the context of loading an `.rrd` file from a `postMessage`
     /// js event.
     ///
     /// Only applicable to web browser iframes.
+    /// Used for the inline web viewer in a notebook.
     RrdWebEventListener,
+
+    /// The channel was created in the context of a javascript client submitting an RRD directly as bytes.
+    JsChannel {
+        /// The name of the channel reported by the javascript client.
+        channel_name: String,
+    },
 
     /// The channel was created in the context of loading data using a Rerun SDK sharing the same
     /// process.
@@ -59,12 +68,13 @@ impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url } => url.fmt(f),
-            Self::RrdWebEventListener => "Web Event Listener".fmt(f),
+            Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
+            Self::RrdWebEventListener => "Web event listener".fmt(f),
+            Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
             Self::WsClient { ws_server_url } => ws_server_url.fmt(f),
-            Self::TcpServer { port } => write!(f, "TCP Server, port {port}"),
-            Self::Stdin => "Standard Input".fmt(f),
+            Self::TcpServer { port } => write!(f, "TCP server, port {port}"),
+            Self::Stdin => "Standard input".fmt(f),
         }
     }
 }
@@ -73,7 +83,10 @@ impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {
             Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
-            Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
+            Self::RrdHttpStream { .. }
+            | Self::WsClient { .. }
+            | Self::JsChannel { .. }
+            | Self::TcpServer { .. } => true,
         }
     }
 }
@@ -96,12 +109,18 @@ pub enum SmartMessageSource {
     File(std::path::PathBuf),
 
     /// The sender is a background thread fetching data from an HTTP file server.
-    RrdHttpStream { url: String },
+    RrdHttpStream {
+        /// Should include `http(s)://` prefix.
+        url: String,
+    },
 
     /// The sender is a javascript callback triggered by a `postMessage` event.
     ///
     /// Only applicable to web browser iframes.
     RrdWebEventCallback,
+
+    /// The sender is a javascript client submitting an RRD directly as bytes.
+    JsChannelPush,
 
     /// The sender is a Rerun SDK running from another thread in the same process.
     Sdk,
@@ -130,8 +149,9 @@ impl std::fmt::Display for SmartMessageSource {
         f.write_str(&match self {
             SmartMessageSource::Unknown => "unknown".into(),
             SmartMessageSource::File(path) => format!("file://{}", path.to_string_lossy()),
-            SmartMessageSource::RrdHttpStream { url } => format!("http://{url}"),
+            SmartMessageSource::RrdHttpStream { url } => url.clone(),
             SmartMessageSource::RrdWebEventCallback => "web_callback".into(),
+            SmartMessageSource::JsChannelPush => "javascript".into(),
             SmartMessageSource::Sdk => "sdk".into(),
             SmartMessageSource::WsClient { ws_server_url } => ws_server_url.clone(),
             SmartMessageSource::TcpClient { addr } => format!(
@@ -180,15 +200,29 @@ pub(crate) fn smart_channel_with_stats<T: Send>(
 /// The payload of a [`SmartMessage`].
 ///
 /// Either data or an end-of-stream marker.
-#[derive(Debug)]
 pub enum SmartMessagePayload<T: Send> {
     /// A message sent down the channel.
     Msg(T),
+
+    /// When received, flush anything already received and then call the given callback.
+    Flush {
+        on_flush_done: Box<dyn FnOnce() + Send>,
+    },
 
     /// The [`Sender`] has quit.
     ///
     /// `None` indicates the sender left gracefully, an error indicates otherwise.
     Quit(Option<Box<dyn std::error::Error + Send>>),
+}
+
+impl<T: Send> std::fmt::Debug for SmartMessagePayload<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SmartMessagePayload::Msg(_) => f.write_str("Msg(_)"),
+            SmartMessagePayload::Flush { .. } => f.write_str("Flush"),
+            SmartMessagePayload::Quit(_) => f.write_str("Quit"),
+        }
+    }
 }
 
 impl<T: Send + PartialEq> PartialEq for SmartMessagePayload<T> {
@@ -209,18 +243,16 @@ pub struct SmartMessage<T: Send> {
 
 impl<T: Send> SmartMessage<T> {
     pub fn data(&self) -> Option<&T> {
-        use SmartMessagePayload::{Msg, Quit};
         match &self.payload {
-            Msg(msg) => Some(msg),
-            Quit(_) => None,
+            SmartMessagePayload::Msg(msg) => Some(msg),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
     }
 
     pub fn into_data(self) -> Option<T> {
-        use SmartMessagePayload::{Msg, Quit};
         match self.payload {
-            Msg(msg) => Some(msg),
-            Quit(_) => None,
+            SmartMessagePayload::Msg(msg) => Some(msg),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
     }
 }

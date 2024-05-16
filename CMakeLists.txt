@@ -26,6 +26,14 @@ function(rerun_strict_warning_settings target)
         # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
 
+        if(BUILD_SHARED_LIBS)
+            # If we are building as shared libs, we are going to have to disable the C4251
+            # warning, as it would trigger for any datatype derived from a STL class
+            # See also https://github.com/protocolbuffers/protobuf/blob/v26.1/cmake/README.md#notes-on-compiler-warnings
+            # We need also to make it public, otherwise downstream code will be flooded by c4251 warnings
+            target_compile_options(${target} PUBLIC /wd4251)
+        endif()
+
         # CMAKE_COMPILE_WARNING_AS_ERROR is only directly supported starting in CMake `3.24`
         # https://cmake.org/cmake/help/latest/prop_tgt/COMPILE_WARNING_AS_ERROR.html
         if(CMAKE_COMPILE_WARNING_AS_ERROR)
@@ -138,13 +146,25 @@ message(STATUS "Rerun version ${RERUN_VERSION}")
 # Loguru logging library (https://github.com/emilk/loguru):
 set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces
 
-# Loguru, see https://github.com/emilk/loguru/blob/master/loguru_cmake_example/CMakeLists.txt
+# Loguru, see https://github.com/emilk/loguru/blob/4adaa185883e3c04da25913579c451d3c32cfac1/loguru_cmake_example/CMakeLists.txt
 include(FetchContent)
 FetchContent_Declare(LoguruGitRepo
     GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
     GIT_TAG "master"
 )
+
+# Loguru does not support being build with BUILD_SHARED_LIBS=ON on Windows
+# so we always compile it with BUILD_SHARED_LIBS=OFF on Windows
+if(MSVC AND BUILD_SHARED_LIBS)
+    set(BUILD_SHARED_LIBS_RERUN_SDK ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF)
+endif()
+
 FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
+
+if(MSVC AND BUILD_SHARED_LIBS_RERUN_SDK)
+    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_RERUN_SDK})
+endif()
 
 # Set any loguru compile-time flags before calling MakeAvailable()
 # Stacktraces are not yet supported on Windows.
@@ -157,4 +177,37 @@ add_subdirectory(crates/rerun_c) # The Rerun C SDK library, must be included bef
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library.
 add_subdirectory(examples/cpp)
 add_subdirectory(tests/cpp)
-add_subdirectory(docs/code-examples)
+add_subdirectory(docs/snippets)
+
+# ------------------------------------------------------------------------------
+# Setup an 'all_targets' target that depends on all targets in the project.
+#
+# CMake already has an `all` (lowercase!) target as the default,
+# but it does NOT work with Visual Studio and XCode.
+# See https://cmake.org/cmake/help/latest/guide/user-interaction/index.html#selecting-a-target
+
+# Collect all currently added targets in all subdirectories
+#
+# Via: https://stackoverflow.com/a/60232044
+#
+# Parameters:
+# - _result the list containing all found targets
+# - _dir root directory to start looking from
+function(get_all_targets _result _dir)
+    get_property(_subdirs DIRECTORY "${_dir}" PROPERTY SUBDIRECTORIES)
+
+    foreach(_subdir IN LISTS _subdirs)
+        get_all_targets(${_result} "${_subdir}")
+    endforeach()
+
+    get_directory_property(_sub_targets DIRECTORY "${_dir}" BUILDSYSTEM_TARGETS)
+    set(${_result} ${${_result}} ${_sub_targets} PARENT_SCOPE)
+endfunction()
+
+get_all_targets(all_targets ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_custom_target(ALL DEPENDS ${all_targets})
+
+foreach(target IN LISTS all_targets_list)
+    add_dependencies(ALL ${target})
+endforeach()

@@ -1,11 +1,14 @@
 <!--[metadata]
-title = "Single Image 3D Reconstruction using MCC, SAM, and ZoeDepth"
+title = "Single image 3D reconstruction using MCC, SAM, and ZoeDepth"
 source = "https://github.com/rerun-io/MCC"
-tags = ["2D", "3D", "segmentation", "point-cloud", "sam"]
-thumbnail = "https://static.rerun.io/mcc/d244be2806b5abcc0e905a2c262b491b73914658/480w.png"
-thumbnail_dimensions = [480, 274]
+tags = ["2D", "3D", "Segmentation", "Point cloud", "SAM", "Paper walkthrough"]
+thumbnail = "https://static.rerun.io/single-image-3D-reconstruction/c54498053d53148cfa43901f39a084c549df2b72/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
+This example project combines several popular computer vision methods and uses Rerun to visualize the results and how the pieces fit together.
+
+## Visual project walkthrough
 
 By combining MetaAI's [Segment Anything Model (SAM)](https://github.com/facebookresearch/segment-anything) and [Multiview Compressive Coding (MCC)](https://github.com/facebookresearch/MCC) we can get a 3D object from a single image.
 
@@ -32,7 +35,7 @@ MCC encodes the colored points and then creates a reconstruction by sweeping thr
 
 https://vimeo.com/865973880?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1:1
 
-This is a really great example of how a lot of cool solutions are built these days; by stringing together more targeted pre-trained models.The details of the three building blocks can be found in the respective papers:
+This is a really great example of how a lot of cool solutions are built these days; by stringing together more targeted pre-trained models. The details of the three building blocks can be found in the respective papers:
 - [Segment Anything](https://arxiv.org/abs/2304.02643) by Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura Gustafson, Tete Xiao, Spencer Whitehead, Alexander C. Berg, Wan-Yen Lo, Piotr Dollár, and Ross Girshick
 - [Multiview Compressive Coding for 3D Reconstruction](https://arxiv.org/abs/2301.08247) by Chao-Yuan Wu, Justin Johnson, Jitendra Malik, Christoph Feichtenhofer, and Georgia Gkioxari
 - [ZoeDepth: Zero-shot Transfer by Combining Relative and Metric Depth](https://arxiv.org/abs/2302.12288) by Shariq Farooq Bhat, Reiner Birkl, Diana Wofk, Peter Wonka, and Matthias Müller

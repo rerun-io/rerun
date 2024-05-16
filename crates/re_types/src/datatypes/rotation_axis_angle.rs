@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -95,10 +96,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, axis): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { axis, .. } = &**datum;
-                                    axis.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.axis.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -109,23 +107,15 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let axis_inner_data: Vec<_> = axis
-                                .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
-                                .map(Some)
                                 .collect();
                             let axis_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 axis_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
-                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .map(|b| std::iter::repeat(b).take(3usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
@@ -141,10 +131,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float32,
-                                    axis_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    axis_inner_data.into_iter().collect(),
                                     axis_inner_bitmap,
                                 )
                                 .boxed(),
@@ -157,10 +144,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, angle): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { angle, .. } = &**datum;
-                                    angle.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.angle.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -275,8 +259,10 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

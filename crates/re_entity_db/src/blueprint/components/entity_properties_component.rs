@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -22,8 +23,6 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The configurable set of overridable properties.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone)]
 pub struct EntityPropertiesComponent(pub crate::EntityProperties);
 
@@ -76,10 +75,7 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -90,7 +86,7 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let buffers: Vec<Option<Vec<u8>>> = data0
-                    .iter()
+                    .into_iter()
                     .map(|opt| {
                         use ::re_types_core::SerializationError;
                         opt.as_ref()
@@ -107,9 +103,8 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     buffers
                         .iter()
-                        .map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default()),
-                )
-                .unwrap()
+                        .map(|opt| opt.as_ref().map_or(0, |buf| buf.len())),
+                )?
                 .into();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 let data0_inner_data: Buffer<u8> = buffers
@@ -118,13 +113,13 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                     .collect::<Vec<_>>()
                     .concat()
                     .into();
-                ListArray::new(
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     PrimitiveArray::new(DataType::UInt8, data0_inner_data, data0_inner_bitmap)
                         .boxed(),
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })

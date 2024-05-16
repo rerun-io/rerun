@@ -1,7 +1,7 @@
 ---
-title: How To Limit Memory Use
-order: 1
-description: How to limit the memory of Rerun so that it doesn't run out of RAM.
+title: Limit memory usage
+order: 200
+description: How to limit the memory used by the Rerun Viewer so that it doesn't run out of RAM.
 ---
 
 ### --memory-limit

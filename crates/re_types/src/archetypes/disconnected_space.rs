@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -30,7 +31,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### Disconnected Space
+/// ### Disconnected space
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").spawn()?;
@@ -66,6 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct DisconnectedSpace {
+    /// Whether the entity path at which this is logged is disconnected from its parent.
     pub disconnected_space: crate::components::DisconnectedSpace,
 }
 
@@ -87,20 +89,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DisconnectedSpaceIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.DisconnectedSpace".into(),
             "rerun.components.DisconnectedSpaceIndicator".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl DisconnectedSpace {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`DisconnectedSpace`] [`::re_types_core::Archetype`]
@@ -179,14 +181,11 @@ impl ::re_types_core::AsComponents for DisconnectedSpace {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl DisconnectedSpace {
+    /// Create a new `DisconnectedSpace`.
+    #[inline]
     pub fn new(disconnected_space: impl Into<crate::components::DisconnectedSpace>) -> Self {
         Self {
             disconnected_space: disconnected_space.into(),

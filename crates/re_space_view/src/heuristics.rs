@@ -1,4 +1,3 @@
-use re_log_types::EntityPathFilter;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, RecommendedSpaceView, SpaceViewClass,
     SpaceViewSpawnHeuristics, ViewerContext, VisualizerSystem,
@@ -34,7 +33,7 @@ where
     let recommended_space_views = applicable_entities
         .intersection(indicator_matching_entities)
         .filter_map(|entity| {
-            let context = space_view.visualizable_filter_context(entity, ctx.entity_db);
+            let context = space_view.visualizable_filter_context(entity, ctx.recording());
             if visualizer
                 .filter_visualizable_entities(
                     ApplicableEntities(std::iter::once(entity.clone()).collect()),
@@ -44,15 +43,9 @@ where
             {
                 None
             } else {
-                Some(RecommendedSpaceView {
-                    root: entity.clone(),
-                    query_filter: EntityPathFilter::single_entity_filter(entity),
-                })
+                Some(RecommendedSpaceView::new_single_entity(entity.clone()))
             }
-        })
-        .collect();
+        });
 
-    re_viewer_context::SpaceViewSpawnHeuristics {
-        recommended_space_views,
-    }
+    re_viewer_context::SpaceViewSpawnHeuristics::new(recommended_space_views)
 }

@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -101,10 +102,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                         let (somes, class_id): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { class_id, .. } = &**datum;
-                                    class_id.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.class_id.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -116,14 +114,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                             DataType::UInt16,
                             class_id
                                 .into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::ClassId(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             class_id_bitmap,
                         )
@@ -133,12 +124,8 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                         let (somes, class_description): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        class_description, ..
-                                    } = &**datum;
-                                    class_description.clone()
-                                });
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.class_description.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

@@ -45,4 +45,4 @@ Rerun distinguishes various Space Views classes:
 Which class is used is determined upon creation of a Space View.
 
 The Space View class determines which Entities it can display, how it displays them and the way they can be interacted with.
-To learn more about the _internals_ of how Space View classes work, check the [guide on viewer extensions](../../howto/extend.md).
+To learn more about the _internals_ of how Space View classes work, check the [guide on Viewer extensions](../../howto/extend.md).

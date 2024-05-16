@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -42,7 +43,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .spawn()?;
 ///
 ///     // create an annotation context to describe the classes
-///     rec.log_timeless(
+///     rec.log_static(
 ///         "segmentation",
 ///         &rerun::AnnotationContext::new([
 ///             (1, "red", rerun::Rgba32::from_rgb(255, 0, 0)),
@@ -96,20 +97,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.AnnotationContextIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.AnnotationContext".into(),
             "rerun.components.AnnotationContextIndicator".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl AnnotationContext {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`AnnotationContext`] [`::re_types_core::Archetype`]
@@ -188,14 +189,11 @@ impl ::re_types_core::AsComponents for AnnotationContext {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl AnnotationContext {
+    /// Create a new `AnnotationContext`.
+    #[inline]
     pub fn new(context: impl Into<crate::components::AnnotationContext>) -> Self {
         Self {
             context: context.into(),

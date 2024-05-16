@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -55,7 +56,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     ]);
 ///
 ///     // log the annotation and the image
-///     rec.log_timeless("/", &annotation)?;
+///     rec.log_static("/", &annotation)?;
 ///
 ///     rec.log("image", &rerun::SegmentationImage::try_from(image)?)?;
 ///
@@ -101,26 +102,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SegmentationImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.DrawOrder".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.SegmentationImageIndicator".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl SegmentationImage {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`SegmentationImage`] [`::re_types_core::Archetype`]
@@ -211,14 +207,11 @@ impl ::re_types_core::AsComponents for SegmentationImage {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl SegmentationImage {
+    /// Create a new `SegmentationImage`.
+    #[inline]
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
         Self {
             data: data.into(),
@@ -226,6 +219,9 @@ impl SegmentationImage {
         }
     }
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());

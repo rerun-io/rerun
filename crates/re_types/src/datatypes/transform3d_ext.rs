@@ -5,6 +5,7 @@ use crate::datatypes::{
 };
 
 impl Transform3D {
+    /// The identity transform, representing no transform.
     pub const IDENTITY: Self = Self::TranslationRotationScale(TranslationRotationScale3D::IDENTITY);
 
     /// From a translation.

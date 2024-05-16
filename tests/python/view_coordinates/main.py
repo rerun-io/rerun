@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """A test series for view coordinates."""
+
 from __future__ import annotations
 
 import argparse

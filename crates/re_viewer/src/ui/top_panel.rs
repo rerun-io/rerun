@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use itertools::Itertools;
-use re_format::format_number;
+use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::UICommand;
@@ -100,6 +100,31 @@ fn top_bar_ui(
             connection_status_ui(ui, app.msg_receive_set());
         }
 
+        if let Some(wgpu) = frame.wgpu_render_state() {
+            let info = wgpu.adapter.get_info();
+            if info.device_type == wgpu::DeviceType::Cpu {
+                // TODO(#4304): replace with a panel showing recent log messages
+                ui.hyperlink_to(
+                    egui::RichText::new("⚠ Software rasterizer ⚠")
+                        .small()
+                        .color(ui.visuals().warn_fg_color),
+                    "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+                )
+                .on_hover_ui(|ui| {
+                    ui.label("Software rasterizer detected - expect poor performance.");
+                    ui.label(
+                        "Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.",
+                    );
+                    ui.label("Click for troubleshooting.");
+                    ui.add_space(8.0);
+                    ui.label(format!(
+                        "wgpu adapter {}",
+                        re_renderer::adapter_info_summary(&info)
+                    ));
+                });
+            }
+        }
+
         // Warn if in debug build
         if cfg!(debug_assertions) && !app.is_screenshotting() {
             ui.vertical_centered(|ui| {
@@ -126,7 +151,8 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
                 re_smart_channel::SmartChannelSource::RrdWebEventListener
                 | re_smart_channel::SmartChannelSource::Sdk
                 | re_smart_channel::SmartChannelSource::WsClient { .. }
-                | re_smart_channel::SmartChannelSource::TcpServer { .. } => true,
+                | re_smart_channel::SmartChannelSource::TcpServer { .. }
+                | re_smart_channel::SmartChannelSource::JsChannel { .. } => true,
             }
         })
         .collect_vec();
@@ -157,6 +183,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
             | SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::JsChannel { .. }
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. } => None,
 
@@ -178,10 +205,11 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
                 format!("Loading {}…", path.display())
             }
             re_smart_channel::SmartChannelSource::Stdin => "Loading stdin…".to_owned(),
-            re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
+            re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => {
                 format!("Loading {url}…")
             }
-            re_smart_channel::SmartChannelSource::RrdWebEventListener => {
+            re_smart_channel::SmartChannelSource::RrdWebEventListener
+            | re_smart_channel::SmartChannelSource::JsChannel { .. } => {
                 "Waiting for logging data…".to_owned()
             }
             re_smart_channel::SmartChannelSource::Sdk => {
@@ -243,7 +271,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
             &mut blueprint_panel_expanded,
         )
         .on_hover_text(format!(
-            "Toggle Blueprint View{}",
+            "Toggle blueprint view{}",
             UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
         ))
         .clicked()
@@ -264,14 +292,11 @@ fn website_link_ui(ui: &mut egui::Ui) {
     let url = "https://rerun.io/";
     let response = ui
         .add(egui::ImageButton::new(image))
-        .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .on_hover_text(url);
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.clicked() {
-        ui.ctx().output_mut(|o| {
-            o.open_url = Some(egui::output::OpenUrl {
-                url: url.to_owned(),
-                new_tab: true,
-            });
+        ui.ctx().open_url(egui::output::OpenUrl {
+            url: url.to_owned(),
+            new_tab: true,
         });
     }
 }
@@ -305,7 +330,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
         text: impl Into<String>,
         add_contents_on_hover: impl FnOnce(&mut egui::Ui),
     ) {
-        #[allow(clippy::blocks_in_if_conditions)]
+        #[allow(clippy::blocks_in_conditions)]
         let text = text.into();
         if ui
             .add(
@@ -338,10 +363,10 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
             plus {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
-            format_number(count.count),
+            format_uint(count.count),
             re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-            format_number(gpu_resource_stats.num_textures),
-            format_number(gpu_resource_stats.num_buffers),
+            format_uint(gpu_resource_stats.num_textures),
+            format_uint(gpu_resource_stats.num_buffers),
         ));
     } else if let Some(rss) = mem.resident {
         let bytes_used_text = re_format::format_bytes(rss as _);
@@ -351,8 +376,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
                 plus {} of GPU memory in {} textures and {} buffers.",
                 bytes_used_text,
                 re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-                format_number(gpu_resource_stats.num_textures),
-                format_number(gpu_resource_stats.num_buffers),
+                format_uint(gpu_resource_stats.num_textures),
+                format_uint(gpu_resource_stats.num_buffers),
             ));
             ui.label(
                 "To get more accurate memory reportings, consider configuring your Rerun \n\
@@ -388,7 +413,7 @@ fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreCont
                 ui.label(format!(
                     "Queue latency: {}, length: {}",
                     latency_text(latency_sec),
-                    format_number(queue_len),
+                    format_uint(queue_len),
                 ));
 
                 ui.label(
@@ -408,7 +433,7 @@ fn e2e_latency_ui(
     store_context: Option<&StoreContext<'_>>,
 ) -> Option<egui::Response> {
     let store_context = store_context?;
-    let recording = store_context.recording?;
+    let recording = store_context.recording;
     let e2e_latency_sec = recording.ingestion_stats().current_e2e_latency_sec()?;
 
     if e2e_latency_sec > 60.0 {
@@ -451,7 +476,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
             let text = format!(
                 "Queue latency: {}, length: {}",
                 latency_text(latency_sec),
-                format_number(queue_len),
+                format_uint(queue_len),
             );
             let hover_text =
                     "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
@@ -464,7 +489,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
                     .on_hover_text(hover_text);
             }
         } else {
-            ui.weak(format!("Queue: {}", format_number(queue_len)))
+            ui.weak(format!("Queue: {}", format_uint(queue_len)))
                 .on_hover_text("Number of messages in the inbound queue");
         }
     }

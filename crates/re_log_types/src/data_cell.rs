@@ -585,7 +585,7 @@ impl std::fmt::Display for DataCell {
             "DataCell({})",
             re_format::format_bytes(self.inner.size_bytes as _)
         ))?;
-        re_format::arrow::format_table(
+        re_format_arrow::format_table(
             // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
             [&*self.to_arrow_monolist()],
             [self.component_name()],
@@ -665,44 +665,5 @@ impl DataCellInner {
             + size_bytes.total_size_bytes()
             + values.data_type().total_size_bytes()
             + values.total_size_bytes();
-    }
-}
-
-#[test]
-fn data_cell_sizes() {
-    use crate::DataCell;
-    use arrow2::array::UInt64Array;
-    use re_types_core::components::InstanceKey;
-    use re_types_core::Loggable as _;
-
-    // not computed
-    // NOTE: Unsized cells are illegal in debug mode and will flat out crash.
-    if !cfg!(debug_assertions) {
-        let cell = DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
-        assert_eq!(0, cell.heap_size_bytes());
-        assert_eq!(0, cell.heap_size_bytes());
-    }
-
-    // zero-sized
-    {
-        let mut cell =
-            DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
-        cell.compute_size_bytes();
-
-        assert_eq!(184, cell.heap_size_bytes());
-        assert_eq!(184, cell.heap_size_bytes());
-    }
-
-    // anything else
-    {
-        let mut cell = DataCell::from_arrow(
-            InstanceKey::name(),
-            UInt64Array::from_vec(vec![1, 2, 3]).boxed(),
-        );
-        cell.compute_size_bytes();
-
-        // zero-sized + 3x u64s
-        assert_eq!(208, cell.heap_size_bytes());
-        assert_eq!(208, cell.heap_size_bytes());
     }
 }

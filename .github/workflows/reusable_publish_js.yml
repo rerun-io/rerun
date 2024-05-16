@@ -15,6 +15,10 @@ concurrency:
   group: ${{ inputs.concurrency }}-publish-js
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "write"
   id-token: "write"
@@ -29,12 +33,10 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
-        shell: bash
         run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
-        shell: bash
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   build:
@@ -61,13 +63,12 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.20.0
 
       - name: Publish packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        shell: bash
         run: |
           pixi run node rerun_js/scripts/publish.mjs

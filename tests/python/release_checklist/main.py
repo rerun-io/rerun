@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -19,8 +20,8 @@ def log_checks(args: argparse.Namespace) -> None:
 
 
 def log_readme() -> None:
-    with open(join(dirname(__file__), "README.md")) as f:
-        rr.log("readme", rr.TextDocument(f.read(), media_type=rr.MediaType.MARKDOWN), timeless=True)
+    with open(join(dirname(__file__), "README.md"), encoding="utf8") as f:
+        rr.log("readme", rr.TextDocument(f.read(), media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def main() -> None:

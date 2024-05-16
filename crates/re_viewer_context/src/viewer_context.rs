@@ -6,7 +6,7 @@ use re_entity_db::entity_db::EntityDb;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
-    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, PerVisualizer, Selection,
+    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, ItemCollection, PerVisualizer,
     SpaceViewClassRegistry, SpaceViewId, StoreContext, SystemCommandSender as _, TimeControl,
 };
 
@@ -25,10 +25,6 @@ pub struct ViewerContext<'a> {
 
     /// Registry of all known classes of space views.
     pub space_view_class_registry: &'a SpaceViewClassRegistry,
-
-    /// The current recording.
-    /// TODO(jleibs): This can go away
-    pub entity_db: &'a EntityDb,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
@@ -53,6 +49,9 @@ pub struct ViewerContext<'a> {
     /// UI config for the current blueprint.
     pub blueprint_cfg: &'a RecordingConfig,
 
+    /// Selection & hovering state.
+    pub selection_state: &'a ApplicationSelectionState,
+
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
 
@@ -73,18 +72,36 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
+    /// The active recording.
+    #[inline]
+    pub fn recording(&self) -> &EntityDb {
+        self.store_context.recording
+    }
+
+    /// The data store of the active recording.
+    #[inline]
+    pub fn recording_store(&self) -> &re_data_store::DataStore {
+        self.store_context.recording.store()
+    }
+
+    /// The `StoreId` of the active recording.
+    #[inline]
+    pub fn recording_id(&self) -> &re_log_types::StoreId {
+        self.store_context.recording.store_id()
+    }
+
     /// Returns the current selection.
-    pub fn selection(&self) -> &Selection {
-        self.rec_cfg.selection_state.current()
+    pub fn selection(&self) -> &ItemCollection {
+        self.selection_state.selected_items()
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &Selection {
-        self.rec_cfg.selection_state.hovered()
+    pub fn hovered(&self) -> &ItemCollection {
+        self.selection_state.hovered_items()
     }
 
     pub fn selection_state(&self) -> &ApplicationSelectionState {
-        &self.rec_cfg.selection_state
+        self.selection_state
     }
 
     /// The current time query, based on the current time control.
@@ -96,12 +113,11 @@ impl<'a> ViewerContext<'a> {
     pub fn select_hovered_on_click(
         &self,
         response: &egui::Response,
-        selection: impl Into<Selection>,
+        selection: impl Into<ItemCollection>,
     ) {
         re_tracing::profile_function!();
 
-        let mut selection = selection.into();
-        selection.resolve_mono_instance_path_items(self);
+        let selection = selection.into().into_mono_instance_path_items(self);
         let selection_state = self.selection_state();
 
         if response.hovered() {
@@ -109,7 +125,7 @@ impl<'a> ViewerContext<'a> {
         }
 
         if response.double_clicked() {
-            if let Some((item, _)) = selection.first() {
+            if let Some(item) = selection.first_item() {
                 self.command_sender
                     .send_system(crate::SystemCommand::SetFocus(item.clone()));
             }
@@ -133,7 +149,4 @@ impl<'a> ViewerContext<'a> {
 pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: RwLock<TimeControl>,
-
-    /// Selection & hovering state.
-    pub selection_state: ApplicationSelectionState,
 }

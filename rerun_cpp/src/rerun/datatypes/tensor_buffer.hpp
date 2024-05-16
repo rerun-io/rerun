@@ -85,7 +85,7 @@ namespace rerun::datatypes {
             /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
             rerun::Collection<uint8_t> nv12;
 
-            /// YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+            /// YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
             ///
             /// The order of the channels is Y0, U0, Y1, V0.
             rerun::Collection<uint8_t> yuy2;
@@ -420,7 +420,7 @@ namespace rerun::datatypes {
             return self;
         }
 
-        /// YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+        /// YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
         ///
         /// The order of the channels is Y0, U0, Y1, V0.
         static TensorBuffer yuy2(rerun::Collection<uint8_t> yuy2) {
@@ -584,15 +584,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::TensorBuffer` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::TensorBuffer* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const datatypes::TensorBuffer* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::TensorBuffer` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::TensorBuffer* instances, size_t num_instances
         );
     };
 } // namespace rerun

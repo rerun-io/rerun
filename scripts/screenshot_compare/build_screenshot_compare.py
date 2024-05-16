@@ -7,8 +7,8 @@ This script builds/gather RRDs and corresponding screenshots and displays
 them side-by-side. It pulls from the following sources:
 
 - The screenshots listed in .fbs files (crates/re_types/definitions/rerun/**/*.fbs),
-  and the corresponding code examples in the docs (docs/code-examples/*.rs)
-- The `app.rerun.io` examples, as built by the `re_build_examples` script.
+  and the corresponding snippets in the docs (docs/snippets/*.rs)
+- The `rerun.io/viewer` examples, as built by the `re_dev_tools`/`build_examples` script.
 
 The comparisons are generated in the `compare_screenshot` directory. Use the `--serve`
 option to show them in a browser.
@@ -43,7 +43,7 @@ TEMPLATE_DIR = SCRIPT_DIR_PATH / "assets" / "templates"
 INDEX_TEMPLATE = Template((TEMPLATE_DIR / "index.html").read_text())
 EXAMPLE_TEMPLATE = Template((TEMPLATE_DIR / "example.html").read_text())
 RERUN_DIR = SCRIPT_DIR_PATH.parent.parent
-CODE_EXAMPLE_DIR = RERUN_DIR / "docs" / "code-examples"
+SNIPPETS_DIR = RERUN_DIR / "docs" / "snippets"
 
 
 def measure_thumbnail(url: str) -> Any:
@@ -91,17 +91,17 @@ def copy_static_assets(examples: list[Example]) -> None:
 
 def build_python_sdk() -> None:
     print("Building Python SDK…")
-    run(["just", "py-build", "--features", "web_viewer"])
+    run(["pixi", "run", "py-build", "--features", "web_viewer"])
 
 
 # ====================================================================================================
-# CODE EXAMPLES
+# SNIPPETS
 #
-# We scrape FBS for screenshot URL and generate the corresponding code examples RRD with roundtrips.py
+# We scrape FBS for screenshot URL and generate the corresponding snippets RRD with roundtrips.py
 # ====================================================================================================
 
 
-def extract_code_example_urls_from_fbs() -> dict[str, str]:
+def extract_snippet_urls_from_fbs() -> dict[str, str]:
     fbs_path = SCRIPT_DIR_PATH.parent.parent / "crates" / "re_types" / "definitions" / "rerun"
 
     urls = {}
@@ -120,55 +120,55 @@ def extract_code_example_urls_from_fbs() -> dict[str, str]:
     return urls
 
 
-CODE_EXAMPLE_URLS = extract_code_example_urls_from_fbs()
+SNIPPET_URLS = extract_snippet_urls_from_fbs()
 
 
-def build_code_examples() -> None:
+def build_snippets() -> None:
     cmd = [
-        str(CODE_EXAMPLE_DIR / "roundtrips.py"),
+        str(SNIPPETS_DIR / "roundtrips.py"),
         "--no-py",
         "--no-cpp",
         "--no-py-build",
         "--no-cpp-build",
     ]
 
-    for name in CODE_EXAMPLE_URLS.keys():
+    for name in SNIPPET_URLS.keys():
         run(cmd + [name], cwd=RERUN_DIR)
 
 
-def collect_code_examples() -> Iterable[Example]:
-    for name in sorted(CODE_EXAMPLE_URLS.keys()):
-        rrd = CODE_EXAMPLE_DIR / f"{name}_rust.rrd"
+def collect_snippets() -> Iterable[Example]:
+    for name in sorted(SNIPPET_URLS.keys()):
+        rrd = SNIPPETS_DIR / f"{name}_rust.rrd"
         assert rrd.exists(), f"Missing {rrd} for {name}"
-        yield Example(name=name, title=name, rrd=rrd, screenshot_url=CODE_EXAMPLE_URLS[name])
+        yield Example(name=name, title=name, rrd=rrd, screenshot_url=SNIPPET_URLS[name])
 
 
 # ====================================================================================================
 # DEMO EXAMPLES
 #
-# We run the `build_examples` script and scrap the output "example_data" directory.
+# We run the `re_dev_tools`/`build_examples` script and scrap the output "example_data" directory.
 # ====================================================================================================
 
 
-def build_demo_examples() -> None:
+def build_examples() -> None:
     # fmt: off
     cmd = [
         "cargo", "run", "--locked",
-        "-p", "re_build_examples", "--",
-        "rrd", "example_data",
+        "-p", "re_dev_tools", "--",
+        "build-examples", "rrd", "example_data",
     ]
     run(cmd, cwd=RERUN_DIR)
 
     cmd = [
         "cargo", "run", "--locked",
-        "-p", "re_build_examples", "--",
-        "manifest", "example_data/examples_manifest.json",
+        "-p", "re_dev_tools", "--",
+        "build-examples", "manifest", "example_data/examples_manifest.json",
     ]
     run(cmd, cwd=RERUN_DIR)
     # fmt: on
 
 
-def collect_demo_examples() -> Iterable[Example]:
+def collect_examples() -> Iterable[Example]:
     example_dir = RERUN_DIR / "example_data"
     assert example_dir.exists(), "Examples have not been built yet."
 
@@ -185,11 +185,6 @@ def collect_demo_examples() -> Iterable[Example]:
             rrd=rrd,
             screenshot_url=example["thumbnail"]["url"],
         )
-
-
-def collect_examples() -> Iterable[Example]:
-    yield from collect_code_examples()
-    yield from collect_demo_examples()
 
 
 def render_index(examples: list[Example]) -> None:
@@ -262,10 +257,10 @@ def main() -> None:
         build_python_sdk()
 
     if not args.skip_example_build:
-        build_code_examples()
-        build_demo_examples()
+        build_snippets()
+        build_examples()
 
-    examples = list(collect_examples())
+    examples = list(collect_snippets()) + list(collect_examples())
     assert len(examples) > 0, "No examples found"
 
     render_index(examples)

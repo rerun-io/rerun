@@ -36,10 +36,15 @@ pub fn ndc_from_pixel(pixel_coord: glam::Vec2, screen_extent: glam::UVec2) -> gl
 
 /// Defines a transformation from a rectangular region of interest into a rectangular target region.
 ///
+/// This is "pan and scan".
+///
 /// Transforms the range of `region_of_interest` to the range of `region`.
 #[derive(Clone, Debug)]
 pub struct RectTransform {
+    /// The region of the scene that should be visible.
     pub region_of_interest: RectF32,
+
+    /// The full scene.
     pub region: RectF32,
 }
 

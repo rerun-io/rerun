@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use bytes::Bytes;
 use rerun::{
-    components::{MeshProperties, Transform3D},
+    components::Transform3D,
     external::{ecolor, re_log},
     Color, Mesh3D, RecordingStream,
 };
@@ -39,8 +39,7 @@ impl From<GltfPrimitive> for Mesh3D {
         if let Some(indices) = indices {
             assert!(indices.len() % 3 == 0);
             let triangle_indices = indices.chunks_exact(3).map(|tri| (tri[0], tri[1], tri[2]));
-            mesh =
-                mesh.with_mesh_properties(MeshProperties::from_triangle_indices(triangle_indices));
+            mesh = mesh.with_triangle_indices(triangle_indices);
         }
         if let Some(vertex_normals) = vertex_normals {
             mesh = mesh.with_vertex_normals(vertex_normals);
@@ -148,7 +147,7 @@ impl Args {
             anyhow::bail!(
                 "Could not load the scene, have you downloaded the dataset? \
                 Try running the python version first to download it automatically \
-                (`examples/python/raw_mesh/main.py --scene {scene_name}`).",
+                (`python -m raw_mesh --scene {scene_name}`).",
             )
         }
 
@@ -164,7 +163,7 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        rec.log_timeless(root.name.as_str(), &rerun::ViewCoordinates::RIGHT_HAND_Y_UP)?;
+        rec.log_static(root.name.as_str(), &rerun::ViewCoordinates::RIGHT_HAND_Y_UP)?;
         log_node(rec, root)?;
     }
 

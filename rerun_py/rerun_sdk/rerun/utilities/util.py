@@ -1,12 +1,11 @@
 """Simple utilities to be used for Rerun demos."""
+
 from __future__ import annotations
 
 from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-
-__all__ = ["bounce_lerp", "interleave"]
 
 
 def bounce_lerp(

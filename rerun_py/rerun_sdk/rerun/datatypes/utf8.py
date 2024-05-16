@@ -11,13 +11,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .utf8_ext import Utf8Ext
 
 __all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like", "Utf8Type"]
 
 
 @define(init=False)
-class Utf8(Utf8Ext):
+class Utf8:
     """**Datatype**: A string of text, encoded as UTF-8."""
 
     def __init__(self: Any, value: Utf8Like):
@@ -30,6 +29,9 @@ class Utf8(Utf8Ext):
 
     def __str__(self) -> str:
         return str(self.value)
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
 
 if TYPE_CHECKING:
@@ -52,4 +54,11 @@ class Utf8Batch(BaseBatch[Utf8ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
-        return Utf8Ext.native_to_pa_array_override(data, data_type)
+        if isinstance(data, str):
+            array = [data]
+        elif isinstance(data, Sequence):
+            array = [str(datum) for datum in data]
+        else:
+            array = [str(data)]
+
+        return pa.array(array, type=data_type)

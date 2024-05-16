@@ -10,12 +10,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class FixedSizeListBuilder;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
     ///
@@ -67,8 +61,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Vec3D) == sizeof(components::HalfSizes3D));
 
     /// \private
     template <>
@@ -76,17 +69,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.HalfSizes3D";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::HalfSizes3D* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Vec3D>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::HalfSizes3D` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::HalfSizes3D* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Vec3D>::to_arrow(&instances->xyz, num_instances);
+        }
     };
 } // namespace rerun

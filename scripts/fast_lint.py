@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Runs the common linters on any files that have changed relative to the main branch."""
+
 from __future__ import annotations
 
 import argparse
@@ -138,24 +139,23 @@ def main() -> None:
 
     jobs = [
         LintJob("lint-codegen", accepts_files=False),
-        LintJob(
-            "lint-cpp-files",
-            extensions=[".cpp", ".c", ".h", ".hpp"],
-            allow_no_filter=False,
-        ),
+        # TODO(jleibs): implement lint-cpp-files
+        # LintJob(
+        #     "lint-cpp-files",
+        #     extensions=[".cpp", ".c", ".h", ".hpp"],
+        #     allow_no_filter=False,
+        # ),
         LintJob("lint-rerun"),
         LintJob(
             "lint-rs-files",
             extensions=[".rs"],
             no_filter_cmd="lint-rs-all",
         ),
-        LintJob("lint-py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
-        LintJob("lint-py-blackdoc", extensions=[".py"], no_filter_args=PY_FOLDERS),
+        LintJob("py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
         # Even though mypy will accept a list of files, the results it generates are inconsistent
         # with running on the full project.
-        LintJob("lint-py-mypy", extensions=[".py"], accepts_files=False),
-        LintJob("lint-py-ruff", extensions=[".py"], no_filter_args=PY_FOLDERS),
-        LintJob("lint-taplo", extensions=[".toml"]),
+        LintJob("py-lint", extensions=[".py"], accepts_files=False),
+        LintJob("toml-fmt-check", extensions=[".toml"]),
         LintJob("lint-typos"),
     ]
 

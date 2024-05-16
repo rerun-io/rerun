@@ -10,11 +10,14 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 // ----------------
 // Private modules:
 
+mod binary_stream_sink;
 mod global;
 mod log_sink;
 mod recording_stream;
@@ -26,13 +29,14 @@ mod spawn;
 pub use spawn::{spawn, SpawnError, SpawnOptions};
 
 pub use self::recording_stream::{
-    RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
+    forced_sink_path, RecordingStream, RecordingStreamBuilder, RecordingStreamError,
+    RecordingStreamResult,
 };
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
 pub use re_log_types::{
-    entity_path, ApplicationId, EntityPath, EntityPathPart, StoreId, StoreKind,
+    entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
 };
 
 pub use re_memory::MemoryLimit;
@@ -59,6 +63,9 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// This is how you select whether the log stream ends up
 /// sent over TCP, written to file, etc.
 pub mod sink {
+    pub use crate::binary_stream_sink::{
+        BinaryStreamSink, BinaryStreamSinkError, BinaryStreamStorage,
+    };
     pub use crate::log_sink::{BufferedSink, LogSink, MemorySink, MemorySinkStorage, TcpSink};
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -86,7 +93,7 @@ pub use re_types_core::{
 };
 
 #[cfg(feature = "data_loaders")]
-pub use re_data_source::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
+pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
@@ -102,10 +109,7 @@ pub mod external {
     pub use re_log_types::external::*;
 
     #[cfg(feature = "data_loaders")]
-    pub use re_data_source;
-
-    #[cfg(feature = "log")]
-    pub use log;
+    pub use re_data_loader;
 }
 
 // -----
@@ -174,13 +178,14 @@ pub fn new_store_info(
     re_log_types::StoreInfo {
         application_id: application_id.into(),
         store_id: StoreId::random(StoreKind::Recording),
+        cloned_from: None,
         is_official_example: called_from_official_rust_example(),
         started: re_log_types::Time::now(),
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },
-        store_kind: re_log_types::StoreKind::Recording,
+        store_version: Some(re_build_info::CrateVersion::LOCAL),
     }
 }
 

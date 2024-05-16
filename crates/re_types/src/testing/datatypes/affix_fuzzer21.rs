@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -96,10 +97,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                         let (somes, single_half): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { single_half, .. } = &**datum;
-                                    single_half.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.single_half.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -121,10 +119,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                         let (somes, many_halves): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { many_halves, .. } = &**datum;
-                                    many_halves.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.many_halves.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -134,6 +129,12 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                many_halves.iter().map(|opt| {
+                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
+                                }),
+                            )?
+                            .into();
                             let many_halves_inner_data: Buffer<_> = many_halves
                                 .iter()
                                 .flatten()
@@ -142,16 +143,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                 .concat()
                                 .into();
                             let many_halves_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_halves.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float16,
@@ -165,7 +157,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                 )
                                 .boxed(),
                                 many_halves_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },

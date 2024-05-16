@@ -9,18 +9,19 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow, DataTable,
-    DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
-    TimelineName,
+    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, DataCell, DataCellError,
+    DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
+    EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
+    TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types_core::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
+use re_types_core::{AsComponents, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
 
+use crate::binary_stream_sink::BinaryStreamStorage;
 use crate::sink::{LogSink, MemorySinkStorage};
 
 // ---
@@ -37,7 +38,7 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// Furthermore, [`RecordingStream::set_sink`] calls after this should not swap out to a new sink but re-use the existing one.
 /// Note that creating a new [`crate::sink::FileSink`] to the same file path (even temporarily) can cause
 /// a race between file creation (and thus clearing) and pending file writes.
-fn forced_sink_path() -> Option<String> {
+pub fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
 }
 
@@ -83,10 +84,10 @@ pub enum RecordingStreamError {
     #[error(transparent)]
     DataReadError(#[from] re_log_types::DataReadError),
 
-    /// An error occurred while attempting to use a [`re_data_source::DataLoader`].
+    /// An error occurred while attempting to use a [`re_data_loader::DataLoader`].
     #[cfg(feature = "data_loaders")]
     #[error(transparent)]
-    DataLoaderError(#[from] re_data_source::DataLoaderError),
+    DataLoaderError(#[from] re_data_loader::DataLoaderError),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -198,6 +199,7 @@ impl RecordingStreamBuilder {
     /// The default is to use a random [`StoreId`].
     #[inline]
     pub fn store_id(mut self, store_id: StoreId) -> Self {
+        self.store_kind = store_id.kind;
         self.store_id = Some(store_id);
         self
     }
@@ -274,19 +276,27 @@ impl RecordingStreamBuilder {
     pub fn memory(
         self,
     ) -> RecordingStreamResult<(RecordingStream, crate::log_sink::MemorySinkStorage)> {
-        let sink = crate::log_sink::MemorySink::default();
-        let mut storage = sink.buffer();
-
         let (enabled, store_info, batcher_config) = self.into_args();
-        if enabled {
-            RecordingStream::new(store_info, batcher_config, Box::new(sink)).map(|rec| {
-                storage.rec = Some(rec.clone());
-                (rec, storage)
-            })
+        let rec = if enabled {
+            RecordingStream::new(
+                store_info,
+                batcher_config,
+                Box::new(crate::log_sink::BufferedSink::new()),
+            )
         } else {
             re_log::debug!("Rerun disabled - call to memory() ignored");
-            Ok((RecordingStream::disabled(), Default::default()))
-        }
+            Ok(RecordingStream::disabled())
+        }?;
+
+        let sink = crate::log_sink::MemorySink::new(rec.clone());
+        let storage = sink.buffer();
+        // Using set_sink here is necessary because the MemorySink needs to know
+        // it's own RecordingStream, which means we can't use `new` above.
+        // This has the downside of a bit of creation overhead and an extra StoreInfo
+        // message being sent to the sink.
+        // TODO(jleibs): Figure out a cleaner way to handle this.
+        rec.set_sink(Box::new(sink));
+        Ok((rec, storage))
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -453,16 +463,13 @@ impl RecordingStreamBuilder {
             return self.connect_opts(connect_addr, flush_timeout);
         }
 
-        spawn(opts)?;
+        crate::spawn(opts)?;
 
         self.connect_opts(connect_addr, flush_timeout)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// web-based Rerun viewer via WebSockets.
-    ///
-    /// This method needs to be called in a context where a Tokio runtime is already running (see
-    /// example below).
     ///
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
     /// connected web-viewer.
@@ -476,21 +483,11 @@ impl RecordingStreamBuilder {
     /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
     /// Once reached, the earliest logged data will be dropped.
-    /// Note that this means that timeless data may be dropped if logged early.
+    /// Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
     ///
     /// ## Example
     ///
     /// ```ignore
-    /// // Ensure we have a running tokio runtime.
-    /// let mut tokio_runtime = None;
-    /// let tokio_runtime_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-    ///     handle
-    /// } else {
-    ///     let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-    ///     tokio_runtime.get_or_insert(rt).handle().clone()
-    /// };
-    /// let _tokio_runtime_guard = tokio_runtime_handle.enter();
-    ///
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
     ///     .serve("0.0.0.0",
     ///            Default::default(),
@@ -499,6 +496,8 @@ impl RecordingStreamBuilder {
     ///            true)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    //
+    // # TODO(#5531): keep static data around.
     #[cfg(feature = "web_viewer")]
     pub fn serve(
         self,
@@ -552,10 +551,11 @@ impl RecordingStreamBuilder {
         let store_info = StoreInfo {
             application_id,
             store_id,
+            cloned_from: None,
             is_official_example,
             started: Time::now(),
             store_source,
-            store_kind,
+            store_version: Some(re_build_info::CrateVersion::LOCAL),
         };
 
         let batcher_config =
@@ -824,11 +824,14 @@ impl RecordingStream {
         batcher_config: DataTableBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let sink = forced_sink_path().map_or(sink, |path| {
-            re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
-            // `unwrap` is ok since this force sinks are only used in tests.
-            Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
-        });
+        let sink = (info.store_id.kind == StoreKind::Recording)
+            .then(forced_sink_path)
+            .flatten()
+            .map_or(sink, |path| {
+                re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
+                // `unwrap` is ok since this force sinks are only used in tests.
+                Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
+            });
         RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
             inner: Either::Left(Arc::new(Some(inner))),
         })
@@ -859,7 +862,7 @@ impl RecordingStream {
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
     /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     ///
-    /// See also: [`Self::log_timeless`] for logging timeless data.
+    /// See also: [`Self::log_static`] for logging static data.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -884,7 +887,18 @@ impl RecordingStream {
         ent_path: impl Into<EntityPath>,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_with_timeless(ent_path, false, arch)
+        self.log_with_static(ent_path, false, arch)
+    }
+
+    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
+    #[doc(hidden)]
+    #[inline]
+    pub fn log_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl AsComponents,
+    ) -> RecordingStreamResult<()> {
+        self.log_static(ent_path, arch)
     }
 
     /// Log data to Rerun.
@@ -892,8 +906,8 @@ impl RecordingStream {
     /// It can be used to log anything
     /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
     ///
-    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
-    /// into the past.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
     /// This is most often used for [`rerun::ViewCoordinates`](https://docs.rs/rerun/latest/rerun/archetypes/struct.ViewCoordinates.html) and
@@ -908,20 +922,32 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_timeless(
+    pub fn log_static(
         &self,
         ent_path: impl Into<EntityPath>,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_with_timeless(ent_path, true, arch)
+        self.log_with_static(ent_path, true, arch)
+    }
+
+    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
+    #[doc(hidden)]
+    #[inline]
+    pub fn log_with_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        static_: bool,
+        arch: &impl AsComponents,
+    ) -> RecordingStreamResult<()> {
+        self.log_with_static(ent_path, static_, arch)
     }
 
     /// Logs the contents of a [component bundle] into Rerun.
     ///
-    /// If `timeless` is set to `true`, all timestamp data associated with this message will be
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
-    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
-    /// into the past.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
     ///
     /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
     /// internal clock.
@@ -939,17 +965,17 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_with_timeless(
+    pub fn log_with_static(
         &self,
         ent_path: impl Into<EntityPath>,
-        timeless: bool,
+        static_: bool,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_component_batches_impl(
             row_id,
             ent_path,
-            timeless,
+            static_,
             arch.as_component_batches()
                 .iter()
                 .map(|any_comp_batch| any_comp_batch.as_ref()),
@@ -958,10 +984,10 @@ impl RecordingStream {
 
     /// Logs a set of [`ComponentBatch`]es into Rerun.
     ///
-    /// If `timeless` is set to `false`, all timestamp data associated with this message will be
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
-    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
-    /// into the past.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
     ///
     /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
     /// internal clock.
@@ -982,18 +1008,18 @@ impl RecordingStream {
     pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
-        timeless: bool,
+        static_: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl(row_id, ent_path, timeless, comp_batches)
+        self.log_component_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
     fn log_component_batches_impl<'a>(
         &self,
         row_id: RowId,
         ent_path: impl Into<EntityPath>,
-        timeless: bool,
+        static_: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
@@ -1002,11 +1028,9 @@ impl RecordingStream {
 
         let ent_path = ent_path.into();
 
-        let mut num_instances = 0;
         let comp_batches: Result<Vec<_>, _> = comp_batches
             .into_iter()
             .map(|comp_batch| {
-                num_instances = usize::max(num_instances, comp_batch.num_instances());
                 comp_batch
                     .to_arrow()
                     .map(|array| (comp_batch.arrow_field(), array))
@@ -1028,95 +1052,53 @@ impl RecordingStream {
             .collect();
         let cells = cells?;
 
-        let mut instanced: Vec<DataCell> = Vec::new();
-        let mut splatted: Vec<DataCell> = Vec::new();
-
-        for cell in cells {
-            if num_instances > 1 && cell.num_instances() == 1 {
-                splatted.push(cell);
-            } else {
-                instanced.push(cell);
-            }
-        }
-
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
-        let timepoint = TimePoint::timeless();
+        let timepoint = TimePoint::default();
 
-        // TODO(#1893): unsplit splats once new data cells are in
-        let splatted = if splatted.is_empty() {
-            None
-        } else {
-            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
-            Some(DataRow::from_cells(
-                row_id,
-                timepoint.clone(),
-                ent_path.clone(),
-                1,
-                splatted,
-            )?)
-        };
-
-        let instanced = if instanced.is_empty() {
-            None
-        } else {
-            Some(DataRow::from_cells(
-                row_id.incremented_by(1), // we need a unique RowId from what is used for the splatted data
-                timepoint,
-                ent_path,
-                num_instances as _,
-                instanced,
-            )?)
-        };
-
-        if let Some(splatted) = splatted {
-            self.record_row(splatted, !timeless);
-        }
-
-        // Always the primary component last so range-based queries will include the other data.
-        // Since the primary component can't be splatted it must be in here, see(#1215).
-        if let Some(instanced) = instanced {
-            self.record_row(instanced, !timeless);
+        if !cells.is_empty() {
+            let row = DataRow::from_cells(row_id, timepoint.clone(), ent_path.clone(), cells)?;
+            self.record_row(row, !static_);
         }
 
         Ok(())
     }
 
-    /// Logs the file at the given `path` using all [`re_data_source::DataLoader`]s available.
+    /// Logs the file at the given `path` using all [`re_data_loader::DataLoader`]s available.
     ///
     /// A single `path` might be handled by more than one loader.
     ///
-    /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
+    /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_path(
         &self,
         filepath: impl AsRef<std::path::Path>,
         entity_path_prefix: Option<EntityPath>,
-        timeless: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, None, entity_path_prefix, timeless)
+        self.log_file(filepath, None, entity_path_prefix, static_)
     }
 
-    /// Logs the given `contents` using all [`re_data_source::DataLoader`]s available.
+    /// Logs the given `contents` using all [`re_data_loader::DataLoader`]s available.
     ///
     /// A single `path` might be handled by more than one loader.
     ///
-    /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
+    /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_contents(
         &self,
         filepath: impl AsRef<std::path::Path>,
         contents: std::borrow::Cow<'_, [u8]>,
         entity_path_prefix: Option<EntityPath>,
-        timeless: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, Some(contents), entity_path_prefix, timeless)
+        self.log_file(filepath, Some(contents), entity_path_prefix, static_)
     }
 
     #[cfg(feature = "data_loaders")]
@@ -1125,7 +1107,7 @@ impl RecordingStream {
         filepath: impl AsRef<std::path::Path>,
         contents: Option<std::borrow::Cow<'_, [u8]>>,
         entity_path_prefix: Option<EntityPath>,
-        timeless: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
         let Some(store_info) = self.store_info().clone() else {
             re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
@@ -1146,7 +1128,7 @@ impl RecordingStream {
             store_id: store_info.store_id,
             opened_store_id: None,
             entity_path_prefix,
-            timepoint: (!timeless).then(|| {
+            timepoint: (!static_).then(|| {
                 self.with(|inner| {
                     // Get the current time on all timelines, for the current recording, on the current
                     // thread…
@@ -1156,7 +1138,7 @@ impl RecordingStream {
                     let tick = inner
                         .tick
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    now.insert(Timeline::log_tick(), tick.into());
+                    now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
 
                     now
                 })
@@ -1165,7 +1147,7 @@ impl RecordingStream {
         };
 
         if let Some(contents) = contents {
-            re_data_source::load_from_file_contents(
+            re_data_loader::load_from_file_contents(
                 &settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
@@ -1173,7 +1155,7 @@ impl RecordingStream {
                 &tx,
             )?;
         } else {
-            re_data_source::load_from_path(
+            re_data_loader::load_from_path(
                 &settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
@@ -1382,9 +1364,6 @@ impl RecordingStream {
     #[inline]
     pub fn record_row(&self, mut row: DataRow, inject_time: bool) {
         let f = move |inner: &RecordingStreamInner| {
-            // TODO(#2074): Adding a timeline to something timeless would suddenly make it not
-            // timeless… so for now it cannot even have a tick :/
-            //
             // NOTE: We're incrementing the current tick still.
             let tick = inner
                 .tick
@@ -1394,7 +1373,7 @@ impl RecordingStream {
                 // thread…
                 let mut now = self.now();
                 // …and then also inject the current recording tick into it.
-                now.insert(Timeline::log_tick(), tick.into());
+                now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
                 for (timeline, time) in now {
@@ -1425,6 +1404,11 @@ impl RecordingStream {
     /// If the current sink is in a broken state (e.g. a TCP sink with a broken connection that
     /// cannot be repaired), all pending data in its buffers will be dropped.
     pub fn set_sink(&self, sink: Box<dyn LogSink>) {
+        if self.is_forked_child() {
+            re_log::error_once!("Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            return;
+        }
+
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
@@ -1457,6 +1441,11 @@ impl RecordingStream {
     /// This does **not** wait for the flush to propagate (see [`Self::flush_blocking`]).
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_async(&self) {
+        if self.is_forked_child() {
+            re_log::error_once!("Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            return;
+        }
+
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
@@ -1541,11 +1530,13 @@ impl RecordingStream {
         flush_timeout: Option<std::time::Duration>,
     ) {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
             return;
         }
 
-        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)));
+        let sink = crate::log_sink::TcpSink::new(addr, flush_timeout);
+
+        self.set_sink(Box::new(sink));
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
@@ -1592,11 +1583,11 @@ impl RecordingStream {
             return Ok(());
         }
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
-        spawn(opts)?;
+        crate::spawn(opts)?;
 
         self.connect_opts(opts.connect_addr(), flush_timeout);
 
@@ -1610,17 +1601,22 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn memory(&self) -> MemorySinkStorage {
-        let sink = crate::sink::MemorySink::default();
-        let buffer = sink.buffer();
-
-        if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new memory sink since _RERUN_FORCE_SINK is set");
-            return buffer;
-        }
-
+        let sink = crate::sink::MemorySink::new(self.clone());
+        let storage = sink.buffer();
         self.set_sink(Box::new(sink));
+        storage
+    }
 
-        buffer
+    /// Swaps the underlying sink for a [`crate::sink::BinaryStreamSink`] sink and returns the associated
+    /// [`BinaryStreamStorage`].
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn binary_stream(&self) -> Result<BinaryStreamStorage, crate::sink::BinaryStreamSinkError> {
+        let (sink, storage) = crate::sink::BinaryStreamSink::new(self.clone())?;
+        self.set_sink(Box::new(sink));
+        Ok(storage)
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
@@ -1632,12 +1628,28 @@ impl RecordingStream {
         &self,
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
+        self.save_opts(path)
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    ///
+    /// If a blueprint was provided, it will be stored first in the file.
+    /// Blueprints are currently an experimental part of the Rust SDK.
+    pub fn save_opts(
+        &self,
+        path: impl Into<std::path::PathBuf>,
+    ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new file since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
         let sink = crate::sink::FileSink::new(path)?;
+
         self.set_sink(Box::new(sink));
 
         Ok(())
@@ -1652,8 +1664,23 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn stdout(&self) -> Result<(), crate::sink::FileSinkError> {
+        self.stdout_opts()
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] pointed at stdout.
+    ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    ///
+    /// If a blueprint was provided, it will be stored first in the file.
+    /// Blueprints are currently an experimental part of the Rust SDK.
+    pub fn stdout_opts(&self) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new file since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
@@ -1664,6 +1691,7 @@ impl RecordingStream {
         }
 
         let sink = crate::sink::FileSink::stdout()?;
+
         self.set_sink(Box::new(sink));
 
         Ok(())
@@ -1684,6 +1712,37 @@ impl RecordingStream {
 
         if self.with(f).is_none() {
             re_log::warn_once!("Recording disabled - call to disconnect() ignored");
+        }
+    }
+
+    /// Send a blueprint through this recording stream
+    pub fn send_blueprint(
+        &self,
+        blueprint: Vec<LogMsg>,
+        activation_cmd: BlueprintActivationCommand,
+    ) {
+        let mut blueprint_id = None;
+        for msg in blueprint {
+            if blueprint_id.is_none() {
+                blueprint_id = Some(msg.store_id().clone());
+            }
+            self.record_msg(msg);
+        }
+
+        if let Some(blueprint_id) = blueprint_id {
+            if blueprint_id == activation_cmd.blueprint_id {
+                // Let the viewer know that the blueprint has been fully received,
+                // and that it can now be activated.
+                // We don't want to activate half-loaded blueprints, because that can be confusing,
+                // and can also lead to problems with space-view heuristics.
+                self.record_msg(activation_cmd.into());
+            } else {
+                re_log::warn!(
+                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    blueprint_id,
+                    activation_cmd.blueprint_id
+                );
+            }
         }
     }
 }
@@ -1716,37 +1775,6 @@ impl fmt::Debug for RecordingStream {
             None => write!(f, "RecordingStream {{ disabled }}"),
         }
     }
-}
-
-/// Helper to deduplicate spawn logic across [`RecordingStreamBuilder`] & [`RecordingStream`].
-fn spawn(opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
-    use std::{net::TcpStream, time::Duration};
-
-    let connect_addr = opts.connect_addr();
-
-    // TODO(#4019): application-level handshake
-    if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
-        re_log::info!(
-            addr = %opts.listen_addr(),
-            "A process is already listening at this address. Trying to connect instead."
-        );
-    } else {
-        crate::spawn(opts)?;
-
-        // Give the newly spawned Rerun Viewer some time to bind.
-        //
-        // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
-        // at all, the connection will fail immediately, irrelevant of the timeout configuration.
-        // For that reason we use an extra loop.
-        for _ in 0..5 {
-            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(100));
-        }
-    }
-
-    Ok(())
 }
 
 // --- Stateful time ---
@@ -1791,7 +1819,10 @@ impl ThreadInfo {
 
     fn now(&self, rid: &StoreId) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert(Timeline::log_time(), Time::now().into());
+        timepoint.insert(
+            Timeline::log_time(),
+            Time::now().try_into().unwrap_or(TimeInt::MIN),
+        );
         timepoint
     }
 
@@ -1871,10 +1902,22 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let sequence = sequence.into();
+            let sequence = if let Ok(seq) = TimeInt::try_from(sequence) {
+                seq
+            } else {
+                re_log::error!(
+                    illegal_value = sequence,
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_sequence() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Sequence),
-                sequence.into().into(),
+                sequence,
             );
         };
 
@@ -1901,10 +1944,23 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let seconds = seconds.into();
+            let time = Time::from_seconds_since_epoch(seconds);
+            let time = if let Ok(time) = TimeInt::try_from(time) {
+                time
+            } else {
+                re_log::error!(
+                    illegal_value = seconds,
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_seconds() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Time),
-                Time::from_seconds_since_epoch(seconds.into()).into(),
+                time,
             );
         };
 
@@ -1931,10 +1987,23 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let ns = ns.into();
+            let time = Time::from_ns_since_epoch(ns);
+            let time = if let Ok(time) = TimeInt::try_from(time) {
+                time
+            } else {
+                re_log::error!(
+                    illegal_value = ns,
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_nanos() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Time),
-                Time::from_ns_since_epoch(ns.into()).into(),
+                time,
             );
         };
 
@@ -2034,7 +2103,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         // Second message should be a set_store_info resulting from the later sink swap from
@@ -2045,7 +2114,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         // Third message is the batched table itself, which was sent as a result of the implicit
@@ -2062,7 +2131,7 @@ mod tests {
 
                 similar_asserts::assert_eq!(table, got);
             }
-            LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+            _ => panic!("expected ArrowMsg"),
         }
 
         // That's all.
@@ -2101,7 +2170,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         // Second message should be a set_store_info resulting from the later sink swap from
@@ -2112,7 +2181,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         let mut rows = {
@@ -2136,7 +2205,7 @@ mod tests {
 
                     similar_asserts::assert_eq!(expected, got);
                 }
-                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+                _ => panic!("expected ArrowMsg"),
             }
         };
 
@@ -2181,7 +2250,17 @@ mod tests {
                     assert!(msg.row_id != RowId::ZERO);
                     similar_asserts::assert_eq!(store_info, msg.info);
                 }
-                LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+                _ => panic!("expected SetStoreInfo"),
+            }
+
+            // For reasons, MemorySink ends up with 2 StoreInfos.
+            // TODO(jleibs): Avoid a redundant StoreInfo message.
+            match msgs.pop().unwrap() {
+                LogMsg::SetStoreInfo(msg) => {
+                    assert!(msg.row_id != RowId::ZERO);
+                    similar_asserts::assert_eq!(store_info, msg.info);
+                }
+                _ => panic!("expected SetStoreInfo"),
             }
 
             // MemorySinkStorage transparently handles flushing during `take()`!
@@ -2199,7 +2278,7 @@ mod tests {
 
                     similar_asserts::assert_eq!(table, got);
                 }
-                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+                _ => panic!("expected ArrowMsg"),
             }
 
             // That's all.

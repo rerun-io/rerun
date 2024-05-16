@@ -1,11 +1,15 @@
 <!--[metadata]
-title = "Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives"
+title = "Differentiable blocks world: qualitative 3D decomposition by rendering primitives"
 source = "https://github.com/rerun-io/differentiable-blocksworld"
-tags = ["3D", "mesh", "pinhole-camera"]
-thumbnail = "https://static.rerun.io/dbw/1da9e778d5fc9875a28a1fd74b61654c287e950d/480w.png"
-thumbnail_dimensions = [480, 311]
+tags = ["3D", "Mesh", "Pinhole camera", "Paper walkthrough"]
+thumbnail = "https://static.rerun.io/differentiable-blocks/42f3a5481162a0e75f1c52ef1a12d4fedb35389e/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
+This example is a visual walkthrough of the paper "Differentiable Block Worlds".
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
 
 Finding a textured mesh decomposition from a collection of posed images is a very challenging optimization problem. "Differentiable Block Worlds" by Tom Monnier et al. shows impressive results using differentiable rendering. Here we visualize how this optimization works using the Rerun SDK.
 

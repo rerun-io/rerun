@@ -1,7 +1,6 @@
 # This action sets up:
 # - The correct version of Rust based on the `rust-toolchain` file
 # - All components + targets specified in `rust-toolchain`
-# - Caching of dependencies via `Swatinem/rust-cache`
 # - Caching of individual compilation requests via `sccache` and GCS
 #   - Uses our own `rerun-io/sccache-action` which supports GCS
 #
@@ -26,6 +25,10 @@ inputs:
   service_account:
     type: string
     required: true
+  toolchains:
+    type: string
+    required: false
+    description: "Space-separated list of extra toolchains to install"
   targets:
     type: string
     required: false
@@ -35,39 +38,36 @@ runs:
   using: "composite"
   steps:
     - name: Set up GCP credentials
-      uses: google-github-actions/auth@v1
+      uses: google-github-actions/auth@v2
       with:
         workload_identity_provider: ${{ inputs.workload_identity_provider }}
         service_account: ${{ inputs.service_account }}
 
     - name: Ensure correct version of Rust is installed
+      shell: bash
       run: |
         # This is the only way to force rustup to install the version of Rust
         # and the components/targets specified in our `rust-toolchain` file.
         # It might break at some point: https://github.com/rust-lang/rustup/issues/1397
         rustup show
-      shell: bash
 
     - name: Install additional targets
       if: ${{ inputs.targets != '' }}
-      run: rustup target add ${{ inputs.targets }}
       shell: bash
+      run: rustup target add ${{ inputs.targets }}
 
-    # Rust-cache will cache our dependencies, which is a large chunk of the build
-    # See: https://github.com/Swatinem/rust-cache
-    - name: Set up rust-cache
-      uses: Swatinem/rust-cache@v2
-      with:
-        # Only save the cache when on the main branch.
-        # The cache is quite limited in size (~10 GB), and the
-        # individual rust-cache entries are as much as 2 GB.
-        save-if: ${{ inputs.save_cache && github.ref == 'refs/heads/main' }}
-        shared-key: ${{ inputs.cache_key }}
+    - name: Install additional toolchains
+      if: ${{ inputs.toolchains }}
+      shell: bash
+      run: |
+        for toolchain in ${{ inputs.toolchains }}; do
+          rustup install $toolchain
+        done
 
     - name: Set up sccache
-      uses: rerun-io/sccache-action@v0.7.0
+      uses: rerun-io/sccache-action@v0.7.1
       with:
-        version: "v0.5.2"
+        version: "v0.7.7"
         use_gcs: true
         gcs_bucket: rerun-sccache
         gcs_read_only: false

@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .radius_ext import RadiusExt
 
 __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType"]
 
 
 @define(init=False)
-class Radius(RadiusExt):
+class Radius:
     """**Component**: A Radius component."""
 
     def __init__(self: Any, value: RadiusLike):
@@ -36,6 +35,9 @@ class Radius(RadiusExt):
 
     def __float__(self) -> float:
         return float(self.value)
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
 
 if TYPE_CHECKING:
@@ -58,4 +60,5 @@ class RadiusBatch(BaseBatch[RadiusArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: RadiusArrayLike, data_type: pa.DataType) -> pa.Array:
-        return RadiusExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

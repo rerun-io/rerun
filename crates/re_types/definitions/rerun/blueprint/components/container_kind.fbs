@@ -11,8 +11,7 @@ namespace rerun.blueprint.components;
 /// The kind of a blueprint container (tabs, grid, …).
 enum ContainerKind: byte (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.override_crate": "re_viewport",
-    "attr.docs.unreleased"
+    "attr.rust.override_crate": "re_types_blueprint"
 ) {
     Tabs,
     Horizontal,

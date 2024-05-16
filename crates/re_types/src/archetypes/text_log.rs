@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -100,27 +101,22 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Color".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Text".into(),
             "rerun.components.TextLogIndicator".into(),
             "rerun.components.TextLogLevel".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl TextLog {
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`TextLog`] [`::re_types_core::Archetype`]
@@ -223,14 +219,11 @@ impl ::re_types_core::AsComponents for TextLog {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl TextLog {
+    /// Create a new `TextLog`.
+    #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
             text: text.into(),
@@ -239,12 +232,16 @@ impl TextLog {
         }
     }
 
+    /// The verbosity level of the message.
+    ///
+    /// This can be used to filter the log messages in the Rerun Viewer.
     #[inline]
     pub fn with_level(mut self, level: impl Into<crate::components::TextLogLevel>) -> Self {
         self.level = Some(level.into());
         self
     }
 
+    /// Optional color to use for the log line in the Rerun Viewer.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

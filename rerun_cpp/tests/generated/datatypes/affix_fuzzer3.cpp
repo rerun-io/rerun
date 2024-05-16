@@ -15,7 +15,6 @@ namespace rerun {
         static const auto datatype = arrow::dense_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
             arrow::field("degrees", arrow::float32(), false),
-            arrow::field("radians", arrow::float32(), true),
             arrow::field(
                 "craziness",
                 arrow::list(arrow::field(
@@ -30,8 +29,29 @@ namespace rerun {
                 arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 3),
                 false
             ),
+            arrow::field("empty_variant", arrow::null(), true),
         });
         return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::Array>> Loggable<datatypes::AffixFuzzer3>::to_arrow(
+        const datatypes::AffixFuzzer3* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<datatypes::AffixFuzzer3>::fill_arrow_array_builder(
+                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+        return array;
     }
 
     rerun::Error Loggable<datatypes::AffixFuzzer3>::fill_arrow_array_builder(
@@ -69,16 +89,6 @@ namespace rerun {
                         variant_builder->Append(union_instance.get_union_data().degrees)
                     );
                 } break;
-                case TagType::radians: {
-                    auto variant_builder =
-                        static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
-                    const auto& element = union_instance.get_union_data();
-                    if (element.radians.has_value()) {
-                        ARROW_RETURN_NOT_OK(variant_builder->Append(element.radians.value()));
-                    } else {
-                        ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
-                    }
-                } break;
                 case TagType::craziness: {
                     auto variant_builder =
                         static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -97,29 +107,14 @@ namespace rerun {
                         "Failed to serialize AffixFuzzer3::fixed_size_shenanigans: FixedSizeListBuilder in unions not yet implemented"
                     );
                 } break;
+                case TagType::empty_variant: {
+                    auto variant_builder =
+                        static_cast<arrow::NullBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
+                } break;
             }
         }
 
         return Error::ok();
-    }
-
-    Result<std::shared_ptr<arrow::Array>> Loggable<datatypes::AffixFuzzer3>::to_arrow(
-        const datatypes::AffixFuzzer3* instances, size_t num_instances
-    ) {
-        // TODO(andreas): Allow configuring the memory pool.
-        arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
-
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-        if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<datatypes::AffixFuzzer3>::fill_arrow_array_builder(
-                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
-        }
-        std::shared_ptr<arrow::Array> array;
-        ARROW_RETURN_NOT_OK(builder->Finish(&array));
-        return array;
     }
 } // namespace rerun

@@ -1,18 +1,22 @@
-use itertools::Itertools;
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Item, Selection, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, SpaceViewId, ViewerContext};
 
-use crate::{ContainerBlueprint, Contents, ViewportBlueprint};
+use crate::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
 mod sub_menu;
 
 use actions::{
-    AddContainerAction, AddEntitiesToNewSpaceViewAction, AddSpaceViewAction, CloneSpaceViewAction,
-    CollapseExpandAllAction, HideAction, MoveContentsToNewContainerAction, RemoveAction,
-    ShowAction,
+    add_container::AddContainerAction,
+    add_entities_to_new_space_view::AddEntitiesToNewSpaceViewAction,
+    add_space_view::AddSpaceViewAction,
+    clone_space_view::CloneSpaceViewAction,
+    collapse_expand_all::CollapseExpandAllAction,
+    move_contents_to_new_container::MoveContentsToNewContainerAction,
+    remove::RemoveAction,
+    show_hide::{HideAction, ShowAction},
 };
 use sub_menu::SubMenu;
 
@@ -43,7 +47,7 @@ pub fn context_menu_ui_for_item(
             return;
         }
 
-        let mut show_context_menu = |selection: &Selection| {
+        let mut show_context_menu = |selection: &ItemCollection| {
             let context_menu_ctx = ContextMenuContext {
                 viewer_context: ctx,
                 viewport_blueprint,
@@ -61,10 +65,9 @@ pub fn context_menu_ui_for_item(
                     // When the context menu is triggered open, we check if we're part of the selection,
                     // and, if not, we update the selection to include only the item that was clicked.
                     if item_response.hovered() && item_response.secondary_clicked() {
-                        ctx.selection_state()
-                            .set_selection(std::iter::once(item.clone()));
+                        ctx.selection_state().set_selection(item.clone());
 
-                        show_context_menu(&Selection::from(item.clone()));
+                        show_context_menu(&ItemCollection::from(item.clone()));
                     } else {
                         show_context_menu(ctx.selection());
                     }
@@ -75,14 +78,15 @@ pub fn context_menu_ui_for_item(
 
             SelectionUpdateBehavior::OverrideSelection => {
                 if item_response.secondary_clicked() {
-                    ctx.selection_state()
-                        .set_selection(std::iter::once(item.clone()));
+                    ctx.selection_state().set_selection(item.clone());
                 }
 
-                show_context_menu(&Selection::from(item.clone()));
+                show_context_menu(&ItemCollection::from(item.clone()));
             }
 
-            SelectionUpdateBehavior::Ignore => show_context_menu(&Selection::from(item.clone())),
+            SelectionUpdateBehavior::Ignore => {
+                show_context_menu(&ItemCollection::from(item.clone()));
+            }
         };
     });
 }
@@ -94,8 +98,12 @@ pub fn context_menu_ui_for_item(
 fn action_list(
     ctx: &ViewerContext<'_>,
 ) -> &'static Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>> {
+    use egui_tiles::ContainerKind;
+
     static CONTEXT_MENU_ACTIONS: OnceCell<Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>>> =
         OnceCell::new();
+
+    static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
 
     CONTEXT_MENU_ACTIONS.get_or_init(|| {
         vec![
@@ -111,22 +119,24 @@ fn action_list(
             vec![Box::new(CloneSpaceViewAction)],
             vec![
                 Box::new(SubMenu {
-                    label: "Add Container".to_owned(),
+                    label: "Add container".to_owned(),
                     actions: vec![
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Tabs)),
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Horizontal)),
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Vertical)),
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Grid)),
+                        Box::new(AddContainerAction(ContainerKind::Tabs)),
+                        Box::new(AddContainerAction(ContainerKind::Horizontal)),
+                        Box::new(AddContainerAction(ContainerKind::Vertical)),
+                        Box::new(AddContainerAction(ContainerKind::Grid)),
                     ],
                 }),
                 Box::new(SubMenu {
-                    label: "Add Space View".to_owned(),
+                    label: "Add space view".to_owned(),
                     actions: ctx
                         .space_view_class_registry
                         .iter_registry()
-                        .sorted_by_key(|entry| entry.class.display_name())
                         .map(|entry| {
-                            Box::new(AddSpaceViewAction(entry.class.identifier()))
+                            Box::new(AddSpaceViewAction {
+                                icon: entry.class.icon(),
+                                id: entry.identifier,
+                            })
                                 as Box<dyn ContextMenuAction + Sync + Send>
                         })
                         .collect(),
@@ -135,18 +145,10 @@ fn action_list(
             vec![Box::new(SubMenu {
                 label: "Move to new container".to_owned(),
                 actions: vec![
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Tabs,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Horizontal,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Vertical,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Grid,
-                    )),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Tabs)),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Horizontal)),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Vertical)),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Grid)),
                 ],
             })],
             vec![Box::new(AddEntitiesToNewSpaceViewAction)],
@@ -193,7 +195,7 @@ struct ContextMenuContext<'a> {
     viewer_context: &'a ViewerContext<'a>,
     viewport_blueprint: &'a ViewportBlueprint,
     egui_context: egui::Context,
-    selection: &'a Selection,
+    selection: &'a ItemCollection,
     clicked_item: &'a Item,
 }
 
@@ -232,9 +234,9 @@ impl<'a> ContextMenuContext<'a> {
 /// Context menu actions must implement this trait.
 ///
 /// Actions must do three things, corresponding to three core methods:
-/// 1. Decide if it can operate a given [`Selection`] ([`Self::supports_selection`]).
+/// 1. Decide if it can operate a given [`ItemCollection`] ([`Self::supports_selection`]).
 /// 2. If so, draw some UI in the context menu ([`Self::ui`]).
-/// 3. If clicked, actually process the [`Selection`] ([`Self::process_selection`]).
+/// 3. If clicked, actually process the [`ItemCollection`] ([`Self::process_selection`]).
 ///
 /// For convenience, these core methods have default implementations which delegates to simpler
 /// methods (see their respective docstrings). Implementor may either implement the core method for
@@ -274,11 +276,20 @@ trait ContextMenuAction {
     /// [`Self::process_selection`] when triggered by the user.
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut egui::Ui) -> egui::Response {
         let label = self.label(ctx);
-        let response = ui.button(label);
+
+        let response = if let Some(icon) = self.icon() {
+            ui.add(egui::Button::image_and_text(icon.as_image(), label))
+        } else {
+            ui.button(label)
+        };
         if response.clicked() {
             self.process_selection(ctx);
         }
         response
+    }
+
+    fn icon(&self) -> Option<&'static re_ui::Icon> {
+        None
     }
 
     // TODO(ab): return a `ListItem` to make those context menu nice to look at. This requires
@@ -290,12 +301,14 @@ trait ContextMenuAction {
 
     // ---
 
-    /// Process the provided [`Selection`].
+    /// Process the provided [`ItemCollection`].
     ///
     /// The default implementation dispatches to [`Self::process_store_id`] and friends.
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
         for (item, _) in ctx.selection.iter() {
             match item {
+                Item::AppId(app_id) => self.process_app_id(ctx, app_id),
+                Item::DataSource(data_source) => self.process_data_source(ctx, data_source),
                 Item::StoreId(store_id) => self.process_store_id(ctx, store_id),
                 Item::ComponentPath(component_path) => {
                     self.process_component_path(ctx, component_path);
@@ -308,6 +321,16 @@ trait ContextMenuAction {
                 Item::Container(container_id) => self.process_container(ctx, container_id),
             }
         }
+    }
+
+    fn process_app_id(&self, _ctx: &ContextMenuContext<'_>, _app_id: &re_log_types::ApplicationId) {
+    }
+
+    fn process_data_source(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _data_source: &re_smart_channel::SmartChannelSource,
+    ) {
     }
 
     /// Process a single recording.

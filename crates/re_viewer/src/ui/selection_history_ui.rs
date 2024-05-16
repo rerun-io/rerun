@@ -1,6 +1,6 @@
 use egui::RichText;
 use re_ui::UICommand;
-use re_viewer_context::{Item, Selection, SelectionHistory};
+use re_viewer_context::{Item, ItemCollection, SelectionHistory};
 use re_viewport::ViewportBlueprint;
 
 // ---
@@ -16,7 +16,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<Selection> {
+    ) -> Option<ItemCollection> {
         let next = self.next_button_ui(re_ui, ui, blueprint, history);
         let prev = self.prev_button_ui(re_ui, ui, blueprint, history);
         prev.or(next)
@@ -28,7 +28,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<Selection> {
+    ) -> Option<ItemCollection> {
         // undo selection
         if let Some(previous) = history.previous() {
             let response = re_ui
@@ -78,7 +78,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<Selection> {
+    ) -> Option<ItemCollection> {
         // redo selection
         if let Some(next) = history.next() {
             let response = re_ui
@@ -156,7 +156,7 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> String {
+fn selection_to_string(blueprint: &ViewportBlueprint, selection: &ItemCollection) -> String {
     debug_assert!(
         !selection.is_empty(),
         "History should never contain empty selections."
@@ -181,13 +181,15 @@ fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> 
 
 fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
+        Item::AppId(app_id) => app_id.to_string(),
+        Item::DataSource(data_source) => data_source.to_string(),
         Item::StoreId(store_id) => store_id.to_string(),
         Item::SpaceView(space_view_id) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
             if let Some(space_view) = blueprint.space_view(space_view_id) {
                 space_view.display_name_or_default().as_ref().to_owned()
             } else {
-                "<removed Space View>".to_owned()
+                "<removed space view>".to_owned()
             }
         }
         Item::InstancePath(instance_path) => instance_path.to_string(),
@@ -197,7 +199,7 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
                 if let Some(space_view) = blueprint.space_view(space_view_id) {
                     space_view.display_name_or_default().as_ref().to_owned()
                 } else {
-                    "<removed Space View>".to_owned()
+                    "<removed space view>".to_owned()
                 };
 
             format!("{instance_path} in {space_view_display_name}")
@@ -206,10 +208,11 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
             format!("{}:{}", path.entity_path, path.component_name.short_name(),)
         }
         Item::Container(container_id) => {
+            // TODO(#4678): unnamed container should have their label formatted accordingly (subdued)
             if let Some(container) = blueprint.container(container_id) {
-                format!("{:?}", container.container_kind)
+                container.display_name_or_default().as_ref().to_owned()
             } else {
-                "<removed Container>".to_owned()
+                "<removed container>".to_owned()
             }
         }
     }

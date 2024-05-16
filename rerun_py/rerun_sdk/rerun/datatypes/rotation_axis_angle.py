@@ -66,28 +66,24 @@ class RotationAxisAngleType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field(
-                        "axis",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "angle",
-                        pa.dense_union(
-                            [
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("Radians", pa.float32(), nullable=False, metadata={}),
-                                pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
-                            ]
-                        ),
-                        nullable=False,
-                        metadata={},
-                    ),
-                ]
-            ),
+            pa.struct([
+                pa.field(
+                    "axis",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "angle",
+                    pa.dense_union([
+                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                        pa.field("Radians", pa.float32(), nullable=False, metadata={}),
+                        pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
+            ]),
             self._TYPE_NAME,
         )
 
@@ -97,4 +93,15 @@ class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        return RotationAxisAngleExt.native_to_pa_array_override(data, data_type)
+        from rerun.datatypes import AngleBatch, Vec3DBatch
+
+        if isinstance(data, RotationAxisAngle):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                Vec3DBatch([x.axis for x in data]).as_arrow_array().storage,
+                AngleBatch([x.angle for x in data]).as_arrow_array().storage,
+            ],
+            fields=list(data_type),
+        )

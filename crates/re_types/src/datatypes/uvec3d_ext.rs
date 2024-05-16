@@ -1,24 +1,31 @@
 use super::UVec3D;
 
 impl UVec3D {
+    /// The zero vector, i.e. the additive identity.
     pub const ZERO: Self = Self([0; 3]);
+
+    /// The unit vector `[1, 1, 1]`, i.e. the multiplicative identity.
     pub const ONE: Self = Self([1; 3]);
 
+    /// Create a new vector.
     #[inline]
     pub const fn new(x: u32, y: u32, z: u32) -> Self {
         Self([x, y, z])
     }
 
+    /// The x-coordinate, i.e. index 0.
     #[inline]
     pub fn x(&self) -> u32 {
         self.0[0]
     }
 
+    /// The y-coordinate, i.e. index 1.
     #[inline]
     pub fn y(&self) -> u32 {
         self.0[1]
     }
 
+    /// The z-coordinate, i.e. index 2.
     #[inline]
     pub fn z(&self) -> u32 {
         self.0[2]

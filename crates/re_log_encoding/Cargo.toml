@@ -12,6 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 
@@ -63,7 +66,7 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window"] }
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen", "serde"] }
+re_types = { workspace = true, features = ["serde"] }
 
 criterion.workspace = true
 mimalloc.workspace = true

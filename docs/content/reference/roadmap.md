@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-order: 1
+order: 200
 ---
 Rerun is building a visualization engine for streams of multimodal data that's easy to use, adapt, and extend.
 
@@ -16,20 +16,22 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ## Roadmap of major feature areas
 
-### Early January 2024: Release 0.12
-- Parallelized rendering and processing for all views
-- Plugin system for loading any file into Rerun
+### Early April 2024: release 0.15
+- Layout and viewport content from code (blueprint part 1)
+- Data-loader plugins callable from the SDK
+- Linux ARM64 support in pre-built artifacts
 
-### Near term: Now - Q1 2024
-- End to end performance for high frequency time series logging
-- Layout and configuration from code (blueprint)
-- Datasets that are bigger than RAM for the native viewer
-- CLI for manipulating and exporting data from rrd files
-
-### Medium term (Q2-3 2024)
-- Broader coverage of robotics data types
+### Near term: now - end of Q2 2024
+- Property overrides from code (blueprint part 2)
+    - Includes setting visible time range from code
+- Broader coverage of robotics and spatial computing data types
 - Extension mechanisms for dynamically reading from external storage
     - For example files like: VRS, MCAP, or mp4
+    - Also brings support for datasets that are bigger than RAM in the native viewer
+
+### Medium term (Q3-4 2024)
+- Make Rerun easier to use when training and evaluating ML models
+- Deeper support for modalities like text and audio
 - Callbacks and the ability to build interactive applications with Rerun
     - For example: UI for tweaking configs, custom data annotation tools, etc
 

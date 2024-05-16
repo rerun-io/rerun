@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_types_core::{components::InstanceKey, Loggable, SizeBytes};
+use re_types_core::{Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -27,7 +27,6 @@ impl re_types_core::Archetype for MyPoints {
     fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentName]> {
         vec![
             re_types_core::LoggableBatch::name(&Self::Indicator::default()),
-            InstanceKey::name(),
             MyColor::name(),
             MyLabel::name(),
         ]
@@ -41,6 +40,16 @@ impl re_types_core::Archetype for MyPoints {
 pub struct MyPoint {
     pub x: f32,
     pub y: f32,
+}
+
+impl MyPoint {
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
+        it.into_iter()
+            .map(|i| MyPoint::new(i as f32, i as f32))
+            .collect()
+    }
 }
 
 impl MyPoint {
@@ -133,6 +142,14 @@ impl Loggable for MyPoint {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(transparent)]
 pub struct MyColor(pub u32);
+
+impl MyColor {
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
+        it.into_iter().map(Self).collect()
+    }
+}
 
 impl MyColor {
     #[inline]
@@ -240,6 +257,66 @@ impl Loggable for MyLabel {
         Ok(Utf8::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0.to_string())))
+            .collect())
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[repr(transparent)]
+pub struct MyIndex(pub u64);
+
+impl MyIndex {
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
+        it.into_iter().map(Self).collect()
+    }
+}
+
+re_types_core::macros::impl_into_cow!(MyIndex);
+
+impl SizeBytes for MyIndex {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self(_) = self;
+        0
+    }
+}
+
+impl Loggable for MyIndex {
+    type Name = re_types_core::ComponentName;
+
+    fn name() -> Self::Name {
+        "example.MyIndex".into()
+    }
+
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
+        arrow2::datatypes::DataType::UInt64
+    }
+
+    fn to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    ) -> re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        use re_types_core::datatypes::UInt64;
+        UInt64::to_arrow_opt(
+            data.into_iter()
+                .map(|opt| opt.map(Into::into).map(|c| UInt64(c.0))),
+        )
+    }
+
+    fn from_arrow_opt(
+        data: &dyn arrow2::array::Array,
+    ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
+        use re_types_core::datatypes::UInt64;
+        Ok(UInt64::from_arrow_opt(data)?
+            .into_iter()
+            .map(|opt| opt.map(|v| Self(v.0)))
             .collect())
     }
 }

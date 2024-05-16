@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_entity_db::TimeHistogram;
-use re_log_types::{TimeInt, TimeRange, TimeType};
+use re_log_types::{ResolvedTimeRange, TimeInt, TimeType};
 
 /// A piece-wise linear view of a single timeline.
 ///
@@ -9,10 +9,11 @@ use re_log_types::{TimeInt, TimeRange, TimeType};
 /// which we collapse in order to present a compressed view of the data.
 #[derive(Clone, Debug)]
 pub(crate) struct TimelineAxis {
-    pub ranges: vec1::Vec1<TimeRange>,
+    pub ranges: vec1::Vec1<ResolvedTimeRange>,
 }
 
 impl TimelineAxis {
+    #[inline]
     pub fn new(time_type: TimeType, times: &TimeHistogram) -> Self {
         re_tracing::profile_function!();
         assert!(!times.is_empty());
@@ -23,24 +24,15 @@ impl TimelineAxis {
     }
 
     /// Total uncollapsed time.
+    #[inline]
     pub fn sum_time_lengths(&self) -> u64 {
         self.ranges.iter().map(|t| t.abs_length()).sum()
     }
 
-    // pub fn range(&self) -> TimeRange {
-    //     TimeRange {
-    //         min: self.min(),
-    //         max: self.max(),
-    //     }
-    // }
-
+    #[inline]
     pub fn min(&self) -> TimeInt {
-        self.ranges.first().min
+        self.ranges.first().min()
     }
-
-    // pub fn max(&self) -> TimeInt {
-    //     self.ranges.last().max
-    // }
 }
 
 /// First determine the threshold for when a gap should be closed.
@@ -70,7 +62,7 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     // This is partially an optimization, and partially something that "feels right".
     let min_gap_size: u64 = match time_type {
         TimeType::Sequence => 9,
-        TimeType::Time => TimeInt::from_milliseconds(100).as_i64() as _,
+        TimeType::Time => TimeInt::from_milliseconds(100.try_into().unwrap()).as_i64() as _,
     };
     // Collect all gaps larger than our minimum gap size.
     let mut gap_sizes = collect_candidate_gaps(times, min_gap_size, max_collapses);
@@ -138,23 +130,19 @@ fn collect_gaps_with_granularity(
 }
 
 /// Collapse any gaps larger or equals to the given threshold.
-fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRange> {
+fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<ResolvedTimeRange> {
     re_tracing::profile_function!();
     let mut it = times.range(.., gap_threshold);
     let first_range = it.next().unwrap().0;
-    let mut ranges = vec1::vec1![TimeRange::new(
-        first_range.min.into(),
-        first_range.max.into()
-    )];
+    let mut ranges = vec1::vec1![ResolvedTimeRange::new(first_range.min, first_range.max,)];
 
     for (new_range, _count) in it {
-        let last_max = &mut ranges.last_mut().max;
-        if last_max.as_i64().abs_diff(new_range.min) < gap_threshold {
+        if ranges.last_mut().max().as_i64().abs_diff(new_range.min) < gap_threshold {
             // join previous range:
-            *last_max = new_range.max.into();
+            ranges.last_mut().set_max(new_range.max);
         } else {
             // new range:
-            ranges.push(TimeRange::new(new_range.min.into(), new_range.max.into()));
+            ranges.push(ResolvedTimeRange::new(new_range.min, new_range.max));
         }
     }
 
@@ -164,9 +152,9 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRa
 #[cfg(test)]
 mod tests {
     use super::*;
-    use re_data_store::TimeRange;
+    use re_data_store::ResolvedTimeRange;
 
-    fn ranges(times: &[i64]) -> vec1::Vec1<TimeRange> {
+    fn ranges(times: &[i64]) -> vec1::Vec1<ResolvedTimeRange> {
         let mut time_histogram = TimeHistogram::default();
         for &time in times {
             time_histogram.increment(time, 1);

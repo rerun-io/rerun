@@ -21,6 +21,27 @@ namespace rerun::datatypes {
         std::array<uint32_t, 3> xyz;
 
       public:
+        // Extensions to generated type defined in 'uvec3d_ext.cpp'
+
+        /// Construct UVec3D from x/y/z values.
+        UVec3D(uint32_t x, uint32_t y, uint32_t z) : xyz{x, y, z} {}
+
+        /// Construct UVec3D from x/y/z uint32_t pointer.
+        explicit UVec3D(const uint32_t* xyz_) : xyz{xyz_[0], xyz_[1], xyz_[2]} {}
+
+        uint32_t x() const {
+            return xyz[0];
+        }
+
+        uint32_t y() const {
+            return xyz[1];
+        }
+
+        uint32_t z() const {
+            return xyz[2];
+        }
+
+      public:
         UVec3D() = default;
 
         UVec3D(std::array<uint32_t, 3> xyz_) : xyz(xyz_) {}
@@ -44,15 +65,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::UVec3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::UVec3D* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::FixedSizeListBuilder* builder, const datatypes::UVec3D* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::UVec3D` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::UVec3D* instances, size_t num_instances
         );
     };
 } // namespace rerun

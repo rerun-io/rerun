@@ -10,6 +10,10 @@ on:
       - opened
       - synchronize
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
   pull-requests: "write" # Updates PR body
@@ -23,20 +27,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          python-version: 3.11
-
-      - name: Install deps
-        shell: bash
-        run: |
-          python3 -m pip install -r ./scripts/ci/requirements.txt
+          pixi-version: v0.20.0
 
       - name: Update PR description
-        shell: bash
         run: |
-          ./scripts/ci/update_pr_body.py \
+          pixi run ./scripts/ci/update_pr_body.py \
             --github-token '${{ secrets.GITHUB_TOKEN }}' \
             --github-repository '${{ github.repository }}' \
             --pr-number '${{ github.event.pull_request.number }}'

@@ -1,11 +1,22 @@
 ---
-title: Use custom data
-order: 2
+title: By logging custom data
+order: 100
 description: How to use Rerun with custom data
 ---
 Rerun comes with many pre-built [Types](../../reference/types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
 
-All you need to do is implement the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
+For Python we have a helper for this, called [`AnyValues`](https://ref.rerun.io/docs/python/main/common/custom_data/), allowing you to easily attach custom values to any entity instance:
+
+```
+rr.log(
+    "my_entity", rr.AnyValues(
+        confidence=[1.2, 3.4, 5.6],
+        description="Bla bla bla…",
+    ),
+)
+```
+
+You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
 
 ## Remapping to a Rerun archetype
 Let's start with a simple example where you have your own point cloud class that is perfectly representable as a Rerun archetype.
@@ -40,7 +51,7 @@ You can also define and log your own custom archetypes and components completely
 
 In this example we extend the Rerun Points3D archetype with custom confidence and indicator components.
 
-code-example: custom_data
+snippet: tutorials/custom_data
 
 <picture>
   <img src="https://static.rerun.io/custom_data/7bb90e1ab4244541164775473c5106e15152b8d0/full.png" alt="">

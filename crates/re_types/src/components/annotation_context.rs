@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -89,10 +90,7 @@ impl ::re_types_core::Loggable for AnnotationContext {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -102,30 +100,25 @@ impl ::re_types_core::Loggable for AnnotationContext {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0
-                    .iter()
-                    .flatten()
-                    .flatten()
-                    .cloned()
-                    .map(Some)
-                    .collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
-                )
-                .unwrap()
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                )?
                 .into();
-                ListArray::new(
+                let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
+                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     {
                         _ = data0_inner_bitmap;
-                        crate::datatypes::ClassDescriptionMapElem::to_arrow_opt(data0_inner_data)?
+                        crate::datatypes::ClassDescriptionMapElem::to_arrow_opt(
+                            data0_inner_data.into_iter().map(Some),
+                        )?
                     },
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })

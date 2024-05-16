@@ -235,7 +235,7 @@ where
         self.unwritten_element_range.end
     }
 
-    /// Copies all so far written data to the first layer of a 2d texture.
+    /// Copies all so far written data to the first layer of a 2D texture.
     ///
     /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data.
     /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
@@ -259,7 +259,7 @@ where
         )
     }
 
-    /// Copies all so far written data to a rectangle on a single 2d texture layer.
+    /// Copies all so far written data to a rectangle on a single 2D texture layer.
     ///
     /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data.
     /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])

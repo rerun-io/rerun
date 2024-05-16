@@ -2,6 +2,9 @@
 //!
 //! Space Views that show entities in a 2D or 3D spatial relationship.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 mod contexts;
 mod eye;
 mod heuristics;
@@ -20,12 +23,11 @@ mod ui_2d;
 mod ui_3d;
 mod visualizers;
 
+use re_types::blueprint::components::BackgroundKind;
 use re_types::components::{Resolution, TensorData};
+
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
-
-#[doc(hidden)] // Public for benchmarks
-pub use visualizers::{LoadedPoints, Points3DComponentData};
 
 // ---
 
@@ -38,12 +40,13 @@ mod view_kind {
 }
 
 fn resolution_from_tensor(
-    store: &re_data_store::DataStore,
+    entity_db: &re_entity_db::EntityDb,
     query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
-    store
-        .query_latest_component::<TensorData>(entity_path, query)
+    // TODO(#5607): what should happen if the promise is still pending?
+    entity_db
+        .latest_at_component::<TensorData>(entity_path, query)
         .and_then(|tensor| {
             tensor
                 .image_height_width_channels()
@@ -53,23 +56,57 @@ fn resolution_from_tensor(
 
 /// Utility for querying a pinhole archetype instance.
 ///
-/// TODO(andreas): It should be possible to convert [`re_query::ArchetypeView`] to its corresponding Archetype for situations like this.
-/// TODO(andreas): This is duplicated into `re_viewport`
+// TODO(andreas): This is duplicated into `re_viewport`
 fn query_pinhole(
-    store: &re_data_store::DataStore,
+    entity_db: &re_entity_db::EntityDb,
     query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<re_types::archetypes::Pinhole> {
-    store
-        .query_latest_component::<re_types::components::PinholeProjection>(entity_path, query)
+    // TODO(#5607): what should happen if the promise is still pending?
+    entity_db
+        .latest_at_component::<re_types::components::PinholeProjection>(entity_path, query)
         .map(|image_from_camera| re_types::archetypes::Pinhole {
             image_from_camera: image_from_camera.value,
-            resolution: store
-                .query_latest_component(entity_path, query)
+            resolution: entity_db
+                .latest_at_component(entity_path, query)
                 .map(|c| c.value)
-                .or_else(|| resolution_from_tensor(store, query, entity_path)),
-            camera_xyz: store
-                .query_latest_component(entity_path, query)
+                .or_else(|| resolution_from_tensor(entity_db, query, entity_path)),
+            camera_xyz: entity_db
+                .latest_at_component(entity_path, query)
                 .map(|c| c.value),
         })
+}
+
+pub(crate) fn configure_background(
+    ctx: &re_viewer_context::ViewerContext<'_>,
+    kind: BackgroundKind,
+    color: re_types::components::Color,
+) -> (Option<re_renderer::QueueableDrawData>, re_renderer::Rgba) {
+    use re_renderer::renderer;
+
+    match kind {
+        BackgroundKind::GradientDark => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::GradientDark,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
+
+        BackgroundKind::GradientBright => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::GradientBright,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
+
+        BackgroundKind::SolidColor => (None, color.into()),
+    }
 }

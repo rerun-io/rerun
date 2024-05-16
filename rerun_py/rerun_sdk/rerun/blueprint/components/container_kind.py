@@ -36,15 +36,13 @@ class ContainerKindType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.sparse_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("Tabs", pa.null(), nullable=True, metadata={}),
-                    pa.field("Horizontal", pa.null(), nullable=True, metadata={}),
-                    pa.field("Vertical", pa.null(), nullable=True, metadata={}),
-                    pa.field("Grid", pa.null(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.sparse_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("Tabs", pa.null(), nullable=True, metadata={}),
+                pa.field("Horizontal", pa.null(), nullable=True, metadata={}),
+                pa.field("Vertical", pa.null(), nullable=True, metadata={}),
+                pa.field("Grid", pa.null(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

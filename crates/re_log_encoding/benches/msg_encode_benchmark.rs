@@ -1,3 +1,6 @@
+// Allow unwrap() in benchmarks
+#![allow(clippy::unwrap_used)]
+
 #[cfg(not(all(feature = "decoder", feature = "encoder")))]
 compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features.");
 
@@ -5,10 +8,10 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
-    entity_path, DataRow, DataTable, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt, TimeType,
-    Timeline,
+    entity_path,
+    example_components::{MyColor, MyPoint},
+    DataRow, DataTable, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt, TimeType, Timeline,
 };
-use re_types::datagen::{build_some_colors, build_some_positions2d};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
@@ -30,7 +33,13 @@ criterion_main!(benches);
 fn encode_log_msgs(messages: &[LogMsg]) -> Vec<u8> {
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let mut bytes = vec![];
-    re_log_encoding::encoder::encode(encoding_options, messages.iter(), &mut bytes).unwrap();
+    re_log_encoding::encoder::encode(
+        re_build_info::CrateVersion::LOCAL,
+        encoding_options,
+        messages.iter(),
+        &mut bytes,
+    )
+    .unwrap();
     assert!(bytes.len() > messages.len());
     bytes
 }
@@ -74,9 +83,8 @@ fn mono_points_arrow(c: &mut Criterion) {
                     [DataRow::from_cells2(
                         RowId::ZERO,
                         entity_path!("points", i.to_string()),
-                        [build_frame_nr(0.into())],
-                        1,
-                        (build_some_positions2d(1), build_some_colors(1)),
+                        [build_frame_nr(TimeInt::ZERO)],
+                        (MyPoint::from_iter(0..1), MyColor::from_iter(0..1)),
                     )
                     .unwrap()],
                 )
@@ -132,9 +140,8 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
                 DataRow::from_cells2(
                     RowId::ZERO,
                     entity_path!("points", i.to_string()),
-                    [build_frame_nr(0.into())],
-                    1,
-                    (build_some_positions2d(1), build_some_colors(1)),
+                    [build_frame_nr(TimeInt::ZERO)],
+                    (MyPoint::from_iter(0..1), MyColor::from_iter(0..1)),
                 )
                 .unwrap()
             }),
@@ -188,11 +195,10 @@ fn batch_points_arrow(c: &mut Criterion) {
             [DataRow::from_cells2(
                 RowId::ZERO,
                 entity_path!("points"),
-                [build_frame_nr(0.into())],
-                NUM_POINTS as _,
+                [build_frame_nr(TimeInt::ZERO)],
                 (
-                    build_some_positions2d(NUM_POINTS),
-                    build_some_colors(NUM_POINTS),
+                    MyPoint::from_iter(0..NUM_POINTS as u32),
+                    MyColor::from_iter(0..NUM_POINTS as u32),
                 ),
             )
             .unwrap()],

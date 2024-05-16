@@ -17,7 +17,7 @@ int main(int, char** argv) {
             .with_class_ids({126, 127})
     );
 
-    // Hack to establish 2d view bounds
+    // Hack to establish 2D view bounds
     rec.log(
         "rect",
         rerun::archetypes::Boxes2D::from_mins_and_sizes({{-10.0f, -10.0f}}, {{20.0f, 20.0f}})

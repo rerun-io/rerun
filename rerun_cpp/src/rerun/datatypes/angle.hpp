@@ -29,8 +29,10 @@ namespace rerun::datatypes {
 
         /// \private
         union AngleData {
+            /// Angle in radians. One turn is equal to 2π (or τ) radians.
             float radians;
 
+            /// Angle in degrees. One turn is equal to 360 degrees.
             float degrees;
 
             AngleData() {
@@ -82,6 +84,7 @@ namespace rerun::datatypes {
             this->_data.swap(other._data);
         }
 
+        /// Angle in radians. One turn is equal to 2π (or τ) radians.
         static Angle radians(float radians) {
             Angle self;
             self._tag = detail::AngleTag::Radians;
@@ -89,6 +92,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// Angle in degrees. One turn is equal to 360 degrees.
         static Angle degrees(float degrees) {
             Angle self;
             self._tag = detail::AngleTag::Degrees;
@@ -142,14 +146,14 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const datatypes::Angle* elements, size_t num_elements
-        );
-
         /// Serializes an array of `rerun::datatypes::Angle` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::Angle* instances, size_t num_instances
+        );
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const datatypes::Angle* elements, size_t num_elements
         );
     };
 } // namespace rerun

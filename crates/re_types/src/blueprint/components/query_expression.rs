@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -21,41 +22,16 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A way to filter a set of `EntityPath`s.
+/// **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
 ///
-/// This implements as simple set of include/exclude rules:
+/// Each expression is either an inclusion or an exclusion expression.
+/// Inclusions start with an optional `+` and exclusions must start with a `-`.
 ///
-/// ```diff
-/// + /world/**           # add everything…
-/// - /world/roads/**     # …but remove all roads…
-/// + /world/roads/main   # …but show main road
-/// ```
-///
-/// If there is multiple matching rules, the most specific rule wins.
-/// If there are multiple rules of the same specificity, the last one wins.
-/// If no rules match, the path is excluded.
+/// Multiple expressions are combined together as part of `SpaceViewContents`.
 ///
 /// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
 /// (`/world/**` matches both `/world` and `/world/car/driver`).
 /// Other uses of `*` are not (yet) supported.
-///
-/// Internally, `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
-/// This means the last matching rule is also the most specific one.
-/// For instance:
-///
-/// ```diff
-/// + /world/**
-/// - /world
-/// - /world/car/**
-/// + /world/car/driver
-/// ```
-///
-/// The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
-/// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
-/// The last rule matching `/world` is `- /world`, so it is excluded.
-/// The last rule matching `/world/house` is `+ /world/**`, so it is included.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct QueryExpression(pub crate::datatypes::Utf8);
@@ -125,10 +101,7 @@ impl ::re_types_core::Loggable for QueryExpression {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -137,25 +110,17 @@ impl ::re_types_core::Loggable for QueryExpression {
                 any_nones.then(|| somes.into())
             };
             {
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                )?
+                .into();
                 let inner_data: arrow2::buffer::Buffer<u8> = data0
-                    .iter()
+                    .into_iter()
                     .flatten()
-                    .flat_map(|datum| {
-                        let crate::datatypes::Utf8(data0) = datum;
-                        data0.0.clone()
-                    })
+                    .flat_map(|datum| datum.0 .0)
                     .collect();
-                let offsets =
-                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
-                        opt.as_ref()
-                            .map(|datum| {
-                                let crate::datatypes::Utf8(data0) = datum;
-                                data0.0.len()
-                            })
-                            .unwrap_or_default()
-                    }))
-                    .unwrap()
-                    .into();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {

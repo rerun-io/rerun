@@ -26,7 +26,7 @@ class DisconnectedSpace(DisconnectedSpaceExt, Archetype):
 
     Example
     -------
-    ### Disconnected Space:
+    ### Disconnected space:
     ```python
     import rerun as rr
 
@@ -71,5 +71,9 @@ class DisconnectedSpace(DisconnectedSpaceExt, Archetype):
         metadata={"component": "required"},
         converter=components.DisconnectedSpaceBatch._required,  # type: ignore[misc]
     )
+    # Whether the entity path at which this is logged is disconnected from its parent.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]

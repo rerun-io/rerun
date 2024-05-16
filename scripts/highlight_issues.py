@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Generate a list of GitHub issues that needs attention."""
+
 from __future__ import annotations
 
 import multiprocessing
@@ -37,7 +38,7 @@ def get_github_token() -> str:
     token_file = os.path.join(home_dir, ".githubtoken")
 
     try:
-        with open(token_file) as f:
+        with open(token_file, encoding="utf8") as f:
             token = f.read().strip()
         return token
     except Exception:

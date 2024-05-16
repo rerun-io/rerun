@@ -1,10 +1,17 @@
 [package]
 name = "plot_dashboard_stress"
-version = "0.15.0-alpha.2"
-edition = "2021"
-rust-version = "1.74"
-license = "MIT OR Apache-2.0"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
 publish = false
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }

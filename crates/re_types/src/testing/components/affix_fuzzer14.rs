@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -76,7 +77,6 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
                 Field::new("degrees", DataType::Float32, false),
-                Field::new("radians", DataType::Float32, false),
                 Field::new(
                     "craziness",
                     DataType::List(std::sync::Arc::new(Field::new(
@@ -94,6 +94,7 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
                     ),
                     false,
                 ),
+                Field::new("empty_variant", DataType::Null, true),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Dense,
@@ -114,10 +115,7 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();

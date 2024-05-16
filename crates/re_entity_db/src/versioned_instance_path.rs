@@ -7,7 +7,7 @@ use crate::{InstancePath, InstancePathHash};
 // ----------------------------------------------------------------------------
 
 /// A versioned path (i.e. pinned to a specific [`RowId`]) to either a specific instance of an entity,
-/// or the whole entity (splat).
+/// or the whole entity.
 ///
 /// The easiest way to construct this type is via [`crate::InstancePath::versioned`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -22,8 +22,8 @@ impl VersionedInstancePath {
     ///
     /// For example: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn is_splat(&self) -> bool {
-        self.instance_path.is_splat()
+    pub fn is_all(&self) -> bool {
+        self.instance_path.is_all()
     }
 
     #[inline]
@@ -75,11 +75,11 @@ impl std::hash::Hash for VersionedInstancePathHash {
         } = self;
         let InstancePathHash {
             entity_path_hash,
-            instance_key,
+            instance,
         } = instance_path_hash;
 
         state.write_u64(entity_path_hash.hash64());
-        state.write_u64(instance_key.0);
+        state.write_u64(instance.get());
         state.write_u128(row_id.as_u128());
     }
 }

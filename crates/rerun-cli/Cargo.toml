@@ -20,6 +20,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
@@ -64,8 +67,6 @@ rerun = { workspace = true, features = [
 
 document-features.workspace = true
 mimalloc.workspace = true
-rayon.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 
 [build-dependencies]

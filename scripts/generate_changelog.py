@@ -8,6 +8,7 @@ You can add the `exclude from changelog` label to minor PRs that are not of inte
 
 Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary to the top.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,7 +65,7 @@ def get_github_token() -> str:
     token_file = os.path.join(home_dir, ".githubtoken")
 
     try:
-        with open(token_file) as f:
+        with open(token_file, encoding="utf8") as f:
             token = f.read().strip()
         return token
     except Exception:
@@ -122,11 +123,11 @@ def print_section(title: str, items: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a changelog.")
-    parser.add_argument("--commit-range", help="e.g. 0.11.0..HEAD")
+    parser.add_argument("--commit-range", required=True, help="e.g. 0.11.0..HEAD")
     args = parser.parse_args()
 
     # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
-    previous_changelog = open("CHANGELOG.md").read()
+    previous_changelog = open("CHANGELOG.md", encoding="utf8").read()
 
     repo = Repo(".")
     commits = list(repo.iter_commits(args.commit_range))
@@ -279,7 +280,7 @@ def main() -> None:
     print_section("🧑‍💻 Dev-experience", dev_experience)
     print_section("🗣 Refactors", refactor)
     print_section("📦 Dependencies", dependencies)
-    print_section("🤷‍♂️ Other", misc)
+    print_section("🤷‍ Other", misc)
 
     print()
     print_section("Chronological changes (don't include these)", chronological)

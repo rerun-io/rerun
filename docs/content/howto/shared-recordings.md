@@ -1,6 +1,6 @@
 ---
-title: Share a recording across multiple processes
-order: 2
+title: Share recordings across multiple processes
+order: 300
 ---
 
 A common need is to log data from multiple processes and then visualize all of that data as part of a single shared recording.
@@ -12,7 +12,7 @@ All that matter is that they share the same Recording ID.
 
 By default, Rerun generates a random Recording ID everytime you start a new logging session, but you can override that behavior, e.g.:
 
-code-example: custom-recording-id
+snippet: tutorials/custom-recording-id
 
 It's up to you to decide where each recording ends up:
 - all processes could stream their share of the data in real-time to a Rerun Viewer,

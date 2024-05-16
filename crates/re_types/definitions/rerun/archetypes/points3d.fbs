@@ -9,10 +9,12 @@ namespace rerun.archetypes;
 
 /// A 3D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// \example point3d_simple !api title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
-/// \example point3d_random title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"
+/// \example archetypes/point3d_simple !api title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
+/// \example archetypes/point3d_random title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"
 table Points3D (
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "PartialEq",
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
   // --- Required ---
 
@@ -26,8 +28,8 @@ table Points3D (
 
   /// Optional colors for the points.
   ///
-  /// \python The colors are interpreted as RGB or RGBA in sRGB gamma-space,
-  /// \python As either 0-1 floats or 0-255 integers, with separate alpha.
+  /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+  /// \py As either 0-1 floats or 0-255 integers, with separate alpha.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---

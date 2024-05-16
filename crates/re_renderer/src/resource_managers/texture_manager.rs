@@ -75,7 +75,7 @@ impl std::borrow::Borrow<GpuTexture> for GpuTexture2D {
     }
 }
 
-/// Data required to create a texture 2d resource.
+/// Data required to create a texture 2D resource.
 ///
 /// It is *not* stored along side the resulting texture resource!
 pub struct Texture2DCreationDesc<'a> {

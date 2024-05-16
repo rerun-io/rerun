@@ -5,7 +5,7 @@
 #include <rerun/recording_stream.hpp>
 
 uint32_t as_uint(float f) {
-    // Dont do `*reinterpret_cast<const uint32_t*>(&x)` since it breaks strict aliasing rules.
+    // Don't do `*reinterpret_cast<const uint32_t*>(&x)` since it breaks strict aliasing rules.
     uint32_t n;
     memcpy(&n, &f, sizeof(float));
     return n;

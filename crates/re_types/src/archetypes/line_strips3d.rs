@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -113,16 +114,15 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.LineStrip3D".into(),
@@ -130,13 +130,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
             "rerun.components.LineStrips3DIndicator".into(),
             "rerun.components.Radius".into(),
             "rerun.components.ClassId".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl LineStrips3D {
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`LineStrips3D`] [`::re_types_core::Archetype`]
@@ -280,14 +280,11 @@ impl ::re_types_core::AsComponents for LineStrips3D {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.strips.len()
-    }
 }
 
 impl LineStrips3D {
+    /// Create a new `LineStrips3D`.
+    #[inline]
     pub fn new(
         strips: impl IntoIterator<Item = impl Into<crate::components::LineStrip3D>>,
     ) -> Self {
@@ -300,6 +297,7 @@ impl LineStrips3D {
         }
     }
 
+    /// Optional radii for the line strips.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -309,6 +307,7 @@ impl LineStrips3D {
         self
     }
 
+    /// Optional colors for the line strips.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -318,6 +317,7 @@ impl LineStrips3D {
         self
     }
 
+    /// Optional text labels for the line strips.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -327,6 +327,9 @@ impl LineStrips3D {
         self
     }
 
+    /// Optional `ClassId`s for the lines.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

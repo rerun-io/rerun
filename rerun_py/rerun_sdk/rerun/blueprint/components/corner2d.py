@@ -21,9 +21,16 @@ class Corner2D(Enum):
     """**Component**: One of four 2D corners, typically used to align objects."""
 
     LeftTop = 1
+    """Left top corner."""
+
     RightTop = 2
+    """Right top corner."""
+
     LeftBottom = 3
+    """Left bottom corner."""
+
     RightBottom = 4
+    """Right bottom corner."""
 
 
 Corner2DLike = Union[Corner2D, str]
@@ -36,15 +43,13 @@ class Corner2DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.sparse_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("LeftTop", pa.null(), nullable=True, metadata={}),
-                    pa.field("RightTop", pa.null(), nullable=True, metadata={}),
-                    pa.field("LeftBottom", pa.null(), nullable=True, metadata={}),
-                    pa.field("RightBottom", pa.null(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.sparse_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("LeftTop", pa.null(), nullable=True, metadata={}),
+                pa.field("RightTop", pa.null(), nullable=True, metadata={}),
+                pa.field("LeftBottom", pa.null(), nullable=True, metadata={}),
+                pa.field("RightBottom", pa.null(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

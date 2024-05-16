@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -23,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Define the style properties for a point series in a chart.
 ///
-/// This archetype only provides styling information and should be logged as timeless
+/// This archetype only provides styling information and should be logged as static
 /// when possible. The underlying data needs to be logged to the same entity-path using
 /// the `Scalar` archetype.
 ///
@@ -31,15 +32,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### Series Point
+/// ### Point series
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_point_style").spawn()?;
 ///
 ///     // Set up plot styling:
-///     // They are logged timeless as they don't change over time and apply to all timelines.
+///     // They are logged static as they don't change over time and apply to all timelines.
 ///     // Log two point series under a shared root so that they show in the same plot by default.
-///     rec.log_timeless(
+///     rec.log_static(
 ///         "trig/sin",
 ///         &rerun::SeriesPoint::new()
 ///             .with_color([255, 0, 0])
@@ -47,7 +48,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             .with_marker(rerun::components::MarkerShape::Circle)
 ///             .with_marker_size(4.0),
 ///     )?;
-///     rec.log_timeless(
+///     rec.log_static(
 ///         "trig/cos",
 ///         &rerun::SeriesPoint::new()
 ///             .with_color([0, 255, 0])
@@ -117,23 +118,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SeriesPointIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.MarkerShape".into(),
             "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.SeriesPointIndicator".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.MarkerShape".into(),
             "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
@@ -141,7 +140,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     });
 
 impl SeriesPoint {
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SeriesPoint`] [`::re_types_core::Archetype`]
@@ -259,14 +259,11 @@ impl ::re_types_core::AsComponents for SeriesPoint {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        0
-    }
 }
 
 impl SeriesPoint {
+    /// Create a new `SeriesPoint`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             color: None,
@@ -276,24 +273,30 @@ impl SeriesPoint {
         }
     }
 
+    /// Color for the corresponding series.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self
     }
 
+    /// What shape to use to represent the point
     #[inline]
     pub fn with_marker(mut self, marker: impl Into<crate::components::MarkerShape>) -> Self {
         self.marker = Some(marker.into());
         self
     }
 
+    /// Display name of the series.
+    ///
+    /// Used in the legend.
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
         self.name = Some(name.into());
         self
     }
 
+    /// Size of the marker.
     #[inline]
     pub fn with_marker_size(
         mut self,

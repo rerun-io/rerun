@@ -1,10 +1,12 @@
 use egui::Label;
 
 use re_space_view::suggest_space_view_for_each_entity;
+use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::external::re_entity_db::EntityProperties;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext,
 };
 
 use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
@@ -44,11 +46,17 @@ impl SpaceViewState for TextDocumentSpaceViewState {
 #[derive(Default)]
 pub struct TextDocumentSpaceView;
 
-impl SpaceViewClass for TextDocumentSpaceView {
-    type State = TextDocumentSpaceViewState;
+use re_types::View;
+type ViewType = re_types::blueprint::views::TextDocumentView;
 
-    const IDENTIFIER: &'static str = "Text Document";
-    const DISPLAY_NAME: &'static str = "Text Document";
+impl SpaceViewClass for TextDocumentSpaceView {
+    fn identifier() -> SpaceViewClassIdentifier {
+        ViewType::identifier()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "Text document"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXT
@@ -65,6 +73,10 @@ impl SpaceViewClass for TextDocumentSpaceView {
         system_registry.register_visualizer::<TextDocumentSystem>()
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<TextDocumentSpaceViewState>::default()
+    }
+
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }
@@ -73,11 +85,13 @@ impl SpaceViewClass for TextDocumentSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<TextDocumentSpaceViewState>()?;
+
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {
@@ -89,6 +103,8 @@ impl SpaceViewClass for TextDocumentSpaceView {
             });
             ui.end_row();
         });
+
+        Ok(())
     }
 
     fn spawn_heuristics(
@@ -104,11 +120,12 @@ impl SpaceViewClass for TextDocumentSpaceView {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<TextDocumentSpaceViewState>()?;
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
         egui::Frame {

@@ -12,7 +12,8 @@ Everything visible in the [Viewport](viewport.md) has a representation here,
 making it an easy way to select a Space View and the [Entities](../../concepts/entity-component.md) it shows.
 
 <picture>
-  <img src="https://static.rerun.io/blueprint-view/d01d0f5baf46d56f32925f9b10d793d1495a3a39/full.png" alt="screenshot of the blueprint view">
+  <img src="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/480w.png">
 </picture>
 
 
@@ -22,14 +23,14 @@ Controls
 The reset button resets the entire Blueprint back to its heuristic-chosen default.
 This includes all settings for Entities, Groups and Space Views.
 
-### Add Space View
+### Add space view
 With this control you can add new Space Views for arbitrary [Spaces](../../concepts/spaces-and-transforms.md).
 
 Contents
 --------
 Upon hovering any line in the Blueprint panel, you'll find shorthands for removing and hide/show.
 
-### Data Blueprints
+### Data blueprints
 All Entities shown in the blueprint panel refer in fact to their Data Blueprints.
 I.e. the entity plus the associated blueprint settings.
 As such, all changes made here are only relevant for the Space View in which they reside.
@@ -46,5 +47,5 @@ Adding Entities
 To (re-)add an Entity to a Space View, you need first need to select the respective Space View.
 You then can open a dedicated menu through a button in the [Selection view](selection.md).
 
-This allows you to add any Entity with a matching [category](viewport.md#Categories-of-Space-Views) and a valid [transform](../../concepts/spaces-and-transforms.md) to your
+This allows you to add any Entity with a matching [category](viewport.md#space-view-classes) and a valid [transform](../../concepts/spaces-and-transforms.md) to your
 Space View's path.

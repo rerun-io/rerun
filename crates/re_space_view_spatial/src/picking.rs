@@ -2,8 +2,8 @@
 
 use ahash::HashSet;
 use re_entity_db::InstancePathHash;
+use re_log_types::Instance;
 use re_renderer::PickingLayerProcessor;
-use re_types::components::InstanceKey;
 
 use crate::visualizers::ViewerImage;
 use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
@@ -86,12 +86,12 @@ impl PickingContext {
         pointer_in_ui: egui::Pos2,
         space2d_from_ui: egui::emath::RectTransform,
         ui_clip_rect: egui::Rect,
-        pixels_from_points: f32,
+        pixels_per_point: f32,
         eye: &Eye,
     ) -> PickingContext {
         let pointer_in_space2d = space2d_from_ui.transform_pos(pointer_in_ui);
         let pointer_in_space2d = glam::vec2(pointer_in_space2d.x, pointer_in_space2d.y);
-        let pointer_in_pixel = (pointer_in_ui - ui_clip_rect.left_top()) * pixels_from_points;
+        let pointer_in_pixel = (pointer_in_ui - ui_clip_rect.left_top()) * pixels_per_point;
 
         PickingContext {
             pointer_in_space2d,
@@ -269,7 +269,7 @@ fn picking_textured_rects(context: &PickingContext, images: &[ViewerImage]) -> V
             hits.push(PickingRayHit {
                 instance_path_hash: InstancePathHash {
                     entity_path_hash: image.ent_path.hash(),
-                    instance_key: InstanceKey::from_2d_image_coordinate(
+                    instance: Instance::from_2d_image_coordinate(
                         [(u * width as f32) as u32, (v * height as f32) as u32],
                         width as u64,
                     ),

@@ -5,17 +5,21 @@
 </h1>
 
 <h1 align="center">
-  <a href="https://pypi.org/project/rerun-sdk/">                          <img alt="PyPi"           src="https://img.shields.io/pypi/v/rerun-sdk.svg">                              </a>
-  <a href="https://crates.io/crates/rerun">                               <img alt="crates.io"      src="https://img.shields.io/crates/v/rerun.svg">                                </a>
-  <a href="https://github.com/rerun-io/rerun/blob/master/LICENSE-MIT">    <img alt="MIT"            src="https://img.shields.io/badge/license-MIT-blue.svg">                        </a>
-  <a href="https://github.com/rerun-io/rerun/blob/master/LICENSE-APACHE"> <img alt="Apache"         src="https://img.shields.io/badge/license-Apache-blue.svg">                     </a>
-  <a href="https://discord.gg/Gcm8BbTaAj">                                <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
+  <a href="https://pypi.org/project/rerun-sdk/">                        <img alt="PyPi"           src="https://img.shields.io/pypi/v/rerun-sdk.svg">                              </a>
+  <a href="https://crates.io/crates/rerun">                             <img alt="crates.io"      src="https://img.shields.io/crates/v/rerun.svg">                                </a>
+  <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-MIT">    <img alt="MIT"            src="https://img.shields.io/badge/license-MIT-blue.svg">                        </a>
+  <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-APACHE"> <img alt="Apache"         src="https://img.shields.io/badge/license-Apache-blue.svg">                     </a>
+  <a href="https://discord.gg/Gcm8BbTaAj">                              <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
 </h1>
 
 # Build time aware visualizations of multimodal data
 
 Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
+* [Run the Rerun Viewer in your browser](https://www.rerun.io/viewer)
+* [Read about what Rerun is and who it is for](https://www.rerun.io/docs/getting-started/what-is-rerun)
+
+### A short taste
 ```py
 import rerun as rr  # pip install rerun-sdk
 
@@ -26,7 +30,7 @@ rr.connect()  # Connect to a remote viewer
 # rr.save("recording.rrd")  # Stream all logs to disk
 
 # Associate subsequent data with 42 on the “frame” timeline
-rr.set_time_sequence("frame", 42))
+rr.set_time_sequence("frame", 42)
 
 # Log colored 3D points to the entity at `path/to/points`
 rr.log("path/to/points", rr.Points3D(positions, colors=colors))
@@ -44,14 +48,14 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </p>
 
 ## Getting started
-* **C++**: [Guide](https://www.rerun.io/docs/getting-started/cpp)
-* **Python**: `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
-* **Rust**: `cargo add rerun`
+* [**C++**](https://www.rerun.io/docs/getting-started/quick-start/cpp)
+* [**Python**](https://www.rerun.io/docs/getting-started/quick-start/python): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
+* [**Rust**](https://www.rerun.io/docs/getting-started/quick-start/rust): `cargo add rerun`
 
-### Rerun Viewer binary
-Both the Python and Rust library can start the Rerun Viewer, but to stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
-
+### Installing the Rerun Viewer binary
+To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
 It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli`.
+Note that only the Python SDK comes bundled with the Viewer whereas C++ & Rust always rely on a separate install.
 
 You should now be able to run `rerun --help` in any terminal.
 
@@ -71,11 +75,41 @@ We are in active development.
 There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
-Some shortcomings:
-* [Multi-million point clouds are slow](https://github.com/rerun-io/rerun/issues/1136).
-* The data you want to visualize must fit in RAM.
+Current shortcomings that we are working on:
+* [Multi-million point clouds are slow](https://github.com/rerun-io/rerun/issues/1136)
+* [Logging many tiny things (e.g. scalars) has a lot of overhead](https://github.com/rerun-io/rerun/issues/5967)
+* The data you want to visualize must fit in RAM
   - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
   - We plan on having a disk-based data store some time in the future.
+
+
+## What is Rerun for?
+
+Rerun is built to help you understand complex processes that include rich multimodal data, like 2D, 3D, text, time series, tensors, etc.
+It is used in many industries, including robotics, simulation, computer vision,
+or anything that involves a lot of sensors or other signals that evolve over time.
+
+### Example use case
+Say you're building a vacuum cleaning robot and it keeps running into walls. Why is it doing that? You need some tool to debug it, but a normal debugger isn't gonna be helpful. Similarly, just logging text won't be very helpful either. The robot may log "Going through doorway" but that won't explain why it thinks the wall is a door.
+
+What you need is a visual and temporal debugger, that can log all the different representations of the world the robots holds in its little head, such as:
+
+* RGB camera feed
+* depth images
+* lidar scan
+* segmentation image (how the robot interprets what it sees)
+* its 3D map of the apartment
+* all the objects the robot has detected (or thinks it has detected), as 3D shapes in the 3D map
+* its confidence in its prediction
+* etc
+
+You also want to see how all these streams of data evolve over time so you can go back and pinpoint exactly what went wrong, when and why.
+
+Maybe it turns out that a glare from the sun hit one of the sensors in the wrong way, confusing the segmentation network leading to bad object detection. Or maybe it was a bug in the lidar scanning code. Or maybe the robot thought it was somewhere else in the apartment, because its odometry was broken. Or it could be one of a thousand other things. Rerun will help you find out!
+
+But seeing the world from the point of the view of the robot is not just for debugging - it will also give you ideas on how to improve the algorithms, new test cases to set up, or datasets to collect. It will also let you explain the brains of the robot to your colleagues, boss, and customers. And so on. Seeing is believing, and an image is worth a thousand words, and multimodal temporal logging is worth a thousand images :)
+
+Of course, Rerun is useful for much more than just robots. Any time you have any form of sensors, or 2D or 3D state evolving over time, Rerun would be a great tool.
 
 
 ## Business model
@@ -85,7 +119,7 @@ In the future, Rerun will offer a commercial product that builds on top of the c
 The Rerun open source project targets the needs of individual developers.
 The commercial product targets the needs specific to teams that build and run computer vision and robotics products.
 
-## How to Cite Rerun
+## How to cite Rerun
 
 When using Rerun in your research, please cite it to acknowledge its contribution to your work. This can be done by
 including a reference to Rerun in the software or methods section of your paper.
@@ -113,12 +147,12 @@ facilitates the tool's discovery by other researchers.
 
 # Development
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
-* [`BUILD.md`](BUILD.md)
-* [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
-* [`RELEASES.md`](RELEASES.md)
+* [`BUILD.md`](BUILD.md)
+* [`rerun_py/README.md`](rerun_py/README.md) - instructions for Python SDK
+* [`rerun_cpp/README.md`](rerun_cpp/README.md) - instructions for C++ SDK
 
 
 ## Installing a pre-release Python SDK

@@ -51,14 +51,19 @@ if(NOT TARGET rerun_c)
     if(APPLE)
         if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_x64.a)
-        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)
         else()
             message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR}, can't find rerun_c library.")
         endif()
     elseif(UNIX) # if(LINUX) # CMake 3.25
-        # TODO(andreas): Arm support.
-        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
+        if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
+        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_arm64.a)
+        else()
+            message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR}, can't find rerun_c library.")
+        endif()
     elseif(WIN32)
         # TODO(andreas): Arm support.
         set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/rerun_c__win_x64.lib)
@@ -111,6 +116,29 @@ endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
 
+if(MSVC AND BUILD_SHARED_LIBS)
+    # This code is required by to support BUILD_SHARED_LIBS=ON on Windows
+    # Differently from Linux/macOS, by default Windows does not support
+    # exporting all symbols of a shared library, and instead requires
+    # annotating manually each class that needs to be exported
+    # The WINDOWS_EXPORT_ALL_SYMBOLS PROPERTY (set in the next line)
+    # simply the process of having shared library on Windows, by emulating
+    # in CMake the behavior of Linux/macOS. However, it does not cover
+    # static variables.
+    set_property(TARGET rerun_sdk PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    # For exporting static variables in shared libraries in Windows, it
+    # is not possible to just use WINDOWS_EXPORT_ALL_SYMBOLS, we need instead
+    # to manually annotate with the appropriate storage-class attributes
+    # all static variables. The easiest way to do so is use GenerateExportHeader
+    # module to generate a rerun_sdk_export.hpp header file that define the RERUN_SDK_EXPORT
+    # macro, and add that macro to all static variables. The RERUN_SDK_EXPORT is defined
+    # in src/rerun/rerun_sdk_export.hpp . The definition of the macro changes depending
+    # of whether the library is compiled as static or shared, so for shared builds we
+    # set the RERUN_SDK_COMPILED_AS_SHARED_LIBRARY to let the header know if the build
+    # is a shared library one
+    target_compile_definitions(rerun_sdk PUBLIC RERUN_SDK_COMPILED_AS_SHARED_LIBRARY)
+endif()
+
 # -----------------------------------------------------------------------------
 # Installation.
 set(RERUN_SDK_INSTALL_CMAKE_DIR "lib/cmake/rerun_sdk")
@@ -120,6 +148,7 @@ install(TARGETS rerun_sdk
     EXPORT rerun_sdkTargets
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
     INCLUDES DESTINATION include
 )
 
@@ -127,8 +156,10 @@ install(TARGETS rerun_sdk
 install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp")
 
 option(RERUN_INSTALL_RERUN_C "Install rerun_c file." ON)
+
 # if rerun_sdk is a static library it is compulsory to install rerun_c
 get_target_property(rerun_sdk_TYPE rerun_sdk TYPE)
+
 if(rerun_sdk_TYPE STREQUAL "STATIC_LIBRARY" AND NOT RERUN_INSTALL_RERUN_C)
     message(FATAL_ERROR "It is not possible to disable RERUN_INSTALL_RERUN_C option if rerun_sdk is compiled as static library.")
 endif()

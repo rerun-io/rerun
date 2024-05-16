@@ -18,6 +18,7 @@ rr.script_teardown(args)
 ```
 
 """
+
 from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
@@ -65,6 +66,7 @@ def script_setup(
     args: Namespace,
     application_id: str,
     recording_id: str | UUID | None = None,
+    default_blueprint: rr.blueprint.BlueprintLike | None = None,
 ) -> RecordingStream:
     """
     Run common Rerun script setup actions. Connect to the viewer if necessary.
@@ -86,6 +88,11 @@ def script_setup(
         processes to log to the same Rerun instance (and be part of the same recording),
         you will need to manually assign them all the same recording_id.
         Any random UUIDv4 will work, or copy the recording id for the parent process.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """
     rr.init(
@@ -99,18 +106,18 @@ def script_setup(
 
     # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
     if args.stdout:
-        rec.stdout()  # type: ignore[attr-defined]
+        rec.stdout(default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif args.serve:
-        rec.serve()  # type: ignore[attr-defined]
+        rec.serve(default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rec.connect(args.addr)  # type: ignore[attr-defined]
+        rec.connect(args.addr, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif args.save is not None:
-        rec.save(args.save)  # type: ignore[attr-defined]
+        rec.save(args.save, default_blueprint=default_blueprint)  # type: ignore[attr-defined]
     elif not args.headless:
-        rec.spawn()  # type: ignore[attr-defined]
+        rec.spawn(default_blueprint=default_blueprint)  # type: ignore[attr-defined]
 
     return rec
 

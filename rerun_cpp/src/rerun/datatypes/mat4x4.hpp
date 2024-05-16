@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "vec4d.hpp"
 
@@ -35,7 +36,7 @@ namespace rerun::datatypes {
       public:
         // Extensions to generated type defined in 'mat4x4_ext.cpp'
 
-        static const Mat4x4 IDENTITY;
+        RERUN_SDK_EXPORT static const Mat4x4 IDENTITY;
 
         /// Creates a new 4x4 matrix from 3 *columns* of 4 elements each.
         Mat4x4(const Vec4D (&columns)[4])
@@ -103,15 +104,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::Mat4x4` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::Mat4x4* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::FixedSizeListBuilder* builder, const datatypes::Mat4x4* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::Mat4x4` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::Mat4x4* instances, size_t num_instances
         );
     };
 } // namespace rerun

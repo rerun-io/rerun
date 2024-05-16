@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .marker_size_ext import MarkerSizeExt
 
 __all__ = ["MarkerSize", "MarkerSizeArrayLike", "MarkerSizeBatch", "MarkerSizeLike", "MarkerSizeType"]
 
 
 @define(init=False)
-class MarkerSize(MarkerSizeExt):
+class MarkerSize:
     """**Component**: Size of a marker in UI points."""
 
     def __init__(self: Any, value: MarkerSizeLike):
@@ -36,6 +35,9 @@ class MarkerSize(MarkerSizeExt):
 
     def __float__(self) -> float:
         return float(self.value)
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
 
 if TYPE_CHECKING:
@@ -58,4 +60,5 @@ class MarkerSizeBatch(BaseBatch[MarkerSizeArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: MarkerSizeArrayLike, data_type: pa.DataType) -> pa.Array:
-        return MarkerSizeExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

@@ -12,6 +12,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = false
@@ -24,10 +26,6 @@ default = []
 
 ## All features except `testing`.
 all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde"]
-
-## Enables the `datagen` module, which exposes a number of tools for generating random data for
-## tests and benchmarks.
-datagen = ["dep:rand"]
 
 ## Enable color conversions.
 ecolor = ["dep:ecolor"]
@@ -65,12 +63,14 @@ arrow2 = { workspace = true, features = [
 ] }
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
 document-features.workspace = true
+emath.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
 infer.workspace = true
 itertools.workspace = true
 linked-hash-map.workspace = true
 mime_guess2.workspace = true
 ndarray.workspace = true
+nohash-hasher.workspace = true
 once_cell.workspace = true
 ply-rs.workspace = true
 smallvec.workspace = true
@@ -85,7 +85,6 @@ image = { workspace = true, optional = true, default-features = false, features 
   "jpeg",
 ] }
 mint = { workspace = true, optional = true }
-rand = { workspace = true, optional = true, features = ["std", "std_rng"] }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 
 

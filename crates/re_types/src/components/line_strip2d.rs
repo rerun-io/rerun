@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -89,10 +90,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -102,48 +100,25 @@ impl ::re_types_core::Loggable for LineStrip2D {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0
-                    .iter()
-                    .flatten()
-                    .flatten()
-                    .cloned()
-                    .map(Some)
-                    .collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
-                )
-                .unwrap()
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                )?
                 .into();
-                ListArray::new(
+                let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
+                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let data0_inner_data_inner_data: Vec<_> = data0_inner_data
-                            .iter()
-                            .map(|datum| {
-                                datum
-                                    .map(|datum| {
-                                        let crate::datatypes::Vec2D(data0) = datum;
-                                        data0
-                                    })
-                                    .unwrap_or_default()
-                            })
+                            .into_iter()
+                            .map(|datum| datum.0)
                             .flatten()
-                            .map(Some)
                             .collect();
-                        let data0_inner_data_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                            data0_inner_bitmap.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(2usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
+                        let data0_inner_data_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -151,10 +126,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             ),
                             PrimitiveArray::new(
                                 DataType::Float32,
-                                data0_inner_data_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
+                                data0_inner_data_inner_data.into_iter().collect(),
                                 data0_inner_data_inner_bitmap,
                             )
                             .boxed(),
@@ -163,7 +135,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                         .boxed()
                     },
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })
@@ -251,8 +223,10 @@ impl ::re_types_core::Loggable for LineStrip2D {
                                             .get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

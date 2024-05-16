@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -19,14 +20,14 @@ namespace rerun::datatypes {
     /// **Datatype**: A Quaternion represented by 4 real numbers.
     ///
     /// Note: although the x,y,z,w components of the quaternion will be passed through to the
-    /// datastore as provided, when used in the viewer Quaternions will always be normalized.
+    /// datastore as provided, when used in the Viewer Quaternions will always be normalized.
     struct Quaternion {
         std::array<float, 4> xyzw;
 
       public:
         // Extensions to generated type defined in 'quaternion_ext.cpp'
 
-        static const Quaternion IDENTITY;
+        RERUN_SDK_EXPORT static const Quaternion IDENTITY;
 
         /// Construct Quaternion from x/y/z/w values.
         static Quaternion from_xyzw(float x, float y, float z, float w) {
@@ -93,15 +94,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::Quaternion` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::Quaternion* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::FixedSizeListBuilder* builder, const datatypes::Quaternion* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::Quaternion` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::Quaternion* instances, size_t num_instances
         );
     };
 } // namespace rerun

@@ -1,4 +1,4 @@
-"""Python logging benchmarks. Use `just py-bench` to run."""
+"""Python logging benchmarks. Use `pixi run py-bench` to run."""
 
 from __future__ import annotations
 

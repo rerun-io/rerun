@@ -10,18 +10,38 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::MarkerShape>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Circle", arrow::null(), false),
-            arrow::field("Diamond", arrow::null(), false),
-            arrow::field("Square", arrow::null(), false),
-            arrow::field("Cross", arrow::null(), false),
-            arrow::field("Plus", arrow::null(), false),
-            arrow::field("Up", arrow::null(), false),
-            arrow::field("Down", arrow::null(), false),
-            arrow::field("Left", arrow::null(), false),
-            arrow::field("Right", arrow::null(), false),
-            arrow::field("Asterisk", arrow::null(), false),
+            arrow::field("Circle", arrow::null(), true),
+            arrow::field("Diamond", arrow::null(), true),
+            arrow::field("Square", arrow::null(), true),
+            arrow::field("Cross", arrow::null(), true),
+            arrow::field("Plus", arrow::null(), true),
+            arrow::field("Up", arrow::null(), true),
+            arrow::field("Down", arrow::null(), true),
+            arrow::field("Left", arrow::null(), true),
+            arrow::field("Right", arrow::null(), true),
+            arrow::field("Asterisk", arrow::null(), true),
         });
         return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::Array>> Loggable<components::MarkerShape>::to_arrow(
+        const components::MarkerShape* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<components::MarkerShape>::fill_arrow_array_builder(
+                static_cast<arrow::SparseUnionBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+        return array;
     }
 
     rerun::Error Loggable<components::MarkerShape>::fill_arrow_array_builder(
@@ -45,25 +65,5 @@ namespace rerun {
         }
 
         return Error::ok();
-    }
-
-    Result<std::shared_ptr<arrow::Array>> Loggable<components::MarkerShape>::to_arrow(
-        const components::MarkerShape* instances, size_t num_instances
-    ) {
-        // TODO(andreas): Allow configuring the memory pool.
-        arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
-
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-        if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<components::MarkerShape>::fill_arrow_array_builder(
-                static_cast<arrow::SparseUnionBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
-        }
-        std::shared_ptr<arrow::Array> array;
-        ARROW_RETURN_NOT_OK(builder->Finish(&array));
-        return array;
     }
 } // namespace rerun

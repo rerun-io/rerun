@@ -16,46 +16,56 @@ on:
         required: true
 
 jobs:
-  linux:
+  linux-arm64:
+    name: "Linux-Arm64"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
+    with:
+      CONCURRENCY: publish-rerun-c-linux-arm64-${{ github.ref_name }}
+      PLATFORM: linux-arm64
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+    secrets: inherit
+
+  linux-x64:
     name: "Linux-x64"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
+      CONCURRENCY: publish-rerun-c-linux-x64-${{ github.ref_name }}
+      PLATFORM: linux-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  macos-intel:
+  macos-x64:
     name: "Mac-Intel"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
+      CONCURRENCY: publish-rerun-c-macos-x64-${{ github.ref_name }}
+      PLATFORM: macos-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  macos-arm:
+  macos-arm64:
     name: "Mac-Arm"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
+      CONCURRENCY: publish-rerun-c-macos-arm64-${{ github.ref_name }}
+      PLATFORM: macos-arm64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  windows:
+  windows-x64:
     name: "Windows-x64"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
+      CONCURRENCY: publish-rerun-c-windows-${{ github.ref_name }}
+      PLATFORM: windows-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   bundle-and-upload-rerun_cpp:
     name: "Bundle and upload rerun_cpp_sdk.zip"
-    needs: [linux, macos-intel, macos-arm, windows]
+    needs: [linux-arm64, linux-x64, macos-x64, macos-arm64, windows-x64]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:
+      CONCURRENCY: bundle-rerun-c-${{ github.ref_name }}
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit

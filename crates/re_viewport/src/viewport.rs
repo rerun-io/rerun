@@ -8,18 +8,17 @@ use once_cell::sync::Lazy;
 
 use re_entity_db::EntityPropertyMap;
 use re_renderer::ScreenshotProcessor;
+use re_types::SpaceViewClassIdentifier;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassRegistry, SpaceViewId,
     SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::container::blueprint_id_to_tile_id;
 use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
-    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
-    context_menu_ui_for_item, icon_for_container_kind,
-    space_view_entity_picker::SpaceViewEntityPicker,
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, context_menu_ui_for_item,
+    icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     system_execution::execute_systems_for_all_space_views, SelectionUpdateBehavior,
     ViewportBlueprint,
 };
@@ -36,10 +35,10 @@ pub struct PerSpaceViewState {
 /// is not saved.
 #[derive(Default)]
 pub struct ViewportState {
-    /// State for the "Add Entity" modal.
+    /// State for the "Add entity" modal.
     space_view_entity_modal: SpaceViewEntityPicker,
 
-    /// State for the "Add Space View or Container" modal.
+    /// State for the "Add space view or container" modal.
     add_space_view_container_modal: AddSpaceViewOrContainerModal,
 
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
@@ -48,6 +47,13 @@ pub struct ViewportState {
     ///
     /// See [`ViewportState::is_candidate_drop_parent_container`] for details.
     candidate_drop_parent_container_id: Option<ContainerId>,
+
+    /// The item that should be focused on in the blueprint tree.
+    ///
+    /// Set at each frame by [`Viewport::tree_ui`]. This is similar to
+    /// [`ViewerContext::focused_item`] but account for how specifically the blueprint tree should
+    /// handle the focused item.
+    pub(crate) blueprint_tree_scroll_to_item: Option<Item>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
@@ -69,7 +75,7 @@ impl ViewportState {
             })
     }
 
-    pub fn space_view_props(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {
+    pub fn legacy_auto_properties(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {
         self.space_view_states
             .get(&space_view_id)
             .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
@@ -105,6 +111,9 @@ pub enum TreeAction {
 
     /// Simplify the container with the provided options
     SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
+
+    /// Make all column and row shares the same for this container
+    MakeAllChildrenSameSize(ContainerId),
 
     /// Move some contents to a different container
     MoveContents {
@@ -185,7 +194,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let mut edited = false;
 
         // If the blueprint tree is empty/missing we need to auto-layout.
-        let tree = if blueprint.tree.is_empty() && !blueprint.space_views.is_empty() {
+        let tree = if blueprint.tree.is_empty() {
             edited = true;
             super::auto_layout::tree_from_space_views(
                 space_view_class_registry,
@@ -316,7 +325,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_view.class_identifier(),
             );
 
-            #[allow(clippy::blocks_in_if_conditions)]
+            #[allow(clippy::blocks_in_conditions)]
             while ScreenshotProcessor::next_readback_result(
                 ctx.render_ctx,
                 space_view.id.gpu_readback_id(),
@@ -454,6 +463,24 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     self.tree.simplify_children_of_tile(tile_id, &options);
                     self.tree_edited = true;
                 }
+                TreeAction::MakeAllChildrenSameSize(container_id) => {
+                    let tile_id = blueprint_id_to_tile_id(&container_id);
+                    if let Some(egui_tiles::Tile::Container(container)) =
+                        self.tree.tiles.get_mut(tile_id)
+                    {
+                        match container {
+                            egui_tiles::Container::Tabs(_) => {}
+                            egui_tiles::Container::Linear(linear) => {
+                                linear.shares = Default::default();
+                            }
+                            egui_tiles::Container::Grid(grid) => {
+                                grid.col_shares = Default::default();
+                                grid.row_shares = Default::default();
+                            }
+                        }
+                    }
+                    self.tree_edited = true;
+                }
                 TreeAction::MoveContents {
                     contents_to_move,
                     target_container,
@@ -536,8 +563,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
     #[inline]
-    pub fn is_item_valid(&self, item: &Item) -> bool {
-        self.blueprint.is_item_valid(item)
+    pub fn is_item_valid(
+        &self,
+        store_context: &re_viewer_context::StoreContext<'_>,
+        item: &Item,
+    ) -> bool {
+        self.blueprint.is_item_valid(store_context, item)
     }
 }
 
@@ -762,7 +793,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 .ctx
                 .re_ui
                 .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
-                .on_hover_text("Maximize Space View")
+                .on_hover_text("Maximize space view")
                 .clicked()
             {
                 *self.maximized = Some(space_view_id);
@@ -859,7 +890,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 /// A tab button for a tab in the viewport.
 ///
 /// The tab can contain any `egui_tiles::Tile`,
-/// which is either a Pane with a Space View, or a Container,
+/// which is either a Pane with a Space View, or a container,
 /// e.g. a grid of tiles.
 struct TabWidget {
     galley: std::sync::Arc<egui::Galley>,
@@ -903,10 +934,10 @@ impl TabWidget {
                         item: Some(Item::SpaceView(*space_view_id)),
                     }
                 } else {
-                    re_log::warn_once!("Space View {space_view_id} not found");
+                    re_log::warn_once!("Space view {space_view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown Space View").into(),
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown space view").into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -917,9 +948,27 @@ impl TabWidget {
                 if let Some(Contents::Container(container_id)) =
                     tab_viewer.contents_per_tile_id.get(&tile_id)
                 {
+                    let (label, user_named) = if let Some(container_blueprint) =
+                        tab_viewer.viewport_blueprint.container(container_id)
+                    {
+                        (
+                            container_blueprint
+                                .display_name_or_default()
+                                .as_ref()
+                                .into(),
+                            container_blueprint.display_name.is_some(),
+                        )
+                    } else {
+                        re_log::warn_once!("Container {container_id} missing during egui_tiles");
+                        (
+                            tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                            false,
+                        )
+                    };
+
                     TabDesc {
-                        label: format!("{:?}", container.kind()).into(),
-                        user_named: false,
+                        label,
+                        user_named,
                         icon: icon_for_container_kind(&container.kind()),
                         item: Some(Item::Container(*container_id)),
                     }
@@ -936,7 +985,7 @@ impl TabWidget {
                     re_log::warn_once!("Container for tile ID {tile_id:?} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown Container").into(),
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown container").into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,

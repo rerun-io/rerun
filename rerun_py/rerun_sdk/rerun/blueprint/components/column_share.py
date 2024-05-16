@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .column_share_ext import ColumnShareExt
 
 __all__ = ["ColumnShare", "ColumnShareArrayLike", "ColumnShareBatch", "ColumnShareLike", "ColumnShareType"]
 
 
 @define(init=False)
-class ColumnShare(ColumnShareExt):
+class ColumnShare:
     """**Component**: The layout share of a column in the container."""
 
     def __init__(self: Any, share: ColumnShareLike):
@@ -48,6 +47,9 @@ class ColumnShare(ColumnShareExt):
     def __float__(self) -> float:
         return float(self.share)
 
+    def __hash__(self) -> int:
+        return hash(self.share)
+
 
 if TYPE_CHECKING:
     ColumnShareLike = Union[ColumnShare, float]
@@ -69,4 +71,5 @@ class ColumnShareBatch(BaseBatch[ColumnShareArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: ColumnShareArrayLike, data_type: pa.DataType) -> pa.Array:
-        return ColumnShareExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

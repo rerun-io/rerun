@@ -1,117 +1,21 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
+
 use re_data_store::LatestAtQuery;
-use re_entity_db::EntityDb;
+use re_entity_db::{external::re_query::PromiseResult, EntityDb};
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
-use re_query::query_archetype;
 use re_types::blueprint::components::Visible;
+use re_types::components::Name;
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, BlueprintId, BlueprintIdRegistry, ContainerId, Item,
-    SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
+    ContainerId, Contents, ContentsName, SpaceViewId, SystemCommand, SystemCommandSender as _,
+    ViewerContext,
 };
 
-use crate::blueprint::components::GridColumns;
+use re_types_blueprint::blueprint::components::GridColumns;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Contents {
-    Container(ContainerId),
-    SpaceView(SpaceViewId),
-}
-
-impl Contents {
-    fn try_from(path: &EntityPath) -> Option<Self> {
-        if path.starts_with(SpaceViewId::registry()) {
-            Some(Self::SpaceView(SpaceViewId::from_entity_path(path)))
-        } else if path.starts_with(ContainerId::registry()) {
-            Some(Self::Container(ContainerId::from_entity_path(path)))
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn as_entity_path(&self) -> EntityPath {
-        match self {
-            Self::Container(id) => id.as_entity_path(),
-            Self::SpaceView(id) => id.as_entity_path(),
-        }
-    }
-
-    #[inline]
-    pub fn as_tile_id(&self) -> TileId {
-        match self {
-            Self::Container(id) => blueprint_id_to_tile_id(id),
-            Self::SpaceView(id) => blueprint_id_to_tile_id(id),
-        }
-    }
-
-    #[inline]
-    pub fn as_item(&self) -> Item {
-        match self {
-            Contents::Container(container_id) => Item::Container(*container_id),
-            Contents::SpaceView(space_view_id) => Item::SpaceView(*space_view_id),
-        }
-    }
-
-    #[inline]
-    pub fn as_container_id(&self) -> Option<ContainerId> {
-        match self {
-            Self::Container(id) => Some(*id),
-            Self::SpaceView(_) => None,
-        }
-    }
-
-    #[inline]
-    pub fn as_space_view_id(&self) -> Option<SpaceViewId> {
-        match self {
-            Self::SpaceView(id) => Some(*id),
-            Self::Container(_) => None,
-        }
-    }
-}
-
-impl TryFrom<Item> for Contents {
-    type Error = ();
-
-    fn try_from(item: Item) -> Result<Self, Self::Error> {
-        (&item).try_into()
-    }
-}
-
-impl TryFrom<&Item> for Contents {
-    type Error = ();
-
-    fn try_from(item: &Item) -> Result<Self, Self::Error> {
-        match item {
-            Item::Container(id) => Ok(Self::Container(*id)),
-            Item::SpaceView(id) => Ok(Self::SpaceView(*id)),
-            _ => Err(()),
-        }
-    }
-}
-
-#[inline]
-pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
-    TileId::from_u64(id.hash())
-}
-
-impl From<SpaceViewId> for Contents {
-    #[inline]
-    fn from(id: SpaceViewId) -> Self {
-        Self::SpaceView(id)
-    }
-}
-
-impl From<ContainerId> for Contents {
-    #[inline]
-    fn from(id: ContainerId) -> Self {
-        Self::Container(id)
-    }
-}
-
-/// The native version of a [`crate::blueprint::archetypes::ContainerBlueprint`].
+/// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
 /// This represents a single container in the blueprint. On each frame, it is
 /// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
@@ -123,7 +27,7 @@ impl From<ContainerId> for Contents {
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,
-    pub display_name: String,
+    pub display_name: Option<String>,
     pub contents: Vec<Contents>,
     pub col_shares: Vec<f32>,
     pub row_shares: Vec<f32>,
@@ -141,7 +45,7 @@ impl ContainerBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let crate::blueprint::archetypes::ContainerBlueprint {
+        let re_types_blueprint::blueprint::archetypes::ContainerBlueprint {
             container_kind,
             display_name,
             contents,
@@ -150,24 +54,24 @@ impl ContainerBlueprint {
             active_tab,
             visible,
             grid_columns,
-        } = query_archetype(blueprint_db.store(), query, &id.as_entity_path())
-            .and_then(|arch| arch.to_archetype())
-            .map_err(|err| {
-                if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
-                    if cfg!(debug_assertions) {
-                        re_log::error!("Failed to load Container blueprint: {err}.");
-                    } else {
-                        re_log::debug!("Failed to load Container blueprint: {err}.");
-                    }
+        } = match blueprint_db.latest_at_archetype(&id.as_entity_path(), query) {
+            PromiseResult::Pending => {
+                // TODO(#5607): what should happen if the promise is still pending?
+                None
+            }
+            PromiseResult::Ready(arch) => arch.map(|(_, arch)| arch),
+            PromiseResult::Error(err) => {
+                if cfg!(debug_assertions) {
+                    re_log::error!("Failed to load container blueprint: {err}.");
+                } else {
+                    re_log::debug!("Failed to load container blueprint: {err}.");
                 }
-            })
-            .ok()?;
+                None
+            }
+        }?;
 
-        let container_kind = container_kind.into();
-
-        // TODO(jleibs): Don't use debug print for this
-        let display_name =
-            display_name.map_or_else(|| format!("{container_kind:?}"), |v| v.0.to_string());
+        let container_kind = crate::container_kind_to_egui(container_kind);
+        let display_name = display_name.map(|v| v.0.to_string());
 
         let contents = contents
             .unwrap_or_default()
@@ -217,7 +121,7 @@ impl ContainerBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = ctx.store_context.blueprint_timepoint_for_writes();
 
         let Self {
             id,
@@ -233,12 +137,20 @@ impl ContainerBlueprint {
 
         let contents: Vec<_> = contents.iter().map(|item| item.as_entity_path()).collect();
 
-        let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(*container_kind)
-            .with_display_name(display_name.clone())
-            .with_contents(&contents)
-            .with_col_shares(col_shares.clone())
-            .with_row_shares(row_shares.clone())
-            .with_visible(*visible);
+        let container_kind = crate::container_kind_from_egui(*container_kind);
+        let mut arch =
+            re_types_blueprint::blueprint::archetypes::ContainerBlueprint::new(container_kind)
+                .with_contents(&contents)
+                .with_col_shares(col_shares.clone())
+                .with_row_shares(row_shares.clone())
+                .with_visible(*visible);
+
+        // Note: it's important to _not_ clear the `Name` component if `display_name` is set to
+        // `None`, as we call this function with `ContainerBlueprint` recreated from `egui_tiles`,
+        // which is lossy with custom names.
+        if let Some(display_name) = display_name {
+            arch = arch.with_display_name(display_name.clone());
+        }
 
         // TODO(jleibs): The need for this pattern is annoying. Should codegen
         // a version of this that can take an Option.
@@ -257,7 +169,7 @@ impl ContainerBlueprint {
 
         if let Some(row) =
             DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
-                .warn_on_err_once("Failed to create Container blueprint.")
+                .warn_on_err_once("Failed to create container blueprint.")
         {
             deltas.push(row);
 
@@ -282,7 +194,7 @@ impl ContainerBlueprint {
         let contents = container
             .children()
             .filter_map(|child_id| {
-                tile_to_contents.get(child_id).cloned().or_else(|| {
+                tile_to_contents.get(child_id).copied().or_else(|| {
                     re_log::warn_once!("Missing child when building container.");
                     None
                 })
@@ -291,12 +203,12 @@ impl ContainerBlueprint {
 
         match container {
             egui_tiles::Container::Tabs(tab) => {
-                let active_tab = tab.active.and_then(|id| tile_to_contents.get(&id).cloned());
+                let active_tab = tab.active.and_then(|id| tile_to_contents.get(&id).copied());
 
                 Self {
                     id: container_id,
                     container_kind: egui_tiles::ContainerKind::Tabs,
-                    display_name: format!("{:?}", egui_tiles::ContainerKind::Tabs),
+                    display_name: None, // keep whatever name is already set
                     contents,
                     col_shares: vec![],
                     row_shares: vec![],
@@ -311,7 +223,7 @@ impl ContainerBlueprint {
                     Self {
                         id: container_id,
                         container_kind: kind,
-                        display_name: format!("{kind:?}"),
+                        display_name: None, // keep whatever name is already set
                         contents,
                         col_shares: linear
                             .children
@@ -329,7 +241,7 @@ impl ContainerBlueprint {
                     Self {
                         id: container_id,
                         container_kind: kind,
-                        display_name: format!("{kind:?}"),
+                        display_name: None, // keep whatever name is already set
                         contents,
                         col_shares: vec![],
                         row_shares: linear
@@ -346,7 +258,7 @@ impl ContainerBlueprint {
             egui_tiles::Container::Grid(grid) => Self {
                 id: container_id,
                 container_kind: egui_tiles::ContainerKind::Grid,
-                display_name: format!("{:?}", egui_tiles::ContainerKind::Grid),
+                display_name: None, // keep whatever name is already set
                 contents,
                 col_shares: grid.col_shares.clone(),
                 row_shares: grid.row_shares.clone(),
@@ -357,6 +269,40 @@ impl ContainerBlueprint {
                     egui_tiles::GridLayout::Auto => None,
                 },
             },
+        }
+    }
+
+    /// Placeholder name displayed in the UI if the user hasn't explicitly named the space view.
+    #[inline]
+    pub fn missing_name_placeholder(&self) -> String {
+        format!("{:?}", self.container_kind)
+    }
+
+    /// Returns this container's display name
+    ///
+    /// When returning [`ContentsName::Placeholder`], the UI should display the resulting name using
+    /// `re_ui::LabelStyle::Unnamed`.
+    #[inline]
+    pub fn display_name_or_default(&self) -> ContentsName {
+        self.display_name.clone().map_or_else(
+            || ContentsName::Placeholder(self.missing_name_placeholder()),
+            ContentsName::Named,
+        )
+    }
+
+    /// Sets the display name for this container.
+    #[inline]
+    pub fn set_display_name(&self, ctx: &ViewerContext<'_>, name: Option<String>) {
+        if name != self.display_name {
+            match name {
+                Some(name) => {
+                    let component = Name(name.into());
+                    ctx.save_blueprint_component(&self.entity_path(), &component);
+                }
+                None => {
+                    ctx.save_empty_blueprint_component::<Name>(&self.entity_path());
+                }
+            }
         }
     }
 
@@ -436,8 +382,8 @@ impl ContainerBlueprint {
             egui_tiles::ContainerKind::Grid => {
                 let mut grid = egui_tiles::Grid::new(children);
 
-                grid.col_shares = self.col_shares.clone();
-                grid.row_shares = self.row_shares.clone();
+                grid.col_shares.clone_from(&self.col_shares);
+                grid.row_shares.clone_from(&self.row_shares);
 
                 if let Some(cols) = self.grid_columns {
                     grid.layout = egui_tiles::GridLayout::Columns(cols as usize);

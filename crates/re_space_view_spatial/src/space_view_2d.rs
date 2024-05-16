@@ -2,21 +2,24 @@ use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_format::format_f32;
+use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
-    Archetype, ComponentName,
+    blueprint::archetypes::{Background, VisualBounds2D},
+    blueprint::components as blueprint_components,
+    Archetype, ComponentName, SpaceViewClassIdentifier,
 };
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizableFilterContext,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
-        default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
+        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
     },
     max_image_dimension_subscriber::{ImageDimensions, MaxImageDimensions},
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
@@ -41,11 +44,17 @@ impl VisualizableFilterContext for VisualizableFilterContext2D {
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
 
-impl SpaceViewClass for SpatialSpaceView2D {
-    type State = SpatialSpaceViewState;
+use re_types::View;
+type ViewType = re_types::blueprint::views::Spatial2DView;
 
-    const IDENTIFIER: &'static str = "2D";
-    const DISPLAY_NAME: &'static str = "2D";
+impl SpaceViewClass for SpatialSpaceView2D {
+    fn identifier() -> SpaceViewClassIdentifier {
+        ViewType::identifier()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "2D"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_2D
@@ -59,8 +68,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        // Ensure spatial topology is registered.
+        // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+        crate::max_image_dimension_subscriber::MaxImageDimensionSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_2d_spatial_visualizers(system_registry)?;
@@ -68,9 +78,18 @@ impl SpaceViewClass for SpatialSpaceView2D {
         Ok(())
     }
 
-    fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
-        let size = state.bounding_boxes.accumulated.size();
-        Some(size.x / size.y)
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<SpatialSpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
+        state
+            .downcast_ref::<SpatialSpaceViewState>()
+            .ok()
+            .map(|state| {
+                let size = state.bounding_boxes.accumulated.size();
+                size.x / size.y
+            })
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
@@ -136,14 +155,16 @@ impl SpaceViewClass for SpatialSpaceView2D {
     fn on_frame_start(
         &self,
         ctx: &ViewerContext<'_>,
-        state: &Self::State,
+        state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_entity_db::EntityPropertyMap,
+        auto_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
-        update_object_property_heuristics(
+        let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
+            return;
+        };
+        *auto_properties = generate_auto_legacy_properties(
             ctx,
             ent_paths,
-            entity_properties,
             &state.bounding_boxes.accumulated,
             SpatialSpaceViewKind::TwoD,
         );
@@ -157,62 +178,58 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         let indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
-            self.identifier(),
+            Self::identifier(),
             SpatialSpaceViewKind::TwoD,
         );
 
-        let image_dimensions =
-            MaxImageDimensions::access(ctx.entity_db.store_id(), |image_dimensions| {
-                image_dimensions.clone()
-            })
-            .unwrap_or_default();
+        let image_dimensions = MaxImageDimensions::access(ctx.recording_id(), |image_dimensions| {
+            image_dimensions.clone()
+        })
+        .unwrap_or_default();
 
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
-            recommended_space_views: topo
-                .iter_subspaces()
-                .flat_map(|subspace| {
-                    if !subspace.supports_2d_content()
-                        || subspace.entities.is_empty()
-                        || indicated_entities.is_disjoint(&subspace.entities)
-                    {
-                        return Vec::new();
-                    }
+        SpatialTopology::access(ctx.recording_id(), |topo| {
+            SpaceViewSpawnHeuristics::new(topo.iter_subspaces().flat_map(|subspace| {
+                if !subspace.supports_2d_content()
+                    || subspace.entities.is_empty()
+                    || indicated_entities.is_disjoint(&subspace.entities)
+                {
+                    return Vec::new();
+                }
 
-                    // Collect just the 2d-relevant entities in this subspace
-                    let relevant_entities: IntSet<EntityPath> = subspace
-                        .entities
-                        .iter()
-                        .filter(|e| indicated_entities.contains(e))
-                        .cloned()
-                        .collect();
+                // Collect just the 2D-relevant entities in this subspace
+                let relevant_entities: IntSet<EntityPath> = subspace
+                    .entities
+                    .iter()
+                    .filter(|e| indicated_entities.contains(e))
+                    .cloned()
+                    .collect();
 
-                    // For explicit 2D spaces with a pinhole at the origin, otherwise start at the common ancestor.
-                    // This generally avoids the `/` root entity unless it's required as a common ancestor.
-                    let recommended_root = if subspace
-                        .connection_to_parent
-                        .contains(SubSpaceConnectionFlags::Pinhole)
-                    {
-                        subspace.origin.clone()
-                    } else {
-                        EntityPath::common_ancestor_of(relevant_entities.iter())
-                    };
+                // For explicit 2D spaces with a pinhole at the origin, otherwise start at the common ancestor.
+                // This generally avoids the `/` root entity unless it's required as a common ancestor.
+                let recommended_root = if subspace
+                    .connection_to_parent
+                    .contains(SubSpaceConnectionFlags::Pinhole)
+                {
+                    subspace.origin.clone()
+                } else {
+                    EntityPath::common_ancestor_of(relevant_entities.iter())
+                };
 
-                    let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
+                let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
 
-                    recommended_space_views_with_image_splits(
-                        ctx,
-                        &image_dimensions,
-                        &recommended_root,
-                        &relevant_entities,
-                        &mut recommended_space_views,
-                    );
+                recommended_space_views_with_image_splits(
+                    ctx,
+                    &image_dimensions,
+                    &recommended_root,
+                    &relevant_entities,
+                    &mut recommended_space_views,
+                );
 
-                    recommended_space_views
-                })
-                .collect(),
+                recommended_space_views
+            }))
         })
         .unwrap_or_default()
     }
@@ -221,25 +238,38 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
-        space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        state: &mut dyn SpaceViewState,
+        _space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
-        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::TwoD);
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
+        ctx.re_ui
+            .selection_grid(ui, "spatial_settings_ui")
+            .show(ui, |ui| {
+                state.default_sizes_ui(ctx, ui);
+
+                crate::ui::background_ui(ctx, ui, space_view_id, Background::DEFAULT_2D);
+
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
+
+                visual_bounds_ui(ctx, space_view_id, ui);
+            });
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         state.bounding_boxes.update(&system_output.view_systems);
         state.scene_num_primitives = system_output
             .context_systems
@@ -249,6 +279,41 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         crate::ui_2d::view_2d(ctx, ui, state, query, system_output)
     }
+}
+
+fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+    let tooltip = "The area guaranteed to be visible.\n\
+                   Depending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.";
+    re_space_view::edit_blueprint_component::<
+        VisualBounds2D,
+        blueprint_components::VisualBounds2D,
+        (),
+    >(
+        ctx,
+        space_view_id,
+        |bounds2d_opt: &mut Option<blueprint_components::VisualBounds2D>| {
+            ctx.re_ui
+                .grid_left_hand_label(ui, "Visible bounds")
+                .on_hover_text(tooltip);
+            ui.vertical(|ui| {
+                ui.style_mut().wrap = Some(false);
+
+                if let Some(bounds2d) = bounds2d_opt {
+                    let rect = egui::Rect::from(*bounds2d);
+                    let (min, max) = (rect.min, rect.max);
+                    ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+                    ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+
+                    if ui.button("Reset visible bounds").clicked() {
+                        *bounds2d_opt = None;
+                    }
+                } else {
+                    ui.weak("Default");
+                }
+            });
+            ui.end_row();
+        },
+    );
 }
 
 // Count the number of image entities with the given component exist that aren't
@@ -322,7 +387,7 @@ fn recommended_space_views_with_image_splits(
 ) {
     re_tracing::profile_function!();
 
-    let tree = ctx.entity_db.tree();
+    let tree = ctx.recording().tree();
 
     let Some(subtree) = tree.subtree(recommended_root) else {
         if cfg!(debug_assertions) {
@@ -362,10 +427,9 @@ fn recommended_space_views_with_image_splits(
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
         if entities.contains(recommended_root) {
-            recommended.push(RecommendedSpaceView {
-                root: recommended_root.clone(),
-                query_filter: EntityPathFilter::single_entity_filter(recommended_root),
-            });
+            recommended.push(RecommendedSpaceView::new_single_entity(
+                recommended_root.clone(),
+            ));
         }
 
         // And then recurse into the children
@@ -387,10 +451,7 @@ fn recommended_space_views_with_image_splits(
             }
         }
     } else {
-        // Otherwise we can use the space as it is
-        recommended.push(RecommendedSpaceView {
-            root: recommended_root.clone(),
-            query_filter: EntityPathFilter::subtree_entity_filter(recommended_root),
-        });
+        // Otherwise we can use the space as it is.
+        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }

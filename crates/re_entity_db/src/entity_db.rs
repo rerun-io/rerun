@@ -8,10 +8,12 @@ use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
 };
 use re_log_types::{
-    ApplicationId, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg, RowId,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
+    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, DataTableResult, EntityPath,
+    EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF, RowId, SetStoreInfo, StoreId,
+    StoreInfo, StoreKind, TimePoint, Timeline,
 };
-use re_types_core::{components::InstanceKey, Archetype, Loggable};
+use re_query::PromiseResult;
+use re_types_core::{Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 
@@ -81,10 +83,9 @@ fn insert_row_with_retries(
 ///
 /// NOTE: all mutation is to be done via public functions!
 pub struct EntityDb {
-    /// The [`StoreId`] for this log.
-    store_id: StoreId,
-
     /// Set by whomever created this [`EntityDb`].
+    ///
+    /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
@@ -92,6 +93,11 @@ pub struct EntityDb {
 
     /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
     last_modified_at: web_time::Instant,
+
+    /// The highest `RowId` in the store,
+    /// which corresponds to the last edit time.
+    /// Ignores deletions.
+    latest_row_id: Option<RowId>,
 
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
@@ -110,29 +116,30 @@ pub struct EntityDb {
     /// Stores all components for all entities for all timelines.
     data_store: DataStore,
 
+    /// The active promise resolver for this DB.
+    resolver: re_query::PromiseResolver,
+
     /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query_cache::Caches,
+    query_caches: re_query::Caches,
 
     stats: IngestionStatistics,
 }
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
-        let data_store = re_data_store::DataStore::new(
-            store_id.clone(),
-            InstanceKey::name(),
-            DataStoreConfig::default(),
-        );
-        let query_caches = re_query_cache::Caches::new(&data_store);
+        let data_store =
+            re_data_store::DataStore::new(store_id.clone(), DataStoreConfig::default());
+        let query_caches = re_query::Caches::new(&data_store);
         Self {
-            store_id: store_id.clone(),
             data_source: None,
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
+            latest_row_id: None,
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store,
+            resolver: re_query::PromiseResolver::default(),
             query_caches,
             stats: IngestionStatistics::new(store_id),
         }
@@ -182,8 +189,115 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches(&self) -> &re_query_cache::Caches {
+    pub fn query_caches(&self) -> &re_query::Caches {
         &self.query_caches
+    }
+
+    #[inline]
+    pub fn resolver(&self) -> &re_query::PromiseResolver {
+        &self.resolver
+    }
+
+    /// Returns `Ok(None)` if any of the required components are missing.
+    #[inline]
+    pub fn latest_at_archetype<A: re_types_core::Archetype>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
+    where
+        re_query::LatestAtResults: re_query::ToArchetype<A>,
+    {
+        let results = self.query_caches().latest_at(
+            self.store(),
+            query,
+            entity_path,
+            A::all_components().iter().copied(), // no generics!
+        );
+
+        use re_query::ToArchetype as _;
+        match results.to_archetype(self.resolver()).flatten() {
+            PromiseResult::Pending => PromiseResult::Pending,
+            PromiseResult::Error(err) => {
+                // Primary component has never been logged.
+                if let Some(err) = err.downcast_ref::<re_query::QueryError>() {
+                    if matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
+                        return PromiseResult::Ready(None);
+                    }
+                }
+
+                // Primary component has been cleared.
+                if let Some(err) = err.downcast_ref::<re_types_core::DeserializationError>() {
+                    if matches!(err, re_types_core::DeserializationError::MissingData { .. }) {
+                        return PromiseResult::Ready(None);
+                    }
+                }
+
+                PromiseResult::Error(err)
+            }
+            PromiseResult::Ready(arch) => {
+                PromiseResult::Ready(Some((results.compound_index, arch)))
+            }
+        }
+    }
+
+    /// Get the latest index and value for a given dense [`re_types_core::Component`].
+    ///
+    /// This assumes that the row we get from the store contains at most one instance for this
+    /// component; it will log a warning otherwise.
+    ///
+    /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
+    ///
+    /// This is a best-effort helper, it will merely log errors on failure.
+    #[inline]
+    pub fn latest_at_component<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<re_query::LatestAtMonoResult<C>> {
+        self.query_caches().latest_at_component::<C>(
+            self.store(),
+            self.resolver(),
+            entity_path,
+            query,
+        )
+    }
+
+    /// Get the latest index and value for a given dense [`re_types_core::Component`].
+    ///
+    /// This assumes that the row we get from the store contains at most one instance for this
+    /// component; it will log a warning otherwise.
+    ///
+    /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
+    ///
+    /// This is a best-effort helper, and will quietly swallow any errors.
+    #[inline]
+    pub fn latest_at_component_quiet<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<re_query::LatestAtMonoResult<C>> {
+        self.query_caches().latest_at_component_quiet::<C>(
+            self.store(),
+            self.resolver(),
+            entity_path,
+            query,
+        )
+    }
+
+    #[inline]
+    pub fn latest_at_component_at_closest_ancestor<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<(EntityPath, re_query::LatestAtMonoResult<C>)> {
+        self.query_caches()
+            .latest_at_component_at_closest_ancestor::<C>(
+                self.store(),
+                self.resolver(),
+                entity_path,
+                query,
+            )
     }
 
     #[inline]
@@ -191,12 +305,27 @@ impl EntityDb {
         &self.data_store
     }
 
+    #[inline]
     pub fn store_kind(&self) -> StoreKind {
-        self.store_id.kind
+        self.store_id().kind
     }
 
+    #[inline]
     pub fn store_id(&self) -> &StoreId {
-        &self.store_id
+        self.data_store.id()
+    }
+
+    /// If this entity db is the result of a clone, which store was it cloned from?
+    ///
+    /// A cloned store always gets a new unique ID.
+    ///
+    /// We currently only use entity db cloning for blueprints:
+    /// when we activate a _default_ blueprint that was received on the wire (e.g. from a recording),
+    /// we clone it and make the clone the _active_ blueprint.
+    /// This means all active blueprints are clones.
+    #[inline]
+    pub fn cloned_from(&self) -> Option<&StoreId> {
+        self.store_info().and_then(|info| info.cloned_from.as_ref())
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -212,25 +341,49 @@ impl EntityDb {
         self.tree().subtree.time_histogram.get(timeline)
     }
 
-    /// Total number of timeless messages for any entity.
-    pub fn num_timeless_messages(&self) -> u64 {
-        self.tree.num_timeless_messages_recursive()
+    /// Total number of static messages for any entity.
+    pub fn num_static_messages(&self) -> u64 {
+        self.tree.num_static_messages_recursive()
+    }
+
+    /// Returns whether a component is static.
+    pub fn is_component_static(&self, component_path: &ComponentPath) -> Option<bool> {
+        if let Some(entity_tree) = self.tree().subtree(component_path.entity_path()) {
+            entity_tree
+                .entity
+                .components
+                .get(&component_path.component_name)
+                .map(|component_histogram| component_histogram.is_static())
+        } else {
+            None
+        }
     }
 
     pub fn num_rows(&self) -> usize {
-        self.data_store.num_timeless_rows() as usize + self.data_store.num_temporal_rows() as usize
+        self.data_store.num_static_rows() as usize + self.data_store.num_temporal_rows() as usize
     }
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
+    #[inline]
     pub fn generation(&self) -> re_data_store::StoreGeneration {
         self.data_store.generation()
     }
 
+    #[inline]
     pub fn last_modified_at(&self) -> web_time::Instant {
         self.last_modified_at
     }
 
+    /// The highest `RowId` in the store,
+    /// which corresponds to the last edit time.
+    /// Ignores deletions.
+    #[inline]
+    pub fn latest_row_id(&self) -> Option<RowId> {
+        self.latest_row_id
+    }
+
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.set_store_info.is_none() && self.num_rows() == 0
     }
@@ -276,6 +429,10 @@ impl EntityDb {
                 let table = DataTable::from_arrow_msg(arrow_msg)?;
                 self.add_data_table(table)?;
             }
+
+            LogMsg::BlueprintActivationCommand(_) => {
+                // Not for us to handle
+            }
         }
 
         Ok(())
@@ -301,6 +458,13 @@ impl EntityDb {
         re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
 
         self.register_entity_path(&row.entity_path);
+
+        if self
+            .latest_row_id
+            .map_or(true, |latest| latest < row.row_id)
+        {
+            self.latest_row_id = Some(row.row_id);
+        }
 
         // ## RowId duplication
         //
@@ -389,7 +553,7 @@ impl EntityDb {
                 // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
                 //    these rows! This flaky ordering will in turn leak through the public
                 //    API (e.g. range queries)!
-                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
+                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, cells) {
                     Ok(row) => {
                         let res = insert_row_with_retries(
                             &mut self.data_store,
@@ -435,7 +599,6 @@ impl EntityDb {
 
         self.gc(&GarbageCollectionOptions {
             target: re_data_store::GarbageCollectionTarget::Everything,
-            gc_timeless: true,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
             dont_protect: [
@@ -458,7 +621,6 @@ impl EntityDb {
             target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
-            gc_timeless: true,
             protect_latest: 1,
             purge_empty_tables: false,
             dont_protect: Default::default(),
@@ -485,14 +647,15 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         let Self {
-            store_id: _,
             data_source: _,
             set_store_info: _,
             last_modified_at: _,
+            latest_row_id: _,
             entity_path_from_hash: _,
             times_per_timeline,
             tree,
             data_store: _,
+            resolver: _,
             query_caches,
             stats: _,
         } = self;
@@ -509,6 +672,103 @@ impl EntityDb {
     pub fn sort_key(&self) -> impl Ord + '_ {
         self.store_info()
             .map(|info| (info.application_id.0.as_str(), info.started))
+    }
+
+    /// Export the contents of the current database to a sequence of messages.
+    ///
+    /// If `time_selection` is specified, then only data for that specific timeline over that
+    /// specific time range will be accounted for.
+    pub fn to_messages(
+        &self,
+        time_selection: Option<(Timeline, ResolvedTimeRangeF)>,
+    ) -> DataTableResult<Vec<LogMsg>> {
+        re_tracing::profile_function!();
+
+        self.store().sort_indices_if_needed();
+
+        let set_store_info_msg = self
+            .store_info_msg()
+            .map(|msg| Ok(LogMsg::SetStoreInfo(msg.clone())));
+
+        let time_filter = time_selection.map(|(timeline, range)| {
+            (
+                timeline,
+                ResolvedTimeRange::new(range.min.floor(), range.max.ceil()),
+            )
+        });
+
+        let data_messages = self.store().to_data_tables(time_filter).map(|table| {
+            table
+                .to_arrow_msg()
+                .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
+        });
+
+        // If this is a blueprint, make sure to include the `BlueprintActivationCommand` message.
+        // We generally use `to_messages` to export a blueprint via "save". In that
+        // case, we want to make the blueprint active and default when it's reloaded.
+        // TODO(jleibs): Coupling this with the stored file instead of injecting seems
+        // architecturally weird. Would be great if we didn't need this in `.rbl` files
+        // at all.
+        let blueprint_ready = if self.store_kind() == StoreKind::Blueprint {
+            let activate_cmd =
+                re_log_types::BlueprintActivationCommand::make_active(self.store_id().clone());
+
+            itertools::Either::Left(std::iter::once(Ok(activate_cmd.into())))
+        } else {
+            itertools::Either::Right(std::iter::empty())
+        };
+
+        let messages: Result<Vec<_>, _> = set_store_info_msg
+            .into_iter()
+            .chain(data_messages)
+            .chain(blueprint_ready)
+            .collect();
+
+        messages
+    }
+
+    /// Make a clone of this [`EntityDb`], assigning it a new [`StoreId`].
+    pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
+        re_tracing::profile_function!();
+
+        self.store().sort_indices_if_needed();
+
+        let mut new_db = EntityDb::new(new_id.clone());
+
+        new_db.last_modified_at = self.last_modified_at;
+        new_db.latest_row_id = self.latest_row_id;
+
+        // We do NOT clone the `data_source`, because the reason we clone an entity db
+        // is so that we can modify it, and then it would be wrong to say its from the same source.
+        // Specifically: if we load a blueprint from an `.rdd`, then modify it heavily and save it,
+        // it would be wrong to claim that this was the blueprint from that `.rrd`,
+        // and it would confuse the user.
+        // TODO(emilk): maybe we should use a special `Cloned` data source,
+        // wrapping either the original source, the original StoreId, or both.
+
+        if let Some(store_info) = self.store_info() {
+            let mut new_info = store_info.clone();
+            new_info.store_id = new_id;
+            new_info.cloned_from = Some(self.store_id().clone());
+
+            new_db.set_store_info(SetStoreInfo {
+                row_id: RowId::new(),
+                info: new_info,
+            });
+        }
+
+        for row in self.store().to_rows()? {
+            new_db.add_data_row(row)?;
+        }
+
+        Ok(new_db)
+    }
+}
+
+impl re_types_core::SizeBytes for EntityDb {
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(emilk): size of entire EntityDb, including secondary indices etc
+        self.data_store.heap_size_bytes()
     }
 }
 

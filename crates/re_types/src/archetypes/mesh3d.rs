@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -37,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &rerun::Mesh3D::new([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
 ///             .with_vertex_normals([[0.0, 0.0, 1.0]])
 ///             .with_vertex_colors([0x0000FFFF, 0x00FF00FF, 0xFF0000FF])
-///             .with_mesh_properties(rerun::MeshProperties::from_triangle_indices([[2, 1, 0]])),
+///             .with_triangle_indices([[2, 1, 0]]),
 ///     )?;
 ///
 ///     Ok(())
@@ -56,15 +57,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct Mesh3D {
     /// The positions of each vertex.
     ///
-    /// If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
+    /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
     pub vertex_positions: Vec<crate::components::Position3D>,
 
-    /// Optional properties for the mesh as a whole (including indexed drawing).
-    pub mesh_properties: Option<crate::components::MeshProperties>,
+    /// Optional indices for the triangles that make up the mesh.
+    pub triangle_indices: Option<Vec<crate::components::TriangleIndices>>,
 
     /// An optional normal for each vertex.
-    ///
-    /// If specified, this must have as many elements as `vertex_positions`.
     pub vertex_normals: Option<Vec<crate::components::Vector3D>>,
 
     /// An optional color for each vertex.
@@ -93,7 +92,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.vertex_positions.heap_size_bytes()
-            + self.mesh_properties.heap_size_bytes()
+            + self.triangle_indices.heap_size_bytes()
             + self.vertex_normals.heap_size_bytes()
             + self.vertex_colors.heap_size_bytes()
             + self.vertex_texcoords.heap_size_bytes()
@@ -105,7 +104,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::components::Position3D>>::is_pod()
-            && <Option<crate::components::MeshProperties>>::is_pod()
+            && <Option<Vec<crate::components::TriangleIndices>>>::is_pod()
             && <Option<Vec<crate::components::Vector3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
@@ -122,33 +121,31 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Mesh3DIndicator".into(),
-            "rerun.components.MeshProperties".into(),
+            "rerun.components.TriangleIndices".into(),
             "rerun.components.Vector3D".into(),
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.Texcoord2D".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
             "rerun.components.Mesh3DIndicator".into(),
-            "rerun.components.MeshProperties".into(),
+            "rerun.components.TriangleIndices".into(),
             "rerun.components.Vector3D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.Texcoord2D".into(),
@@ -156,7 +153,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     });
 
 impl Mesh3D {
-    pub const NUM_COMPONENTS: usize = 10usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`Mesh3D`] [`::re_types_core::Archetype`]
@@ -218,13 +216,16 @@ impl ::re_types_core::Archetype for Mesh3D {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
         };
-        let mesh_properties =
-            if let Some(array) = arrays_by_name.get("rerun.components.MeshProperties") {
-                <crate::components::MeshProperties>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
-                    .into_iter()
-                    .next()
-                    .flatten()
+        let triangle_indices =
+            if let Some(array) = arrays_by_name.get("rerun.components.TriangleIndices") {
+                Some({
+                    <crate::components::TriangleIndices>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
+                })
             } else {
                 None
             };
@@ -298,7 +299,7 @@ impl ::re_types_core::Archetype for Mesh3D {
         };
         Ok(Self {
             vertex_positions,
-            mesh_properties,
+            triangle_indices,
             vertex_normals,
             vertex_colors,
             vertex_texcoords,
@@ -316,9 +317,9 @@ impl ::re_types_core::AsComponents for Mesh3D {
         [
             Some(Self::indicator()),
             Some((&self.vertex_positions as &dyn ComponentBatch).into()),
-            self.mesh_properties
+            self.triangle_indices
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.vertex_normals
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
@@ -342,20 +343,17 @@ impl ::re_types_core::AsComponents for Mesh3D {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.vertex_positions.len()
-    }
 }
 
 impl Mesh3D {
+    /// Create a new `Mesh3D`.
+    #[inline]
     pub fn new(
         vertex_positions: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
     ) -> Self {
         Self {
             vertex_positions: vertex_positions.into_iter().map(Into::into).collect(),
-            mesh_properties: None,
+            triangle_indices: None,
             vertex_normals: None,
             vertex_colors: None,
             vertex_texcoords: None,
@@ -365,15 +363,17 @@ impl Mesh3D {
         }
     }
 
+    /// Optional indices for the triangles that make up the mesh.
     #[inline]
-    pub fn with_mesh_properties(
+    pub fn with_triangle_indices(
         mut self,
-        mesh_properties: impl Into<crate::components::MeshProperties>,
+        triangle_indices: impl IntoIterator<Item = impl Into<crate::components::TriangleIndices>>,
     ) -> Self {
-        self.mesh_properties = Some(mesh_properties.into());
+        self.triangle_indices = Some(triangle_indices.into_iter().map(Into::into).collect());
         self
     }
 
+    /// An optional normal for each vertex.
     #[inline]
     pub fn with_vertex_normals(
         mut self,
@@ -383,6 +383,7 @@ impl Mesh3D {
         self
     }
 
+    /// An optional color for each vertex.
     #[inline]
     pub fn with_vertex_colors(
         mut self,
@@ -392,6 +393,7 @@ impl Mesh3D {
         self
     }
 
+    /// An optional uv texture coordinate for each vertex.
     #[inline]
     pub fn with_vertex_texcoords(
         mut self,
@@ -401,6 +403,7 @@ impl Mesh3D {
         self
     }
 
+    /// Optional material properties for the mesh as a whole.
     #[inline]
     pub fn with_mesh_material(
         mut self,
@@ -410,6 +413,11 @@ impl Mesh3D {
         self
     }
 
+    /// Optional albedo texture.
+    ///
+    /// Used with `vertex_texcoords` on `Mesh3D`.
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #[inline]
     pub fn with_albedo_texture(
         mut self,
@@ -419,6 +427,9 @@ impl Mesh3D {
         self
     }
 
+    /// Optional class Ids for the vertices.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

@@ -11,17 +11,19 @@ use super::{TensorBuffer, TensorData, TensorDimension};
 // ----------------------------------------------------------------------------
 
 impl TensorData {
+    /// Create a new tensor.
     #[inline]
     pub fn new(shape: Vec<TensorDimension>, buffer: TensorBuffer) -> Self {
         Self { shape, buffer }
     }
 
+    /// The shape of the tensor, including optional dimension names.
     #[inline]
     pub fn shape(&self) -> &[TensorDimension] {
         self.shape.as_slice()
     }
 
-    /// Returns the shape of the tensor with all trailing dimensions of size 1 ignored.
+    /// Returns the shape of the tensor with all leading & trailing dimensions of size 1 ignored.
     ///
     /// If all dimension sizes are one, this returns only the first dimension.
     #[inline]
@@ -29,15 +31,15 @@ impl TensorData {
         if self.shape.is_empty() {
             &self.shape
         } else {
-            self.shape
-                .iter()
-                .enumerate()
-                .rev()
-                .find(|(_, dim)| dim.size != 1)
-                .map_or(&self.shape[0..1], |(i, _)| &self.shape[..(i + 1)])
+            let first_not_one = self.shape.iter().position(|dim| dim.size != 1);
+            let last_not_one = self.shape.iter().rev().position(|dim| dim.size != 1);
+            &self.shape[first_not_one.unwrap_or(0)..self.shape.len() - last_not_one.unwrap_or(0)]
         }
     }
 
+    /// The number of dimensions of the tensor.
+    ///
+    /// An image tensor will usually have two (height, width) or three (height, width, channels) dimensions.
     #[inline]
     pub fn num_dim(&self) -> usize {
         self.shape.len()
@@ -45,7 +47,30 @@ impl TensorData {
 
     /// If the tensor can be interpreted as an image, return the height, width, and channels/depth of it.
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
-        let shape_short = self.shape_short();
+        let mut shape_short = self.shape.as_slice();
+
+        // Ignore trailing dimensions of size 1:
+        while 2 < shape_short.len() && shape_short.last().map_or(false, |d| d.size == 1) {
+            shape_short = &shape_short[..shape_short.len() - 1];
+        }
+
+        // If the trailing dimension looks like a channel we ignore leading dimensions of size 1 down to
+        // a minimum of 3 dimensions. Otherwise we ignore leading dimensions of size 1 down to 2 dimensions.
+        let shrink_to = if shape_short
+            .last()
+            .map_or(false, |d| matches!(d.size, 1 | 3 | 4))
+        {
+            3
+        } else {
+            2
+        };
+
+        while shrink_to < shape_short.len() && shape_short.first().map_or(false, |d| d.size == 1) {
+            shape_short = &shape_short[1..];
+        }
+
+        // TODO(emilk): check dimension names against our standard dimension names ("height", "width", "depth")
+
         match &self.buffer {
             // In the case of NV12, return the shape of the RGB image, not the tensor size.
             TensorBuffer::Nv12(_) => {
@@ -121,7 +146,7 @@ impl TensorData {
 
     /// Query with x, y, channel indices.
     ///
-    /// Allows to query values for any image like tensor even if it has more or less dimensions than 3.
+    /// Allows to query values for any image-like tensor even if it has more or less dimensions than 3.
     /// (useful for sampling e.g. `N x M x C x 1` tensor which is a valid image)
     #[inline]
     pub fn get_with_image_coords(&self, x: u64, y: u64, channel: u64) -> Option<TensorElement> {
@@ -160,6 +185,9 @@ impl TensorData {
         }
     }
 
+    /// Get the value of the element at the given index.
+    ///
+    /// Return `None` if out-of-bounds, or if the tensor is encoded (e.g. [`TensorBuffer::Jpeg`]).
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
@@ -190,10 +218,7 @@ impl TensorData {
                     let [y, x] = index else {
                         return None;
                     };
-                    if let Some(
-                        [TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)],
-                    ) = self.get_nv12_pixel(*x, *y)
-                    {
+                    if let Some([r, g, b]) = self.get_nv12_pixel(*x, *y) {
                         let mut rgba = 0;
                         rgba |= (r as u32) << 24;
                         rgba |= (g as u32) << 16;
@@ -212,10 +237,7 @@ impl TensorData {
                         return None;
                     };
 
-                    if let Some(
-                        [TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)],
-                    ) = self.get_yuy2_pixel(*x, *y)
-                    {
+                    if let Some([r, g, b]) = self.get_yuy2_pixel(*x, *y) {
                         let mut rgba = 0;
                         rgba |= (r as u32) << 24;
                         rgba |= (g as u32) << 16;
@@ -230,8 +252,12 @@ impl TensorData {
         }
     }
 
-    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a valid NV12 image.
-    pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
+    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a NV12 image.
+    ///
+    /// If the tensor is not [`TensorBuffer::Nv12`], `None` is returned.
+    ///
+    /// It is undefined what happens if the coordinate is out-of-bounds.
+    pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
         let TensorBuffer::Nv12(buf) = &self.buffer else {
             return None;
         };
@@ -242,19 +268,18 @@ impl TensorData {
                 let u = buf[(uv_offset + (y / 2) * w + x) as usize];
                 let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
 
-                let (r, g, b) = Self::set_color_standard(luma, u, v);
-
-                Some([
-                    TensorElement::U8(r),
-                    TensorElement::U8(g),
-                    TensorElement::U8(b),
-                ])
+                Some(Self::set_color_standard(luma, u, v))
             }
             _ => None,
         }
     }
 
-    pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
+    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a YUY2 image.
+    ///
+    /// If the tensor is not [`TensorBuffer::Yuy2`], `None` is returned.
+    ///
+    /// It is undefined what happens if the coordinate is out-of-bounds.
+    pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
         let TensorBuffer::Yuy2(buf) = &self.buffer else {
             return None;
         };
@@ -269,13 +294,7 @@ impl TensorData {
                     (buf[index], buf[index - 1], buf[index + 1])
                 };
 
-                let (r, g, b) = Self::set_color_standard(luma, u, v);
-
-                Some([
-                    TensorElement::U8(r),
-                    TensorElement::U8(g),
-                    TensorElement::U8(b),
-                ])
+                Some(Self::set_color_standard(luma, u, v))
             }
             _ => None,
         }
@@ -286,7 +305,7 @@ impl TensorData {
     /// This conversion mirrors the function of the same name in `crates/re_renderer/shader/decodings.wgsl`
     ///
     /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-    fn set_color_standard(y: u8, u: u8, v: u8) -> (u8, u8, u8) {
+    fn set_color_standard(y: u8, u: u8, v: u8) -> [u8; 3] {
         let (y, u, v) = (y as f32, u as f32, v as f32);
 
         // rescale YUV values
@@ -304,18 +323,20 @@ impl TensorData {
         // let g = y - 0.187 * u - 0.468 * v;
         // let b = y + 1.856 * u;
 
-        (
+        [
             (255.0 * r).clamp(0.0, 255.0) as u8,
             (255.0 * g).clamp(0.0, 255.0) as u8,
             (255.0 * b).clamp(0.0, 255.0) as u8,
-        )
+        ]
     }
 
+    /// The datatype of the tensor.
     #[inline]
     pub fn dtype(&self) -> TensorDataType {
         self.buffer.dtype()
     }
 
+    /// The size of the tensor data, in bytes.
     #[inline]
     pub fn size_in_bytes(&self) -> usize {
         self.buffer.size_in_bytes()
@@ -590,6 +611,7 @@ impl TensorData {
         Self::from_jpeg_bytes(jpeg_bytes)
     }
 
+    /// Construct a new tensor from the contents of a `.jpeg` file at the given path.
     #[deprecated = "Renamed 'from_jpeg_file'"]
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
@@ -641,6 +663,7 @@ impl TensorData {
         })
     }
 
+    /// Construct a new tensor from the contents of a `.jpeg` file.
     #[deprecated = "Renamed 'from_jpeg_bytes'"]
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
@@ -807,5 +830,77 @@ where
 
     fn try_from(value: image::ImageBuffer<P, S>) -> Result<Self, Self::Error> {
         Self::from_image(value)
+    }
+}
+
+#[test]
+fn test_image_height_width_channels() {
+    let test_cases = [
+        // Normal grayscale:
+        (vec![1, 1, 480, 640, 1, 1], Some([480, 640, 1])),
+        (vec![1, 1, 480, 640, 1], Some([480, 640, 1])),
+        (vec![1, 1, 480, 640], Some([480, 640, 1])),
+        (vec![1, 480, 640, 1, 1], Some([480, 640, 1])),
+        (vec![1, 480, 640], Some([480, 640, 1])),
+        (vec![480, 640, 1, 1], Some([480, 640, 1])),
+        (vec![480, 640, 1], Some([480, 640, 1])),
+        (vec![480, 640], Some([480, 640, 1])),
+        //
+        // Normal RGB:
+        (vec![1, 1, 480, 640, 3, 1], Some([480, 640, 3])),
+        (vec![1, 1, 480, 640, 3], Some([480, 640, 3])),
+        (vec![1, 480, 640, 3, 1], Some([480, 640, 3])),
+        (vec![480, 640, 3, 1], Some([480, 640, 3])),
+        (vec![480, 640, 3], Some([480, 640, 3])),
+        //
+        // h=1, w=640, grayscale:
+        (vec![1, 640], Some([1, 640, 1])),
+        //
+        // h=1, w=640, RGB:
+        (vec![1, 640, 3], Some([1, 640, 3])),
+        //
+        // h=480, w=1, grayscale:
+        (vec![480, 1], Some([480, 1, 1])),
+        //
+        // h=480, w=1, RGB:
+        (vec![480, 1, 3], Some([480, 1, 3])),
+        //
+        // h=1, w=1, grayscale:
+        (vec![1, 1], Some([1, 1, 1])),
+        (vec![1, 1, 1], Some([1, 1, 1])),
+        (vec![1, 1, 1, 1], Some([1, 1, 1])),
+        //
+        // h=1, w=1, RGB:
+        (vec![1, 1, 3], Some([1, 1, 3])),
+        (vec![1, 1, 1, 3], Some([1, 1, 3])),
+        //
+        // h=1, w=3, Mono:
+        (vec![1, 3, 1], Some([1, 3, 1])),
+        //
+        // Ambiguous cases.
+        //
+        // These are here to show how the current implementation behaves, not to suggest that it is a
+        // commitment to preserving this behavior going forward.
+        // If you need to change this test, it's ok but we should still communicate the subtle change
+        // in behavior.
+        (vec![1, 1, 3, 1], Some([1, 1, 3])), // Could be [1, 3, 1]
+        (vec![1, 3, 1, 1], Some([1, 3, 1])), // Could be [3, 1, 1]
+    ];
+
+    for (shape, expected_hwc) in test_cases {
+        let tensor = TensorData::new(
+            shape
+                .iter()
+                .map(|&size| TensorDimension::unnamed(size as u64))
+                .collect(),
+            TensorBuffer::U8(vec![0; shape.iter().product()].into()),
+        );
+
+        let hwc = tensor.image_height_width_channels();
+
+        assert_eq!(
+            hwc, expected_hwc,
+            "Shape {shape:?} produced HWC {hwc:?}, but expected {expected_hwc:?}"
+        );
     }
 }

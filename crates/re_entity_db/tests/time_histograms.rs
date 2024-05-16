@@ -1,19 +1,16 @@
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use std::collections::BTreeSet;
 
 use re_data_store::GarbageCollectionOptions;
 use re_entity_db::EntityDb;
 use re_int_histogram::RangeI64;
 use re_log_types::{
-    example_components::{MyColor, MyPoint},
+    example_components::{MyColor, MyIndex, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types_core::{
-    components::{ClearIsRecursive, InstanceKey},
-    ComponentName, Loggable,
-};
-
-// TODO(cmc): This should also test for the timeless counts but right now they're a bit all over
-// the place, so need to land new reworked EntityTree etc first.
+use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable};
 
 // ---
 
@@ -31,17 +28,17 @@ fn time_histograms() -> anyhow::Result<()> {
     let entity_grandchild: EntityPath = "parent/child/grandchild".into();
     let entity_unrelated: EntityPath = "very/unrelated".into();
 
-    // Single top-level entity, explicitly logged `InstanceKey`s.
+    // Single top-level entity, explicitly logged `MyIndex`s.
     {
         let row = DataRow::from_component_batches(
             RowId::new(),
             TimePoint::from_iter([
-                (timeline_frame, 42.into()),      //
-                (timeline_other, 666.into()),     //
-                (timeline_yet_another, 1.into()), //
+                (timeline_frame, 42),      //
+                (timeline_other, 666),     //
+                (timeline_yet_another, 1), //
             ]),
             entity_parent.clone(),
-            [&InstanceKey::from_iter(0..10) as _],
+            [&MyIndex::from_iter(0..10) as _],
         )?;
 
         db.add_data_row(row)?;
@@ -72,7 +69,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
@@ -81,7 +78,7 @@ fn time_histograms() -> anyhow::Result<()> {
         );
     }
 
-    // Grand-child, multiple components, auto-generated `InstanceKey`s.
+    // Grand-child, multiple components, auto-generated `MyIndex`s.
     {
         let row = {
             let num_instances = 3;
@@ -92,8 +89,8 @@ fn time_histograms() -> anyhow::Result<()> {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 42.into()),      //
-                    (timeline_yet_another, 1.into()), //
+                    (timeline_frame, 42),      //
+                    (timeline_yet_another, 1), //
                 ]),
                 entity_grandchild.clone(),
                 [&points as _, &colors as _],
@@ -128,7 +125,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
@@ -162,7 +159,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(
@@ -212,7 +209,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(
@@ -242,10 +239,10 @@ fn time_histograms() -> anyhow::Result<()> {
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
             DataRow::from_component_batches(
                 RowId::new(),
-                TimePoint::timeless(),
+                TimePoint::default(),
                 "entity".into(),
                 [
-                    &InstanceKey::from_iter(0..num_instances as _) as _,
+                    &MyIndex::from_iter(0..num_instances as _) as _,
                     &colors as _,
                 ],
             )?
@@ -299,7 +296,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(
@@ -333,13 +330,13 @@ fn time_histograms() -> anyhow::Result<()> {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 1234.into()),       //
-                    (timeline_other, 1235.into()),       //
-                    (timeline_yet_another, 1236.into()), //
+                    (timeline_frame, 1234),       //
+                    (timeline_other, 1235),       //
+                    (timeline_yet_another, 1236), //
                 ]),
                 entity_unrelated.clone(),
                 [
-                    &InstanceKey::from_iter(0..num_instances) as _,
+                    &MyIndex::from_iter(0..num_instances) as _,
                     &points as _,
                     &colors as _,
                 ],
@@ -382,7 +379,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
@@ -415,7 +412,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_unrelated,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(1234, 1234), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(1235, 1235), 1)])),
@@ -459,7 +456,7 @@ fn time_histograms() -> anyhow::Result<()> {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 1000.into()), //
+                    (timeline_frame, 1000), //
                 ]),
                 entity_parent.clone(),
                 [&[ClearIsRecursive(true)] as _],
@@ -487,8 +484,8 @@ fn time_histograms() -> anyhow::Result<()> {
                     &timeline_frame,
                     Some(&[
                         (RangeI64::new(42, 42), 5),
-                        // We're clearing the parent's `InstanceKey` as well as the grandchild's
-                        // `MyPoint`, `MyColor` and `InstanceKey`. That's four.
+                        // We're clearing the parent's `MyIndex` as well as the grandchild's
+                        // `MyPoint`, `MyColor` and `MyIndex`. That's four.
                         (RangeI64::new(1000, 1000), 4),
                         (RangeI64::new(1234, 1234), 3),
                     ]),
@@ -508,7 +505,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (
                     &timeline_frame,
@@ -523,7 +520,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, None),
                 (&timeline_other, None),
@@ -533,7 +530,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         // NOTE: even though the component was logged twice at the same timestamp, the clear will
@@ -593,7 +590,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[])),
                 (&timeline_other, Some(&[])),
@@ -605,7 +602,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, None),
                 (&timeline_other, None),
@@ -615,7 +612,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(
@@ -644,14 +641,17 @@ fn time_histograms() -> anyhow::Result<()> {
 /// Checks the state of the global time tracker (at the `EntityDb` level).
 fn assert_times_per_timeline<'a>(
     db: &EntityDb,
-    expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [impl Into<TimeInt> + Copy + 'a]>)>,
+    expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [i64]>)>,
 ) {
     for (timeline, expected_times) in expected {
         let times = db.times_per_timeline().get(timeline);
 
         if let Some(expected) = expected_times {
             let times: BTreeSet<_> = times.unwrap().keys().copied().collect();
-            let expected: BTreeSet<_> = expected.iter().map(|t| (*t).into()).collect();
+            let expected: BTreeSet<_> = expected
+                .iter()
+                .map(|&t| TimeInt::try_from(t).unwrap())
+                .collect();
             similar_asserts::assert_eq!(expected, times);
         } else {
             assert!(times.is_none());

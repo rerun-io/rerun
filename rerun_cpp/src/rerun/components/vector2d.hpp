@@ -10,12 +10,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class FixedSizeListBuilder;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: A vector in 2D space.
     struct Vector2D {
@@ -63,8 +57,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::Vector2D));
 
     /// \private
     template <>
@@ -72,17 +65,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Vector2D";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::Vector2D* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::Vector2D` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Vector2D* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Vec2D>::to_arrow(&instances->vector, num_instances);
+        }
     };
 } // namespace rerun

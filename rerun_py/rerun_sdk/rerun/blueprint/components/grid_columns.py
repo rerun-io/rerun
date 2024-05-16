@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .grid_columns_ext import GridColumnsExt
 
 __all__ = ["GridColumns", "GridColumnsArrayLike", "GridColumnsBatch", "GridColumnsLike", "GridColumnsType"]
 
 
 @define(init=False)
-class GridColumns(GridColumnsExt):
+class GridColumns:
     """**Component**: How many columns a grid container should have."""
 
     def __init__(self: Any, columns: GridColumnsLike):
@@ -48,6 +47,9 @@ class GridColumns(GridColumnsExt):
     def __int__(self) -> int:
         return int(self.columns)
 
+    def __hash__(self) -> int:
+        return hash(self.columns)
+
 
 if TYPE_CHECKING:
     GridColumnsLike = Union[GridColumns, int]
@@ -72,4 +74,5 @@ class GridColumnsBatch(BaseBatch[GridColumnsArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: GridColumnsArrayLike, data_type: pa.DataType) -> pa.Array:
-        return GridColumnsExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.uint32).flatten()
+        return pa.array(array, type=data_type)

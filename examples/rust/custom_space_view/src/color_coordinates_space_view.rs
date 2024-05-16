@@ -2,17 +2,19 @@ use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
     re_entity_db::{EntityProperties, InstancePath},
-    re_log_types::{EntityPath, EntityPathFilter},
+    re_log_types::EntityPath,
+    re_types::SpaceViewClassIdentifier,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, RecommendedSpaceView, SelectionHighlight,
-        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
-        SpaceViewSystemRegistrator, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SpaceViewClass,
+        SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
+        ViewQuery, ViewerContext,
     },
 };
 
-use crate::color_coordinates_visualizer_system::{ColorWithInstanceKey, InstanceColorSystem};
+use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -66,10 +68,14 @@ pub struct ColorCoordinatesSpaceView;
 
 impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
-    type State = ColorCoordinatesSpaceViewState;
 
-    const IDENTIFIER: &'static str = "Color Coordinates";
-    const DISPLAY_NAME: &'static str = "Color Coordinates";
+    fn identifier() -> SpaceViewClassIdentifier {
+        "ColorCoordinates".into()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "Color coordinates"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_GENERIC
@@ -87,7 +93,11 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         system_registry.register_visualizer::<InstanceColorSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<ColorCoordinatesSpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)
     }
@@ -105,12 +115,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         {
             SpaceViewSpawnHeuristics::default()
         } else {
-            SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView {
-                    root: EntityPath::root(),
-                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
-                }],
-            }
+            SpaceViewSpawnHeuristics::root()
         }
     }
 
@@ -121,11 +126,13 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
+
         ui.horizontal(|ui| {
             ui.label("Coordinates mode");
             egui::ComboBox::from_id_source("color_coordinates_mode")
@@ -139,6 +146,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
                     }
                 });
         });
+
+        Ok(())
     }
 
     /// The contents of the Space View window and all interaction within it.
@@ -148,12 +157,13 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let colors = system_output.view_systems.get::<InstanceColorSystem>()?;
+        let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
 
         egui::Frame::default().show(ui, |ui| {
             let color_at = match state.mode {
@@ -226,12 +236,8 @@ fn color_space_ui(
     // Circles for the colors in the scene.
     for (ent_path, colors) in &colors.colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
-        for ColorWithInstanceKey {
-            instance_key,
-            color,
-        } in colors
-        {
-            let highlight = ent_highlight.index_highlight(*instance_key);
+        for ColorWithInstance { instance, color } in colors {
+            let highlight = ent_highlight.index_highlight(*instance);
 
             let (x, y) = position_at(*color);
             let center = egui::pos2(
@@ -254,17 +260,17 @@ fn color_space_ui(
 
             let interact = ui.interact(
                 egui::Rect::from_center_size(center, egui::Vec2::splat(radius * 2.0)),
-                ui.id().with(("circle", &ent_path, instance_key)),
+                ui.id().with(("circle", &ent_path, instance)),
                 egui::Sense::click(),
             );
 
             // Update the global selection state if the user interacts with a point and show hover ui for the entire keypoint.
-            let instance = InstancePath::instance(ent_path.clone(), *instance_key);
+            let instance = InstancePath::instance(ent_path.clone(), *instance);
             let interact = interact.on_hover_ui_at_pointer(|ui| {
                 item_ui::instance_path_button(
                     ctx,
                     &ctx.current_query(),
-                    ctx.entity_db.store(),
+                    ctx.recording(),
                     ui,
                     Some(query.space_view_id),
                     &instance,
@@ -272,9 +278,9 @@ fn color_space_ui(
                 instance.data_ui(
                     ctx,
                     ui,
-                    UiVerbosity::Reduced,
+                    UiLayout::Tooltip,
                     &ctx.current_query(),
-                    ctx.entity_db.store(),
+                    ctx.recording(),
                 );
             });
             ctx.select_hovered_on_click(&interact, Item::DataResult(query.space_view_id, instance));

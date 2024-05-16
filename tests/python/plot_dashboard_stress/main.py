@@ -5,16 +5,17 @@ Plot dashboard stress test.
 Usage:
 -----
 ```
-just py-plot-dashboard --help
+pixi run py-plot-dashboard --help
 ```
 
 Example:
 -------
 ```
-just py-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
+pixi run py-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
 ```
 
 """
+
 from __future__ import annotations
 
 import argparse
@@ -114,7 +115,7 @@ def main() -> None:
         if total_elapsed >= 1.0:
             print(
                 f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
-(freq={round(total_num_scalars/total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
+(freq={round(total_num_scalars / total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
 load={round(max_load * 100.0, 3)}%)"
             )
 
@@ -144,7 +145,7 @@ load={round(max_load * 100.0, 3)}%)"
     total_elapsed = time.time() - total_start_time
     print(
         f"logged {total_num_scalars} scalars over {round(total_elapsed, 3)}s \
-(freq={round(total_num_scalars/total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
+(freq={round(total_num_scalars / total_elapsed, 3)}Hz, expected={round(expected_total_freq, 3)}Hz, \
 load={round(max_load * 100.0, 3)}%)"
     )
 

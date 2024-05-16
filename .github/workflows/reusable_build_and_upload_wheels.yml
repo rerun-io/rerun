@@ -22,12 +22,48 @@ on:
         type: string
         default: ""
 
+  workflow_dispatch:
+    inputs:
+      PLATFORM:
+        type: choice
+        options:
+          - linux-arm64
+          - linux-x64
+          - windows-x64
+          - macos-arm64
+          - macos-x64
+        description: "Platform to build for"
+        required: true
+      MODE:
+        type: choice
+        required: false
+        options:
+          - pypi
+          - pr
+        description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
+      CONCURRENCY:
+        required: false
+        type: string
+        default: "adhoc"
+        description: "Concurrency group to use"
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ""
+        description: "If set, will be saved under that name in the workflow artifacts"
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
+        description: "Release commit"
+
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-wheels
   cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.8"
+
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
@@ -36,11 +72,22 @@ env:
   # RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
   RUSTFLAGS: --cfg=web_sys_unstable_apis
 
-  # See https://github.com/ericseppanen/cargo-cranky/issues/8
-  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  RUSTDOCFLAGS: --deny warnings
 
+  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
+
+  # Wrap every `rustc` invocation in `sccache`.
+  RUSTC_WRAPPER: "sccache"
+
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
+
+defaults:
+  run:
+    shell: bash
 
 permissions:
   contents: "read"
@@ -51,42 +98,53 @@ jobs:
 
   set-config:
     name: Set Config (${{ inputs.PLATFORM }})
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
       CONTAINER: ${{ steps.set-config.outputs.container }}
+      COMPAT: ${{ steps.set-config.outputs.compat }}
     steps:
       - name: Set runner and target based on platform
         id: set-config
-        shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
-            linux)
+            linux-arm64)
+                runner="buildjet-8vcpu-ubuntu-2204-arm"
+                target="aarch64-unknown-linux-gnu"
+                container="'rerunio/ci_docker:0.14.0'" # Required to be manylinux compatible
+                compat="manylinux_2_31"
+                ;;
+            linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.11.0'}"
+              compat="manylinux_2_31"
+              container="'rerunio/ci_docker:0.14.0'" # Required to be manylinux compatible
               ;;
-            windows)
+            windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
+              compat="manylinux_2_31"
               ;;
-            macos-arm)
+            macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
+              compat="manylinux_2_31"
               ;;
-            macos-intel)
+            macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
+              compat="manylinux_2_31"
               ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
           echo "container=$container" >> "$GITHUB_OUTPUT"
+          echo "compat=$compat" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
 
@@ -96,11 +154,14 @@ jobs:
     needs: [set-config]
 
     runs-on: ${{ needs.set-config.outputs.RUNNER }}
-    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+    container:
+      image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+      credentials:
+        username: ${{ secrets.DOCKER_HUB_USER }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
     steps:
       - name: Show context
-        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -116,7 +177,7 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - name: Set up Rust
+      - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-${{ inputs.PLATFORM }}"
@@ -124,37 +185,37 @@ jobs:
           save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.13.0
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          rustup target add ${{ needs.set-config.outputs.TARGET }}
-          pip install -r rerun_py/requirements-build.txt
-          pip install google-cloud-storage==2.9.0
+          pixi-version: v0.20.0
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
-          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || github.sha) }}"
+          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-      - name: Build
-        shell: bash
+      - name: "Download rerun-cli"
         run: |
-          python3 scripts/ci/build_and_upload_wheels.py \
+          pixi run fetch-artifact \
+          --commit-sha ${{ steps.get-sha.outputs.sha }} \
+          --artifact rerun-cli \
+          --platform ${{ inputs.PLATFORM }} \
+          --dest rerun_py/rerun_sdk/rerun_cli
+
+      - name: Build
+        run: |
+          pixi run python scripts/ci/build_and_upload_wheels.py \
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
-            --compat manylinux_2_31
+            --compat ${{ needs.set-config.outputs.COMPAT }}
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{inputs.WHEEL_ARTIFACT_NAME}}
           path: dist/${{ needs.set-config.outputs.TARGET }}

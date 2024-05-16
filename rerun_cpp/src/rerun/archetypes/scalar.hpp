@@ -17,7 +17,7 @@ namespace rerun::archetypes {
     /// **Archetype**: Log a double-precision scalar.
     ///
     /// The current timeline value will be used for the time/X-axis, hence scalars
-    /// cannot be timeless.
+    /// cannot be static.
     ///
     /// When used to produce a plot, this archetype is used to provide the data that
     /// is referenced by the `SeriesLine` or `SeriesPoint` archetypes. You can do
@@ -62,11 +62,6 @@ namespace rerun::archetypes {
         Scalar(Scalar&& other) = default;
 
         explicit Scalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
-        }
     };
 
 } // namespace rerun::archetypes

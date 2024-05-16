@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -90,6 +91,7 @@ impl ::re_types_core::Loggable for Rotation3D {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
+            // Dense Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
@@ -108,45 +110,22 @@ impl ::re_types_core::Loggable for Rotation3D {
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
                 {
-                    let (somes, quaternion): (Vec<_>, Vec<_>) = data
+                    let quaternion: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Rotation3D::Quaternion(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let quaternion_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let quaternion_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let quaternion_inner_data: Vec<_> = quaternion
-                            .iter()
-                            .map(|datum| {
-                                datum
-                                    .map(|datum| {
-                                        let crate::datatypes::Quaternion(data0) = datum;
-                                        data0
-                                    })
-                                    .unwrap_or_default()
-                            })
+                            .into_iter()
+                            .map(|datum| datum.0)
                             .flatten()
-                            .map(Some)
                             .collect();
-                        let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                            quaternion_bitmap.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(4usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
+                        let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -154,10 +133,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                             ),
                             PrimitiveArray::new(
                                 DataType::Float32,
-                                quaternion_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
+                                quaternion_inner_data.into_iter().collect(),
                                 quaternion_inner_bitmap,
                             )
                             .boxed(),
@@ -167,24 +143,19 @@ impl ::re_types_core::Loggable for Rotation3D {
                     }
                 },
                 {
-                    let (somes, axis_angle): (Vec<_>, Vec<_>) = data
+                    let axis_angle: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Rotation3D::AxisAngle(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let axis_angle_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let axis_angle_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         _ = axis_angle_bitmap;
-                        crate::datatypes::RotationAxisAngle::to_arrow_opt(axis_angle)?
+                        crate::datatypes::RotationAxisAngle::to_arrow_opt(
+                            axis_angle.into_iter().map(Some),
+                        )?
                     }
                 },
             ];
@@ -323,8 +294,10 @@ impl ::re_types_core::Loggable for Rotation3D {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

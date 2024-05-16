@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -98,10 +99,7 @@ impl ::re_types_core::Loggable for KeypointId {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -113,14 +111,7 @@ impl ::re_types_core::Loggable for KeypointId {
                 Self::arrow_datatype(),
                 data0
                     .into_iter()
-                    .map(|datum| {
-                        datum
-                            .map(|datum| {
-                                let crate::datatypes::KeypointId(data0) = datum;
-                                data0
-                            })
-                            .unwrap_or_default()
-                    })
+                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                     .collect(),
                 data0_bitmap,
             )

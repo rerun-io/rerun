@@ -41,6 +41,7 @@ mod meta {
 /// - `01NNNNNN` -> `-rc.N`
 /// - `00000000` -> none of the above
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct CrateVersion {
     pub major: u8,
     pub minor: u8,
@@ -48,7 +49,12 @@ pub struct CrateVersion {
     pub meta: Option<Meta>,
 }
 
+impl CrateVersion {
+    pub const LOCAL: Self = Self::parse(env!("CARGO_PKG_VERSION"));
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum Meta {
     Rc(u8),
     Alpha(u8),

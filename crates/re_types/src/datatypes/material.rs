@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -114,10 +115,7 @@ impl ::re_types_core::Loggable for Material {
                         .map(|datum| {
                             let datum = datum
                                 .as_ref()
-                                .map(|datum| {
-                                    let Self { albedo_factor, .. } = &**datum;
-                                    albedo_factor.clone()
-                                })
+                                .map(|datum| datum.albedo_factor.clone())
                                 .flatten();
                             (datum.is_some(), datum)
                         })
@@ -130,14 +128,7 @@ impl ::re_types_core::Loggable for Material {
                         DataType::UInt32,
                         albedo_factor
                             .into_iter()
-                            .map(|datum| {
-                                datum
-                                    .map(|datum| {
-                                        let crate::datatypes::Rgba32(data0) = datum;
-                                        data0
-                                    })
-                                    .unwrap_or_default()
-                            })
+                            .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                             .collect(),
                         albedo_factor_bitmap,
                     )

@@ -4,6 +4,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 #[cfg(feature = "client")]
 mod client;
 use std::{fmt::Display, str::FromStr};
@@ -14,7 +17,7 @@ pub use client::viewer_to_server;
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
-pub use server::{RerunServer, RerunServerHandle};
+pub use server::RerunServer;
 
 use re_log_types::LogMsg;
 
@@ -34,6 +37,9 @@ pub enum RerunServerError {
     #[error("Failed to bind to WebSocket port {0}: {1}")]
     BindFailed(RerunServerPort, std::io::Error),
 
+    #[error("Failed to bind to WebSocket port {0} since the address is already in use. Use port 0 to let the OS choose a free port.")]
+    BindFailedAddrInUse(RerunServerPort),
+
     #[error("Received an invalid message")]
     InvalidMessagePrefix,
 
@@ -41,12 +47,8 @@ pub enum RerunServerError {
     InvalidMessage(#[from] bincode::Error),
 
     #[cfg(feature = "server")]
-    #[error("Failed to join web viewer server task: {0}")]
-    JoinError(#[from] tokio::task::JoinError),
-
-    #[cfg(feature = "server")]
-    #[error("Tokio error: {0}")]
-    TokioIoError(#[from] tokio::io::Error),
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

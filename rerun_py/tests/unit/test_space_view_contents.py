@@ -5,11 +5,20 @@ from typing import cast
 
 from rerun.blueprint.archetypes.space_view_contents import SpaceViewContents
 from rerun.blueprint.components.query_expression import QueryExpression, QueryExpressionBatch
-from rerun.datatypes.utf8 import Utf8Like
+from rerun.datatypes.utf8 import Utf8ArrayLike
 
 
 def test_space_view_contents() -> None:
-    query_array = ["+ /**\n- /robot", QueryExpression("+ /**\n- /robot")]
+    query_array = [
+        [
+            "+ /**",
+            "- /robot",
+        ],
+        [
+            QueryExpression("+ /**"),
+            QueryExpression("- /robot"),
+        ],
+    ]
 
     all_arrays = itertools.zip_longest(
         query_array,
@@ -19,7 +28,7 @@ def test_space_view_contents() -> None:
         # query = query if query is not None else query_array[-1]
 
         # mypy can't track types properly through itertools zip so re-cast
-        query = cast(Utf8Like, query)
+        query = cast(Utf8ArrayLike, query)
 
         print(
             "rr.SpaceViewContents(\n",
@@ -29,7 +38,6 @@ def test_space_view_contents() -> None:
         arch = SpaceViewContents(
             query,
         )
-        print(f"{arch}\n")
 
         # Equality checks on some of these are a bit silly, but at least they test out that the serialization code runs without problems.
-        assert arch.query == QueryExpressionBatch("+ /**\n- /robot")
+        assert arch.query == QueryExpressionBatch(["+ /**", "- /robot"])

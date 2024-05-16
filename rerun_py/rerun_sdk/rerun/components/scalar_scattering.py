@@ -13,7 +13,6 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .scalar_scattering_ext import ScalarScatteringExt
 
 __all__ = [
     "ScalarScattering",
@@ -25,7 +24,7 @@ __all__ = [
 
 
 @define(init=False)
-class ScalarScattering(ScalarScatteringExt):
+class ScalarScattering:
     """**Component**: If true, a scalar will be shown as individual point in a scatter plot."""
 
     def __init__(self: Any, scattered: ScalarScatteringLike):
@@ -60,4 +59,5 @@ class ScalarScatteringBatch(BaseBatch[ScalarScatteringArrayLike], ComponentBatch
 
     @staticmethod
     def _native_to_pa_array(data: ScalarScatteringArrayLike, data_type: pa.DataType) -> pa.Array:
-        return ScalarScatteringExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.bool_).flatten()
+        return pa.array(array, type=data_type)

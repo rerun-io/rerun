@@ -1,14 +1,14 @@
-# Space Views
+# Space views
 Status: Mostly implemented.
 
 
-## What are Space Views
+## What are space views
 Space Views visualize a Data Blueprint, i.e. a set of entities with given properties.
 They are represented as freely arrangeable tiles in the Viewport.
 Most Space Views are interactive, allowing their data to be explored freely.
 
 
-## Properties of a Space View
+## Properties of a space view
 All properties are saved as part of the blueprint.
 
 Changing discards Space View State:
@@ -27,7 +27,7 @@ Freely mutable:
 * available at various stages of ui drawing & system execution build-up (see below)
 
 
-## Space View State
+## Space view state
 In addition to blueprint stored data, a space view has a class specific `SpaceViewState`
 which stored ephemeral state that is not persisted as part of the blueprint.
 This is typically used for animation/transition state.
@@ -35,14 +35,14 @@ This is typically used for animation/transition state.
 ⚠️ As of writing, we're using this also for state that *should* be persisted and needs to be moved to
 blueprint components.
 
-## Space View Class
+## Space view class
 Each Space View refers to an immutable Space View Class, implemented by `SpaceViewClass`.
 It defines:
 * which data it can display and how it is displayed
 * how it is interacted with
 * what properties are read from the blueprint store and how they are exposed in the ui
 
-### What Space View Classes are there?
+### What space view classes are there?
 Space View differ only in class when they are **fundamentally different** in the way they display data.
 Naturally, this means that there are only ever very few distinct Space View classes.
 
@@ -54,7 +54,7 @@ As of writing we have:
 * Text Document
 * Time Series
 
-#### Future Space View Class distinction
+#### Future space view class distinction
 
 The fundamental difference between different space views lies in the kinds of axes a view has.
 - Data Table (currently text views) have rows and columns with text
@@ -64,7 +64,7 @@ The fundamental difference between different space views lies in the kinds of ax
 - Time Series has one time axis and one numeric axis
 - Rich Text is a rich text document (linear in top to bottom with wraparound in horizontal)
 
-##### On merging Bar Chart with Spatial 2D
+##### On merging bar chart with spatial 2D
 It might take some time to get the Archetype Queries + defaults expressive and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart space view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
 
 With the right set of primitives a user should be able to manually build a bar chart in a spatial 2D view. For example they might want a stacked bar chart. Talking about bringing in 3D into a bar chart doesn't likely make sense since there probably doesn't exist a camera projection that maps between 3D and the tensor indices axis (x).
@@ -92,8 +92,8 @@ First of all 3D data is only viewable in 2D if combined with a suitable projecti
 Second, the expectations around how to navigate a 2D visualization are quite different from how I expect to navigate a 3D visualization.
 
 ### Registering
-Registration happens on startup in the viewer owned `SpaceViewClassRegistry`.
-The viewer registers all builtin Space View Classes and users may add new types at any point in time.
+Registration happens on startup in the Viewer owned `SpaceViewClassRegistry`.
+The Viewer registers all builtin Space View Classes and users may add new types at any point in time.
 
 
 ### Systems
@@ -135,7 +135,7 @@ Registration is done via `SpaceViewSystemRegistry` which `SpaceViewClassRegistry
 Space view classes can register their built-in systems upon their own registration via their `on_register` method.
 As with space view classes themselves, new systems may be added at runtime.
 
-### Frame Lifecycle
+### Frame lifecycle
 * `SpaceViewClass::prepare_ui`
 * default create all registered `ViewContextSystem` into a `ViewContextCollection`
 * execute all `ViewContextSystem`
@@ -147,7 +147,7 @@ As with space view classes themselves, new systems may be added at runtime.
     * this typically requires iterating over all `ViewPartSystem` and extract some data either in a generic fashion via `ViewPartSystem::data` or with knowledge of the concrete `ViewPartSystem` types
   * currently, we also pass in all `re_renderer` data since the build up of the `re_renderer` view via `ViewBuilder` is not (yet?) unified
 
-### Space View Class Registry
+### Space view class registry
 Despite being few in numbers, Space Views Classes are registered on startup.
 This is desirable since:
 * forces decoupling from other aspects of the Viewer (Viewer should be composable)
@@ -157,7 +157,7 @@ This is desirable since:
 ![Overview diagram of how the basic traits related to each other](https://github.com/rerun-io/rerun/assets/1220815/ffdb1cdf-7efe-47a0-ac38-30262d770e69)
 
 
-#### User defined Space View Classes
+#### User defined space view classes
 Rust developers can use the Class Registry to register their own Space View types.
 We do *not* expect this to be a common workflow, but more of a last resort / highest level
 extensibility hooks.

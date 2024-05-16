@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: A Quaternion represented by 4 real numbers.
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
-/// datastore as provided, when used in the viewer Quaternions will always be normalized.
+/// datastore as provided, when used in the Viewer Quaternions will always be normalized.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
@@ -88,10 +89,7 @@ impl ::re_types_core::Loggable for Quaternion {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -102,20 +100,19 @@ impl ::re_types_core::Loggable for Quaternion {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
-                    .iter()
+                    .into_iter()
                     .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.iter().cloned()),
+                        Some(v) => itertools::Either::Left(v.into_iter()),
                         None => itertools::Either::Right(
                             std::iter::repeat(Default::default()).take(4usize),
                         ),
                     })
-                    .map(Some)
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
-                            .map(|i| std::iter::repeat(i).take(4usize))
+                            .map(|b| std::iter::repeat(b).take(4usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()
@@ -124,10 +121,7 @@ impl ::re_types_core::Loggable for Quaternion {
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
                         DataType::Float32,
-                        data0_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        data0_inner_data.into_iter().collect(),
                         data0_inner_bitmap,
                     )
                     .boxed(),
@@ -196,8 +190,10 @@ impl ::re_types_core::Loggable for Quaternion {
                         let data =
                             unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
                         let data = data.iter().cloned().map(Option::unwrap_or_default);
-                        let arr = array_init::from_iter(data).unwrap();
-                        Ok(arr)
+
+                        // NOTE: Unwrapping cannot fail: the length must be correct.
+                        #[allow(clippy::unwrap_used)]
+                        Ok(array_init::from_iter(data).unwrap())
                     })
                     .transpose()
                 })

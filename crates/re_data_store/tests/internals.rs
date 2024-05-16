@@ -2,10 +2,13 @@
 //!
 //! They're awful, but sometimes you just have to…
 
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use re_data_store::{DataStore, DataStoreConfig};
-use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimePoint};
-use re_types::{components::InstanceKey, datagen::build_some_instances};
-use re_types_core::Loggable as _;
+use re_log_types::{
+    build_frame_nr, example_components::MyIndex, DataRow, EntityPath, RowId, TimePoint,
+};
 
 // --- Internals ---
 
@@ -24,7 +27,6 @@ fn pathological_bucket_topology() {
 
     let mut store_forward = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         DataStoreConfig {
             indexed_bucket_num_rows: 10,
             ..Default::default()
@@ -32,7 +34,6 @@ fn pathological_bucket_topology() {
     );
     let mut store_backward = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         DataStoreConfig {
             indexed_bucket_num_rows: 10,
             ..Default::default()
@@ -45,27 +46,25 @@ fn pathological_bucket_topology() {
         store_forward: &mut DataStore,
         store_backward: &mut DataStore,
     ) {
-        let ent_path = EntityPath::from("this/that");
+        let entity_path = EntityPath::from("this/that");
         let num_instances = 1;
 
-        let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
+        let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
         for _ in 0..num {
             let row = DataRow::from_cells1_sized(
                 RowId::new(),
-                ent_path.clone(),
+                entity_path.clone(),
                 timepoint.clone(),
-                num_instances,
-                build_some_instances(num_instances as _),
+                MyIndex::from_iter(0..num_instances),
             )
             .unwrap();
             store_forward.insert_row(&row).unwrap();
 
             let row = DataRow::from_cells1_sized(
                 RowId::new(),
-                ent_path.clone(),
+                entity_path.clone(),
                 timepoint.clone(),
-                num_instances,
-                build_some_instances(num_instances as _),
+                MyIndex::from_iter(0..num_instances),
             )
             .unwrap();
             store_backward.insert_row(&row).unwrap();
@@ -77,18 +76,17 @@ fn pathological_bucket_topology() {
         store_forward: &mut DataStore,
         store_backward: &mut DataStore,
     ) {
-        let ent_path = EntityPath::from("this/that");
+        let entity_path = EntityPath::from("this/that");
         let num_instances = 1;
 
         let rows = range
             .map(|frame_nr| {
-                let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
+                let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
                 DataRow::from_cells1_sized(
                     RowId::new(),
-                    ent_path.clone(),
+                    entity_path.clone(),
                     timepoint,
-                    num_instances,
-                    build_some_instances(num_instances as _),
+                    MyIndex::from_iter(0..num_instances),
                 )
                 .unwrap()
             })

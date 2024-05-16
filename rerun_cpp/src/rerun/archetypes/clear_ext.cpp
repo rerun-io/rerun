@@ -1,5 +1,10 @@
 #include "clear.hpp"
 
+// <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
+
+// </CODEGEN_COPY_TO_HEADER>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
@@ -12,9 +17,9 @@ namespace rerun {
 
             // <CODEGEN_COPY_TO_HEADER>
 
-            static const Clear FLAT;
+            RERUN_SDK_EXPORT static const Clear FLAT;
 
-            static const Clear RECURSIVE;
+            RERUN_SDK_EXPORT static const Clear RECURSIVE;
 
             Clear(bool _is_recursive = false)
                 : Clear(components::ClearIsRecursive(_is_recursive)) {}

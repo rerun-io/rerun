@@ -19,14 +19,14 @@ If so, you can close this recording.
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_plots() -> None:
     from math import sin, tau
 
-    rr.log("plots/line", rr.SeriesLine(), timeless=True)
-    rr.log("plots/point", rr.SeriesPoint(), timeless=True)
+    rr.log("plots/line", rr.SeriesLine(), static=True)
+    rr.log("plots/point", rr.SeriesPoint(), static=True)
 
     for t in range(0, int(tau * 2 * 10.0)):
         rr.set_time_sequence("frame_nr", t)
@@ -36,14 +36,11 @@ def log_plots() -> None:
         if t > 30 and t < 90:
             rr.log("plots", rr.Clear(recursive=True))
         else:
-            rr.log("plots/legacy", rr.TimeSeriesScalar(sin_of_t))
             rr.log("plots/line", rr.Scalar(sin_of_t))
             rr.log("plots/point", rr.Scalar(sin_of_t))
 
 
 def run(args: Namespace) -> None:
-    # TODO(cmc): I have no idea why this works without specifying a `recording_id`, but
-    # I'm not gonna rely on it anyway.
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
     log_readme()

@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -39,7 +40,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_asset3d").spawn()?;
 ///
-///     rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
+///     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 ///     rec.log("world/asset", &rerun::Asset3D::from_file(path)?)?;
 ///
 ///     Ok(())
@@ -104,27 +105,22 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.InstanceKey".into(),
-            "rerun.components.OutOfTreeTransform3D".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.OutOfTreeTransform3D".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
             "rerun.components.Asset3DIndicator".into(),
             "rerun.components.MediaType".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.OutOfTreeTransform3D".into(),
         ]
     });
 
 impl Asset3D {
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`Asset3D`] [`::re_types_core::Archetype`]
@@ -232,14 +228,11 @@ impl ::re_types_core::AsComponents for Asset3D {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl Asset3D {
+    /// Create a new `Asset3D`.
+    #[inline]
     pub fn new(blob: impl Into<crate::components::Blob>) -> Self {
         Self {
             blob: blob.into(),
@@ -248,12 +241,25 @@ impl Asset3D {
         }
     }
 
+    /// The Media Type of the asset.
+    ///
+    /// Supported values:
+    /// * `model/gltf-binary`
+    /// * `model/gltf+json`
+    /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+    /// * `model/stl`
+    ///
+    /// If omitted, the viewer will try to guess from the data blob.
+    /// If it cannot guess, it won't be able to render the asset.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());
         self
     }
 
+    /// An out-of-tree transform.
+    ///
+    /// Applies a transformation to the asset itself without impacting its children.
     #[inline]
     pub fn with_transform(
         mut self,

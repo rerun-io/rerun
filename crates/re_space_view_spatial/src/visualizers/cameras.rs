@@ -1,9 +1,10 @@
 use glam::vec3;
 use re_entity_db::{EntityPath, EntityProperties};
+use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{InstanceKey, Transform3D, ViewCoordinates},
+    components::{Transform3D, ViewCoordinates},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
@@ -55,7 +56,7 @@ impl CamerasVisualizer {
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
-        let instance_key = InstanceKey(0);
+        let instance = Instance::from(0);
 
         let frustum_length = *props.pinhole_image_plane_distance;
 
@@ -152,7 +153,7 @@ impl CamerasVisualizer {
 
         let radius = re_renderer::Size::new_points(1.0);
         let instance_path_for_picking =
-            re_entity_db::InstancePathHash::instance(ent_path, instance_key);
+            re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
@@ -172,7 +173,7 @@ impl CamerasVisualizer {
             .flags(LineStripFlags::FLAG_CAP_END_ROUND | LineStripFlags::FLAG_CAP_START_ROUND)
             .picking_instance_id(instance_layer_id.instance);
 
-        if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+        if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance) {
             lines.outline_mask_ids(*outline_mask_ids);
         }
 
@@ -206,17 +207,18 @@ impl VisualizerSystem for CamerasVisualizer {
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let transforms = view_ctx.get::<TransformContext>()?;
-        let store = ctx.entity_db.store();
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
         let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = query_pinhole(store, &time_query, &data_result.entity_path) {
+            if let Some(pinhole) =
+                query_pinhole(ctx.recording(), &time_query, &data_result.entity_path)
+            {
                 let entity_highlight = query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash());
@@ -227,11 +229,9 @@ impl VisualizerSystem for CamerasVisualizer {
                     &data_result.entity_path,
                     data_result.accumulated_properties(),
                     &pinhole,
-                    store
-                        .query_latest_component::<Transform3D>(
-                            &data_result.entity_path,
-                            &time_query,
-                        )
+                    // TODO(#5607): what should happen if the promise is still pending?
+                    ctx.recording()
+                        .latest_at_component::<Transform3D>(&data_result.entity_path, &time_query)
                         .map(|c| c.value),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,

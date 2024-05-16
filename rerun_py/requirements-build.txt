@@ -1,7 +1,0 @@
-attrs>=23.1.0
-maturin>=1.3.0
-semver
-wheel
-pytest
-#TODO(#4704): clean that up when pytorch is available for 3.12
-torch>=2.0.1 ; python_version < "3.12"

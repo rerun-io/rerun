@@ -1,19 +1,25 @@
 use super::Vec2D;
 
 impl Vec2D {
+    /// The zero vector, i.e. the additive identity.
     pub const ZERO: Self = Self::new(0.0, 0.0);
+
+    /// The unit vector `[1, 1]`, i.e. the multiplicative identity.
     pub const ONE: Self = Self::new(1.0, 1.0);
 
+    /// Create a new vector.
     #[inline]
     pub const fn new(x: f32, y: f32) -> Self {
         Self([x, y])
     }
 
+    /// The x-coordinate, i.e. index 0.
     #[inline]
     pub fn x(&self) -> f32 {
         self.0[0]
     }
 
+    /// The y-coordinate, i.e. index 1.
     #[inline]
     pub fn y(&self) -> f32 {
         self.0[1]

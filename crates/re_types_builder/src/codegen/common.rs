@@ -12,41 +12,13 @@ fn is_blank<T: AsRef<str>>(line: T) -> bool {
     line.as_ref().chars().all(char::is_whitespace)
 }
 
-/// Retrieves the global and tagged documentation from a [`Docs`] object.
-pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
-    let mut lines = docs.doc.clone();
-
-    for tag in tags {
-        lines.extend(
-            docs.tagged_docs
-                .get(*tag)
-                .unwrap_or(&Vec::new())
-                .iter()
-                .cloned(),
-        );
-    }
-
-    // NOTE: remove duplicated blank lines.
-    lines.dedup();
-
-    // NOTE: remove trailing blank lines.
-    while let Some(line) = lines.last() {
-        if line.is_empty() {
-            lines.pop();
-        } else {
-            break;
-        }
-    }
-
-    lines
-}
-
 #[derive(Clone)]
 pub struct ExampleInfo<'a> {
+    /// Path to the snippet relative to the snippet directory.
+    pub path: &'a str,
+
     /// The snake_case name of the example.
-    ///
-    /// Used with `code-example:`, `std::fs::read_to_string`, etc.
-    pub name: &'a str,
+    pub name: String,
 
     /// The human-readable name of the example.
     pub title: Option<&'a str>,
@@ -60,66 +32,64 @@ pub struct ExampleInfo<'a> {
 
 impl<'a> ExampleInfo<'a> {
     /// Parses e.g.  `// \example example_name title="Example Title" image="https://www.example.com/img.png"`
-    pub fn parse(tag_content: &'a impl AsRef<str>) -> Self {
-        fn mono(tag_content: &str) -> ExampleInfo<'_> {
-            fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
-                let mut prev_end = 0;
-                loop {
-                    if prev_end + tag.len() + "=\"\"".len() >= args.len() {
-                        return None;
-                    }
-                    let key_start = prev_end + args[prev_end..].find(tag)?;
-                    let key_end = key_start + tag.len();
-                    if !args[key_end..].starts_with("=\"") {
-                        prev_end = key_end;
-                        continue;
-                    };
-                    let value_start = key_end + "=\"".len();
-                    let Some(mut value_end) = args[value_start..].find('"') else {
-                        prev_end = value_start;
-                        continue;
-                    };
-                    value_end += value_start;
-                    return Some(&args[value_start..value_end]);
+    pub fn parse(tag_content: &'a str) -> Self {
+        fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
+            let mut prev_end = 0;
+            loop {
+                if prev_end + tag.len() + "=\"\"".len() >= args.len() {
+                    return None;
                 }
-            }
-
-            let tag_content = tag_content.trim();
-            let (name, args) = tag_content
-                .split_once(' ')
-                .map_or((tag_content, None), |(a, b)| (a, Some(b)));
-
-            let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
-
-            if let Some(args) = args {
-                let args = args.trim();
-
-                exclude_from_api_docs = args.contains("!api");
-                let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
-                    args_without_api_prefix.trim()
-                } else {
-                    args
+                let key_start = prev_end + args[prev_end..].find(tag)?;
+                let key_end = key_start + tag.len();
+                if !args[key_end..].starts_with("=\"") {
+                    prev_end = key_end;
+                    continue;
                 };
-
-                if args.starts_with('"') {
-                    // \example example_name "Example Title"
-                    title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
-                } else {
-                    // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
-                    title = find_keyed("title", args);
-                    image = find_keyed("image", args).map(ImageUrl::parse);
-                }
-            }
-
-            ExampleInfo {
-                name,
-                title,
-                image,
-                exclude_from_api_docs,
+                let value_start = key_end + "=\"".len();
+                let Some(mut value_end) = args[value_start..].find('"') else {
+                    prev_end = value_start;
+                    continue;
+                };
+                value_end += value_start;
+                return Some(&args[value_start..value_end]);
             }
         }
 
-        mono(tag_content.as_ref())
+        let tag_content = tag_content.trim();
+        let (path, args) = tag_content
+            .split_once(' ')
+            .map_or((tag_content, None), |(a, b)| (a, Some(b)));
+        let name = path.split('/').last().unwrap_or_default().to_owned();
+
+        let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
+
+        if let Some(args) = args {
+            let args = args.trim();
+
+            exclude_from_api_docs = args.contains("!api");
+            let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
+                args_without_api_prefix.trim()
+            } else {
+                args
+            };
+
+            if args.starts_with('"') {
+                // \example example_name "Example Title"
+                title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
+            } else {
+                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
+                title = find_keyed("title", args);
+                image = find_keyed("image", args).map(ImageUrl::parse);
+            }
+        }
+
+        ExampleInfo {
+            path,
+            name,
+            title,
+            image,
+            exclude_from_api_docs,
+        }
     }
 }
 
@@ -138,18 +108,70 @@ pub enum ImageUrl<'a> {
     Other(&'a str),
 }
 
-impl ImageUrl<'_> {
+impl<'a> ImageUrl<'a> {
     pub fn parse(s: &str) -> ImageUrl<'_> {
         RerunImageUrl::parse(s).map_or(ImageUrl::Other(s), ImageUrl::Rerun)
     }
 
-    pub fn image_stack(&self) -> Vec<String> {
-        match self {
-            ImageUrl::Rerun(rerun) => rerun.image_stack(),
+    /// Try to generate a `<picture>` stack, falling back to a single `<img>` element.
+    pub fn image_stack(&self) -> ImageStack<'_> {
+        ImageStack {
+            url: self,
+            width: None,
+            snippet_id: None,
+            center: false,
+        }
+    }
+}
+
+pub struct ImageStack<'a> {
+    url: &'a ImageUrl<'a>,
+    width: Option<u16>,
+    snippet_id: Option<SnippetId<'a>>,
+    center: bool,
+}
+
+impl<'a> ImageStack<'a> {
+    /// Set the `width` attribute of the image.
+    #[inline]
+    pub fn width(mut self, v: u16) -> Self {
+        self.width = Some(v);
+        self
+    }
+
+    /// Whether or not the image should be wrapped in `<center>`.
+    #[inline]
+    pub fn center(mut self) -> Self {
+        self.center = true;
+        self
+    }
+
+    /// Set the snippet ID.
+    ///
+    /// If set, the resulting `<picture>` element will have the `data-inline-viewr`
+    /// attribute set with the value of this ID.
+    /// `data-inline-viewer` is not set for `<img>` elements.
+    #[inline]
+    pub fn snippet_id(mut self, id: &'a str) -> Self {
+        self.snippet_id = Some(SnippetId(id));
+        self
+    }
+
+    pub fn finish(self) -> Vec<String> {
+        match self.url {
+            ImageUrl::Rerun(rerun) => rerun.image_stack(self.snippet_id, self.width, self.center),
             ImageUrl::Other(url) => {
                 vec![format!(r#"<img src="{url}">"#)]
             }
         }
+    }
+}
+
+pub struct SnippetId<'a>(pub &'a str);
+
+impl<'a> std::fmt::Display for SnippetId<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "snippets/{}", self.0)
     }
 }
 
@@ -186,11 +208,13 @@ impl RerunImageUrl<'_> {
         })
     }
 
-    pub fn image_stack(&self) -> Vec<String> {
+    pub fn image_stack(
+        &self,
+        snippet_id: Option<SnippetId<'_>>,
+        desired_width: Option<u16>,
+        center: bool,
+    ) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
-
-        // Don't let the images take up too much space on the page.
-        let desired_with = Some(640);
 
         let RerunImageUrl {
             name,
@@ -199,7 +223,17 @@ impl RerunImageUrl<'_> {
             extension,
         } = *self;
 
-        let mut stack = vec!["<center>".into(), "<picture>".into()];
+        let mut stack = vec![];
+
+        if center {
+            stack.push("<center>".into());
+        }
+
+        match snippet_id {
+            Some(id) => stack.push(format!(r#"<picture data-inline-viewer="{id}">"#)),
+            None => stack.push("<picture>".into()),
+        }
+
         if let Some(max_width) = max_width {
             for width in WIDTHS {
                 if width > max_width {
@@ -211,9 +245,9 @@ impl RerunImageUrl<'_> {
             }
         }
 
-        if let Some(desired_with) = desired_with {
+        if let Some(desired_width) = desired_width {
             stack.push(format!(
-                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_with}">"#
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_width}">"#
             ));
         } else {
             stack.push(format!(
@@ -221,7 +255,10 @@ impl RerunImageUrl<'_> {
             ));
         }
         stack.push("</picture>".into());
-        stack.push("</center>".into());
+
+        if center {
+            stack.push("</center>".into());
+        }
 
         stack
     }
@@ -242,51 +279,46 @@ pub struct Example<'a> {
     pub lines: Vec<String>,
 }
 
-pub fn collect_examples_for_api_docs<'a>(
+pub fn collect_snippets_for_api_docs<'a>(
     docs: &'a Docs,
     extension: &str,
     required: bool,
 ) -> anyhow::Result<Vec<Example<'a>>> {
-    let mut out = Vec::new();
+    let base_path = crate::rerun_workspace_path().join("docs/snippets/all");
 
-    if let Some(examples) = docs.tagged_docs.get("example") {
-        let base_path = crate::rerun_workspace_path().join("docs/code-examples/all");
+    let examples: Vec<&'a str> = docs.doc_lines_tagged("example");
 
-        for base @ ExampleInfo {
-            name,
-            exclude_from_api_docs,
-            ..
-        } in examples.iter().map(ExampleInfo::parse)
-        {
-            if exclude_from_api_docs {
-                continue;
-            }
+    let mut out: Vec<Example<'a>> = Vec::new();
 
-            let path = base_path.join(format!("{name}.{extension}"));
-            let content = match std::fs::read_to_string(&path) {
-                Ok(content) => content,
-                Err(_) if !required => continue,
-                Err(err) => {
-                    return Err(err).with_context(|| format!("couldn't open code example {path:?}"))
-                }
-            };
-            let mut content = content
-                .split('\n')
-                .map(String::from)
-                .skip_while(|line| line.starts_with("//") || line.starts_with(r#"""""#)) // Skip leading comments.
-                .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
-                .collect_vec();
-
-            // trim trailing blank lines
-            while content.last().is_some_and(is_blank) {
-                content.pop();
-            }
-
-            out.push(Example {
-                base,
-                lines: content,
-            });
+    for example in &examples {
+        let base: ExampleInfo<'a> = ExampleInfo::parse(example);
+        let example_path = &base.path;
+        if base.exclude_from_api_docs {
+            continue;
         }
+
+        let path = base_path.join(format!("{example_path}.{extension}"));
+        let content = match std::fs::read_to_string(&path) {
+            Ok(content) => content,
+            Err(_) if !required => continue,
+            Err(err) => return Err(err).with_context(|| format!("couldn't open snippet {path:?}")),
+        };
+        let mut content = content
+            .split('\n')
+            .map(String::from)
+            .skip_while(|line| line.starts_with("//") || line.starts_with(r#"""""#)) // Skip leading comments.
+            .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
+            .collect_vec();
+
+        // trim trailing blank lines
+        while content.last().is_some_and(is_blank) {
+            content.pop();
+        }
+
+        out.push(Example {
+            base,
+            lines: content,
+        });
     }
 
     Ok(out)

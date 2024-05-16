@@ -11,7 +11,6 @@ use crate::{RecordingStream, StoreKind};
 // ---
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 enum RecordingScope {
     Global,
     ThreadLocal,
@@ -81,28 +80,28 @@ thread_local! {
 pub fn cleanup_if_forked_child() {
     if let Some(global_recording) = RecordingStream::global(StoreKind::Recording) {
         if global_recording.is_forked_child() {
-            re_log::debug!("Fork detected. Forgetting global Recording");
+            re_log::debug!("Fork detected. Forgetting global recording");
             RecordingStream::forget_global(StoreKind::Recording);
         }
     }
 
     if let Some(global_blueprint) = RecordingStream::global(StoreKind::Blueprint) {
         if global_blueprint.is_forked_child() {
-            re_log::debug!("Fork detected. Forgetting global Blueprint");
+            re_log::debug!("Fork detected. Forgetting global blueprint");
             RecordingStream::forget_global(StoreKind::Recording);
         }
     }
 
     if let Some(thread_recording) = RecordingStream::thread_local(StoreKind::Recording) {
         if thread_recording.is_forked_child() {
-            re_log::debug!("Fork detected. Forgetting thread-local Recording");
+            re_log::debug!("Fork detected. Forgetting thread-local recording");
             RecordingStream::forget_thread_local(StoreKind::Recording);
         }
     }
 
     if let Some(thread_blueprint) = RecordingStream::thread_local(StoreKind::Blueprint) {
         if thread_blueprint.is_forked_child() {
-            re_log::debug!("Fork detected. Forgetting thread-local Blueprint");
+            re_log::debug!("Fork detected. Forgetting thread-local blueprint");
             RecordingStream::forget_thread_local(StoreKind::Blueprint);
         }
     }

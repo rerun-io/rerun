@@ -42,9 +42,13 @@ pub fn highlights_for_space_view(
                 .add(&instance, next_selection_mask());
         };
 
-    for current_selection in ctx.selection_state().current().iter_items() {
+    for current_selection in ctx.selection_state().selected_items().iter_items() {
         match current_selection {
-            Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => {}
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::SpaceView(_)
+            | Item::Container(_) => {}
 
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();
@@ -78,9 +82,13 @@ pub fn highlights_for_space_view(
         OutlineMaskPreference::some(hover_mask_index, 0)
     };
 
-    for current_hover in ctx.selection_state().hovered().iter_items() {
+    for current_hover in ctx.selection_state().hovered_items().iter_items() {
         match current_hover {
-            Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => {}
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::SpaceView(_)
+            | Item::Container(_) => {}
 
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();

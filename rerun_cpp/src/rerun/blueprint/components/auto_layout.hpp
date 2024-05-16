@@ -16,8 +16,6 @@ namespace arrow {
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether the viewport layout is determined automatically.
-    ///
-    /// Unstable. Used for the ongoing blueprint experimentations.
     struct AutoLayout {
         bool auto_layout;
 
@@ -45,15 +43,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::blueprint:: components::AutoLayout` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const blueprint::components::AutoLayout* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::BooleanBuilder* builder, const blueprint::components::AutoLayout* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::blueprint:: components::AutoLayout` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const blueprint::components::AutoLayout* instances, size_t num_instances
         );
     };
 } // namespace rerun

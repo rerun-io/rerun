@@ -39,7 +39,7 @@ def log_image_nested(path: str, height: int, width: int, color: tuple[int, int, 
 
 
 def log_annotation_context() -> None:
-    rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]), timeless=True)
+    rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]), static=True)
 
 
 def log_segmentation(path: str, height: int, width: int, class_id: int) -> None:
@@ -49,7 +49,7 @@ def log_segmentation(path: str, height: int, width: int, class_id: int) -> None:
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_images() -> None:
@@ -63,8 +63,6 @@ def log_images() -> None:
 
 
 def run(args: Namespace) -> None:
-    # TODO(cmc): I have no idea why this works without specifying a `recording_id`, but
-    # I'm not gonna rely on it anyway.
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
     log_readme()

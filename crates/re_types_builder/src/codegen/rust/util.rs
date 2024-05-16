@@ -1,10 +1,27 @@
 //! Implements the Rust codegen pass.
 
 use proc_macro2::TokenStream;
+use quote::quote;
 
 use crate::{ElementType, Object, ObjectKind, Type, ATTR_RUST_TUPLE_STRUCT};
 
 // ---
+
+/// We put this magic prefix in `#[doc = "` attribute,
+/// and then in the last step of codegen we transform that `#[doc`
+/// not into a `///`, but to a normal `//` comment.
+pub const SIMPLE_COMMENT_PREFIX: &str = "!COMMENT!";
+
+/// Put a normal `// comment` in the code.
+pub fn quote_comment(comment: &str) -> TokenStream {
+    let lines = comment.lines().map(|line| {
+        let line = format!("{SIMPLE_COMMENT_PREFIX}{line}");
+        quote!(
+            #[doc = #line]
+        )
+    });
+    quote!(#(#lines)*)
+}
 
 pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
     if !obj.is_struct() {
@@ -72,6 +89,7 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
 
     let mut output = String::default();
     let mut is_in_docstring = false;
+    let mut prev_line_was_docstring = false;
     let mut prev_line_was_attr = false;
 
     for line in string.split('\n') {
@@ -85,15 +103,26 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
                 }
                 let comment = &line[slashes + 3..];
                 output.push_str(leading_spaces);
-                output.push_str("///");
-                if !comment.starts_with(char::is_whitespace) {
-                    output.push(' ');
+
+                // TODO(emilk): why do we need to do the `SIMPLE_COMMENT_PREFIX` both here and in `fn replace_doc_attrb_with_doc_comment`?
+                if let Some(comment) = comment.strip_prefix(SIMPLE_COMMENT_PREFIX) {
+                    output.push_str("//");
+                    if !comment.starts_with(char::is_whitespace) {
+                        output.push(' ');
+                    }
+                    output.push_str(comment);
+                } else {
+                    output.push_str("///");
+                    if !comment.starts_with(char::is_whitespace) {
+                        output.push(' ');
+                    }
+                    output.push_str(comment);
                 }
-                output.push_str(comment);
                 output.push('\n');
 
                 prev_line_was_attr = false;
                 is_in_docstring = true;
+                prev_line_was_docstring = true;
 
                 continue;
             }
@@ -106,7 +135,7 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
 
         let line_is_attr = trimmed.starts_with("#[allow(") || trimmed.starts_with("#[inline]");
 
-        if !prev_line_was_attr && line_is_attr {
+        if line_is_attr && (!prev_line_was_attr && !prev_line_was_docstring) {
             output.push('\n');
         }
 
@@ -125,6 +154,7 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
         output.push_str(line);
         output.push('\n');
         prev_line_was_attr = line_is_attr;
+        prev_line_was_docstring = false;
     }
 
     output

@@ -94,58 +94,59 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
-    pub visible: bool,
-    pub visible_history: re_query::ExtraQueryHistory,
-    pub interactive: bool,
+    pub interactive: bool, // TODO(andreas): similar to `visible`, needs to become a regular (slightly special - doesn't show up in archetypes) component.
 
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
-    pub color_mapper: EditableAutoValue<ColorMapper>,
+    pub color_mapper: EditableAutoValue<ColorMapper>, // TODO(andreas): should become a component and be part of the DepthImage and regular Images (with limitation to mono channel image).
 
     /// Distance of the projection plane (frustum far plane).
     ///
     /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
-    pub pinhole_image_plane_distance: EditableAutoValue<f32>,
+    pub pinhole_image_plane_distance: EditableAutoValue<f32>, // TODO(#6084): should be a regular component on the Pinhole archetype.
 
     /// Should the depth texture be backprojected into a point cloud?
     ///
     /// Only applies to tensors with meaning=depth that are affected by a pinhole transform.
     ///
     /// The default for 3D views is `true`, but for 2D views it is `false`.
-    pub backproject_depth: EditableAutoValue<bool>,
+    pub backproject_depth: EditableAutoValue<bool>, // TODO(andreas): should be a component on the DepthImage archetype.
 
     /// How many depth units per world-space unit. e.g. 1000 for millimeters.
     ///
     /// This corresponds to `re_components::Tensor::meter`.
-    pub depth_from_world_scale: EditableAutoValue<f32>,
+    pub depth_from_world_scale: EditableAutoValue<f32>, // TODO(andreas): Just remove once we can edit meter & be able to set semi-clever defaults per visualizer.
 
     /// Used to scale the radii of the points in the resulting point cloud.
-    pub backproject_radius_scale: EditableAutoValue<f32>,
+    pub backproject_radius_scale: EditableAutoValue<f32>, // TODO(andreas): should be a component on the DepthImage archetype.
 
     /// Whether to show the 3D transform visualization at all.
+    // TODO(andreas): should go away once we can disable visualizer. Revisit how to collectively enable/disable these on an entire view.
+    // To consider: Make a TransformAxis archetype whose indicator is what enables the visualizer
+    // -> size etc. are now part of this archetype, not the `Transform` archetype
+    // -> `TransformAxis` itself doesn't have a required component, but the visualizer has. Just like in SeriesLines & Scalar.
+    // TODO(andreas)/TODO(jleibs): There's a pattern here that we should capture & formalize in the API / codegen / definitions.
     pub transform_3d_visible: EditableAutoValue<bool>,
 
     /// The length of the arrows in the entity's own coordinate system (space).
-    pub transform_3d_size: EditableAutoValue<f32>,
+    pub transform_3d_size: EditableAutoValue<f32>, // TODO(andreas): should be a component on the Transform3D/TransformAxis archetype.
 
     /// Should the legend be shown (for plot space views).
-    pub show_legend: EditableAutoValue<bool>,
+    pub show_legend: EditableAutoValue<bool>, // TODO(andreas): BarChart is still using it, we already have the legend archteype!
 
     /// The location of the legend (for plot space views).
     ///
     /// This is an Option instead of an EditableAutoValue to let each space view class decide on
     /// what's the best default.
-    pub legend_location: Option<LegendCorner>,
+    pub legend_location: Option<LegendCorner>, // TODO(andreas): BarChart is still using it, we already have the legend archteype!
 
     /// What kind of data aggregation to perform (for plot space views).
-    pub time_series_aggregator: EditableAutoValue<TimeSeriesAggregator>,
+    pub time_series_aggregator: EditableAutoValue<TimeSeriesAggregator>, // TODO(andreas): Should be a component probably on SeriesLine, but today it would become a view property.
 }
 
 #[cfg(feature = "serde")]
 impl Default for EntityProperties {
     fn default() -> Self {
         Self {
-            visible: true,
-            visible_history: re_query::ExtraQueryHistory::default(),
             interactive: true,
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::Auto(1.0),
@@ -166,8 +167,6 @@ impl EntityProperties {
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
-            visible: self.visible && child.visible,
-            visible_history: self.visible_history.with_child(&child.visible_history),
             interactive: self.interactive && child.interactive,
 
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
@@ -211,8 +210,6 @@ impl EntityProperties {
     /// loaded from the Blueprint store where the Auto values are not up-to-date.
     pub fn merge_with(&self, other: &Self) -> Self {
         Self {
-            visible: other.visible,
-            visible_history: self.visible_history.with_child(&other.visible_history),
             interactive: other.interactive,
 
             color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
@@ -250,8 +247,6 @@ impl EntityProperties {
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
-            visible,
-            visible_history,
             interactive,
             color_mapper,
             pinhole_image_plane_distance,
@@ -265,9 +260,7 @@ impl EntityProperties {
             time_series_aggregator,
         } = self;
 
-        visible != &other.visible
-            || visible_history != &other.visible_history
-            || interactive != &other.interactive
+        interactive != &other.interactive
             || color_mapper.has_edits(&other.color_mapper)
             || pinhole_image_plane_distance.has_edits(&other.pinhole_image_plane_distance)
             || backproject_depth.has_edits(&other.backproject_depth)

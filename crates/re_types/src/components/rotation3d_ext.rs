@@ -3,6 +3,7 @@ use crate::datatypes::{self};
 use super::Rotation3D;
 
 impl Rotation3D {
+    /// The identity rotation, i.e. no rotation at all.
     pub const IDENTITY: Self = Self(datatypes::Rotation3D::IDENTITY);
 }
 

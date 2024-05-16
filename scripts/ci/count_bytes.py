@@ -14,6 +14,7 @@ Use the script:
     python3 scripts/ci/count_bytes.py --format=github \
         "Wasm":web_viewer/re_viewer_bg.wasm
 """
+
 from __future__ import annotations
 
 import argparse
@@ -96,13 +97,11 @@ def measure(files: list[str], format: Format) -> None:
         unit = parts[2] if len(parts) > 2 else get_unit(size)
         div = get_divisor(unit)
 
-        output.append(
-            {
-                "name": name,
-                "value": str(round(size / div, 2)),
-                "unit": unit,
-            }
-        )
+        output.append({
+            "name": name,
+            "value": str(round(size / div, 2)),
+            "unit": unit,
+        })
 
     sys.stdout.write(format.render(output))
     sys.stdout.flush()

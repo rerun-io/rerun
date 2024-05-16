@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "mat3x3.hpp"
 #include "vec3d.hpp"
@@ -41,7 +42,7 @@ namespace rerun::datatypes {
         ///
         /// Applying this transform does not alter an entity's transformation.
         /// It has all optional fields set to `std::nullopt`.
-        static const TranslationAndMat3x3 IDENTITY;
+        RERUN_SDK_EXPORT static const TranslationAndMat3x3 IDENTITY;
 
         /// Creates a new 3D transform from translation/matrix.
         ///
@@ -85,15 +86,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::TranslationAndMat3x3` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::TranslationAndMat3x3* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::StructBuilder* builder, const datatypes::TranslationAndMat3x3* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::TranslationAndMat3x3` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::TranslationAndMat3x3* instances, size_t num_instances
         );
     };
 } // namespace rerun

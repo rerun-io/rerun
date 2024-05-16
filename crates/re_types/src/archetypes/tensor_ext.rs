@@ -5,7 +5,8 @@ use re_types_core::ArrowString;
 use super::Tensor;
 
 impl Tensor {
-    pub fn data(&self) -> &crate::datatypes::TensorData {
+    /// Accessor to the underlying [`TensorData`].
+    pub fn data(&self) -> &TensorData {
         &self.data.0
     }
 
@@ -13,7 +14,7 @@ impl Tensor {
     ///
     /// This is useful for constructing a tensor from an ndarray.
     pub fn try_from<T: TryInto<TensorData>>(data: T) -> Result<Self, T::Error> {
-        let data: crate::datatypes::TensorData = data.try_into()?;
+        let data: TensorData = data.try_into()?;
 
         Ok(Self { data: data.into() })
     }
@@ -34,7 +35,7 @@ impl Tensor {
             );
         }
         Self {
-            data: crate::datatypes::TensorData {
+            data: TensorData {
                 shape: self
                     .data
                     .0

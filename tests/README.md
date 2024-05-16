@@ -1,1 +1,1 @@
-Uses of the rerun SDK designed to test different things.
+Uses of the Rerun SDK designed to test different things.

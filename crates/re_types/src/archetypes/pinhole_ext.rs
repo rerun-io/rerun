@@ -37,6 +37,17 @@ impl Pinhole {
         Self::from_focal_length_and_resolution(focal_length, [aspect_ratio, 1.0])
     }
 
+    /// Principal point of the pinhole camera,
+    /// i.e. the intersection of the optical axis and the image plane.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn with_principal_point(mut self, principal_point: impl Into<Vec2D>) -> Self {
+        self.image_from_camera = self.image_from_camera.with_principal_point(principal_point);
+        self
+    }
+
     /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
     #[inline]
     pub fn fov_y(&self) -> Option<f32> {
@@ -44,12 +55,14 @@ impl Pinhole {
             .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_camera.col(1)[1]).atan())
     }
 
+    /// The resolution of the camera sensor in pixels.
     #[inline]
     #[cfg(feature = "glam")]
     pub fn resolution(&self) -> Option<glam::Vec2> {
         self.resolution.map(|r| (*r).into())
     }
 
+    /// Width/height ratio of the camera sensor.
     #[inline]
     pub fn aspect_ratio(&self) -> Option<f32> {
         self.resolution.map(|r| r[0] / r[1])

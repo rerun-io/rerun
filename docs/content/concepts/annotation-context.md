@@ -1,6 +1,6 @@
 ---
 title: Annotation Context
-order: 4
+order: 800
 ---
 
 ## Overview
@@ -23,7 +23,7 @@ but can be used more generally for any kind of reoccurring categorization within
 
 
 
-### Keypoints & Keypoint Connections
+### Keypoints & keypoint connections
 
 Rerun allows you to define keypoints *within* a class.
 Each keypoint can define its own properties (colors, labels, etc.) that overwrite its parent class.
@@ -33,18 +33,18 @@ In that case, the entire detected pose/skeleton is assigned a Class ID and each 
 
 To help you more with this (and similar) use-case(s), you can also define connections between keypoints
 as part of your annotation class description.
-The viewer will draw the connecting lines for all connected keypoints whenever that class is used.
+The Viewer will draw the connecting lines for all connected keypoints whenever that class is used.
 Just as with labels and colors this allows you to use the same connection information on any instance that class in your scene.
 
 Keypoints are currently only applicable to 2D and 3D points.
 
 <picture>
-  <img src="https://static.rerun.io/keypoints/07b268032ab7cd26812de6b83e018b8ab55ed2f2/full.png" alt="keypoint shown on a 3d skeleton">
+  <img src="https://static.rerun.io/keypoints/07b268032ab7cd26812de6b83e018b8ab55ed2f2/full.png" alt="keypoint shown on a 3D skeleton">
 </picture>
 
 
 
-### Logging an Annotation Context
+### Logging an annotation context
 
 Annotation Context is typically logged as [timeless](timelines.md#timeless-data) data, but can change over time if needed.
 
@@ -56,10 +56,10 @@ Annotation contexts are logged with:
 * Python: 🐍[`rr.AnnotationContext`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.AnnotationContext)
 * Rust: 🦀[`rerun::AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html#)
 
-code-example: annotation-context
+snippet: tutorials/annotation-context
 
 
-## Affected Entities
+## Affected entities
 
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
 the nearest ancestor that in the [entity path hierarchy](entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.

@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Log a double-precision scalar.
 ///
 /// The current timeline value will be used for the time/X-axis, hence scalars
-/// cannot be timeless.
+/// cannot be static.
 ///
 /// When used to produce a plot, this archetype is used to provide the data that
 /// is referenced by the `SeriesLine` or `SeriesPoint` archetypes. You can do
@@ -82,20 +83,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ScalarIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Scalar".into(),
             "rerun.components.ScalarIndicator".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl Scalar {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`Scalar`] [`::re_types_core::Archetype`]
@@ -174,14 +175,11 @@ impl ::re_types_core::AsComponents for Scalar {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl Scalar {
+    /// Create a new `Scalar`.
+    #[inline]
     pub fn new(scalar: impl Into<crate::components::Scalar>) -> Self {
         Self {
             scalar: scalar.into(),

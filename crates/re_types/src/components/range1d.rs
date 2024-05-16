@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -22,9 +23,9 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 1D range, specifying a lower and upper bound.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
-pub struct Range1D(pub [f64; 2usize]);
+pub struct Range1D(pub crate::datatypes::Range1D);
 
 impl ::re_types_core::SizeBytes for Range1D {
     #[inline]
@@ -34,21 +35,29 @@ impl ::re_types_core::SizeBytes for Range1D {
 
     #[inline]
     fn is_pod() -> bool {
-        <[f64; 2usize]>::is_pod()
+        <crate::datatypes::Range1D>::is_pod()
     }
 }
 
-impl From<[f64; 2usize]> for Range1D {
-    #[inline]
-    fn from(range: [f64; 2usize]) -> Self {
-        Self(range)
+impl<T: Into<crate::datatypes::Range1D>> From<T> for Range1D {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<Range1D> for [f64; 2usize] {
+impl std::borrow::Borrow<crate::datatypes::Range1D> for Range1D {
     #[inline]
-    fn from(value: Range1D) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::Range1D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Range1D {
+    type Target = crate::datatypes::Range1D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Range1D {
+        &self.0
     }
 }
 
@@ -86,10 +95,7 @@ impl ::re_types_core::Loggable for Range1D {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -100,20 +106,15 @@ impl ::re_types_core::Loggable for Range1D {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
-                    .iter()
-                    .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.iter().cloned()),
-                        None => itertools::Either::Right(
-                            std::iter::repeat(Default::default()).take(2usize),
-                        ),
-                    })
-                    .map(Some)
+                    .into_iter()
+                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                    .flatten()
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
-                            .map(|i| std::iter::repeat(i).take(2usize))
+                            .map(|b| std::iter::repeat(b).take(2usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()
@@ -122,10 +123,7 @@ impl ::re_types_core::Loggable for Range1D {
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
                         DataType::Float64,
-                        data0_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        data0_inner_data.into_iter().collect(),
                         data0_inner_bitmap,
                     )
                     .boxed(),
@@ -194,10 +192,15 @@ impl ::re_types_core::Loggable for Range1D {
                         let data =
                             unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
                         let data = data.iter().cloned().map(Option::unwrap_or_default);
-                        let arr = array_init::from_iter(data).unwrap();
-                        Ok(arr)
+
+                        // NOTE: Unwrapping cannot fail: the length must be correct.
+                        #[allow(clippy::unwrap_used)]
+                        Ok(array_init::from_iter(data).unwrap())
                     })
                     .transpose()
+                })
+                .map(|res_or_opt| {
+                    res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Range1D(v)))
                 })
                 .collect::<DeserializationResult<Vec<Option<_>>>>()?
             }
@@ -253,7 +256,12 @@ impl ::re_types_core::Loggable for Range1D {
                 )
             };
             {
-                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::Range1D(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
             }
         })
     }

@@ -5,7 +5,7 @@ use clap::Subcommand;
 use itertools::Itertools;
 
 use re_data_source::DataSource;
-use re_log_types::{DataTable, LogMsg, PythonVersion, SetStoreInfo};
+use re_log_types::{DataTable, LogMsg, SetStoreInfo};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 #[cfg(feature = "web_viewer")]
@@ -140,9 +140,15 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     serve: bool,
 
-    /// Do not display the welcome screen.
+    /// This is a hint that we expect a recording to stream in very soon.
+    ///
+    /// This is set by the `spawn()` method in our logging SDK.
+    ///
+    /// The viewer will respond by fading in the welcome screen,
+    /// instead of showing it directly.
+    /// This ensures that it won't blink for a few frames before switching to the recording.
     #[clap(long)]
-    skip_welcome_screen: bool,
+    expect_data_soon: bool,
 
     /// The number of compute threads to use.
     ///
@@ -158,10 +164,11 @@ When persisted, the state will be stored at the following locations:
     threads: i32,
 
     #[clap(long_help = r"Any combination of:
-- A WebSocket url to a Rerun Server
-- An HTTP(S) URL to an .rrd file to load
-- A path to an rerun .rrd recording
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/howto/open-any-file)
+- A WebSocket url to a Rerun server
+- A path to a Rerun .rrd recording
+- A path to a Rerun .rbl blueprint
+- An HTTP(S) URL to an .rrd or .rbl file to load
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/reference/data-loaders/overview)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
@@ -183,6 +190,10 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[cfg(feature = "web_viewer")]
     #[clap(long, default_value_t = Default::default())]
     web_viewer_port: WebViewerServerPort,
+
+    /// Hide the normal Rerun welcome screen.
+    #[clap(long)]
+    hide_welcome_screen: bool,
 
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
@@ -241,7 +252,7 @@ enum Command {
         full_dump: bool,
     },
 
-    /// Print the contents of an .rrd file.
+    /// Print the contents of an .rrd or .rbl file.
     Print(PrintCommand),
 
     /// Reset the memory of the Rerun Viewer.
@@ -288,21 +299,15 @@ enum AnalyticsCommands {
 }
 
 /// Where are we calling [`run`] from?
-#[derive(Clone, Debug, PartialEq, Eq)]
+// TODO(jleibs): Maybe remove call-source all together.
+// However, this context of spawn vs direct CLI-invocation still seems
+// useful for analytics. We just need to capture the data some other way.
 pub enum CallSource {
     /// Called from a command-line-input (the terminal).
     Cli,
-
-    /// Called from the Rerun Python SDK.
-    Python(PythonVersion),
 }
 
 impl CallSource {
-    #[allow(dead_code)]
-    fn is_python(&self) -> bool {
-        matches!(self, Self::Python(_))
-    }
-
     #[cfg(feature = "native_viewer")]
     fn app_env(&self) -> re_viewer::AppEnvironment {
         match self {
@@ -310,9 +315,6 @@ impl CallSource {
                 rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
                 llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
             },
-            CallSource::Python(python_version) => {
-                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
-            }
         }
     }
 }
@@ -333,7 +335,7 @@ impl CallSource {
 //
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
-pub async fn run<I, T>(
+pub fn run<I, T>(
     build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: I,
@@ -384,7 +386,7 @@ where
             Command::Reset => re_viewer::reset_viewer_persistence(),
         }
     } else {
-        run_impl(build_info, call_source, args).await
+        run_impl(build_info, call_source, args)
     };
 
     match res {
@@ -525,6 +527,7 @@ impl PrintCommand {
         let rrd_file = std::fs::File::open(rrd_path)?;
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+        println!("Decoded RRD stream v{}\n---", decoder.version());
         for msg in decoder {
             let msg = msg.context("decode rrd message")?;
             match msg {
@@ -532,6 +535,7 @@ impl PrintCommand {
                     let SetStoreInfo { row_id: _, info } = msg;
                     println!("{info:#?}");
                 }
+
                 LogMsg::ArrowMsg(_row_id, arrow_msg) => {
                     let mut table =
                         DataTable::from_arrow_msg(&arrow_msg).context("Decode arrow message")?;
@@ -556,6 +560,14 @@ impl PrintCommand {
                             re_format::format_bytes(table.heap_size_bytes() as _),
                         );
                     }
+                }
+
+                LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+                    blueprint_id,
+                    make_active,
+                    make_default,
+                }) => {
+                    println!("BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})");
                 }
             }
         }
@@ -587,7 +599,7 @@ fn profiler(args: &Args) -> re_tracing::Profiler {
     profiler
 }
 
-async fn run_impl(
+fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
@@ -599,13 +611,18 @@ async fn run_impl(
     let startup_options = {
         re_tracing::profile_scope!("StartupOptions");
         re_viewer::StartupOptions {
+            hide_welcome_screen: args.hide_welcome_screen,
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
                 .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?,
             persist_state: args.persist_state,
             is_in_notebook: false,
             screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
-            skip_welcome_screen: args.skip_welcome_screen,
+            expect_data_soon: if args.expect_data_soon {
+                Some(true)
+            } else {
+                None
+            },
 
             // TODO(emilk): make it easy to set this on eframe instead
             resolution_in_points: if let Some(size) = &args.window_size {
@@ -623,11 +640,9 @@ async fn run_impl(
         {
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-
-                // `rerun.spawn()` doesn't need to log that a connection has been made
-                quiet: call_source.is_python(),
+                quiet: false,
             };
-            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options).await?;
+            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options)?;
             vec![rx]
         }
 
@@ -646,14 +661,16 @@ async fn run_impl(
             if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
                 // Special case! We are connecting a web-viewer to a web-socket address.
                 // Instead of piping, just host a web-viewer that connects to the web-socket directly:
-                return host_web_viewer(
-                    args.bind.clone(),
+                host_web_viewer(
+                    &args.bind,
                     args.web_viewer_port,
                     args.renderer,
                     true,
-                    rerun_server_ws_url,
-                )
-                .await;
+                    &rerun_server_ws_url,
+                )?
+                .block();
+
+                return Ok(());
             }
         }
 
@@ -703,15 +720,12 @@ async fn run_impl(
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
             // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::RerunServer::new(
-                args.bind.clone(),
+            let _ws_server = re_ws_comms::RerunServer::new(
+                ReceiveSet::new(rx),
+                &args.bind,
                 args.ws_server_port,
                 server_memory_limit,
-            )
-            .await?;
-            let _ws_server_url = ws_server.server_url();
-            let rx = ReceiveSet::new(rx);
-            let ws_server_handle = tokio::spawn(ws_server.listen(rx));
+            )?;
 
             #[cfg(feature = "web_viewer")]
             {
@@ -721,19 +735,17 @@ async fn run_impl(
                 let open_browser = args.web_viewer;
 
                 // This is the server that serves the Wasm+HTML:
-                let web_server_handle = tokio::spawn(host_web_viewer(
-                    args.bind.clone(),
+                host_web_viewer(
+                    &args.bind,
                     args.web_viewer_port,
                     args.renderer,
                     open_browser,
-                    _ws_server_url,
-                ));
-
-                // Wait for both servers to shutdown.
-                web_server_handle.await?.map_err(anyhow::Error::from)?;
+                    &_ws_server.server_url(),
+                )?
+                .block(); // dropping should stop the server
             }
 
-            return ws_server_handle.await?.map_err(anyhow::Error::from);
+            return Ok(());
         }
     } else {
         #[cfg(feature = "native_viewer")]
@@ -788,7 +800,8 @@ fn assert_receive_into_entity_db(
 ) -> anyhow::Result<re_entity_db::EntityDb> {
     re_log::info!("Receiving messages into a EntityDb…");
 
-    let mut db: Option<re_entity_db::EntityDb> = None;
+    let mut rec: Option<re_entity_db::EntityDb> = None;
+    let mut bp: Option<re_entity_db::EntityDb> = None;
 
     let mut num_messages = 0;
 
@@ -805,17 +818,27 @@ fn assert_receive_into_entity_db(
 
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
-                        let mut_db = db.get_or_insert_with(|| {
-                            re_entity_db::EntityDb::new(msg.store_id().clone())
-                        });
+                        let mut_db = match msg.store_id().kind {
+                            re_log_types::StoreKind::Recording => rec.get_or_insert_with(|| {
+                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                            }),
+                            re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                            }),
+                        };
 
                         mut_db.add(&msg)?;
                         num_messages += 1;
                     }
+
+                    re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                        on_flush_done();
+                    }
+
                     SmartMessagePayload::Quit(err) => {
                         if let Some(err) = err {
                             anyhow::bail!("data source has disconnected unexpectedly: {err}")
-                        } else if let Some(db) = db {
+                        } else if let Some(db) = rec {
                             db.store().sanity_check()?;
                             anyhow::ensure!(0 < num_messages, "No messages received");
                             re_log::info!("Successfully ingested {num_messages} messages.");
@@ -852,7 +875,11 @@ fn stream_to_rrd_on_disk(
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::Encoder::new(encoding_options, file)?;
+    let mut encoder = re_log_encoding::encoder::Encoder::new(
+        re_build_info::CrateVersion::LOCAL,
+        encoding_options,
+        file,
+    )?;
 
     loop {
         match rx.recv() {

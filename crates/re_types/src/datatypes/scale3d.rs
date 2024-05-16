@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -82,6 +83,7 @@ impl ::re_types_core::Loggable for Scale3D {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
+            // Dense Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
@@ -100,45 +102,19 @@ impl ::re_types_core::Loggable for Scale3D {
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
                 {
-                    let (somes, three_d): (Vec<_>, Vec<_>) = data
+                    let three_d: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::ThreeD(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Scale3D::ThreeD(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Scale3D::ThreeD(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let three_d_inner_data: Vec<_> = three_d
-                            .iter()
-                            .map(|datum| {
-                                datum
-                                    .map(|datum| {
-                                        let crate::datatypes::Vec3D(data0) = datum;
-                                        data0
-                                    })
-                                    .unwrap_or_default()
-                            })
-                            .flatten()
-                            .map(Some)
-                            .collect();
-                        let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                            three_d_bitmap.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(3usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
+                        let three_d_inner_data: Vec<_> =
+                            three_d.into_iter().map(|datum| datum.0).flatten().collect();
+                        let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -146,10 +122,7 @@ impl ::re_types_core::Loggable for Scale3D {
                             ),
                             PrimitiveArray::new(
                                 DataType::Float32,
-                                three_d_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
+                                three_d_inner_data.into_iter().collect(),
                                 three_d_inner_bitmap,
                             )
                             .boxed(),
@@ -159,24 +132,17 @@ impl ::re_types_core::Loggable for Scale3D {
                     }
                 },
                 {
-                    let (somes, uniform): (Vec<_>, Vec<_>) = data
+                    let uniform: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::Uniform(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Scale3D::Uniform(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Scale3D::Uniform(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     PrimitiveArray::new(
                         DataType::Float32,
-                        uniform.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        uniform.into_iter().collect(),
                         uniform_bitmap,
                     )
                     .boxed()
@@ -317,8 +283,10 @@ impl ::re_types_core::Loggable for Scale3D {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

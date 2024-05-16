@@ -7,17 +7,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .visible_ext import VisibleExt
 
 __all__ = ["Visible", "VisibleArrayLike", "VisibleBatch", "VisibleLike", "VisibleType"]
 
 
 @define(init=False)
-class Visible(VisibleExt):
+class Visible:
     """**Component**: Whether the container, space view, entity or instance is currently visible."""
 
     def __init__(self: Any, visible: VisibleLike):
@@ -55,4 +55,5 @@ class VisibleBatch(BaseBatch[VisibleArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: VisibleArrayLike, data_type: pa.DataType) -> pa.Array:
-        return VisibleExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.bool_).flatten()
+        return pa.array(array, type=data_type)

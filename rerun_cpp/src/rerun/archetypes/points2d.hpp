@@ -63,8 +63,7 @@ namespace rerun::archetypes {
     ///
     ///     rec.log("random", rerun::Points2D(points2d).with_colors(colors).with_radii(radii));
     ///
-    ///     // Log an extra rect to set the view bounds
-    ///     rec.log("bounds", rerun::Boxes2D::from_half_sizes({{4.0f, 3.0f}}));
+    ///     // TODO(#5520): log VisualBounds2D
     /// }
     /// ```
     struct Points2D {
@@ -164,11 +163,6 @@ namespace rerun::archetypes {
             keypoint_ids = std::move(_keypoint_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return positions.size();
         }
     };
 

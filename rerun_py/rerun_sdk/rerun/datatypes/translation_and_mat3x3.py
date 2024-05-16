@@ -91,23 +91,21 @@ class TranslationAndMat3x3Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field(
-                        "translation",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                        nullable=True,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "mat3x3",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
-                        nullable=True,
-                        metadata={},
-                    ),
-                    pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
-                ]
-            ),
+            pa.struct([
+                pa.field(
+                    "translation",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                    nullable=True,
+                    metadata={},
+                ),
+                pa.field(
+                    "mat3x3",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
+                    nullable=True,
+                    metadata={},
+                ),
+                pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 
@@ -117,4 +115,6 @@ class TranslationAndMat3x3Batch(BaseBatch[TranslationAndMat3x3ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_and_mat3x3_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of TranslationAndMat3x3 not implemented: We lack codegen for arrow-serialization of general structs"
+        )  # You need to implement native_to_pa_array_override in translation_and_mat3x3_ext.py

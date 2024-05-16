@@ -88,60 +88,60 @@ class TensorBuffer(TensorBufferExt):
         First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
 
     * YUY2 (npt.NDArray[np.uint8]):
-        YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+        YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
 
         The order of the channels is Y0, U0, Y1, V0.
     """
 
-    kind: Literal[
-        "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuy2"
-    ] = field(default="u8")
+    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuy2"] = (
+        field(default="u8")
+    )
     """
     Possible values:
 
-    * "U8":
+    * "u8":
         8bit unsigned integer.
 
-    * "U16":
+    * "u16":
         16bit unsigned integer.
 
-    * "U32":
+    * "u32":
         32bit unsigned integer.
 
-    * "U64":
+    * "u64":
         64bit unsigned integer.
 
-    * "I8":
+    * "i8":
         8bit signed integer.
 
-    * "I16":
+    * "i16":
         16bit signed integer.
 
-    * "I32":
+    * "i32":
         32bit signed integer.
 
-    * "I64":
+    * "i64":
         64bit signed integer.
 
-    * "F16":
+    * "f16":
         16bit IEEE-754 floating point, also known as `half`.
 
-    * "F32":
+    * "f32":
         32bit IEEE-754 floating point, also known as `float` or `single`.
 
-    * "F64":
+    * "f64":
         64bit IEEE-754 floating point, also known as `double`.
 
-    * "JPEG":
+    * "jpeg":
         Raw bytes of a JPEG file.
 
-    * "NV12":
+    * "nv12":
         NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
 
         First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
 
-    * "YUY2":
-        YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+    * "yuy2":
+        YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
 
         The order of the channels is Y0, U0, Y1, V0.
     """
@@ -188,95 +188,93 @@ class TensorBufferType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.dense_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field(
-                        "U8",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "U16",
-                        pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "U32",
-                        pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "U64",
-                        pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I8",
-                        pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I16",
-                        pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I32",
-                        pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I64",
-                        pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "F16",
-                        pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "F32",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "F64",
-                        pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "JPEG",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "NV12",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "YUY2",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                ]
-            ),
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field(
+                    "U8",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "U16",
+                    pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "U32",
+                    pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "U64",
+                    pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I8",
+                    pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I16",
+                    pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I32",
+                    pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I64",
+                    pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "F16",
+                    pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "F32",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "F64",
+                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "JPEG",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "NV12",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "YUY2",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+            ]),
             self._TYPE_NAME,
         )
 
@@ -286,4 +284,6 @@ class TensorBufferBatch(BaseBatch[TensorBufferArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorBufferArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_buffer_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of TensorBuffer not implemented: We lack codegen for arrow-serialization of unions containing lists. Can't handle type rerun.datatypes.TensorBuffer#U8"
+        )  # You need to implement native_to_pa_array_override in tensor_buffer_ext.py

@@ -1,5 +1,5 @@
-use re_log_types::{EntityPath, TimeInt, TimeRange};
-use re_types::datatypes::Utf8;
+use re_log_types::{EntityPath, ResolvedTimeRange};
+use re_types::datatypes::{TimeRange, TimeRangeBoundary, Utf8};
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{
@@ -28,26 +28,30 @@ pub fn determine_plot_bounds_and_time_per_pixel(
 }
 
 pub fn determine_time_range(
-    query: &ViewQuery<'_>,
+    time_cursor: re_log_types::TimeInt,
     data_result: &re_viewer_context::DataResult,
     plot_bounds: Option<egui_plot::PlotBounds>,
     enable_query_clamping: bool,
-) -> TimeRange {
-    let visible_history = match query.timeline.typ() {
-        re_log_types::TimeType::Time => data_result.accumulated_properties().visible_history.nanos,
-        re_log_types::TimeType::Sequence => {
-            data_result
-                .accumulated_properties()
-                .visible_history
-                .sequences
+) -> ResolvedTimeRange {
+    let query_range = data_result.query_range();
+
+    // Latest-at doesn't make sense for time series and should also never happen.
+    let visible_time_range = match query_range {
+        re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
+        re_viewer_context::QueryRange::LatestAt => {
+            re_log::error_once!(
+                "Unexexpected LatestAt query for time series data result at path {:?}",
+                data_result.entity_path
+            );
+            TimeRange {
+                start: TimeRangeBoundary::AT_CURSOR,
+                end: TimeRangeBoundary::AT_CURSOR,
+            }
         }
     };
 
-    let mut time_range = if data_result.accumulated_properties().visible_history.enabled {
-        visible_history.time_range(query.latest_at)
-    } else {
-        TimeRange::new(TimeInt::MIN, TimeInt::MAX)
-    };
+    let mut time_range =
+        ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,
@@ -55,14 +59,14 @@ pub fn determine_time_range(
     // Just try it out and you'll see what I mean.
     if enable_query_clamping {
         if let Some(plot_bounds) = plot_bounds {
-            time_range.min = TimeInt::max(
-                time_range.min,
-                (plot_bounds.range_x().start().floor() as i64).into(),
-            );
-            time_range.max = TimeInt::min(
-                time_range.max,
-                (plot_bounds.range_x().end().ceil() as i64).into(),
-            );
+            time_range.set_min(i64::max(
+                time_range.min().as_i64(),
+                plot_bounds.range_x().start().floor() as i64,
+            ));
+            time_range.set_max(i64::min(
+                time_range.max().as_i64(),
+                plot_bounds.range_x().end().ceil() as i64,
+            ));
         }
     }
     time_range

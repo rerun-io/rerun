@@ -1,5 +1,8 @@
 //! Example with several independent views, using various primitives.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use std::f32::consts::TAU;
 
 use framework::Example;
@@ -306,7 +309,7 @@ impl Example for Multiview {
         re_ctx: &RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let seconds_since_startup = time.seconds_since_startup();
@@ -324,7 +327,7 @@ impl Example for Multiview {
             IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
 
         let triangle = TestTriangleDrawData::new(re_ctx);
-        let skybox = GenericSkyboxDrawData::new(re_ctx);
+        let skybox = GenericSkyboxDrawData::new(re_ctx, Default::default());
         let lines = build_lines(re_ctx, seconds_since_startup);
 
         let mut builder = PointCloudBuilder::new(re_ctx);
@@ -373,7 +376,7 @@ impl Example for Multiview {
                         resolution_in_pixel: splits[$n].resolution_in_pixel,
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
-                        pixels_from_point,
+                        pixels_per_point,
                         ..Default::default()
                     },
                     skybox.clone(),

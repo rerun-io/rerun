@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -39,7 +40,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     rec.log(
 ///         "markdown",
-///         &rerun::TextDocument::new(
+///         &rerun::TextDocument::from_markdown(
 ///             r#"
 /// # Hello Markdown!
 /// [Click here to see the raw text](recording://markdown:Text).
@@ -76,7 +77,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ![A random image](https://picsum.photos/640/480)
 /// "#.trim(),
 ///         )
-///         .with_media_type(rerun::MediaType::markdown()),
 ///     )?;
 ///
 ///     Ok(())
@@ -124,26 +124,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TextDocumentIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.InstanceKey".into(),
-            "rerun.components.MediaType".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.MediaType".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Text".into(),
             "rerun.components.TextDocumentIndicator".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.MediaType".into(),
         ]
     });
 
 impl TextDocument {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`TextDocument`] [`::re_types_core::Archetype`]
@@ -234,14 +229,11 @@ impl ::re_types_core::AsComponents for TextDocument {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl TextDocument {
+    /// Create a new `TextDocument`.
+    #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
             text: text.into(),
@@ -249,6 +241,13 @@ impl TextDocument {
         }
     }
 
+    /// The Media Type of the text.
+    ///
+    /// For instance:
+    /// * `text/plain`
+    /// * `text/markdown`
+    ///
+    /// If omitted, `text/plain` is assumed.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());

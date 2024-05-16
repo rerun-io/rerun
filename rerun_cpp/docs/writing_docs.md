@@ -1,4 +1,4 @@
-# C++ Docs
+# C++ docs
 
 A high-level overview of writing and previewing the Rerun C++ documentation.
 

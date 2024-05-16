@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
-use re_viewer_context::{SpaceViewClassIdentifier, SpaceViewId};
+use re_types::SpaceViewClassIdentifier;
+use re_viewer_context::SpaceViewId;
 
 use re_space_view::SpaceViewBlueprint;
 
@@ -22,10 +23,6 @@ pub(crate) fn tree_from_space_views(
     space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     re_log::trace!("Auto-layout of {} space views", space_views.len());
-
-    if space_views.is_empty() {
-        return egui_tiles::Tree::empty("viewport_tree");
-    }
 
     let space_make_infos = space_views
         .iter()

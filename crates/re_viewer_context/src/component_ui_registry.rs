@@ -1,48 +1,53 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{DataStore, LatestAtQuery};
-use re_entity_db::EntityPath;
-use re_log_types::DataCell;
-use re_query::ComponentWithInstances;
-use re_types::{components::InstanceKey, ComponentName, Loggable as _};
+use re_data_store::LatestAtQuery;
+use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
+use re_log_types::{DataCell, Instance};
+use re_types::ComponentName;
 
 use crate::ViewerContext;
 
-/// Controls how mich space we use to show the data in a component ui.
+/// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UiVerbosity {
-    /// Keep it small enough to fit on one row.
-    Small,
-
-    /// Display a reduced set, used for hovering.
+pub enum UiLayout {
+    /// Display a short summary. Used in lists.
     ///
-    /// Keep it under a half-dozen lines.
-    Reduced,
+    /// Keep it small enough to fit on half a row (i.e. the second column of a
+    /// [`re_ui::list_item2::ListItem`] with [`re_ui::list_item2::PropertyContent`]. Text should
+    /// truncate.
+    List,
 
-    /// Display everything as wide as available but limit height.
+    /// Display as much information as possible in a compact way. Used for hovering/tooltips.
     ///
-    /// This is used for example in the selection panel when multiple items are selected. When using
-    /// a Table, use the `re_data_ui::table_for_verbosity` function.
-    LimitHeight,
+    /// Keep it under a half-dozen lines. Text may wrap. Avoid interactive UI. When using a table,
+    /// use the `re_data_ui::table_for_ui_layout` function.
+    Tooltip,
 
-    /// Display everything as wide as available, without height restrictions.
+    /// Display everything as wide as available but limit height. Used in the selection panel when
+    /// multiple items are selected.
     ///
-    /// This is used for example in the selection panel when only one item is selected. In this
-    /// case, any scrolling is handled by the selection panel itself. When using a Table, use the
-    /// `re_data_ui::table_for_verbosity` function.
-    Full,
+    /// When displaying lists, wrap them in a height-limited [`egui::ScrollArea`]. When using a
+    /// table, use the `re_data_ui::table_for_ui_layout` function.
+    SelectionPanelLimitHeight,
+
+    /// Display everything as wide as available, without height restriction. Used in the selection
+    /// panel when a single item is selected.
+    ///
+    /// The UI will be wrapped in a [`egui::ScrollArea`], so data should be fully displayed with no
+    /// restriction. When using a table, use the `re_data_ui::table_for_ui_layout` function.
+    SelectionPanelFull,
 }
 
 type ComponentUiCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            UiVerbosity,
+            UiLayout,
             &LatestAtQuery,
-            &DataStore,
+            &EntityDb,
             &EntityPath,
-            &ComponentWithInstances,
-            &InstanceKey,
+            &LatestAtComponentResults,
+            &Instance,
         ) + Send
         + Sync,
 >;
@@ -51,19 +56,19 @@ type ComponentEditCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            UiVerbosity,
+            UiLayout,
             &LatestAtQuery,
-            &DataStore,
+            &EntityDb,
             &EntityPath,
             &EntityPath,
-            &ComponentWithInstances,
-            &InstanceKey,
+            &LatestAtComponentResults,
+            &Instance,
         ) + Send
         + Sync,
 >;
 
 type DefaultValueCallback = Box<
-    dyn Fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> DataCell + Send + Sync,
+    dyn Fn(&ViewerContext<'_>, &LatestAtQuery, &EntityDb, &EntityPath) -> DataCell + Send + Sync,
 >;
 
 /// How to display components in a Ui.
@@ -92,7 +97,7 @@ impl ComponentUiRegistry {
 
     /// Registers how to edit a given component in the ui.
     ///
-    /// Requires two callbacks: one to provided an initial default value, and one to show the editor
+    /// Requires two callbacks: one to provide an initial default value, and one to show the editor
     /// UI and save the updated value.
     ///
     /// If the component was already registered, the new callback replaces the old one.
@@ -117,34 +122,33 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
-        component: &ComponentWithInstances,
-        instance_key: &InstanceKey,
+        component: &LatestAtComponentResults,
+        instance: &Instance,
     ) {
-        re_tracing::profile_function!(component.name().full_name());
-
-        if component.name() == InstanceKey::name() {
-            // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
-            ui.label(instance_key.to_string());
+        let Some(component_name) = component.component_name(db.resolver()) else {
+            // TODO(#5607): what should happen if the promise is still pending?
             return;
-        }
+        };
+
+        re_tracing::profile_function!(component_name.full_name());
 
         let ui_callback = self
             .component_uis
-            .get(&component.name())
+            .get(&component_name)
             .unwrap_or(&self.fallback_ui);
         (*ui_callback)(
             ctx,
             ui,
-            verbosity,
+            ui_layout,
             query,
-            store,
+            db,
             entity_path,
             component,
-            instance_key,
+            instance,
         );
     }
 
@@ -154,39 +158,44 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
         override_path: &EntityPath,
-        component: &ComponentWithInstances,
-        instance_key: &InstanceKey,
+        component: &LatestAtComponentResults,
+        instance: &Instance,
     ) {
-        re_tracing::profile_function!(component.name().full_name());
+        let Some(component_name) = component.component_name(db.resolver()) else {
+            // TODO(#5607): what should happen if the promise is still pending?
+            return;
+        };
 
-        if let Some((_, edit_callback)) = self.component_editors.get(&component.name()) {
+        re_tracing::profile_function!(component_name.full_name());
+
+        if let Some((_, edit_callback)) = self.component_editors.get(&component_name) {
             (*edit_callback)(
                 ctx,
                 ui,
-                verbosity,
+                ui_layout,
                 query,
-                store,
+                db,
                 entity_path,
                 override_path,
                 component,
-                instance_key,
+                instance,
             );
         } else {
             // Even if we can't edit the component, it's still helpful to show what the value is.
             self.ui(
                 ctx,
                 ui,
-                verbosity,
+                ui_layout,
                 query,
-                store,
+                db,
                 entity_path,
                 component,
-                instance_key,
+                instance,
             );
         }
     }
@@ -197,7 +206,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
         component: &ComponentName,
     ) -> Option<DataCell> {
@@ -205,6 +214,6 @@ impl ComponentUiRegistry {
 
         self.component_editors
             .get(component)
-            .map(|(default_value, _)| (*default_value)(ctx, query, store, entity_path))
+            .map(|(default_value, _)| (*default_value)(ctx, query, db, entity_path))
     }
 }

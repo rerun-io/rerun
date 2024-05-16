@@ -57,7 +57,7 @@ impl SpaceViewEntityPicker {
 fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
     re_tracing::profile_function!();
 
-    let tree = &ctx.entity_db.tree();
+    let tree = &ctx.recording().tree();
     // TODO(jleibs): Avoid clone
     let query_result = ctx.lookup_query_result(space_view.id).clone();
     let entity_path_filter = &space_view.contents.entity_path_filter;
@@ -154,7 +154,6 @@ fn add_entities_line_ui(
     re_tracing::profile_function!();
 
     let query = ctx.current_query();
-    let store = ctx.entity_db.store();
 
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
@@ -177,10 +176,10 @@ fn add_entities_line_ui(
             let response = item_ui::instance_path_button_to(
                 ctx,
                 &query,
-                store,
+                ctx.recording(),
                 ui,
                 Some(space_view.id),
-                &InstancePath::entity_splat(entity_path.clone()),
+                &InstancePath::entity_all(entity_path.clone()),
                 widget_text,
             );
             if query_result.contains_entity(entity_path) {
@@ -201,9 +200,9 @@ fn add_entities_line_ui(
                 }
 
                 if is_explicitly_excluded {
-                    response.on_hover_text("Stop excluding this EntityPath.");
+                    response.on_hover_text("Stop excluding this entity path.");
                 } else if is_explicitly_included {
-                    response.on_hover_text("Stop including this EntityPath.");
+                    response.on_hover_text("Stop including this entity path.");
                 }
             } else if is_included {
                 // Remove-button
@@ -211,14 +210,14 @@ fn add_entities_line_ui(
                 let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
 
                 if response.clicked() {
-                    space_view.contents.add_entity_exclusion(
+                    space_view.contents.raw_add_entity_exclusion(
                         ctx,
                         EntityPathRule::including_subtree(entity_tree.path.clone()),
                     );
                 }
 
                 response.on_hover_text(
-                    "Exclude this Entity and all its descendants from the Space View",
+                    "Exclude this entity and all its descendants from the space view",
                 );
             } else {
                 // Add-button:
@@ -230,7 +229,7 @@ fn add_entities_line_ui(
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
 
                     if response.clicked() {
-                        space_view.contents.add_entity_inclusion(
+                        space_view.contents.raw_add_entity_inclusion(
                             ctx,
                             EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );
@@ -239,11 +238,11 @@ fn add_entities_line_ui(
                     if enabled {
                         if add_info.can_add.is_compatible_and_missing() {
                             response.on_hover_text(
-                                "Include this Entity and all its descendants in the Space View",
+                                "Include this entity and all its descendants in the space view",
                             );
                         } else {
                             response
-                                .on_hover_text("Add descendants of this Entity to the Space View");
+                                .on_hover_text("Add descendants of this entity to the space view");
                         }
                     } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
                         response.on_disabled_hover_text(reason);
@@ -322,9 +321,9 @@ fn create_entity_add_info(
     let class = space_view.class(ctx.space_view_class_registry);
     let visualizable_entities = determine_visualizable_entities(
         ctx.applicable_entities_per_visualizer,
-        ctx.entity_db,
+        ctx.recording(),
         &ctx.space_view_class_registry
-            .new_visualizer_collection(class.identifier()),
+            .new_visualizer_collection(*space_view.class_identifier()),
         class,
         &space_view.space_origin,
     );
@@ -336,10 +335,10 @@ fn create_entity_add_info(
                     already_added: query_result.contains_entity(entity_path),
                 }
             } else {
-                // TODO(#4826): This shouldn't necessarily prevent us from adding it.
+                // TODO(#6321): This shouldn't necessarily prevent us from adding it.
                 CanAddToSpaceView::No {
                     reason: format!(
-                        "Entity can't be displayed by any of the available visualizers in this class of Space View ({}).",
+                        "Entity can't be displayed by any of the available visualizers in this class of space view ({}).",
                         space_view.class_identifier()
                     ),
                 }

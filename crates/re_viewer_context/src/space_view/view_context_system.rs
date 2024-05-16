@@ -1,10 +1,10 @@
 use ahash::HashMap;
 
-use re_types::ComponentNameSet;
+use re_types::{ComponentNameSet, SpaceViewClassIdentifier};
 
 use crate::{
-    IdentifiedViewSystem, SpaceViewClassIdentifier, SpaceViewSystemExecutionError, ViewQuery,
-    ViewSystemIdentifier, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier,
+    ViewerContext,
 };
 
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.

@@ -18,12 +18,7 @@ class ComponentBatchLike(Protocol):
         ...
 
     def as_arrow_array(self) -> pa.Array:
-        """
-        Returns a `pyarrow.Array` of the component data.
-
-        Each element in the array corresponds to an instance of the component. Single-instanced
-        components and splats must still be represented as a 1-element array.
-        """
+        """Returns a `pyarrow.Array` of the component data."""
         ...
 
 
@@ -66,7 +61,7 @@ class Archetype:
 
     @classmethod
     def archetype_name(cls) -> str:
-        return "rerun.archetypes." + cls.__name__
+        return ".".join(cls.__module__.rsplit(".", 1)[:-1] + [cls.__name__])
 
     @classmethod
     def indicator(cls) -> ComponentBatchLike:

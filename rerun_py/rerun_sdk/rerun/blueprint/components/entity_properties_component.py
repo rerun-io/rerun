@@ -28,11 +28,7 @@ __all__ = [
 
 @define(init=False)
 class EntityPropertiesComponent:
-    """
-    **Component**: The configurable set of overridable properties.
-
-    Unstable. Used for the ongoing blueprint experimentations.
-    """
+    """**Component**: The configurable set of overridable properties."""
 
     def __init__(self: Any, props: EntityPropertiesComponentLike):
         """Create a new instance of the EntityPropertiesComponent component."""
@@ -68,4 +64,6 @@ class EntityPropertiesComponentBatch(BaseBatch[EntityPropertiesComponentArrayLik
 
     @staticmethod
     def _native_to_pa_array(data: EntityPropertiesComponentArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in entity_properties_component_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of EntityPropertiesComponent not implemented: We lack codegen for arrow-serialization of general structs"
+        )  # You need to implement native_to_pa_array_override in entity_properties_component_ext.py

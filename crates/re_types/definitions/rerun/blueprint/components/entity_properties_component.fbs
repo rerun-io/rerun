@@ -10,8 +10,6 @@ namespace rerun.blueprint.components;
 // ---
 
 /// The configurable set of overridable properties.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
 table EntityPropertiesComponent (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive_only": "Clone",

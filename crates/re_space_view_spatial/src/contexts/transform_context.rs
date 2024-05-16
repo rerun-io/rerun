@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertyMap, EntityTree};
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection, Resolution, Transform3D, ViewCoordinates},
+    components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
@@ -91,14 +91,14 @@ impl ViewContextSystem for TransformContext {
     ) {
         re_tracing::profile_function!();
 
-        let entity_tree = ctx.entity_db.tree();
+        let entity_tree = ctx.recording().tree();
 
         // TODO(jleibs): The need to do this hints at a problem with how we think about
         // the interaction between properties and "context-systems".
         // Build an entity_property_map for just the CamerasParts, where we would expect to find
         // the image_depth_plane_distance property.
         let entity_prop_map: EntityPropertyMap = query
-            .per_system_data_results
+            .per_visualizer_data_results
             .get(&CamerasVisualizer::identifier())
             .map(|results| {
                 results
@@ -123,7 +123,7 @@ impl ViewContextSystem for TransformContext {
         // Child transforms of this space
         self.gather_descendants_transforms(
             current_tree,
-            ctx.entity_db,
+            ctx.recording(),
             &time_query,
             &entity_prop_map,
             glam::Affine3A::IDENTITY,
@@ -137,7 +137,7 @@ impl ViewContextSystem for TransformContext {
             let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
-                    "Path {} is not part of the global Entity tree whereas its child {} is",
+                    "Path {} is not part of the global entity tree whereas its child {} is",
                     parent_path,
                     query.space_origin
                 );
@@ -148,7 +148,7 @@ impl ViewContextSystem for TransformContext {
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
                 current_tree,
-                ctx.entity_db,
+                ctx.recording(),
                 &time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
@@ -169,7 +169,7 @@ impl ViewContextSystem for TransformContext {
             // (skip over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
                 parent_tree,
-                ctx.entity_db,
+                ctx.recording(),
                 &time_query,
                 &entity_prop_map,
                 reference_from_ancestor,
@@ -296,17 +296,9 @@ fn get_cached_transform(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Option<Transform3D> {
-    let mut transform3d = None;
     entity_db
-        .query_caches()
-        .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
-            entity_db.store(),
-            query,
-            entity_path,
-            |(_, _, transforms)| transform3d = transforms.first().cloned(),
-        )
-        .ok();
-    transform3d
+        .latest_at_component::<Transform3D>(entity_path, query)
+        .map(|res| res.value)
 }
 
 fn get_cached_pinhole(
@@ -314,19 +306,16 @@ fn get_cached_pinhole(
     entity_db: &EntityDb,
     query: &re_data_store::LatestAtQuery,
 ) -> Option<(PinholeProjection, ViewCoordinates)> {
-    let mut result = None;
-    entity_db.query_caches()
-        .query_archetype_latest_at_pov1_comp2::<re_types::archetypes::Pinhole, PinholeProjection, Resolution, ViewCoordinates, _>(
-            entity_db.store(),
-            query,
-            entity_path,
-            |(_, _, image_from_camera, _resolution, camera_xyz)|  {
-                result = image_from_camera.first().map(|image_from_camera|
-                (*image_from_camera, camera_xyz.and_then(|c| c.first()).cloned().flatten().unwrap_or(ViewCoordinates::RDF)));
-            }
-        )
-        .ok();
-    result
+    entity_db
+        .latest_at_archetype::<re_types::archetypes::Pinhole>(entity_path, query)
+        .ok()
+        .flatten()
+        .map(|(_, arch)| {
+            (
+                arch.image_from_camera,
+                arch.camera_xyz.unwrap_or(ViewCoordinates::RDF),
+            )
+        })
 }
 
 fn transform_at(
@@ -390,19 +379,9 @@ fn transform_at(
     });
 
     let is_disconnect_space = || {
-        let mut disconnected_space = false;
-        entity_db.query_caches()
-            .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::DisconnectedSpace, DisconnectedSpace, _>(
-                entity_db.store(),
-                query,
-                entity_path,
-                |(_, _, disconnected_spaces)| {
-                    disconnected_space = disconnected_spaces
-                        .first() .map_or(false, |dp| dp.0);
-                },
-            )
-            .ok();
-        disconnected_space
+        entity_db
+            .latest_at_component::<DisconnectedSpace>(entity_path, query)
+            .map_or(false, |res| res.value.0)
     };
 
     // If there is any other transform, we ignore `DisconnectedSpace`.

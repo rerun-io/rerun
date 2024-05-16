@@ -28,17 +28,28 @@ namespace rerun {
                 )),
                 false
             ),
-            arrow::field(
-                "many_optional",
-                arrow::list(arrow::field(
-                    "item",
-                    Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(),
-                    false
-                )),
-                true
-            ),
         });
         return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::Array>> Loggable<datatypes::AffixFuzzer4>::to_arrow(
+        const datatypes::AffixFuzzer4* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<datatypes::AffixFuzzer4>::fill_arrow_array_builder(
+                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+        return array;
     }
 
     rerun::Error Loggable<datatypes::AffixFuzzer4>::fill_arrow_array_builder(
@@ -89,38 +100,9 @@ namespace rerun {
                         "Failed to serialize AffixFuzzer4::many_required: objects (Object(\"rerun.testing.datatypes.AffixFuzzer3\")) in unions not yet implemented"
                     );
                 } break;
-                case TagType::many_optional: {
-                    auto variant_builder =
-                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                    (void)variant_builder;
-                    return rerun::Error(
-                        ErrorCode::NotImplemented,
-                        "Failed to serialize AffixFuzzer4::many_optional: nullable list types in unions not yet implemented"
-                    );
-                } break;
             }
         }
 
         return Error::ok();
-    }
-
-    Result<std::shared_ptr<arrow::Array>> Loggable<datatypes::AffixFuzzer4>::to_arrow(
-        const datatypes::AffixFuzzer4* instances, size_t num_instances
-    ) {
-        // TODO(andreas): Allow configuring the memory pool.
-        arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
-
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-        if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<datatypes::AffixFuzzer4>::fill_arrow_array_builder(
-                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
-        }
-        std::shared_ptr<arrow::Array> array;
-        ARROW_RETURN_NOT_OK(builder->Finish(&array));
-        return array;
     }
 } // namespace rerun

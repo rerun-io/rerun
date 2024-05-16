@@ -1,5 +1,4 @@
 ipython<=8.12 # ipython 8.13 or greater doesn't work with python 3.8
-tornado<=6.1 # later versions don't work with recent jupyter releases…
 jupyter
 rerun-sdk
 
@@ -8,4 +7,4 @@ rerun-sdk
 # See e.g. https://github.com/jupyter/notebook/issues/6721
 jupyter_client<8
 pyzmq<25
-tornado<=6.1
+tornado<=6.3.3

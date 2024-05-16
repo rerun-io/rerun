@@ -1,28 +1,34 @@
 use super::Vec4D;
 
 impl Vec4D {
+    /// The zero vector, i.e. the additive identity.
     pub const ZERO: Vec4D = Vec4D([0.0; 4]);
 
+    /// Create a new vector.
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
         Self([x, y, z, w])
     }
 
+    /// The x-coordinate, i.e. index 0.
     #[inline]
     pub fn x(&self) -> f32 {
         self.0[0]
     }
 
+    /// The y-coordinate, i.e. index 1.
     #[inline]
     pub fn y(&self) -> f32 {
         self.0[1]
     }
 
+    /// The z-coordinate, i.e. index 2.
     #[inline]
     pub fn z(&self) -> f32 {
         self.0[2]
     }
 
+    /// The w-coordinate, i.e. index 3.
     #[inline]
     pub fn w(&self) -> f32 {
         self.0[3]

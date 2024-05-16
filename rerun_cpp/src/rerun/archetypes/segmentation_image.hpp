@@ -59,7 +59,7 @@ namespace rerun::archetypes {
     ///     }
     ///
     ///     // create an annotation context to describe the classes
-    ///     rec.log_timeless(
+    ///     rec.log_static(
     ///         "/",
     ///         rerun::AnnotationContext({
     ///             rerun::AnnotationInfo(1, "red", rerun::Rgba32(255, 0, 0)),
@@ -135,11 +135,6 @@ namespace rerun::archetypes {
             draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
         }
     };
 

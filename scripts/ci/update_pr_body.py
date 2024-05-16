@@ -4,10 +4,8 @@
 Script to update the PR description template.
 
 This is expected to be run by the `reusable_update_pr_body.yml` GitHub workflow.
-
-Requires the following packages:
-  pip install Jinja2 PyGithub
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,13 +15,6 @@ import urllib.parse
 from github import Github
 from jinja2 import DebugUndefined, select_autoescape
 from jinja2.sandbox import SandboxedEnvironment
-
-DOCS_PREVIEW_MARKER = "<!--DOCS-PREVIEW-->"
-DOCS_PREVIEW_BARE_LINK = "- [Docs preview](https://rerun.io/preview/{{ pr.commit }}/docs) <!--DOCS-PREVIEW-->"
-EXAMPLES_PREVIEW_MARKER = "<!--EXAMPLES-PREVIEW-->"
-EXAMPLES_PREVIEW_BARE_LINK = (
-    "- [Examples preview](https://rerun.io/preview/{{ pr.commit }}/examples) <!--EXAMPLES-PREVIEW-->"
-)
 
 # Need to protect code-blocks in the PR template.
 # See https://github.com/rerun-io/rerun/issues/3972
@@ -118,20 +109,6 @@ def main() -> None:
     env.filters["encode_uri_component"] = encode_uri_component
 
     new_body = pr.body
-
-    docs_preview_link_end = new_body.find(DOCS_PREVIEW_MARKER)
-    if docs_preview_link_end != -1:
-        docs_preview_link_end += len(DOCS_PREVIEW_MARKER)
-        docs_preview_link_start = new_body.rfind("\n", 0, docs_preview_link_end) + 1
-        new_body = new_body[:docs_preview_link_start] + DOCS_PREVIEW_BARE_LINK + new_body[docs_preview_link_end:]
-
-    examples_preview_link_end = new_body.find(EXAMPLES_PREVIEW_MARKER)
-    if examples_preview_link_end != -1:
-        examples_preview_link_end += len(EXAMPLES_PREVIEW_MARKER)
-        examples_preview_link_start = new_body.rfind("\n", 0, examples_preview_link_end) + 1
-        new_body = (
-            new_body[:examples_preview_link_start] + EXAMPLES_PREVIEW_BARE_LINK + new_body[examples_preview_link_end:]
-        )
 
     lines = new_body.splitlines()
     codeblocks = extract_code_blocks(lines)

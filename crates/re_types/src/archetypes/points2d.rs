@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -42,8 +43,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             .with_radii((0..10).map(|_| rng.gen::<f32>())),
 ///     )?;
 ///
-///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &rerun::Boxes2D::from_half_sizes([(4., 3.)]))?;
+///     // TODO(#5521): log VisualBounds2D
 ///
 ///     Ok(())
 /// }
@@ -128,18 +128,17 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.KeypointId".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position2D".into(),
@@ -148,14 +147,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Radius".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.KeypointId".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl Points2D {
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`Points2D`] [`::re_types_core::Archetype`]
@@ -328,14 +327,11 @@ impl ::re_types_core::AsComponents for Points2D {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.positions.len()
-    }
 }
 
 impl Points2D {
+    /// Create a new `Points2D`.
+    #[inline]
     pub fn new(
         positions: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
     ) -> Self {
@@ -350,6 +346,7 @@ impl Points2D {
         }
     }
 
+    /// Optional radii for the points, effectively turning them into circles.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -359,6 +356,7 @@ impl Points2D {
         self
     }
 
+    /// Optional colors for the points.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -368,6 +366,7 @@ impl Points2D {
         self
     }
 
+    /// Optional text labels for the points.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -377,12 +376,18 @@ impl Points2D {
         self
     }
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self
     }
 
+    /// Optional class Ids for the points.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,
@@ -392,6 +397,14 @@ impl Points2D {
         self
     }
 
+    /// Optional keypoint IDs for the points, identifying them within a class.
+    ///
+    /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
+    /// default to 0.
+    /// This is useful to identify points within a single classification (which is identified
+    /// with `class_id`).
+    /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
+    /// detected skeleton.
     #[inline]
     pub fn with_keypoint_ids(
         mut self,

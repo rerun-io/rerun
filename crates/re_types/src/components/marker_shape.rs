@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -24,16 +25,35 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Shape of a marker.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum MarkerShape {
+    /// `⏺`
     #[default]
     Circle = 1,
+
+    /// `◆`
     Diamond = 2,
+
+    /// `◼️`
     Square = 3,
+
+    /// `x`
     Cross = 4,
+
+    /// `+`
     Plus = 5,
+
+    /// `▲`
     Up = 6,
+
+    /// `▼`
     Down = 7,
+
+    /// `◀`
     Left = 8,
+
+    /// `▶`
     Right = 9,
+
+    /// `*`
     Asterisk = 10,
 }
 
@@ -127,6 +147,7 @@ impl ::re_types_core::Loggable for MarkerShape {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
+            // Sparse Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {

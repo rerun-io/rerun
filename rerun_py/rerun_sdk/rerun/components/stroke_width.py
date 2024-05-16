@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .stroke_width_ext import StrokeWidthExt
 
 __all__ = ["StrokeWidth", "StrokeWidthArrayLike", "StrokeWidthBatch", "StrokeWidthLike", "StrokeWidthType"]
 
 
 @define(init=False)
-class StrokeWidth(StrokeWidthExt):
+class StrokeWidth:
     """**Component**: The width of a stroke specified in UI points."""
 
     def __init__(self: Any, width: StrokeWidthLike):
@@ -36,6 +35,9 @@ class StrokeWidth(StrokeWidthExt):
 
     def __float__(self) -> float:
         return float(self.width)
+
+    def __hash__(self) -> int:
+        return hash(self.width)
 
 
 if TYPE_CHECKING:
@@ -58,4 +60,5 @@ class StrokeWidthBatch(BaseBatch[StrokeWidthArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: StrokeWidthArrayLike, data_type: pa.DataType) -> pa.Array:
-        return StrokeWidthExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

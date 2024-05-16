@@ -3,8 +3,8 @@
 //! This crate contains both the IDL definitions for Rerun types (flatbuffers) as well as the code
 //! generated from those using `re_types_builder`.
 //!
-//! All builtin archetypes, components and datatypes can be found in their respective top-level
-//! modules.
+//! All builtin archetypes, components, datatypes and space view definitions can be found in their
+//! respective top-level modules.
 //!
 //! ## Contributing
 //!
@@ -100,7 +100,7 @@
 //!
 //! ### Examples
 //!
-//! You can add an example to `docs/code-examples/all`, and then include its source code in
+//! You can add an example to `docs/snippets/all`, and then include its source code in
 //! the docs using the `\example` tag. The example will also be included in the list of
 //! examples for type's generated docs.
 //!
@@ -171,6 +171,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+#![warn(missing_docs)] // Let's keep the this crate well-documented!
+
 // ---
 
 /// Number of decimals shown for all vector display methods.
@@ -183,10 +185,6 @@ pub const DISPLAY_PRECISION: usize = 3;
 /// Each archetype is a collection of homogeneous [`ComponentBatch`]es.
 /// For instance, the [`Points3D`][archetypes::Points3D] archetype contains a
 /// batch of positions, a batch of colors, etc.
-///
-/// These component batches are must all have the same length, or one of the special lengths:
-/// * 0 - an empty batch
-/// * 1 - a "splat" batch, e.g. using the same color for all positions.
 ///
 /// Each entity can consist of many archetypes, but usually each entity will only have one archetype.
 ///
@@ -214,9 +212,9 @@ pub mod archetypes {
 /// Each component is a wrapper around a [`datatype`][datatypes].
 pub mod components {
 
-    // Some components (e.g. `InstanceKey`) are so fundamental and used everywhere that we want
-    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
-    // `re_types` behemoth just so one can use one of these fundamental types.
+    // Some components are so fundamental and used everywhere that we want them to be exposed
+    // by `re_types_core` directly; that way we don't force a dependency on the `re_types`
+    // behemoth just so one can use one of these fundamental types.
     //
     // To do so, re-inject `re_types_core`'s components into our own module.
 
@@ -232,9 +230,9 @@ pub mod components {
 /// They all implement the [`Datatype`] trait.
 pub mod datatypes {
 
-    // Some datatypes (e.g. `InstanceKey`) are so fundamental and used everywhere that we want
-    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
-    // `re_types` behemoth just so one can use one of these fundamental types.
+    // Some datatypes are so fundamental and used everywhere that we want them to be exposed
+    // by `re_types_core` directly; that way we don't force a dependency on the `re_types`
+    // behemoth just so one can use one of these fundamental types.
     //
     // To do so, re-inject `re_types_core`'s datatypes into our own module.
 
@@ -248,9 +246,6 @@ pub mod datatypes {
 /// The blueprint-specific components.
 pub mod blueprint;
 
-#[cfg(feature = "datagen")]
-pub mod datagen;
-
 // ---
 
 // One almost never uses `re_types` without `re_types_core`, so we reexport these core types
@@ -261,6 +256,7 @@ pub use re_types_core::*;
 
 // ---
 
+/// Re-exports of external crates that are used throughout the codebase.
 pub mod external {
     pub use re_types_core;
 

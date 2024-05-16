@@ -1,5 +1,10 @@
 #include "quaternion.hpp"
 
+// <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
+
+// </CODEGEN_COPY_TO_HEADER>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
@@ -9,7 +14,7 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // <CODEGEN_COPY_TO_HEADER>
 
-        static const Quaternion IDENTITY;
+        RERUN_SDK_EXPORT static const Quaternion IDENTITY;
 
         /// Construct Quaternion from x/y/z/w values.
         static Quaternion from_xyzw(float x, float y, float z, float w) {

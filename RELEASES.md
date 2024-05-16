@@ -10,13 +10,13 @@ This document describes the current release and versioning strategy. This strate
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 
-## Release Cadence
-New Rerun versions are released every four weeks. Sometimes we do out-of-schedule patch releases.
+## Release cadence
+New Rerun versions are released approximately once every month. Sometimes we do out-of-schedule patch releases.
 
 
 ## Library versioning and release cadence
 Each release include new versions of:
-* All rust crates
+* All Rust crates
 * The Python SDK
 * The Rust SDK
 * The C++ SDK
@@ -30,10 +30,16 @@ In rare cases we will do patch releases, e.g. `0.3.1`, when there is a critical 
 We sometimes do pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
 
 
+## Rust version policy
+Our Minimum Supported Rust Version (MSRV) is always _at least_ one minor release behind the latest Rust version, and ideally two releases.
+* This means users of our libraries aren't forced to update to the very latest Rust version
+* This lets us sometimes avoid new bugs in the newly released Rust compiler
+
+
 ## Data and communication versioning
 We have not yet committed to any backwards or forwards compatibility.
 
-We tag all data files (`.rrd` files) and communication protocols with the rerun version number. If there is a version mismatch, a warning is logged, but an attempt is still made to load the older or newer data.
+We tag all data files (`.rrd` files) and communication protocols with the Rerun version number. If there is a version mismatch, a warning is logged, but an attempt is still made to load the older or newer data.
 
 
 ## Releases
@@ -50,6 +56,9 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
    - `release-0.x.y` for final releases and their release candidates.
    - `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
      or defaulted to `1` if no previous alpha exists.
+
+   Note that `release-0.x` is _invalid_. Always specify the `y`, even if it is `0`,
+   e.g. `release-0.15.0` instead of `release-0.15`.
 
 ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
 

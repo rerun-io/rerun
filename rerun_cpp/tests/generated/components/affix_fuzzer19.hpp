@@ -12,12 +12,6 @@
 #include <rerun/result.hpp>
 #include <utility>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class StructBuilder;
-} // namespace arrow
-
 namespace rerun::components {
     struct AffixFuzzer19 {
         rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady;
@@ -51,8 +45,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::AffixFuzzer5) == sizeof(components::AffixFuzzer19));
 
     /// \private
     template <>
@@ -60,17 +53,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer19";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const components::AffixFuzzer19* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::AffixFuzzer5>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::AffixFuzzer19` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::AffixFuzzer19* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::AffixFuzzer5>::to_arrow(
+                &instances->just_a_table_nothing_shady,
+                num_instances
+            );
+        }
     };
 } // namespace rerun

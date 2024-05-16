@@ -26,7 +26,7 @@ impl App {
             .max_height(desired_icon_height);
 
         ui.menu_image_button(image, |ui| {
-            ui.set_min_width(220.0);
+            ui.set_min_width(240.0);
 
             ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
 
@@ -38,14 +38,16 @@ impl App {
 
             UICommand::Open.menu_button_ui(ui, &self.command_sender);
 
+            self.save_buttons_ui(ui, _store_context);
+
+            UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
+
+            UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+
+            ui.add_space(SPACING);
+
             #[cfg(not(target_arch = "wasm32"))]
             {
-                self.save_buttons_ui(ui, _store_context);
-
-                UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
-
-                ui.add_space(SPACING);
-
                 // On the web the browser controls the zoom
                 let zoom_factor = ui.ctx().zoom_factor();
                 ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
@@ -160,20 +162,18 @@ impl App {
         }
     }
 
-    // TODO(emilk): support saving data on web
-    #[cfg(not(target_arch = "wasm32"))]
-    fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>) {
+    fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
         use re_ui::UICommandSender;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();
 
-        let save_button = UICommand::Save.menu_button(ui.ctx());
-        let save_selection_button = UICommand::SaveSelection.menu_button(ui.ctx());
+        let save_recording_button = UICommand::SaveRecording.menu_button(ui.ctx());
+        let save_selection_button = UICommand::SaveRecordingSelection.menu_button(ui.ctx());
 
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(save_button);
+                    ui.add(save_recording_button);
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
@@ -182,24 +182,22 @@ impl App {
                 });
             });
         } else {
-            let entity_db_is_nonempty = store_view
-                .and_then(|view| view.recording)
-                .map_or(false, |recording| !recording.is_empty());
+            let entity_db_is_nonempty = store_ctx.map_or(false, |ctx| !ctx.recording.is_empty());
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
-                    .add(save_button)
+                    .add(save_recording_button)
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
                 {
                     ui.close_menu();
-                    self.command_sender.send_ui(UICommand::Save);
+                    self.command_sender.send_ui(UICommand::SaveRecording);
                 }
 
                 // We need to know the loop selection _before_ we can even display the
                 // button, as this will determine whether its grayed out or not!
                 // TODO(cmc): In practice the loop (green) selection is always there
                 // at the moment so…
-                let loop_selection = self.state.loop_selection(store_view);
+                let loop_selection = self.state.loop_selection(store_ctx);
 
                 if ui
                     .add_enabled(loop_selection.is_some(), save_selection_button)
@@ -209,7 +207,8 @@ impl App {
                     .clicked()
                 {
                     ui.close_menu();
-                    self.command_sender.send_ui(UICommand::SaveSelection);
+                    self.command_sender
+                        .send_ui(UICommand::SaveRecordingSelection);
                 }
             });
         }
@@ -318,13 +317,29 @@ fn options_menu_ui(
 
     ui.horizontal(|ui| {
         ui.label("Timezone:");
+    });
+    ui.horizontal(|ui| {
         re_ui
             .radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
             .on_hover_text("Display timestamps in UTC");
         re_ui
             .radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
             .on_hover_text("Display timestamps in the local timezone");
+        re_ui
+            .radio_value(
+                ui,
+                &mut app_options.time_zone,
+                TimeZone::UnixEpoch,
+                "Unix epoch",
+            )
+            .on_hover_text("Display timestamps in seconds since unix epoch");
     });
+
+    re_ui.checkbox(
+        ui,
+        &mut app_options.include_welcome_screen_button_in_recordings_panel,
+        "Show 'Welcome screen' button",
+    );
 
     {
         ui.add_space(SPACING);
@@ -358,14 +373,14 @@ fn experimental_feature_ui(
 ) {
     #[cfg(not(target_arch = "wasm32"))]
     re_ui
-        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
-        .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.");
+        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space view screenshots")
+        .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
 
     if re_ui
         .checkbox(
             ui,
             &mut app_options.experimental_dataframe_space_view,
-            "Dataframe Space View",
+            "Dataframe space view",
         )
         .on_hover_text("Enable the experimental dataframe space view.")
         .clicked()
@@ -488,7 +503,7 @@ fn debug_menu_options_ui(
         }
 
         if ui.button("SEGFAULT").clicked() {
-            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/065f3dd9c1c318630e539375165cf74961b44bcc/sadness-generator/src/lib.rs
 
             /// This is the fixed address used to generate a segfault. It's possible that
             /// this address can be mapped and writable by the your process in which case a
@@ -507,7 +522,7 @@ fn debug_menu_options_ui(
         }
 
         if ui.button("Stack overflow").clicked() {
-            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/065f3dd9c1c318630e539375165cf74961b44bcc/sadness-generator/src/lib.rs
             fn recurse(data: u64) -> u64 {
                 let mut buff = [0u8; 256];
                 buff[..9].copy_from_slice(b"junk data");

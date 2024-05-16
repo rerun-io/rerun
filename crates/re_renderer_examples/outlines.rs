@@ -1,5 +1,8 @@
 //! Demonstrates outline rendering.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use itertools::Itertools;
 use re_renderer::{
     renderer::MeshInstance,
@@ -40,7 +43,7 @@ impl framework::Example for Outlines {
         re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         if !self.is_paused {
             self.seconds_since_startup += time.last_frame_duration.as_secs_f32();
@@ -65,7 +68,7 @@ impl framework::Example for Outlines {
                     near_plane_distance: 0.01,
                     aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                 },
-                pixels_from_point,
+                pixels_per_point,
                 outline_config: Some(OutlineConfig {
                     outline_radius_pixel: (seconds_since_startup * 2.0).sin().abs() * 10.0 + 2.0,
                     color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),
@@ -120,7 +123,10 @@ impl framework::Example for Outlines {
             })
             .collect_vec();
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
+        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+            re_ctx,
+            Default::default(),
+        ));
         view_builder
             .queue_draw(re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
 

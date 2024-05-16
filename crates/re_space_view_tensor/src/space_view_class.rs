@@ -12,17 +12,23 @@ use re_renderer::Colormap;
 use re_types::{
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
+    SpaceViewClassIdentifier,
 };
 use re_viewer_context::{
-    gpu_bridge, gpu_bridge::colormap_dropdown_button_ui, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    TensorStatsCache, ViewQuery, ViewerContext,
+    gpu_bridge::{self, colormap_dropdown_button_ui},
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
 
 #[derive(Default)]
 pub struct TensorSpaceView;
+
+use re_types::View;
+type ViewType = re_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
@@ -135,17 +141,20 @@ impl PerTensorState {
 }
 
 impl SpaceViewClass for TensorSpaceView {
-    type State = ViewTensorState;
+    fn identifier() -> SpaceViewClassIdentifier {
+        ViewType::identifier()
+    }
 
-    const IDENTIFIER: &'static str = "Tensor";
-    const DISPLAY_NAME: &'static str = "Tensor";
+    fn display_name(&self) -> &'static str {
+        "Tensor"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TENSOR
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "Select the Space View to configure which dimensions are shown.".into()
+        "Select the space view to configure which dimensions are shown.".into()
     }
 
     fn on_register(
@@ -155,7 +164,7 @@ impl SpaceViewClass for TensorSpaceView {
         system_registry.register_visualizer::<TensorSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -163,20 +172,47 @@ impl SpaceViewClass for TensorSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Medium
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<ViewTensorState>::default()
+    }
+
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> re_viewer_context::SmallVisualizerSet {
+        // Default implementation would not suggest the Tensor visualizer for images,
+        // since they're not indicated with a Tensor indicator.
+        // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
+
+        // Keeping this implementation simple: We know there's only a single visualizer here.
+        if visualizable_entities_per_visualizer
+            .get(&TensorSystem::identifier())
+            .map_or(false, |entities| entities.contains(entity_path))
+        {
+            std::iter::once(TensorSystem::identifier()).collect()
+        } else {
+            Default::default()
+        }
+    }
+
     fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<ViewTensorState>()?;
         if let Some(selected_tensor) = &state.selected_tensor {
             if let Some(state_tensor) = state.state_tensors.get_mut(selected_tensor) {
                 state_tensor.ui(ctx, ui);
             }
         }
+        Ok(())
     }
 
     fn spawn_heuristics(
@@ -192,12 +228,13 @@ impl SpaceViewClass for TensorSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+        let state = state.downcast_mut::<ViewTensorState>()?;
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
@@ -532,18 +569,37 @@ pub fn selected_tensor_slice<'a, T: Copy>(
 
     assert!(dimension_mapping.is_valid(tensor.ndim()));
 
-    // TODO(andreas) - shouldn't just give up here
-    if dimension_mapping.width.is_none() || dimension_mapping.height.is_none() {
-        return tensor.view();
-    }
+    let (width, height) =
+        if let (Some(width), Some(height)) = (dimension_mapping.width, dimension_mapping.height) {
+            (width, height)
+        } else if let Some(width) = dimension_mapping.width {
+            // If height is missing, create a 1D row.
+            (width, 1)
+        } else if let Some(height) = dimension_mapping.height {
+            // If width is missing, create a 1D column.
+            (1, height)
+        } else {
+            // If both are missing, give up.
+            return tensor.view();
+        };
 
-    let axis = dimension_mapping
-        .height
+    let view = if tensor.shape().len() == 1 {
+        // We want 2D slices, so for "pure" 1D tensors add a dimension.
+        // This is important for above width/height conversion to work since this assumes at least 2 dimensions.
+        tensor
+            .view()
+            .into_shape(ndarray::IxDyn(&[tensor.len(), 1]))
+            .unwrap()
+    } else {
+        tensor.view()
+    };
+
+    #[allow(clippy::tuple_array_conversions)]
+    let axis = [height, width]
         .into_iter()
-        .chain(dimension_mapping.width)
         .chain(dimension_mapping.selectors.iter().map(|s| s.dim_idx))
         .collect::<Vec<_>>();
-    let mut slice = tensor.view().permuted_axes(axis);
+    let mut slice = view.permuted_axes(axis);
 
     for DimensionSelector { dim_idx, .. } in &dimension_mapping.selectors {
         let selector_value = selector_values.get(dim_idx).copied().unwrap_or_default() as usize;

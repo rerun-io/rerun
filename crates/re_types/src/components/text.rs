@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -91,10 +92,7 @@ impl ::re_types_core::Loggable for Text {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -103,25 +101,17 @@ impl ::re_types_core::Loggable for Text {
                 any_nones.then(|| somes.into())
             };
             {
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                )?
+                .into();
                 let inner_data: arrow2::buffer::Buffer<u8> = data0
-                    .iter()
+                    .into_iter()
                     .flatten()
-                    .flat_map(|datum| {
-                        let crate::datatypes::Utf8(data0) = datum;
-                        data0.0.clone()
-                    })
+                    .flat_map(|datum| datum.0 .0)
                     .collect();
-                let offsets =
-                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
-                        opt.as_ref()
-                            .map(|datum| {
-                                let crate::datatypes::Utf8(data0) = datum;
-                                data0.0.len()
-                            })
-                            .unwrap_or_default()
-                    }))
-                    .unwrap()
-                    .into();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {

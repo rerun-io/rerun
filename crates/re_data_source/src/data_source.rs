@@ -10,7 +10,11 @@ use anyhow::Context as _;
 #[derive(Debug, Clone)]
 pub enum DataSource {
     /// A remote RRD file, served over http.
-    RrdHttpUrl(String),
+    ///
+    /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
+    ///
+    /// Could be either an `.rrd` recording or a `.rbl` blueprint.
+    RrdHttpUrl { url: String, follow: bool },
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
@@ -64,7 +68,7 @@ impl DataSource {
                 true // No dots. Weird. Let's assume it is a file path.
             } else if parts.len() == 2 {
                 // Extension or `.com` etc?
-                crate::is_supported_file_extension(parts[1])
+                re_data_loader::is_supported_file_extension(parts[1])
             } else {
                 false // Too many dots; assume an url
             }
@@ -86,17 +90,23 @@ impl DataSource {
             DataSource::FilePath(file_source, path)
         } else if uri.starts_with("http://")
             || uri.starts_with("https://")
-            || (uri.starts_with("www.") && uri.ends_with(".rrd"))
+            || (uri.starts_with("www.") && (uri.ends_with(".rrd") || uri.ends_with(".rbl")))
         {
-            DataSource::RrdHttpUrl(uri)
+            DataSource::RrdHttpUrl {
+                url: uri,
+                follow: false,
+            }
         } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
             DataSource::WebSocketAddr(uri)
 
         // Now we are into heuristics territory:
         } else if looks_like_a_file_path(&uri) {
             DataSource::FilePath(file_source, path)
-        } else if uri.ends_with(".rrd") {
-            DataSource::RrdHttpUrl(uri)
+        } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
+            DataSource::RrdHttpUrl {
+                url: uri,
+                follow: false,
+            }
         } else {
             // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
@@ -106,6 +116,24 @@ impl DataSource {
             }
             DataSource::WebSocketAddr(uri)
         }
+    }
+
+    pub fn file_name(&self) -> Option<String> {
+        match self {
+            DataSource::RrdHttpUrl { url, .. } => url.split('/').last().map(|r| r.to_owned()),
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::FilePath(_, path) => {
+                path.file_name().map(|s| s.to_string_lossy().to_string())
+            }
+            DataSource::FileContents(_, file_contents) => Some(file_contents.name.clone()),
+            DataSource::WebSocketAddr(_) => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => None,
+        }
+    }
+
+    pub fn is_blueprint(&self) -> Option<bool> {
+        self.file_name().map(|name| name.ends_with(".rbl"))
     }
 
     /// Stream the data from the given data source.
@@ -120,8 +148,10 @@ impl DataSource {
     ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
         match self {
-            DataSource::RrdHttpUrl(url) => Ok(
-                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url, on_msg),
+            DataSource::RrdHttpUrl { url, follow } => Ok(
+                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
+                    url, follow, on_msg,
+                ),
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -136,8 +166,8 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = crate::DataLoaderSettings::recommended(shared_store_id);
-                crate::load_from_path(&settings, file_source, &path, &tx)
+                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
                 if let Some(on_msg) = on_msg {
@@ -160,8 +190,8 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = crate::DataLoaderSettings::recommended(shared_store_id);
-                crate::load_from_file_contents(
+                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                re_data_loader::load_from_file_contents(
                     &settings,
                     file_source,
                     &std::path::PathBuf::from(file_contents.name),
@@ -216,6 +246,7 @@ fn test_data_source_from_uri() {
         "https://foo.zip",
         "example.zip/foo.rrd",
         "www.foo.zip/foo.rrd",
+        "www.foo.zip/blueprint.rbl",
     ];
     let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
 
@@ -235,7 +266,7 @@ fn test_data_source_from_uri() {
         assert!(
             matches!(
                 DataSource::from_uri(file_source, uri.to_owned()),
-                DataSource::RrdHttpUrl(_)
+                DataSource::RrdHttpUrl { .. }
             ),
             "Expected {uri:?} to be categorized as RrdHttpUrl"
         );

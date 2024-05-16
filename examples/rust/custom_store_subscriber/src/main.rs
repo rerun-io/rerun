@@ -13,13 +13,12 @@
 use std::collections::BTreeMap;
 
 use rerun::{
-    external::{anyhow, re_build_info, re_data_store, re_log, re_log_types::TimeRange, tokio},
+    external::{anyhow, re_build_info, re_data_store, re_log, re_log_types::ResolvedTimeRange},
     time::TimeInt,
     ComponentName, EntityPath, StoreEvent, StoreId, StoreSubscriber, Timeline,
 };
 
-#[tokio::main]
-async fn main() -> anyhow::Result<std::process::ExitCode> {
+fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_logging();
 
     let _handle = re_data_store::DataStore::register_subscriber(Box::<Orchestrator>::default());
@@ -27,7 +26,6 @@ async fn main() -> anyhow::Result<std::process::ExitCode> {
 
     let build_info = re_build_info::build_info!();
     rerun::run(build_info, rerun::CallSource::Cli, std::env::args())
-        .await
         .map(std::process::ExitCode::from)
 }
 
@@ -127,7 +125,7 @@ impl StoreSubscriber for ComponentsPerRecording {
         println!("---------------");
 
         for (recording, per_component) in &self.counters {
-            println!("  Recording '{recording}':");
+            println!("  Recording '{recording}':"); // NOLINT
             for (component, counter) in per_component {
                 println!("    {component}: {counter} occurrences");
             }
@@ -185,7 +183,7 @@ impl StoreSubscriber for TimeRangesPerEntity {
         for (entity_path, per_timeline) in &self.times {
             println!("  {entity_path}:");
             for (timeline, times) in per_timeline {
-                let time_range = TimeRange::new(
+                let time_range = ResolvedTimeRange::new(
                     times
                         .first_key_value()
                         .map_or(TimeInt::MIN, |(time, _)| *time),

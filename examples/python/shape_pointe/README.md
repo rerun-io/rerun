@@ -1,13 +1,16 @@
 <!--[metadata]
 title = "Point-E and Shap-E"
 source = "https://github.com/rerun-io/point-shap-e"
-tags = ["3D", "diffusion", "point", "mesh"]
-thumbnail = "https://static.rerun.io/overview/6516611ebcf25c4b946e3d99c21c6930d4c9f0bd/480w.png"
-thumbnail_dimensions = [480, 293]
+tags = ["3D", "Diffusion", "Point", "Mesh", "Paper walkthrough"]
+thumbnail = "https://static.rerun.io/point-e/5b5beb36dce77d2dac7123b197b825421afcaec0/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
+This example is a visual comparison of two popular text-to-3D methods that uses Rerun to compare the generation process and results.
 
-OpenAI has released two models for text-to-3d generation: Point-E and Shape-E. Both of these methods are fast and interesting but still low fidelity for now.
+## Visual paper comparison
+
+OpenAI has released two models for text-to-3D generation: Point-E and Shape-E. Both of these methods are fast and interesting but still low fidelity for now.
 
 https://vimeo.com/865974160?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:6545
 

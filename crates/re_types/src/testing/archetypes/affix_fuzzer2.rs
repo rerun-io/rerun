@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -120,10 +121,10 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer2Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 21usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 20usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
@@ -146,12 +147,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 21usize]> =
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer2Indicator".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl AffixFuzzer2 {
-    pub const NUM_COMPONENTS: usize = 21usize;
+    /// The total number of components in the archetype: 19 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 20usize;
 }
 
 /// Indicator component for the [`AffixFuzzer2`] [`::re_types_core::Archetype`]
@@ -483,14 +484,11 @@ impl ::re_types_core::AsComponents for AffixFuzzer2 {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.fuzz1101.len()
-    }
 }
 
 impl AffixFuzzer2 {
+    /// Create a new `AffixFuzzer2`.
+    #[inline]
     pub fn new(
         fuzz1101: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer1>>,
         fuzz1102: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer2>>,

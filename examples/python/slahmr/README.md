@@ -1,11 +1,16 @@
 <!--[metadata]
-title = "Decoupling Human and Camera Motion from Videos in the Wild"
+title = "Decoupling human and camera motion from videos in the wild"
 source = "https://github.com/rerun-io/slahmr"
-tags = ["3D", "SLAM", "keypoint-detection", "mesh", "time-series"]
-thumbnail = "https://static.rerun.io/slahmr/3fad4f6b2c1a807fb92e8d33a2f90f7391c290a2/480w.png"
-thumbnail_dimensions = [480, 293]
+tags = ["3D", "SLAM", "Keypoint detection", "Mesh", "Time series", "Paper walkthrough"]
+thumbnail = "https://static.rerun.io/decoupling-human/2f1c7f027668a6fb15865c51197d2ea98b5725a6/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
+
+This example is a visual walkthrough of the paper “Decoupling Human and Camera Motion from Videos in the Wild”.
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
 
 SLAHMR robustly tracks the motion of multiple moving people filmed with a moving camera and works well on “in-the-wild” videos. It’s a great showcase of how to build working computer vision systems by intelligently combining several single purpose models.
 

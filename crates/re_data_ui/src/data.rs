@@ -1,10 +1,13 @@
-use egui::Vec2;
+use egui::{Ui, Vec2};
+use re_data_store::LatestAtQuery;
+use re_entity_db::EntityDb;
 
 use re_format::format_f32;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, MeshProperties, ViewCoordinates};
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_types::blueprint::components::VisualBounds2D;
+use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, ViewCoordinates};
+use re_viewer_context::{UiLayout, ViewerContext};
 
-use super::{table_for_verbosity, DataUi};
+use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
@@ -14,9 +17,9 @@ impl DataUi for [u8; 4] {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        _ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let [r, g, b, a] = self;
         let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
@@ -35,9 +38,9 @@ impl DataUi for Color {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        _ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let [r, g, b, a] = self.to_array();
         let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
@@ -56,16 +59,19 @@ impl DataUi for ViewCoordinates {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
-        match verbosity {
-            UiVerbosity::Small => {
-                ui.label(format!("ViewCoordinates: {}", self.describe()));
+        match ui_layout {
+            UiLayout::List => {
+                label_for_ui_layout(ui, ui_layout, self.describe_short())
+                    .on_hover_text(self.describe());
             }
-            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
-                ui.label(self.describe());
+            UiLayout::SelectionPanelFull
+            | UiLayout::SelectionPanelLimitHeight
+            | UiLayout::Tooltip => {
+                label_for_ui_layout(ui, ui_layout, self.describe());
             }
         }
     }
@@ -76,9 +82,9 @@ impl DataUi for re_types::datatypes::Mat3x3 {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        _ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
             ui.monospace(self[0].to_string());
@@ -104,11 +110,11 @@ impl DataUi for re_types::datatypes::Vec2D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -117,11 +123,89 @@ impl DataUi for re_types::datatypes::Vec3D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for re_types::datatypes::Vec4D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for re_types::datatypes::UVec2D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for re_types::datatypes::UVec3D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for re_types::datatypes::UVec4D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for Range1D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        ui_layout: UiLayout,
+        _query: &LatestAtQuery,
+        _db: &EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for VisualBounds2D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        ui_layout: UiLayout,
+        _query: &LatestAtQuery,
+        _db: &EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -130,17 +214,17 @@ impl DataUi for LineStrip2D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
-        match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
-                ui.label(format!("{} positions", self.0.len()));
+        match ui_layout {
+            UiLayout::List | UiLayout::Tooltip => {
+                label_for_ui_layout(ui, ui_layout, format!("{} positions", self.0.len()));
             }
-            UiVerbosity::LimitHeight | UiVerbosity::Full => {
+            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
                 use egui_extras::Column;
-                table_for_verbosity(verbosity, ui)
+                table_for_ui_layout(ui_layout, ui)
                     .resizable(true)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
@@ -177,17 +261,17 @@ impl DataUi for LineStrip3D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
-        match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
-                ui.label(format!("{} positions", self.0.len()));
+        match ui_layout {
+            UiLayout::List | UiLayout::Tooltip => {
+                label_for_ui_layout(ui, ui_layout, format!("{} positions", self.0.len()));
             }
-            UiVerbosity::Full | UiVerbosity::LimitHeight => {
+            UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight => {
                 use egui_extras::Column;
-                table_for_verbosity(verbosity, ui)
+                table_for_ui_layout(ui_layout, ui)
                     .resizable(true)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
@@ -220,41 +304,6 @@ impl DataUi for LineStrip3D {
                             }
                         });
                     });
-            }
-        }
-    }
-}
-
-impl DataUi for MeshProperties {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
-    ) {
-        let show_optional_indices = |ui: &mut egui::Ui| {
-            if let Some(indices) = self.indices.as_ref() {
-                ui.label(format!(
-                    "{} triangles",
-                    re_format::format_number(indices.len() / 3)
-                ));
-            } else {
-                ui.weak("(empty)");
-            }
-        };
-
-        match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
-                show_optional_indices(ui);
-            }
-            UiVerbosity::Full | UiVerbosity::LimitHeight => {
-                egui::Grid::new("material").num_columns(2).show(ui, |ui| {
-                    ui.label("triangles");
-                    show_optional_indices(ui);
-                    ui.end_row();
-                });
             }
         }
     }

@@ -5,24 +5,28 @@ use super::Position3D;
 // ---
 
 impl Position3D {
+    /// The origin.
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
-    pub const ONE: Self = Self::new(1.0, 1.0, 1.0);
 
+    /// Create a new position.
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self(Vec3D::new(x, y, z))
     }
 
+    /// The x coordinate, i.e. index 0
     #[inline]
     pub fn x(&self) -> f32 {
         self.0.x()
     }
 
+    /// The y coordinate, i.e. index 1
     #[inline]
     pub fn y(&self) -> f32 {
         self.0.y()
     }
 
+    /// The z coordinate, i.e. index 2
     #[inline]
     pub fn z(&self) -> f32 {
         self.0.z()

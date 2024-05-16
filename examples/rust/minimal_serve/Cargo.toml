@@ -1,11 +1,10 @@
 [package]
 name = "minimal_serve"
-version = "0.15.0-alpha.2"
+version = "0.16.0-alpha.4"
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.76"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
 rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
-tokio = "1.0"

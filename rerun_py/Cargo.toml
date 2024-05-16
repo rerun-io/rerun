@@ -6,54 +6,47 @@ publish = false
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [lib]
 crate-type = ["cdylib"]
 name = "rerun_bindings" # name of the .so library that the Python module will import
 
 
 [features]
-default = ["extension-module", "native_viewer"]
+default = ["extension-module", "web_viewer"]
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "native_viewer", "web_viewer"]
+pypi = ["extension-module", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
-## must make it an opt-in feature.
+## must make it an optional feature.
 ## * <https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror>
-## * <https://pyo3.rs/latest/building_and_distribution.html#building-python-extension-modules>
+## * <https://pyo3.rs/main/building-and-distribution#building-python-extension-modules>
 extension-module = ["pyo3/extension-module"]
-
-## Support spawning a native Rerun viewer with `spawn()`.
-native_viewer = ["rerun/native_viewer"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
-## Enabling this adds quite a bit to the compile time and binary size,
-## since it requires compiling and bundling the viewer as wasm.
-web_viewer = ["rerun/web_viewer", "dep:re_web_viewer_server", "dep:re_ws_comms"]
+## Enabling this adds quite a bit to the binary size,
+## since it requires bundling the viewer as wasm.
+web_viewer = [
+  "re_sdk/web_viewer",
+  "dep:re_web_viewer_server",
+  "dep:re_ws_comms",
+]
 
 
 [dependencies]
 re_build_info.workspace = true
-re_error.workspace = true
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_log_types.workspace = true
 re_memory.workspace = true
-rerun = { workspace = true, features = [
-  "analytics",
-  "data_loaders",
-  "run",
-  "server",
-  "sdk",
-] }
+re_sdk = { workspace = true, features = ["data_loaders"] }
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
-
-# TODO(jleibs): Dependency on re_viewer and re_viewport should go away as part of https://github.com/rerun-io/rerun/issues/2089
-re_viewer.workspace = true
-re_viewport.workspace = true
 
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 crossbeam.workspace = true
@@ -63,8 +56,7 @@ mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 once_cell.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = ["abi3-py38"] }
-rand = { workspace = true, features = ["std_rng"] }
-tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
+rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
 
 

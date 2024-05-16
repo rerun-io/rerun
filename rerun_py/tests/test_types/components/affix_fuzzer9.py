@@ -27,6 +27,9 @@ class AffixFuzzer9:
     def __str__(self) -> str:
         return str(self.single_string_required)
 
+    def __hash__(self) -> int:
+        return hash(self.single_string_required)
+
 
 AffixFuzzer9Like = AffixFuzzer9
 AffixFuzzer9ArrayLike = Union[
@@ -47,4 +50,11 @@ class AffixFuzzer9Batch(BaseBatch[AffixFuzzer9ArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer9ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer9_ext.py
+        if isinstance(data, str):
+            array = [data]
+        elif isinstance(data, Sequence):
+            array = [str(datum) for datum in data]
+        else:
+            array = [str(data)]
+
+        return pa.array(array, type=data_type)

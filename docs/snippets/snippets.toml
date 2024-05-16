@@ -1,0 +1,129 @@
+# This file is read in `compare_snippet_output.py` and the `snippets` command in `re_dev_tools`/`build_examples`.
+
+# These entries won't run at all.
+#
+# You should only ever use this if the test isn't implemented and cannot yet be implemented
+# for one or more specific SDKs.
+[opt_out.run]
+"archetypes/image_advanced" = ["cpp", "rust"] # Missing examples
+
+"tutorials/annotation-context" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/any_values" = [ # Not yet implemented
+  "cpp",
+  "rust",
+]
+"tutorials/custom-recording-id" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/default-off-session" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/extra_values" = ["cpp", "rust"] # Missing examples
+"tutorials/log-file" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/timelines_example" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/fixed_window_plot" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+  "py",   # Doesn't terminate
+]
+
+"migration/log_line" = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
+
+views = [
+  "cpp",  # TODO(#5520): C++ views are not yet implemented
+  "rust", # TODO(#5521): Rust views are not yet implemented
+]
+
+
+# These entries will run but their results won't be compared to the baseline.
+#
+# You should only ever use this if the test cannot yet be implemented in a way that yields the right
+# data, but you still want to check whether the test runs properly and outputs _something_.
+[opt_out.compare]
+"archetypes/arrow3d_simple" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/asset3d_out_of_tree" = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
+  "py",
+]
+"archetypes/mesh3d_partial_updates" = [
+  "cpp",
+  "py",
+  "rust",
+] # float precision issues
+"archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/point2d_random" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/point3d_random" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
+  "cpp",
+]
+"archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/series_point_style" = [ # TODO(#5116): trigonometric functions have slightly different outcomes
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/series_line_style" = [ # TODO(#5116):trigonometric functions have slightly different outcomes
+  "cpp",
+  "py",
+  "rust",
+]
+quick_start = [ # These examples don't have exactly the same implementation.
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/text_log_integration" = [ # The entity path will differ because the Rust code is part of a library
+  "cpp",
+  "py",
+  "rust",
+]
+
+
+# `$config_dir` will be replaced with the absolute path of `docs/snippets`.
+[extra_args]
+"archetypes/asset3d_simple" = ["$config_dir/../assets/cube.glb"]
+"archetypes/asset3d_out_of_tree" = ["$config_dir/../assets/cube.glb"]

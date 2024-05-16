@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -23,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The description of a semantic Class.
 ///
-/// If an entity is annotated with a corresponding `ClassId`, rerun will use
+/// If an entity is annotated with a corresponding `ClassId`, Rerun will use
 /// the attached `AnnotationInfo` to derive labels and colors.
 ///
 /// Keypoints within an annotation class can similarly be annotated with a
@@ -132,10 +133,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                         let (somes, info): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { info, .. } = &**datum;
-                                    info.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.info.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -152,13 +150,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                         let (somes, keypoint_annotations): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        keypoint_annotations,
-                                        ..
-                                    } = &**datum;
-                                    keypoint_annotations.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.keypoint_annotations.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -168,23 +162,20 @@ impl ::re_types_core::Loggable for ClassDescription {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                keypoint_annotations
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                            )?
+                            .into();
                             let keypoint_annotations_inner_data: Vec<_> = keypoint_annotations
-                                .iter()
+                                .into_iter()
                                 .flatten()
                                 .flatten()
-                                .cloned()
-                                .map(Some)
                                 .collect();
                             let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_annotations.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::datatypes::AnnotationInfo>::arrow_datatype(),
@@ -194,11 +185,11 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 {
                                     _ = keypoint_annotations_inner_bitmap;
                                     crate::datatypes::AnnotationInfo::to_arrow_opt(
-                                        keypoint_annotations_inner_data,
+                                        keypoint_annotations_inner_data.into_iter().map(Some),
                                     )?
                                 },
                                 keypoint_annotations_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },
@@ -206,13 +197,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                         let (somes, keypoint_connections): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        keypoint_connections,
-                                        ..
-                                    } = &**datum;
-                                    keypoint_connections.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.keypoint_connections.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -222,23 +209,20 @@ impl ::re_types_core::Loggable for ClassDescription {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                keypoint_connections
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                            )?
+                            .into();
                             let keypoint_connections_inner_data: Vec<_> = keypoint_connections
-                                .iter()
+                                .into_iter()
                                 .flatten()
                                 .flatten()
-                                .cloned()
-                                .map(Some)
                                 .collect();
                             let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_connections.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::datatypes::KeypointPair>::arrow_datatype(),
@@ -248,11 +232,11 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 {
                                     _ = keypoint_connections_inner_bitmap;
                                     crate::datatypes::KeypointPair::to_arrow_opt(
-                                        keypoint_connections_inner_data,
+                                        keypoint_connections_inner_data.into_iter().map(Some),
                                     )?
                                 },
                                 keypoint_connections_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },

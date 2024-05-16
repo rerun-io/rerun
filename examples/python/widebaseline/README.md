@@ -1,11 +1,15 @@
 <!--[metadata]
-title = "Learning to Render Novel Views from Wide-Baseline Stereo Pairs"
+title = "Learning to render novel views from wide-baseline stereo pairs"
 source = "https://github.com/rerun-io/cross_attention_renderer/"
-tags = ["2D", "3D", "view-synthesis", "time-series", "pinhole-camera"]
-thumbnail = "https://static.rerun.io/widebaseline/7bee6a2a13ede34f06a962019080d0dc102707b5/480w.png"
-thumbnail_dimensions = [480, 316]
+tags = ["2D", "3D", "View synthesis", "Time series", "Pinhole camera", "Paper walkthrough"]
+thumbnail = "https://static.rerun.io/learning-to-render/75c96220e356938037dce35fcb5349f5f8064d8f/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
+This example is a visual walkthrough of the paper "Learning to render novel views from wide-baseline stereo pairs".
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
 
 Novel view synthesis has made remarkable progress in recent years, but most methods require per-scene optimization on many images. In their [CVPR 2023 paper](https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html) Yilun Du et al. propose a method that works with just 2 views. I created a visual walkthrough of the work using the Rerun SDK.
 

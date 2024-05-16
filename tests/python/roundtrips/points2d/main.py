@@ -42,7 +42,7 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_roundtrip_points2d")
 
     rr.log("points2d", points2d)
-    # Hack to establish 2d view bounds
+    # Hack to establish 2D view bounds
     rr.log("rect", rr.Boxes2D(half_sizes=[2.0, 3.0], centers=[2.0, 3.0]))
 
     rr.script_teardown(args)

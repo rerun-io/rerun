@@ -1,5 +1,7 @@
 //! Implements the Python codegen pass.
 
+mod views;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::Context as _;
@@ -10,7 +12,7 @@ use unindent::unindent;
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples_for_api_docs, Example},
+        common::{collect_snippets_for_api_docs, Example},
         StringExt as _,
     },
     format_path,
@@ -18,6 +20,8 @@ use crate::{
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
+
+use self::views::code_for_view;
 
 use super::common::ExampleInfo;
 
@@ -322,7 +326,7 @@ impl PythonCodeGenerator {
                         ]
                     }
                 }
-                ObjectKind::Archetype => vec![obj.name.clone()],
+                ObjectKind::View | ObjectKind::Archetype => vec![obj.name.clone()],
             };
 
             // NOTE: Isolating the file stem only works because we're handling datatypes, components
@@ -342,14 +346,18 @@ impl PythonCodeGenerator {
             code.push_indented(0, &format!("# {}", autogen_warning!()), 1);
             if let Some(source_path) = obj.relative_filepath() {
                 code.push_indented(0, &format!("# Based on {:?}.", format_path(source_path)), 2);
-                code.push_indented(
-                    0,
-                    &format!(
-                        "# You can extend this class by creating a {:?} class in {:?}.",
-                        ext_class.name, ext_class.file_name
-                    ),
-                    2,
-                );
+
+                if obj.kind != ObjectKind::View {
+                    // View type extension isn't implemented yet (shouldn't be hard though to add if needed).
+                    code.push_indented(
+                        0,
+                        &format!(
+                            "# You can extend this class by creating a {:?} class in {:?}.",
+                            ext_class.name, ext_class.file_name
+                        ),
+                        2,
+                    );
+                }
             }
 
             let manifest = quote_manifest(names);
@@ -436,13 +444,17 @@ impl PythonCodeGenerator {
 
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
-                    code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                    if obj.kind == ObjectKind::View {
+                        code_for_view(reporter, objects, obj)
+                    } else {
+                        code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                    }
                 }
                 crate::objects::ObjectClass::Enum => {
                     code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
-                    code_for_union(arrow_registry, &ext_class, objects, obj)
+                    code_for_union(reporter, arrow_registry, &ext_class, objects, obj)
                 }
             };
 
@@ -458,7 +470,7 @@ impl PythonCodeGenerator {
             files_to_write.insert(filepath.clone(), code);
         }
 
-        // rerun/[{scope}]/{datatypes|components|archetypes}/__init__.py
+        // rerun/[{scope}]/{datatypes|components|archetypes|space_views}/__init__.py
         write_init_file(&kind_path, &mods, files_to_write);
         write_init_file(&test_kind_path, &test_mods, files_to_write);
         for (scope, mods) in scoped_mods {
@@ -476,6 +488,10 @@ fn write_init_file(
     mods: &BTreeMap<String, Vec<String>>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
+    if mods.is_empty() {
+        return;
+    }
+
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
     let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
@@ -587,7 +603,7 @@ fn code_for_struct(
     if obj.is_delegating_component() {
         let delegate = obj.delegate_datatype(objects).unwrap();
         let scope = match delegate.scope() {
-            Some(scope) => format!("{scope}."),
+            Some(scope) => format!("{scope}_"),
             None => String::new(),
         };
         superclasses.push(format!(
@@ -762,9 +778,12 @@ fn code_for_struct(
         ObjectKind::Datatype | ObjectKind::Component => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
                 1,
             );
+        }
+        ObjectKind::View => {
+            unreachable!("View processing shouldn't reach struct generation code.");
         }
     }
 
@@ -841,63 +860,6 @@ fn code_for_enum(
         2,
     );
 
-    // Generate case-insensitive string-to-enum conversion:
-    let match_names = obj
-        .fields
-        .iter()
-        .map(|f| {
-            let newline = '\n';
-            let variant = f.pascal_case_name();
-            let lowercase_variant = variant.to_lowercase();
-            format!(
-                r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#
-            )
-        })
-        .format("\n")
-        .to_string();
-
-    let match_names = indent::indent_all_by(8, match_names);
-
-    let num_variants = obj.fields.len();
-
-    let native_to_pa_array_impl = unindent(&format!(
-        r##"
-if isinstance(data, ({name}, int, str)):
-    data = [data]
-
-types: list[int] = []
-
-for value in data:
-    if value is None:
-        types.append(0)
-    elif isinstance(value, {name}):
-        types.append(value.value) # Actual enum value
-    elif isinstance(value, int):
-        types.append(value) # By number
-    elif isinstance(value, str):
-        if hasattr({name}, value):
-            types.append({name}[value].value) # fast path
-{match_names}
-        else:
-            raise ValueError(f"Unknown {name} kind: {{value}}")
-    else:
-        raise ValueError(f"Unknown {name} kind: {{value}}")
-
-buffers = [
-    None,
-    pa.array(types, type=pa.int8()).buffers()[1],
-]
-children = (1 + {num_variants}) * [pa.nulls(len(data))]
-
-return pa.UnionArray.from_buffers(
-    type=data_type,
-    length=len(data),
-    buffers=buffers,
-    children=children,
-)
-        "##
-    ));
-
     match obj.kind {
         ObjectKind::Archetype => {
             reporter.error(&obj.virtpath, &obj.fqname, "An archetype cannot be an enum");
@@ -905,15 +867,12 @@ return pa.UnionArray.from_buffers(
         ObjectKind::Component | ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(
-                    arrow_registry,
-                    ext_class,
-                    objects,
-                    obj,
-                    Some(native_to_pa_array_impl),
-                ),
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
                 1,
             );
+        }
+        ObjectKind::View => {
+            reporter.error(&obj.virtpath, &obj.fqname, "A view cannot be an enum");
         }
     }
 
@@ -921,6 +880,7 @@ return pa.UnionArray.from_buffers(
 }
 
 fn code_for_union(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
@@ -1062,14 +1022,17 @@ fn code_for_union(
     match kind {
         ObjectKind::Archetype => (),
         ObjectKind::Component => {
-            unreachable!("component may not be a union")
+            reporter.error(&obj.virtpath, &obj.fqname, "An component cannot be an enum");
         }
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
                 1,
             );
+        }
+        ObjectKind::View => {
+            reporter.error(&obj.virtpath, &obj.fqname, "An view cannot be an enum");
         }
     }
 
@@ -1092,7 +1055,11 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     let mut examples = examples.into_iter().peekable();
     while let Some(example) = examples.next() {
         let ExampleInfo {
-            name, title, image, ..
+            path,
+            name,
+            title,
+            image,
+            ..
         } = &example.base;
 
         let mut example_lines = example.lines.clone();
@@ -1115,11 +1082,11 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
         for line in &example_lines {
             assert!(
                 !line.contains("```"),
-                "Example {name:?} contains ``` in it, so we can't embed it in the Python API docs."
+                "Example {path:?} contains ``` in it, so we can't embed it in the Python API docs."
             );
             assert!(
                 !line.contains("\"\"\""),
-                "Example {name:?} contains \"\"\" in it, so we can't embed it in the Python API docs."
+                "Example {path:?} contains \"\"\" in it, so we can't embed it in the Python API docs."
             );
         }
 
@@ -1132,7 +1099,10 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
         lines.extend(example_lines.into_iter());
         lines.push("```".into());
         if let Some(image) = &image {
-            lines.extend(image.image_stack());
+            lines.extend(
+                // Don't let the images take up too much space on the page.
+                image.image_stack().center().width(640).finish(),
+            );
         }
         if examples.peek().is_some() {
             // blank line between examples
@@ -1154,9 +1124,9 @@ fn quote_obj_docs(obj: &Object) -> String {
 }
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    let mut lines = docs.doc_lines_for_untagged_and("py");
 
-    let examples = collect_examples_for_api_docs(docs, "py", true).unwrap();
+    let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
         lines.push(String::new());
         let (section_title, divider) = if examples.len() == 1 {
@@ -1205,14 +1175,14 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     let mut lines = vec!["Must be one of:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = field.docs.doc_lines_for_untagged_and("py");
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
             }
         }
 
-        let examples = collect_examples_for_api_docs(&field.docs, "py", true).unwrap();
+        let examples = collect_snippets_for_api_docs(&field.docs, "py", true).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples
             quote_examples(examples, &mut lines);
@@ -1247,13 +1217,13 @@ fn quote_union_kind_from_fields(fields: &Vec<ObjectField>) -> String {
     let mut lines = vec!["Possible values:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = field.docs.doc_lines_for_untagged_and("py");
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
             }
         }
-        lines.push(format!("* {:?}:", field.name));
+        lines.push(format!("* {:?}:", field.snake_case_name()));
         lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }
@@ -1292,7 +1262,7 @@ fn quote_array_method_from_obj(
         return format!("# __array__ can be found in {}", ext_class.file_name);
     }
 
-    // exclude archetypes, objects which dont have a single field, and anything that isn't an numpy
+    // exclude archetypes, objects which don't have a single field, and anything that isn't an numpy
     // array or scalar numbers
     if obj.kind == ObjectKind::Archetype
         || obj.fields.len() != 1
@@ -1313,7 +1283,7 @@ fn quote_array_method_from_obj(
     ))
 }
 
-/// Automatically implement `__str__`, `__int__`, or `__float__` method if the object has a single
+/// Automatically implement `__str__`, `__int__`, or `__float__` as well as `__hash__` methods if the object has a single
 /// field of the corresponding type that is not optional.
 ///
 /// Only applies to datatypes and components.
@@ -1339,6 +1309,9 @@ fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String
         "
         def __{typ}__(self) -> {typ}:
             return {typ}(self.{field_name})
+
+        def __hash__(self) -> int:
+            return hash(self.{field_name})
         ",
     ))
 }
@@ -1508,9 +1481,7 @@ fn quote_field_type_from_field(
 ) -> (String, bool) {
     let mut unwrapped = false;
     let typ = match &field.typ {
-        Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
-        }
+        Type::Unit => "None".to_owned(),
 
         Type::UInt8
         | Type::UInt16
@@ -1733,11 +1704,11 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 /// Generated for Components using native types and Datatypes. Components using a Datatype instead
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
-    native_to_pa_array_impl: Option<String>,
 ) -> String {
     let Object { fqname, name, .. } = obj;
 
@@ -1778,19 +1749,37 @@ fn quote_arrow_support_from_obj(
     let extension_batch = format!("{name}Batch");
     let extension_type = format!("{name}Type");
 
-    let native_to_pa_array_impl = native_to_pa_array_impl.unwrap_or_else(|| {
-        if ext_class.has_native_to_pa_array {
-            format!(
-                "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
-                ext_class.name
-            )
-        } else {
-            format!(
-                "raise NotImplementedError # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}",
-                ext_class.file_name
-            )
+    let native_to_pa_array_impl = match quote_arrow_serialization(
+        reporter,
+        objects,
+        obj,
+        arrow_registry,
+    ) {
+        Ok(automatic_arrow_serialization) => {
+            if ext_class.has_native_to_pa_array {
+                reporter.warn(&obj.virtpath, &obj.fqname, format!("No need to manually implement {NATIVE_TO_PA_ARRAY_METHOD} in {} - we can autogenerate the code for this", ext_class.file_name));
+                format!(
+                    "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
+                    ext_class.name
+                )
+            } else {
+                automatic_arrow_serialization
+            }
         }
-    });
+        Err(err) => {
+            if ext_class.has_native_to_pa_array {
+                format!(
+                    "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
+                    ext_class.name
+                )
+            } else {
+                format!(
+                    r#"raise NotImplementedError("Arrow serialization of {name} not implemented: {err}") # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}"#,
+                    ext_class.file_name
+                )
+            }
+        }
+    };
 
     let type_superclass_decl = if type_superclasses.is_empty() {
         String::new()
@@ -1837,6 +1826,350 @@ fn quote_arrow_support_from_obj(
             "#
         ))
     }
+}
+
+fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
+    match t {
+        Type::UInt8 => Some("np.uint8"),
+        Type::UInt16 => Some("np.uint16"),
+        Type::UInt32 => Some("np.uint32"),
+        Type::UInt64 => Some("np.uint64"),
+        Type::Int8 => Some("np.int8"),
+        Type::Int16 => Some("np.int16"),
+        Type::Int32 => Some("np.int32"),
+        Type::Int64 => Some("np.int64"),
+        Type::Bool => Some("np.bool_"),
+        Type::Float16 => Some("np.float16"),
+        Type::Float32 => Some("np.float32"),
+        Type::Float64 => Some("np.float64"),
+        Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(_) => {
+            None
+        }
+    }
+}
+
+/// Only implemented for some cases.
+fn quote_arrow_serialization(
+    reporter: &Reporter,
+    objects: &Objects,
+    obj: &Object,
+    arrow_registry: &ArrowRegistry,
+) -> Result<String, String> {
+    let Object { name, .. } = obj;
+
+    match obj.class {
+        ObjectClass::Struct => {
+            if obj.is_arrow_transparent() {
+                if obj.fields.len() != 1 {
+                    reporter.error(
+                        &obj.virtpath,
+                        &obj.fqname,
+                        "Arrow-transparent structs must have exactly one field",
+                    );
+                } else if obj.fields[0].typ == Type::String {
+                    return Ok(unindent(
+                        r##"
+                            if isinstance(data, str):
+                                array = [data]
+                            elif isinstance(data, Sequence):
+                                array = [str(datum) for datum in data]
+                            else:
+                                array = [str(data)]
+
+                            return pa.array(array, type=data_type)
+                        "##,
+                    ));
+                } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
+                    if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
+                        if !obj.is_testing() {
+                            reporter.warn(
+                                &obj.virtpath,
+                                &obj.fqname,
+                                format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
+                            );
+                        }
+                    } else {
+                        return Ok(unindent(&format!(
+                            r##"
+                                array = np.asarray(data, dtype={np_dtype}).flatten()
+                                return pa.array(array, type=data_type)
+                            "##
+                        )));
+                    }
+                }
+            }
+
+            let mut code = String::new();
+
+            code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
+            code.push_indented(0, &format!("if isinstance(data, {name}):"), 1);
+            code.push_indented(1, "data = [data]", 2);
+
+            code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
+            code.push_indented(1, "[", 1);
+            for field in &obj.fields {
+                let Type::Object(field_fqname) = &field.typ else {
+                    return Err(
+                        "We lack codegen for arrow-serialization of general structs".to_owned()
+                    );
+                };
+                let field_obj = &objects[field_fqname];
+                let field_type_name = &field_obj.name;
+                let field_name = &field.name;
+                let field_batch_type = format!("{field_type_name}Batch");
+                // let field_batch_type = format!("datatypes.{field_type_name}Batch");
+                let field_array = format!("[x.{field_name} for x in data]");
+                let field_fwd =
+                    format!("{field_batch_type}({field_array}).as_arrow_array().storage,");
+                code.push_indented(2, &field_fwd, 1);
+            }
+            code.push_indented(1, "],", 1);
+            code.push_indented(1, "fields=list(data_type),", 1);
+            code.push_indented(0, ")", 1);
+
+            Ok(code)
+        }
+
+        ObjectClass::Enum => {
+            // Generate case-insensitive string-to-enum conversion:
+            let match_names = obj
+                .fields
+                .iter()
+                .map(|f| {
+                    let newline = '\n';
+                    let variant = f.pascal_case_name();
+                    let lowercase_variant = variant.to_lowercase();
+                    format!(
+                        r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#
+                    )
+                })
+                .format("\n")
+                .to_string();
+
+            let match_names = indent::indent_all_by(8, match_names);
+            let num_variants = obj.fields.len();
+
+            Ok(unindent(&format!(
+                r##"
+if isinstance(data, ({name}, int, str)):
+    data = [data]
+
+types: list[int] = []
+
+for value in data:
+    if value is None:
+        types.append(0)
+    elif isinstance(value, {name}):
+        types.append(value.value) # Actual enum value
+    elif isinstance(value, int):
+        types.append(value) # By number
+    elif isinstance(value, str):
+        if hasattr({name}, value):
+            types.append({name}[value].value) # fast path
+{match_names}
+        else:
+            raise ValueError(f"Unknown {name} kind: {{value}}")
+    else:
+        raise ValueError(f"Unknown {name} kind: {{value}}")
+
+buffers = [
+    None,
+    pa.array(types, type=pa.int8()).buffers()[1],
+]
+children = (1 + {num_variants}) * [pa.nulls(len(data))]
+
+return pa.UnionArray.from_buffers(
+    type=data_type,
+    length=len(data),
+    buffers=buffers,
+    children=children,
+)
+        "##
+            )))
+        }
+
+        ObjectClass::Union => {
+            let mut variant_list_decls = String::new();
+            let mut variant_list_push_arms = String::new();
+            let mut child_list_push = String::new();
+
+            // List of all possible types that could be in the incoming data that aren't sequences.
+            let mut possible_singular_types = HashSet::new();
+            possible_singular_types.insert(name.clone());
+            if let Some(aliases) = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES) {
+                possible_singular_types.extend(aliases.split(',').map(|s| s.trim().to_owned()));
+            }
+
+            // Checking for the variant and adding it to a flat list.
+            // We only have a 'kind' field if the enum is not distinguished by type.
+            let type_based_variants = obj
+                .fields
+                .iter()
+                .map(|f| quote_field_type_from_field(objects, f, false).0)
+                .all_unique();
+
+            for (idx, field) in obj.fields.iter().enumerate() {
+                let kind = field.snake_case_name();
+                let variant_kind_list = format!("variant_{kind}");
+                let (field_type, _) = quote_field_type_from_field(objects, field, false);
+
+                possible_singular_types.insert(field_type.clone());
+
+                // Build lists of variants.
+                let variant_list_decl = if field.typ == Type::Unit {
+                    format!("{variant_kind_list}: int = 0")
+                } else {
+                    format!("{variant_kind_list}: list[{field_type}] = []")
+                };
+                variant_list_decls.push_unindented(variant_list_decl, 1);
+
+                let if_or_elif = if idx == 0 { "if" } else { "elif" };
+
+                let kind_check = if type_based_variants {
+                    format!("isinstance(value.inner, {field_type})")
+                } else {
+                    format!(r#"value.kind == "{kind}""#)
+                };
+                variant_list_push_arms.push_indented(2, format!("{if_or_elif} {kind_check}:"), 1);
+
+                let (value_offset_update, append_to_variant_kind_list) = if field.typ == Type::Unit
+                {
+                    (
+                        format!("value_offsets.append({variant_kind_list})"),
+                        format!("{variant_kind_list} += 1"),
+                    )
+                } else {
+                    let ignore_type_check = if type_based_variants {
+                        ""
+                    } else {
+                        // my-py doesn't know that this has the right type now.
+                        "# type: ignore[arg-type]"
+                    };
+                    (
+                        format!("value_offsets.append(len({variant_kind_list}))"),
+                        format!("{variant_kind_list}.append(value.inner) {ignore_type_check}"),
+                    )
+                };
+                variant_list_push_arms.push_indented(3, value_offset_update, 1);
+                variant_list_push_arms.push_indented(3, append_to_variant_kind_list, 1);
+                variant_list_push_arms.push_indented(3, format!("types.append({})", idx + 1), 1); // 0 is reserved for nulls
+
+                // Converting the variant list to a pa array.
+                let variant_list_to_pa_array = match &field.typ {
+                    Type::Object(fqname) => {
+                        let field_type_name = &objects[fqname].name;
+                        format!(
+                            "{field_type_name}Batch({variant_kind_list}).as_arrow_array().storage"
+                        )
+                    }
+                    Type::Unit => {
+                        format!("pa.nulls({variant_kind_list})")
+                    }
+                    Type::UInt8
+                    | Type::UInt16
+                    | Type::UInt32
+                    | Type::UInt64
+                    | Type::Int8
+                    | Type::Int16
+                    | Type::Int32
+                    | Type::Int64
+                    | Type::Bool
+                    | Type::Float16
+                    | Type::Float32
+                    | Type::Float64
+                    | Type::String => {
+                        let datatype = quote_arrow_datatype(&arrow_registry.get(&field.fqname));
+                        format!("pa.array({variant_kind_list}, type={datatype})")
+                    }
+                    Type::Array { .. } | Type::Vector { .. } => {
+                        return Err(format!(
+                            "We lack codegen for arrow-serialization of unions containing lists. Can't handle type {}",
+                            field.fqname
+                        ));
+                    }
+                };
+                child_list_push.push_indented(1, format!("{variant_list_to_pa_array},"), 1);
+            }
+
+            let singular_checks = possible_singular_types
+                .into_iter()
+                .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
+                .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
+                .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
+                .map(|typename| {
+                    if typename == "None" {
+                        "type(None)".to_owned() // `NoneType` requires Python 3.10.
+                    } else {
+                        typename
+                    }
+                })
+                .join(", ");
+
+            let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
+            Ok(format!(
+                r##"
+{batch_type_imports}
+from typing import cast
+
+# TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+# If we can call iter, it may be that one of the variants implements __iter__.
+if not hasattr(data, "__iter__") or isinstance(data, ({singular_checks})): # type: ignore[arg-type]
+    data = [data] # type: ignore[list-item]
+data = cast(Sequence[{name}Like], data) # type: ignore[redundant-cast]
+
+types: list[int] = []
+value_offsets: list[int] = []
+
+num_nulls = 0
+{variant_list_decls}
+
+for value in data:
+    if value is None:
+        value_offsets.append(num_nulls)
+        num_nulls += 1
+        types.append(0)
+    else:
+        if not isinstance(value, {name}):
+            value = {name}(value)
+{variant_list_push_arms}
+
+buffers = [
+    None,
+    pa.array(types, type=pa.int8()).buffers()[1],
+    pa.array(value_offsets, type=pa.int32()).buffers()[1],
+]
+children = [
+    pa.nulls(num_nulls),
+{child_list_push}
+]
+
+return pa.UnionArray.from_buffers(
+    type=data_type,
+    length=len(data),
+    buffers=buffers,
+    children=children,
+)
+        "##
+            ))
+        }
+    }
+}
+
+fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
+    let mut code = String::new();
+
+    for field in fields {
+        let Type::Object(field_fqname) = &field.typ else {
+            continue;
+        };
+        if let Some(last_dot) = field_fqname.rfind('.') {
+            let mod_path = &field_fqname[..last_dot];
+            let field_type_name = &field_fqname[last_dot + 1..];
+
+            code.push_unindented(format!("from {mod_path} import {field_type_name}Batch"), 1);
+        }
+    }
+    code
 }
 
 fn quote_parameter_type_alias(
@@ -1947,7 +2280,8 @@ fn quote_init_method(
         obj.fields
             .iter()
             .filter_map(|field| {
-                if field.docs.doc.is_empty() {
+                let doc_content = field.docs.doc_lines_for_untagged_and("py");
+                if doc_content.is_empty() {
                     if !field.is_testing() && obj.fields.len() > 1 {
                         reporter.error(
                             &field.virtpath,
@@ -1957,8 +2291,6 @@ fn quote_init_method(
                     }
                     None
                 } else {
-                    let doc_content =
-                        crate::codegen::get_documentation(&field.docs, &["py", "python"]);
                     Some(format!(
                         "{}:\n    {}",
                         field.name,
@@ -1968,15 +2300,10 @@ fn quote_init_method(
             })
             .collect::<Vec<_>>()
     };
-    let doc_typedesc = match obj.kind {
-        ObjectKind::Datatype => "datatype",
-        ObjectKind::Component => "component",
-        ObjectKind::Archetype => "archetype",
-    };
-
     let mut doc_string_lines = vec![format!(
-        "Create a new instance of the {} {doc_typedesc}.",
-        obj.name
+        "Create a new instance of the {} {}.",
+        obj.name,
+        obj.kind.singular_name().to_lowercase()
     )];
     if !parameter_docs.is_empty() {
         doc_string_lines.push("\n".to_owned());

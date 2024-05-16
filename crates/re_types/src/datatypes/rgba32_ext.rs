@@ -1,13 +1,22 @@
 use super::Rgba32;
 
 impl Rgba32 {
+    /// Black and opaque.
+    pub const BLACK: Self = Self::from_rgb(0, 0, 0);
+
+    /// White and opaque.
     pub const WHITE: Self = Self::from_rgb(255, 255, 255);
 
+    /// Fully transparent (invisible).
+    pub const TRANSPARENT: Self = Self::from_unmultiplied_rgba(0, 0, 0, 0);
+
+    /// From gamma-space sRGB values.
     #[inline]
     pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self::from_unmultiplied_rgba(r, g, b, 255)
     }
 
+    /// From gamma-space sRGB values, with a separate/unmultiplied alpha in linear-space.
     #[inline]
     pub const fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         let [r, g, b, a] = [r as u32, g as u32, b as u32, a as u32];
@@ -85,6 +94,13 @@ impl From<Rgba32> for ecolor::Rgba {
 #[cfg(feature = "ecolor")]
 impl From<ecolor::Rgba> for Rgba32 {
     fn from(val: ecolor::Rgba) -> Self {
+        val.to_srgba_unmultiplied().into()
+    }
+}
+
+#[cfg(feature = "ecolor")]
+impl From<ecolor::Color32> for Rgba32 {
+    fn from(val: ecolor::Color32) -> Self {
         val.to_srgba_unmultiplied().into()
     }
 }

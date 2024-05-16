@@ -1,5 +1,5 @@
 mod generic_skybox;
-pub use generic_skybox::GenericSkyboxDrawData;
+pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 
 mod lines;
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};

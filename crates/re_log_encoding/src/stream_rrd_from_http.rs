@@ -5,17 +5,26 @@ use std::sync::Arc;
 use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 
+/// Stream an rrd file from a HTTP server.
+///
+/// If `follow_if_http` is `true`, and the url is an HTTP source, the viewer will open the stream
+/// in `Following` mode rather than `Playing` mode.
+///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_rrd_from_http_to_channel(
     url: String,
+    follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
-        re_smart_channel::SmartChannelSource::RrdHttpStream { url: url.clone() },
+        re_smart_channel::SmartChannelSource::RrdHttpStream {
+            url: url.clone(),
+            follow,
+        },
     );
     stream_rrd_from_http(
-        url,
+        url.clone(),
         Arc::new(move |msg| {
             if let Some(on_msg) = &on_msg {
                 on_msg();
@@ -25,17 +34,17 @@ pub fn stream_rrd_from_http_to_channel(
                     if tx.send(msg).is_ok() {
                         ControlFlow::Continue(())
                     } else {
-                        re_log::info!("Failed to send log message to viewer - closing");
+                        re_log::info_once!("Closing connection to {url}");
                         ControlFlow::Break(())
                     }
                 }
                 HttpMessage::Success => {
-                    tx.quit(None).warn_on_err_once("failed to send quit marker");
+                    tx.quit(None).warn_on_err_once("Failed to send quit marker");
                     ControlFlow::Break(())
                 }
                 HttpMessage::Failure(err) => {
                     tx.quit(Some(err))
-                        .warn_on_err_once("failed to send quit marker");
+                        .warn_on_err_once("Failed to send quit marker");
                     ControlFlow::Break(())
                 }
             }
@@ -118,6 +127,8 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
 }
 
 #[cfg(target_arch = "wasm32")]
+// TODO(#3408): remove unwrap()
+#[allow(clippy::unwrap_used)]
 mod web_event_listener {
     use super::HttpMessageCallback;
     use js_sys::Uint8Array;
@@ -157,7 +168,9 @@ mod web_event_listener {
 pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
-mod web_decode {
+// TODO(#3408): remove unwrap()
+#[allow(clippy::unwrap_used)]
+pub mod web_decode {
     use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;
 

@@ -1,4 +1,4 @@
-# Spatial Transforms
+# Spatial transforms
 
 Spatial transforms are transforms that apply the spatial 2D & 3D space views.
 This includes affine 2D/3D transforms as well as camera projections.

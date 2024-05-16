@@ -6,6 +6,9 @@ use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 pub enum TimeZone {
     Local,
     Utc,
+
+    /// Seconds since unix epoch
+    UnixEpoch,
 }
 
 /// A date-time represented as nanoseconds since unix epoch
@@ -91,6 +94,7 @@ impl Time {
             TimeZone::Utc => {
                 format!("{}Z", datetime.format(&parsed_format).unwrap())
             }
+            TimeZone::UnixEpoch => datetime.format(&parsed_format).unwrap(),
         }
     }
 
@@ -101,19 +105,23 @@ impl Time {
         if let Some(datetime) = self.to_datetime() {
             let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
             let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
+            let prefix = match time_zone_for_timestamps {
+                TimeZone::UnixEpoch => "[unix_timestamp]",
+                TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
+            };
 
             let time_format = if is_whole_second {
-                "[hour]:[minute]:[second]"
+                prefix.to_owned()
             } else if is_whole_millisecond {
-                "[hour]:[minute]:[second].[subsecond digits:3]"
+                format!("{prefix}.[subsecond digits:3]")
             } else {
-                "[hour]:[minute]:[second].[subsecond digits:6]"
+                format!("{prefix}.[subsecond digits:6]")
             };
 
             let date_is_today = datetime.date() == OffsetDateTime::now_utc().date();
             let date_format = format!("[year]-[month]-[day] {time_format}");
             let parsed_format = if date_is_today {
-                time::format_description::parse(time_format).unwrap()
+                time::format_description::parse(&time_format).unwrap()
             } else {
                 time::format_description::parse(&date_format).unwrap()
             };
@@ -124,11 +132,13 @@ impl Time {
             let secs = nanos_since_epoch as f64 * 1e-9;
 
             let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
-            if is_whole_second {
-                format!("{secs:+.0}s")
-            } else {
-                format!("{secs:+.3}s")
-            }
+
+            let secs = re_format::FloatFormatOptions::DEFAULT_f64
+                .with_always_sign(true)
+                .with_decimals(if is_whole_second { 0 } else { 3 })
+                .with_strip_trailing_zeros(false)
+                .format(secs);
+            format!("{secs}s")
         }
     }
 
@@ -147,9 +157,15 @@ impl Time {
                 let time_format = if self.is_exactly_midnight() {
                     "[year]-[month]-[day]"
                 } else if is_whole_minute {
-                    "[hour]:[minute]"
+                    match time_zone_for_timestamps {
+                        TimeZone::UnixEpoch => "[unix_timestamp]",
+                        TimeZone::Utc | TimeZone::Local => "[hour]:[minute]",
+                    }
                 } else {
-                    "[hour]:[minute]:[second]"
+                    match time_zone_for_timestamps {
+                        TimeZone::UnixEpoch => "[unix_timestamp]",
+                        TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
+                    }
                 };
                 let parsed_format = time::format_description::parse(time_format).unwrap();
 
@@ -295,11 +311,28 @@ mod tests {
             "+42s"
         );
         assert_eq!(
+            &Time::from_us_since_epoch(42_123_000_000).format(TimeZone::Local),
+            "+42 123s"
+        );
+        assert_eq!(
             &Time::from_us_since_epoch(69_000).format(TimeZone::Local),
             "+0.069s"
         );
         assert_eq!(
             &Time::from_us_since_epoch(69_900).format(TimeZone::Local),
+            "+0.070s"
+        );
+
+        assert_eq!(
+            &Time::from_us_since_epoch(42_000_000).format(TimeZone::UnixEpoch),
+            "+42s"
+        );
+        assert_eq!(
+            &Time::from_us_since_epoch(69_000).format(TimeZone::UnixEpoch),
+            "+0.069s"
+        );
+        assert_eq!(
+            &Time::from_us_since_epoch(69_900).format(TimeZone::UnixEpoch),
             "+0.070s"
         );
     }

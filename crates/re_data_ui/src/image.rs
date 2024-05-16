@@ -1,23 +1,50 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
-use re_log_types::RowId;
+use re_log_types::{EntityPath, RowId};
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{ClassId, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiVerbosity,
+    gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
 };
 
-use crate::image_meaning_for_entity;
+use crate::{image_meaning_for_entity, label_for_ui_layout};
 
 use super::EntityDataUi;
 
 pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
-    format!("[{}]", shape.iter().join(", "))
+    const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
+    let iter = shape.iter().take(MAX_SHOWN);
+    let labelled = iter.clone().any(|dim| dim.name.is_some());
+    let shapes = iter
+        .map(|dim| {
+            format!(
+                "{}{}",
+                dim.size,
+                if let Some(name) = &dim.name {
+                    format!(" ({name})")
+                } else {
+                    String::new()
+                }
+            )
+        })
+        .join(if labelled { " × " } else { "×" });
+    format!(
+        "{shapes}{}",
+        if shape.len() > MAX_SHOWN {
+            if labelled {
+                " × …"
+            } else {
+                "×…"
+            }
+        } else {
+            ""
+        }
+    )
 }
 
 impl EntityDataUi for re_types::components::TensorData {
@@ -25,18 +52,18 @@ impl EntityDataUi for re_types::components::TensorData {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        entity_path: &re_log_types::EntityPath,
+        ui_layout: UiLayout,
+        entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!();
 
+        // TODO(#5607): what should happen if the promise is still pending?
         let tensor_data_row_id = ctx
-            .entity_db
-            .store()
-            .query_latest_component::<re_types::components::TensorData>(entity_path, query)
-            .map_or(RowId::ZERO, |tensor| tensor.row_id);
+            .recording()
+            .latest_at_component::<re_types::components::TensorData>(entity_path, query)
+            .map_or(RowId::ZERO, |tensor| tensor.index.1);
 
         let decoded = ctx
             .cache
@@ -47,9 +74,9 @@ impl EntityDataUi for re_types::components::TensorData {
                 tensor_ui(
                     ctx,
                     query,
-                    store,
+                    db,
                     ui,
-                    verbosity,
+                    ui_layout,
                     entity_path,
                     &annotations,
                     tensor_data_row_id,
@@ -58,7 +85,7 @@ impl EntityDataUi for re_types::components::TensorData {
                 );
             }
             Err(err) => {
-                ui.label(ctx.re_ui.error_text(err.to_string()));
+                label_for_ui_layout(ui, ui_layout, ctx.re_ui.error_text(err.to_string()));
             }
         }
     }
@@ -68,9 +95,9 @@ impl EntityDataUi for re_types::components::TensorData {
 pub fn tensor_ui(
     ctx: &ViewerContext<'_>,
     query: &re_data_store::LatestAtQuery,
-    store: &re_data_store::DataStore,
+    db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    verbosity: UiVerbosity,
+    ui_layout: UiLayout,
     entity_path: &re_entity_db::EntityPath,
     annotations: &Annotations,
     tensor_data_row_id: RowId,
@@ -84,12 +111,12 @@ pub fn tensor_ui(
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
     let debug_name = entity_path.to_string();
 
-    let meaning = image_meaning_for_entity(entity_path, query, store);
+    let meaning = image_meaning_for_entity(entity_path, query, db.store());
 
     let meter = if meaning == TensorDataMeaning::Depth {
-        ctx.entity_db
-            .store()
-            .query_latest_component::<DepthMeter>(entity_path, query)
+        // TODO(#5607): what should happen if the promise is still pending?
+        ctx.recording()
+            .latest_at_component::<DepthMeter>(entity_path, query)
             .map(|meter| meter.value.0)
     } else {
         None
@@ -106,8 +133,8 @@ pub fn tensor_ui(
     )
     .ok();
 
-    match verbosity {
-        UiVerbosity::Small => {
+    match ui_layout {
+        UiLayout::List => {
             ui.horizontal(|ui| {
                 if let Some(texture) = &texture_result {
                     // We want all preview images to take up the same amount of space,
@@ -151,17 +178,12 @@ pub fn tensor_ui(
                     ],
                     None => tensor.shape.clone(),
                 };
-                ui.label(format!(
-                    "{} x {}{}",
-                    tensor.dtype(),
-                    format_tensor_shape_single_line(shape.as_slice()),
-                    if original_tensor.buffer.is_compressed_image() {
-                        " (compressed)"
-                    } else {
-                        ""
-                    }
-                ))
-                .on_hover_ui(|ui| {
+                let text = format!(
+                    "{}, {}",
+                    original_tensor.dtype(),
+                    format_tensor_shape_single_line(&shape)
+                );
+                label_for_ui_layout(ui, ui_layout, text).on_hover_ui(|ui| {
                     tensor_summary_ui(
                         ctx.re_ui,
                         ui,
@@ -175,7 +197,7 @@ pub fn tensor_ui(
             });
         }
 
-        UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
+        UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight | UiLayout::Tooltip => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
                 tensor_summary_ui(
@@ -717,8 +739,12 @@ fn tensor_pixel_value_ui(
             3 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let Some([r, g, b]) = match &tensor.buffer {
-                    TensorBuffer::Nv12(_) => tensor.get_nv12_pixel(x, y),
-                    TensorBuffer::Yuy2(_) => tensor.get_yuy2_pixel(x, y),
+                    TensorBuffer::Nv12(_) => tensor
+                        .get_nv12_pixel(x, y)
+                        .map(|rgb| rgb.map(TensorElement::U8)),
+                    TensorBuffer::Yuy2(_) => tensor
+                        .get_yuy2_pixel(x, y)
+                        .map(|rgb| rgb.map(TensorElement::U8)),
                     _ => {
                         if let [Some(r), Some(g), Some(b)] = [
                             tensor.get_with_image_coords(x, y, 0),

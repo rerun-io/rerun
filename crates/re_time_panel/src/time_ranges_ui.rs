@@ -10,7 +10,7 @@ use egui::emath::Rangef;
 use egui::{lerp, remap, NumExt};
 use itertools::Itertools as _;
 
-use re_log_types::{TimeInt, TimeRange, TimeRangeF, TimeReal};
+use re_log_types::{ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal};
 use re_viewer_context::{PlayState, TimeControl, TimeView};
 
 /// The ideal gap between time segments.
@@ -24,7 +24,7 @@ const MAX_GAP: f64 = 40.0;
 const GAP_EXPANSION_FRACTION: f64 = 1.0 / 4.0;
 
 /// Sze of the gap between time segments.
-pub fn gap_width(x_range: &Rangef, segments: &[TimeRange]) -> f64 {
+pub fn gap_width(x_range: &Rangef, segments: &[ResolvedTimeRange]) -> f64 {
     let num_gaps = segments.len().saturating_sub(1);
     if num_gaps == 0 {
         // gap width doesn't matter when there are no gaps
@@ -46,10 +46,10 @@ pub struct Segment {
     pub x: RangeInclusive<f64>,
 
     /// Matches [`Self::x`] (linear transform).
-    pub time: TimeRangeF,
+    pub time: ResolvedTimeRangeF,
 
     /// Does NOT match any of the above. Instead this is a tight bound.
-    pub tight_time: TimeRange,
+    pub tight_time: ResolvedTimeRange,
 }
 
 /// Represents a compressed view of time.
@@ -93,7 +93,7 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[TimeRange]) -> Self {
+    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[ResolvedTimeRange]) -> Self {
         re_tracing::profile_function!();
 
         debug_assert!(x_range.min < x_range.max);
@@ -123,8 +123,8 @@ impl TimeRangesUi {
                 .iter()
                 .tuple_windows()
                 .fold(f64::INFINITY, |shortest, (a, b)| {
-                    debug_assert!(a.max < b.min, "Overlapping time ranges: {a:?}, {b:?}");
-                    let time_gap = b.min - a.max;
+                    debug_assert!(a.max() < b.min(), "Overlapping time ranges: {a:?}, {b:?}");
+                    let time_gap = b.min() - a.max();
                     time_gap.as_f64().min(shortest)
                 });
 
@@ -148,9 +148,9 @@ impl TimeRangesUi {
                 let x_range =
                     (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
 
-                let time_range = TimeRangeF::new(
-                    tight_time_range.min - expansion_in_time,
-                    tight_time_range.max + expansion_in_time,
+                let time_range = ResolvedTimeRangeF::new(
+                    tight_time_range.min() - expansion_in_time,
+                    tight_time_range.max() + expansion_in_time,
                 );
 
                 Segment {
@@ -183,7 +183,7 @@ impl TimeRangesUi {
                 "Overlapping x in segments: {a:#?}, {b:#?}"
             );
             debug_assert!(
-                a.tight_time.max < b.tight_time.min,
+                a.tight_time.max() < b.tight_time.min(),
                 "Overlapping time in segments: {a:#?}, {b:#?}"
             );
         }
@@ -197,31 +197,9 @@ impl TimeRangesUi {
     pub fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
         if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
             time = time.clamp(
-                TimeReal::from(first.tight_time.min),
-                TimeReal::from(last.tight_time.max),
+                TimeReal::from(first.tight_time.min()),
+                TimeReal::from(last.tight_time.max()),
             );
-
-            // Special: don't allow users dragging time between
-            // BEGINNING (-∞ = timeless data) and some real time.
-            // Otherwise we get weird times (e.g. dates in 1923).
-            // Selecting times between other segments is not as problematic, as all other segments are
-            // real times, so interpolating between them always produces valid times
-            // (we want users to have a smooth experience dragging the time handle anywhere else).
-            // By disallowing times between BEGINNING and the first real segment,
-            // we also disallow users dragging the time to be between -∞ and the
-            // real beginning of their data. That further highlights the specialness of -∞.
-            if first.tight_time.contains(TimeInt::BEGINNING) {
-                if let Some(second) = self.segments.get(1) {
-                    let half_way =
-                        TimeRangeF::new(TimeInt::BEGINNING, second.tight_time.min).lerp(0.5);
-
-                    if time < half_way {
-                        time = TimeReal::from(TimeInt::BEGINNING);
-                    } else if time < second.tight_time.min {
-                        time = second.tight_time.min.into();
-                    }
-                }
-            }
         }
         time
     }
@@ -262,7 +240,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            time_ctrl.set_loop_selection(TimeRangeF::new(
+            time_ctrl.set_loop_selection(ResolvedTimeRangeF::new(
                 snapped_max - selection.length(),
                 snapped_max,
             ));
@@ -285,7 +263,8 @@ impl TimeRangesUi {
 
         for segment in &self.segments {
             if needle_time < segment.time.min {
-                let t = TimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
+                let t =
+                    ResolvedTimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
                 return Some(lerp(last_x..=*segment.x.start(), t));
             } else if needle_time <= segment.time.max {
                 let t = segment.time.inverse_lerp(needle_time);
@@ -317,7 +296,7 @@ impl TimeRangesUi {
         for segment in &self.segments {
             if needle_x < *segment.x.start() {
                 let t = remap(needle_x, last_x..=*segment.x.start(), 0.0..=1.0);
-                return Some(TimeRangeF::new(last_time, segment.time.min).lerp(t));
+                return Some(ResolvedTimeRangeF::new(last_time, segment.time.min).lerp(t));
             } else if needle_x <= *segment.x.end() {
                 let t = remap(needle_x, segment.x.clone(), 0.0..=1.0);
                 return Some(segment.time.lerp(t));
@@ -331,17 +310,14 @@ impl TimeRangesUi {
         Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time))
     }
 
-    pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> TimeRange {
+    pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> ResolvedTimeRange {
         let (min_x, max_x) = (*x_range.start(), *x_range.end());
-        TimeRange {
-            min: self
-                .time_from_x_f32(min_x)
+        ResolvedTimeRange::new(
+            self.time_from_x_f32(min_x)
                 .map_or(TimeInt::MIN, |tf| tf.floor()),
-
-            max: self
-                .time_from_x_f32(max_x)
+            self.time_from_x_f32(max_x)
                 .map_or(TimeInt::MAX, |tf| tf.ceil()),
-        }
+        )
     }
 
     /// Pan the view, returning the new view.
@@ -386,9 +362,9 @@ fn test_time_ranges_ui() {
             time_spanned: 14.2,
         },
         &[
-            TimeRange::new(TimeInt::from(0), TimeInt::from(0)),
-            TimeRange::new(TimeInt::from(1), TimeInt::from(5)),
-            TimeRange::new(TimeInt::from(10), TimeInt::from(100)),
+            ResolvedTimeRange::new(0, 0),
+            ResolvedTimeRange::new(1, 5),
+            ResolvedTimeRange::new(10, 100),
         ],
     );
 
@@ -428,8 +404,8 @@ fn test_time_ranges_ui_2() {
             time_spanned: 50.0,
         },
         &[
-            TimeRange::new(TimeInt::from(10), TimeInt::from(20)),
-            TimeRange::new(TimeInt::from(30), TimeInt::from(40)),
+            ResolvedTimeRange::new(10, 20),
+            ResolvedTimeRange::new(30, 40),
         ],
     );
 

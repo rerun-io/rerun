@@ -1,13 +1,12 @@
 //! Modal for adding a new space view of container to an existing target container.
 
-use itertools::Itertools;
-
-use crate::container::blueprint_id_to_tile_id;
-use crate::{icon_for_container_kind, ViewportBlueprint};
-use re_log_types::EntityPath;
 use re_space_view::SpaceViewBlueprint;
 use re_ui::ReUi;
-use re_viewer_context::{ContainerId, ViewerContext};
+use re_viewer_context::{
+    blueprint_id_to_tile_id, ContainerId, RecommendedSpaceView, ViewerContext,
+};
+
+use crate::{icon_for_container_kind, ViewportBlueprint};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {
@@ -31,7 +30,7 @@ impl AddSpaceViewOrContainerModal {
             ctx.re_ui,
             egui_ctx,
             || {
-                re_ui::modal::Modal::new("Add Space View or Container")
+                re_ui::modal::Modal::new("Add space view or container")
                     .min_width(500.0)
                     .full_span_content(true)
             },
@@ -111,20 +110,13 @@ fn modal_ui(
     for space_view in ctx
         .space_view_class_registry
         .iter_registry()
-        .sorted_by_key(|entry| entry.class.display_name())
-        .map(|entry| {
-            SpaceViewBlueprint::new(
-                entry.class.identifier(),
-                &EntityPath::root(),
-                Default::default(),
-            )
-        })
+        .map(|entry| SpaceViewBlueprint::new(entry.identifier, RecommendedSpaceView::root()))
     {
         let icon = space_view.class(ctx.space_view_class_registry).icon();
         let title = space_view
             .class(ctx.space_view_class_registry)
             .display_name();
-        let subtitle = format!("Create a new Space View to display {title} content.");
+        let subtitle = format!("Create a new space view to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
             viewport.add_space_views(std::iter::once(space_view), ctx, target_container, None);

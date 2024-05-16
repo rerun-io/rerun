@@ -5,64 +5,51 @@ on:
     branches:
       - "main"
 
+  # Can be triggered manually from within the UI or using the GH CLI,
+  # e.g. `gh workflow run on_push_main.yml --ref main`
+  workflow_dispatch:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
 jobs:
   checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   cpp_checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
-      FULL: "true"
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      CHANNEL: main
     secrets: inherit
 
   rust_checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      CHANNEL: main
     secrets: inherit
 
-  # Check that a CLEAN container with just `cargo` on it can build rerun:
-  clean-build:
-    name: cargo build on clean container
-    strategy:
-      matrix:
-        os: [ubuntu-latest-16-cores, macos-latest, windows-latest-8-cores]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.74.0
-
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-
-      - run: cargo build -p rerun
-        shell: bash
-
-  benches:
-    name: Benchmarks
-    uses: ./.github/workflows/reusable_bench.yml
+  python_checks:
+    name: Checks
+    uses: ./.github/workflows/reusable_checks_python.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
-      SAVE_BENCHES: true
-      BENCH_NAME: main
-      COMPARE_TO: main
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   deploy-docs:
-    needs: [checks, benches]
+    needs: [checks]
     name: Deploy Docs
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PY_DOCS_VERSION_NAME: "main"
       CPP_DOCS_VERSION_NAME: "main"
       RS_DOCS_VERSION_NAME: "head"
@@ -70,10 +57,10 @@ jobs:
     secrets: inherit
 
   build-web:
-    name: "Build Web"
+    name: "Build web viewer"
     uses: ./.github/workflows/reusable_build_web.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       CHANNEL: main
     secrets: inherit
 
@@ -82,17 +69,17 @@ jobs:
     needs: [build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   build-examples:
     name: "Build Examples"
-    needs: [build-wheel-linux]
+    needs: [build-wheel-linux-x64]
     uses: ./.github/workflows/reusable_build_examples.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       CHANNEL: main
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
 
   track-sizes:
@@ -100,7 +87,8 @@ jobs:
     needs: [build-web, build-examples]
     uses: ./.github/workflows/reusable_track_size.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      WITH_EXAMPLES: true
     secrets: inherit
 
   upload-examples:
@@ -108,262 +96,53 @@ jobs:
     needs: [build-examples]
     uses: ./.github/workflows/reusable_upload_examples.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
-  # Build rerun_c library binaries:
+  # TODO(emilk): build and test one additional platform, picked at random
 
-  build-rerun_c-and-upload-linux:
+  build-rerun_c-and-upload-linux-x64:
     needs: [checks]
     name: "Linux-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-    secrets: inherit
-
-  build-rerun_c-and-upload-macos-intel:
-    needs: [checks]
-    name: "Mac-Intel: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
-    secrets: inherit
-
-  build-rerun_c-and-upload-macos-arm:
-    needs: [checks]
-    name: "Mac-Arm: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
-    secrets: inherit
-
-  build-rerun_c-and-upload-windows:
-    needs: [checks]
-    name: "Windows-x64: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      PLATFORM: linux-x64
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
-  # Build rerun-cli (rerun binaries):
+  # TODO(emilk): build and test one additional platform, picked at random
 
-  build-rerun-cli-and-upload-linux:
+  build-rerun-cli-and-upload-linux-x64:
     needs: [checks]
     name: "Linux-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-    secrets: inherit
-
-  build-rerun-cli-and-upload-macos-intel:
-    needs: [checks]
-    name: "Mac-Intel: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
-    secrets: inherit
-
-  build-rerun-cli-and-upload-macos-arm:
-    needs: [checks]
-    name: "Mac-Arm: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
-    secrets: inherit
-
-  build-rerun-cli-and-upload-windows:
-    needs: [checks]
-    name: "Windows-x64: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      PLATFORM: linux-x64
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
+  # TODO(emilk): build and test one additional platform, picked at random
 
-  build-wheel-linux:
-    needs: [checks]
-    name: "Linux: Build & Upload Wheels"
+  build-wheel-linux-x64:
+    needs: [checks, build-rerun-cli-and-upload-linux-x64]
+    name: "Linux-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
       MODE: "pypi"
     secrets: inherit
 
-  build-wheel-windows:
-    needs: [checks]
-    name: "Windows: Build & Upload Wheels"
-    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
-    with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
-      MODE: "pypi"
-    secrets: inherit
-
-  build-wheel-macos-arm:
-    needs: [checks]
-    name: "Macos-Arm: Build & Upload Wheels"
-    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
-    with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      MODE: "pypi"
-    secrets: inherit
-
-  build-wheel-macos-intel:
-    needs: [checks]
-    name: "Macos-Intel: Build & Upload Wheels"
-    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
-    with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
-      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
-      MODE: "pypi"
-    secrets: inherit
-
-  test-wheel-linux:
-    needs: [checks, build-wheel-linux]
-    name: "Linux: Test Wheels"
+  test-wheel-linux-x64:
+    needs: [checks, build-wheel-linux-x64]
+    name: "Linux-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
-    secrets: inherit
-
-  test-wheel-windows:
-    needs: [checks, build-wheel-windows]
-    name: "Windows: Test Wheels"
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
-    secrets: inherit
-
-  generate-pip-index:
-    name: "Generate Pip Index"
-    needs:
-      [
-        build-wheel-linux,
-        build-wheel-windows,
-        build-wheel-macos-arm,
-        build-wheel-macos-intel,
-      ]
-    uses: ./.github/workflows/reusable_pip_index.yml
-    with:
-      CONCURRENCY: push-${{ github.ref_name }}
-    secrets: inherit
-
-  bundle-and-upload-rerun_cpp:
-    name: "Bundle and upload rerun_cpp_sdk.zip"
-    needs:
-      [
-        build-rerun_c-and-upload-linux,
-        build-rerun_c-and-upload-macos-intel,
-        build-rerun_c-and-upload-macos-arm,
-        build-rerun_c-and-upload-windows,
-      ]
-    uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
-    secrets: inherit
-
-  pre-release:
-    name: Pre Release
-    concurrency:
-      group: push-${{ github.ref_name }}-prerelease
-      cancel-in-progress: true
-    needs:
-      [
-        upload-web,
-        generate-pip-index,
-        build-rerun_c-and-upload-linux,
-        build-rerun_c-and-upload-macos-intel,
-        build-rerun_c-and-upload-macos-arm,
-        build-rerun_c-and-upload-windows,
-        build-rerun-cli-and-upload-linux,
-        build-rerun-cli-and-upload-macos-intel,
-        build-rerun-cli-and-upload-macos-arm,
-        build-rerun-cli-and-upload-windows,
-        bundle-and-upload-rerun_cpp,
-      ]
-    runs-on: "ubuntu-latest"
-    steps:
-      - name: Add SHORT_SHA env property with commit short sha
-        shell: bash
-        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
-
-      # First delete the old prerelease. If we don't do this, we don't get things like
-      # proper source-archives and changelog info.
-      # https://github.com/dev-drprasad/delete-tag-and-release
-      - uses: dev-drprasad/delete-tag-and-release@v0.2.1
-        with:
-          tag_name: prerelease
-          delete_release: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Create the actual prerelease
-      # https://github.com/ncipollo/release-action
-      - name: GitHub Release
-        uses: ncipollo/release-action@v1.12.0
-        with:
-          body: |
-            This is a prerelease. It is not intended for production use.
-            Please report any issues you find.
-
-            ## Example Hosted App
-            https://app.rerun.io/commit/${{ env.SHORT_SHA }}
-
-            ## Wheels can be installed with:
-            ```
-            pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA }}/wheels --upgrade rerun-sdk
-            ```
-            or
-            ```
-            pip install --pre -f https://github.com/rerun-io/rerun/releases/download/prerelease --upgrade rerun-sdk
-            ```
-
-            ## CMake fetch-content for C++ SDK
-            ```
-            include(FetchContent)
-            FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
-            FetchContent_MakeAvailable(rerun_sdk)
-            ```
-            or
-            ```
-            include(FetchContent)
-            FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip)
-            FetchContent_MakeAvailable(rerun_sdk)
-            ```
-
-          prerelease: true
-          name: "Development Build"
-          tag: "prerelease"
-          token: ${{ secrets.GITHUB_TOKEN }}
-          generateReleaseNotes: false
-          allowUpdates: true
-          removeArtifacts: true
-          replacesArtifacts: true
-
-  sync-release-assets:
-    needs: [pre-release]
-    name: "Sync pre-release assets & build.rerun.io"
-    uses: ./.github/workflows/reusable_sync_release_assets.yml
-    with:
-      CONCURRENCY: push-${{ github.ref_name }}
-      RELEASE_VERSION: prerelease
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit

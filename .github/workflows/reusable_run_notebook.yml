@@ -1,4 +1,4 @@
-name: Reusable Buld and Upload Notebook
+name: Reusable Build and Upload Notebook
 
 on:
   workflow_call:
@@ -15,6 +15,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-run-notebook
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   run-notebook:
     name: Run notebook
@@ -26,61 +30,59 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: rerunio/ci_docker:0.11.0
+      image: rerunio/ci_docker:0.14.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
 
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Download Wheel Artifact
-        uses: actions/download-artifact@v3
+      - uses: prefix-dev/setup-pixi@v0.6.0
+        with:
+          pixi-version: v0.20.0
+          environments: wheel-test
+
+      - name: Download Wheel
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
-          path: wheel_artifact
+          path: wheel
 
-      - name: Install wheel dependencies
-        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-        # This needs to be a separate step for some reason or the following step fails
-        # TODO(jleibs): pull these deps from pyproject.toml
-        shell: bash
+      - name: Get version
+        id: get-version
         run: |
-          pip install deprecated 'numpy>=1.23,<2' pillow>=9.5.0 pyarrow>=14.0.2 pytest==7.1.2
+          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
-      - name: Install downloaded wheel_artifact
+      - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
-        shell: bash
         run: |
-          pip install rerun-sdk --no-index --find-links wheel_artifact
+          pixi run -e wheel-test pip uninstall rerun-sdk
+          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Install Deps
-        shell: bash
-        run: |
-          pip install -r examples/python/notebook/requirements.txt
+        run: pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt
 
       - name: Create notebook
-        shell: bash
-        run: |
-          jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
+        run: pixi run -e wheel-test jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
 
       - id: "auth"
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload Notebook"
-        uses: google-github-actions/upload-cloud-storage@v1
+        uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "/tmp/cube.html"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/notebooks"
           parent: false
+          process_gcloudignore: false

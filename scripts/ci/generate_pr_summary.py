@@ -5,10 +5,8 @@ This script combines the GitHub and google cloud storage APIs
 to find and link to the builds associated with a given PR.
 
 This is expected to be run by the `reusable_pr_summary.yml` GitHub workflow.
-
-Requires the following packages:
-  pip install google-cloud-storage Jinja2 PyGithub
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,14 +45,15 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
         app_blob = viewer_bucket.blob(f"commit/{commit_short}/index.html")
         if app_blob.exists():
             print(f"Found web assets commit: {commit_short}")
-            found["hosted_app"] = f"https://app.rerun.io/commit/{commit_short}"
+            found["hosted_app"] = f"https://rerun.io/viewer/commit/{commit_short}"
 
         # Check if there are rerun_c libraries
         rerun_libraries_blobs = [
-            builds_bucket.blob(f"commit/{commit_short}/rerun_c/windows/rerun_c.lib"),
-            builds_bucket.blob(f"commit/{commit_short}/rerun_c/linux/librerun_c.a"),
-            builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"),
-            builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/windows-x64/rerun_c.lib"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/linux-arm64/librerun_c.a"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/linux-x64/librerun_c.a"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-arm64/librerun_c.a"),
+            builds_bucket.blob(f"commit/{commit_short}/rerun_c/macos-x64/librerun_c.a"),
         ]
         rerun_libraries = [f"https://build.rerun.io/{blob.name}" for blob in rerun_libraries_blobs if blob.exists()]
         if rerun_libraries:
@@ -88,7 +87,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
     template_path = os.path.join(os.path.dirname(os.path.relpath(__file__)), "templates/pr_results_summary.html")
 
     # Render the Jinja template with the found_builds variable
-    with open(template_path) as f:
+    with open(template_path, encoding="utf8") as f:
         template = Template(f.read())
 
     buffer = io.BytesIO(template.render(found_builds=found_builds, pr_number=pr_number).encode("utf-8"))

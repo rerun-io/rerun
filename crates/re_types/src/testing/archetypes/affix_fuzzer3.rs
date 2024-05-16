@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -95,10 +96,9 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer3Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 18usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.InstanceKey".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
@@ -120,11 +120,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 20usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer3Indicator".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
@@ -147,7 +146,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 20usize]> =
     });
 
 impl AffixFuzzer3 {
-    pub const NUM_COMPONENTS: usize = 20usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 18 optional
+    pub const NUM_COMPONENTS: usize = 19usize;
 }
 
 /// Indicator component for the [`AffixFuzzer3`] [`::re_types_core::Archetype`]
@@ -465,14 +465,11 @@ impl ::re_types_core::AsComponents for AffixFuzzer3 {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        0
-    }
 }
 
 impl AffixFuzzer3 {
+    /// Create a new `AffixFuzzer3`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             fuzz2001: None,

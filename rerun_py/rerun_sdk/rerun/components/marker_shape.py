@@ -21,15 +21,34 @@ class MarkerShape(Enum):
     """**Component**: Shape of a marker."""
 
     Circle = 1
+    """`⏺`"""
+
     Diamond = 2
+    """`◆`"""
+
     Square = 3
+    """`◼️`"""
+
     Cross = 4
+    """`x`"""
+
     Plus = 5
+    """`+`"""
+
     Up = 6
+    """`▲`"""
+
     Down = 7
+    """`▼`"""
+
     Left = 8
+    """`◀`"""
+
     Right = 9
+    """`▶`"""
+
     Asterisk = 10
+    """`*`"""
 
 
 MarkerShapeLike = Union[MarkerShape, str]
@@ -42,21 +61,19 @@ class MarkerShapeType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.sparse_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("Circle", pa.null(), nullable=True, metadata={}),
-                    pa.field("Diamond", pa.null(), nullable=True, metadata={}),
-                    pa.field("Square", pa.null(), nullable=True, metadata={}),
-                    pa.field("Cross", pa.null(), nullable=True, metadata={}),
-                    pa.field("Plus", pa.null(), nullable=True, metadata={}),
-                    pa.field("Up", pa.null(), nullable=True, metadata={}),
-                    pa.field("Down", pa.null(), nullable=True, metadata={}),
-                    pa.field("Left", pa.null(), nullable=True, metadata={}),
-                    pa.field("Right", pa.null(), nullable=True, metadata={}),
-                    pa.field("Asterisk", pa.null(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.sparse_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("Circle", pa.null(), nullable=True, metadata={}),
+                pa.field("Diamond", pa.null(), nullable=True, metadata={}),
+                pa.field("Square", pa.null(), nullable=True, metadata={}),
+                pa.field("Cross", pa.null(), nullable=True, metadata={}),
+                pa.field("Plus", pa.null(), nullable=True, metadata={}),
+                pa.field("Up", pa.null(), nullable=True, metadata={}),
+                pa.field("Down", pa.null(), nullable=True, metadata={}),
+                pa.field("Left", pa.null(), nullable=True, metadata={}),
+                pa.field("Right", pa.null(), nullable=True, metadata={}),
+                pa.field("Asterisk", pa.null(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

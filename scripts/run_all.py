@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Run all examples."""
+
 from __future__ import annotations
 
 import argparse
@@ -216,17 +217,15 @@ def run_sdk_build() -> None:
 
 def run_viewer_build(web: bool) -> None:
     print("Building Rerun Viewer…")
-    returncode = subprocess.Popen(
-        [
-            "cargo",
-            "build",
-            "-p",
-            "rerun-cli",
-            "--no-default-features",
-            "--features=web_viewer" if web else "--features=native_viewer",
-            "--quiet",
-        ]
-    ).wait()
+    returncode = subprocess.Popen([
+        "cargo",
+        "build",
+        "-p",
+        "rerun-cli",
+        "--no-default-features",
+        "--features=web_viewer" if web else "--features=native_viewer",
+        "--quiet",
+    ]).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
 
@@ -239,13 +238,11 @@ def run_install_requirements(examples: list[str]) -> None:
             args.extend(["-r", req])
 
     print("Installing examples requirements…")
-    returncode = subprocess.Popen(
-        [
-            "pip",
-            "install",
-            *args,
-        ]
-    ).wait()
+    returncode = subprocess.Popen([
+        "pip",
+        "install",
+        *args,
+    ]).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 
 

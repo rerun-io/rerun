@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -25,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### Simple batch of 3D Arrows
+/// ### Simple batch of 3D arrows
 /// ```ignore
 /// use std::f32::consts::TAU;
 ///
@@ -125,18 +126,17 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Vector3D".into(),
@@ -144,14 +144,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.Position3D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl Arrows3D {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`Arrows3D`] [`::re_types_core::Archetype`]
@@ -311,14 +311,11 @@ impl ::re_types_core::AsComponents for Arrows3D {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.vectors.len()
-    }
 }
 
 impl Arrows3D {
+    /// Create a new `Arrows3D`.
+    #[inline]
     pub(crate) fn new(
         vectors: impl IntoIterator<Item = impl Into<crate::components::Vector3D>>,
     ) -> Self {
@@ -332,6 +329,9 @@ impl Arrows3D {
         }
     }
 
+    /// All the origin (base) positions for each arrow in the batch.
+    ///
+    /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     #[inline]
     pub fn with_origins(
         mut self,
@@ -341,6 +341,10 @@ impl Arrows3D {
         self
     }
 
+    /// Optional radii for the arrows.
+    ///
+    /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+    /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -350,6 +354,7 @@ impl Arrows3D {
         self
     }
 
+    /// Optional colors for the points.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -359,6 +364,7 @@ impl Arrows3D {
         self
     }
 
+    /// Optional text labels for the arrows.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -368,6 +374,9 @@ impl Arrows3D {
         self
     }
 
+    /// Optional class Ids for the points.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

@@ -1,8 +1,8 @@
 [package]
 name = "extend_viewer_ui"
-version = "0.15.0-alpha.2"
+version = "0.16.0-alpha.4"
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.76"
 license = "MIT OR Apache-2.0"
 publish = false
 
@@ -21,6 +21,3 @@ re_sdk_comms = { path = "../../../crates/re_sdk_comms", features = ["server"] }
 
 # mimalloc is a much faster allocator:
 mimalloc = "0.1"
-
-# We need tokio for re_sdk_comms:
-tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }

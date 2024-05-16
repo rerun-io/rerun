@@ -26,6 +26,9 @@ table TensorData (
   "attr.python.array_aliases": "npt.ArrayLike",
   "attr.rust.derive": "PartialEq,"
 ) {
+  /// The shape of the tensor, including optional names for each dimension.
   shape: [rerun.datatypes.TensorDimension] (order: 200);
+
+  /// The content/data.
   buffer: rerun.datatypes.TensorBuffer (order: 300);
 }

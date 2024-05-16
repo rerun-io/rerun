@@ -1,5 +1,0 @@
-rerun-sdk
-#TODO(#4704): clean that up when pytorch is available for 3.12
-torch ; python_version < "3.12"
-transformers
-umap-learn

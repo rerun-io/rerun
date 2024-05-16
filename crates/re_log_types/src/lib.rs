@@ -8,8 +8,8 @@
 //! Some components, mostly transform related ones, are "mono-components".
 //! This means that Rerun makes assumptions that depend on this component
 //! only taking on a singular value for all instances of an Entity. Where possible,
-//! exposed APIs will force these components to be logged as a singular instance
-//! or a splat. However, it is an error with undefined behavior to manually use lower-level
+//! exposed APIs will force these components to be logged as a singular instance.
+//! However, it is an error with undefined behavior to manually use lower-level
 //! APIs to log a batched mono-component.
 //!
 //! This requirement is especially apparent with transforms:
@@ -17,17 +17,21 @@
 //! e.g. the entity `foo/bar/baz` is has the transform that is the product of
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 pub mod arrow_msg;
+pub mod example_components;
+pub mod hash;
+pub mod path;
+pub mod time_point;
+
 mod data_cell;
 mod data_row;
 mod data_table;
-pub mod example_components;
-pub mod hash;
-mod num_instances;
-pub mod path;
+mod instance;
+mod resolved_time_range;
 mod time;
-pub mod time_point;
-mod time_range;
 mod time_real;
 mod vec_deque_ext;
 
@@ -35,6 +39,8 @@ mod vec_deque_ext;
 mod data_table_batcher;
 
 use std::sync::Arc;
+
+use re_build_info::CrateVersion;
 
 pub use self::arrow_msg::{ArrowChunkReleaseCallback, ArrowMsg};
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
@@ -44,14 +50,16 @@ pub use self::data_row::{
 };
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
-    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, METADATA_KIND,
-    METADATA_KIND_CONTROL, METADATA_KIND_DATA,
+    ErasedTimeVec, RowIdVec, TableId, TimePointVec, METADATA_KIND, METADATA_KIND_CONTROL,
+    METADATA_KIND_DATA,
 };
-pub use self::num_instances::NumInstances;
+pub use self::instance::Instance;
 pub use self::path::*;
+pub use self::resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF};
 pub use self::time::{Duration, Time, TimeZone};
-pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
-pub use self::time_range::{TimeRange, TimeRangeF};
+pub use self::time_point::{
+    NonMinI64, TimeInt, TimePoint, TimeType, Timeline, TimelineName, TryFromIntError,
+};
 pub use self::time_real::TimeReal;
 pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
@@ -131,6 +139,11 @@ impl StoreId {
     }
 
     #[inline]
+    pub fn empty_recording() -> Self {
+        Self::from_string(StoreKind::Recording, "<EMPTY>".to_owned())
+    }
+
+    #[inline]
     pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
             kind,
@@ -149,6 +162,10 @@ impl StoreId {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.id.as_str()
+    }
+
+    pub fn is_empty_recording(&self) -> bool {
+        self.kind == StoreKind::Recording && self.id.as_str() == "<EMPTY>"
     }
 }
 
@@ -205,6 +222,58 @@ impl std::fmt::Display for ApplicationId {
 
 // ----------------------------------------------------------------------------
 
+/// Command used for activating a blueprint once it has been fully transmitted.
+///
+/// This command serves two purposes:
+/// - It is important that a blueprint is never activated before it has been fully
+///   transmitted. Displaying, or allowing a user to modify, a half-transmitted
+///   blueprint can cause confusion and bad interactions with the space view heuristics.
+/// - Additionally, this command allows fine-tuning the activation behavior itself
+///   by specifying whether the blueprint should be immediately activated, or only
+///   become the default for future activations.
+#[derive(Clone, Debug, PartialEq, Eq)] // `PartialEq` used for tests in another crate
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct BlueprintActivationCommand {
+    /// The blueprint this command refers to.
+    pub blueprint_id: StoreId,
+
+    /// Immediately make this the active blueprint for the associated `app_id`.
+    ///
+    /// Note that setting this to `false` does not mean the blueprint may not still end
+    /// up becoming active. In particular, if `make_default` is true and there is no other
+    /// currently active blueprint.
+    pub make_active: bool,
+
+    /// Make this the default blueprint for the `app_id`.
+    ///
+    /// The default blueprint will be used as the template when the user resets the
+    /// blueprint for the app. It will also become the active blueprint if no other
+    /// blueprint is currently active.
+    pub make_default: bool,
+}
+
+impl BlueprintActivationCommand {
+    /// Make `blueprint_id` the default blueprint for its associated `app_id`.
+    pub fn make_default(blueprint_id: StoreId) -> Self {
+        Self {
+            blueprint_id,
+            make_active: false,
+            make_default: true,
+        }
+    }
+
+    /// Immediately make `blueprint_id` the active blueprint for its associated `app_id`.
+    ///
+    /// This also sets `make_default` to true.
+    pub fn make_active(blueprint_id: StoreId) -> Self {
+        Self {
+            blueprint_id,
+            make_active: true,
+            make_default: true,
+        }
+    }
+}
+
 /// The most general log message sent from the SDK to the server.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
@@ -218,6 +287,13 @@ pub enum LogMsg {
 
     /// Log an entity using an [`ArrowMsg`].
     ArrowMsg(StoreId, ArrowMsg),
+
+    /// Send after all messages in a blueprint to signal that the blueprint is complete.
+    ///
+    /// This is so that the viewer can wait with activating the blueprint until it is
+    /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
+    /// and also lead to problems with space-view heuristics.
+    BlueprintActivationCommand(BlueprintActivationCommand),
 }
 
 impl LogMsg {
@@ -225,11 +301,31 @@ impl LogMsg {
         match self {
             Self::SetStoreInfo(msg) => &msg.info.store_id,
             Self::ArrowMsg(store_id, _) => store_id,
+            Self::BlueprintActivationCommand(cmd) => &cmd.blueprint_id,
+        }
+    }
+
+    pub fn set_store_id(&mut self, new_store_id: StoreId) {
+        match self {
+            LogMsg::SetStoreInfo(store_info) => {
+                store_info.info.store_id = new_store_id;
+            }
+            LogMsg::ArrowMsg(store_id, _) => {
+                *store_id = new_store_id;
+            }
+            LogMsg::BlueprintActivationCommand(cmd) => {
+                cmd.blueprint_id = new_store_id;
+            }
         }
     }
 }
 
 impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);
+impl_into_enum!(
+    BlueprintActivationCommand,
+    LogMsg,
+    BlueprintActivationCommand
+);
 
 // ----------------------------------------------------------------------------
 
@@ -251,6 +347,16 @@ pub struct StoreInfo {
     /// Should be unique for each recording.
     pub store_id: StoreId,
 
+    /// If this store is the result of a clone, which store was it cloned from?
+    ///
+    /// A cloned store always gets a new unique ID.
+    ///
+    /// We currently only clone stores for blueprints:
+    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
+    /// we clone it and make the clone the _active_ blueprint.
+    /// This means all active blueprints are clones.
+    pub cloned_from: Option<StoreId>,
+
     /// True if the recording is one of the official Rerun examples.
     pub is_official_example: bool,
 
@@ -261,7 +367,12 @@ pub struct StoreInfo {
 
     pub store_source: StoreSource,
 
-    pub store_kind: StoreKind,
+    /// The Rerun version used to encoded the RRD data.
+    ///
+    // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
+    // would probably only lead to more issues down the line.
+    #[serde(skip)]
+    pub store_version: Option<CrateVersion>,
 }
 
 impl StoreInfo {
@@ -372,11 +483,17 @@ impl std::fmt::Display for StoreSource {
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
 pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
-    (Timeline::log_time(), log_time.into())
+    (
+        Timeline::log_time(),
+        TimeInt::new_temporal(log_time.nanos_since_epoch()),
+    )
 }
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`TimePoint`].
 #[inline]
-pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
-    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
+pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
+    (
+        Timeline::new("frame_nr", TimeType::Sequence),
+        frame_nr.try_into().unwrap_or(TimeInt::MIN),
+    )
 }

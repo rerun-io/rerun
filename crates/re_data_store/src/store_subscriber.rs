@@ -156,10 +156,9 @@ mod tests {
     use ahash::HashSet;
 
     use re_log_types::{
-        example_components::{MyColor, MyPoint},
+        example_components::{MyColor, MyIndex, MyPoint},
         DataRow, RowId, StoreId, TimePoint, Timeline,
     };
-    use re_types_core::{components::InstanceKey, Loggable as _};
 
     use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber};
 
@@ -209,12 +208,10 @@ mod tests {
     fn store_subscriber() -> anyhow::Result<()> {
         let mut store1 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
         let mut store2 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
@@ -230,12 +227,12 @@ mod tests {
         let row = DataRow::from_component_batches(
             RowId::new(),
             TimePoint::from_iter([
-                (timeline_frame, 42.into()),      //
-                (timeline_other, 666.into()),     //
-                (timeline_yet_another, 1.into()), //
+                (timeline_frame, 42),      //
+                (timeline_other, 666),     //
+                (timeline_yet_another, 1), //
             ]),
             "entity_a".into(),
-            [&InstanceKey::from_iter(0..10) as _],
+            [&MyIndex::from_iter(0..10) as _],
         )?;
 
         expected_events.extend(store1.insert_row(&row));
@@ -249,8 +246,8 @@ mod tests {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 42.into()),      //
-                    (timeline_yet_another, 1.into()), //
+                    (timeline_frame, 42),      //
+                    (timeline_yet_another, 1), //
                 ]),
                 "entity_b".into(),
                 [&points as _, &colors as _],
@@ -264,10 +261,10 @@ mod tests {
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
             DataRow::from_component_batches(
                 RowId::new(),
-                TimePoint::timeless(),
+                TimePoint::default(),
                 "entity_b".into(),
                 [
-                    &InstanceKey::from_iter(0..num_instances as _) as _,
+                    &MyIndex::from_iter(0..num_instances as _) as _,
                     &colors as _,
                 ],
             )?

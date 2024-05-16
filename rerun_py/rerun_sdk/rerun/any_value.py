@@ -102,7 +102,8 @@ class AnyValues(AsComponents):
     ```python
     rr.log(
         "any_values", rr.AnyValues(
-            foo=[1.2, 3.4, 5.6], bar="hello world",
+            confidence=[1.2, 3.4, 5.6],
+            description="Bla bla bla…",
         ),
     )
     ```
@@ -118,9 +119,6 @@ class AnyValues(AsComponents):
          - The value must be able to be converted to an array of arrow types. In
            general, if you can pass it to [pyarrow.array][] you can log it as a
            extension component.
-
-        All values must either have the same length, or be singular in which
-        case they will be treated as a splat.
 
         Note: rerun requires that a given component only take on a single type.
         The first type logged will be the type that is used for all future logs

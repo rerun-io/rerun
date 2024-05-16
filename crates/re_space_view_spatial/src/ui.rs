@@ -3,27 +3,31 @@ use macaw::BoundingBox;
 
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
-use re_entity_db::EntityPath;
 use re_format::format_f32;
+use re_log_types::Instance;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
-use re_types::tensor_data::TensorDataMeaning;
+use re_types::{
+    blueprint::archetypes::Background,
+    components::{Color, DepthMeter, TensorData, ViewCoordinates},
+};
+use re_types::{blueprint::components::BackgroundKind, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
-    HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
-    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
+    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 
-use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
-    contexts::{AnnotationSceneContext, NonInteractiveEntities},
+    contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
 };
 use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
+
+use super::{eye::Eye, ui_3d::View3DState};
 
 /// Default auto point radius in UI points.
 const AUTO_POINT_RADIUS: f32 = 1.5;
@@ -48,7 +52,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-/// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View2DState`]/[`View3DState`], not the other way round.
+/// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View3DState`], not the other way round.
 #[derive(Clone, Default)]
 pub struct SpatialSpaceViewState {
     pub bounding_boxes: SceneBoundingBoxes,
@@ -59,7 +63,6 @@ pub struct SpatialSpaceViewState {
     /// Last frame's picking result.
     pub previous_picking_result: Option<PickingResult>,
 
-    pub(super) state_2d: View2DState,
     pub(super) state_3d: View3DState,
 
     /// Size of automatically sized objects. None if it wasn't configured.
@@ -88,136 +91,67 @@ impl SpatialSpaceViewState {
         config
     }
 
-    pub fn selection_ui(
+    pub fn bounding_box_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_origin: &EntityPath,
         spatial_kind: SpatialSpaceViewKind,
     ) {
-        let re_ui = ctx.re_ui;
-
-        let scene_view_coordinates = ctx
-            .entity_db
-            .store()
-            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
-            .map(|c| c.value);
-
         ctx.re_ui
-            .selection_grid(ui, "spatial_settings_ui")
+            .grid_left_hand_label(ui, "Bounding box")
+            .on_hover_text("The bounding box encompassing all Entities in the view right now");
+        ui.vertical(|ui| {
+            ui.style_mut().wrap = Some(false);
+            let BoundingBox { min, max } = self.bounding_boxes.current;
+            ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+            ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+            if spatial_kind == SpatialSpaceViewKind::ThreeD {
+                ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
+            }
+        });
+        ui.end_row();
+    }
+
+    /// Default sizes of points and lines.
+    pub fn default_sizes_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        let auto_size_world =
+            auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
+
+        ctx.re_ui.grid_left_hand_label(ui, "Default size");
+
+        egui::Grid::new("default_sizes")
+            .num_columns(2)
             .show(ui, |ui| {
-                let auto_size_world = auto_size_world_heuristic(
-                    &self.bounding_boxes.accumulated,
-                    self.scene_num_primitives,
-                );
-
-                ctx.re_ui.grid_left_hand_label(ui, "Default size");
-                ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.push_id("points", |ui| {
-                            size_ui(
-                                ui,
-                                2.0,
-                                auto_size_world,
-                                &mut self.auto_size_config.point_radius,
-                            );
-                        });
-                        ui.label("Point radius")
-                            .on_hover_text("Point radius used whenever not explicitly specified");
-                    });
-                    ui.horizontal(|ui| {
-                        ui.push_id("lines", |ui| {
-                            size_ui(
-                                ui,
-                                1.5,
-                                auto_size_world,
-                                &mut self.auto_size_config.line_radius,
-                            );
-                            ui.label("Line radius").on_hover_text(
-                                "Line radius used whenever not explicitly specified",
-                            );
-                        });
-                    });
-                });
-                ui.end_row();
-
                 ctx.re_ui
-                    .grid_left_hand_label(ui, "Camera")
-                    .on_hover_text("The virtual camera which controls what is shown on screen");
-                ui.vertical(|ui| {
-                    if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                        self.view_eye_ui(re_ui, ui, scene_view_coordinates);
-                    }
-                });
-                ui.end_row();
-
-                if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                    ctx.re_ui
-                        .grid_left_hand_label(ui, "Coordinates")
-                        .on_hover_text("The world coordinate system used for this view");
-                    ui.vertical(|ui| {
-                        let up_description =
-                            if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
-                                format!("Scene up is {scene_up}")
-                            } else {
-                                "Scene up is unspecified".to_owned()
-                            };
-                        ui.label(up_description).on_hover_ui(|ui| {
-                            re_ui::markdown_ui(
-                                ui,
-                                egui::Id::new("view_coordinates_tooltip"),
-                                "Set with `rerun.ViewCoordinates`.",
-                            );
-                        });
-
-                        if let Some(eye) = &self.state_3d.view_eye {
-                            if let Some(eye_up) = eye.eye_up() {
-                                ui.label(format!(
-                                    "Current camera-eye up-axis is {}",
-                                    format_vector(eye_up)
-                                ));
-                            }
-                        }
-
-                        re_ui
-                            .checkbox(ui, &mut self.state_3d.show_axes, "Show origin axes")
-                            .on_hover_text("Show X-Y-Z axes");
-                        re_ui
-                            .checkbox(ui, &mut self.state_3d.show_bbox, "Show bounding box")
-                            .on_hover_text("Show the current scene bounding box");
-                        re_ui
-                            .checkbox(
-                                ui,
-                                &mut self.state_3d.show_accumulated_bbox,
-                                "Show accumulated bounding box",
-                            )
-                            .on_hover_text(
-                                "Show bounding box accumulated over all rendered frames",
-                            );
-                    });
-                    ui.end_row();
-                }
-
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Bounding box")
-                    .on_hover_text(
-                        "The bounding box encompassing all Entities in the view right now",
+                    .grid_left_hand_label(ui, "Point radius")
+                    .on_hover_text("Point radius used whenever not explicitly specified");
+                ui.push_id("points", |ui| {
+                    size_ui(
+                        ui,
+                        2.0,
+                        auto_size_world,
+                        &mut self.auto_size_config.point_radius,
                     );
-                ui.vertical(|ui| {
-                    ui.style_mut().wrap = Some(false);
-                    let BoundingBox { min, max } = self.bounding_boxes.current;
-                    ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-                    ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-                    if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                        ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
-                    }
                 });
+                ui.end_row();
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Line radius")
+                    .on_hover_text("Line radius used whenever not explicitly specified");
+                size_ui(
+                    ui,
+                    1.5,
+                    auto_size_world,
+                    &mut self.auto_size_config.line_radius,
+                );
                 ui.end_row();
             });
+
+        ui.end_row();
     }
 
     // Say the name out loud. It is fun!
-    fn view_eye_ui(
+    pub fn view_eye_ui(
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
@@ -322,7 +256,7 @@ fn size_ui(
 
 pub fn create_labels(
     mut labels: Vec<UiLabel>,
-    ui_from_canvas: egui::emath::RectTransform,
+    ui_from_scene: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &egui::Ui,
     highlights: &SpaceViewHighlights,
@@ -330,7 +264,7 @@ pub fn create_labels(
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
-    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
     // Closest last (painters algorithm)
     labels.sort_by_key(|label| {
@@ -351,7 +285,7 @@ pub fn create_labels(
                 if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     continue;
                 }
-                let rect_in_ui = ui_from_canvas.transform_rect(rect);
+                let rect_in_ui = ui_from_scene.transform_rect(rect);
                 (
                     // Place the text centered below the rect
                     (rect_in_ui.width() - 4.0).at_least(60.0),
@@ -363,7 +297,7 @@ pub fn create_labels(
                 if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     continue;
                 }
-                let pos_in_ui = ui_from_canvas.transform_pos(pos);
+                let pos_in_ui = ui_from_scene.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
             }
             UiLabelTarget::Position3D(pos) => {
@@ -407,7 +341,7 @@ pub fn create_labels(
 
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
-            .index_highlight(label.labeled_instance.instance_key);
+            .index_highlight(label.labeled_instance.instance);
         let fill_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
@@ -427,7 +361,7 @@ pub fn create_labels(
         ));
 
         ui_rects.push(PickableUiRect {
-            rect: ui_from_canvas.inverse().transform_rect(bg_rect),
+            rect: ui_from_scene.inverse().transform_rect(bg_rect),
             instance_hash: label.labeled_instance,
         });
     }
@@ -529,7 +463,6 @@ pub fn picking(
         ctx.app_options.show_picking_debug_overlay,
     );
 
-    let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
 
@@ -548,66 +481,65 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.entity_db) else {
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
             continue;
         };
 
         if response.double_clicked() {
             // Select entire entity on double-click:
-            instance_path.instance_key = InstanceKey::SPLAT;
+            instance_path.instance = Instance::ALL;
         }
 
-        if non_interactive
-            .0
-            .contains(&instance_path.entity_path.hash())
-        {
+        let interactive = ctx
+            .lookup_query_result(query.space_view_id)
+            .tree
+            .lookup_result_by_path(&instance_path.entity_path)
+            .map_or(false, |result| result.accumulated_properties().interactive);
+        if !interactive {
             continue;
         }
 
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         // Special hover ui for images.
         let is_depth_cloud = images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
-        let picked_image_with_coords =
-            if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                let meaning = image_meaning_for_entity(
-                    &instance_path.entity_path,
-                    &query.latest_at_query(),
-                    store,
-                );
+        let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
+            || is_depth_cloud
+        {
+            let meaning = image_meaning_for_entity(
+                &instance_path.entity_path,
+                &query.latest_at_query(),
+                store,
+            );
 
-                store
-                    .query_latest_component::<TensorData>(
-                        &instance_path.entity_path,
-                        &ctx.current_query(),
-                    )
-                    .and_then(|tensor| {
-                        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                        // (the back-projection property may be true despite this not being a depth image!)
-                        if hit.hit_type != PickingHitType::TexturedRect
-                            && is_depth_cloud
-                            && meaning != TensorDataMeaning::Depth
-                        {
-                            None
-                        } else {
-                            let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id);
-                            tensor.image_height_width_channels().map(|[_, w, _]| {
-                                let coordinates = hit
-                                    .instance_path_hash
-                                    .instance_key
-                                    .to_2d_image_coordinate(w);
-                                (tensor_path_hash, tensor, meaning, coordinates)
-                            })
-                        }
-                    })
-            } else {
-                None
-            };
+            // TODO(#5607): what should happen if the promise is still pending?
+            ctx.recording()
+                .latest_at_component::<TensorData>(&instance_path.entity_path, &ctx.current_query())
+                .and_then(|tensor| {
+                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                    // (the back-projection property may be true despite this not being a depth image!)
+                    if hit.hit_type != PickingHitType::TexturedRect
+                        && is_depth_cloud
+                        && meaning != TensorDataMeaning::Depth
+                    {
+                        None
+                    } else {
+                        let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id());
+                        tensor.image_height_width_channels().map(|[_, w, _]| {
+                            let coordinates =
+                                hit.instance_path_hash.instance.to_2d_image_coordinate(w);
+                            (tensor_path_hash, tensor, meaning, coordinates)
+                        })
+                    }
+                })
+        } else {
+            None
+        };
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
-            instance_path.instance_key = InstanceKey::SPLAT;
+            instance_path.instance = Instance::ALL;
         }
 
         hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));
@@ -615,11 +547,10 @@ pub fn picking(
         response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
             picked_image_with_coords
         {
-            let meter = store
-                .query_latest_component::<DepthMeter>(
-                    &instance_path.entity_path,
-                    &ctx.current_query(),
-                )
+            // TODO(#5607): what should happen if the promise is still pending?
+            let meter = ctx
+                .recording()
+                .latest_at_component::<DepthMeter>(&instance_path.entity_path, &ctx.current_query())
                 .map(|meter| meter.value.0);
 
             // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
@@ -663,12 +594,18 @@ pub fn picking(
                 item_ui::instance_path_button(
                     ctx,
                     &query.latest_at_query(),
-                    store,
+                    ctx.recording(),
                     ui,
                     Some(query.space_view_id),
                     &instance_path,
                 );
-                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query(), store);
+                instance_path.data_ui(
+                    ctx,
+                    ui,
+                    UiLayout::Tooltip,
+                    &ctx.current_query(),
+                    ctx.recording(),
+                );
             })
         };
     }
@@ -688,7 +625,7 @@ pub fn picking(
 
     if let Some((_, context)) = hovered_items.first_mut() {
         *context = Some(match spatial_kind {
-            SpatialSpaceViewKind::TwoD => SelectedSpaceContext::TwoD {
+            SpatialSpaceViewKind::TwoD => ItemSpaceContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
                     .pointer_in_space2d
@@ -696,7 +633,7 @@ pub fn picking(
             },
             SpatialSpaceViewKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
-                SelectedSpaceContext::ThreeD {
+                ItemSpaceContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_entity: state.state_3d.tracked_entity.clone(),
@@ -716,7 +653,7 @@ pub fn picking(
         });
     };
 
-    ctx.select_hovered_on_click(&response, re_viewer_context::Selection(hovered_items));
+    ctx.select_hovered_on_click(&response, hovered_items.into_iter());
 
     Ok(response)
 }
@@ -747,18 +684,18 @@ fn image_hover_ui(
         component_path.data_ui(
             ctx,
             ui,
-            UiVerbosity::Small,
+            UiLayout::List,
             &ctx.current_query(),
-            ctx.entity_db.store(),
+            ctx.recording(),
         );
     } else {
         // Show it all, like we do for any other thing we hover
         instance_path.data_ui(
             ctx,
             ui,
-            UiVerbosity::Small,
+            UiLayout::List,
             &ctx.current_query(),
-            ctx.entity_db.store(),
+            ctx.recording(),
         );
     }
 
@@ -816,7 +753,7 @@ fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
     }
 }
 
-fn format_vector(v: glam::Vec3) -> String {
+pub fn format_vector(v: glam::Vec3) -> String {
     use glam::Vec3;
 
     if v == Vec3::X {
@@ -833,5 +770,74 @@ fn format_vector(v: glam::Vec3) -> String {
         "-Z".to_owned()
     } else {
         format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
+    }
+}
+
+pub fn background_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view_id: SpaceViewId,
+    default_background: Background,
+) {
+    let blueprint_db = ctx.store_context.blueprint;
+    let blueprint_query = ctx.blueprint_query;
+    let (archetype, blueprint_path) =
+        re_space_view::query_view_property(space_view_id, blueprint_db, blueprint_query);
+
+    let Background { color, mut kind } = archetype.ok().flatten().unwrap_or(default_background);
+
+    ctx.re_ui.grid_left_hand_label(ui, "Background");
+
+    ui.vertical(|ui| {
+        let kind_before = kind;
+        egui::ComboBox::from_id_source("background")
+            .selected_text(background_color_text(kind))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut kind,
+                    BackgroundKind::GradientDark,
+                    background_color_text(BackgroundKind::GradientDark),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    BackgroundKind::GradientBright,
+                    background_color_text(BackgroundKind::GradientBright),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    BackgroundKind::SolidColor,
+                    background_color_text(BackgroundKind::SolidColor),
+                );
+            });
+        if kind_before != kind {
+            ctx.save_blueprint_component(&blueprint_path, &kind);
+        }
+
+        if kind == BackgroundKind::SolidColor {
+            let current_color = color
+                .or(default_background.color)
+                .unwrap_or(Color::BLACK)
+                .into();
+            let mut edit_color = current_color;
+            egui::color_picker::color_edit_button_srgba(
+                ui,
+                &mut edit_color,
+                egui::color_picker::Alpha::Opaque,
+            );
+            if edit_color != current_color {
+                ctx.save_blueprint_component(&blueprint_path, &BackgroundKind::SolidColor);
+                ctx.save_blueprint_component(&blueprint_path, &Color::from(edit_color));
+            }
+        }
+    });
+
+    ui.end_row();
+}
+
+fn background_color_text(kind: BackgroundKind) -> &'static str {
+    match kind {
+        BackgroundKind::GradientDark => "Dark gradient",
+        BackgroundKind::GradientBright => "Bright gradient",
+        BackgroundKind::SolidColor => "Solid color",
     }
 }

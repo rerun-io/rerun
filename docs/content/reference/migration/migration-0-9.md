@@ -1,6 +1,6 @@
 ---
 title: Migrating from 0.8 to 0.9
-order: 12
+order: 90
 ---
 
 Rerun-0.9 introduces a new set of type-oriented logging APIs built on top of an updated, more concrete,
@@ -16,7 +16,7 @@ API has been replaced by one (or more) new Archetypes. You can find more informa
 
 In practice, the changes are mostly demonstrated in the following example:
 
-code-example: log_line
+snippet: migration/log_line
 
 Note that for any Archetype that supports batching the object names are now plural. For example, points are now logged
 with the `Points3D` archetype. Even if you are logging a single point, under the hood it is always implemented as a
@@ -24,7 +24,7 @@ batch of size 1.
 
 For more information on the relationship between Archetypes, Components, and DataTypes, please see our guide to the [Rerun Data Model](../../concepts/entity-component.md).
 
-# Migrating Python Code
+# Migrating Python code
 
 All of the previous `log_*` functions have been marked as deprecated and will be removed in `0.10`. We have done our
 best to keep these functions working as thin wrappers on top of the new logging APIs, though there may be subtle
@@ -195,9 +195,7 @@ Notes:
  - `identifiers` has become `instance_keys`.
 
 ### log_scalar
-Replace with [TimeSeriesScalar](../types/archetypes/time_series_scalar.md)
-
-Python docs: [TimeSeriesScalar](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.TimeSeriesScalar)
+Replace with `TimeSeriesScalar`
 
 ### log_segmentation_image
 Replace with [SegmentationImage](../types/archetypes/segmentation_image.md)
@@ -241,7 +239,7 @@ Notes:
 - Rather than providing `xyz` or `up` as strings, `rr.ViewCoordinates` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
 
 
-# Migrating Rust Code
+# Migrating Rust code
 
 Rust already used a more type oriented interface, so the changes are not as drastic as to the Python API.
 
@@ -254,7 +252,7 @@ using its [`log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html
 
 The new `log` function logs time implicitly. `log_time` and `log_tick` are always included, as well as any custom timeline set using [`RecordingStream::set_timepoint`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_timepoint), or one of the shorthands [`RecordingStream::set_time_sequence`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_sequence)/[`RecordingStream::set_time_seconds`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_seconds)/[`RecordingStream::set_time_nanos`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_nanos)
 
-## Components -> Archetypes
+## Components -> archetypes
 
 The new log messages consume any type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait
 which is [implemented by](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html#implementors) all archetypes.

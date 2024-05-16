@@ -1,4 +1,4 @@
-# Rerun Rust Examples
+# Rerun Rust examples
 
 These are examples of how to use the [`rerun`](https://github.com/rerun-io/rerun/tree/latest/crates/rerun) crate.
 
@@ -18,7 +18,7 @@ Most examples come with a set of predefined Rerun flags and optionally a number 
 Use e.g. `cargo run -p objectron -- --help` for a detailed listing.
 
 The predefined Rerun flags go as follow and are all mutually exclusive:
-- `--spawn`: start a viewer and feed it data in real-time (default behavior)
+- `--spawn`: start a Viewer and feed it data in real-time (default behavior)
 - `--save <SAVE>`: saves the data to an rrd file rather than visualizing it immediately
 - `--connect [IP:PORT]`: connects and sends the logged data to a remote Rerun viewer
 - `--serve`: connects and sends the data to a web-based Rerun viewer.
@@ -26,7 +26,7 @@ The predefined Rerun flags go as follow and are all mutually exclusive:
 ## Datasets
 
 Some examples require small datasets to be downloaded before they run.
-These datasets can be downloaded by running the homonymous python examples (each example that requires it will tell you how to).
+These datasets can be downloaded by running the homonymous Python examples (each example that requires it will tell you how to).
 
 The datasets will be added to a subdir called `dataset`, which is in the repo-wide `.gitignore`.
 
@@ -70,4 +70,4 @@ Demonstrates how to log:
 
 `cargo run -p dna`
 
-This is what you'll build when following our [Getting Started guide](https://www.rerun.io/docs/getting-started/logging-rust).
+This is what you'll build when following our [Getting Started guide](https://www.rerun.io/docs/getting-started/quick-start/rust).

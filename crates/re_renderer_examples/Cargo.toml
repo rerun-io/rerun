@@ -7,11 +7,14 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[lints]
+workspace = true
+
 [features]
 
 [[bin]]
-name = "2d"
-path = "2d.rs"
+name = "2d"    # NOLINT
+path = "2d.rs" # NOLINT
 
 [[bin]]
 name = "depth_cloud"

@@ -17,12 +17,12 @@ This is written for anyone who wants to contribute to the Rerun repository.
 
 You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
 
-## Pull Requests
+## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches. Open draft PR:s to get some early feedback on your work.
 
 All PR:s are merged with [`Squash and Merge`](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/about-pull-request-merges#squash-and-merge-your-commits), meaning they all get squashed to just one commit on the `main` branch. This means you don't need to keep a clean commit history on your feature branches. In fact, it is preferable to add new commits to a branch rather than rebasing or squashing. For one, it makes it easier to track progress on a branch, but rebasing and force-pushing also discourages collaboration on a branch.
 
-Our CI will run benchmarks on each merged PR. The results can be found at <https://rerun-io.github.io/rerun/dev/bench/>.
+Our CI will [record various binary sizes](https://build.rerun.io/graphs/sizes.html) and run [some benchmarks](https://build.rerun.io/graphs/crates.html) on each merged PR.
 
 Pull requests from external contributors require approval for CI runs. This can be done manually, by clicking the `Approve and run` button:
 
@@ -113,23 +113,21 @@ cargo run -p rerun -- --help
 
 ## Tools
 
-We use the [`just`](https://github.com/casey/just) command runner tool for repository automation. See [here](https://github.com/casey/just#installation) for installation instructions. To see available automations, use `just --list`.
+We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
+TODO(andreas): This doesn't list tasks from all Pixi environments. There's no way to this so far, see also [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475).
 
-We use [cargo cranky](https://github.com/ericseppanen/cargo-cranky) and specify our clippy lints in [`Cranky.toml`](Cranky.toml). Usage: `cargo cranky`.
-
-We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`.
-
+We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
 
-To check everything in one go, run `./scripts/check.sh`. `check.sh` should ideally check approximately the same things as our CI.
+Depending on the changes you made run `cargo test --all-targets --all-features`, `pixi run py-test` and `pixi run cpp-test` locally.
 
 ### Linting
-Prior to pushing changes to a PR, at a minimum, you should always run `just fast-lint`. This is designed to run
+Prior to pushing changes to a PR, at a minimum, you should always run `pixi run fast-lint`. This is designed to run
 in a few seconds and should catch the more trivial issues to avoid wasting CI time.
 
 ### Hooks
-We recommend adding the rerun pre-push hook to your local checkout, which among other-things will run
-`just fast-lint` for you.
+We recommend adding the Rerun pre-push hook to your local checkout, which among other-things will run
+`pixi run fast-lint` for you.
 
 To install the hooks, simply copy them into the `.git/hooks` directory of your local checkout.
 ```
@@ -142,7 +140,7 @@ git config core.hooksPath hooks
 ```
 
 ### Optional
-You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo cranky` each time you change a rust file. See [`bacon.toml`](bacon.toml) for more.
+You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo clippy` each time you change a Rust file. See [`bacon.toml`](bacon.toml) for more.
 
 You can set up [`sccache`](https://github.com/mozilla/sccache) to speed up re-compilation (e.g. when switching branches). You can control the size of the cache with `export SCCACHE_CACHE_SIZE="256G"`.
 

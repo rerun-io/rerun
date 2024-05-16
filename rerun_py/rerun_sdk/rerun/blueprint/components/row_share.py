@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .row_share_ext import RowShareExt
 
 __all__ = ["RowShare", "RowShareArrayLike", "RowShareBatch", "RowShareLike", "RowShareType"]
 
 
 @define(init=False)
-class RowShare(RowShareExt):
+class RowShare:
     """**Component**: The layout share of a row in the container."""
 
     def __init__(self: Any, share: RowShareLike):
@@ -48,6 +47,9 @@ class RowShare(RowShareExt):
     def __float__(self) -> float:
         return float(self.share)
 
+    def __hash__(self) -> int:
+        return hash(self.share)
+
 
 if TYPE_CHECKING:
     RowShareLike = Union[RowShare, float]
@@ -69,4 +71,5 @@ class RowShareBatch(BaseBatch[RowShareArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: RowShareArrayLike, data_type: pa.DataType) -> pa.Array:
-        return RowShareExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

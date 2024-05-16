@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -87,10 +88,7 @@ impl ::re_types_core::Loggable for Blob {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -100,6 +98,12 @@ impl ::re_types_core::Loggable for Blob {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
+                )?
+                .into();
                 let data0_inner_data: Buffer<_> = data0
                     .iter()
                     .flatten()
@@ -108,21 +112,13 @@ impl ::re_types_core::Loggable for Blob {
                     .concat()
                     .into();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                let offsets =
-                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
-                        opt.as_ref()
-                            .map(|datum| datum.num_instances())
-                            .unwrap_or_default()
-                    }))
-                    .unwrap()
-                    .into();
-                ListArray::new(
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     PrimitiveArray::new(DataType::UInt8, data0_inner_data, data0_inner_bitmap)
                         .boxed(),
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })

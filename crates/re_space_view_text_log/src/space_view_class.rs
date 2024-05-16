@@ -2,11 +2,11 @@ use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, EntityPathFilter, TimePoint, Timeline};
-use re_types::components::TextLogLevel;
+use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
 use re_viewer_context::{
-    level_to_rich_text, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    level_to_rich_text, IdentifiedViewSystem as _, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
@@ -39,11 +39,17 @@ impl SpaceViewState for TextSpaceViewState {
 #[derive(Default)]
 pub struct TextSpaceView;
 
-impl SpaceViewClass for TextSpaceView {
-    type State = TextSpaceViewState;
+use re_types::View;
+type ViewType = re_types::blueprint::views::TextLogView;
 
-    const IDENTIFIER: &'static str = "TextLog";
-    const DISPLAY_NAME: &'static str = "Text Log";
+impl SpaceViewClass for TextSpaceView {
+    fn identifier() -> SpaceViewClassIdentifier {
+        ViewType::identifier()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "Text log"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_LOG
@@ -60,7 +66,11 @@ impl SpaceViewClass for TextSpaceView {
         system_registry.register_visualizer::<TextLogSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<TextSpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         Some(2.0) // Make text logs wide
     }
 
@@ -83,12 +93,7 @@ impl SpaceViewClass for TextSpaceView {
         {
             SpaceViewSpawnHeuristics::default()
         } else {
-            SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView {
-                    root: EntityPath::root(),
-                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
-                }],
-            }
+            SpaceViewSpawnHeuristics::root()
         }
     }
 
@@ -96,11 +101,12 @@ impl SpaceViewClass for TextSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<TextSpaceViewState>()?;
         let ViewTextFilters {
             col_timelines,
             col_entity_path,
@@ -138,18 +144,22 @@ impl SpaceViewClass for TextSpaceView {
             });
             ui.end_row();
         });
+
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let state = state.downcast_mut::<TextSpaceViewState>()?;
         let text = system_output.view_systems.get::<TextLogSystem>()?;
 
         // TODO(andreas): Should filter text entries in the part-system instead.
@@ -185,7 +195,7 @@ impl SpaceViewClass for TextSpaceView {
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
                 re_tracing::profile_scope!("search scroll time");
-                entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
+                entries.partition_point(|te| te.time.as_i64() < time)
             });
 
             state.latest_time = time;
@@ -246,7 +256,7 @@ impl ViewTextFilters {
             row_log_levels,
         } = self;
 
-        for timeline in ctx.entity_db.timelines() {
+        for timeline in ctx.recording().timelines() {
             col_timelines.entry(*timeline).or_insert(true);
         }
 
@@ -259,7 +269,7 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some((time_point, _)) = ctx.entity_db.store().get_msg_metadata(&entry.row_id) {
+    if let Some((time_point, _)) = ctx.recording_store().row_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
         re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);
@@ -350,7 +360,6 @@ fn table_ui(
             body_clip_rect = Some(body.max_rect());
 
             let query = ctx.current_query();
-            let store = ctx.entity_db.store();
 
             let row_heights = entries.iter().map(|te| calc_row_height(te));
             body.heterogeneous_rows(row_heights, |mut row| {
@@ -401,7 +410,7 @@ fn table_ui(
                         item_ui::entity_path_button(
                             ctx,
                             &query,
-                            store,
+                            ctx.recording(),
                             ui,
                             None,
                             &entry.entity_path,

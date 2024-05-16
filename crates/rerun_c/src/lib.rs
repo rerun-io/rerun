@@ -85,6 +85,7 @@ pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 pub struct CSpawnOptions {
     pub port: u16,
     pub memory_limit: CStringView,
+    pub hide_welcome_screen: bool,
     pub executable_name: CStringView,
     pub executable_path: CStringView,
 }
@@ -98,9 +99,13 @@ impl CSpawnOptions {
             spawn_opts.port = self.port;
         }
 
+        spawn_opts.wait_for_bind = true;
+
         if !self.memory_limit.is_empty() {
             spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
+
+        spawn_opts.hide_welcome_screen = self.hide_welcome_screen;
 
         if !self.executable_name.is_empty() {
             spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
@@ -164,7 +169,6 @@ pub struct CDataCell {
 #[repr(C)]
 pub struct CDataRow {
     pub entity_path: CStringView,
-    pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *mut CDataCell,
 }
@@ -211,8 +215,9 @@ pub struct CError {
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_version_string() -> *const c_char {
-    static VERSION: Lazy<CString> =
-        Lazy::new(|| CString::new(re_sdk::build_info().version.to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
+    static VERSION: Lazy<CString> = Lazy::new(|| {
+        CString::new(re_sdk::build_info().version.to_string()).expect("CString::new failed")
+    }); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
 }
@@ -629,7 +634,6 @@ fn rr_log_impl(
 
     let CDataRow {
         entity_path,
-        num_instances,
         num_data_cells,
         data_cells,
     } = data_row;
@@ -638,9 +642,7 @@ fn rr_log_impl(
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
     let num_data_cells = num_data_cells as usize;
-    re_log::debug!(
-        "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
-    );
+    re_log::debug!("rerun_log {entity_path:?}, num_data_cells: {num_data_cells}");
 
     let mut cells = re_log_types::DataCellVec::default();
     cells.reserve(num_data_cells);
@@ -698,7 +700,6 @@ fn rr_log_impl(
         row_id,
         TimePoint::default(), // we use the one in the recording stream for now
         entity_path,
-        num_instances,
         cells,
     )
     .map_err(|err| {
@@ -732,7 +733,7 @@ fn rr_log_file_from_path_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    static_: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
@@ -740,7 +741,7 @@ fn rr_log_file_from_path_impl(
     let entity_path_prefix = entity_path_prefix.as_str("entity_path_prefix").ok();
 
     stream
-        .log_file_from_path(filepath, entity_path_prefix.map(Into::into), timeless)
+        .log_file_from_path(filepath, entity_path_prefix.map(Into::into), static_)
         .map_err(|err| {
             CError::new(
                 CErrorCode::RecordingStreamRuntimeFailure,
@@ -757,10 +758,10 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    static_: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_file_from_path_impl(stream, filepath, entity_path_prefix, timeless) {
+    if let Err(err) = rr_log_file_from_path_impl(stream, filepath, entity_path_prefix, static_) {
         err.write_error(error);
     }
 }
@@ -772,7 +773,7 @@ fn rr_log_file_from_contents_impl(
     filepath: CStringView,
     contents: CBytesView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    static_: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
@@ -785,7 +786,7 @@ fn rr_log_file_from_contents_impl(
             filepath,
             std::borrow::Cow::Borrowed(contents),
             entity_path_prefix.map(Into::into),
-            timeless,
+            static_,
         )
         .map_err(|err| {
             CError::new(
@@ -804,11 +805,11 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
     filepath: CStringView,
     contents: CBytesView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    static_: bool,
     error: *mut CError,
 ) {
     if let Err(err) =
-        rr_log_file_from_contents_impl(stream, filepath, contents, entity_path_prefix, timeless)
+        rr_log_file_from_contents_impl(stream, filepath, contents, entity_path_prefix, static_)
     {
         err.write_error(error);
     }

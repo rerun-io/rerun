@@ -4,6 +4,9 @@ use crate::datatypes::Vec4D;
 
 impl Mat4x4 {
     #[rustfmt::skip]
+    /// The identity matrix.
+    ///
+    /// The multiplicative identity, representing no transform.
     pub const IDENTITY: Mat4x4 = Mat4x4([
         1.0, 0.0, 0.0, 0.0,
         0.0, 1.0, 0.0, 0.0,
@@ -15,7 +18,7 @@ impl Mat4x4 {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than 2.
+    /// Panics if `index` is greater than 3.
     #[inline]
     pub fn col(&self, index: usize) -> Vec4D {
         match index {

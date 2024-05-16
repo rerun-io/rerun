@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -41,11 +42,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             .with_labels(["one strip here", "and one strip there"]),
 ///     )?;
 ///
-///     // Log an extra rect to set the view bounds
-///     rec.log(
-///         "bounds",
-///         &rerun::Boxes2D::from_centers_and_sizes([(3.0, 1.5)], [(8.0, 9.0)]),
-///     )?;
+///     // TODO(#5521): log VisualBounds2D
 ///
 ///     Ok(())
 /// }
@@ -118,17 +115,16 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.LineStrip2D".into(),
@@ -137,13 +133,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.Radius".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl LineStrips2D {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`LineStrips2D`] [`::re_types_core::Archetype`]
@@ -300,14 +296,11 @@ impl ::re_types_core::AsComponents for LineStrips2D {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.strips.len()
-    }
 }
 
 impl LineStrips2D {
+    /// Create a new `LineStrips2D`.
+    #[inline]
     pub fn new(
         strips: impl IntoIterator<Item = impl Into<crate::components::LineStrip2D>>,
     ) -> Self {
@@ -321,6 +314,7 @@ impl LineStrips2D {
         }
     }
 
+    /// Optional radii for the line strips.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -330,6 +324,7 @@ impl LineStrips2D {
         self
     }
 
+    /// Optional colors for the line strips.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -339,6 +334,7 @@ impl LineStrips2D {
         self
     }
 
+    /// Optional text labels for the line strips.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -348,12 +344,18 @@ impl LineStrips2D {
         self
     }
 
+    /// An optional floating point value that specifies the 2D drawing order of each line strip.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self
     }
 
+    /// Optional `ClassId`s for the lines.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

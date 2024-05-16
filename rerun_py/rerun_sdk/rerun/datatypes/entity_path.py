@@ -11,13 +11,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .entity_path_ext import EntityPathExt
 
 __all__ = ["EntityPath", "EntityPathArrayLike", "EntityPathBatch", "EntityPathLike", "EntityPathType"]
 
 
 @define(init=False)
-class EntityPath(EntityPathExt):
+class EntityPath:
     """**Datatype**: A path to an entity in the `DataStore`."""
 
     def __init__(self: Any, path: EntityPathLike):
@@ -30,6 +29,9 @@ class EntityPath(EntityPathExt):
 
     def __str__(self) -> str:
         return str(self.path)
+
+    def __hash__(self) -> int:
+        return hash(self.path)
 
 
 if TYPE_CHECKING:
@@ -52,4 +54,11 @@ class EntityPathBatch(BaseBatch[EntityPathArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: EntityPathArrayLike, data_type: pa.DataType) -> pa.Array:
-        return EntityPathExt.native_to_pa_array_override(data, data_type)
+        if isinstance(data, str):
+            array = [data]
+        elif isinstance(data, Sequence):
+            array = [str(datum) for datum in data]
+        else:
+            array = [str(data)]
+
+        return pa.array(array, type=data_type)

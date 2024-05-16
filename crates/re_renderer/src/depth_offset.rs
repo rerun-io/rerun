@@ -1,4 +1,4 @@
-/// Depth offset used to resolve z-fighting between 2d primitives.
+/// Depth offset used to resolve z-fighting between 2D primitives.
 ///
 /// Zero means no offset.
 /// Higher values push an object towards the viewer, lower away from the viewer.

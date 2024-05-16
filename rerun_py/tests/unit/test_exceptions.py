@@ -56,7 +56,7 @@ def expected_warnings(warnings: Any, mem: Any, starting_msgs: int, count: int, e
 def test_stack_tracking() -> None:
     # Force flushing so we can count the messages
     os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
-    rr.init("rerun_example_strict_mode", spawn=False)
+    rr.init("rerun_example_strict_mode", strict=False, spawn=False)
 
     mem = rr.memory_recording()
     with pytest.warns(RerunWarning) as warnings:
@@ -117,17 +117,24 @@ def test_stack_tracking() -> None:
 
 
 def test_strict_mode() -> None:
-    # We can disable strict on just this function
+    rr.set_strict_mode(False)
+
+    # Confirm strict mode is off
+    with pytest.warns(RerunWarning):
+        assert outer() == 42
+
+    # We can enable strict on just this function
     with pytest.raises(ValueError):
         outer(strict=True)
 
     with pytest.raises(ValueError):
         uses_context(strict=True)
 
-    # We can disable strict mode globally
+    # We can enable strict mode globally
     rr.set_strict_mode(True)
     with pytest.raises(ValueError):
         outer()
+
     # Clear the global strict mode again
     rr.set_strict_mode(False)
 

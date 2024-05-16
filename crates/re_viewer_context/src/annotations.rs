@@ -6,7 +6,6 @@ use nohash_hasher::IntSet;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::RowId;
-use re_query::{query_archetype, ArchetypeView};
 use re_types::archetypes::AnnotationContext;
 use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
@@ -36,29 +35,6 @@ impl Annotations {
         static CELL: OnceLock<Arc<Annotations>> = OnceLock::new();
         CELL.get_or_init(|| Arc::new(Annotations::missing()))
             .clone()
-    }
-
-    pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
-        re_tracing::profile_function!();
-
-        use re_log::ResultExt as _;
-
-        view.optional_mono_component::<re_types::components::AnnotationContext>()
-            .warn_on_err_once("Failed to load AnnotationContext")
-            .flatten()
-            .map(|ctx| Self {
-                row_id: view.primary_row_id(),
-                class_map: ctx
-                    .0
-                    .into_iter()
-                    .map(|elem| {
-                        (
-                            elem.class_id,
-                            CachedClassDescription::from(elem.class_description),
-                        )
-                    })
-                    .collect(),
-            })
     }
 
     #[inline]
@@ -253,8 +229,6 @@ impl AnnotationMap {
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let data_store = ctx.entity_db.store();
-
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
         for ent_path in entities {
@@ -273,13 +247,27 @@ impl AnnotationMap {
                     // Otherwise check the obj_store for the field.
                     // If we find one, insert it and then we can break.
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        if query_archetype::<AnnotationContext>(data_store, time_query, &parent)
+                        if let Some(((_, row_id), ann_ctx)) = ctx
+                            .recording()
+                            .latest_at_archetype::<AnnotationContext>(&parent, time_query)
                             .ok()
-                            .and_then(|view| Annotations::try_from_view(&view))
-                            .map(|annotations| entry.insert(Arc::new(annotations)))
-                            .is_some()
+                            .flatten()
                         {
-                            break;
+                            let annotations = Annotations {
+                                row_id,
+                                class_map: ann_ctx
+                                    .context
+                                    .0
+                                    .into_iter()
+                                    .map(|elem| {
+                                        (
+                                            elem.class_id,
+                                            CachedClassDescription::from(elem.class_description),
+                                        )
+                                    })
+                                    .collect(),
+                            };
+                            entry.insert(Arc::new(annotations));
                         }
                     }
                 }

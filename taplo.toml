@@ -1,6 +1,13 @@
 # https://github.com/tamasfe/taplo
 
-exclude = [".pixi/**", "build/**", "target/**", "venv/**"]
+# As of writing, taplo is really slow to gather files, so we help it out a bit.
+include = [
+  "*.toml",
+  "crates/**/*.toml",
+  "examples/rust/**/*.toml",
+  "examples/python/**/*.toml",
+  "tests/rust/**/*.toml",
+]
 
 [formatting]
 indent_string = "  "

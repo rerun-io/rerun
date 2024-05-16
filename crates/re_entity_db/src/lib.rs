@@ -4,10 +4,14 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 pub mod entity_db;
 pub mod entity_properties;
 pub mod entity_tree;
 mod instance_path;
+mod store_bundle;
 mod time_histogram_per_timeline;
 mod times_per_timeline;
 mod versioned_instance_path;
@@ -17,20 +21,21 @@ pub mod blueprint;
 #[cfg(feature = "serde")]
 mod editable_auto_value;
 
-pub use self::entity_db::EntityDb;
-pub use self::entity_properties::*;
-pub use self::entity_tree::EntityTree;
-pub use self::instance_path::{InstancePath, InstancePathHash};
-pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline};
-pub use self::times_per_timeline::{TimeCounts, TimesPerTimeline};
-pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
+pub use self::{
+    entity_db::EntityDb,
+    entity_properties::*,
+    entity_tree::EntityTree,
+    instance_path::{InstancePath, InstancePathHash},
+    store_bundle::{StoreBundle, StoreLoadError},
+    time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},
+    times_per_timeline::{TimeCounts, TimesPerTimeline},
+    versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
+};
 
 pub(crate) use self::entity_tree::{ClearCascade, CompactedStoreEvents};
 
 use re_log_types::DataTableError;
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
-
-pub use re_query::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
 
 #[cfg(feature = "serde")]
 pub use blueprint::components::EntityPropertiesComponent;
@@ -39,6 +44,7 @@ pub use editable_auto_value::EditableAutoValue;
 
 pub mod external {
     pub use re_data_store;
+    pub use re_query;
 }
 
 // ----------------------------------------------------------------------------

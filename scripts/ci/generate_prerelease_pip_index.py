@@ -11,6 +11,7 @@ This is expected to be run by the `reusable_pip_index.yml` GitHub workflow.
 Requires the following packages:
   pip install google-cloud-storage Jinja2
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,7 +52,7 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
     template_path = os.path.join(os.path.dirname(os.path.relpath(__file__)), "templates/pip_index.html")
 
     # Render the Jinja template with the found_builds variable
-    with open(template_path) as f:
+    with open(template_path, encoding="utf8") as f:
         template = Template(f.read())
 
     buffer = io.BytesIO(template.render(found_builds=found_builds).encode("utf-8"))

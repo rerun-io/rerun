@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -52,27 +53,26 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ScalarAxisIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.LockRangeDuringZoom".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Range1D".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ScalarAxisIndicator".into(),
             "rerun.blueprint.components.LockRangeDuringZoom".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Range1D".into(),
         ]
     });
 
 impl ScalarAxis {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`ScalarAxis`] [`::re_types_core::Archetype`]
@@ -166,14 +166,11 @@ impl ::re_types_core::AsComponents for ScalarAxis {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        0
-    }
 }
 
 impl ScalarAxis {
+    /// Create a new `ScalarAxis`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             range: None,
@@ -181,12 +178,16 @@ impl ScalarAxis {
         }
     }
 
+    /// The range of the axis.
+    ///
+    /// If unset, the range well be automatically determined based on the queried data.
     #[inline]
     pub fn with_range(mut self, range: impl Into<crate::components::Range1D>) -> Self {
         self.range = Some(range.into());
         self
     }
 
+    /// Whether to lock the range of the axis during zoom.
     #[inline]
     pub fn with_lock_range_during_zoom(
         mut self,

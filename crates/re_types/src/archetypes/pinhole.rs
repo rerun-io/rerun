@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -25,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Examples
 ///
-/// ### Simple Pinhole Camera
+/// ### Simple pinhole camera
 /// ```ignore
 /// use ndarray::{Array, ShapeBuilder};
 ///
@@ -54,7 +55,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### Perspective Pinhole Camera
+/// ### Perspective pinhole camera
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective").spawn()?;
@@ -156,27 +157,22 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.InstanceKey".into(),
-            "rerun.components.ViewCoordinates".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.ViewCoordinates".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.PinholeProjection".into(),
             "rerun.components.PinholeIndicator".into(),
             "rerun.components.Resolution".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.ViewCoordinates".into(),
         ]
     });
 
 impl Pinhole {
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`Pinhole`] [`::re_types_core::Archetype`]
@@ -284,14 +280,11 @@ impl ::re_types_core::AsComponents for Pinhole {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl Pinhole {
+    /// Create a new `Pinhole`.
+    #[inline]
     pub fn new(image_from_camera: impl Into<crate::components::PinholeProjection>) -> Self {
         Self {
             image_from_camera: image_from_camera.into(),
@@ -300,12 +293,47 @@ impl Pinhole {
         }
     }
 
+    /// Pixel resolution (usually integers) of child image space. Width and height.
+    ///
+    /// Example:
+    /// ```text
+    /// [1920.0, 1440.0]
+    /// ```
+    ///
+    /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
     #[inline]
     pub fn with_resolution(mut self, resolution: impl Into<crate::components::Resolution>) -> Self {
         self.resolution = Some(resolution.into());
         self
     }
 
+    /// Sets the view coordinates for the camera.
+    ///
+    /// All common values are available as constants on the `components.ViewCoordinates` class.
+    ///
+    /// The default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.
+    /// This means that the camera frustum will point along the positive Z axis of the parent space,
+    /// and the cameras "up" direction will be along the negative Y axis of the parent space.
+    ///
+    /// The camera frustum will point whichever axis is set to `F` (or the opposite of `B`).
+    /// When logging a depth image under this entity, this is the direction the point cloud will be projected.
+    /// With `RDF`, the default forward is +Z.
+    ///
+    /// The frustum's "up" direction will be whichever axis is set to `U` (or the opposite of `D`).
+    /// This will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).
+    /// With `RDF`, the default is up is -Y.
+    ///
+    /// The frustum's "right" direction will be whichever axis is set to `R` (or the opposite of `L`).
+    /// This will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).
+    /// With `RDF`, the default right is +x.
+    ///
+    /// Other common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).
+    ///
+    /// NOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,
+    /// and make the pinhole matrix not match up with the coordinate system of the pinhole entity.
+    ///
+    /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
+    /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
     #[inline]
     pub fn with_camera_xyz(
         mut self,

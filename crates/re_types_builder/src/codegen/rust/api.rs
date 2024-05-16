@@ -9,7 +9,7 @@ use quote::{format_ident, quote};
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples_for_api_docs, ExampleInfo},
+        common::{collect_snippets_for_api_docs, ExampleInfo},
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -25,19 +25,16 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
-    ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{
-    arrow::quote_fqname_as_type_path, blueprint_validation::generate_blueprint_validation,
-    util::string_from_quoted,
+    arrow::quote_fqname_as_type_path,
+    blueprint_validation::generate_blueprint_validation,
+    to_archetype::generate_to_archetype_impls,
+    util::{string_from_quoted, SIMPLE_COMMENT_PREFIX},
 };
-
-// ---
-
-// TODO(cmc): it'd be nice to be able to generate vanilla comments (as opposed to doc-comments)
-// once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
 // ---
 
@@ -72,6 +69,7 @@ impl CodeGenerator for RustCodeGenerator {
         }
 
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
+        generate_to_archetype_impls(reporter, objects, &mut files_to_write);
 
         files_to_write
     }
@@ -154,6 +152,7 @@ fn generate_object_file(
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
+    code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
     code.push_str("#![allow(clippy::iter_on_single_items)]\n");
     code.push_str("#![allow(clippy::map_flatten)]\n");
     code.push_str("#![allow(clippy::match_wildcard_for_single_variants)]\n");
@@ -266,7 +265,7 @@ fn generate_mod_file(
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
 /// while also removing trailing whitespace.
-fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
+fn replace_doc_attrb_with_doc_comment(code: &str) -> String {
     // This is difficult to do with regex, because the patterns with newlines overlap.
 
     let start_pattern = "# [doc = \"";
@@ -287,13 +286,25 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
             let content_start = doc_start + start_pattern.len();
             if let Some(off) = code[content_start..].find(end_pattern) {
                 let content_end = content_start + off;
-                new_code.push_str(&code[i..doc_start]);
-                new_code.push_str("///");
                 let content = &code[content_start..content_end];
+                let mut unescped_content = unescape_string(content);
+
+                new_code.push_str(&code[i..doc_start]);
+
+                // TODO(emilk): why do we need to do the `SIMPLE_COMMENT_PREFIX` both here and in `fn string_from_quoted`?
+                if let Some(rest) = unescped_content.strip_prefix(SIMPLE_COMMENT_PREFIX) {
+                    // This is a normal comment
+                    new_code.push_str("//");
+                    unescped_content = rest.to_owned();
+                } else {
+                    // This is a docstring
+                    new_code.push_str("///");
+                }
+
                 if !content.starts_with(char::is_whitespace) {
                     new_code.push(' ');
                 }
-                unescape_string_into(content, &mut new_code);
+                new_code.push_str(&unescped_content);
                 new_code.push('\n');
 
                 i = content_end + end_pattern.len();
@@ -310,6 +321,43 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
         break;
     }
     new_code
+}
+
+#[test]
+fn test_doc_attr_unfolding() {
+    // Normal case with unescaping of quotes:
+    assert_eq!(
+        replace_doc_attrb_with_doc_comment(
+            r#"
+# [doc = "Hello, \"world\"!"]
+pub fn foo () {}
+        "#
+        ),
+        r#"
+/// Hello, "world"!
+pub fn foo () {}
+        "#
+    );
+
+    // Spacial case for when it contains a `SIMPLE_COMMENT_PREFIX`:
+    assert_eq!(
+        replace_doc_attrb_with_doc_comment(&format!(
+            r#"
+# [doc = "{SIMPLE_COMMENT_PREFIX}Just a \"comment\"!"]
+const FOO: u32 = 42;
+        "#
+        )),
+        r#"
+// Just a "comment"!
+const FOO: u32 = 42;
+        "#
+    );
+}
+
+fn unescape_string(input: &str) -> String {
+    let mut output = String::new();
+    unescape_string_into(input, &mut output);
+    output
 }
 
 fn unescape_string_into(input: &str, output: &mut String) {
@@ -382,9 +430,9 @@ fn quote_struct(
 
     let quoted_from_impl = quote_from_impl_from_obj(obj);
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
-    let quoted_builder = quote_builder_from_obj(obj);
+    let quoted_builder = quote_builder_from_obj(reporter, obj);
 
     let quoted_heap_size_bytes = if obj
         .fields
@@ -396,6 +444,8 @@ fn quote_struct(
     } else {
         let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
             quote!(self.0.heap_size_bytes())
+        } else if obj.fields.is_empty() {
+            quote!(0)
         } else {
             let quoted_heap_size_bytes = obj.fields.iter().map(|obj_field| {
                 let field_name = format_ident!("{}", obj_field.name);
@@ -404,7 +454,9 @@ fn quote_struct(
             quote!(#(#quoted_heap_size_bytes)+*)
         };
 
-        let is_pod_impl = {
+        let is_pod_impl = if obj.fields.is_empty() {
+            quote!(true)
+        } else {
             let quoted_is_pods = obj.fields.iter().map(|obj_field| {
                 let quoted_field_type = quote_field_type_from_object_field(obj_field);
                 quote!(<#quoted_field_type>::is_pod())
@@ -481,13 +533,20 @@ fn quote_union(
         let quoted_doc = quote_field_docs(reporter, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj_field);
 
-        quote! {
-            #quoted_doc
-            #name(#quoted_type)
+        if obj_field.typ == Type::Unit {
+            quote! {
+                #quoted_doc
+                #name
+            }
+        } else {
+            quote! {
+                #quoted_doc
+                #name(#quoted_type)
+            }
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let quoted_heap_size_bytes = if obj
         .fields
@@ -499,15 +558,29 @@ fn quote_union(
     } else {
         let quoted_matches = fields.iter().map(|obj_field| {
             let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
-            quote!(Self::#name(v) => v.heap_size_bytes())
+
+            if obj_field.typ == Type::Unit {
+                quote!(Self::#name => 0)
+            } else {
+                quote!(Self::#name(v) => v.heap_size_bytes())
+            }
         });
 
         let is_pod_impl = {
-            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
-                let quoted_field_type = quote_field_type_from_object_field(obj_field);
-                quote!(<#quoted_field_type>::is_pod())
-            });
-            quote!(#(#quoted_is_pods)&&*)
+            let quoted_is_pods: Vec<_> = obj
+                .fields
+                .iter()
+                .filter(|obj_field| obj_field.typ != Type::Unit)
+                .map(|obj_field| {
+                    let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                    quote!(<#quoted_field_type>::is_pod())
+                })
+                .collect();
+            if quoted_is_pods.is_empty() {
+                quote!(true)
+            } else {
+                quote!(#(#quoted_is_pods)&&*)
+            }
         };
 
         quote! {
@@ -607,7 +680,7 @@ fn quote_enum(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let count = Literal::usize_unsuffixed(fields.len());
     let all = fields.iter().map(|field| {
@@ -649,6 +722,8 @@ fn quote_enum(
             }
         }
 
+        // We implement `Display` to match the `PascalCase` name so that
+        // the enum variants are displayed in the UI exactly how they are displayed in code.
         impl std::fmt::Display for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
@@ -714,11 +789,15 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
 }
 
 fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
-    let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
+    let mut lines = docs.doc_lines_for_untagged_and("rs");
 
-    let examples = collect_examples_for_api_docs(docs, "rs", true)
-        .map_err(|err| reporter.error(virtpath, fqname, err))
-        .unwrap_or_default();
+    let examples = if !fqname.starts_with("rerun.blueprint.views") {
+        collect_snippets_for_api_docs(docs, "rs", true)
+            .map_err(|err| reporter.error(virtpath, fqname, err))
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
 
     if !examples.is_empty() {
         lines.push(Default::default());
@@ -732,7 +811,11 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name, title, image, ..
+                path,
+                name,
+                title,
+                image,
+                ..
             } = &example.base;
 
             for line in &example.lines {
@@ -740,7 +823,7 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
                     reporter.error(
                         virtpath,
                         fqname,
-                        format!("Example {name:?} contains ``` in it, so we can't embed it in the Rust API docs."),
+                        format!("Example {path:?} contains ``` in it, so we can't embed it in the Rust API docs."),
                     );
                     continue;
                 }
@@ -757,7 +840,8 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
             lines.push("```".into());
 
             if let Some(image) = &image {
-                lines.extend(image.image_stack().into_iter());
+                // Don't let the images take up too much space on the page.
+                lines.extend(image.image_stack().center().width(640).finish());
             }
             if examples.peek().is_some() {
                 // blank line between examples
@@ -779,6 +863,11 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
     }
 
     lines
+}
+
+fn quote_doc_line(line: &str) -> TokenStream {
+    let line = format!(" {line}"); // add space between `///` and comment
+    quote!(# [doc = #line])
 }
 
 fn quote_doc_lines(lines: &[String]) -> TokenStream {
@@ -921,6 +1010,7 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
 }
 
 fn quote_trait_impls_from_obj(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
@@ -1058,23 +1148,6 @@ fn quote_trait_impls_from_obj(
                 (num_components, quoted_components)
             }
 
-            let first_required_comp = obj.fields.iter().find(|field| {
-                field
-                    .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
-                    .is_some()
-            });
-
-            let num_instances = if let Some(comp) = first_required_comp {
-                if comp.typ.is_plural() {
-                    let name = format_ident!("{}", comp.name);
-                    quote!(self.#name.len())
-                } else {
-                    quote!(1)
-                }
-            } else {
-                quote!(0)
-            };
-
             let indicator_name = format!("{}Indicator", obj.name);
             let indicator_fqname =
                 format!("{}Indicator", obj.fqname).replace("archetypes", "components");
@@ -1087,15 +1160,12 @@ fn quote_trait_impls_from_obj(
                 compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, []);
             let (num_recommended, recommended) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, [indicator_fqname]);
-            let (num_optional, optional) = compute_components(
-                obj,
-                ATTR_RERUN_COMPONENT_OPTIONAL,
-                // NOTE: Our internal query systems always need to query for instance keys, and
-                // they need to do so using a compile-time array, so make sure it's there at
-                // compile-time even for archetypes that don't use it.
-                ["rerun.components.InstanceKey".to_owned()],
-            );
+            let (num_optional, optional) =
+                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
 
+            let num_components_docstring  = quote_doc_line(&format!(
+                "The total number of components in the archetype: {num_required} required, {num_recommended} recommended, {num_optional} optional"
+            ));
             let num_all = num_required + num_recommended + num_optional;
 
             let quoted_field_names = obj
@@ -1221,6 +1291,7 @@ fn quote_trait_impls_from_obj(
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
 
                 impl #name {
+                    #num_components_docstring
                     pub const NUM_COMPONENTS: usize = #num_all;
                 }
 
@@ -1296,11 +1367,27 @@ fn quote_trait_impls_from_obj(
 
                         [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }
+                }
+            }
+        }
+        ObjectKind::View => {
+            let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER)
+            else {
+                reporter.error(
+                    &obj.virtpath,
+                    &obj.fqname,
+                    format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+                );
+                return TokenStream::new();
+            };
 
+            quote! {
+                impl ::re_types_core::View for #name {
                     #[inline]
-                    fn num_instances(&self) -> usize {
-                        #num_instances
+                    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+                        #identifier .into()
                     }
+
                 }
             }
         }
@@ -1423,7 +1510,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
 }
 
 /// Only makes sense for archetypes.
-fn quote_builder_from_obj(obj: &Object) -> TokenStream {
+fn quote_builder_from_obj(reporter: &Reporter, obj: &Object) -> TokenStream {
     if obj.kind != ObjectKind::Archetype {
         return TokenStream::new();
     }
@@ -1476,7 +1563,10 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
     } else {
         quote!(pub)
     };
+    let fn_new_docstring = quote_doc_line(&format!("Create a new `{name}`."));
     let fn_new = quote! {
+        #fn_new_docstring
+        #[inline]
         #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
             Self {
                 #(#quoted_required,)*
@@ -1491,10 +1581,12 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
         let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+        let docstring = quote_field_docs(reporter, field);
 
         if unwrapped {
             // This was originally a vec/array!
             quote! {
+                #docstring
                 #[inline]
                 pub fn #method_name(mut self, #field_name: impl IntoIterator<Item = impl Into<#typ>>) -> Self {
                     self.#field_name = Some(#field_name.into_iter().map(Into::into).collect());
@@ -1503,6 +1595,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
             }
         } else {
             quote! {
+                #docstring
                 #[inline]
                 pub fn #method_name(mut self, #field_name: impl Into<#typ>) -> Self {
                     self.#field_name = Some(#field_name.into());

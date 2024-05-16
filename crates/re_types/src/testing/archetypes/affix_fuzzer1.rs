@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -132,10 +133,10 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 22usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer1Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 24usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 23usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer1".into(),
@@ -161,12 +162,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 24usize]> =
             "rerun.testing.components.AffixFuzzer8".into(),
             "rerun.testing.components.AffixFuzzer9".into(),
             "rerun.testing.components.AffixFuzzer1Indicator".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl AffixFuzzer1 {
-    pub const NUM_COMPONENTS: usize = 24usize;
+    /// The total number of components in the archetype: 22 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 23usize;
 }
 
 /// Indicator component for the [`AffixFuzzer1`] [`::re_types_core::Archetype`]
@@ -562,14 +563,11 @@ impl ::re_types_core::AsComponents for AffixFuzzer1 {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl AffixFuzzer1 {
+    /// Create a new `AffixFuzzer1`.
+    #[inline]
     pub fn new(
         fuzz1001: impl Into<crate::testing::components::AffixFuzzer1>,
         fuzz1002: impl Into<crate::testing::components::AffixFuzzer2>,

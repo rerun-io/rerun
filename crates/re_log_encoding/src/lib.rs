@@ -3,7 +3,6 @@
 #[cfg(feature = "decoder")]
 pub mod decoder;
 #[cfg(feature = "encoder")]
-#[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
 pub mod encoder;
 
 #[cfg(feature = "encoder")]
@@ -121,7 +120,6 @@ impl FileHeader {
     pub const SIZE: usize = 12;
 
     #[cfg(feature = "encoder")]
-    #[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
     pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
         write
             .write_all(&self.magic)
@@ -137,12 +135,14 @@ impl FileHeader {
 
     #[cfg(feature = "decoder")]
     pub fn decode(read: &mut impl std::io::Read) -> Result<Self, decoder::DecodeError> {
+        let to_array_4b = |slice: &[u8]| slice.try_into().expect("always returns an Ok() variant");
+
         let mut buffer = [0_u8; Self::SIZE];
         read.read_exact(&mut buffer)
             .map_err(decoder::DecodeError::Read)?;
-        let magic = buffer[0..4].try_into().unwrap();
-        let version = buffer[4..8].try_into().unwrap();
-        let options = EncodingOptions::from_bytes(buffer[8..].try_into().unwrap())?;
+        let magic = to_array_4b(&buffer[0..4]);
+        let version = to_array_4b(&buffer[4..8]);
+        let options = EncodingOptions::from_bytes(to_array_4b(&buffer[8..]))?;
         Ok(Self {
             magic,
             version,
@@ -165,7 +165,6 @@ impl MessageHeader {
     pub const SIZE: usize = 8;
 
     #[cfg(feature = "encoder")]
-    #[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
     pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
         write
             .write_all(&self.compressed_len.to_le_bytes())

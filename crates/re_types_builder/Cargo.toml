@@ -12,6 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 
 [package.metadata.docs.rs]
 all-features = true
@@ -19,6 +22,7 @@ all-features = true
 
 [dependencies]
 re_build_tools.workspace = true
+re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_tracing = { workspace = true, features = ["server"] }
 

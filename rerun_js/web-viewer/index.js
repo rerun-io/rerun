@@ -36,9 +36,10 @@ export class WebViewer {
    *
    * @param {string | string[]} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
    * @param {HTMLElement} [parent] The element to attach the canvas onto.
+   * @param {boolean} [hide_welcome_screen] Whether to hide the welcome screen.
    * @returns {Promise<void>}
    */
-  async start(rrd, parent = document.body) {
+  async start(rrd, parent = document.body, hide_welcome_screen = false) {
     if (this.#state !== "stopped") return;
     this.#state = "starting";
 
@@ -50,12 +51,20 @@ export class WebViewer {
     if (this.#state !== "starting") return;
 
     this.#handle = new WebHandle_class();
-    await this.#handle.start(this.#canvas.id, undefined);
+    await this.#handle.start(
+      this.#canvas.id,
+      undefined,
+      undefined,
+      undefined,
+      hide_welcome_screen,
+    );
     if (this.#state !== "starting") return;
 
     if (this.#handle.has_panicked()) {
       throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
     }
+
+    this.#state = "ready";
 
     if (rrd) {
       this.open(rrd);
@@ -79,14 +88,17 @@ export class WebViewer {
    * @see {WebViewer.start}
    *
    * @param {string | string[]} rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param {{ follow_if_http?: boolean }} options
+   *        - follow_if_http: Whether Rerun should open the resource in "Following" mode when streaming
+   *        from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
    */
-  open(rrd) {
+  open(rrd, options = {}) {
     if (!this.#handle) {
       throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
     }
     const urls = Array.isArray(rrd) ? rrd : [rrd];
     for (const url of urls) {
-      this.#handle.add_receiver(url);
+      this.#handle.add_receiver(url, options.follow_if_http);
       if (this.#handle.has_panicked()) {
         throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
       }
@@ -121,7 +133,7 @@ export class WebViewer {
    * The same viewer instance may be started multiple times.
    */
   stop() {
-    if (this.#state !== "stopped") return;
+    if (this.#state === "stopped") return;
     this.#state = "stopped";
 
     this.#canvas?.remove();
@@ -130,5 +142,76 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
+  }
+
+  /**
+   * Opens a new channel for sending log messages.
+   *
+   * The channel can be used to incrementally push `rrd` chunks into the viewer.
+   *
+   * @param {string} channel_name used to identify the channel.
+   *
+   * @returns {LogChannel}
+   */
+  open_channel(channel_name = "rerun-io/web-viewer") {
+    if (!this.#handle) throw new Error("...");
+    const id = crypto.randomUUID();
+    this.#handle.open_channel(id, channel_name);
+    const on_send = (/** @type {Uint8Array} */ data) => {
+      if (!this.#handle) throw new Error("...");
+      this.#handle.send_rrd_to_channel(id, data);
+    };
+    const on_close = () => {
+      if (!this.#handle) throw new Error("...");
+      this.#handle.close_channel(id);
+    };
+    const get_state = () => this.#state;
+    return new LogChannel(on_send, on_close, get_state);
+  }
+}
+
+export class LogChannel {
+  #on_send;
+  #on_close;
+  #get_state;
+  #closed = false;
+
+  /** @internal
+   *
+   * @param {(data: Uint8Array) => void} on_send
+   * @param {() => void} on_close
+   * @param {() => 'ready' | 'starting' | 'stopped'} get_state
+   */
+  constructor(on_send, on_close, get_state) {
+    this.#on_send = on_send;
+    this.#on_close = on_close;
+    this.#get_state = get_state;
+  }
+
+  get ready() {
+    return !this.#closed && this.#get_state() === "ready";
+  }
+
+  /**
+   * Send an `rrd` containing log messages to the viewer.
+   *
+   * Does nothing if `!this.ready`.
+   *
+   * @param {Uint8Array} rrd_bytes Is an rrd file stored in a byte array, received via some other side channel.
+   */
+  send_rrd(rrd_bytes) {
+    if (!this.ready) return;
+    this.#on_send(rrd_bytes);
+  }
+
+  /**
+   * Close the channel.
+   *
+   * Does nothing if `!this.ready`.
+   */
+  close() {
+    if (!this.ready) return;
+    this.#on_close();
+    this.#closed = true;
   }
 }

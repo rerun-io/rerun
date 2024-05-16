@@ -1,14 +1,31 @@
-use re_data_store::{DataStoreStats, LatestAtQuery};
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
+use re_data_store::{DataStore, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{
-    example_components::{MyColor, MyPoint},
-    DataRow, EntityPath, RowId, StoreId, TimePoint, Timeline,
+    example_components::{MyColor, MyIndex, MyPoint},
+    DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types_core::{
-    archetypes::Clear,
-    components::{ClearIsRecursive, InstanceKey},
-    AsComponents,
-};
+use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
+
+// ---
+
+fn query_latest_component<C: re_types_core::Component>(
+    store: &DataStore,
+    entity_path: &EntityPath,
+    query: &LatestAtQuery,
+) -> Option<(TimeInt, RowId, C)> {
+    re_tracing::profile_function!();
+
+    let (data_time, row_id, cells) =
+        store.latest_at(query, entity_path, C::name(), &[C::name()])?;
+    let cell = cells.first()?.as_ref()?;
+
+    cell.try_to_native_mono::<C>()
+        .ok()?
+        .map(|c| (data_time, row_id, c))
+}
 
 /// Complete test suite for the clear & pending clear paths.
 #[test]
@@ -28,7 +45,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'parent' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let point = MyPoint::new(1.0, 2.0);
         let color = MyColor::from(0xFF0000FF);
         let row = DataRow::from_component_batches(
@@ -41,21 +58,11 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            let got_point = db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_parent, &query)
-                .unwrap()
-                .value;
-            let got_color = db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_parent, &query)
-                .unwrap()
-                .value;
+            let query = LatestAtQuery::new(timeline_frame, 11);
+            let (_, _, got_point) =
+                query_latest_component::<MyPoint>(db.store(), &entity_path_parent, &query).unwrap();
+            let (_, _, got_color) =
+                query_latest_component::<MyColor>(db.store(), &entity_path_parent, &query).unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
             similar_asserts::assert_eq!(color, got_color);
@@ -66,7 +73,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child1' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let point = MyPoint::new(42.0, 43.0);
         let row = DataRow::from_component_batches(
             row_id,
@@ -78,16 +85,9 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            let got_point = db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_child1, &query)
-                .unwrap()
-                .value;
+            let query = LatestAtQuery::new(timeline_frame, 11);
+            let (_, _, got_point) =
+                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query).unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
         }
@@ -97,7 +97,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let color = MyColor::from(0x00AA00DD);
         let row = DataRow::from_component_batches(
             row_id,
@@ -109,16 +109,9 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            let got_color = db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child2, &query)
-                .unwrap()
-                .value;
+            let query = LatestAtQuery::new(timeline_frame, 11);
+            let (_, _, got_color) =
+                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query).unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
         }
@@ -130,7 +123,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::flat();
         let row = DataRow::from_component_batches(
             row_id,
@@ -142,39 +135,34 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
+            let query = LatestAtQuery::new(timeline_frame, 11);
 
             // parent
-            assert!(db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_parent, &query)
-                .is_none());
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_parent, &query)
-                .is_none());
+            assert!(
+                query_latest_component::<MyPoint>(db.store(), &entity_path_parent, &query)
+                    .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(db.store(), &entity_path_parent, &query)
+                    .is_none()
+            );
             // the `Clear` component itself doesn't get cleared!
-            let got_clear = db
-                .store()
-                .query_latest_component::<ClearIsRecursive>(&entity_path_parent, &query)
-                .unwrap()
-                .value;
+            let (_, _, got_clear) =
+                query_latest_component::<ClearIsRecursive>(db.store(), &entity_path_parent, &query)
+                    .unwrap();
             similar_asserts::assert_eq!(clear.is_recursive, got_clear);
 
             // child1
-            assert!(db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_child1, &query)
-                .is_some());
+            assert!(
+                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query)
+                    .is_some()
+            );
 
             // child2
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child2, &query)
-                .is_some());
+            assert!(
+                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query)
+                    .is_some()
+            );
         }
     }
 
@@ -184,7 +172,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we find nothing.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::recursive();
         let row = DataRow::from_component_batches(
             row_id,
@@ -196,39 +184,34 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
+            let query = LatestAtQuery::new(timeline_frame, 11);
 
             // parent
-            assert!(db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_parent, &query)
-                .is_none());
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_parent, &query)
-                .is_none());
+            assert!(
+                query_latest_component::<MyPoint>(db.store(), &entity_path_parent, &query)
+                    .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(db.store(), &entity_path_parent, &query)
+                    .is_none()
+            );
             // the `Clear` component itself doesn't get cleared!
-            let got_clear = db
-                .store()
-                .query_latest_component::<ClearIsRecursive>(&entity_path_parent, &query)
-                .unwrap()
-                .value;
+            let (_, _, got_clear) =
+                query_latest_component::<ClearIsRecursive>(db.store(), &entity_path_parent, &query)
+                    .unwrap();
             similar_asserts::assert_eq!(clear.is_recursive, got_clear);
 
             // child1
-            assert!(db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_child1, &query)
-                .is_none());
+            assert!(
+                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query)
+                    .is_none()
+            );
 
             // child2
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child2, &query)
-                .is_none());
+            assert!(
+                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query)
+                    .is_none()
+            );
         }
     }
 
@@ -237,41 +220,30 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'parent' at frame #11 and make sure we do _not_ find it.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
-        let instance_key = InstanceKey(0);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
+        let instance = MyIndex(0);
         let row = DataRow::from_component_batches(
             row_id,
             timepoint,
             entity_path_parent.clone(),
-            [&[instance_key] as _],
+            [&[instance] as _],
         )?;
 
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 9.into(),
-            };
-
-            let got_instance_key = db
-                .store()
-                .query_latest_component::<InstanceKey>(&entity_path_parent, &query)
-                .unwrap()
-                .value;
-            similar_asserts::assert_eq!(instance_key, got_instance_key);
+            let query = LatestAtQuery::new(timeline_frame, 9);
+            let (_, _, got_instance) =
+                query_latest_component::<MyIndex>(db.store(), &entity_path_parent, &query).unwrap();
+            similar_asserts::assert_eq!(instance, got_instance);
         }
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            assert!(db
-                .store()
-                .query_latest_component::<InstanceKey>(&entity_path_parent, &query)
-                .is_none());
+            let query = LatestAtQuery::new(timeline_frame, 11);
+            assert!(
+                query_latest_component::<MyIndex>(db.store(), &entity_path_parent, &query)
+                    .is_none()
+            );
         }
     }
 
@@ -281,7 +253,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child1' at frame #11 and make sure we do _not_ find anything.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let point = MyPoint::new(42.0, 43.0);
         let color = MyColor::from(0xBBBBBBBB);
         let row = DataRow::from_component_batches(
@@ -294,40 +266,26 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 9.into(),
-            };
-
-            let got_point = db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_child1, &query)
-                .unwrap()
-                .value;
-            let got_color = db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child1, &query)
-                .unwrap()
-                .value;
+            let query = LatestAtQuery::new(timeline_frame, 9);
+            let (_, _, got_point) =
+                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query).unwrap();
+            let (_, _, got_color) =
+                query_latest_component::<MyColor>(db.store(), &entity_path_child1, &query).unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
             similar_asserts::assert_eq!(color, got_color);
         }
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            assert!(db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_child1, &query)
-                .is_none());
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child1, &query)
-                .is_none());
+            let query = LatestAtQuery::new(timeline_frame, 11);
+            assert!(
+                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query)
+                    .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(db.store(), &entity_path_child1, &query)
+                    .is_none()
+            );
         }
     }
 
@@ -337,7 +295,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we do _not_ find anything.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let color = MyColor::from(0x00AA00DD);
         let point = MyPoint::new(66.0, 666.0);
         let row = DataRow::from_component_batches(
@@ -350,40 +308,26 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 9.into(),
-            };
-
-            let got_color = db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child2, &query)
-                .unwrap()
-                .value;
-            let got_point = db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_child2, &query)
-                .unwrap()
-                .value;
+            let query = LatestAtQuery::new(timeline_frame, 9);
+            let (_, _, got_point) =
+                query_latest_component::<MyPoint>(db.store(), &entity_path_child2, &query).unwrap();
+            let (_, _, got_color) =
+                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query).unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
             similar_asserts::assert_eq!(point, got_point);
         }
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child2, &query)
-                .is_none());
-            assert!(db
-                .store()
-                .query_latest_component::<MyPoint>(&entity_path_child2, &query)
-                .is_none());
+            let query = LatestAtQuery::new(timeline_frame, 11);
+            assert!(
+                query_latest_component::<MyPoint>(db.store(), &entity_path_child2, &query)
+                    .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query)
+                    .is_none()
+            );
         }
     }
 
@@ -392,7 +336,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'grandchild' at frame #11 and make sure we do _not_ find anything.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let color = MyColor::from(0x00AA00DD);
         let row = DataRow::from_component_batches(
             row_id,
@@ -404,87 +348,21 @@ fn clears() -> anyhow::Result<()> {
         db.add_data_row(row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 9.into(),
-            };
-
-            let got_color = db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_grandchild, &query)
-                .unwrap()
-                .value;
+            let query = LatestAtQuery::new(timeline_frame, 9);
+            let (_, _, got_color) =
+                query_latest_component::<MyColor>(db.store(), &entity_path_grandchild, &query)
+                    .unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
         }
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_grandchild, &query)
-                .is_none());
+            let query = LatestAtQuery::new(timeline_frame, 11);
+            assert!(
+                query_latest_component::<MyColor>(db.store(), &entity_path_grandchild, &query)
+                    .is_none()
+            );
         }
-    }
-
-    Ok(())
-}
-
-/// Test for GC behavior following clear. This functionality is expected by blueprints.
-#[test]
-fn clear_and_gc() -> anyhow::Result<()> {
-    re_log::setup_logging();
-
-    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-
-    let timepoint = TimePoint::timeless();
-    let entity_path: EntityPath = "space_view".into();
-
-    // Insert a component, then clear it, then GC.
-    {
-        // EntityTree is Empty when we start
-        assert_eq!(db.tree().num_children_and_fields(), 0);
-
-        let point = MyPoint::new(1.0, 2.0);
-
-        let row = DataRow::from_component_batches(
-            RowId::new(),
-            timepoint.clone(),
-            entity_path.clone(),
-            [&[point] as _],
-        )?;
-
-        db.add_data_row(row)?;
-
-        db.gc_everything_but_the_latest_row();
-
-        let stats = DataStoreStats::from_store(db.store());
-        assert_eq!(stats.timeless.num_rows, 1);
-
-        let clear = DataRow::from_component_batches(
-            RowId::new(),
-            timepoint.clone(),
-            entity_path.clone(),
-            Clear::recursive()
-                .as_component_batches()
-                .iter()
-                .map(|b| b.as_ref()),
-        )?;
-
-        db.add_data_row(clear)?;
-
-        db.gc_everything_but_the_latest_row();
-
-        // No rows should remain because the table should have been purged
-        let stats = DataStoreStats::from_store(db.store());
-        assert_eq!(stats.timeless.num_rows, 0);
-
-        // EntityTree should be empty again when we end since everything was GC'd
-        assert_eq!(db.tree().num_children_and_fields(), 0);
     }
 
     Ok(())

@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -91,10 +92,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                         let (somes, size): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { size, .. } = &**datum;
-                                    size.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.size.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -113,13 +111,8 @@ impl ::re_types_core::Loggable for TensorDimension {
                         let (somes, name): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { name, .. } = &**datum;
-                                        name.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.name.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -128,15 +121,13 @@ impl ::re_types_core::Loggable for TensorDimension {
                             any_nones.then(|| somes.into())
                         };
                         {
+                            let offsets =
+                                arrow2::offset::Offsets::<i32>::try_from_lengths(name.iter().map(
+                                    |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
+                                ))?
+                                .into();
                             let inner_data: arrow2::buffer::Buffer<u8> =
-                                name.iter().flatten().flat_map(|s| s.0.clone()).collect();
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                name.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
+                                name.into_iter().flatten().flat_map(|s| s.0).collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(

@@ -30,7 +30,6 @@ from .disconnected_space import (
 from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
 from .half_sizes2d import HalfSizes2D, HalfSizes2DBatch, HalfSizes2DType
 from .half_sizes3d import HalfSizes3D, HalfSizes3DBatch, HalfSizes3DType
-from .instance_key import InstanceKey, InstanceKeyArrayLike, InstanceKeyBatch, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
@@ -38,14 +37,13 @@ from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, M
 from .marker_size import MarkerSize, MarkerSizeArrayLike, MarkerSizeBatch, MarkerSizeLike, MarkerSizeType
 from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
-from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
 from .name import Name, NameBatch, NameType
 from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
-from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
+from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
@@ -62,6 +60,7 @@ from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
+from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
 from .view_coordinates import (
@@ -122,11 +121,6 @@ __all__ = [
     "HalfSizes3D",
     "HalfSizes3DBatch",
     "HalfSizes3DType",
-    "InstanceKey",
-    "InstanceKeyArrayLike",
-    "InstanceKeyBatch",
-    "InstanceKeyLike",
-    "InstanceKeyType",
     "KeypointId",
     "KeypointIdBatch",
     "KeypointIdType",
@@ -156,9 +150,6 @@ __all__ = [
     "MediaType",
     "MediaTypeBatch",
     "MediaTypeType",
-    "MeshProperties",
-    "MeshPropertiesBatch",
-    "MeshPropertiesType",
     "Name",
     "NameBatch",
     "NameType",
@@ -180,9 +171,7 @@ __all__ = [
     "RadiusLike",
     "RadiusType",
     "Range1D",
-    "Range1DArrayLike",
     "Range1DBatch",
-    "Range1DLike",
     "Range1DType",
     "Resolution",
     "ResolutionBatch",
@@ -220,6 +209,9 @@ __all__ = [
     "Transform3D",
     "Transform3DBatch",
     "Transform3DType",
+    "TriangleIndices",
+    "TriangleIndicesBatch",
+    "TriangleIndicesType",
     "Vector2D",
     "Vector2DBatch",
     "Vector2DType",

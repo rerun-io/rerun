@@ -1,6 +1,6 @@
 ---
-title: Using native loggers
-order: 5
+title: Integrate Rerun with native loggers
+order: 700
 description: How to use the Rerun SDK as a native logger for the host language
 ---
 
@@ -8,7 +8,7 @@ The Rerun SDK implements the native logging interfaces of its supported host lan
 
 The details of how to achieve that vary language by language, see the snippets below.
 
-code-example: text_log_integration
+snippet: archetypes/text_log_integration
 
 <picture>
   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" alt="">

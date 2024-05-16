@@ -11,48 +11,17 @@
 #include <string>
 #include <utility>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class StringBuilder;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
-    /// **Component**: A way to filter a set of `EntityPath`s.
+    /// **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
     ///
-    /// This implements as simple set of include/exclude rules:
+    /// Each expression is either an inclusion or an exclusion expression.
+    /// Inclusions start with an optional `+` and exclusions must start with a `-`.
     ///
-    /// ```diff
-    /// + /world/**           # add everything…
-    /// - /world/roads/**     # …but remove all roads…
-    /// + /world/roads/main   # …but show main road
-    /// ```
-    ///
-    /// If there is multiple matching rules, the most specific rule wins.
-    /// If there are multiple rules of the same specificity, the last one wins.
-    /// If no rules match, the path is excluded.
+    /// Multiple expressions are combined together as part of `SpaceViewContents`.
     ///
     /// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
     /// (`/world/**` matches both `/world` and `/world/car/driver`).
     /// Other uses of `*` are not (yet) supported.
-    ///
-    /// Internally, `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
-    /// This means the last matching rule is also the most specific one.
-    /// For instance:
-    ///
-    /// ```diff
-    /// + /world/**
-    /// - /world
-    /// - /world/car/**
-    /// + /world/car/driver
-    /// ```
-    ///
-    /// The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
-    /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
-    /// The last rule matching `/world` is `- /world`, so it is excluded.
-    /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
-    ///
-    /// Unstable. Used for the ongoing blueprint experimentations.
     struct QueryExpression {
         rerun::datatypes::Utf8 filter;
 
@@ -81,8 +50,7 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::QueryExpression));
 
     /// \private
     template <>
@@ -90,17 +58,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.QueryExpression";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const blueprint::components::QueryExpression* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::QueryExpression` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::QueryExpression* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->filter, num_instances);
+        }
     };
 } // namespace rerun

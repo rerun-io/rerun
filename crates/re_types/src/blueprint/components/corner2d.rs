@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -24,9 +25,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: One of four 2D corners, typically used to align objects.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Corner2D {
+    /// Left top corner.
     LeftTop = 1,
+
+    /// Right top corner.
     RightTop = 2,
+
+    /// Left bottom corner.
     LeftBottom = 3,
+
+    /// Right bottom corner.
     #[default]
     RightBottom = 4,
 }
@@ -101,6 +109,7 @@ impl ::re_types_core::Loggable for Corner2D {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
+            // Sparse Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {

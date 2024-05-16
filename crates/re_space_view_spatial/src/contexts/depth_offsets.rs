@@ -44,13 +44,20 @@ impl ViewContextSystem for EntityDepthOffsets {
             DefaultPoints,
         }
 
-        let store = ctx.entity_db.store();
-
         // Use a BTreeSet for entity hashes to get a stable order.
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
-            if let Some(draw_order) = store
-                .query_latest_component::<DrawOrder>(&data_result.entity_path, &ctx.current_query())
+        for data_result in query.iter_all_data_results() {
+            // Note that we can't use `query.iter_visible_data_results` here since `EntityDepthOffsets` isn't a visualizer
+            // and thus not in the list of per system data results.
+            if !data_result.is_visible(ctx) {
+                continue;
+            }
+
+            // TODO(#5607): what should happen if the promise is still pending?
+            if let Some(draw_order) = ctx
+                .store_context
+                .recording
+                .latest_at_component::<DrawOrder>(&data_result.entity_path, &ctx.current_query())
             {
                 entities_per_draw_order
                     .entry(draw_order.value)

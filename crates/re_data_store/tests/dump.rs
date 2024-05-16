@@ -1,17 +1,19 @@
 //! Dumping a datastore to log messages and back.
 
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use itertools::Itertools;
 use re_data_store::{
     test_row,
     test_util::{insert_table_with_retries, sanity_unwrap},
-    DataStore, DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline,
+    DataStore, DataStoreStats, GarbageCollectionOptions, ResolvedTimeRange, TimeInt, Timeline,
 };
 use re_log_types::{
-    build_frame_nr, build_log_time, DataRow, DataTable, EntityPath, RowId, TableId,
+    build_frame_nr, build_log_time,
+    example_components::{MyColor, MyIndex, MyPoint},
+    DataRow, DataTable, EntityPath, RowId, TableId, TimePoint,
 };
-use re_types::components::InstanceKey;
-use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
-use re_types_core::Loggable as _;
 
 // ---
 
@@ -47,7 +49,6 @@ impl RowSet {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 assert_eq!(entry.get().entity_path(), row.entity_path());
                 assert_eq!(entry.get().cells(), row.cells());
-                assert_eq!(entry.get().num_instances(), row.num_instances());
                 for (timeline, time) in row.timepoint() {
                     entry.get_mut().timepoint.insert(*timeline, *time);
                 }
@@ -79,17 +80,14 @@ fn data_store_dump() {
 
         let mut store1 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         let mut store2 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         let mut store3 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
 
@@ -105,10 +103,10 @@ fn data_store_dump() {
 }
 
 fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataStore) {
-    let ent_paths = ["this/that", "other", "yet/another/one"];
-    let tables = ent_paths
+    let entity_paths = ["this/that", "other", "yet/another/one"];
+    let tables = entity_paths
         .iter()
-        .map(|ent_path| create_insert_table(*ent_path))
+        .map(|entity_path| create_insert_table(*entity_path))
         .collect_vec();
 
     // Fill the first store.
@@ -116,10 +114,10 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
         // insert temporal
         insert_table(store1, table);
 
-        // insert timeless
-        let mut table_timeless = table.clone();
-        table_timeless.col_timelines = Default::default();
-        insert_table_with_retries(store1, &table_timeless);
+        // insert static
+        let mut table_static = table.clone();
+        table_static.col_timelines = Default::default();
+        insert_table_with_retries(store1, &table_static);
     }
     sanity_unwrap(store1);
 
@@ -160,13 +158,13 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     let store3_stats = DataStoreStats::from_store(store3);
     assert!(
         store1_stats.temporal.num_bytes <= store2_stats.temporal.num_bytes
-            && store1_stats.timeless.num_bytes <= store2_stats.timeless.num_bytes,
+            && store1_stats.static_tables.num_bytes <= store2_stats.static_tables.num_bytes,
         "First store should have <= amount of data of second store:\n\
             {store1_stats:#?}\n{store2_stats:#?}"
     );
     assert!(
         store2_stats.temporal.num_bytes <= store3_stats.temporal.num_bytes
-            && store2_stats.timeless.num_bytes <= store3_stats.timeless.num_bytes,
+            && store2_stats.static_tables.num_bytes <= store3_stats.static_tables.num_bytes,
         "Second store should have <= amount of data of third store:\n\
             {store2_stats:#?}\n{store3_stats:#?}"
     );
@@ -184,12 +182,10 @@ fn data_store_dump_filtered() {
 
         let mut store1 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         let mut store2 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
 
@@ -206,15 +202,15 @@ fn data_store_dump_filtered() {
 fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore) {
     let timeline_frame_nr = Timeline::new_sequence("frame_nr");
     let timeline_log_time = Timeline::log_time();
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
-    let frame4: TimeInt = 4.into();
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
-    let ent_paths = ["this/that", "other", "yet/another/one"];
-    let tables = ent_paths
+    let entity_paths = ["this/that", "other", "yet/another/one"];
+    let tables = entity_paths
         .iter()
-        .map(|ent_path| create_insert_table(*ent_path))
+        .map(|entity_path| create_insert_table(*entity_path))
         .collect_vec();
 
     // Fill the first store.
@@ -228,24 +224,24 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
     // Dump frame1 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame1, frame1)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame1, frame1)).into()),
     );
     // Dump frame2 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame2, frame2)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame2, frame2)).into()),
     );
     // Dump frame3 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame3, frame3)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame3, frame3)).into()),
     );
     // Dump frame3 _from the other timeline_, from the first store.
     // This will produce the same RowIds again!
     row_set.insert_tables(
-        store1.to_data_tables((timeline_log_time, TimeRange::new(frame3, frame3)).into()),
+        store1.to_data_tables((timeline_log_time, ResolvedTimeRange::new(frame3, frame3)).into()),
     );
     // Dump frame4 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame4, frame4)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame4, frame4)).into()),
     );
 
     row_set.insert_into(store2);
@@ -265,7 +261,7 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     let store2_stats = DataStoreStats::from_store(store2);
     assert!(
         store1_stats.temporal.num_bytes <= store2_stats.temporal.num_bytes
-            && store1_stats.timeless.num_bytes <= store2_stats.timeless.num_bytes,
+            && store1_stats.static_tables.num_bytes <= store2_stats.static_tables.num_bytes,
         "First store should have <= amount of data of second store:\n\
             {store1_stats:#?}\n{store2_stats:#?}"
     );
@@ -273,35 +269,38 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
 // ---
 
-fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
-    let ent_path = ent_path.into();
+fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
+    let entity_path = entity_path.into();
 
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
-    let frame4: TimeInt = 4.into();
+    let timeless = TimePoint::default();
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
-    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 = test_row!(ent_path @ [
+    let (instances1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
+    let row1 = test_row!(entity_path @ [
             build_frame_nr(frame1),
-        ] => 3; [instances1.clone(), colors1]);
+        ] => [instances1.clone(), colors1]);
 
-    let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [
+    let positions2 = MyPoint::from_iter(0..2);
+    let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
-        ] => 3; [instances1, positions2]);
+        ] => [instances1, positions2.clone()]);
 
-    let positions3 = build_some_positions2d(10);
-    let row3 = test_row!(ent_path @ [
+    let positions3 = MyPoint::from_iter(0..10);
+    let row3 = test_row!(entity_path @ [
             build_log_time(frame3.into()) /* ! */, build_frame_nr(frame3),
-        ] => 10; [positions3]);
+        ] => [positions3]);
 
-    let colors4 = build_some_colors(5);
-    let row4 = test_row!(ent_path @ [
+    let colors4 = MyColor::from_iter(0..5);
+    let row4 = test_row!(entity_path @ [
             build_frame_nr(frame4),
-        ] => 5; [colors4]);
+        ] => [colors4.clone()]);
 
-    let mut table = DataTable::from_rows(TableId::new(), [row1, row2, row3, row4]);
+    let row0 = test_row!(entity_path @ timeless => [positions2, colors4]);
+
+    let mut table = DataTable::from_rows(TableId::new(), [row0, row1, row2, row3, row4]);
     table.compute_all_size_bytes();
 
     table
@@ -321,7 +320,6 @@ fn data_store_dump_empty_column() {
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         config,
     );
 
@@ -329,22 +327,22 @@ fn data_store_dump_empty_column() {
 }
 
 fn data_store_dump_empty_column_impl(store: &mut DataStore) {
-    let ent_path: EntityPath = "points".into();
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
+    let entity_path: EntityPath = "points".into();
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
 
     // Start by inserting a table with 2 rows, one with colors, and one with points.
     {
-        let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-        let row1 = test_row!(ent_path @ [
+        let (instances1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
+        let row1 = test_row!(entity_path @ [
                 build_frame_nr(frame1),
-            ] => 3; [instances1, colors1]);
+            ] => [instances1, colors1]);
 
-        let (instances2, positions2) = (build_some_instances(3), build_some_positions2d(3));
-        let row2 = test_row!(ent_path @ [
+        let (instances2, positions2) = (MyIndex::from_iter(0..3), MyPoint::from_iter(0..2));
+        let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
-        ] => 3; [instances2, positions2]);
+        ] => [instances2, positions2]);
         let mut table = DataTable::from_rows(TableId::new(), [row1, row2]);
         table.compute_all_size_bytes();
         insert_table_with_retries(store, &table);
@@ -352,10 +350,10 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
 
     // Now insert another table with points only.
     {
-        let (instances3, positions3) = (build_some_instances(3), build_some_colors(3));
-        let row3 = test_row!(ent_path @ [
+        let (instances3, positions3) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
+        let row3 = test_row!(entity_path @ [
                 build_frame_nr(frame3),
-            ] => 3; [instances3, positions3]);
+            ] => [instances3, positions3]);
         let mut table = DataTable::from_rows(TableId::new(), [row3]);
         table.compute_all_size_bytes();
         insert_table_with_retries(store, &table);

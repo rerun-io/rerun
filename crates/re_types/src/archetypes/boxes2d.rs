@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -34,9 +35,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         "simple",
 ///         &rerun::Boxes2D::from_mins_and_sizes([(-1., -1.)], [(2., 2.)]),
 ///     )?;
-///
-///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &rerun::Boxes2D::from_sizes([(4., 3.)]))?;
 ///
 ///     Ok(())
 /// }
@@ -116,18 +114,17 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSizes2D".into(),
@@ -136,14 +133,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Position2D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl Boxes2D {
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`Boxes2D`] [`::re_types_core::Archetype`]
@@ -316,14 +313,11 @@ impl ::re_types_core::AsComponents for Boxes2D {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.half_sizes.len()
-    }
 }
 
 impl Boxes2D {
+    /// Create a new `Boxes2D`.
+    #[inline]
     pub(crate) fn new(
         half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSizes2D>>,
     ) -> Self {
@@ -338,6 +332,7 @@ impl Boxes2D {
         }
     }
 
+    /// Optional center positions of the boxes.
     #[inline]
     pub fn with_centers(
         mut self,
@@ -347,6 +342,7 @@ impl Boxes2D {
         self
     }
 
+    /// Optional colors for the boxes.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -356,6 +352,7 @@ impl Boxes2D {
         self
     }
 
+    /// Optional radii for the lines that make up the boxes.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -365,6 +362,7 @@ impl Boxes2D {
         self
     }
 
+    /// Optional text labels for the boxes.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -374,12 +372,20 @@ impl Boxes2D {
         self
     }
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    ///
+    /// The default for 2D boxes is 10.0.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self
     }
 
+    /// Optional `ClassId`s for the boxes.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

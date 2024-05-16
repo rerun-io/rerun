@@ -6,9 +6,12 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[lints]
+workspace = true
+
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
-rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
+rerun = { path = "../../../crates/rerun", features = ["clap", "web_viewer"] }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }

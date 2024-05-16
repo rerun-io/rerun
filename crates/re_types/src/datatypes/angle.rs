@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -24,7 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Angle in either radians or degrees.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Angle {
+    /// Angle in radians. One turn is equal to 2π (or τ) radians.
     Radians(f32),
+
+    /// Angle in degrees. One turn is equal to 360 degrees.
     Degrees(f32),
 }
 
@@ -79,6 +83,7 @@ impl ::re_types_core::Loggable for Angle {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
+            // Dense Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
@@ -97,47 +102,33 @@ impl ::re_types_core::Loggable for Angle {
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
                 {
-                    let (somes, radians): (Vec<_>, Vec<_>) = data
+                    let radians: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Angle::Radians(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Angle::Radians(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Angle::Radians(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let radians_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     PrimitiveArray::new(
                         DataType::Float32,
-                        radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        radians.into_iter().collect(),
                         radians_bitmap,
                     )
                     .boxed()
                 },
                 {
-                    let (somes, degrees): (Vec<_>, Vec<_>) = data
+                    let degrees: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Angle::Degrees(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Angle::Degrees(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Angle::Degrees(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     PrimitiveArray::new(
                         DataType::Float32,
-                        degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        degrees.into_iter().collect(),
                         degrees_bitmap,
                     )
                     .boxed()

@@ -1,0 +1,64 @@
+name: Reusable Deploy Landing Preview
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      PR_NUMBER:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-deploy-landing-preview
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: "write"
+  id-token: "write"
+  pull-requests: "write"
+
+jobs:
+  deploy:
+    name: Deploy
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+
+      - name: Get sha
+        id: get-sha
+        run: |
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Re-deploy rerun.io
+        id: vercel
+        uses: ./.github/actions/vercel
+        with:
+          command: "deploy"
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          release_commit: ${{ steps.get-sha.outputs.sha }}
+          target: "preview"
+
+      - name: Create PR comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            ## Deployed docs
+
+            | Commit  | Link  |
+            | ------- | ----- |
+            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |

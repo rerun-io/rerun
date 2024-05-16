@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -21,10 +22,11 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: A 16-byte uuid.
+/// **Datatype**: A 16-byte UUID.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Uuid {
+    /// The raw bytes representing the UUID.
     pub bytes: [u8; 16usize],
 }
 
@@ -88,10 +90,7 @@ impl ::re_types_core::Loggable for Uuid {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self { bytes } = datum.into_owned();
-                        bytes
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().bytes);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -102,20 +101,19 @@ impl ::re_types_core::Loggable for Uuid {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let bytes_inner_data: Vec<_> = bytes
-                    .iter()
+                    .into_iter()
                     .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.iter().cloned()),
+                        Some(v) => itertools::Either::Left(v.into_iter()),
                         None => itertools::Either::Right(
                             std::iter::repeat(Default::default()).take(16usize),
                         ),
                     })
-                    .map(Some)
                     .collect();
                 let bytes_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     bytes_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
-                            .map(|i| std::iter::repeat(i).take(16usize))
+                            .map(|b| std::iter::repeat(b).take(16usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()
@@ -124,10 +122,7 @@ impl ::re_types_core::Loggable for Uuid {
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
                         DataType::UInt8,
-                        bytes_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        bytes_inner_data.into_iter().collect(),
                         bytes_inner_bitmap,
                     )
                     .boxed(),
@@ -196,8 +191,10 @@ impl ::re_types_core::Loggable for Uuid {
                         let data =
                             unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
                         let data = data.iter().cloned().map(Option::unwrap_or_default);
-                        let arr = array_init::from_iter(data).unwrap();
-                        Ok(arr)
+
+                        // NOTE: Unwrapping cannot fail: the length must be correct.
+                        #[allow(clippy::unwrap_used)]
+                        Ok(array_init::from_iter(data).unwrap())
                     })
                     .transpose()
                 })

@@ -5,9 +5,9 @@
 
 The Rerun C++ SDK allows logging data to Rerun directly from C++.
 
-## Getting Started
+## Getting started
 
-Read the [getting started guide](https://www.rerun.io/docs/getting-started/cpp) on how to use the Rerun C++ SDK.
+Read the [getting started guide](https://www.rerun.io/docs/getting-started/quick-start/cpp) on how to use the Rerun C++ SDK.
 
 ### Logging
 
@@ -44,7 +44,7 @@ All C++ examples can be found [directly in the Rerun repository](https://github.
 Additionally, each [archetype's documentation](https://www.rerun.io/docs/reference/types) comes with at least one small self-contained code example.
 
 
-## Building Blocks
+## Building blocks
 
 The most important type in the SDK is the `rerun::RecordingStream`.
 It allows you to connect to the Rerun Viewer and send data.
@@ -58,17 +58,17 @@ If you include `rerun.hpp`, all archetypes and most component types become part 
 
 Check the [general doc page on types](https://www.rerun.io/docs/reference/types) to learn more.
 
-## Build & Distribution
+## Build & distribution
 
 ### Overview
 
-To avoid compatibility issues across different platforms, compiler versions and C++ standard library versions
-the C++ SDK is expected to be built from source.
-
 From a build system perspective, the SDK consists of three dependencies:
 
-* [SDK source](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp/src/)
+* [C++ SDK source](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp/src/)
   * This includes **both** source and header files!
+  * To avoid compatibility issues across different platforms, compiler versions and C++ standard library versions
+we recommend to build the C++ SDK directly from source.
+Note that this also what happens when you follow the CMake setup in the [quickstart guide](https://www.rerun.io/docs/getting-started/quick-start/cpp).
 * [rerun_c](https://github.com/rerun-io/rerun/tree/latest/crates/rerun_c/) static libraries
   * Rerun C is a minimal C SDK and forms the bridge to the shared Rust codebase
   * Due to the rigidity of the C ABI and lack of complex standard library types in the interface,

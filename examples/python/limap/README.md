@@ -1,11 +1,15 @@
 <!--[metadata]
-title = "3D Line Mapping Revisited"
+title = "3D line mapping revisited"
 source = "https://github.com/rerun-io/limap"
-tags = ["2D", "3D", "structure-from-motion", "time-series", "line-detection", "pinhole-camera"]
-thumbnail = "https://static.rerun.io/limap/30b9ad1ae36df7dc809edfd40c11620292bc7294/480w.png"
-thumbnail_dimensions = [480, 277]
+tags = ["2D", "3D", "Structure from motion", "Time series", "Line detection", "Pinhole camera", "Paper walkthrough"]
+thumbnail = "https://static.rerun.io/3d-line-mapping-revisited/be0a3b8ac0836036862d773b4276ea9d7ffb27b8/480w.png" # NOLINT
+thumbnail_dimensions = [480, 480]
 -->
 
+This example is a visual walkthrough of the paper "3D Line Mapping Revisited".
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
 
 Human-made environments contain a lot of straight lines, which are currently not exploited by most mapping approaches. With their recent work "3D Line Mapping Revisited" Shaohui Liu et al. take steps towards changing that.
 

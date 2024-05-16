@@ -44,17 +44,15 @@ class AffixFuzzer21Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field("single_half", pa.float16(), nullable=False, metadata={}),
-                    pa.field(
-                        "many_halves",
-                        pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                ]
-            ),
+            pa.struct([
+                pa.field("single_half", pa.float16(), nullable=False, metadata={}),
+                pa.field(
+                    "many_halves",
+                    pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+            ]),
             self._TYPE_NAME,
         )
 
@@ -64,4 +62,6 @@ class AffixFuzzer21Batch(BaseBatch[AffixFuzzer21ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer21ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer21_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of AffixFuzzer21 not implemented: We lack codegen for arrow-serialization of general structs"
+        )  # You need to implement native_to_pa_array_override in affix_fuzzer21_ext.py

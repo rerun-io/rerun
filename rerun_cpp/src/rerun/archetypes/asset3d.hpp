@@ -44,7 +44,7 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_asset3d");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+    ///     rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
     ///     rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());
     /// }
     /// ```
@@ -132,11 +132,6 @@ namespace rerun::archetypes {
             transform = std::move(_transform);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
         }
     };
 

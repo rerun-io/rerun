@@ -12,6 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 
@@ -21,10 +24,11 @@ all-features = true
 client = ["re_log_encoding/encoder"]
 
 ## Enable the server.
-server = ["rand", "tokio", "re_log_encoding/decoder"]
+server = ["rand", "re_log_encoding/decoder"]
 
 
 [dependencies]
+re_build_info.workspace = true
 re_log_encoding.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true
@@ -42,10 +46,4 @@ rand = { workspace = true, optional = true, features = [
   "std",
   "std_rng",
   "small_rng",
-] }
-
-tokio = { workspace = true, optional = true, features = [
-  "io-util",
-  "net",
-  "rt",
 ] }

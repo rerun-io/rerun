@@ -10,6 +10,7 @@ from .annotation_info import (
     AnnotationInfoLike,
     AnnotationInfoType,
 )
+from .bool import Bool, BoolArrayLike, BoolBatch, BoolLike, BoolType
 from .class_description import (
     ClassDescription,
     ClassDescriptionArrayLike,
@@ -32,14 +33,9 @@ from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatc
 from .mat3x3 import Mat3x3, Mat3x3ArrayLike, Mat3x3Batch, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4ArrayLike, Mat4x4Batch, Mat4x4Like, Mat4x4Type
 from .material import Material, MaterialArrayLike, MaterialBatch, MaterialLike, MaterialType
-from .mesh_properties import (
-    MeshProperties,
-    MeshPropertiesArrayLike,
-    MeshPropertiesBatch,
-    MeshPropertiesLike,
-    MeshPropertiesType,
-)
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike, QuaternionType
+from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
+from .range2d import Range2D, Range2DArrayLike, Range2DBatch, Range2DLike, Range2DType
 from .rgba32 import Rgba32, Rgba32ArrayLike, Rgba32Batch, Rgba32Like, Rgba32Type
 from .rotation3d import Rotation3D, Rotation3DArrayLike, Rotation3DBatch, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
@@ -58,6 +54,15 @@ from .tensor_dimension import (
     TensorDimensionBatch,
     TensorDimensionLike,
     TensorDimensionType,
+)
+from .time_int import TimeInt, TimeIntArrayLike, TimeIntBatch, TimeIntLike, TimeIntType
+from .time_range import TimeRange, TimeRangeArrayLike, TimeRangeBatch, TimeRangeLike, TimeRangeType
+from .time_range_boundary import (
+    TimeRangeBoundary,
+    TimeRangeBoundaryArrayLike,
+    TimeRangeBoundaryBatch,
+    TimeRangeBoundaryLike,
+    TimeRangeBoundaryType,
 )
 from .transform3d import Transform3D, Transform3DArrayLike, Transform3DBatch, Transform3DLike, Transform3DType
 from .translation_and_mat3x3 import (
@@ -84,6 +89,13 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
+from .visible_time_range import (
+    VisibleTimeRange,
+    VisibleTimeRangeArrayLike,
+    VisibleTimeRangeBatch,
+    VisibleTimeRangeLike,
+    VisibleTimeRangeType,
+)
 
 __all__ = [
     "Angle",
@@ -96,6 +108,11 @@ __all__ = [
     "AnnotationInfoBatch",
     "AnnotationInfoLike",
     "AnnotationInfoType",
+    "Bool",
+    "BoolArrayLike",
+    "BoolBatch",
+    "BoolLike",
+    "BoolType",
     "ClassDescription",
     "ClassDescriptionArrayLike",
     "ClassDescriptionBatch",
@@ -146,16 +163,21 @@ __all__ = [
     "MaterialBatch",
     "MaterialLike",
     "MaterialType",
-    "MeshProperties",
-    "MeshPropertiesArrayLike",
-    "MeshPropertiesBatch",
-    "MeshPropertiesLike",
-    "MeshPropertiesType",
     "Quaternion",
     "QuaternionArrayLike",
     "QuaternionBatch",
     "QuaternionLike",
     "QuaternionType",
+    "Range1D",
+    "Range1DArrayLike",
+    "Range1DBatch",
+    "Range1DLike",
+    "Range1DType",
+    "Range2D",
+    "Range2DArrayLike",
+    "Range2DBatch",
+    "Range2DLike",
+    "Range2DType",
     "Rgba32",
     "Rgba32ArrayLike",
     "Rgba32Batch",
@@ -191,6 +213,21 @@ __all__ = [
     "TensorDimensionBatch",
     "TensorDimensionLike",
     "TensorDimensionType",
+    "TimeInt",
+    "TimeIntArrayLike",
+    "TimeIntBatch",
+    "TimeIntLike",
+    "TimeIntType",
+    "TimeRange",
+    "TimeRangeArrayLike",
+    "TimeRangeBatch",
+    "TimeRangeBoundary",
+    "TimeRangeBoundaryArrayLike",
+    "TimeRangeBoundaryBatch",
+    "TimeRangeBoundaryLike",
+    "TimeRangeBoundaryType",
+    "TimeRangeLike",
+    "TimeRangeType",
     "Transform3D",
     "Transform3DArrayLike",
     "Transform3DBatch",
@@ -256,4 +293,9 @@ __all__ = [
     "Vec4DBatch",
     "Vec4DLike",
     "Vec4DType",
+    "VisibleTimeRange",
+    "VisibleTimeRangeArrayLike",
+    "VisibleTimeRangeBatch",
+    "VisibleTimeRangeLike",
+    "VisibleTimeRangeType",
 ]

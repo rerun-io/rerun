@@ -1,6 +1,6 @@
 //! Demonstrates how to log any file from the SDK using the `DataLoader` machinery.
 //!
-//! See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+//! See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
 //!
 //! Usage:
 //! ```
@@ -43,7 +43,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
 
         if !args.from_contents {
             // Either log the file using its path…
-            rec.log_file_from_path(filepath, prefix.clone(), true /* timeless */)?;
+            rec.log_file_from_path(filepath, prefix.clone(), true /* static */)?;
         } else {
             // …or using its contents if you already have them loaded for some reason.
             if filepath.is_file() {
@@ -52,7 +52,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
                     filepath,
                     std::borrow::Cow::Borrowed(&contents),
                     prefix.clone(),
-                    true, /* timeless */
+                    true, /* static */
                 )?;
             }
         }

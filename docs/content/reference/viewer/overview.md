@@ -4,15 +4,15 @@ order: 0
 ---
 The following sections give an overview of the basic ui concepts and where to find which functionality.
 
-Generally, the viewer tries to be as self-explaining as possible - most items in the ui show a tooltip upon hovering which should give additional information.
+Generally, the Viewer tries to be as self-explaining as possible - most items in the ui show a tooltip upon hovering which should give additional information.
 If you are missing a piece of information, don't hesitate to [file an issue](https://github.com/rerun-io/rerun/issues/new/choose)!
 
 Overview
 --------------------------
-![screenshot of the viewer with different parts annotated](https://static.rerun.io/a5e708e4bbd2c0b182f7f9103ab42c85e55f8982_viewer-overview.png)
+![screenshot of the Viewer with different parts annotated](https://static.rerun.io/a5e708e4bbd2c0b182f7f9103ab42c85e55f8982_viewer-overview.png)
 
 ### [Blueprint](blueprint.md)
-The Blueprint view is where you see and edit the Blueprint for the whole viewer, i.e. what is shown in the viewer (and how it is shown).
+The Blueprint view is where you see and edit the Blueprint for the whole viewer, i.e. what is shown in the Viewer (and how it is shown).
 
 ### [Selection](selection.md)
 The Selection view let's you see details and edit configurations of the current selection(s).
@@ -24,7 +24,7 @@ Additionally, it gives you an overview of all events on a given timeline.
 ### [Viewport](viewport.md)
 The viewport is where your visualizations live. It is composed of one or more Space Views that you can arrange freely.
 
-### Top bar & Menu
+### Top bar & menu
 The top bar contains operating system controls and generic information.
 In the menu you find application wide options and actions.
 Use the buttons at the top right corner to hide/show parts of the viewer.

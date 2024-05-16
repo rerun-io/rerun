@@ -23,7 +23,6 @@ class ViewportBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        space_views: datatypes.UuidArrayLike,
         *,
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
@@ -36,8 +35,6 @@ class ViewportBlueprint(Archetype):
 
         Parameters
         ----------
-        space_views:
-            All of the space-views that belong to the viewport.
         root_container:
             The layout of the space-views
         maximized:
@@ -48,25 +45,24 @@ class ViewportBlueprint(Archetype):
             If `true`, the container layout will be reset whenever a new space view is added or removed.
             This defaults to `false` and is automatically set to `false` when there is user determined layout.
         auto_space_views:
-            Whether or not Space Views should be created automatically.
+            Whether or not space views should be created automatically.
 
-            If `true`, the viewer will only add Space Views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-            and which aren't deemed redundant to existing Space Views.
-            This defaults to `false` and is automatically set to `false` when the user adds Space Views manually in the viewer.
+            If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+            and which aren't deemed redundant to existing space views.
+            This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
         past_viewer_recommendations:
-            Hashes of all recommended Space Views the viewer has already added and that should not be added again.
+            Hashes of all recommended space views the viewer has already added and that should not be added again.
 
             This is an internal field and should not be set usually.
-            If you want the viewer from stopping to add Space Views, you should set `auto_space_views` to `false`.
+            If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
 
-            The viewer uses this to determine whether it should keep adding Space Views.
+            The viewer uses this to determine whether it should keep adding space views.
 
         """
 
         # You can define your own __init__ function as a member of ViewportBlueprintExt in viewport_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                space_views=space_views,
                 root_container=root_container,
                 maximized=maximized,
                 auto_layout=auto_layout,
@@ -79,7 +75,6 @@ class ViewportBlueprint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            space_views=None,  # type: ignore[arg-type]
             root_container=None,  # type: ignore[arg-type]
             maximized=None,  # type: ignore[arg-type]
             auto_layout=None,  # type: ignore[arg-type]
@@ -93,14 +88,6 @@ class ViewportBlueprint(Archetype):
         inst = cls.__new__(cls)
         inst.__attrs_clear__()
         return inst
-
-    space_views: blueprint_components.IncludedSpaceViewBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.IncludedSpaceViewBatch._required,  # type: ignore[misc]
-    )
-    # All of the space-views that belong to the viewport.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
 
     root_container: blueprint_components.RootContainerBatch | None = field(
         metadata={"component": "optional"},
@@ -137,11 +124,11 @@ class ViewportBlueprint(Archetype):
         default=None,
         converter=blueprint_components.AutoSpaceViewsBatch._optional,  # type: ignore[misc]
     )
-    # Whether or not Space Views should be created automatically.
+    # Whether or not space views should be created automatically.
     #
-    # If `true`, the viewer will only add Space Views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-    # and which aren't deemed redundant to existing Space Views.
-    # This defaults to `false` and is automatically set to `false` when the user adds Space Views manually in the viewer.
+    # If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+    # and which aren't deemed redundant to existing space views.
+    # This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -150,12 +137,12 @@ class ViewportBlueprint(Archetype):
         default=None,
         converter=blueprint_components.ViewerRecommendationHashBatch._optional,  # type: ignore[misc]
     )
-    # Hashes of all recommended Space Views the viewer has already added and that should not be added again.
+    # Hashes of all recommended space views the viewer has already added and that should not be added again.
     #
     # This is an internal field and should not be set usually.
-    # If you want the viewer from stopping to add Space Views, you should set `auto_space_views` to `false`.
+    # If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
     #
-    # The viewer uses this to determine whether it should keep adding Space Views.
+    # The viewer uses this to determine whether it should keep adding space views.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

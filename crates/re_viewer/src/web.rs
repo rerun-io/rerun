@@ -1,12 +1,15 @@
+//! Main entry-point of the web app.
+
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
-use eframe::wasm_bindgen::{self, prelude::*};
-
-use std::ops::ControlFlow;
-use std::sync::Arc;
+use ahash::HashMap;
+use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
+use re_viewer_context::CommandSender;
+
+use crate::web_tools::{string_from_js_value, translate_query_into_commands, url_to_receiver};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -15,6 +18,12 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
 #[wasm_bindgen]
 pub struct WebHandle {
     runner: eframe::WebRunner,
+
+    /// A dedicated smart channel used by the [`WebHandle::add_rrd_from_bytes`] API.
+    ///
+    /// This exists because the direct bytes API is expected to submit many small RRD chunks
+    /// and allocating a new tx pair for each chunk doesn't make sense.
+    tx_channels: HashMap<String, re_smart_channel::Sender<re_log_types::LogMsg>>,
 }
 
 #[wasm_bindgen]
@@ -26,6 +35,7 @@ impl WebHandle {
 
         Self {
             runner: eframe::WebRunner::new(),
+            tx_channels: Default::default(),
         }
     }
 
@@ -39,6 +49,7 @@ impl WebHandle {
         url: Option<String>,
         manifest_url: Option<String>,
         force_wgpu_backend: Option<String>,
+        hide_welcome_screen: Option<bool>,
     ) -> Result<(), wasm_bindgen::JsValue> {
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
@@ -53,7 +64,12 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let app = create_app(cc, &url, &manifest_url);
+                    let app = create_app(
+                        cc,
+                        &url,
+                        &manifest_url,
+                        hide_welcome_screen.unwrap_or(false),
+                    );
                     Box::new(app)
                 }),
             )
@@ -84,13 +100,24 @@ impl WebHandle {
         self.runner.panic_summary().map(|s| s.callstack())
     }
 
+    /// Add a new receiver streaming data from the given url.
+    ///
+    /// If `follow_if_http` is `true`, and the url is an HTTP source, the viewer will open the stream
+    /// in `Following` mode rather than `Playing` mode.
+    ///
+    /// Websocket streams are always opened in `Following` mode.
+    ///
+    /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
-    pub fn add_receiver(&self, url: &str) {
+    pub fn add_receiver(&self, url: &str, follow_if_http: Option<bool>) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let rx = url_to_receiver(url, app.re_ui.egui_ctx.clone());
-        app.add_receiver(rx);
+        let follow_if_http = follow_if_http.unwrap_or(false);
+        let rx = url_to_receiver(app.re_ui.egui_ctx.clone(), follow_if_http, url);
+        if let Some(rx) = rx.ok_or_log_error() {
+            app.add_receiver(rx);
+        }
     }
 
     #[wasm_bindgen]
@@ -103,12 +130,105 @@ impl WebHandle {
             store_hub.remove_recording_by_uri(url);
         }
     }
+
+    /// Open a new channel for streaming data.
+    ///
+    /// It is an error to open a channel twice with the same id.
+    #[wasm_bindgen]
+    pub fn open_channel(&mut self, id: &str, channel_name: &str) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if self.tx_channels.contains_key(id) {
+            re_log::warn!("Channel with id '{}' already exists.", id);
+            return;
+        }
+
+        let (tx, rx) = re_smart_channel::smart_channel(
+            re_smart_channel::SmartMessageSource::JsChannelPush,
+            re_smart_channel::SmartChannelSource::JsChannel {
+                channel_name: channel_name.to_owned(),
+            },
+        );
+
+        app.add_receiver(rx);
+        self.tx_channels.insert(id.to_owned(), tx);
+    }
+
+    /// Close an existing channel for streaming data.
+    ///
+    /// No-op if the channel is already closed.
+    #[wasm_bindgen]
+    pub fn close_channel(&mut self, id: &str) {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if let Some(tx) = self.tx_channels.remove(id) {
+            tx.quit(None).warn_on_err_once("Failed to send quit marker");
+        }
+
+        // Request a repaint since closing the channel may update the top bar.
+        app.re_ui
+            .egui_ctx
+            .request_repaint_after(std::time::Duration::from_millis(10));
+    }
+
+    /// Add an rrd to the viewer directly from a byte array.
+    #[wasm_bindgen]
+    pub fn send_rrd_to_channel(&mut self, id: &str, data: &[u8]) {
+        use std::{ops::ControlFlow, sync::Arc};
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if let Some(tx) = self.tx_channels.get(id).cloned() {
+            let data: Vec<u8> = data.to_vec();
+
+            let egui_ctx = app.re_ui.egui_ctx.clone();
+
+            let ui_waker = Box::new(move || {
+                // Spend a few more milliseconds decoding incoming messages,
+                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            });
+
+            re_log_encoding::stream_rrd_from_http::web_decode::decode_rrd(
+                data,
+                Arc::new({
+                    move |msg| {
+                        ui_waker();
+                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                        match msg {
+                            HttpMessage::LogMsg(msg) => {
+                                if tx.send(msg).is_ok() {
+                                    ControlFlow::Continue(())
+                                } else {
+                                    re_log::info_once!("Failed to dispatch log message to viewer.");
+                                    ControlFlow::Break(())
+                                }
+                            }
+                            // TODO(jleibs): Unclear what we want to do here. More data is coming.
+                            HttpMessage::Success => ControlFlow::Continue(()),
+                            HttpMessage::Failure(err) => {
+                                tx.quit(Some(err))
+                                    .warn_on_err_once("Failed to send quit marker");
+                                ControlFlow::Break(())
+                            }
+                        }
+                    }
+                }),
+            );
+        }
+    }
 }
 
 fn create_app(
     cc: &eframe::CreationContext<'_>,
     url: &Option<String>,
     manifest_url: &Option<String>,
+    hide_welcome_screen: bool,
 ) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web {
@@ -122,90 +242,59 @@ fn create_app(
         location: Some(cc.integration_info.web_info.location.clone()),
         persist_state: get_persist_state(&cc.integration_info),
         is_in_notebook: is_in_notebook(&cc.integration_info),
-        skip_welcome_screen: false,
+        expect_data_soon: None,
         force_wgpu_backend: None,
+        hide_welcome_screen,
     };
-    let re_ui = crate::customize_eframe(cc);
-
-    let egui_ctx = cc.egui_ctx.clone();
+    let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 
     let query_map = &cc.integration_info.web_info.location.query_map;
 
-    let manifest_url = match &manifest_url {
-        Some(url) => Some(url.as_str()),
-        None => query_map.get("manifest_url").map(String::as_str),
-    };
-    if let Some(url) = manifest_url {
-        app.set_examples_manifest_url(url.into());
-        re_log::info!("Using manifest_url={url:?}");
+    if let Some(manifest_url) = manifest_url {
+        app.set_examples_manifest_url(manifest_url.into());
+    } else {
+        for url in query_map.get("manifest_url").into_iter().flatten() {
+            app.set_examples_manifest_url(url.clone());
+        }
     }
 
-    let url = match &url {
-        Some(url) => Some(url.as_str()),
-        None => query_map.get("url").map(String::as_str),
-    };
     if let Some(url) = url {
-        let rx = url_to_receiver(url, egui_ctx.clone());
-        app.add_receiver(rx);
+        let follow_if_http = false;
+        if let Some(receiver) =
+            url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
+        {
+            app.add_receiver(receiver);
+        }
+    } else {
+        translate_query_into_commands(&cc.egui_ctx, &app.command_sender);
     }
+
+    install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone());
 
     app
 }
 
-fn url_to_receiver(
-    url: &str,
-    egui_ctx: egui::Context,
-) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
-    let ui_waker = Box::new(move || {
-        // Spend a few more milliseconds decoding incoming messages,
-        // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
-        egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-    });
-    match categorize_uri(url) {
-        EndpointCategory::HttpRrd(url) => {
-            re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
-                url,
-                Some(ui_waker),
+/// Listen for `popstate` event, which comes when the user hits the back/forward buttons.
+///
+/// <https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event>
+fn install_popstate_listener(egui_ctx: egui::Context, command_sender: CommandSender) -> Option<()> {
+    let window = web_sys::window()?;
+    let closure = Closure::wrap(Box::new(move |_: web_sys::Event| {
+        translate_query_into_commands(&egui_ctx, &command_sender);
+    }) as Box<dyn FnMut(_)>);
+    window
+        .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
+        .map_err(|err| {
+            format!(
+                "Failed to add popstate event listener: {}",
+                string_from_js_value(err)
             )
-        }
-        EndpointCategory::WebEventListener => {
-            // Process an rrd when it's posted via `window.postMessage`
-            let (tx, rx) = re_smart_channel::smart_channel(
-                re_smart_channel::SmartMessageSource::RrdWebEventCallback,
-                re_smart_channel::SmartChannelSource::RrdWebEventListener,
-            );
-            re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
-                move |msg| {
-                    ui_waker();
-                    use re_log_encoding::stream_rrd_from_http::HttpMessage;
-                    match msg {
-                        HttpMessage::LogMsg(msg) => {
-                            if tx.send(msg).is_ok() {
-                                ControlFlow::Continue(())
-                            } else {
-                                re_log::info!("Failed to send log message to viewer - closing");
-                                ControlFlow::Break(())
-                            }
-                        }
-                        HttpMessage::Success => {
-                            tx.quit(None).warn_on_err_once("failed to send quit marker");
-                            ControlFlow::Break(())
-                        }
-                        HttpMessage::Failure(err) => {
-                            tx.quit(Some(err))
-                                .warn_on_err_once("failed to send quit marker");
-                            ControlFlow::Break(())
-                        }
-                    }
-                }
-            }));
-            rx
-        }
-        EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
-            .unwrap_or_else(|err| panic!("Failed to connect to WebSocket server at {url}: {err}")),
-    }
+        })
+        .ok_or_log_error()?;
+    closure.forget();
+    Some(())
 }
 
 /// Used to set the "email" property in the analytics config,
@@ -221,36 +310,6 @@ pub fn set_email(email: String) {
     config.save().unwrap();
 }
 
-enum EndpointCategory {
-    /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
-    HttpRrd(String),
-
-    /// A remote Rerun server.
-    WebSocket(String),
-
-    /// An eventListener for rrd posted from containing html
-    WebEventListener,
-}
-
-fn categorize_uri(uri: &str) -> EndpointCategory {
-    if uri.starts_with("http") || uri.ends_with(".rrd") {
-        EndpointCategory::HttpRrd(uri.into())
-    } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-        EndpointCategory::WebSocket(uri.into())
-    } else if uri.starts_with("web_event:") {
-        EndpointCategory::WebEventListener
-    } else {
-        // If this is something like `foo.com` we can't know what it is until we connect to it.
-        // We could/should connect and see what it is, but for now we just take a wild guess instead:
-        re_log::info!("Assuming WebSocket endpoint");
-        if uri.contains("://") {
-            EndpointCategory::WebSocket(uri.into())
-        } else {
-            EndpointCategory::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
-        }
-    }
-}
-
 fn is_in_notebook(info: &eframe::IntegrationInfo) -> bool {
     get_query_bool(info, "notebook", false)
 }
@@ -261,21 +320,27 @@ fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
 
 fn get_query_bool(info: &eframe::IntegrationInfo, key: &str, default: bool) -> bool {
     let default_int = default as i32;
-    match info
-        .web_info
-        .location
-        .query_map
-        .get(key)
-        .map(String::as_str)
-    {
-        Some("0") => false,
-        Some("1") => true,
-        Some(other) => {
+
+    if let Some(values) = info.web_info.location.query_map.get(key) {
+        if values.len() == 1 {
+            match values[0].as_str() {
+                "0" => false,
+                "1" => true,
+                other => {
+                    re_log::warn!(
+                            "Unexpected value for '{key}' query: {other:?}. Expected either '0' or '1'. Defaulting to '{default_int}'."
+                        );
+                    default
+                }
+            }
+        } else {
             re_log::warn!(
-                "Unexpected value for '{key}' query: {other:?}. Expected either '0' or '1'. Defaulting to '{default_int}'."
+                "Found {} values for '{key}' query. Expected one or none. Defaulting to '{default_int}'.",
+                values.len()
             );
             default
         }
-        _ => default,
+    } else {
+        default
     }
 }

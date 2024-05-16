@@ -1,5 +1,10 @@
 #include "translation_and_mat3x3.hpp"
 
+// <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
+
+// </CODEGEN_COPY_TO_HEADER>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
@@ -13,7 +18,7 @@ namespace rerun {
         ///
         /// Applying this transform does not alter an entity's transformation.
         /// It has all optional fields set to `std::nullopt`.
-        static const TranslationAndMat3x3 IDENTITY;
+        RERUN_SDK_EXPORT static const TranslationAndMat3x3 IDENTITY;
 
         /// Creates a new 3D transform from translation/matrix.
         ///

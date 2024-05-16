@@ -2,18 +2,18 @@ use ahash::HashMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{LogMsg, StoreId, TimeRangeF};
+use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
-    SystemCommandSender as _, ViewerContext,
+    StoreHub, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
 
 use crate::ui::recordings_panel_ui;
-use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
+use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -43,6 +43,9 @@ pub struct AppState {
     #[serde(skip)]
     viewport_state: ViewportState,
 
+    /// Selection & hovering state.
+    pub selection_state: ApplicationSelectionState,
+
     /// Item that got focused on the last frame if any.
     ///
     /// The focused item is cleared every frame, but views may react with side-effects
@@ -63,9 +66,18 @@ impl Default for AppState {
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
             welcome_screen: Default::default(),
             viewport_state: Default::default(),
+            selection_state: Default::default(),
             focused_item: Default::default(),
         }
     }
+}
+
+pub(crate) struct WelcomeScreenState {
+    /// The normal welcome screen should be hidden. Show a fallback "no data ui" instead.
+    pub hide: bool,
+
+    /// The opacity of the welcome screen during fade-in.
+    pub opacity: f32,
 }
 
 impl AppState {
@@ -86,22 +98,15 @@ impl AppState {
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,
-    ) -> Option<(re_entity_db::Timeline, TimeRangeF)> {
-        store_context
-            .as_ref()
-            .and_then(|ctx| ctx.recording)
-            .map(|rec| rec.store_id())
-            .and_then(|rec_id| {
-                self.recording_configs
-                    .get(rec_id)
-                    // is there an active loop selection?
-                    .and_then(|rec_cfg| {
-                        let time_ctrl = rec_cfg.time_ctrl.read();
-                        time_ctrl
-                            .loop_selection()
-                            .map(|q| (*time_ctrl.timeline(), q))
-                    })
-            })
+    ) -> Option<(re_entity_db::Timeline, ResolvedTimeRangeF)> {
+        let rec_id = store_context.as_ref()?.recording.store_id();
+        let rec_cfg = self.recording_configs.get(rec_id)?;
+
+        // is there an active loop selection?
+        let time_ctrl = rec_cfg.time_ctrl.read();
+        time_ctrl
+            .loop_selection()
+            .map(|q| (*time_ctrl.timeline(), q))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -110,13 +115,14 @@ impl AppState {
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
-        entity_db: &EntityDb,
+        recording: &EntityDb,
         store_context: &StoreContext<'_>,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
+        welcome_screen_state: &WelcomeScreenState,
     ) {
         re_tracing::profile_function!();
 
@@ -132,6 +138,7 @@ impl AppState {
             blueprint_panel,
             welcome_screen,
             viewport_state,
+            selection_state,
             focused_item,
         } = self;
 
@@ -156,7 +163,7 @@ impl AppState {
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
             re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            command_sender.send_system(re_viewer_context::SystemCommand::ResetBlueprint);
+            command_sender.send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
 
             // The blueprint isn't valid so nothing past this is going to work properly.
             // we might as well return and it will get fixed on the next frame.
@@ -166,21 +173,27 @@ impl AppState {
             return;
         }
 
-        recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db)
-            .selection_state
-            .on_frame_start(|item| viewport.is_item_valid(item));
+        selection_state.on_frame_start(
+            |item| {
+                if let re_viewer_context::Item::StoreId(store_id) = item {
+                    if store_id.is_empty_recording() {
+                        return false;
+                    }
+                }
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db);
+                viewport.is_item_valid(store_context, item)
+            },
+            re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
+        );
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            rec_cfg.selection_state.clear_current();
+            selection_state.clear_selection();
         }
 
         let applicable_entities_per_visualizer = space_view_class_registry
-            .applicable_entities_for_visualizer_systems(entity_db.store_id());
+            .applicable_entities_for_visualizer_systems(recording.store_id());
         let indicated_entities_per_visualizer =
-            space_view_class_registry.indicated_entities_per_visualizer(entity_db.store_id());
+            space_view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {
@@ -195,7 +208,7 @@ impl AppState {
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        entity_db,
+                        recording,
                         &space_view_class_registry
                             .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
@@ -212,18 +225,21 @@ impl AppState {
                 .collect::<_>()
         };
 
+        let rec_cfg =
+            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
+
         let ctx = ViewerContext {
             app_options,
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
@@ -246,22 +262,28 @@ impl AppState {
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        entity_db,
+                        recording,
                         &space_view_class_registry
                             .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
                         &space_view.space_origin,
                     );
 
-                    let props = viewport.state.space_view_props(space_view.id);
                     let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,
                         space_view,
-                        props,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
                     );
-                    resolver.update_overrides(store_context, &blueprint_query, query_result);
+
+                    resolver.update_overrides(
+                        store_context.blueprint,
+                        &blueprint_query,
+                        rec_cfg.time_ctrl.read().timeline(),
+                        space_view_class_registry,
+                        viewport.state.legacy_auto_properties(space_view.id),
+                        query_result,
+                    );
                 }
             }
         };
@@ -273,19 +295,23 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
             command_sender,
             focused_item,
         };
+
+        //
+        // Blueprint time panel
+        //
 
         if app_options.inspect_blueprint_timeline {
             blueprint_panel.show_panel(
@@ -297,14 +323,24 @@ impl AppState {
                 true,
             );
         }
+
+        //
+        // Time panel
+        //
+
         time_panel.show_panel(
             &ctx,
             &viewport_blueprint,
-            ctx.entity_db,
+            ctx.recording(),
             ctx.rec_cfg,
             ui,
             app_blueprint.time_panel_expanded,
         );
+
+        //
+        // Selection Panel
+        //
+
         selection_panel.show_panel(
             &ctx,
             ui,
@@ -312,66 +348,81 @@ impl AppState {
             app_blueprint.selection_panel_expanded,
         );
 
-        let central_panel_frame = egui::Frame {
+        //
+        // Left panel (recordings and blueprint)
+        //
+
+        let mut left_panel = egui::SidePanel::left("blueprint_panel")
+            .resizable(true)
+            .frame(egui::Frame {
+                fill: ui.visuals().panel_fill,
+                ..Default::default()
+            })
+            .min_width(120.0)
+            .default_width(default_blueprint_panel_width(
+                ui.ctx().screen_rect().width(),
+            ));
+
+        let show_welcome =
+            store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
+
+        //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
+        left_panel = left_panel
+            .frame(egui::Frame::default())
+            .show_separator_line(false);
+
+        left_panel.show_animated_inside(
+            ui,
+            app_blueprint.blueprint_panel_expanded,
+            |ui: &mut egui::Ui| {
+                //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
+                let max_rect = ui.max_rect();
+                ui.painter()
+                    .rect_filled(max_rect, 0.0, ui.visuals().panel_fill);
+                ui.painter().vline(
+                    max_rect.right(),
+                    max_rect.y_range(),
+                    ui.visuals().widgets.noninteractive.bg_stroke,
+                );
+                ui.set_clip_rect(max_rect);
+
+                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
+                    // ListItem don't need vertical spacing so we disable it, but restore it
+                    // before drawing the blueprint panel.
+                    ui.spacing_mut().item_spacing.y = 0.0;
+
+                    let pre_cursor = ui.cursor();
+                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                    let any_recording_shows = pre_cursor == ui.cursor();
+
+                    if any_recording_shows {
+                        ui.add_space(4.0);
+                    }
+
+                    if !show_welcome {
+                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                    }
+                });
+            },
+        );
+
+        //
+        // Viewport
+        //
+
+        let viewport_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
-            inner_margin: egui::Margin::same(0.0),
             ..Default::default()
         };
 
         egui::CentralPanel::default()
-            .frame(central_panel_frame)
+            .frame(viewport_frame)
             .show_inside(ui, |ui| {
-                let left_panel = egui::SidePanel::left("blueprint_panel")
-                    .resizable(true)
-                    .frame(egui::Frame {
-                        fill: ui.visuals().panel_fill,
-                        ..Default::default()
-                    })
-                    .min_width(120.0)
-                    .default_width((0.35 * ui.ctx().screen_rect().width()).min(200.0).round());
-
-                let show_welcome =
-                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
-
-                left_panel.show_animated_inside(
-                    ui,
-                    app_blueprint.blueprint_panel_expanded,
-                    |ui: &mut egui::Ui| {
-                        // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets like
-                        // large collapsing headers. Here, no need to extend `ui.max_rect()` as the enclosing frame
-                        // doesn't have inner margins.
-                        ui.set_clip_rect(ui.max_rect());
-
-                        // ListItem don't need vertical spacing so we disable it, but restore it
-                        // before drawing the blueprint panel.
-                        ui.spacing_mut().item_spacing.y = 0.0;
-
-                        let recording_shown = recordings_panel_ui(&ctx, rx, ui);
-
-                        if recording_shown {
-                            ui.add_space(4.0);
-                        }
-
-                        if !show_welcome {
-                            blueprint_panel_ui(&mut viewport, &ctx, ui);
-                        }
-                    },
-                );
-
-                let viewport_frame = egui::Frame {
-                    fill: ui.style().visuals.panel_fill,
-                    ..Default::default()
-                };
-
-                egui::CentralPanel::default()
-                    .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
-                        if show_welcome {
-                            welcome_screen.ui(ui, re_ui, rx, command_sender);
-                        } else {
-                            viewport.viewport_ui(ui, &ctx);
-                        }
-                    });
+                if show_welcome {
+                    welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_state);
+                } else {
+                    viewport.viewport_ui(ui, &ctx);
+                }
             });
 
         // Process deferred layout operations and apply updates back to blueprint
@@ -383,14 +434,14 @@ impl AppState {
             let dt = ui.ctx().input(|i| i.stable_dt);
 
             // Are we still connected to the data source for the current store?
-            let more_data_is_coming = if let Some(store_source) = &entity_db.data_source {
+            let more_data_is_coming = if let Some(store_source) = &recording.data_source {
                 rx.sources().iter().any(|s| s.as_ref() == store_source)
             } else {
                 false
             };
 
             let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
-                entity_db.times_per_timeline(),
+                recording.times_per_timeline(),
                 dt,
                 more_data_is_coming,
             );
@@ -417,7 +468,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&re_ui.egui_ctx, &rec_cfg.selection_state);
+        check_for_clicked_hyperlinks(&re_ui.egui_ctx, ctx.selection_state);
 
         // Reset the focused item.
         *focused_item = None;
@@ -431,7 +482,7 @@ impl AppState {
         re_tracing::profile_function!();
 
         self.recording_configs
-            .retain(|store_id, _| store_hub.contains_recording(store_id));
+            .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
     }
 
     /// Returns the blueprint query that should be used for generating the current
@@ -459,14 +510,16 @@ fn recording_config_entry<'cfgs>(
                 // Play files from the start by default - it feels nice and alive.
                 // We assume the `RrdHttpStream` is a done recording.
                 re_smart_channel::SmartChannelSource::File(_)
-                | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
+                | re_smart_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
                 | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 
                 // Live data - follow it!
-                re_smart_channel::SmartChannelSource::Sdk
+                re_smart_channel::SmartChannelSource::RrdHttpStream { follow: true, .. }
+                | re_smart_channel::SmartChannelSource::Sdk
                 | re_smart_channel::SmartChannelSource::WsClient { .. }
                 | re_smart_channel::SmartChannelSource::TcpServer { .. }
-                | re_smart_channel::SmartChannelSource::Stdin => PlayState::Following,
+                | re_smart_channel::SmartChannelSource::Stdin
+                | re_smart_channel::SmartChannelSource::JsChannel { .. } => PlayState::Following,
             }
         } else {
             PlayState::Following // No known source 🤷‍♂️
@@ -520,4 +573,12 @@ fn check_for_clicked_hyperlinks(
             }
         }
     }
+}
+
+pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {
+    (0.35 * screen_width).min(200.0).round()
+}
+
+pub fn default_selection_panel_width(screen_width: f32) -> f32 {
+    (0.45 * screen_width).min(300.0).round()
 }

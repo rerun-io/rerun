@@ -106,7 +106,9 @@ impl Config {
     }
 
     pub fn config_dir(&self) -> &Path {
-        self.config_file_path.parent().unwrap()
+        self.config_file_path
+            .parent()
+            .expect("config file has no parent")
     }
 
     pub fn config_file(&self) -> &Path {

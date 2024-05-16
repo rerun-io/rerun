@@ -1,5 +1,10 @@
 #include "transform3d.hpp"
 
+// <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
+
+// </CODEGEN_COPY_TO_HEADER>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
@@ -12,7 +17,7 @@ namespace rerun {
         /// Identity transformation.
         ///
         /// Applying this transform does not alter an entity's transformation.
-        static const Transform3D IDENTITY;
+        RERUN_SDK_EXPORT static const Transform3D IDENTITY;
 
         /// New 3D transform from translation/matrix datatype.
         ///

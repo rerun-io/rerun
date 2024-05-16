@@ -17,9 +17,15 @@ pub use {buffered_client::Client, tcp_client::ClientError};
 mod server;
 
 #[cfg(feature = "server")]
-pub use server::{serve, ServerError, ServerOptions};
+pub use server::{serve, ConnectionError, ServerError, ServerOptions};
 
-pub const PROTOCOL_VERSION: u16 = 0;
+pub const PROTOCOL_VERSION_0: u16 = 0;
+
+/// Added [`PROTOCOL_HEADER`]. Introduced for Rerun 0.16.
+pub const PROTOCOL_VERSION_1: u16 = 1;
+
+/// Comes after version.
+pub const PROTOCOL_HEADER: &str = "rerun";
 
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 
@@ -31,5 +37,6 @@ pub fn default_server_addr() -> std::net::SocketAddr {
 /// The default amount of time to wait for the TCP connection to resume during a flush
 #[allow(clippy::unnecessary_wraps)]
 pub fn default_flush_timeout() -> Option<std::time::Duration> {
+    // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
     Some(std::time::Duration::from_secs(2))
 }

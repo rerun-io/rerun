@@ -7,26 +7,40 @@ from uuid import uuid4
 
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 
 README = """
 # Context Menu - Add entity to new space view
 
-## Blueprint tree
+#### Blueprint tree
 
-* Reset the blueprint.
-* Expend all space views and data result.
+* "Expand all" on the Vertical containers.
 * Right-click on the `boxes3d` entity and select "Add to new space view" -> "3D". Check a new space view is created _and selected_ with the boxes3d entity and origin set to root.
 * In each space view, right-click on the leaf entity, and check that "Add to new space view" recommends at least space views of the same kind.
 * Select both the `boxes3d` entity and the `text_logs` entity. Check no space view is recommended (except Dataframe if enabled).
 
-## Streams tree
+#### Streams tree
 
 * Right-click on the `bars` entity and check that a Bar Plot space view can successfully be created.
 """
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
+
+
+def blueprint() -> rrb.BlueprintLike:
+    return rrb.Horizontal(
+        rrb.TextDocumentView(origin="readme"),
+        rrb.Vertical(
+            rrb.Spatial3DView(origin="/boxes3d"),
+            rrb.Spatial2DView(origin="/boxes2d"),
+            rrb.TextLogView(origin="/text_logs"),
+            rrb.BarChartView(origin="/bars"),
+            rrb.TensorView(origin="/tensor"),
+        ),
+        column_shares=[2, 1],
+    )
 
 
 def log_some_space_views() -> None:
@@ -40,13 +54,11 @@ def log_some_space_views() -> None:
 
     for i in range(10):
         rr.set_time_sequence("frame_nr", i)
-        rr.log("timeseries", rr.TimeSeriesScalar(random.randint(0, 100)))
+        rr.log("timeseries", rr.Scalar(random.randint(0, 100)))
 
 
 def run(args: Namespace) -> None:
-    # TODO(cmc): I have no idea why this works without specifying a `recording_id`, but
-    # I'm not gonna rely on it anyway.
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
     log_some_space_views()

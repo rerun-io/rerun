@@ -37,9 +37,6 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.log("simple", rerun::Boxes2D::from_mins_and_sizes({{-1.f, -1.f}}, {{2.f, 2.f}}));
-    ///
-    ///     // Log an extra rect to set the view bounds
-    ///     rec.log("bounds", rerun::Boxes2D::from_sizes({{4.f, 3.f}}));
     /// }
     /// ```
     struct Boxes2D {
@@ -175,11 +172,6 @@ namespace rerun::archetypes {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return half_sizes.size();
         }
     };
 

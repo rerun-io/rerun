@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -71,30 +72,29 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         || ["rerun.blueprint.components.SpaceViewBlueprintIndicator".into()],
     );
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.SpaceViewClass".into(),
             "rerun.blueprint.components.SpaceViewBlueprintIndicator".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
         ]
     });
 
 impl SpaceViewBlueprint {
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SpaceViewBlueprint`] [`::re_types_core::Archetype`]
@@ -217,14 +217,11 @@ impl ::re_types_core::AsComponents for SpaceViewBlueprint {
         .flatten()
         .collect()
     }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
-    }
 }
 
 impl SpaceViewBlueprint {
+    /// Create a new `SpaceViewBlueprint`.
+    #[inline]
     pub fn new(class_identifier: impl Into<crate::blueprint::components::SpaceViewClass>) -> Self {
         Self {
             class_identifier: class_identifier.into(),
@@ -234,12 +231,20 @@ impl SpaceViewBlueprint {
         }
     }
 
+    /// The name of the view.
     #[inline]
     pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
         self.display_name = Some(display_name.into());
         self
     }
 
+    /// The "anchor point" of this space view.
+    ///
+    /// Defaults to the root path '/' if not specified.
+    ///
+    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     #[inline]
     pub fn with_space_origin(
         mut self,
@@ -249,6 +254,9 @@ impl SpaceViewBlueprint {
         self
     }
 
+    /// Whether this space view is visible.
+    ///
+    /// Defaults to true if not specified.
     #[inline]
     pub fn with_visible(
         mut self,

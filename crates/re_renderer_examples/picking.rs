@@ -1,5 +1,8 @@
 //! Demonstrates the dedicated picking layer support.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
@@ -98,16 +101,13 @@ impl framework::Example for Picking {
         re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         _time: &framework::Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         while let Some(picking_result) =
             PickingLayerProcessor::next_readback_result::<()>(re_ctx, READBACK_IDENTIFIER)
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the closest object of interest.
             let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
-            //let picked_position =
-            //    picking_result.picked_world_position(picking_result.rect.extent / 2);
-            //dbg!(picked_position, picked_id);
 
             self.mesh_is_hovered = false;
             if picked_id == MESH_ID {
@@ -139,7 +139,7 @@ impl framework::Example for Picking {
                     near_plane_distance: 0.01,
                     aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                 },
-                pixels_from_point,
+                pixels_per_point,
                 outline_config: None,
                 ..Default::default()
             },
@@ -190,11 +190,12 @@ impl framework::Example for Picking {
             })
             .collect_vec();
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
+        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+            re_ctx,
+            Default::default(),
+        ));
         view_builder
             .queue_draw(re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
-
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
 
         let command_buffer = view_builder
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)

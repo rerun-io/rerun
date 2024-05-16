@@ -49,6 +49,11 @@ impl<T> ArrowBuffer<T> {
     pub fn as_slice(&self) -> &[T] {
         self.0.as_slice()
     }
+
+    #[inline]
+    pub fn into_inner(self) -> Buffer<T> {
+        self.0
+    }
 }
 
 impl<T: Eq> Eq for ArrowBuffer<T> {}

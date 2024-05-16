@@ -10,6 +10,7 @@ Use the script:
 
     python3 scripts/ci/compare.py --threshold=20 previous.json current.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -116,20 +117,24 @@ def compare(
                 unit = get_unit(min(previous_bytes, current_bytes))
                 div = get_divisor(unit)
 
-            change_pct = ((current - previous) / previous) * 100
+            if previous == current:
+                change_pct = 0  # e.g. both are zero
+            elif previous == 0:
+                change_pct = 100
+            else:
+                change_pct = 100 * (current - previous) / previous
+
             if abs(change_pct) >= threshold_pct:
                 if unit in DIVISORS:
                     change = f"{change_pct:+.2f}%"
                 else:
                     change = f"{format_num(current - previous)} {unit}"
-                rows.append(
-                    (
-                        name,
-                        f"{format_num(previous)} {unit}",
-                        f"{format_num(current)} {unit}",
-                        change,
-                    )
-                )
+                rows.append((
+                    name,
+                    f"{format_num(previous)} {unit}",
+                    f"{format_num(current)} {unit}",
+                    change,
+                ))
         elif "current" in entry:
             value = entry["current"]["value"]
             unit = entry["current"]["unit"]

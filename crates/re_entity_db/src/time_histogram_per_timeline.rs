@@ -16,14 +16,19 @@ pub struct TimeHistogramPerTimeline {
     /// When do we have data? Ignores timeless.
     times: BTreeMap<Timeline, TimeHistogram>,
 
-    /// Extra book-keeping used to seed any timelines that include timeless msgs.
-    num_timeless_messages: u64,
+    /// Extra bookkeeping used to seed any timelines that include static msgs.
+    num_static_messages: u64,
 }
 
 impl TimeHistogramPerTimeline {
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.times.is_empty() && self.num_timeless_messages == 0
+        self.times.is_empty() && self.num_static_messages == 0
+    }
+
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.num_static_messages > 0
     }
 
     #[inline]
@@ -47,20 +52,25 @@ impl TimeHistogramPerTimeline {
     }
 
     #[inline]
-    pub fn num_timeless_messages(&self) -> u64 {
-        self.num_timeless_messages
+    pub fn num_static_messages(&self) -> u64 {
+        self.num_static_messages
+    }
+
+    /// Total number of temporal messages over all timelines.
+    pub fn num_temporal_messages(&self) -> u64 {
+        self.times.values().map(|hist| hist.total_count()).sum()
     }
 
     pub fn add(&mut self, times: &[(Timeline, TimeInt)], n: u32) {
         if times.is_empty() {
-            self.num_timeless_messages = self
-                .num_timeless_messages
+            self.num_static_messages = self
+                .num_static_messages
                 .checked_add(n as u64)
                 .unwrap_or_else(|| {
                     re_log::debug!(
-                        current = self.num_timeless_messages,
+                        current = self.num_static_messages,
                         added = n,
-                        "book keeping overflowed"
+                        "bookkeeping overflowed"
                     );
                     u64::MAX
                 });
@@ -75,16 +85,16 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn remove(&mut self, timepoint: &TimePoint, n: u32) {
-        if timepoint.is_timeless() {
-            self.num_timeless_messages = self
-                .num_timeless_messages
+        if timepoint.is_static() {
+            self.num_static_messages = self
+                .num_static_messages
                 .checked_sub(n as u64)
                 .unwrap_or_else(|| {
-                    // TODO(#4355): hitting this on plots demo
+                    // We used to hit this on plots demo, see https://github.com/rerun-io/rerun/issues/4355.
                     re_log::debug!(
-                        current = self.num_timeless_messages,
+                        current = self.num_static_messages,
                         removed = n,
-                        "book keeping underflowed"
+                        "bookkeeping underflowed"
                     );
                     u64::MIN
                 });

@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -103,12 +104,8 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                     let (somes, fixed_sized_native): (Vec<_>, Vec<_>) = data
                         .iter()
                         .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| {
-                                let Self {
-                                    fixed_sized_native, ..
-                                } = &**datum;
-                                fixed_sized_native.clone()
-                            });
+                            let datum =
+                                datum.as_ref().map(|datum| datum.fixed_sized_native.clone());
                             (datum.is_some(), datum)
                         })
                         .unzip();
@@ -119,20 +116,19 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let fixed_sized_native_inner_data: Vec<_> = fixed_sized_native
-                            .iter()
+                            .into_iter()
                             .flat_map(|v| match v {
-                                Some(v) => itertools::Either::Left(v.iter().cloned()),
+                                Some(v) => itertools::Either::Left(v.into_iter()),
                                 None => itertools::Either::Right(
                                     std::iter::repeat(Default::default()).take(4usize),
                                 ),
                             })
-                            .map(Some)
                             .collect();
                         let fixed_sized_native_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                             fixed_sized_native_bitmap.as_ref().map(|bitmap| {
                                 bitmap
                                     .iter()
-                                    .map(|i| std::iter::repeat(i).take(4usize))
+                                    .map(|b| std::iter::repeat(b).take(4usize))
                                     .flatten()
                                     .collect::<Vec<_>>()
                                     .into()
@@ -144,10 +140,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             ),
                             PrimitiveArray::new(
                                 DataType::UInt8,
-                                fixed_sized_native_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
+                                fixed_sized_native_inner_data.into_iter().collect(),
                                 fixed_sized_native_inner_bitmap,
                             )
                             .boxed(),
@@ -257,8 +250,10 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

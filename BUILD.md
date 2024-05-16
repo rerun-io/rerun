@@ -23,21 +23,15 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Finally, run the following script to install the dependencies and CLI tools needed for Rerun's build environment:
-
-```sh
-./scripts/setup_dev.sh
-```
-
-Make sure `cargo --version` prints `1.74.0` once you are done.
+Make sure `cargo --version` prints `1.76.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.74.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.76.0
 ```
 
-## Building and running the viewer
+## Building and running the Viewer
 
 Use this command for building and running the viewer:
 
@@ -61,37 +55,34 @@ cargo run -p dna
 
 Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`.
 
-Additionally, prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
+Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
-If you want to build from source, use the following instructions.
-
-### Mac/Linux
-
-First, a local virtual environment must be created and the necessary dependencies installed (this needs to be done only once):
-
-Linux/Mac:
-```sh
-just py-dev-env
-source venv/bin/activate
-```
-Windows (powershell):
-```ps1
-just py-dev-env
-.\venv\Scripts\Activate.ps1
-```
+If you want to build from source, you can do so easily in the Pixi environment:
+* Run `pixi run py-build --release` to build SDK & Viewer for Python (or `pixi run py-build` for a debug build)
+* Then you can run examples from the repository, either by making the Pixi shell active with  `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run Python examples/python/minimal/minimal.py`
 
 
-Then, the SDK can be compiled and installed in the virtual environment using the following command:
+### Tests & tooling
 
 ```sh
-just py-build
+# Run the unit tests
+pixi run py-test
+
+# Run the linting checks
+pixi run py-lint
+
+# Run the formatter
+pixi run py-fmt
 ```
 
-This needs to be repeated each time the Rust source code is updated, for example after updating your clone using `git pull`.
-
-Now you can run the python examples from the repository, given that you're still in the virtual environment.
+### Building an installable Python wheel
+The `py-wheel` command builds a whl file:
 ```sh
-python examples/python/car/main.py
+pixi run py-wheel --release
+```
+Which you can then install in your own Python environment:
+```sh
+pip install ./target/wheels/*.whl
 ```
 
 ## Building and installing the Rerun C++ SDK
@@ -100,25 +91,25 @@ On Windows you have to have a system install of Visual Studio 2022 in order to c
 
 All other dependencies are downloaded by Pixi! You can run tests with:
 ```sh
-just cpp-test
+pixi run cpp-test
 ```
 and build all C++ artifacts with:
 ```sh
-just cpp-build-all
+pixi run cpp-build-all
 ```
 
 ## Building the docs
 
-High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
+High-level documentation for Rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
 
-- 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/docs/writing_docs.md).
-- 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the python doc-system, see [Writing Docs](https://github.com/rerun-io/rerun/blob/main/rerun_py/docs/writing_docs.md).
+- 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
+- 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the Python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).
 - 🦀 [Rust API docs](https://docs.rs/rerun/) are hosted on  <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`.
 
-## Building for the Web
+## Building for the web
 
-If you want to build a standalone rerun executable that contains the web-viewer and a websocket server,
-you need to install the `wasm32-unknown-unknown` rust target and ensure the `web_viewer` feature flag is set when building rerun.
+If you want to build a standalone Rerun executable that contains the web-viewer and a websocket server,
+you need to install the `wasm32-unknown-unknown` Rust target and ensure the `web_viewer` feature flag is set when building rerun.
 This is automatically done by this shortcut which builds & runs the web viewer:
 ```
 pixi run rerun-web

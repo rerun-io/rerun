@@ -14,13 +14,17 @@ mod visualizable;
 pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
 pub use heuristics::suggest_space_view_for_each_entity;
 pub use screenshot::ScreenshotMode;
-pub use space_view::{SpaceViewBlueprint, SpaceViewName};
+pub use space_view::SpaceViewBlueprint;
 pub use space_view_contents::SpaceViewContents;
 pub use sub_archetypes::{
-    entity_path_for_space_view_sub_archetype, query_space_view_sub_archetype,
-    query_space_view_sub_archetype_or_default,
+    edit_blueprint_component, entity_path_for_view_property, get_blueprint_component,
+    query_view_property, query_view_property_or_default, view_property,
 };
 pub use visualizable::determine_visualizable_entities;
+
+pub mod external {
+    pub use re_entity_db::external::*;
+}
 
 // -----------
 

@@ -1,0 +1,13 @@
+[project]
+name = "open_photogrammetry_format"
+version = "0.1.0"
+requires-python = ">=3.10"                                                   # pyopf requirement
+readme = "README.md"
+dependencies = ["numpy", "pillow", "pyopf", "requests", "rerun-sdk", "tqdm"]
+
+[project.scripts]
+open_photogrammetry_format = "open_photogrammetry_format:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

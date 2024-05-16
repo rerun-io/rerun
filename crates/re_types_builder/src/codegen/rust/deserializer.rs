@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use crate::{
     codegen::rust::{
         arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
-        util::is_tuple_struct_from_obj,
+        util::{is_tuple_struct_from_obj, quote_comment},
     },
     ArrowRegistry, Object, ObjectField, ObjectKind, Objects,
 };
@@ -33,10 +33,8 @@ use crate::{
 /// The deserializers are designed for maximum performance, assuming the incoming data is correct.
 /// If the data is not correct, the deserializers will return an error, but never panic or crash.
 ///
-/// In the future we should add some basic arrow datatype validation during data ingestion,
-/// so that changing the datatype between versions of the SDK will produce some helpful warnings
-/// instead of just silent bugs.
-/// TODO(#5291): add basic arrow datatype validation during data ingestion
+/// TODO(#5305): Currently we're doing a lot of checking for exact matches.
+/// We should instead assume data is correct and handle errors gracefully.
 ///
 /// ## Understanding datatypes
 ///
@@ -272,8 +270,14 @@ pub fn quote_arrow_deserializer(
                 let data_src_arrays = format_ident!("{data_src}_arrays");
                 let data_src_offsets = format_ident!("{data_src}_offsets");
 
-                let quoted_field_deserializers =
-                    obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                let quoted_field_deserializers = obj
+                    .fields
+                    .iter()
+                    .filter(|obj_field|
+                        // For unit fields we don't have to collect any data.
+                        obj_field.typ != crate::Type::Unit)
+                    .enumerate()
+                    .map(|(i, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
 
                         let field_datatype = &arrow_registry.get(&obj_field.fqname);
@@ -323,6 +327,13 @@ pub fn quote_arrow_deserializer(
                     let obj_field_fqname = obj_field.fqname.as_str();
                     let quoted_obj_field_name = format_ident!("{}", obj_field.snake_case_name());
                     let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
+
+                    if obj_field.typ == crate::Type::Unit {
+                        // TODO(andreas): Should we check there's enough nulls on the null array?
+                        return quote! {
+                            #typ => #quoted_obj_name::#quoted_obj_field_type
+                        };
+                    }
 
                     let quoted_unwrap = if obj_field.is_nullable {
                         quote!()
@@ -464,7 +475,8 @@ fn quote_arrow_field_deserializer(
         | DataType::Float16
         | DataType::Float32
         | DataType::Float64
-        | DataType::Boolean => {
+        | DataType::Boolean
+        | DataType::Null => {
             let quoted_iter_transparency =
                 quote_iterator_transparency(objects, datatype, IteratorKind::OptionValue, None);
             let quoted_iter_transparency = if *datatype.to_logical_type() == DataType::Boolean {
@@ -572,6 +584,9 @@ fn quote_arrow_field_deserializer(
                 None,
             );
 
+            let comment_note_unwrap =
+                quote_comment("NOTE: Unwrapping cannot fail: the length must be correct.");
+
             quote! {{
                 let #data_src = #quoted_downcast?;
                 if #data_src.is_empty() {
@@ -639,10 +654,9 @@ fn quote_arrow_field_deserializer(
                                 // .map(|opt| opt.ok_or_else(DeserializationError::missing_data))
                                 // .collect::<DeserializationResult<Vec<_>>>()?;
 
-                                // NOTE: Unwrapping cannot fail: the length must be correct.
-                                let arr = array_init::from_iter(data).unwrap();
-
-                                Ok(arr)
+                                #comment_note_unwrap
+                                #[allow(clippy::unwrap_used)]
+                                Ok(array_init::from_iter(data).unwrap())
                             }).transpose()
                         )
                         #quoted_iter_transparency

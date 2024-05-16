@@ -1,8 +1,6 @@
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_viewer_context::{
-    ApplicableEntities, DynSpaceViewClass, PerVisualizer, VisualizableEntities,
-};
+use re_viewer_context::{ApplicableEntities, PerVisualizer, SpaceViewClass, VisualizableEntities};
 
 /// Determines the set of visible entities for a given space view.
 // TODO(andreas): This should be part of the SpaceView's (non-blueprint) state.
@@ -11,7 +9,7 @@ pub fn determine_visualizable_entities(
     applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
     entity_db: &EntityDb,
     visualizers: &re_viewer_context::VisualizerCollection,
-    class: &dyn DynSpaceViewClass,
+    class: &dyn SpaceViewClass,
     space_origin: &EntityPath,
 ) -> PerVisualizer<VisualizableEntities> {
     re_tracing::profile_function!();

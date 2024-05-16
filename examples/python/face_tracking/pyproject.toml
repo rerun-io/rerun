@@ -1,0 +1,24 @@
+[project]
+name = "face_tracking"
+version = "0.1.0"
+requires-python = "<3.12" # TODO(ab): relax when mediapipe supports 3.12
+readme = "README.md"
+dependencies = [
+  "mediapipe==0.10.11 ; sys_platform != 'darwin'",
+  "mediapipe==0.10.9 ; sys_platform == 'darwin'",  # https://github.com/google/mediapipe/issues/5188
+  "numpy",
+  "opencv-python>4.6",
+  "requests",
+  "rerun-sdk",
+  "tqdm",
+]
+
+[project.scripts]
+face_tracking = "face_tracking:main"
+
+[tool.rerun-example]
+extra-args = "--maxframe=30"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

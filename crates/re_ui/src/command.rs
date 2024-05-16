@@ -14,11 +14,12 @@ pub trait UICommandSender {
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
-    #[cfg(not(target_arch = "wasm32"))]
-    Save,
-    #[cfg(not(target_arch = "wasm32"))]
-    SaveSelection,
+    SaveRecording,
+    SaveRecordingSelection,
+    SaveBlueprint,
     CloseCurrentRecording,
+    CloseAllRecordings,
+
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -26,6 +27,7 @@ pub enum UICommand {
     OpenRerunDiscord,
 
     ResetViewer,
+    ClearAndGenerateBlueprint,
 
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
@@ -95,21 +97,24 @@ impl UICommand {
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::Save => ("Save…", "Save all data to a Rerun data file (.rrd)"),
+            Self::SaveRecording => ("Save recording…", "Save all data to a Rerun data file (.rrd)"),
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::SaveSelection => (
-                "Save loop selection…",
+            Self::SaveRecordingSelection => (
+                "Save current time selection…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
+
+            Self::SaveBlueprint => ("Save blueprint…", "Save the current viewer setup as a Rerun blueprint file (.rbl)"),
 
             Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
 
             Self::CloseCurrentRecording => (
-                "Close current Recording",
-                "Close the current Recording (unsaved data will be lost)",
+                "Close current recording",
+                "Close the current recording (unsaved data will be lost)",
             ),
+
+            Self::CloseAllRecordings => ("Close all recordings",
+                "Close all open current recording (unsaved data will be lost)",),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -122,6 +127,12 @@ impl UICommand {
                 "Reset the Viewer to how it looked the first time you ran it, forgetting all stored blueprints and UI state",
             ),
 
+            Self::ClearAndGenerateBlueprint => (
+                "Clear and generate new blueprint",
+                "Clear the current blueprint and generate a new one based on heuristics."
+            ),
+
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => (
                 "Open profiler",
@@ -129,22 +140,22 @@ impl UICommand {
             ),
 
             Self::ToggleMemoryPanel => (
-                "Toggle Memory Panel",
+                "Toggle memory panel",
                 "View and track current RAM usage inside Rerun Viewer",
             ),
-            Self::ToggleBlueprintPanel => ("Toggle Blueprint Panel", "Toggle the left panel"),
-            Self::ToggleSelectionPanel => ("Toggle Selection Panel", "Toggle the right panel"),
-            Self::ToggleTimePanel => ("Toggle Time Panel", "Toggle the bottom panel"),
+            Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
+            Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
+            Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => (
-                "Toggle Blueprint Inspection Panel",
+                "Toggle blueprint inspection panel",
                 "Inspect the timeline of the internal blueprint data.",
             ),
 
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => (
-                "Toggle Egui Options/Debug Panel",
+                "Toggle egui debug panel",
                 "View and change global egui style settings",
             ),
 
@@ -155,18 +166,18 @@ impl UICommand {
                 "Toggle between windowed and fullscreen viewer",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomIn => ("Zoom In", "Increases the UI zoom level"),
+            Self::ZoomIn => ("Zoom in", "Increases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomOut => ("Zoom Out", "Decreases the UI zoom level"),
+            Self::ZoomOut => ("Zoom out", "Decreases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomReset => (
-                "Reset Zoom",
+                "Reset zoom",
                 "Resets the UI zoom level to the operating system's default value",
             ),
 
             Self::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             Self::SelectionNext => ("Next selection", "Go to next selection"),
-            Self::ToggleCommandPalette => ("Command Palette…", "Toggle the Command Palette"),
+            Self::ToggleCommandPalette => ("Command palette…", "Toggle the Command Palette"),
 
             Self::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")
@@ -238,7 +249,6 @@ impl UICommand {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
         fn cmd_alt(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), key)
         }
@@ -248,12 +258,12 @@ impl UICommand {
         }
 
         match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::Save => Some(cmd(Key::S)),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::SaveSelection => Some(cmd_alt(Key::S)),
+            Self::SaveRecording => Some(cmd(Key::S)),
+            Self::SaveRecordingSelection => Some(cmd_alt(Key::S)),
+            Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
             Self::CloseCurrentRecording => None,
+            Self::CloseAllRecordings => None,
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
             Self::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),
@@ -265,6 +275,8 @@ impl UICommand {
             Self::Quit => Some(cmd(Key::Q)),
 
             Self::ResetViewer => Some(ctrl_shift(Key::R)),
+            Self::ClearAndGenerateBlueprint => None,
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => Some(ctrl_shift(Key::P)),
             Self::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
@@ -334,7 +346,7 @@ impl UICommand {
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<UICommand> {
         use strum::IntoEnumIterator as _;
 
-        let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
+        let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
         if anything_has_focus {
             return None; // e.g. we're typing in a TextField
         }

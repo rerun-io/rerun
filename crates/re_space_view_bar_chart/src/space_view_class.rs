@@ -2,10 +2,11 @@ use egui::{ahash::HashMap, util::hash};
 use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
 use re_log_types::EntityPath;
 use re_space_view::{controls, suggest_space_view_for_each_entity};
-use re_types::datatypes::TensorBuffer;
+use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
 use re_viewer_context::{
-    auto_color, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    auto_color, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    ViewQuery, ViewerContext, VisualizableEntities,
 };
 
 use super::visualizer_system::BarChartVisualizerSystem;
@@ -13,14 +14,24 @@ use super::visualizer_system::BarChartVisualizerSystem;
 #[derive(Default)]
 pub struct BarChartSpaceView;
 
-impl SpaceViewClass for BarChartSpaceView {
-    type State = ();
+use re_types::View;
+type ViewType = re_types::blueprint::views::BarChartView;
 
-    const IDENTIFIER: &'static str = "Bar Chart";
-    const DISPLAY_NAME: &'static str = "Bar Chart";
+impl SpaceViewClass for BarChartSpaceView {
+    fn identifier() -> SpaceViewClassIdentifier {
+        ViewType::identifier()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "Bar chart"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_HISTOGRAM
+    }
+
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<()>::default()
     }
 
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
@@ -55,8 +66,29 @@ impl SpaceViewClass for BarChartSpaceView {
         system_registry.register_visualizer::<BarChartVisualizerSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
+    }
+
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> re_viewer_context::SmallVisualizerSet {
+        // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
+        // since they're not indicated with a BarChart indicator.
+        // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
+
+        // Keeping this implementation simple: We know there's only a single visualizer here.
+        if visualizable_entities_per_visualizer
+            .get(&BarChartVisualizerSystem::identifier())
+            .map_or(false, |entities| entities.contains(entity_path))
+        {
+            std::iter::once(BarChartVisualizerSystem::identifier()).collect()
+        } else {
+            Default::default()
+        }
     }
 
     fn spawn_heuristics(
@@ -75,11 +107,11 @@ impl SpaceViewClass for BarChartSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        _state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         ctx.re_ui
             .selection_grid(ui, "bar_chart_selection_ui")
             .show(ui, |ui| {
@@ -128,13 +160,15 @@ impl SpaceViewClass for BarChartSpaceView {
                 });
                 ui.end_row();
             });
+
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        _state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,

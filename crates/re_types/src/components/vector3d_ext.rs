@@ -1,7 +1,10 @@
 use super::Vector3D;
 
 impl Vector3D {
+    /// The zero vector, i.e. the additive identity.
     pub const ZERO: Self = Self(crate::datatypes::Vec3D::ZERO);
+
+    /// `[1, 1, 1]`, i.e. the multiplicative identity.
     pub const ONE: Self = Self(crate::datatypes::Vec3D::ONE);
 }
 

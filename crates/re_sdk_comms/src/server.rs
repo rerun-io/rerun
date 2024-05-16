@@ -1,7 +1,10 @@
-use std::{io::ErrorKind, time::Instant};
+use std::{
+    io::{ErrorKind, Read as _},
+    net::{TcpListener, TcpStream},
+    time::Instant,
+};
 
 use rand::{Rng as _, SeedableRng};
-use tokio::net::{TcpListener, TcpStream};
 
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
 use re_smart_channel::{Receiver, Sender};
@@ -13,10 +16,13 @@ pub enum ServerError {
         bind_addr: String,
         err: std::io::Error,
     },
+
+    #[error(transparent)]
+    FailedToSpawnThread(#[from] std::io::Error),
 }
 
 #[derive(thiserror::Error, Debug)]
-enum VersionError {
+pub enum VersionError {
     #[error("SDK client is using an older protocol version ({client_version}) than the SDK server ({server_version})")]
     ClientIsOlder {
         client_version: u16,
@@ -31,7 +37,10 @@ enum VersionError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum ConnectionError {
+pub enum ConnectionError {
+    #[error("An unknown client tried to connect")]
+    UnknownClient,
+
     #[error(transparent)]
     VersionError(#[from] VersionError),
 
@@ -68,12 +77,15 @@ impl Default for ServerOptions {
 ///
 /// ``` no_run
 /// # use re_sdk_comms::{serve, ServerOptions};
-/// #[tokio::main]
-/// async fn main() {
-///     let log_msg_rx = serve("0.0.0.0", re_sdk_comms::DEFAULT_SERVER_PORT, ServerOptions::default()).await.unwrap();
+/// fn main() {
+///     let log_msg_rx = serve("0.0.0.0", re_sdk_comms::DEFAULT_SERVER_PORT, ServerOptions::default()).unwrap();
 /// }
 /// ```
-pub async fn serve(
+///
+/// Internally spawns a thread that listens for incoming TCP connections on the given `bind_ip` and `port`
+/// and one thread per connected client.
+// TODO(andreas): Reconsider if we should use `smol` tasks instead of threads both here and in re_ws_comms.
+pub fn serve(
     bind_ip: &str,
     port: u16,
     options: ServerOptions,
@@ -85,13 +97,16 @@ pub async fn serve(
     );
 
     let bind_addr = format!("{bind_ip}:{port}");
-    let listener =
-        TcpListener::bind(&bind_addr)
-            .await
-            .map_err(|err| ServerError::TcpBindError {
-                bind_addr: bind_addr.clone(),
-                err,
-            })?;
+    let listener = TcpListener::bind(&bind_addr).map_err(|err| ServerError::TcpBindError {
+        bind_addr: bind_addr.clone(),
+        err,
+    })?;
+
+    std::thread::Builder::new()
+        .name("rerun_sdk_comms: listener".to_owned())
+        .spawn(move || {
+            listen_for_new_clients(&listener, options, &tx);
+        })?;
 
     if options.quiet {
         re_log::debug!(
@@ -103,20 +118,53 @@ pub async fn serve(
         );
     }
 
-    tokio::spawn(listen_for_new_clients(listener, options, tx));
-
     Ok(rx)
 }
 
-async fn listen_for_new_clients(listener: TcpListener, options: ServerOptions, tx: Sender<LogMsg>) {
+fn listen_for_new_clients(listener: &TcpListener, options: ServerOptions, tx: &Sender<LogMsg>) {
+    // TODO(emilk): some way of aborting this loop
+    #[allow(clippy::infinite_loop)]
     loop {
-        match listener.accept().await {
+        match listener.accept() {
             Ok((stream, _)) => {
                 let addr = stream.peer_addr().ok();
                 let tx = tx.clone_as(re_smart_channel::SmartMessageSource::TcpClient { addr });
-                spawn_client(stream, tx, options, addr);
+
+                std::thread::Builder::new()
+                    .name("rerun_sdk_comms: client".to_owned())
+                    .spawn(move || {
+                        spawn_client(stream, &tx, options, addr);
+                    })
+                    .ok();
             }
             Err(err) => {
+                if cfg!(target_os = "windows") {
+                    // Windows error codes resolved to names via http://errorcodelookup.com/
+                    const WSANOTINITIALISED: i32 = 10093;
+                    const WSAEINTR: i32 = 10004;
+
+                    if let Some(raw_os_error) = err.raw_os_error() {
+                        #[allow(clippy::match_same_arms)]
+                        match raw_os_error {
+                            WSANOTINITIALISED => {
+                                // This happens either if WSAStartup wasn't called beforehand,
+                                // or WSACleanup was called as part of shutdown already.
+                                //
+                                // If we end up in here it's almost certainly the later case
+                                // which implies that the process is shutting down.
+                                break;
+                            }
+                            WSAEINTR => {
+                                // A blocking operation was interrupted.
+                                // This can only happen if the listener is closing,
+                                // meaning that this server is shutting down.
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 re_log::warn!("Failed to accept incoming SDK client: {err}");
             }
         }
@@ -125,63 +173,83 @@ async fn listen_for_new_clients(listener: TcpListener, options: ServerOptions, t
 
 fn spawn_client(
     stream: TcpStream,
-    tx: Sender<LogMsg>,
+    tx: &Sender<LogMsg>,
     options: ServerOptions,
     peer_addr: Option<std::net::SocketAddr>,
 ) {
-    tokio::spawn(async move {
-        let addr_string =
-            peer_addr.map_or_else(|| "(unknown ip)".to_owned(), |addr| addr.to_string());
+    let addr_string = peer_addr.map_or_else(|| "(unknown ip)".to_owned(), |addr| addr.to_string());
 
-        if options.quiet {
-            re_log::debug!("New SDK client connected: {addr_string}");
-        } else {
-            re_log::info!("New SDK client connected: {addr_string}");
-        }
+    if options.quiet {
+        re_log::debug!("New SDK client connected: {addr_string}");
+    } else {
+        re_log::info!("New SDK client connected: {addr_string}");
+    }
 
-        if let Err(err) = run_client(stream, &tx, options).await {
-            if let ConnectionError::SendError(err) = &err {
-                if err.kind() == ErrorKind::UnexpectedEof {
-                    // Client gracefully severed the connection.
-                    tx.quit(None).ok(); // best-effort at this point
-                    return;
-                }
+    if let Err(err) = run_client(stream, tx, options) {
+        if let ConnectionError::SendError(err) = &err {
+            if err.kind() == ErrorKind::UnexpectedEof {
+                // Client gracefully severed the connection.
+                tx.quit(None).ok(); // best-effort at this point
+                return;
             }
-            re_log::warn_once!("Closing connection to client at {addr_string}: {err}");
-            let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.to_string().into();
-            tx.quit(Some(err)).ok(); // best-effort at this point
         }
-    });
+
+        let log_msg = format!("Closing connection to client at {addr_string}: {err}");
+        if matches!(&err, ConnectionError::UnknownClient) {
+            // An unknown client that probably stumbled onto the wrong port.
+            // Don't log as an error (https://github.com/rerun-io/rerun/issues/5883).
+            re_log::debug!("{log_msg}");
+        } else {
+            re_log::warn_once!("{log_msg}");
+        }
+
+        let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.into();
+        tx.quit(Some(err)).ok(); // best-effort at this point
+    }
 }
 
-async fn run_client(
+fn run_client(
     mut stream: TcpStream,
     tx: &Sender<LogMsg>,
     options: ServerOptions,
 ) -> Result<(), ConnectionError> {
     #![allow(clippy::read_zero_byte_vec)] // false positive: https://github.com/rust-lang/rust-clippy/issues/9274
 
-    use tokio::io::AsyncReadExt as _;
-
     let mut client_version = [0_u8; 2];
-    stream.read_exact(&mut client_version).await?;
+    stream.read_exact(&mut client_version)?;
     let client_version = u16::from_le_bytes(client_version);
 
-    match client_version.cmp(&crate::PROTOCOL_VERSION) {
-        std::cmp::Ordering::Less => {
-            return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
-                client_version,
-                server_version: crate::PROTOCOL_VERSION,
-            }));
+    // The server goes into a backward compat mode
+    // if the client sends version 0
+    if client_version == crate::PROTOCOL_VERSION_0 {
+        // Backwards compatibility mode: no protocol header, otherwise the same as version 1.
+        re_log::warn!("Client is using an old protocol version from before 0.16.");
+    } else {
+        // The protocol header was added in version 1
+        let mut protocol_header = [0_u8; crate::PROTOCOL_HEADER.len()];
+        stream.read_exact(&mut protocol_header)?;
+
+        if std::str::from_utf8(&protocol_header) != Ok(crate::PROTOCOL_HEADER) {
+            return Err(ConnectionError::UnknownClient);
         }
-        std::cmp::Ordering::Equal => {}
-        std::cmp::Ordering::Greater => {
-            return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
-                client_version,
-                server_version: crate::PROTOCOL_VERSION,
-            }));
+
+        let server_version = crate::PROTOCOL_VERSION_1;
+        match client_version.cmp(&server_version) {
+            std::cmp::Ordering::Less => {
+                return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
+                    client_version,
+                    server_version,
+                }));
+            }
+            std::cmp::Ordering::Equal => {}
+            std::cmp::Ordering::Greater => {
+                return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
+                    client_version,
+                    server_version,
+                }));
+            }
         }
-    }
+    };
 
     let mut congestion_manager = CongestionManager::new(options.max_latency_sec);
 
@@ -189,11 +257,11 @@ async fn run_client(
 
     loop {
         let mut packet_size = [0_u8; 4];
-        stream.read_exact(&mut packet_size).await?;
+        stream.read_exact(&mut packet_size)?;
         let packet_size = u32::from_le_bytes(packet_size);
 
         packet.resize(packet_size as usize, 0_u8);
-        stream.read_exact(&mut packet).await?;
+        stream.read_exact(&mut packet)?;
 
         re_log::trace!("Received packet of size {packet_size}.");
 
@@ -249,7 +317,7 @@ impl CongestionManager {
         #[allow(clippy::match_same_arms)]
         match msg {
             // we don't want to drop any of these
-            LogMsg::SetStoreInfo(_) => true,
+            LogMsg::SetStoreInfo(_) | LogMsg::BlueprintActivationCommand { .. } => true,
 
             LogMsg::ArrowMsg(_, arrow_msg) => self.should_send_time_point(&arrow_msg.timepoint_max),
         }
@@ -292,7 +360,11 @@ impl CongestionManager {
                 // decision on a time we've previously seen,
                 // thus sending parts of a sequence-time instead of all-or-nothing.
                 while timeline_history.send_time.len() > 1024 {
-                    let oldest_time = *timeline_history.send_time.keys().next().unwrap();
+                    let oldest_time = *timeline_history
+                        .send_time
+                        .keys()
+                        .next()
+                        .expect("safe because checked above");
                     timeline_history.send_time.remove(&oldest_time);
                 }
 

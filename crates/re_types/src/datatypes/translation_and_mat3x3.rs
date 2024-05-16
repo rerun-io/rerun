@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -110,10 +111,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self { translation, .. } = &**datum;
-                                        translation.clone()
-                                    })
+                                    .map(|datum| datum.translation.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -125,23 +123,15 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let translation_inner_data: Vec<_> = translation
-                                .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
-                                .map(Some)
                                 .collect();
                             let translation_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 translation_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
-                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .map(|b| std::iter::repeat(b).take(3usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
@@ -157,10 +147,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float32,
-                                    translation_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    translation_inner_data.into_iter().collect(),
                                     translation_inner_bitmap,
                                 )
                                 .boxed(),
@@ -173,13 +160,8 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         let (somes, mat3x3): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { mat3x3, .. } = &**datum;
-                                        mat3x3.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.mat3x3.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -190,23 +172,15 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let mat3x3_inner_data: Vec<_> = mat3x3
-                                .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Mat3x3(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
-                                .map(Some)
                                 .collect();
                             let mat3x3_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 mat3x3_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
-                                        .map(|i| std::iter::repeat(i).take(9usize))
+                                        .map(|b| std::iter::repeat(b).take(9usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
@@ -222,10 +196,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float32,
-                                    mat3x3_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    mat3x3_inner_data.into_iter().collect(),
                                     mat3x3_inner_bitmap,
                                 )
                                 .boxed(),
@@ -238,10 +209,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         let (somes, from_parent): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { from_parent, .. } = &**datum;
-                                    from_parent.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.from_parent.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -363,8 +331,10 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })
@@ -444,8 +414,10 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

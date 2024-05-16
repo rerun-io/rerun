@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .depth_meter_ext import DepthMeterExt
 
 __all__ = ["DepthMeter", "DepthMeterArrayLike", "DepthMeterBatch", "DepthMeterLike", "DepthMeterType"]
 
 
 @define(init=False)
-class DepthMeter(DepthMeterExt):
+class DepthMeter:
     """**Component**: A component indicating how long a meter is, expressed in native units."""
 
     def __init__(self: Any, value: DepthMeterLike):
@@ -36,6 +35,9 @@ class DepthMeter(DepthMeterExt):
 
     def __float__(self) -> float:
         return float(self.value)
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
 
 if TYPE_CHECKING:
@@ -58,4 +60,5 @@ class DepthMeterBatch(BaseBatch[DepthMeterArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: DepthMeterArrayLike, data_type: pa.DataType) -> pa.Array:
-        return DepthMeterExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

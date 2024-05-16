@@ -3,6 +3,7 @@ use super::TranslationRotationScale3D;
 use crate::datatypes::{Rotation3D, Scale3D, Vec3D};
 
 impl TranslationRotationScale3D {
+    /// The identity transform, representing no transform.
     pub const IDENTITY: Self = Self {
         translation: None,
         rotation: None,

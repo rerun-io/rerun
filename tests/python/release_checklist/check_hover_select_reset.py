@@ -37,7 +37,7 @@ Finally, try hitting escape and check whether that deselects whatever was curren
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_plots() -> None:
@@ -64,7 +64,7 @@ def log_points_3d() -> None:
     colors = rng.uniform(0, 255, size=[10, 3])
     radii = rng.uniform(0, 1, size=[10])
 
-    rr.log("3d/points", rr.Points3D(positions, colors=colors, radii=radii))
+    rr.log("3D/points", rr.Points3D(positions, colors=colors, radii=radii))
 
 
 def log_points_2d() -> None:
@@ -76,12 +76,10 @@ def log_points_2d() -> None:
     colors = rng.uniform(0, 255, size=[10, 3])
     radii = rng.uniform(0, 1, size=[10])
 
-    rr.log("2d/points", rr.Points2D(positions, colors=colors, radii=radii))
+    rr.log("2D/points", rr.Points2D(positions, colors=colors, radii=radii))
 
 
 def run(args: Namespace) -> None:
-    # TODO(cmc): I have no idea why this works without specifying a `recording_id`, but
-    # I'm not gonna rely on it anyway.
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
     log_readme()

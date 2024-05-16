@@ -12,8 +12,17 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
+
+[package.metadata.cargo-machete]
+ignored = [
+  "num-traits", # Needed for `num-derive`'s macros to work.
+  "half",       # Needed so that `fixed` is pinned at the right version.
+]
 
 
 [features]
@@ -23,6 +32,7 @@ default = []
 serde = [
   "dep:serde",
   "dep:serde_bytes",
+  "re_build_info/serde",
   "re_string_interner/serde",
   "re_tuid/serde",
   "re_types_core/serde",
@@ -31,7 +41,9 @@ serde = [
 [dependencies]
 
 # Rerun
-re_format = { workspace = true, features = ["arrow"] }
+re_build_info.workspace = true
+re_format.workspace = true
+re_format_arrow.workspace = true
 re_log.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true
@@ -47,7 +59,6 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
 ] }
 backtrace.workspace = true
-bytemuck.workspace = true
 clean-path.workspace = true
 document-features.workspace = true
 fixed = { workspace = true, default-features = false, features = ["serde"] }
@@ -61,6 +72,7 @@ num-derive.workspace = true
 num-traits.workspace = true
 similar-asserts.workspace = true
 smallvec.workspace = true
+static_assertions.workspace = true
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting", "macros", "local-offset"] }
 typenum.workspace = true

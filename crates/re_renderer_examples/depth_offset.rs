@@ -7,6 +7,9 @@
 //! Press arrow up/down to increase/decrease the distance of the camera to the z==0 plane in tandem with the scale of the rectangles.
 //! Press arrow left/right to increase/decrease the near plane distance.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use re_renderer::Hsva;
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect},
@@ -38,7 +41,7 @@ impl framework::Example for Render2D {
         re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         _time: &framework::Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let mut rectangles = Vec::new();
 
@@ -110,7 +113,7 @@ impl framework::Example for Render2D {
                     near_plane_distance: self.near_plane,
                     aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                 },
-                pixels_from_point,
+                pixels_per_point,
                 ..Default::default()
             },
         );

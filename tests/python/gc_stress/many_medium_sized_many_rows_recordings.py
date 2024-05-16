@@ -10,6 +10,7 @@ Usage:
 - Run this script.
 - You should see recordings coming in and going out in a ringbuffer-like rolling fashion.
 """
+
 from __future__ import annotations
 
 import rerun as rr

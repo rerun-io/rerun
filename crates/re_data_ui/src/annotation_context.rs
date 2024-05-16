@@ -5,19 +5,19 @@ use re_types::components::AnnotationContext;
 use re_types::datatypes::{
     AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
 };
-use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
+use re_viewer_context::{auto_color, UiLayout, ViewerContext};
 
-use super::{table_for_verbosity, DataUi};
+use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
 
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
         &self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: re_viewer_context::UiVerbosity,
+        ui_layout: UiLayout,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let annotations = crate::annotations(ctx, query, entity_path);
         let class = annotations
@@ -27,30 +27,34 @@ impl crate::EntityDataUi for re_types::components::ClassId {
             let response = ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &class.info);
-                ui.label(format!("{}", self.0));
+                let mut text = format!("{}", self.0);
                 if let Some(label) = &class.info.label {
-                    ui.label(label.as_str());
+                    text.push(' ');
+                    text.push_str(label.as_str());
                 }
+                label_for_ui_layout(ui, ui_layout, text);
             });
 
             let id = self.0;
-            match verbosity {
-                UiVerbosity::Small => {
+            match ui_layout {
+                UiLayout::List => {
                     if !class.keypoint_connections.is_empty()
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ctx, ui, verbosity, class, id);
+                            class_description_ui(ctx, ui, UiLayout::Tooltip, class, id);
                         });
                     }
                 }
-                UiVerbosity::Reduced | UiVerbosity::Full | UiVerbosity::LimitHeight => {
+                UiLayout::Tooltip
+                | UiLayout::SelectionPanelFull
+                | UiLayout::SelectionPanelLimitHeight => {
                     ui.separator();
-                    class_description_ui(ctx, ui, verbosity, class, id);
+                    class_description_ui(ctx, ui, ui_layout, class, id);
                 }
             }
         } else {
-            ui.label(format!("{}", self.0));
+            label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
         }
     }
 }
@@ -58,24 +62,27 @@ impl crate::EntityDataUi for re_types::components::ClassId {
 impl crate::EntityDataUi for re_types::components::KeypointId {
     fn entity_data_ui(
         &self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: re_viewer_context::UiVerbosity,
+        ui_layout: UiLayout,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         if let Some(info) = annotation_info(ctx, entity_path, query, self.0) {
             ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &info);
-                ui.label(format!("{}", self.0));
+                let mut text = format!("{}", self.0);
                 if let Some(label) = &info.label {
-                    ui.label(label.as_str());
+                    text.push(' ');
+                    text.push_str(label.as_str());
                 }
+
+                data_label_for_ui_layout(ui, ui_layout, text);
             });
         } else {
-            ui.label(format!("{}", self.0));
+            data_label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
         }
     }
 }
@@ -86,12 +93,16 @@ fn annotation_info(
     query: &re_data_store::LatestAtQuery,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
+    // TODO(#5607): what should happen if the promise is still pending?
+
+    // TODO(#6358): this needs to use the index of the keypoint to look up the correct
+    // class_id. For now we use `latest_at_component_quiet` to avoid the warning spam.
     let class_id = ctx
-        .entity_db
-        .store()
-        .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
+        .recording()
+        .latest_at_component_quiet::<re_types::components::ClassId>(entity_path, query)?;
+
     let annotations = crate::annotations(ctx, query, entity_path);
-    let class = annotations.resolved_class_description(Some(*class_id));
+    let class = annotations.resolved_class_description(Some(class_id.value));
     class.keypoint_map?.get(&keypoint_id).cloned()
 }
 
@@ -100,20 +111,26 @@ impl DataUi for AnnotationContext {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
-        match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
-                if self.0.len() == 1 {
+        match ui_layout {
+            UiLayout::List | UiLayout::Tooltip => {
+                let text = if self.0.len() == 1 {
                     let descr = &self.0[0].class_description;
-                    ui.label(format!("AnnotationContext with one class containing {} keypoints and {} connections", descr.keypoint_annotations.len(), descr.keypoint_connections.len()));
+
+                    format!(
+                        "One class containing {} keypoints and {} connections",
+                        descr.keypoint_annotations.len(),
+                        descr.keypoint_connections.len()
+                    )
                 } else {
-                    ui.label(format!("AnnotationContext with {} classes", self.0.len()));
-                }
+                    format!("{} classes", self.0.len())
+                };
+                label_for_ui_layout(ui, ui_layout, text);
             }
-            UiVerbosity::LimitHeight | UiVerbosity::Full => {
+            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
                 ui.vertical(|ui| {
                     ctx.re_ui
                         .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
@@ -123,7 +140,7 @@ impl DataUi for AnnotationContext {
                                 .map(|class| &class.class_description.info)
                                 .sorted_by_key(|info| info.id)
                                 .collect_vec();
-                            annotation_info_table_ui(ui, verbosity, &annotation_infos);
+                            annotation_info_table_ui(ui, ui_layout, &annotation_infos);
                         });
 
                     for ClassDescriptionMapElem {
@@ -131,7 +148,7 @@ impl DataUi for AnnotationContext {
                         class_description,
                     } in &self.0
                     {
-                        class_description_ui(ctx, ui, verbosity, class_description, *class_id);
+                        class_description_ui(ctx, ui, ui_layout, class_description, *class_id);
                     }
                 });
             }
@@ -142,7 +159,7 @@ impl DataUi for AnnotationContext {
 fn class_description_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    mut verbosity: UiVerbosity,
+    mut ui_layout: UiLayout,
     class: &ClassDescription,
     id: re_types::datatypes::ClassId,
 ) {
@@ -152,12 +169,13 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
-    let use_collapsible = verbosity == UiVerbosity::LimitHeight || verbosity == UiVerbosity::Full;
+    let use_collapsible = ui_layout == UiLayout::SelectionPanelLimitHeight
+        || ui_layout == UiLayout::SelectionPanelFull;
 
     // We use collapsible header as a means for the user to limit the height, so the annotation info
     // tables can be fully unrolled.
-    if verbosity == UiVerbosity::LimitHeight {
-        verbosity = UiVerbosity::Full;
+    if ui_layout == UiLayout::SelectionPanelLimitHeight {
+        ui_layout = UiLayout::SelectionPanelFull;
     }
 
     let row_height = re_ui::ReUi::table_line_height();
@@ -174,7 +192,7 @@ fn class_description_ui(
                     .sorted_by_key(|annotation| annotation.id)
                     .collect_vec();
                 ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-                    annotation_info_table_ui(ui, verbosity, &annotation_infos);
+                    annotation_info_table_ui(ui, ui_layout, &annotation_infos);
                 });
             },
         );
@@ -190,7 +208,7 @@ fn class_description_ui(
                 ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
                     use egui_extras::Column;
 
-                    let table = table_for_verbosity(verbosity, ui)
+                    let table = table_for_ui_layout(ui_layout, ui)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                         .column(Column::auto().clip(true).at_least(40.0))
                         .column(Column::auto().clip(true).at_least(40.0));
@@ -247,7 +265,7 @@ fn class_description_ui(
 
 fn annotation_info_table_ui(
     ui: &mut egui::Ui,
-    verbosity: UiVerbosity,
+    ui_layout: UiLayout,
     annotation_infos: &[&AnnotationInfo],
 ) {
     re_tracing::profile_function!();
@@ -258,7 +276,7 @@ fn annotation_info_table_ui(
 
     use egui_extras::Column;
 
-    let table = table_for_verbosity(verbosity, ui)
+    let table = table_for_ui_layout(ui_layout, ui)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
         .column(Column::auto().clip(true).at_least(40.0)) // label

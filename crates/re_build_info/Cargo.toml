@@ -12,5 +12,21 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
+
+
+[features]
+default = []
+
+## Enable (de)serialization using serde.
+serde = ["dep:serde"]
+
+
+[dependencies]
+
+# Optional dependencies:
+serde = { workspace = true, optional = true, features = ["derive", "rc"] }

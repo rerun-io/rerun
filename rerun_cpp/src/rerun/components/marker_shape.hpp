@@ -18,24 +18,34 @@ namespace rerun::components {
     /// **Component**: Shape of a marker.
     enum class MarkerShape : uint8_t {
 
+        /// `⏺`
         Circle = 1,
 
+        /// `◆`
         Diamond = 2,
 
+        /// `◼\u{fe0f}`
         Square = 3,
 
+        /// `x`
         Cross = 4,
 
+        /// `+`
         Plus = 5,
 
+        /// `▲`
         Up = 6,
 
+        /// `▼`
         Down = 7,
 
+        /// `◀`
         Left = 8,
 
+        /// `▶`
         Right = 9,
 
+        /// `*`
         Asterisk = 10,
     };
 } // namespace rerun::components
@@ -52,15 +62,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::components::MarkerShape` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::MarkerShape* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::SparseUnionBuilder* builder, const components::MarkerShape* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::components::MarkerShape` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::MarkerShape* instances, size_t num_instances
         );
     };
 } // namespace rerun

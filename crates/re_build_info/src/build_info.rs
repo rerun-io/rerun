@@ -113,6 +113,10 @@ impl std::fmt::Display for BuildInfo {
             write!(f, ", built {datetime}")?;
         }
 
+        if cfg!(debug_assertions) {
+            write!(f, " (debug)")?;
+        }
+
         Ok(())
     }
 }
@@ -149,7 +153,7 @@ fn crate_version_from_build_info_string() {
             patch: 0,
             meta: Some(crate::crate_version::Meta::DevAlpha(7)),
         },
-        rustc_version: "1.74.0 (d5c2e9c34 2023-09-13)",
+        rustc_version: "1.76.0 (d5c2e9c34 2023-09-13)",
         llvm_version: "16.0.5",
         git_hash: "",
         git_branch: "",
@@ -162,8 +166,8 @@ fn crate_version_from_build_info_string() {
 
     {
         let expected_crate_version = build_info.version;
-        let crate_version = CrateVersion::try_parse_from_build_info_string(build_info_str).unwrap();
+        let crate_version = CrateVersion::try_parse_from_build_info_string(build_info_str);
 
-        assert_eq!(expected_crate_version, crate_version);
+        assert_eq!(Ok(expected_crate_version), crate_version);
     }
 }

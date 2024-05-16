@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 #![allow(clippy::iter_on_single_items)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::match_wildcard_for_single_variants)]
@@ -96,10 +97,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         let (somes, p): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { p, .. } = &**datum;
-                                    p.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.p.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -110,16 +108,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         PrimitiveArray::new(
                             DataType::UInt32,
                             p.into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::testing::datatypes::PrimitiveComponent(
-                                                data0,
-                                            ) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             p_bitmap,
                         )
@@ -129,10 +118,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         let (somes, s): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { s, .. } = &**datum;
-                                    s.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.s.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -141,27 +127,17 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let inner_data: arrow2::buffer::Buffer<u8> = s
-                                .iter()
-                                .flatten()
-                                .flat_map(|datum| {
-                                    let crate::testing::datatypes::StringComponent(data0) = datum;
-                                    data0.0.clone()
-                                })
-                                .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 s.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| {
-                                            let crate::testing::datatypes::StringComponent(data0) =
-                                                datum;
-                                            data0.0.len()
-                                        })
-                                        .unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
-                            )
-                            .unwrap()
+                            )?
                             .into();
+                            let inner_data: arrow2::buffer::Buffer<u8> = s
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|datum| datum.0 .0)
+                                .collect();
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {

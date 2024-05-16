@@ -10,8 +10,8 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
-use re_log_types::{ComponentPath, TimeInt, TimeRange, TimeReal};
-use re_viewer_context::{Item, TimeControl, UiVerbosity, ViewerContext};
+use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
+use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::TimePanelItem;
 
@@ -368,14 +368,13 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
-    data_dentity_graph_painter: &mut DataDensityGraphPainter,
+    data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
     time_ctrl: &mut TimeControl,
-    store: &re_data_store::DataStore,
+    db: &re_entity_db::EntityDb,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &egui::Ui,
-    num_timeless_messages: usize,
     time_histogram: &TimeHistogram,
     row_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
@@ -391,17 +390,17 @@ pub fn data_density_graph_ui(
     let mut density_graph = DensityGraph::new(row_rect.x_range());
 
     let mut num_hovered_messages = 0;
-    let mut hovered_time_range = TimeRange::EMPTY;
+    let mut hovered_time_range = ResolvedTimeRange::EMPTY;
 
     {
-        let mut add_data_point = |time_range: TimeRange, count: usize| {
+        let mut add_data_point = |time_range: ResolvedTimeRange, count: usize| {
             if count == 0 {
                 return;
             }
 
             if let (Some(min_x), Some(max_x)) = (
-                time_ranges_ui.x_from_time_f32(time_range.min.into()),
-                time_ranges_ui.x_from_time_f32(time_range.max.into()),
+                time_ranges_ui.x_from_time_f32(time_range.min().into()),
+                time_ranges_ui.x_from_time_f32(time_range.max().into()),
             ) {
                 density_graph.add_range((min_x, max_x), count as _);
 
@@ -435,8 +434,6 @@ pub fn data_density_graph_ui(
             }
         };
 
-        add_data_point(TimeRange::point(TimeInt::BEGINNING), num_timeless_messages);
-
         let visible_time_range = time_ranges_ui
             .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
@@ -449,7 +446,7 @@ pub fn data_density_graph_ui(
             re_tracing::profile_scope!("time_histogram.range");
             time_histogram
                 .range(
-                    visible_time_range.min.as_i64()..=visible_time_range.max.as_i64(),
+                    visible_time_range.min().as_i64()..=visible_time_range.max().as_i64(),
                     time_chunk_size,
                 )
                 .collect()
@@ -458,25 +455,25 @@ pub fn data_density_graph_ui(
         re_tracing::profile_scope!("add_data_point");
         for (time_range, num_messages_at_time) in ranges {
             add_data_point(
-                TimeRange::new(time_range.min.into(), time_range.max.into()),
+                ResolvedTimeRange::new(time_range.min, time_range.max),
                 num_messages_at_time as _,
             );
         }
     }
 
     let hovered_x_range = (time_ranges_ui
-        .x_from_time_f32(hovered_time_range.min.into())
+        .x_from_time_f32(hovered_time_range.min().into())
         .unwrap_or(f32::MAX)
         - MARGIN_X)
         ..=(time_ranges_ui
-            .x_from_time_f32(hovered_time_range.max.into())
+            .x_from_time_f32(hovered_time_range.max().into())
             .unwrap_or(f32::MIN)
             + MARGIN_X);
 
     density_graph.buckets = smooth(&density_graph.buckets);
 
     density_graph.paint(
-        data_dentity_graph_painter,
+        data_density_graph_painter,
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
@@ -488,13 +485,13 @@ pub fn data_density_graph_ui(
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             ctx.selection_state().set_selection(item.to_item());
-            time_ctrl.set_time(hovered_time_range.min);
+            time_ctrl.set_time(hovered_time_range.min());
             time_ctrl.pause();
         } else if ui.ctx().dragged_id().is_none() {
             show_row_ids_tooltip(
                 ctx,
                 time_ctrl,
-                store,
+                db,
                 ui.ctx(),
                 item,
                 hovered_time_range,
@@ -526,10 +523,10 @@ fn make_brighter(color: Color32) -> Color32 {
 fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
-    store: &re_data_store::DataStore,
+    db: &re_entity_db::EntityDb,
     egui_ctx: &egui::Context,
     item: &TimePanelItem,
-    time_range: TimeRange,
+    time_range: ResolvedTimeRange,
     num_events: usize,
 ) {
     use re_data_ui::DataUi as _;
@@ -545,9 +542,9 @@ fn show_row_ids_tooltip(
             ui.label(format!("{num_events} events"));
         }
 
-        let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
+        let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
 
-        let verbosity = UiVerbosity::Reduced;
+        let ui_layout = UiLayout::Tooltip;
 
         let TimePanelItem {
             entity_path,
@@ -556,14 +553,14 @@ fn show_row_ids_tooltip(
 
         if let Some(component_name) = component_name {
             let component_path = ComponentPath::new(entity_path.clone(), *component_name);
-            item_ui::component_path_button(ctx, ui, &component_path);
+            item_ui::component_path_button(ctx, ui, &component_path, db);
             ui.add_space(8.0);
-            component_path.data_ui(ctx, ui, verbosity, &query, store);
+            component_path.data_ui(ctx, ui, ui_layout, &query, db);
         } else {
-            let instance_path = re_entity_db::InstancePath::entity_splat(entity_path.clone());
-            item_ui::instance_path_button(ctx, &query, store, ui, None, &instance_path);
+            let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
+            item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
             ui.add_space(8.0);
-            instance_path.data_ui(ctx, ui, verbosity, &query, store);
+            instance_path.data_ui(ctx, ui, ui_layout, &query, db);
         }
     });
 }

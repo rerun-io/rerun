@@ -1,9 +1,9 @@
 use itertools::Itertools as _;
-use re_query_cache::QueryError;
+use re_query::{PromiseResult, QueryError};
 use re_types::archetypes;
 use re_types::{
     archetypes::SeriesLine,
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
+    components::{Color, Name, Scalar, StrokeWidth},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -15,7 +15,7 @@ use crate::overrides::initial_override_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
-use crate::{overrides::lookup_override, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`SeriesLine`] archetypes.
 #[derive(Default, Debug)]
@@ -56,7 +56,7 @@ impl VisualizerSystem for SeriesLineSystem {
             ctx,
             &query.latest_at_query(),
             query
-                .iter_visible_data_results(Self::identifier())
+                .iter_visible_data_results(ctx, Self::identifier())
                 .map(|data| &data.entity_path),
         );
 
@@ -98,7 +98,7 @@ impl SeriesLineSystem {
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
-        let data_results = query.iter_visible_data_results(Self::identifier());
+        let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
         let parallel_loading = false; // TODO(emilk): enable parallel loading when it is faster, because right now it is often slower.
         if parallel_loading {
@@ -155,16 +155,17 @@ fn load_series(
 ) -> Result<(), QueryError> {
     re_tracing::profile_function!();
 
-    let store = ctx.entity_db.store();
-    let query_caches = ctx.entity_db.query_caches();
+    let resolver = ctx.recording().resolver();
 
     let annotation_info = annotations
         .resolved_class_description(None)
         .annotation_info();
     let default_color = DefaultColor::EntityPath(&data_result.entity_path);
-    let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
-    let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
-    let override_stroke_width = lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
+    let override_color = data_result
+        .lookup_override::<Color>(ctx)
+        .map(|c| c.to_array());
+    let override_series_name = data_result.lookup_override::<Name>(ctx).map(|t| t.0);
+    let override_stroke_width = data_result.lookup_override::<StrokeWidth>(ctx).map(|r| r.0);
 
     // All the default values for a `PlotPoint`, accounting for both overrides and default
     // values.
@@ -179,10 +180,10 @@ fn load_series(
         },
     };
 
-    let mut points = Vec::new();
+    let mut points;
 
     let time_range = determine_time_range(
-        query,
+        query.latest_at,
         data_result,
         plot_bounds,
         ctx.app_options.experimental_plot_query_clamping,
@@ -193,83 +194,131 @@ fn load_series(
         let entity_path = &data_result.entity_path;
         let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-        // TODO(jleibs): need to do a "joined" archetype query
-        // The `Scalar` archetype queries for `MarkerShape` & `MarkerSize` in the point visualizer,
-        // and so it must do so here also.
-        // See https://github.com/rerun-io/rerun/pull/5029
-        query_caches.query_archetype_range_pov1_comp4::<
-            archetypes::Scalar,
-            Scalar,
-            Color,
-            StrokeWidth,
-            MarkerSize, // unused
-            MarkerShape, // unused
-            _,
-        >(
-            store,
+        let results = ctx.recording().query_caches().range(
+            ctx.recording_store(),
             &query,
             entity_path,
-            |_timeless, entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
-                let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
-                // Allocate all points.
-                points = times.map(|time| PlotPoint {
-                    time,
-                    ..default_point.clone()
-                }).collect_vec();
+            [Scalar::name(), Color::name(), StrokeWidth::name()],
+        );
 
-                // Fill in values.
-                for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
-                    if scalar.len() > 1 {
-                        re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
-                    } else if scalar.is_empty() {
-                        points[i].attrs.kind = PlotSeriesKind::Clear;
-                    } else {
-                        points[i].value = scalar.first().map_or(0.0, |s| s.0);
-                    }
+        let all_scalars = results
+            .get_required(Scalar::name())?
+            .to_dense::<Scalar>(resolver);
+        let all_scalars_entry_range = all_scalars.entry_range();
+
+        if !matches!(
+            all_scalars.status(),
+            (PromiseResult::Ready(()), PromiseResult::Ready(()))
+        ) {
+            // TODO(#5607): what should happen if the promise is still pending?
+        }
+
+        // Allocate all points.
+        points = all_scalars
+            .range_indices(all_scalars_entry_range.clone())
+            .map(|(data_time, _)| PlotPoint {
+                time: data_time.as_i64(),
+                ..default_point.clone()
+            })
+            .collect_vec();
+
+        if cfg!(debug_assertions) {
+            for ps in points.windows(2) {
+                assert!(
+                    ps[0].time <= ps[1].time,
+                    "scalars should be sorted already when extracted from the cache, got p0 at {} and p1 at {}\n{:?}",
+                    ps[0].time, ps[1].time,
+                    points.iter().map(|p| p.time).collect_vec(),
+                );
+            }
+        }
+
+        // Fill in values.
+        for (i, scalars) in all_scalars
+            .range_data(all_scalars_entry_range.clone())
+            .enumerate()
+        {
+            if scalars.len() > 1 {
+                re_log::warn_once!(
+                    "found a scalar batch in {entity_path:?} -- those have no effect"
+                );
+            } else if scalars.is_empty() {
+                points[i].attrs.kind = PlotSeriesKind::Clear;
+            } else {
+                points[i].value = scalars.first().map_or(0.0, |s| s.0);
+            }
+        }
+
+        // Make it as clear as possible to the optimizer that some parameters
+        // go completely unused as soon as overrides have been defined.
+
+        // Fill in colors -- if available _and_ not overridden.
+        if override_color.is_none() {
+            if let Some(all_colors) = results.get(Color::name()) {
+                let all_colors = all_colors.to_dense::<Color>(resolver);
+
+                if !matches!(
+                    all_colors.status(),
+                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                ) {
+                    // TODO(#5607): what should happen if the promise is still pending?
                 }
 
-                // Make it as clear as possible to the optimizer that some parameters
-                // go completely unused as soon as overrides have been defined.
+                let all_scalars_indexed = all_scalars
+                    .range_indices(all_scalars_entry_range.clone())
+                    .map(|index| (index, ()));
 
-                // Fill in colors -- if available _and_ not overridden.
-                if override_color.is_none() {
-                    if let Some(colors) = colors {
-                        for (i, color) in colors.range(entry_range.clone()).enumerate() {
-                            if i >= points.len() {
-                                re_log::debug_once!("more color attributes than points in {entity_path:?} -- this points to a bug in the query cache");
-                                break;
+                let all_frames =
+                    re_query::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
+                        .enumerate();
+
+                for (i, (_index, _scalars, colors)) in all_frames {
+                    if let Some(color) = colors.and_then(|colors| {
+                        colors.first().map(|c| {
+                            let [r, g, b, a] = c.to_array();
+                            if a == 255 {
+                                // Common-case optimization
+                                re_renderer::Color32::from_rgb(r, g, b)
+                            } else {
+                                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                             }
-                            if let Some(color) = color.first().copied().flatten().map(|c| {
-                                let [r,g,b,a] = c.to_array();
-                                if a == 255 {
-                                    // Common-case optimization
-                                    re_renderer::Color32::from_rgb(r, g, b)
-                                } else {
-                                    re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-                                }
-                            }) {
-                                points[i].attrs.color = color;
-                            }
-                        }
+                        })
+                    }) {
+                        points[i].attrs.color = color;
                     }
                 }
+            }
+        }
 
-                // Fill in radii -- if available _and_ not overridden.
-                if override_stroke_width.is_none() {
-                    if let Some(stroke_widths) = stroke_widths {
-                        for (i, stroke_width) in stroke_widths.range(entry_range.clone()).enumerate() {
-                            if i >= stroke_widths.num_entries() {
-                                re_log::debug_once!("more stroke width attributes than points in {entity_path:?} -- this points to a bug in the query cache");
-                                break;
-                            }
-                            if let Some(stroke_width) = stroke_width.first().copied().flatten().map(|r| r.0) {
-                                points[i].attrs.marker_size = stroke_width;
-                            }
-                        }
+        // Fill in stroke widths -- if available _and_ not overridden.
+        if override_stroke_width.is_none() {
+            if let Some(all_stroke_widths) = results.get(StrokeWidth::name()) {
+                let all_stroke_widths = all_stroke_widths.to_dense::<StrokeWidth>(resolver);
+
+                if !matches!(
+                    all_stroke_widths.status(),
+                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                ) {
+                    // TODO(#5607): what should happen if the promise is still pending?
+                }
+
+                let all_scalars_indexed = all_scalars
+                    .range_indices(all_scalars_entry_range.clone())
+                    .map(|index| (index, ()));
+
+                let all_frames =
+                    re_query::range_zip_1x1(all_scalars_indexed, all_stroke_widths.range_indexed())
+                        .enumerate();
+
+                for (i, (_index, _scalars, stroke_widths)) in all_frames {
+                    if let Some(stroke_width) =
+                        stroke_widths.and_then(|stroke_widths| stroke_widths.first().map(|r| r.0))
+                    {
+                        points[i].attrs.marker_size = stroke_width;
                     }
                 }
-            },
-        )?;
+            }
+        }
     }
 
     // Check for an explicit label if any.
@@ -279,9 +328,9 @@ fn load_series(
     let series_name = if let Some(override_name) = override_series_name {
         Some(override_name)
     } else {
-        ctx.entity_db
-            .store()
-            .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
+        // TODO(#5607): what should happen if the promise is still pending?
+        ctx.recording()
+            .latest_at_component::<Name>(&data_result.entity_path, &ctx.current_query())
             .map(|name| name.value.0)
     };
 
@@ -290,7 +339,7 @@ fn load_series(
         data_result,
         time_per_pixel,
         points,
-        store,
+        ctx.recording_store(),
         query,
         series_name,
         all_series,

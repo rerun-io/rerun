@@ -35,6 +35,10 @@ impl<T: Send> Sender<T> {
             Arc::clone(&self.source),
             SmartMessagePayload::Msg(msg),
         )
+        .map_err(|SendError(msg)| match msg {
+            SmartMessagePayload::Msg(msg) => SendError(msg),
+            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
+        })
     }
 
     /// Forwards a message as-is.
@@ -43,7 +47,7 @@ impl<T: Send> Sender<T> {
         time: Instant,
         source: Arc<SmartMessageSource>,
         payload: SmartMessagePayload<T>,
-    ) -> Result<(), SendError<T>> {
+    ) -> Result<(), SendError<SmartMessagePayload<T>>> {
         // NOTE: We should never be sending a message with an unknown source.
         debug_assert!(!matches!(*source, SmartMessageSource::Unknown));
 
@@ -53,7 +57,30 @@ impl<T: Send> Sender<T> {
                 source,
                 payload,
             })
-            .map_err(|SendError(msg)| SendError(msg.into_data().unwrap()))
+            .map_err(|SendError(msg)| SendError(msg.payload))
+    }
+
+    /// Blocks until all previously sent messages have been received.
+    ///
+    /// Note: This is only implemented for non-wasm targets since we cannot make
+    /// blocking calls on web.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn flush_blocking(&self) -> Result<(), SendError<()>> {
+        let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
+        self.tx
+            .send(SmartMessage {
+                time: Instant::now(),
+                source: Arc::clone(&self.source),
+                payload: SmartMessagePayload::Flush {
+                    on_flush_done: Box::new(move || {
+                        tx.send(()).ok();
+                    }),
+                },
+            })
+            .map_err(|_ignored| SendError(()))?;
+
+        // Block:
+        rx.recv().map_err(|_ignored| SendError(()))
     }
 
     /// Used to indicate that a sender has left.

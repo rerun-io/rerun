@@ -5,19 +5,25 @@ use super::Texcoord2D;
 // ---
 
 impl Texcoord2D {
+    /// The origin.
     pub const ZERO: Self = Self::new(0.0, 0.0);
+
+    /// The corner opposite the origin.
     pub const ONE: Self = Self::new(1.0, 1.0);
 
+    /// Create a new texture coordinate.
     #[inline]
     pub const fn new(u: f32, v: f32) -> Self {
         Self(Vec2D::new(u, v))
     }
 
+    /// The first coordinate, i.e. index 0.
     #[inline]
     pub fn u(&self) -> f32 {
         self.0.x()
     }
 
+    /// The second coordinate, i.e. index 1.
     #[inline]
     pub fn v(&self) -> f32 {
         self.0.y()

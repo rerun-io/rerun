@@ -10,7 +10,6 @@
 #include <cstring>
 #include <memory>
 #include <new>
-#include <optional>
 #include <rerun/collection.hpp>
 #include <rerun/result.hpp>
 #include <utility>
@@ -28,16 +27,14 @@ namespace rerun::datatypes {
             /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
             None = 0,
             degrees,
-            radians,
             craziness,
             fixed_size_shenanigans,
+            empty_variant,
         };
 
         /// \private
         union AffixFuzzer3Data {
             float degrees;
-
-            std::optional<float> radians;
 
             rerun::Collection<rerun::datatypes::AffixFuzzer1> craziness;
 
@@ -72,8 +69,8 @@ namespace rerun::datatypes {
                     new (&_data.craziness) TypeAlias(other._data.craziness);
                 } break;
                 case detail::AffixFuzzer3Tag::degrees:
-                case detail::AffixFuzzer3Tag::radians:
-                case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
+                case detail::AffixFuzzer3Tag::fixed_size_shenanigans:
+                case detail::AffixFuzzer3Tag::empty_variant: {
                     const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                     void* thisbytes = reinterpret_cast<void*>(&this->_data);
                     std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer3Data));
@@ -106,14 +103,14 @@ namespace rerun::datatypes {
                 case detail::AffixFuzzer3Tag::degrees: {
                     // has a trivial destructor
                 } break;
-                case detail::AffixFuzzer3Tag::radians: {
-                    // has a trivial destructor
-                } break;
                 case detail::AffixFuzzer3Tag::craziness: {
                     using TypeAlias = rerun::Collection<rerun::datatypes::AffixFuzzer1>;
                     _data.craziness.~TypeAlias();
                 } break;
                 case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
+                    // has a trivial destructor
+                } break;
+                case detail::AffixFuzzer3Tag::empty_variant: {
                     // has a trivial destructor
                 } break;
             }
@@ -124,17 +121,22 @@ namespace rerun::datatypes {
             this->_data.swap(other._data);
         }
 
+        AffixFuzzer3(float degrees) : AffixFuzzer3() {
+            *this = AffixFuzzer3::degrees(std::move(degrees));
+        }
+
+        AffixFuzzer3(rerun::Collection<rerun::datatypes::AffixFuzzer1> craziness) : AffixFuzzer3() {
+            *this = AffixFuzzer3::craziness(std::move(craziness));
+        }
+
+        AffixFuzzer3(std::array<float, 3> fixed_size_shenanigans) : AffixFuzzer3() {
+            *this = AffixFuzzer3::fixed_size_shenanigans(std::move(fixed_size_shenanigans));
+        }
+
         static AffixFuzzer3 degrees(float degrees) {
             AffixFuzzer3 self;
             self._tag = detail::AffixFuzzer3Tag::degrees;
             new (&self._data.degrees) float(std::move(degrees));
-            return self;
-        }
-
-        static AffixFuzzer3 radians(std::optional<float> radians) {
-            AffixFuzzer3 self;
-            self._tag = detail::AffixFuzzer3Tag::radians;
-            new (&self._data.radians) std::optional<float>(std::move(radians));
             return self;
         }
 
@@ -154,19 +156,16 @@ namespace rerun::datatypes {
             return self;
         }
 
+        static AffixFuzzer3 empty_variant() {
+            AffixFuzzer3 self;
+            self._tag = detail::AffixFuzzer3Tag::empty_variant;
+            return self;
+        }
+
         /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
         const float* get_degrees() const {
             if (_tag == detail::AffixFuzzer3Tag::degrees) {
                 return &_data.degrees;
-            } else {
-                return nullptr;
-            }
-        }
-
-        /// Return a pointer to radians if the union is in that state, otherwise `nullptr`.
-        const std::optional<float>* get_radians() const {
-            if (_tag == detail::AffixFuzzer3Tag::radians) {
-                return &_data.radians;
             } else {
                 return nullptr;
             }
@@ -188,6 +187,11 @@ namespace rerun::datatypes {
             } else {
                 return nullptr;
             }
+        }
+
+        /// Returns true if the union is in the empty_variant state.
+        bool is_empty_variant() const {
+            return _tag == detail::AffixFuzzer3Tag::empty_variant;
         }
 
         /// \private
@@ -218,15 +222,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::datatypes::AffixFuzzer3` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::AffixFuzzer3* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const datatypes::AffixFuzzer3* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::datatypes::AffixFuzzer3` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::AffixFuzzer3* instances, size_t num_instances
         );
     };
 } // namespace rerun

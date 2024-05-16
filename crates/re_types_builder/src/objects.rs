@@ -3,18 +3,20 @@
 //! The semantic pass transforms the low-level raw reflection data into higher level types that
 //! are much easier to inspect and manipulate / friendler to work with.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
 
 use crate::{
-    root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
+    root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
+    FbsSchema, FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
+
+const BUILTIN_UNIT_TYPE_FQNAME: &str = "rerun.builtins.UnitType";
 
 /// The result of the semantic pass: an intermediate representation of all available object
 /// types; including structs, enums and unions.
@@ -60,7 +62,12 @@ impl Objects {
 
         // resolve objects
         for obj in schema.objects() {
-            let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
+            if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
+                continue;
+            }
+
+            let resolved_obj =
+                Object::from_raw_object(reporter, include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
 
@@ -68,28 +75,42 @@ impl Objects {
             objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
         };
 
-        // Validate fields types: Archetype consist of components, everything else consists of datatypes.
+        // Validate fields types: Archetype consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
                 let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
                     let field_obj = &this[field_type_fqname];
-                    if obj.kind == ObjectKind::Archetype {
-                        assert!(field_obj.kind == ObjectKind::Component,
-                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
-                            field.fqname, field_type_fqname
-                        );
-                    } else {
-                        assert!(field_obj.kind == ObjectKind::Datatype,
-                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
-                            field.fqname, field_type_fqname
-                        );
+                    match obj.kind {
+                        ObjectKind::Datatype | ObjectKind::Component => {
+                            if field_obj.kind != ObjectKind::Datatype {
+                                reporter.error(virtpath, field_type_fqname, "Is part of a Component or Datatype but is itself not a Datatype. Only archetype fields can be components, all other fields have to be primitive or be a datatypes.");
+                            }
+                        }
+                        ObjectKind::Archetype => {
+                            if field_obj.kind != ObjectKind::Component {
+                                reporter.error(virtpath, field_type_fqname, "Is part of an archetypes but is not a component. Only components are allowed as fields on an archetype.");
+                            }
+                        }
+                        ObjectKind::View => {
+                            if field_obj.kind != ObjectKind::Archetype {
+                                reporter.error(virtpath, field_type_fqname, "Is part of an view but is not an archetype. Only archetypes are allowed as fields of a view's properties.");
+                            }
+                        }
                     }
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
-                    assert!(obj.kind != ObjectKind::Archetype,
-                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes.",
-                        field.fqname, field.typ);
+                    if obj.kind == ObjectKind::Archetype || obj.kind == ObjectKind::View {
+                        reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes & Components.", field.fqname, field.typ));
+                    }
+                }
+
+                if obj.is_union() && field.is_nullable {
+                    reporter.error(
+                        virtpath,
+                        &obj.fqname,
+                        "Nullable fields on unions are not supported.",
+                    );
                 }
             }
         }
@@ -202,10 +223,14 @@ pub enum ObjectKind {
     Datatype,
     Component,
     Archetype,
+
+    /// Views are neither archetypes nor components but are used to generate code to make it easy
+    /// to add and configure views on the blueprint.
+    View,
 }
 
 impl ObjectKind {
-    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+    pub const ALL: [Self; 4] = [Self::Datatype, Self::Component, Self::Archetype, Self::View];
 
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: &str, attrs: &Attributes) -> Self {
@@ -223,6 +248,9 @@ impl ObjectKind {
             ObjectKind::Component
         } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
             ObjectKind::Archetype
+        } else if pkg_name.starts_with("rerun.blueprint.views") {
+            // Not bothering with scope attributes on views since they're always part of the blueprint.
+            ObjectKind::View
         } else {
             panic!("unknown package {pkg_name:?}");
         }
@@ -233,6 +261,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "datatypes",
             ObjectKind::Component => "components",
             ObjectKind::Archetype => "archetypes",
+            ObjectKind::View => "views",
         }
     }
 
@@ -241,6 +270,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "Datatype",
             ObjectKind::Component => "Component",
             ObjectKind::Archetype => "Archetype",
+            ObjectKind::View => "View",
         }
     }
 
@@ -249,150 +279,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "Datatypes",
             ObjectKind::Component => "Components",
             ObjectKind::Archetype => "Archetypes",
-        }
-    }
-}
-
-/// A high-level representation of a flatbuffers object's documentation.
-#[derive(Debug, Clone)]
-pub struct Docs {
-    /// General documentation for the object.
-    ///
-    /// Each entry in the vector is a line of comment,
-    /// excluding the leading space end trailing newline,
-    /// i.e. the `COMMENT` from `/// COMMENT\n`
-    ///
-    /// See also [`Docs::tagged_docs`].
-    pub doc: Vec<String>,
-
-    /// Tagged documentation for the object.
-    ///
-    /// Each entry in the vector is a line of comment,
-    /// excluding the leading space end trailing newline,
-    /// i.e. the `COMMENT` from `/// \py COMMENT\n`
-    ///
-    /// E.g. the following will be associated with the `py` tag:
-    /// ```flatbuffers
-    /// /// \py Something something about how this fields behave in python.
-    /// my_field: uint32,
-    /// ```
-    ///
-    /// See also [`Docs::doc`].
-    pub tagged_docs: BTreeMap<String, Vec<String>>,
-
-    /// Contents of all the files included using `\include:<path>`.
-    pub included_files: BTreeMap<Utf8PathBuf, String>,
-}
-
-impl Docs {
-    fn from_raw_docs(
-        filepath: &Utf8Path,
-        docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
-    ) -> Self {
-        let mut included_files = BTreeMap::default();
-
-        let include_file = |included_files: &mut BTreeMap<_, _>, raw_path: &str| {
-            let path: Utf8PathBuf = raw_path
-                .parse()
-                .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
-                .unwrap();
-
-            let path = filepath.parent().unwrap().join(path);
-
-            included_files
-                .entry(path.clone())
-                .or_insert_with(|| {
-                    std::fs::read_to_string(&path)
-                        .with_context(|| {
-                            format!("couldn't parse read file at included path: {path:?}")
-                        })
-                        .unwrap()
-                })
-                .clone()
-        };
-
-        // language-agnostic docs
-        let doc = docs
-            .into_iter()
-            .flat_map(|doc| doc.into_iter())
-            // NOTE: discard tagged lines!
-            .filter(|line| !line.trim().starts_with('\\'))
-            .flat_map(|line| {
-                assert!(!line.ends_with('\n'));
-                assert!(!line.ends_with('\r'));
-
-                if let Some((_, path)) = line.split_once("\\include:") {
-                    include_file(&mut included_files, path)
-                        .lines()
-                        .map(|line| line.to_owned())
-                        .collect_vec()
-                } else if let Some(line) = line.strip_prefix(' ') {
-                    // Removed space between `///` and comment.
-                    vec![line.to_owned()]
-                } else {
-                    assert!(
-                        line.is_empty(),
-                        "{filepath}: Comments should start with a single space; found {line:?}"
-                    );
-                    vec![line.to_owned()]
-                }
-            })
-            .collect::<Vec<_>>();
-
-        // tagged docs, e.g. `\py this only applies to python!`
-        let tagged_docs = {
-            let tagged_lines = docs
-                .into_iter()
-                .flat_map(|doc| doc.into_iter())
-                // NOTE: discard _un_tagged lines!
-                .filter_map(|line| {
-                    let trimmed = line.trim();
-                    trimmed.starts_with('\\').then(|| {
-                        let tag = trimmed.split_whitespace().next().unwrap();
-                        let line = &trimmed[tag.len()..];
-                        let tag = tag[1..].to_owned();
-                        if let Some(line) = line.strip_prefix(' ') {
-                            // Removed space between tag and comment.
-                            (tag, line.to_owned())
-                        } else {
-                            assert!(line.is_empty());
-                            (tag, String::default())
-                        }
-                    })
-                })
-                .flat_map(|(tag, line)| {
-                    if let Some((_, path)) = line.split_once("\\include:") {
-                        include_file(&mut included_files, path)
-                            .lines()
-                            .map(|line| (tag.clone(), line.to_owned()))
-                            .collect_vec()
-                    } else {
-                        vec![(tag, line)]
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            let all_tags: HashSet<_> = tagged_lines.iter().map(|(tag, _)| tag).collect();
-            let mut tagged_docs = BTreeMap::new();
-
-            for cur_tag in all_tags {
-                tagged_docs.insert(
-                    cur_tag.clone(),
-                    tagged_lines
-                        .iter()
-                        .filter(|(tag, _)| cur_tag == tag)
-                        .map(|(_, line)| line.clone())
-                        .collect(),
-                );
-            }
-
-            tagged_docs
-        };
-
-        Self {
-            doc,
-            tagged_docs,
-            included_files,
+            ObjectKind::View => "Views",
         }
     }
 }
@@ -445,6 +332,7 @@ impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
     pub fn from_raw_object(
+        reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
@@ -471,7 +359,7 @@ impl Object {
             "Bad filepath: {filepath:?}"
         );
 
-        let docs = Docs::from_raw_docs(&filepath, obj.documentation());
+        let docs = Docs::from_raw_docs(obj.documentation());
         let attrs = Attributes::from_raw_attrs(obj.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -483,7 +371,14 @@ impl Object {
                 .filter(|field| field.type_().base_type() != FbsBaseType::UType)
                 .filter(|field| field.type_().element() != FbsBaseType::UType)
                 .map(|field| {
-                    ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
+                    ObjectField::from_raw_object_field(
+                        reporter,
+                        include_dir_path,
+                        enums,
+                        objs,
+                        obj,
+                        &field,
+                    )
                 })
                 .collect();
 
@@ -551,7 +446,7 @@ impl Object {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(&filepath, enm.documentation());
+        let docs = Docs::from_raw_docs(enm.documentation());
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -661,10 +556,15 @@ impl Object {
 
     pub fn scope(&self) -> Option<String> {
         self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
+            .or_else(|| (self.kind == ObjectKind::View).then(|| "blueprint".to_owned()))
     }
 
     pub fn deprecation_notice(&self) -> Option<String> {
         self.try_get_attr::<String>(crate::ATTR_RERUN_DEPRECATED)
+    }
+
+    pub fn doc_category(&self) -> Option<String> {
+        self.try_get_attr::<String>(crate::ATTR_DOCS_CATEGORY)
     }
 
     /// Returns the crate name of an object, accounting for overrides.
@@ -756,12 +656,6 @@ pub struct ObjectField {
     /// Whether the field is nullable.
     pub is_nullable: bool,
 
-    /// Whether the field is deprecated.
-    //
-    // TODO(#2366): do something with this
-    // TODO(#2367): implement custom attr to specify deprecation reason
-    pub is_deprecated: bool,
-
     /// The Arrow datatype of this `ObjectField`.
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
@@ -771,6 +665,7 @@ pub struct ObjectField {
 
 impl ObjectField {
     pub fn from_raw_object_field(
+        reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
@@ -791,15 +686,25 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(&filepath, field.documentation());
+        let docs = Docs::from_raw_docs(field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
-        let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs);
+        let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs, &fqname);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let is_nullable = attrs.has(crate::ATTR_NULLABLE);
-        let is_deprecated = field.deprecated();
+        let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
+
+        if field.deprecated() {
+            reporter.warn(
+                &virtpath,
+                &fqname,
+                format!(
+                    "Use {} attribute for deprecation instead",
+                    crate::ATTR_RERUN_DEPRECATED
+                ),
+            );
+        }
 
         Self {
             virtpath,
@@ -812,7 +717,6 @@ impl ObjectField {
             attrs,
             order,
             is_nullable,
-            is_deprecated,
             datatype: None,
         }
     }
@@ -839,22 +743,20 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(&filepath, val.documentation());
+        let docs = Docs::from_raw_docs(val.documentation());
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
 
-        let typ = Type::from_raw_type(
-            &virtpath,
-            enums,
-            objs,
-            // NOTE: Unwrapping is safe, we never resolve enums without union types.
-            val.union_type().unwrap(),
-            &attrs,
-        );
+        // NOTE: Unwrapping is safe, we never resolve enums without union types.
+        let field_type = val.union_type().unwrap();
+        let typ = Type::from_raw_type(&virtpath, enums, objs, field_type, &attrs, &fqname);
 
-        let is_nullable = attrs.has(crate::ATTR_NULLABLE);
-        // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
-        let is_deprecated = false;
+        let is_nullable = if field_type.base_type() == FbsBaseType::Obj && typ == Type::Unit {
+            // Builtin unit type for unions is not nullable.
+            false
+        } else {
+            attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit // null type is always nullable
+        };
 
         if attrs.has(crate::ATTR_ORDER) {
             reporter.warn(
@@ -875,7 +777,6 @@ impl ObjectField {
             attrs,
             order: 0, // no needed for enums
             is_nullable,
-            is_deprecated,
             datatype: None,
         }
     }
@@ -944,7 +845,7 @@ pub enum FieldKind {
 pub enum Type {
     /// This is the unit type, used for `enum` variants.
     ///
-    /// In `arrow`, this corresponds to the `null` type`.
+    /// In `arrow`, this corresponds to the `null` type.
     ///
     /// In rust this would be `()`, and in C++ this would be `void`.
     Unit,
@@ -1000,10 +901,8 @@ impl Type {
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
         attrs: &Attributes,
+        fqname: &str,
     ) -> Self {
-        // TODO(jleibs): Clean up fqname plumbing
-        let fqname = "???";
-
         let typ = field_type.base_type();
 
         if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
@@ -1060,7 +959,11 @@ impl Type {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[field_type.index() as usize];
-                Self::Object(obj.name().to_owned())
+                if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
+                    Self::Unit
+                } else {
+                    Self::Object(obj.name().to_owned())
+                }
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];

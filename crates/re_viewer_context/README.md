@@ -9,4 +9,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
 Basic building blocks for the different modules of the Rerun viewer.
 
-Most prominently, contains a context object that the viewer uses to share global data with each module.
+Most prominently, contains a context object that the Viewer uses to share global data with each module.

@@ -1,22 +1,34 @@
-use re_log_types::{DataCell, DataRow, EntityPath, RowId, Time, TimePoint, Timeline};
-use re_types::{components::InstanceKey, AsComponents, ComponentBatch, ComponentName};
+use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
+use re_types::{AsComponents, ComponentBatch, ComponentName};
 
-use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
+use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
 #[inline]
 pub fn blueprint_timeline() -> Timeline {
-    Timeline::new_temporal("blueprint")
+    Timeline::new_sequence("blueprint")
 }
 
-/// The timepoint to use when writing an update to the blueprint.
-#[inline]
-pub fn blueprint_timepoint_for_writes() -> TimePoint {
-    TimePoint::from([(blueprint_timeline(), Time::now().into())])
+impl StoreContext<'_> {
+    /// The timepoint to use when writing an update to the blueprint.
+    #[inline]
+    pub fn blueprint_timepoint_for_writes(&self) -> TimePoint {
+        let timeline = blueprint_timeline();
+
+        let max_time = self
+            .blueprint
+            .times_per_timeline()
+            .get(&timeline)
+            .and_then(|times| times.last_key_value())
+            .map_or(0, |(time, _)| time.as_i64())
+            .saturating_add(1);
+
+        TimePoint::from([(timeline, TimeInt::new_temporal(max_time))])
+    }
 }
 
 impl ViewerContext<'_> {
     pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         let data_row =
             match DataRow::from_archetype(RowId::new(), timepoint.clone(), entity_path, components)
@@ -57,28 +69,21 @@ impl ViewerContext<'_> {
         data_cell.compute_size_bytes();
 
         let num_instances = components.num_instances() as u32;
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
-        let data_row_result = if num_instances == 1 {
-            let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
-            splat_cell.compute_size_bytes();
+        re_log::trace!(
+            "Writing {} components of type {:?} to {:?}",
+            num_instances,
+            components.name(),
+            entity_path
+        );
 
-            DataRow::from_cells(
-                RowId::new(),
-                timepoint.clone(),
-                entity_path.clone(),
-                num_instances,
-                [splat_cell, data_cell],
-            )
-        } else {
-            DataRow::from_cells(
-                RowId::new(),
-                timepoint.clone(),
-                entity_path.clone(),
-                num_instances,
-                [data_cell],
-            )
-        };
+        let data_row_result = DataRow::from_cells(
+            RowId::new(),
+            timepoint.clone(),
+            entity_path.clone(),
+            [data_cell],
+        );
 
         match data_row_result {
             Ok(row) => self
@@ -105,11 +110,11 @@ impl ViewerContext<'_> {
     /// Helper to save a component to the blueprint store.
     pub fn save_empty_blueprint_component_name(
         &self,
-        store: &re_data_store::DataStore,
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) {
-        let Some(datatype) = store.lookup_datatype(&component_name) else {
+        let blueprint = &self.store_context.blueprint;
+        let Some(datatype) = blueprint.store().lookup_datatype(&component_name) else {
             re_log::error_once!(
                 "Tried to clear a component with unknown type: {}",
                 component_name
@@ -117,20 +122,14 @@ impl ViewerContext<'_> {
             return;
         };
 
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
         let cell = DataCell::from_arrow_empty(component_name, datatype.clone());
 
-        match DataRow::from_cells1(
-            RowId::new(),
-            entity_path.clone(),
-            timepoint.clone(),
-            cell.num_instances(),
-            cell,
-        ) {
+        match DataRow::from_cells1(RowId::new(), entity_path.clone(), timepoint.clone(), cell) {
             Ok(row) => self
                 .command_sender
                 .send_system(SystemCommand::UpdateBlueprint(
-                    self.store_context.blueprint.store_id().clone(),
+                    blueprint.store_id().clone(),
                     vec![row],
                 )),
             Err(err) => {

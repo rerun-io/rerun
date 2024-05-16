@@ -1,12 +1,12 @@
 //! Adapted from `egui_demo_lib/src/demo/toggle_switch.rs`
 
-fn toggle_switch_ui(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
-    let interactive_size = egui::vec2(12.0, ui.spacing().interact_size.y);
-    let (interact_rect, mut response) =
-        ui.allocate_exact_size(interactive_size, egui::Sense::click());
-    let visual_size = egui::vec2(12.0, 8.0); // 12x7 in figma, but 12x8 looks _much_ better in epaint
-    let visual_rect =
-        egui::Align2::CENTER_CENTER.align_size_within_rect(visual_size, interact_rect);
+fn toggle_switch_ui(ui: &mut egui::Ui, height: f32, on: &mut bool) -> egui::Response {
+    let width = (height / 2. * 3.).ceil();
+    let size = egui::vec2(width, height); // 12x7 in figma, but 12x8 looks _much_ better in epaint
+
+    let (interact_rect, mut response) = ui.allocate_exact_size(size, egui::Sense::click());
+
+    let visual_rect = egui::Align2::CENTER_CENTER.align_size_within_rect(size, interact_rect);
 
     if response.clicked() {
         *on = !*on;
@@ -29,7 +29,7 @@ fn toggle_switch_ui(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
         );
 
         let circle_center = egui::pos2(circle_x, expanded_rect.center().y);
-        let circle_radius = 2.5 * expanded_rect.height() / visual_size.y;
+        let circle_radius = 0.3 * expanded_rect.height();
         ui.painter()
             .circle(circle_center, circle_radius, fg_fill, egui::Stroke::NONE);
     }
@@ -42,9 +42,9 @@ fn toggle_switch_ui(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
 ///
 /// ## Example:
 /// ``` ignore
-/// ui.add(toggle_switch(&mut my_bool));
+/// ui.add(toggle_switch(8.0, &mut my_bool));
 /// ```
 #[allow(clippy::needless_pass_by_ref_mut)] // False positive, toggle_switch_ui needs &mut
-pub fn toggle_switch(on: &mut bool) -> impl egui::Widget + '_ {
-    move |ui: &mut egui::Ui| toggle_switch_ui(ui, on)
+pub fn toggle_switch(height: f32, on: &mut bool) -> impl egui::Widget + '_ {
+    move |ui: &mut egui::Ui| toggle_switch_ui(ui, height, on)
 }

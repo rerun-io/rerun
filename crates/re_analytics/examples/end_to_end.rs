@@ -4,17 +4,17 @@ use re_analytics::Event;
 use re_analytics::Properties;
 use re_analytics::{Analytics, AnalyticsEvent};
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
 
-    let analytics = Analytics::new(Duration::from_secs(3)).unwrap();
+    let analytics = Analytics::new(Duration::from_secs(3))?;
     let application_id = "end_to_end_example".to_owned();
     let recording_id = uuid::Uuid::new_v4().to_string();
 
     println!("any non-empty line written here will be sent as an analytics datapoint");
     loop {
         let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
+        std::io::stdin().read_line(&mut input)?;
 
         let input = input.trim();
         if !input.is_empty() {

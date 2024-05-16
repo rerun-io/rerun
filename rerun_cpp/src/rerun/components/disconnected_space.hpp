@@ -23,6 +23,9 @@ namespace rerun::components {
     /// This is useful for specifying that a subgraph is independent of the rest of the scene.
     struct DisconnectedSpace {
         /// Whether the entity path at which this is logged is disconnected from its parent.
+        ///
+        /// Set to true to disconnect the entity from its parent.
+        /// Set to false to disable the effects of this component, (re-)connecting the entity to its parent again.
         bool is_disconnected;
 
       public:
@@ -49,15 +52,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::components::DisconnectedSpace` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::DisconnectedSpace* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::BooleanBuilder* builder, const components::DisconnectedSpace* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::components::DisconnectedSpace` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::DisconnectedSpace* instances, size_t num_instances
         );
     };
 } // namespace rerun

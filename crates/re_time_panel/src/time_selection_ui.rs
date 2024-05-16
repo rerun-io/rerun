@@ -1,21 +1,17 @@
 use egui::{CursorIcon, Id, NumExt as _, Rect};
 
-use re_entity_db::EntityDb;
-use re_log_types::{Duration, TimeInt, TimeRangeF, TimeReal, TimeType};
+use re_log_types::{Duration, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType};
 use re_viewer_context::{Looping, TimeControl};
 
-use super::{is_time_safe_to_show, time_ranges_ui::TimeRangesUi};
+use super::time_ranges_ui::TimeRangesUi;
 
 pub fn loop_selection_ui(
-    entity_db: &EntityDb,
     time_ctrl: &mut TimeControl,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
-    let timeline = *time_ctrl.timeline();
-
     if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
@@ -74,11 +70,7 @@ pub fn loop_selection_ui(
                 time_area_painter.rect_filled(rect, rounding, selection_color);
             }
 
-            if is_active
-                && !selected_range.is_empty()
-                && is_time_safe_to_show(entity_db, &timeline, selected_range.min)
-                && is_time_safe_to_show(entity_db, &timeline, selected_range.max)
-            {
+            if is_active && !selected_range.is_empty() {
                 paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
             }
 
@@ -152,7 +144,7 @@ pub fn loop_selection_ui(
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
         {
             if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                time_ctrl.set_loop_selection(TimeRangeF::point(time));
+                time_ctrl.set_loop_selection(ResolvedTimeRangeF::point(time));
                 time_ctrl.set_looping(Looping::Selection);
                 ui.ctx().set_dragged_id(right_edge_id);
             }
@@ -163,27 +155,31 @@ pub fn loop_selection_ui(
 fn initial_time_selection(
     time_ranges_ui: &TimeRangesUi,
     time_type: TimeType,
-) -> Option<TimeRangeF> {
+) -> Option<ResolvedTimeRangeF> {
     let ranges = &time_ranges_ui.segments;
 
     // Try to find a long duration first, then fall back to shorter
     for min_duration in [2.0, 0.5, 0.0] {
         for segment in ranges {
             let range = &segment.tight_time;
-            if range.min < range.max {
+            if range.min() < range.max() {
                 match time_type {
                     TimeType::Time => {
-                        let seconds = Duration::from(range.max - range.min).as_secs_f64();
+                        let seconds = Duration::from(range.max() - range.min()).as_secs_f64();
                         if seconds > min_duration {
-                            let one_sec = TimeInt::from(Duration::from_secs(1.0));
-                            return Some(TimeRangeF::new(range.min, range.min + one_sec));
+                            let one_sec =
+                                TimeInt::new_temporal(Duration::from_secs(1.0).as_nanos());
+                            return Some(ResolvedTimeRangeF::new(
+                                range.min(),
+                                range.min() + one_sec,
+                            ));
                         }
                     }
                     TimeType::Sequence => {
-                        return Some(TimeRangeF::new(
-                            range.min,
-                            TimeReal::from(range.min)
-                                + TimeReal::from((range.max - range.min).as_f64() / 2.0),
+                        return Some(ResolvedTimeRangeF::new(
+                            range.min(),
+                            TimeReal::from(range.min())
+                                + TimeReal::from((range.max() - range.min()).as_f64() / 2.0),
                         ));
                     }
                 }
@@ -197,9 +193,9 @@ fn initial_time_selection(
         None // not enough to show anything meaningful
     } else {
         let end = (ranges.len() / 2).at_least(1);
-        Some(TimeRangeF::new(
-            ranges[0].tight_time.min,
-            ranges[end].tight_time.max,
+        Some(ResolvedTimeRangeF::new(
+            ranges[0].tight_time.min(),
+            ranges[end].tight_time.max(),
         ))
     }
 }
@@ -207,7 +203,7 @@ fn initial_time_selection(
 fn drag_right_loop_selection_edge(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
-    selected_range: &mut TimeRangeF,
+    selected_range: &mut ResolvedTimeRangeF,
     right_edge_id: Id,
 ) -> Option<()> {
     use egui::emath::smart_aim::best_in_range_f64;
@@ -235,7 +231,7 @@ fn drag_right_loop_selection_edge(
 fn drag_left_loop_selection_edge(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
-    selected_range: &mut TimeRangeF,
+    selected_range: &mut ResolvedTimeRangeF,
     left_edge_id: Id,
 ) -> Option<()> {
     use egui::emath::smart_aim::best_in_range_f64;
@@ -263,7 +259,7 @@ fn drag_left_loop_selection_edge(
 fn on_drag_loop_selection(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
-    selected_range: &mut TimeRangeF,
+    selected_range: &mut ResolvedTimeRangeF,
 ) -> Option<()> {
     let pointer_delta = ui.input(|i| i.pointer.delta());
 
@@ -273,7 +269,7 @@ fn on_drag_loop_selection(
     let min_time = time_ranges_ui.time_from_x_f32(min_x)?;
     let max_time = time_ranges_ui.time_from_x_f32(max_x)?;
 
-    let mut new_range = TimeRangeF::new(min_time, max_time);
+    let mut new_range = ResolvedTimeRangeF::new(min_time, max_time);
 
     if egui::emath::almost_equal(
         selected_range.length().as_f32(),
@@ -291,16 +287,12 @@ fn on_drag_loop_selection(
 
 fn paint_range_text(
     time_ctrl: &TimeControl,
-    selected_range: TimeRangeF,
+    selected_range: ResolvedTimeRangeF,
     ui: &egui::Ui,
     painter: &egui::Painter,
     selection_rect: Rect,
 ) {
     use egui::{Pos2, Stroke};
-
-    if selected_range.min <= TimeInt::BEGINNING {
-        return; // huge time selection, don't show a confusing times
-    }
 
     let text_color = ui.visuals().strong_text_color();
 

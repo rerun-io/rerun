@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
-use re_types_core::{components::InstanceKey, ComponentName};
+use re_types_core::ComponentName;
 
-use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart};
+use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PathParseError {
@@ -24,11 +24,11 @@ pub enum PathParseError {
     #[error("Empty part")]
     EmptyPart,
 
-    #[error("Invalid instance key: {0:?} (expected '[#1234]')")]
-    BadInstanceKey(String),
+    #[error("Invalid instance index: {0:?} (expected '[#1234]')")]
+    BadInstance(String),
 
-    #[error("Found an unexpected instance key: [#{}]", 0.0)]
-    UnexpectedInstanceKey(InstanceKey),
+    #[error("Found an unexpected instance index: [#{}]", 0)]
+    UnexpectedInstance(Instance),
 
     #[error("Found an unexpected trailing component name: {0:?}")]
     UnexpectedComponentName(ComponentName),
@@ -74,7 +74,7 @@ impl std::str::FromStr for DataPath {
         let mut tokens = tokenize_data_path(path);
 
         let mut component_name = None;
-        let mut instance_key = None;
+        let mut instance = None;
 
         // Parse `:rerun.components.Color` suffix:
         if let Some(colon) = tokens.iter().position(|&token| token == ":") {
@@ -94,23 +94,19 @@ impl std::str::FromStr for DataPath {
 
         // Parse `[#1234]` suffix:
         if let Some(bracket) = tokens.iter().position(|&token| token == "[") {
-            let instance_key_tokens = &tokens[bracket..];
-            if instance_key_tokens.len() != 3 || instance_key_tokens.last() != Some(&"]") {
-                return Err(PathParseError::BadInstanceKey(join(instance_key_tokens)));
+            let instance_tokens = &tokens[bracket..];
+            if instance_tokens.len() != 3 || instance_tokens.last() != Some(&"]") {
+                return Err(PathParseError::BadInstance(join(instance_tokens)));
             }
-            let instance_key_token = instance_key_tokens[1];
-            if let Some(nr) = instance_key_token.strip_prefix('#') {
+            let instance_token = instance_tokens[1];
+            if let Some(nr) = instance_token.strip_prefix('#') {
                 if let Ok(nr) = u64::from_str(nr) {
-                    instance_key = Some(InstanceKey(nr));
+                    instance = Some(nr);
                 } else {
-                    return Err(PathParseError::BadInstanceKey(
-                        instance_key_token.to_owned(),
-                    ));
+                    return Err(PathParseError::BadInstance(instance_token.to_owned()));
                 }
             } else {
-                return Err(PathParseError::BadInstanceKey(
-                    instance_key_token.to_owned(),
-                ));
+                return Err(PathParseError::BadInstance(instance_token.to_owned()));
             }
             tokens.truncate(bracket);
         }
@@ -123,7 +119,7 @@ impl std::str::FromStr for DataPath {
 
         Ok(Self {
             entity_path,
-            instance_key,
+            instance: instance.map(Into::into),
             component_name,
         })
     }
@@ -148,12 +144,12 @@ impl EntityPath {
     pub fn parse_strict(input: &str) -> Result<Self, PathParseError> {
         let DataPath {
             entity_path,
-            instance_key,
+            instance,
             component_name,
         } = DataPath::from_str(input)?;
 
-        if let Some(instance_key) = instance_key {
-            return Err(PathParseError::UnexpectedInstanceKey(instance_key));
+        if let Some(instance) = instance {
+            return Err(PathParseError::UnexpectedInstance(instance));
         }
         if let Some(component_name) = component_name {
             return Err(PathParseError::UnexpectedComponentName(component_name));
@@ -196,12 +192,12 @@ impl FromStr for ComponentPath {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let DataPath {
             entity_path,
-            instance_key,
+            instance,
             component_name,
         } = DataPath::from_str(s)?;
 
-        if let Some(instance_key) = instance_key {
-            return Err(PathParseError::UnexpectedInstanceKey(instance_key));
+        if let Some(instance) = instance {
+            return Err(PathParseError::UnexpectedInstance(instance));
         }
 
         let Some(component_name) = component_name else {
@@ -366,7 +362,7 @@ fn test_parse_entity_path_strict() {
     ));
     assert!(matches!(
         parse(r#"entity[#123]"#),
-        Err(PathParseError::UnexpectedInstanceKey(InstanceKey(123)))
+        Err(PathParseError::UnexpectedInstance(Instance(123)))
     ));
 
     assert_eq!(parse("hallådär"), Ok(entity_path_vec!("hallådär")));
@@ -405,7 +401,7 @@ fn test_parse_component_path() {
     );
     assert_eq!(
         ComponentPath::from_str("world/points[#42]:rerun.components.Color"),
-        Err(PathParseError::UnexpectedInstanceKey(InstanceKey(42)))
+        Err(PathParseError::UnexpectedInstance(Instance(42)))
     );
 }
 
@@ -415,7 +411,7 @@ fn test_parse_data_path() {
         DataPath::from_str("world/points[#42]:rerun.components.Color"),
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
-            instance_key: Some(InstanceKey(42)),
+            instance: Some(Instance(42)),
             component_name: Some("rerun.components.Color".into()),
         })
     );
@@ -423,7 +419,7 @@ fn test_parse_data_path() {
         DataPath::from_str("world/points:rerun.components.Color"),
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
-            instance_key: None,
+            instance: None,
             component_name: Some("rerun.components.Color".into()),
         })
     );
@@ -431,7 +427,7 @@ fn test_parse_data_path() {
         DataPath::from_str("world/points[#42]"),
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
-            instance_key: Some(InstanceKey(42)),
+            instance: Some(Instance(42)),
             component_name: None,
         })
     );
@@ -439,7 +435,7 @@ fn test_parse_data_path() {
         DataPath::from_str("world/points"),
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
-            instance_key: None,
+            instance: None,
             component_name: None,
         })
     );

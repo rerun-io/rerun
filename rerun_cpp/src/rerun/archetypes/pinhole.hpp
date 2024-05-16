@@ -24,7 +24,7 @@ namespace rerun::archetypes {
     ///
     /// ## Examples
     ///
-    /// ### Simple Pinhole Camera
+    /// ### Simple pinhole camera
     /// ![image](https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png)
     ///
     /// ```cpp
@@ -49,7 +49,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### Perspective Pinhole Camera
+    /// ### Perspective pinhole camera
     /// ![image](https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/full.png)
     ///
     /// ```cpp
@@ -229,11 +229,6 @@ namespace rerun::archetypes {
             camera_xyz = std::move(_camera_xyz);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
         }
     };
 

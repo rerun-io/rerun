@@ -9,15 +9,22 @@ pub struct Icon {
 }
 
 impl Icon {
+    #[inline]
     pub const fn new(id: &'static str, png_bytes: &'static [u8]) -> Self {
         Self { id, png_bytes }
     }
 
-    pub fn as_image(&self) -> Image<'static> {
-        Image::new(ImageSource::Bytes {
+    #[inline]
+    pub fn as_image_source(&self) -> ImageSource<'static> {
+        ImageSource::Bytes {
             uri: self.id.into(),
             bytes: self.png_bytes.into(),
-        })
+        }
+    }
+
+    #[inline]
+    pub fn as_image(&self) -> Image<'static> {
+        Image::new(self.as_image_source())
     }
 }
 
@@ -68,8 +75,8 @@ pub const CLOSE: Icon = Icon::new("close", include_bytes!("../data/icons/close.p
 
 /// Used for HTTP URLs that leads out of the app.
 ///
-/// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`
-/// and `.on_hover_text(url)`.
+/// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
+/// but don't add `.on_hover_text(url)`.
 pub const EXTERNAL_LINK: Icon = Icon::new(
     "external_link",
     include_bytes!("../data/icons/external_link.png"),
@@ -141,21 +148,22 @@ pub const ENTITY_EMPTY: Icon = Icon::new(
     include_bytes!("../data/icons/entity_empty.png"),
 );
 pub const LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
-pub const COMPONENT: Icon = Icon::new("component", include_bytes!("../data/icons/component.png"));
-
-pub const STORE: Icon = Icon::new("store", include_bytes!("../data/icons/store.png"));
-
-pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
-    "welcome_screen_configure",
-    include_bytes!("../data/images/configure-card.png"),
+pub const COMPONENT_TEMPORAL: Icon =
+    Icon::new("component", include_bytes!("../data/icons/component.png"));
+pub const COMPONENT_STATIC: Icon = Icon::new(
+    "component_static",
+    include_bytes!("../data/icons/component_static.png"),
 );
 
-pub const WELCOME_SCREEN_LIVE_DATA: Icon = Icon::new(
-    "welcome_screen_live_data",
-    include_bytes!("../data/images/live-data-card.png"),
+pub const APPLICATION: Icon = Icon::new(
+    "application",
+    include_bytes!("../data/icons/application.png"),
 );
+pub const DATA_SOURCE: Icon = Icon::new(
+    "data_source",
+    include_bytes!("../data/icons/data_source.png"),
+);
+pub const RECORDING: Icon = Icon::new("recording", include_bytes!("../data/icons/recording.png"));
+pub const BLUEPRINT: Icon = Icon::new("blueprint", include_bytes!("../data/icons/blueprint.png"));
 
-pub const WELCOME_SCREEN_RECORDED_DATA: Icon = Icon::new(
-    "welcome_screen_recorded_data",
-    include_bytes!("../data/images/recorded-data-card.png"),
-);
+pub const GITHUB: Icon = Icon::new("github", include_bytes!("../data/icons/github.png"));

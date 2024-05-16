@@ -16,24 +16,43 @@ channels = ["conda-forge"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 homepage = "https://rerun.io"
 license = "MIT OR Apache-2.0"
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
+[system-requirements]
+macos = "11.0" # needed for some reason otherwise fails to resolve mediapipe package
+libc = "2.31"
+
+
+# These should be kept empty as their content is pulled in every single environment. For the "standard" stuff,
+# dependencies are listed in the `base` feature instead.
+[dependencies]
+[pypi-dependencies]
+
 [environments]
-cpp = ["cpp"]
+default = ["base", "maturin-build"]
+cpp = ["cpp", "base"]
+wheel-test = ["wheel-test", "base"]
+
+# Example environment (WIP)
+examples = ["examples-common", "maturin-build"]
+
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
 
 # Run the codegen. Optionally pass `--profile` argument if you want.
-codegen = "cargo run --package re_types_builder -- "
+codegen = "cargo --quiet run --package re_types_builder -- "
 
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer --"
+
+# Compile `rerun-cli` without the web-viewer.
+rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
@@ -46,11 +65,21 @@ rerun-release = "cargo run --package rerun-cli --no-default-features --features 
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-web = """
-     rustup target add wasm32-unknown-unknown
-  && cargo run -p re_build_web_viewer -- --debug
-  && cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer
-"""
+rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer", depends_on = [
+  "rerun-build-web",
+] }
+
+# Compile the web-viewer wasm, does not include the cli.
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --debug"
+
+# Compile the web-viewer wasm and the cli.
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -58,62 +87,136 @@ rerun-web = """
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-release-web = """
-     rustup target add wasm32-unknown-unknown
-  && cargo run -p re_build_web_viewer -- --release
-  && cargo run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer
-"""
+rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer", depends_on = [
+  "rerun-build-web-release",
+] }
 
-build-examples = "cargo run -q --locked -p re_build_examples --"
+# Compile the web-viewer wasm in release mode.
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --release -g"
+
+rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends_on = [
+  "rerun-build-web", # The checks require the web viewer wasm to be around.
+] }
+
+rs-fmt = "cargo fmt --all"
+
+# Code formatting for all languages.
+format = { depends_on = [
+  "py-fmt",
+  "cpp-fmt",
+  "rs-fmt",
+  "toml-fmt",
+  "misc-fmt",
+] }
+fmt = { depends_on = ["format"] }
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
-lint-codegen = "cargo run --package re_types_builder -- --check"
-# TODO(jleibs): implement lint-cpp-all
-lint-cpp-files = "clang-format --dry-run -Werror"
+lint-codegen = "cargo --quiet run --package re_types_builder -- --check"
+# TODO(jleibs): implement lint-cpp-files
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2021 --check"
 lint-rs-all = "cargo fmt --check"
-lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
-lint-py-blackdoc = "blackdoc --check"
-lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
-lint-py-ruff = "ruff check --config rerun_py/pyproject.toml"
-lint-taplo = "taplo fmt --check --diff"
+
 lint-typos = "typos"
 
+# Toml tasks
+toml-fmt-check = "taplo fmt --check --diff"
+toml-fmt = "taplo fmt"
+
+# Misc formatting tasks.
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
-toml-fmt = "taplo fmt"
-ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
 
-py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
+# Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
+py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
+py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
+py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
-# Run the Python tests.
-# Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
-py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
+# Build and install a development version of the rerun-sdk Python package.
+#
+# This only needs to be called when you have made changes that would impact the rust bindings of
+# the python package. The python code will be imported directly from the source folder and will
+# reflect changes immediately upon re-import.
+# Note:
+# - pip (which is called by maturin develop) doesn't recognize conda/pixi envs as venv, and thus complains if
+#   configured to not install outside venv (which is a good practice). PIP_REQUIRE_VIRTUALENV=0 disables this check.
+# - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
+#   package.
+py-build = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
+  "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
+] }
+
+# Python example utilities
+py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
   "py-build",
 ] }
+py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build", depends_on = [
+  "rerun-build-web-cli",
+  "py-build",
+] }
+
 py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on = [
   "py-build",
 ] }
-
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
-# Build the documentation search index.
-# See `pixi run search-index --help` for more information.
-search-index = "cargo run -p re_build_search_index --release --"
+dev-tools = "cargo run -q --locked -p re_dev_tools --"
+build-examples = "cargo run -q --locked -p re_dev_tools -- build-examples"
 
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
+# Update the design_tokens.json used to style the GUI.
+# To update the upstream `design_tokens.json`, modify
+# https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
+download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json"
+
+# Update the results of `insta` snapshot regression tests
+rs-update-insta-tests = "cargo test ; cargo insta review"
+
+# Upload image to gcloud storage.
+upload-image = "python scripts/upload_image.py"
+
+# Upload .rrd to gcloud storage.
+upload-rrd = "python scripts/upload_rrd.py"
+
+# Check whether there's too large files in the repository.
+check-large-files = "python scripts/ci/check_large_files.py"
+
+# Download a specific artifact from gcloud.
+#
+# Requires that gcloud authentication has already been set up in your shell.
+fetch-artifact = "python scripts/ci/fetch_artifact.py"
+
+# Build the documentation search index.
+# See `pixi run search-index --help` for more information.
+# Before running this, install `rerun_py/requirements-doc.txt`.
+# TODO(#6060): Put this in an environment and remove the requirements file.
+search-index = "cargo run --locked -p re_dev_tools -- search-index"
+
+# Serve python docs locally
+# TODO(#6060): Put this in an environment and remove the requirements file.
+py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
+
+# Lint markdown
+mdlint = "python scripts/ci/mdlint.py"
+
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target all", depends_on = [
+cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
   "cpp-prepare",
+] }
+cpp-prepare-shared-libs = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON"
+cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
+  "cpp-prepare-shared-libs",
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
 cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rerun_sdk_tests", depends_on = [
@@ -125,7 +228,7 @@ cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --targe
 cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends_on = [
   "cpp-prepare",
 ] }
-cpp-build-doc-examples = { cmd = "cmake --build build/debug --config Debug --target doc_examples", depends_on = [
+cpp-build-snippets = { cmd = "cmake --build build/debug --config Debug --target snippets", depends_on = [
   "cpp-prepare",
 ] }
 cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release --target log_benchmark", depends_on = [
@@ -145,59 +248,98 @@ cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp
 ] }
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
+cpp-fmt = "fd --extension h --extension hpp --extension c  --extension cpp --exec clang-format -i"
 
 [feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 
+[feature.wheel-test.pypi-dependencies]
+# This dependency is here to get torch into the pixi cache because it's large and installing it
+# during the wheel-test task itself is otherwise painful
+torch = "==2.2.2" # This must match the torch version in any package we install during `wheel-test`
+pip = ">=23"
 
-[dependencies]
+[feature.wheel-test.tasks]
+# In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
+# However, since `rerun` is already its own task, we can't just `pixi run rerun`. This task lets us work
+# around that and executes `rerun` from the system shell within the context of the pixi environment.
+rerun-from-path = "rerun"
+
+# Duplicate of `py-build` but within the `wheel-test` environment.
+py-build-wheel-test = { cmd = "pixi run -e wheel-test py-build" }
+
+# Run the Python tests.
+# Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
+py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
+  "py-build-wheel-test",
+] }
+py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends_on = [
+  "py-build-wheel-test",
+] }
+
+[feature.base.dependencies]
+# IMPORTANT: do not add any dependencies here that may break CI. All dependencies should be available on all supported
+# platforms (including linux-aarch64), or added conditionally.
+#
+# Hints:
+# - To check a given package, go to the package on https://prefix.dev/channels/conda-forge/. It should support Windows,
+#   x86_64 and aarch64 macOS architectures, and x86_64 and aarch64 Linux architectures.
+# - Some pure Python packages may wrongly be tagged as platform-specific. In this case, use `[pypi-dependencies]`
+#   instead (e.g. `nox`).
+# - If a package is only used for a very specific CI job on a specific target, include it under that target (e.g.
+#   `meilisearch`).
+# - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
+
+aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
 attrs = ">=23.1.0"
-blackdoc = "0.3.8"
-clang-tools = "16.0.6"       # clang-format
+binaryen = "117.*"                # for `wasm-opt`
+clang-tools = "16.0.6"            # clang-format
 cmake = "3.27.6"
+colorama = ">=0.4.6,<0.5"
+doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
-just = ">=1.15.0"
-maturin = "1.4.0"
-meilisearch = "1.5.1.*"
+jinja2 = ">=3.1.3,<3.2"           # For `update_pr_bodies.py`, `generate_pr_summary.py`, `build_screenshot_compare.py` and other utilities that build websites.
+maturin = "1.5.1"                 # For py-build and dependents
 mypy = "1.8.0"
+ninja = "1.11.1"
 numpy = ">=1.23,<2"
-pip = ">=23"
+packaging = ">=24.0,<25"          # For `publish_wheels.py`
+prettier = "2.8.8.*"
 pyarrow = "14.0.2"
 pytest = ">=7"
-python = "=3.11"             # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.2.2"
+pytest-benchmark = ">=4.0.0,<4.1"
+python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
+ruff = "0.3.5"
 semver = ">=2.13,<2.14"
-taplo = "=0.8.1"
+taplo = "=0.9.1"
+tomlkit = "0.12.3.*"
+tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
-ninja = "1.11.1"
-# Make sure to use a version that is compatible with
-# the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
-doxygen = "1.9.7.*"
-binaryen = "116.*"   # for `wasm-opt`
-nox = "2021.10.1.*"
-prettier = "2.8.8.*"
-tomlkit = "0.12.3.*"
+
+[feature.base.pypi-dependencies]
+cryptography = "==38.0.4"        # For `upload_image.py`
+google-cloud-storage = "==2.9.0" # For `upload_image.py`
+nox = ">=2024.3.2"               # The conda-forge package is (wrongly) tagged as platform-specific
+Pillow = "==10.0.0"              # For `thumbnails.py`
+pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`, `update_pr_body.py`.
+requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
+types-Deprecated = "==1.2.9.2"   # Type hint stubs
+types-requests = ">=2.31,<3"     # Type hint stubs
+opencv-python = ">4.6"           # For `compare_snippet_output.py`
+
+[feature.maturin-build.dependencies]
+maturin = "1.5.1"
+pip = ">=23"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
+meilisearch = "1.5.1.*" # not available for linux-aarch64
 
-[feature.cpp.target.linux-64.dependencies]
-clang = "16.0.6"
-ninja = "1.11.1"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
-
-[feature.cpp.target.osx-64.dependencies]
-clang = "16.0.6"
-ninja = "1.11.1"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
-
-[feature.cpp.target.osx-arm64.dependencies]
+[feature.cpp.target.unix.dependencies]
 clang = "16.0.6"
 ninja = "1.11.1"
 c-compiler = "1.6.0.*"
@@ -205,3 +347,56 @@ cxx-compiler = "1.6.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"
+
+
+# EXAMPLES ENVIRONMENT (WIP)
+
+[feature.examples-common]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.examples-common.system-requirements]
+macos = "12.0" # needed for scipy
+
+[feature.examples-common.dependencies]
+python = "=3.11"
+
+[feature.examples-common.pypi-dependencies]
+arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
+blueprint = { path = "examples/python/blueprint", editable = true }
+blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
+clock = { path = "examples/python/clock", editable = true }
+controlnet = { path = "examples/python/controlnet", editable = true }
+detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
+dicom_mri = { path = "examples/python/dicom_mri", editable = true }
+dna = { path = "examples/python/dna", editable = true }
+face_tracking = { path = "examples/python/face_tracking", editable = true }
+gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+incremental_logging = { path = "examples/python/incremental_logging", editable = true }
+live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
+live_scrolling_plot = { path = "examples/python/live_scrolling_plot", editable = true }
+llm_embedding_ner = { path = "examples/python/llm_embedding_ner", editable = true }
+log_file = { path = "examples/python/log_file", editable = true }
+minimal = { path = "examples/python/minimal", editable = true }
+minimal_options = { path = "examples/python/minimal_options", editable = true }
+multiprocess_logging = { path = "examples/python/multiprocess_logging", editable = true }
+multithreading = { path = "examples/python/multithreading", editable = true }
+nv12 = { path = "examples/python/nv12", editable = true }
+objectron = { path = "examples/python/objectron", editable = true }
+open_photogrammetry_format = { path = "examples/python/open_photogrammetry_format", editable = true }
+plots = { path = "examples/python/plots", editable = true }
+raw_mesh = { path = "examples/python/raw_mesh", editable = true }
+rgbd = { path = "examples/python/rgbd", editable = true }
+rrt_star = { path = "examples/python/rrt_star", editable = true }
+segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
+shared_recording = { path = "examples/python/shared_recording", editable = true }
+signed_distance_fields = { path = "examples/python/signed_distance_fields", editable = true }
+stdio = { path = "examples/python/stdio", editable = true }
+structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
+
+# Force pixi to depend on this (fake) rerun-sdk package, as this one can be overridden with `py-build`
+rerun-sdk = { path = "examples/python/_empty_rerun_sdk" }
+
+# TODO(ab): reactivate these examples when they no-longer trigger the pixi perma-lock-invalidate bug
+#nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
+#lidar = { path = "examples/python/lidar", editable = true }

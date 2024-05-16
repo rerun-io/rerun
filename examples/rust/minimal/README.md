@@ -1,6 +1,7 @@
 <!--[metadata]
 title = "Minimal example"
-thumbnail = "https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png"
+thumbnail = "https://static.rerun.io/minimal-example/9e694c0689f20323ed0053506a7a099f7391afca/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 
@@ -13,7 +14,7 @@ thumbnail = "https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a0
 </picture>
 
 The simplest example of how to use Rerun, showing how to log a point cloud.
-This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/rust).
+This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/quick-start/rust).
 
 ```bash
 cargo run --release

@@ -3,12 +3,10 @@
 """
 Publish wheels to PyPI.
 
-Install dependencies:
-    python3 -m pip install packaging==23.1 google-cloud-storage==2.9.0
-
 Use the script:
     python3 scripts/ci/verify_wheels.py --help
 """
+
 from __future__ import annotations
 
 import argparse

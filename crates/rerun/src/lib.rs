@@ -101,6 +101,8 @@
 //! See [`Logger`].
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
 #[cfg(feature = "run")]
@@ -165,10 +167,6 @@ pub mod external {
     #[cfg(feature = "clap")]
     #[cfg(not(target_arch = "wasm32"))]
     pub use clap;
-
-    #[cfg(feature = "run")]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub use tokio;
 
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;

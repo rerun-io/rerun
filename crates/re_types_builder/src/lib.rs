@@ -100,6 +100,9 @@
 
 // ---
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 // NOTE: Official generated code from flatbuffers; ignore _everything_.
 #[allow(
     warnings,
@@ -139,6 +142,8 @@ mod format;
 #[allow(clippy::unimplemented)]
 mod objects;
 
+mod docs;
+
 pub mod report;
 
 /// In-memory generated files.
@@ -147,15 +152,18 @@ pub mod report;
 /// etc), and finally written to disk by the I/O pass.
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
-pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
-pub use self::codegen::{
-    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+pub use self::{
+    arrow_registry::{ArrowRegistry, LazyDatatype, LazyField},
+    codegen::{
+        CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+    },
+    docs::Docs,
+    format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter},
+    objects::{
+        Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
+    },
+    report::{Report, Reporter},
 };
-pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
-pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
-};
-pub use self::report::{Report, Reporter};
 
 // --- Attributes ---
 
@@ -172,6 +180,7 @@ pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recomme
 pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
 pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
 pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
+pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
 pub const ATTR_RERUN_DEPRECATED: &str = "attr.rerun.deprecated";
 
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
@@ -189,6 +198,8 @@ pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 
 pub const ATTR_DOCS_UNRELEASED: &str = "attr.docs.unreleased";
+pub const ATTR_DOCS_CATEGORY: &str = "attr.docs.category";
+pub const ATTR_DOCS_VIEW_TYPES: &str = "attr.docs.view_types";
 
 // --- Entrypoints ---
 
@@ -328,7 +339,7 @@ pub fn compute_re_types_builder_hash() -> String {
 
 pub struct SourceLocations<'a> {
     pub definitions_dir: &'a str,
-    pub doc_examples_dir: &'a str,
+    pub snippets_dir: &'a str,
     pub python_output_dir: &'a str,
     pub cpp_output_dir: &'a str,
 }
@@ -341,8 +352,7 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
     // code generator itself!
     let re_types_builder_hash = compute_re_types_builder_hash();
     let definitions_hash = compute_dir_hash(locations.definitions_dir, Some(&["fbs"]));
-    let doc_examples_hash =
-        compute_dir_hash(locations.doc_examples_dir, Some(&["rs", "py", "cpp"]));
+    let snippets_hash = compute_dir_hash(locations.snippets_dir, Some(&["rs", "py", "cpp"]));
     let python_extensions_hash = compute_dir_filtered_hash(locations.python_output_dir, |path| {
         path.to_str().unwrap().ends_with("_ext.py")
     });
@@ -353,14 +363,14 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
     let new_hash = compute_strings_hash(&[
         &re_types_builder_hash,
         &definitions_hash,
-        &doc_examples_hash,
+        &snippets_hash,
         &python_extensions_hash,
         &cpp_extensions_hash,
     ]);
 
     re_log::debug!("re_types_builder_hash: {re_types_builder_hash:?}");
     re_log::debug!("definitions_hash: {definitions_hash:?}");
-    re_log::debug!("doc_examples_hash: {doc_examples_hash:?}");
+    re_log::debug!("snippets_hash: {snippets_hash:?}");
     re_log::debug!("python_extensions_hash: {python_extensions_hash:?}");
     re_log::debug!("cpp_extensions_hash: {cpp_extensions_hash:?}");
     re_log::debug!("new_hash: {new_hash:?}");
@@ -692,8 +702,8 @@ pub(crate) fn to_pascal_case(s: &str) -> String {
         *last = last
             .replace("uvec", "UVec")
             .replace("uint", "UInt")
-            .replace("2d", "2D")
-            .replace("3d", "3D")
+            .replace("2d", "2D") // NOLINT
+            .replace("3d", "3D") // NOLINT
             .replace("4d", "4D");
         *last = rerun_snake.convert(&last);
     }

@@ -2,8 +2,10 @@
 //!
 //! A Space View that shows plots over Rerun timelines.
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 mod aggregation;
-mod legacy_visualizer_system;
 mod line_visualizer_system;
 mod overrides;
 mod point_visualizer_system;

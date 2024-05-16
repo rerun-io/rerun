@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .class_id_ext import ClassIdExt
 
 __all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike", "ClassIdType"]
 
 
 @define(init=False)
-class ClassId(ClassIdExt):
+class ClassId:
     """**Datatype**: A 16-bit ID representing a type of semantic class."""
 
     def __init__(self: Any, id: ClassIdLike):
@@ -36,6 +35,9 @@ class ClassId(ClassIdExt):
 
     def __int__(self) -> int:
         return int(self.id)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
 
 if TYPE_CHECKING:
@@ -58,4 +60,5 @@ class ClassIdBatch(BaseBatch[ClassIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return ClassIdExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.uint16).flatten()
+        return pa.array(array, type=data_type)

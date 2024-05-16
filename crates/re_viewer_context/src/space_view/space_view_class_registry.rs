@@ -1,10 +1,13 @@
 use ahash::{HashMap, HashSet};
+use itertools::Itertools as _;
+
 use re_data_store::DataStore;
+use re_types::SpaceViewClassIdentifier;
 
 use crate::{
-    ApplicableEntities, DynSpaceViewClass, IdentifiedViewSystem, IndicatedEntities, PerVisualizer,
-    SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier,
-    VisualizerCollection, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, SpaceViewClass,
+    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, VisualizerCollection,
+    VisualizerSystem,
 };
 
 use super::{
@@ -15,16 +18,16 @@ use super::{
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum SpaceViewClassRegistryError {
-    #[error("Space View with class identifier {0:?} was already registered.")]
+    #[error("Space view with class identifier {0:?} was already registered.")]
     DuplicateClassIdentifier(SpaceViewClassIdentifier),
 
-    #[error("A Context System with identifier {0:?} was already registered.")]
+    #[error("A context system with identifier {0:?} was already registered.")]
     IdentifierAlreadyInUseForContextSystem(&'static str),
 
-    #[error("A Visualizer System with identifier {0:?} was already registered.")]
+    #[error("A visualizer system with identifier {0:?} was already registered.")]
     IdentifierAlreadyInUseForVisualizer(&'static str),
 
-    #[error("Space View with class identifier {0:?} was not registered.")]
+    #[error("Space view with class identifier {0:?} was not registered.")]
     UnknownClassIdentifier(SpaceViewClassIdentifier),
 }
 
@@ -123,7 +126,8 @@ impl SpaceViewSystemRegistrator<'_> {
 
 /// Space view class entry in [`SpaceViewClassRegistry`].
 pub struct SpaceViewClassRegistryEntry {
-    pub class: Box<dyn DynSpaceViewClass>,
+    pub class: Box<dyn SpaceViewClass>,
+    pub identifier: SpaceViewClassIdentifier,
     pub context_system_ids: HashSet<ViewSystemIdentifier>,
     pub visualizer_system_ids: HashSet<ViewSystemIdentifier>,
 }
@@ -133,6 +137,7 @@ impl Default for SpaceViewClassRegistryEntry {
     fn default() -> Self {
         Self {
             class: Box::<SpaceViewClassPlaceholder>::default(),
+            identifier: SpaceViewClassPlaceholder::identifier(),
             context_system_ids: Default::default(),
             visualizer_system_ids: Default::default(),
         }
@@ -176,14 +181,14 @@ impl SpaceViewClassRegistry {
     /// Adds a new space view class.
     ///
     /// Fails if a space view class with the same name was already registered.
-    pub fn add_class<T: DynSpaceViewClass + Default + 'static>(
+    pub fn add_class<T: SpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         let class = Box::<T>::default();
 
         let mut registrator = SpaceViewSystemRegistrator {
             registry: self,
-            identifier: class.identifier(),
+            identifier: T::identifier(),
             context_systems: Default::default(),
             visualizers: Default::default(),
         };
@@ -203,6 +208,7 @@ impl SpaceViewClassRegistry {
                 identifier,
                 SpaceViewClassRegistryEntry {
                     class,
+                    identifier,
                     context_system_ids: context_systems,
                     visualizer_system_ids: visualizers,
                 },
@@ -218,10 +224,10 @@ impl SpaceViewClassRegistry {
     }
 
     /// Removes a space view class from the registry.
-    pub fn remove_class<T: DynSpaceViewClass + Sized>(
+    pub fn remove_class<T: SpaceViewClass + Sized>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        let identifier: SpaceViewClassIdentifier = T::identifier_str().into();
+        let identifier = T::identifier();
         if self.space_view_classes.remove(&identifier).is_none() {
             return Err(SpaceViewClassRegistryError::UnknownClassIdentifier(
                 identifier,
@@ -242,7 +248,7 @@ impl SpaceViewClassRegistry {
     }
 
     /// Queries a Space View type by class name, returning `None` if it is not registered.
-    fn get_class(&self, name: &SpaceViewClassIdentifier) -> Option<&dyn DynSpaceViewClass> {
+    fn get_class(&self, name: &SpaceViewClassIdentifier) -> Option<&dyn SpaceViewClass> {
         self.space_view_classes
             .get(name)
             .map(|boxed| boxed.class.as_ref())
@@ -260,10 +266,7 @@ impl SpaceViewClassRegistry {
     }
 
     /// Queries a Space View type by class name and logs if it fails, returning a placeholder class.
-    pub fn get_class_or_log_error(
-        &self,
-        name: &SpaceViewClassIdentifier,
-    ) -> &dyn DynSpaceViewClass {
+    pub fn get_class_or_log_error(&self, name: &SpaceViewClassIdentifier) -> &dyn SpaceViewClass {
         if let Some(result) = self.get_class(name) {
             result
         } else {
@@ -272,9 +275,11 @@ impl SpaceViewClassRegistry {
         }
     }
 
-    /// Iterates over all registered Space View class types.
+    /// Iterates over all registered Space View class types, sorted by name.
     pub fn iter_registry(&self) -> impl Iterator<Item = &SpaceViewClassRegistryEntry> {
-        self.space_view_classes.values()
+        self.space_view_classes
+            .values()
+            .sorted_by_key(|entry| entry.class.display_name())
     }
 
     /// For each visualizer, return the set of entities that is applicable to it.

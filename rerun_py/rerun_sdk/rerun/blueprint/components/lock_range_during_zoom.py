@@ -5,59 +5,28 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from ... import datatypes
+from ..._baseclasses import ComponentBatchMixin
 
-import pyarrow as pa
-from attrs import define, field
-
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-
-__all__ = [
-    "LockRangeDuringZoom",
-    "LockRangeDuringZoomArrayLike",
-    "LockRangeDuringZoomBatch",
-    "LockRangeDuringZoomLike",
-    "LockRangeDuringZoomType",
-]
+__all__ = ["LockRangeDuringZoom", "LockRangeDuringZoomBatch", "LockRangeDuringZoomType"]
 
 
-@define(init=False)
-class LockRangeDuringZoom:
+class LockRangeDuringZoom(datatypes.Bool):
     """
     **Component**: Indicate whether the range should be locked when zooming in on the data.
 
     Default is `false`, i.e. zoom will change the visualized range.
     """
 
-    def __init__(self: Any, lock_range: LockRangeDuringZoomLike):
-        """Create a new instance of the LockRangeDuringZoom component."""
+    # You can define your own __init__ function as a member of LockRangeDuringZoomExt in lock_range_during_zoom_ext.py
 
-        # You can define your own __init__ function as a member of LockRangeDuringZoomExt in lock_range_during_zoom_ext.py
-        self.__attrs_init__(lock_range=lock_range)
-
-    def __bool__(self) -> bool:
-        return self.lock_range
-
-    lock_range: bool = field(converter=bool)
+    # Note: there are no fields here because LockRangeDuringZoom delegates to datatypes.Bool
+    pass
 
 
-LockRangeDuringZoomLike = LockRangeDuringZoom
-LockRangeDuringZoomArrayLike = Union[
-    LockRangeDuringZoom,
-    Sequence[LockRangeDuringZoomLike],
-]
-
-
-class LockRangeDuringZoomType(BaseExtensionType):
+class LockRangeDuringZoomType(datatypes.BoolType):
     _TYPE_NAME: str = "rerun.blueprint.components.LockRangeDuringZoom"
 
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.bool_(), self._TYPE_NAME)
 
-
-class LockRangeDuringZoomBatch(BaseBatch[LockRangeDuringZoomArrayLike], ComponentBatchMixin):
+class LockRangeDuringZoomBatch(datatypes.BoolBatch, ComponentBatchMixin):
     _ARROW_TYPE = LockRangeDuringZoomType()
-
-    @staticmethod
-    def _native_to_pa_array(data: LockRangeDuringZoomArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in lock_range_during_zoom_ext.py

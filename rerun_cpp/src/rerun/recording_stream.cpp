@@ -1,6 +1,5 @@
 #include "recording_stream.hpp"
 #include "c/rerun.h"
-#include "components/instance_key.hpp"
 #include "config.hpp"
 #include "data_cell.hpp"
 #include "sdk_info.hpp"
@@ -12,8 +11,6 @@
 #include <vector>
 
 namespace rerun {
-    static const auto splat_key = components::InstanceKey(std::numeric_limits<uint64_t>::max());
-
     static rr_store_kind store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
@@ -189,52 +186,26 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        std::string_view entity_path, bool timeless, std::vector<DataCell> batches
+        std::string_view entity_path, bool static_, std::vector<DataCell> batches
     ) const {
         if (!is_enabled()) {
             return Error::ok();
         }
-        size_t num_instances_max = 0;
-        for (const auto& batch : batches) {
-            num_instances_max = std::max(num_instances_max, batch.num_instances);
-        }
 
         std::vector<DataCell> instanced;
-        std::vector<DataCell> splatted;
 
         for (const auto& batch : batches) {
-            if (num_instances_max > 1 && batch.num_instances == 1) {
-                splatted.push_back(std::move(batch));
-            } else {
-                instanced.push_back(std::move(batch));
-            }
+            instanced.push_back(std::move(batch));
         }
 
-        bool inject_time = !timeless;
+        bool inject_time = !static_;
 
-        if (!splatted.empty()) {
-            splatted.push_back(
-                std::move(DataCell::from_loggable<components::InstanceKey>(splat_key).value)
-            );
-            auto result =
-                try_log_data_row(entity_path, 1, splatted.size(), splatted.data(), inject_time);
-            if (result.is_err()) {
-                return result;
-            }
-        }
-
-        return try_log_data_row(
-            entity_path,
-            num_instances_max,
-            instanced.size(),
-            instanced.data(),
-            inject_time
-        );
+        return try_log_data_row(entity_path, instanced.size(), instanced.data(), inject_time);
     }
 
     Error RecordingStream::try_log_data_row(
-        std::string_view entity_path, size_t num_instances, size_t num_data_cells,
-        const DataCell* data_cells, bool inject_time
+        std::string_view entity_path, size_t num_data_cells, const DataCell* data_cells,
+        bool inject_time
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -247,7 +218,6 @@ namespace rerun {
 
         rr_data_row c_data_row;
         c_data_row.entity_path = detail::to_rr_string(entity_path);
-        c_data_row.num_instances = static_cast<uint32_t>(num_instances);
         c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
         c_data_row.data_cells = c_data_cells.data();
 
@@ -258,7 +228,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_file_from_path(
-        const std::filesystem::path& filepath, std::string_view entity_path_prefix, bool timeless
+        const std::filesystem::path& filepath, std::string_view entity_path_prefix, bool static_
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -269,7 +239,7 @@ namespace rerun {
             _id,
             detail::to_rr_string(filepath.string()),
             detail::to_rr_string(entity_path_prefix),
-            timeless,
+            static_,
             &status
         );
 
@@ -278,7 +248,7 @@ namespace rerun {
 
     Error RecordingStream::try_log_file_from_contents(
         const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
-        std::string_view entity_path_prefix, bool timeless
+        std::string_view entity_path_prefix, bool static_
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -294,7 +264,7 @@ namespace rerun {
             detail::to_rr_string(filepath.string()),
             data,
             detail::to_rr_string(entity_path_prefix),
-            timeless,
+            static_,
             &status
         );
 

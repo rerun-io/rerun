@@ -18,12 +18,16 @@ namespace rerun::blueprint::components {
     /// **Component**: One of four 2D corners, typically used to align objects.
     enum class Corner2D : uint8_t {
 
+        /// Left top corner.
         LeftTop = 1,
 
+        /// Right top corner.
         RightTop = 2,
 
+        /// Left bottom corner.
         LeftBottom = 3,
 
+        /// Right bottom corner.
         RightBottom = 4,
     };
 } // namespace rerun::blueprint::components
@@ -40,15 +44,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::blueprint:: components::Corner2D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const blueprint::components::Corner2D* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::SparseUnionBuilder* builder, const blueprint::components::Corner2D* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::blueprint:: components::Corner2D` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const blueprint::components::Corner2D* instances, size_t num_instances
         );
     };
 } // namespace rerun

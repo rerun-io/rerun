@@ -28,7 +28,7 @@ class ClassDescription(ClassDescriptionExt):
     """
     **Datatype**: The description of a semantic Class.
 
-    If an entity is annotated with a corresponding `ClassId`, rerun will use
+    If an entity is annotated with a corresponding `ClassId`, Rerun will use
     the attached `AnnotationInfo` to derive labels and colors.
 
     Keypoints within an annotation class can similarly be annotated with a
@@ -87,59 +87,51 @@ class ClassDescriptionType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field(
-                        "info",
-                        pa.struct(
-                            [
+            pa.struct([
+                pa.field(
+                    "info",
+                    pa.struct([
+                        pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                        pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                        pa.field("color", pa.uint32(), nullable=True, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "keypoint_annotations",
+                    pa.list_(
+                        pa.field(
+                            "item",
+                            pa.struct([
                                 pa.field("id", pa.uint16(), nullable=False, metadata={}),
                                 pa.field("label", pa.utf8(), nullable=True, metadata={}),
                                 pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                            ]
-                        ),
-                        nullable=False,
-                        metadata={},
+                            ]),
+                            nullable=False,
+                            metadata={},
+                        )
                     ),
-                    pa.field(
-                        "keypoint_annotations",
-                        pa.list_(
-                            pa.field(
-                                "item",
-                                pa.struct(
-                                    [
-                                        pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                        pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                        pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                    ]
-                                ),
-                                nullable=False,
-                                metadata={},
-                            )
-                        ),
-                        nullable=False,
-                        metadata={},
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "keypoint_connections",
+                    pa.list_(
+                        pa.field(
+                            "item",
+                            pa.struct([
+                                pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
+                                pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
+                            ]),
+                            nullable=False,
+                            metadata={},
+                        )
                     ),
-                    pa.field(
-                        "keypoint_connections",
-                        pa.list_(
-                            pa.field(
-                                "item",
-                                pa.struct(
-                                    [
-                                        pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
-                                        pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
-                                    ]
-                                ),
-                                nullable=False,
-                                metadata={},
-                            )
-                        ),
-                        nullable=False,
-                        metadata={},
-                    ),
-                ]
-            ),
+                    nullable=False,
+                    metadata={},
+                ),
+            ]),
             self._TYPE_NAME,
         )
 

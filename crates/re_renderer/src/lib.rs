@@ -7,6 +7,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 pub mod config;
 pub mod importer;
 pub mod mesh;
@@ -51,7 +54,7 @@ pub use colormap::{
     colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
     colormap_turbo_srgb, colormap_viridis_srgb, grayscale_srgb, Colormap,
 };
-pub use context::RenderContext;
+pub use context::{adapter_info_summary, RenderContext};
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
 pub use line_drawable_builder::{LineDrawableBuilder, LineStripBuilder};

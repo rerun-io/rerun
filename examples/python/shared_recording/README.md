@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Shared Recording"
+title = "Shared recording"
 -->
 
 
@@ -15,5 +15,5 @@ This example demonstrates how to use `RecordingId`s to create a single shared re
 
 Run the following multiple times, and you'll see that each invocation adds data to the existing recording rather than creating a new one:
 ```bash
-python examples/python/shared_recording/main.py
+python examples/python/shared_recording/shared_recording.py
 ```

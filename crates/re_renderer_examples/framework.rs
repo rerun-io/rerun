@@ -1,5 +1,8 @@
 //! Example framework
 
+// TODO(#3408): remove unwrap()
+#![allow(clippy::unwrap_used)]
+
 use std::sync::Arc;
 
 use anyhow::Context as _;
@@ -33,7 +36,7 @@ pub trait Example {
         re_ctx: &RenderContext,
         resolution: [u32; 2],
         time: &Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<ViewDrawResult>;
 
     fn on_key_event(&mut self, _event: winit::event::KeyEvent) {}
@@ -152,7 +155,8 @@ impl<E: Example + 'static> Application<E> {
                 output_format_color,
                 device_caps,
             },
-        );
+        )
+        .map_err(|err| anyhow::format_err!("{err}"))?;
 
         let example = E::new(&re_ctx);
 

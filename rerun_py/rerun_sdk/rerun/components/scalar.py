@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .scalar_ext import ScalarExt
 
 __all__ = ["Scalar", "ScalarArrayLike", "ScalarBatch", "ScalarLike", "ScalarType"]
 
 
 @define(init=False)
-class Scalar(ScalarExt):
+class Scalar:
     """
     **Component**: A double-precision scalar.
 
@@ -40,6 +39,9 @@ class Scalar(ScalarExt):
 
     def __float__(self) -> float:
         return float(self.value)
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
 
 if TYPE_CHECKING:
@@ -62,4 +64,5 @@ class ScalarBatch(BaseBatch[ScalarArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: ScalarArrayLike, data_type: pa.DataType) -> pa.Array:
-        return ScalarExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.float64).flatten()
+        return pa.array(array, type=data_type)

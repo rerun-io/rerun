@@ -1,4 +1,5 @@
 """Simple data to be used for Rerun demos."""
+
 from __future__ import annotations
 
 from collections import namedtuple
@@ -9,18 +10,6 @@ import numpy as np
 from rerun import Box2DFormat
 
 from .turbo import turbo_colormap_data
-
-__all__ = [
-    "ColorGrid",
-    "build_color_grid",
-    "color_grid",
-    "RectPyramid",
-    "build_rect_pyramid",
-    "rect_pyramid",
-    "ColorSpiral",
-    "build_color_spiral",
-    "color_spiral",
-]
 
 ColorGrid = namedtuple("ColorGrid", ["positions", "colors"])
 
@@ -55,16 +44,14 @@ def build_color_grid(x_count: int = 10, y_count: int = 10, z_count: int = 10, tw
 
     positions = np.vstack([xyz.ravel() for xyz in grid])
 
-    colors = np.vstack(
-        [
-            xyz.ravel()
-            for xyz in np.mgrid[
-                slice(0, 255, x_count * 1j),
-                slice(0, 255, y_count * 1j),
-                slice(0, 255, z_count * 1j),
-            ]
+    colors = np.vstack([
+        xyz.ravel()
+        for xyz in np.mgrid[
+            slice(0, 255, x_count * 1j),
+            slice(0, 255, y_count * 1j),
+            slice(0, 255, z_count * 1j),
         ]
-    )
+    ])
 
     return ColorGrid(positions.T, colors.T.astype(np.uint8))
 
@@ -131,16 +118,14 @@ def build_color_spiral(
         The factor applied between each step along the Z axis.
 
     """
-    positions = np.array(
+    positions = np.array([
         [
-            [
-                cos(i * tau * angular_step + angular_offset) * radius,
-                sin(i * tau * angular_step + angular_offset) * radius,
-                i * z_step,
-            ]
-            for i in range(num_points)
+            cos(i * tau * angular_step + angular_offset) * radius,
+            sin(i * tau * angular_step + angular_offset) * radius,
+            i * z_step,
         ]
-    )
+        for i in range(num_points)
+    ])
     colors = turbo_colormap_data[np.linspace(0, len(turbo_colormap_data) - 1, num_points, dtype=int)]
 
     return ColorSpiral(positions, colors)

@@ -12,7 +12,7 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, common::collect_examples_for_api_docs},
+    codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
@@ -136,6 +136,10 @@ impl crate::CodeGenerator for CppCodeGenerator {
 
         ObjectKind::ALL
             .par_iter()
+            .filter(|&&object_kind| {
+                // TODO(#5521): Implement view codegen for Rust.
+                object_kind != ObjectKind::View
+            })
             .flat_map(|object_kind| {
                 scopes
                     .par_iter()
@@ -241,7 +245,11 @@ fn generate_object_files(
 
     let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions)?;
 
-    for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
+    for (extension, tokens) in [("hpp", Some(hpp)), ("cpp", cpp)] {
+        let Some(tokens) = tokens else {
+            continue;
+        };
+
         let mut contents = string_from_token_stream(&tokens, obj.relative_filepath());
         if let Some(hpp_extension_string) = &hpp_extension_string {
             contents = contents.replace(
@@ -270,7 +278,7 @@ fn generate_object_files(
 ///
 /// Additionally, picks up all includes files that aren't including the header itself.
 ///
-/// Returns what to inject, and what to repalce `HEADER_EXTENSION_TOKEN` with at the end.
+/// Returns what to inject, and what to replace `HEADER_EXTENSION_TOKEN` with at the end.
 fn hpp_type_extensions(
     folder_path: &Utf8Path,
     filename_stem: &str,
@@ -348,7 +356,7 @@ fn generate_hpp_cpp(
     obj: &Object,
     hpp_includes: Includes,
     hpp_type_extensions: &TokenStream,
-) -> Result<(TokenStream, TokenStream)> {
+) -> Result<(TokenStream, Option<TokenStream>)> {
     let QuotedObject { hpp, cpp } =
         QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions)?;
     let snake_case_name = obj.snake_case_name();
@@ -360,10 +368,12 @@ fn generate_hpp_cpp(
         #pragma_once
         #hpp
     };
-    let cpp = quote! {
-        #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
-        #cpp
-    };
+    let cpp = cpp.map(|cpp| {
+        quote! {
+            #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
+            #cpp
+        }
+    });
 
     Ok((hpp, cpp))
 }
@@ -377,7 +387,7 @@ fn pragma_once() -> TokenStream {
 
 struct QuotedObject {
     hpp: TokenStream,
-    cpp: TokenStream,
+    cpp: Option<TokenStream>,
 }
 
 impl QuotedObject {
@@ -398,6 +408,10 @@ impl QuotedObject {
                 )),
                 ObjectKind::Archetype => {
                     Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
+                }
+                ObjectKind::View => {
+                    // TODO(#5521): Implement view codegen for Rust.
+                    unimplemented!();
                 }
             },
             ObjectClass::Enum => Ok(Self::from_enum(objects, obj, hpp_includes)),
@@ -510,33 +524,6 @@ impl QuotedObject {
             });
         }
 
-        // Num instances gives the number of primary instances.
-        {
-            let first_required_field = required_component_fields.first();
-            let definition_body = if let Some(field) = first_required_field {
-                let first_required_field_name = &format_ident!("{}", field.name);
-                if field.typ.is_plural() {
-                    quote!(return #first_required_field_name.size();)
-                } else {
-                    quote!(return 1;)
-                }
-            } else {
-                quote!(return 0;)
-            };
-            methods.push(Method {
-                docs: "Returns the number of primary instances of this archetype.".into(),
-                declaration: MethodDeclaration {
-                    is_static: false,
-                    return_type: quote!(size_t),
-                    name_and_parameters: quote! {
-                        num_instances() const
-                    },
-                },
-                definition_body,
-                inline: true,
-            });
-        }
-
         let quoted_namespace = if let Some(scope) = obj.scope() {
             let scope = format_ident!("{}", scope);
             quote! { #scope::archetypes }
@@ -637,7 +624,10 @@ impl QuotedObject {
             #deprecation_ignore_end
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 
     fn from_struct(
@@ -714,9 +704,6 @@ impl QuotedObject {
         }
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
-        let methods_cpp = methods
-            .iter()
-            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
             obj,
@@ -748,14 +735,23 @@ impl QuotedObject {
 
             #hpp_loggable
         };
-        let cpp = quote! {
-            #cpp_includes
 
-            namespace rerun::#quoted_namespace {
-                #(#methods_cpp)*
-            }
+        let cpp = if cpp_loggable.is_some() || methods.iter().any(|m| !m.inline) {
+            let methods_cpp = methods
+                .iter()
+                .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
-            #cpp_loggable
+            Some(quote! {
+                #cpp_includes
+
+                namespace rerun::#quoted_namespace {
+                    #(#methods_cpp)*
+                }
+
+                #cpp_loggable
+            })
+        } else {
+            None
         };
 
         Self { hpp, cpp }
@@ -836,6 +832,7 @@ impl QuotedObject {
         let enum_data_declarations = obj
             .fields
             .iter()
+            .filter(|obj_field| obj_field.typ != Type::Unit)
             .map(|obj_field| {
                 let declaration = quote_variable_with_docstring(
                     &mut hpp_includes,
@@ -855,6 +852,11 @@ impl QuotedObject {
             if are_types_disjoint(&obj.fields) {
                 // Implicit construct from the different variant types:
                 for obj_field in &obj.fields {
+                    if obj_field.typ == Type::Unit {
+                        // Can't create a constructor for a unit type.
+                        continue;
+                    }
+
                     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
                     let param_declaration =
                         quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
@@ -887,29 +889,46 @@ impl QuotedObject {
 
         // Code that allows to access the data of the union in a safe way.
         for obj_field in &obj.fields {
-            let typ = quote_field_type(&mut hpp_includes, obj_field);
-
             let snake_case_name = obj_field.snake_case_name();
             let field_name = format_ident!("{}", snake_case_name);
-            let method_name = format_ident!("get_{}", snake_case_name);
             let tag_name = format_ident!("{}", obj_field.name);
 
-            methods.push(Method {
-                docs: format!("Return a pointer to {snake_case_name} if the union is in that state, otherwise `nullptr`.").into(),
-                declaration: MethodDeclaration {
-                    name_and_parameters: quote! { #method_name() const },
-                    return_type: quote! { const #typ* },
-                    is_static: false,
-                },
-                definition_body: quote! {
-                    if (_tag == detail::#tag_typename::#tag_name) {
-                        return &_data.#field_name;
-                    } else {
-                        return nullptr;
-                    }
-                },
-                inline: true,
-            });
+            let method = if obj_field.typ == Type::Unit {
+                let method_name = format_ident!("is_{}", snake_case_name);
+                Method {
+                    docs: format!("Returns true if the union is in the {snake_case_name} state.")
+                        .into(),
+                    declaration: MethodDeclaration {
+                        name_and_parameters: quote! { #method_name() const },
+                        return_type: quote! { bool },
+                        is_static: false,
+                    },
+                    definition_body: quote! {
+                        return _tag == detail::#tag_typename::#tag_name;
+                    },
+                    inline: true,
+                }
+            } else {
+                let typ = quote_field_type(&mut hpp_includes, obj_field);
+                let method_name = format_ident!("get_{}", snake_case_name);
+                Method {
+                    docs: format!("Return a pointer to {snake_case_name} if the union is in that state, otherwise `nullptr`.").into(),
+                    declaration: MethodDeclaration {
+                        name_and_parameters: quote! { #method_name() const },
+                        return_type: quote! { const #typ* },
+                        is_static: false,
+                    },
+                    definition_body: quote! {
+                        if (_tag == detail::#tag_typename::#tag_name) {
+                            return &_data.#field_name;
+                        } else {
+                            return nullptr;
+                        }
+                    },
+                    inline: true,
+                }
+            };
+            methods.push(method);
         }
 
         let destructor = if obj.has_default_destructor(objects) {
@@ -1157,7 +1176,10 @@ impl QuotedObject {
             #cpp_loggable
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 
     // C-style enum
@@ -1229,7 +1251,10 @@ impl QuotedObject {
             #cpp_loggable
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 }
 
@@ -1323,6 +1348,16 @@ fn add_copy_assignment_and_constructor(
     methods
 }
 
+/// If the type forwards to another rerun defined type, returns the fully qualified name of that type.
+fn transparent_forwarded_fqname(obj: &Object) -> Option<&str> {
+    if obj.is_arrow_transparent() && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
+        if let Type::Object(fqname) = &obj.fields[0].typ {
+            return Some(fqname);
+        }
+    }
+    None
+}
+
 fn arrow_data_type_method(
     obj: &Object,
     objects: &Objects,
@@ -1331,15 +1366,35 @@ fn arrow_data_type_method(
     hpp_declarations: &mut ForwardDecls,
 ) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
-    cpp_includes.insert_system("arrow/type_fwd.h");
-    hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
 
-    let quoted_datatype = quote_arrow_data_type(
-        &Type::Object(obj.fqname.clone()),
-        objects,
-        cpp_includes,
-        true,
-    );
+    let (inline, definition_body) =
+        if let Some(forwarded_fqname) = transparent_forwarded_fqname(obj) {
+            let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+            (
+                true,
+                quote! {
+                    return Loggable<#forwarded_type>::arrow_datatype();
+                },
+            )
+        } else {
+            cpp_includes.insert_system("arrow/type_fwd.h");
+            hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
+
+            let quoted_datatype = quote_arrow_data_type(
+                &Type::Object(obj.fqname.clone()),
+                objects,
+                cpp_includes,
+                true,
+            );
+
+            (
+                false,
+                quote! {
+                    static const auto datatype = #quoted_datatype;
+                    return datatype;
+                },
+            )
+        };
 
     Method {
         docs: "Returns the arrow data type this type corresponds to.".into(),
@@ -1348,11 +1403,8 @@ fn arrow_data_type_method(
             return_type: quote! { const std::shared_ptr<arrow::DataType>& },
             name_and_parameters: quote! { arrow_datatype() },
         },
-        definition_body: quote! {
-            static const auto datatype = #quoted_datatype;
-            return datatype;
-        },
-        inline: false,
+        definition_body,
+        inline,
     }
 }
 
@@ -1405,22 +1457,61 @@ fn to_arrow_method(
     declarations: &mut ForwardDecls,
 ) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
-    hpp_includes.insert_rerun("result.hpp");
-    declarations.insert("arrow", ForwardDecl::Class(format_ident!("Array")));
-
-    let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
-
-    // Only need this in the cpp file where we don't need to forward declare the arrow builder type.
-    let arrow_builder_type =
-        arrow_array_builder_type_object(obj, objects, &mut ForwardDecls::default());
 
     let type_ident = obj.ident();
     let namespace_ident = obj.namespace_ident();
+
     let quoted_namespace = if let Some(scope) = obj.scope() {
         let scope = format_ident!("{}", scope);
         quote! { #scope::#namespace_ident}
     } else {
         quote! {#namespace_ident}
+    };
+
+    let (inline, definition_body) = if let Some(forwarded_fqname) =
+        transparent_forwarded_fqname(obj)
+    {
+        let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+        let field_name = format_ident!("{}", obj.fields[0].snake_case_name());
+
+        (
+            true,
+            quote! {
+                return Loggable<#forwarded_type>::to_arrow(&instances->#field_name, num_instances);
+            },
+        )
+    } else {
+        hpp_includes.insert_rerun("result.hpp");
+        declarations.insert("arrow", ForwardDecl::Class(format_ident!("Array")));
+
+        let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
+
+        // Only need this in the cpp file where we don't need to forward declare the arrow builder type.
+        let arrow_builder_type =
+            arrow_array_builder_type_object(obj, objects, &mut ForwardDecls::default());
+
+        (
+            false,
+            quote! {
+                #NEWLINE_TOKEN
+                #todo_pool
+                arrow::MemoryPool* pool = arrow::default_memory_pool();
+                auto datatype = arrow_datatype();
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+                ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+                if (instances && num_instances > 0) {
+                    RR_RETURN_NOT_OK(Loggable<#quoted_namespace::#type_ident>::fill_arrow_array_builder(
+                        static_cast<arrow::#arrow_builder_type*>(builder.get()),
+                        instances,
+                        num_instances
+                    ));
+                }
+                std::shared_ptr<arrow::Array> array;
+                ARROW_RETURN_NOT_OK(builder->Finish(&array));
+                return array;
+            },
+        )
     };
 
     Method {
@@ -1435,26 +1526,8 @@ fn to_arrow_method(
                 to_arrow(const #quoted_namespace::#type_ident* instances, size_t num_instances)
             },
         },
-        definition_body: quote! {
-            #NEWLINE_TOKEN
-            #todo_pool
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
-            auto datatype = arrow_datatype();
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-            if (instances && num_instances > 0) {
-                RR_RETURN_NOT_OK(Loggable<#quoted_namespace::#type_ident>::fill_arrow_array_builder(
-                    static_cast<arrow::#arrow_builder_type*>(builder.get()),
-                    instances,
-                    num_instances
-                ));
-            }
-            std::shared_ptr<arrow::Array> array;
-            ARROW_RETURN_NOT_OK(builder->Finish(&array));
-            return array;
-        },
-        inline: false,
+        definition_body,
+        inline,
     }
 }
 
@@ -1897,7 +1970,7 @@ fn quote_append_single_value_to_builder(
 ) -> TokenStream {
     match &typ {
         Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
+            quote!(ARROW_RETURN_NOT_OK(#value_builder->AppendNull());)
         }
 
         Type::UInt8
@@ -2022,22 +2095,28 @@ fn static_constructor_for_enum_type(
         name_and_parameters: quote!(#function_name_ident(#param_declaration)),
     };
 
-    // We need to use placement-new since the union is in an uninitialized state here:
-    //
-    // Do *not* assign (move _or_ copy).
-    // At this point self._data is uninitialized, so only placement new is safe since we have to regard the target as "raw memory".
-    // Otherwise we may call a function (move assignment or copy assignment)
-    // on an uninitialized object which means that the compiler may optimize away the assignment.
-    // (This was identified as the cause of #3865.)
-    hpp_includes.insert_system("new"); // placement-new
-    let typ = quote_field_type(hpp_includes, obj_field);
+    let data_setter = if obj_field.typ == Type::Unit {
+        quote! {}
+    } else {
+        // We need to use placement-new since the union is in an uninitialized state here:
+        //
+        // Do *not* assign (move _or_ copy).
+        // At this point self._data is uninitialized, so only placement new is safe since we have to regard the target as "raw memory".
+        // Otherwise we may call a function (move assignment or copy assignment)
+        // on an uninitialized object which means that the compiler may optimize away the assignment.
+        // (This was identified as the cause of #3865.)
+        hpp_includes.insert_system("new"); // placement-new
+        let typ = quote_field_type(hpp_includes, obj_field);
+        quote! { new (&self._data.#snake_case_ident) #typ(std::move(#snake_case_ident)); }
+    };
+
     Method {
         docs,
         declaration,
         definition_body: quote! {
             #pascal_case_ident self;
             self._tag = detail::#tag_typename::#tag_ident;
-            new (&self._data.#snake_case_ident) #typ(std::move(#snake_case_ident));
+            #data_setter
             return self;
         },
         inline: true,
@@ -2084,9 +2163,7 @@ fn quote_variable_with_docstring(
 fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
     #[allow(clippy::match_same_arms)]
     let typ = match &obj_field.typ {
-        Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
-        }
+        Type::Unit => panic!("Can't express the unit type directly"),
 
         Type::UInt8 => quote! { uint8_t  },
         Type::UInt16 => quote! { uint16_t  },
@@ -2137,8 +2214,12 @@ fn quote_variable(
     obj_field: &ObjectField,
     name: &syn::Ident,
 ) -> TokenStream {
-    let typ = quote_field_type(includes, obj_field);
-    quote! { #typ #name }
+    if obj_field.typ == Type::Unit {
+        quote! {}
+    } else {
+        let typ = quote_field_type(includes, obj_field);
+        quote! { #typ #name }
+    }
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
@@ -2196,10 +2277,10 @@ fn quote_field_docs(field: &ObjectField) -> TokenStream {
 }
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+    let mut lines = docs.doc_lines_for_untagged_and("cpp");
 
     let required = true;
-    let examples = collect_examples_for_api_docs(docs, "cpp", required).unwrap_or_default();
+    let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
         let section_title = if examples.len() == 1 {
@@ -2212,11 +2293,15 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name, title, image, ..
+                path,
+                name,
+                title,
+                image,
+                ..
             } = &example.base;
 
             for line in &example.lines {
-                assert!(!line.contains("```"), "Example {name:?} contains ``` in it, so we can't embed it in the C++ API docs.");
+                assert!(!line.contains("```"), "Example {path:?} contains ``` in it, so we can't embed it in the C++ API docs.");
             }
 
             if let Some(title) = title {
@@ -2345,7 +2430,7 @@ fn quote_arrow_field_type(
 ) -> TokenStream {
     let name = &field.name;
     let datatype = quote_arrow_data_type(&field.typ, objects, includes, false);
-    let is_nullable = field.is_nullable;
+    let is_nullable = field.is_nullable || field.typ == Type::Unit; // null type is always nullable
 
     quote! {
         arrow::field(#name, #datatype, #is_nullable)
@@ -2359,9 +2444,9 @@ fn quote_arrow_elem_type(
 ) -> TokenStream {
     let typ: Type = elem_type.clone().into();
     let datatype = quote_arrow_data_type(&typ, objects, includes, false);
-
+    let is_nullable = typ == Type::Unit; // null type must be nullable
     quote! {
-        arrow::field("item", #datatype, false)
+        arrow::field("item", #datatype, #is_nullable)
     }
 }
 
@@ -2371,7 +2456,7 @@ fn quote_loggable_hpp_and_cpp(
     hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
-) -> (TokenStream, TokenStream) {
+) -> (TokenStream, Option<TokenStream>) {
     assert!(obj.kind != ObjectKind::Archetype);
 
     let namespace_ident = obj.namespace_ident();
@@ -2385,14 +2470,38 @@ fn quote_loggable_hpp_and_cpp(
     };
 
     let fqname = &obj.fqname;
+    let loggable_type_name = quote! { Loggable<#quoted_namespace::#type_ident> };
 
-    let methods = vec![
+    let mut methods = vec![
         arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
-        fill_arrow_array_builder_method(obj, cpp_includes, hpp_declarations, objects),
         to_arrow_method(obj, objects, hpp_includes, hpp_declarations),
     ];
 
-    let loggable_type_name = quote! { Loggable<#quoted_namespace::#type_ident> };
+    let predeclarations_and_static_assertions = if let Some(forwarded_fqname) =
+        transparent_forwarded_fqname(obj)
+    {
+        // We only actually need `to_arrow`, everything else is just nice to have.
+
+        let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+
+        // Don't to pre-declare `Loggable` if we're forwarding to another type - it's already known in this case.
+        quote! { static_assert(sizeof(#forwarded_type) == sizeof(#quoted_namespace::#type_ident)); }
+    } else {
+        // `fill_arrow_array_builder_method` is used as a utility to implement `to_arrow`.
+        // We only need it if we're not forwarding to another type.
+        methods.push(fill_arrow_array_builder_method(
+            obj,
+            cpp_includes,
+            hpp_declarations,
+            objects,
+        ));
+
+        quote! {
+            // Instead of including loggable.hpp, simply re-declare the template since it's trivial
+            template<typename T>
+            struct Loggable;
+        }
+    };
 
     let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
@@ -2400,9 +2509,7 @@ fn quote_loggable_hpp_and_cpp(
 
     let hpp = quote! {
         namespace rerun {
-            // Instead of including loggable.hpp, simply re-declare the template since it's trivial
-            template<typename T>
-            struct Loggable;
+            #predeclarations_and_static_assertions
 
             #hide_from_docs_comment
             template<>
@@ -2415,10 +2522,14 @@ fn quote_loggable_hpp_and_cpp(
         }
     };
 
-    let cpp = quote! {
-        namespace rerun {
-            #(#methods_cpp)*
-        }
+    let cpp = if methods.iter().any(|m| !m.inline) {
+        Some(quote! {
+            namespace rerun {
+                #(#methods_cpp)*
+            }
+        })
+    } else {
+        None
     };
 
     (hpp, cpp)

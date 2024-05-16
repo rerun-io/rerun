@@ -25,7 +25,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Simple batch of 3D Arrows
+    /// ### Simple batch of 3D arrows
     /// ![image](https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/full.png)
     ///
     /// ```cpp
@@ -148,11 +148,6 @@ namespace rerun::archetypes {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return vectors.size();
         }
     };
 

@@ -1,15 +1,16 @@
-use std::fmt::Write;
+use std::{collections::BTreeMap, fmt::Write};
 
 use camino::Utf8PathBuf;
+use itertools::Itertools;
 
 use crate::{
-    codegen::common::ExampleInfo, objects::FieldKind, CodeGenerator, GeneratedFiles, Object,
-    ObjectKind, Objects, Reporter, Type,
+    codegen::{autogen_warning, common::ExampleInfo},
+    objects::FieldKind,
+    CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    ATTR_DOCS_VIEW_TYPES,
 };
 
-type ObjectMap = std::collections::BTreeMap<String, Object>;
-
-use super::common::get_documentation;
+type ObjectMap = BTreeMap<String, Object>;
 
 macro_rules! putln {
     ($o:ident) => ( writeln!($o).ok() );
@@ -28,6 +29,14 @@ impl DocsCodeGenerator {
     }
 }
 
+struct ViewReference {
+    /// Typename of the view. Not a fully qualified name, just the name as specified on the attribute.
+    view_name: String,
+    explanation: Option<String>,
+}
+
+type ViewsPerArchetype = BTreeMap<String, Vec<ViewReference>>;
+
 impl CodeGenerator for DocsCodeGenerator {
     fn generate(
         &mut self,
@@ -39,7 +48,11 @@ impl CodeGenerator for DocsCodeGenerator {
 
         let mut files_to_write = GeneratedFiles::default();
 
-        let (mut archetypes, mut components, mut datatypes) = (Vec::new(), Vec::new(), Vec::new());
+        // Gather view type mapping per object.
+        let views_per_archetype = collect_view_types_per_archetype(objects);
+
+        let (mut archetypes, mut components, mut datatypes, mut views) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
         let object_map = &objects.objects;
         for object in object_map.values() {
             // skip test-only archetypes
@@ -48,7 +61,7 @@ impl CodeGenerator for DocsCodeGenerator {
             }
 
             // Skip blueprint stuff, too early
-            if object.scope() == Some("blueprint".to_owned()) {
+            if object.scope() == Some("blueprint".to_owned()) && object.kind != ObjectKind::View {
                 continue;
             }
 
@@ -56,9 +69,10 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Datatype => datatypes.push(object),
                 ObjectKind::Component => components.push(object),
                 ObjectKind::Archetype => archetypes.push(object),
+                ObjectKind::View => views.push(object),
             }
 
-            let page = object_page(reporter, object, object_map);
+            let page = object_page(reporter, object, object_map, &views_per_archetype);
             let path = self.docs_dir.join(format!(
                 "{}/{}.md",
                 object.kind.plural_snake_case(),
@@ -71,20 +85,32 @@ impl CodeGenerator for DocsCodeGenerator {
             (
                 ObjectKind::Archetype,
                 1,
-                "Archetypes are bundles of components",
+                "Archetypes are bundles of components. This page lists all built-in components.",
                 &archetypes,
             ),
             (
                 ObjectKind::Component,
                 2,
-                "Archetypes are bundles of components",
+                r"Components are the fundamental unit of logging in Rerun. This page lists all built-in components.
+
+An entity can only ever contain a single array of any given component type.
+If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
+
+For more information on the relationship between **archetypes** and **components**, check out the concept page
+on [Entities and Components](../../concepts/entity-component.md).",
                 &components,
             ),
             (
                 ObjectKind::Datatype,
                 3,
-                "Data types are the lowest layer of the data model hierarchy",
+                r"Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.",
                 &datatypes,
+            ),
+            (
+                ObjectKind::View,
+                4,
+                r"Views are the panels shown in the viewer's viewport and the primary means of inspecting & visualizing previously logged data. This page lists all built-in views.",
+                &views,
             ),
         ] {
             let page = index_page(kind, order, prelude, objects);
@@ -98,6 +124,31 @@ impl CodeGenerator for DocsCodeGenerator {
     }
 }
 
+fn collect_view_types_per_archetype(objects: &Objects) -> ViewsPerArchetype {
+    let mut view_types_per_object = ViewsPerArchetype::new();
+    for object in objects.objects.values() {
+        let Some(view_types) = object.try_get_attr::<String>(ATTR_DOCS_VIEW_TYPES) else {
+            continue;
+        };
+
+        let view_types = view_types
+            .split(',')
+            .map(|view_type| {
+                let mut parts = view_type.splitn(2, ':');
+                let view_name = parts.next().unwrap().trim().to_owned();
+                let explanation = parts.next().map(|s| s.trim().to_owned());
+                ViewReference {
+                    view_name,
+                    explanation,
+                }
+            })
+            .collect();
+        view_types_per_object.insert(object.fqname.clone(), view_types);
+    }
+
+    view_types_per_object
+}
+
 fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) -> String {
     let mut page = String::new();
 
@@ -105,57 +156,76 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
     putln!(page);
     putln!(page, "{prelude}");
     putln!(page);
-    if !objects.is_empty() {
-        // First all non deprecated ones:
-        putln!(page, "## Available {}", kind.plural_name().to_lowercase());
+
+    let mut any_category = false;
+    for (category, objects) in &objects
+        .iter()
+        .sorted_by(|a, b| {
+            // Put other category last.
+            if a.doc_category().is_none() {
+                std::cmp::Ordering::Greater
+            } else if b.doc_category().is_none() {
+                std::cmp::Ordering::Less
+            } else {
+                a.doc_category().cmp(&b.doc_category())
+            }
+        })
+        .group_by(|o| o.doc_category())
+    {
+        if category.is_some() {
+            any_category = true;
+        }
+        if let Some(category) = category.or_else(|| {
+            if any_category {
+                Some("Other".to_owned())
+            } else {
+                None
+            }
+        }) {
+            putln!(page, "## {category}");
+        }
         putln!(page);
-        for object in objects.iter().filter(|o| o.deprecation_notice().is_none()) {
+
+        for object in objects.sorted_by_key(|object| &object.name) {
+            let deprecation_note = if object.deprecation_notice().is_some() {
+                "⚠️ _deprecated_ "
+            } else {
+                ""
+            };
+
             putln!(
                 page,
-                "* [`{}`]({}/{}.md)",
+                "* {deprecation_note}[`{}`]({}/{}.md): {}",
                 object.name,
                 object.kind.plural_snake_case(),
-                object.snake_case_name()
+                object.snake_case_name(),
+                object.docs.first_line().unwrap_or_default(),
             );
         }
-
-        // Then all deprecated ones:
-        if objects.iter().any(|o| o.deprecation_notice().is_some()) {
-            putln!(page);
-            putln!(page);
-            putln!(page, "## Deprecated {}", kind.plural_name().to_lowercase());
-            putln!(page);
-            for object in objects.iter().filter(|o| o.deprecation_notice().is_some()) {
-                putln!(
-                    page,
-                    "* [`{}`]({}/{}.md)",
-                    object.name,
-                    object.kind.plural_snake_case(),
-                    object.snake_case_name()
-                );
-            }
-        }
+        putln!(page);
     }
 
     page
 }
 
-fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
+fn object_page(
+    reporter: &Reporter,
+    object: &Object,
+    object_map: &ObjectMap,
+    views_per_archetype: &ViewsPerArchetype,
+) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
-    let top_level_docs = get_documentation(&object.docs, &[]);
+    let top_level_docs = object.docs.untagged();
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");
     }
 
-    let examples = object
-        .docs
-        .tagged_docs
-        .get("example")
+    let examples = &object.docs.doc_lines_tagged("example");
+    let examples = examples
         .iter()
-        .flat_map(|v| v.iter())
-        .map(ExampleInfo::parse)
+        .map(|line| ExampleInfo::parse(line))
         .collect::<Vec<_>>();
 
     let mut page = String::new();
@@ -187,47 +257,17 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         ObjectKind::Datatype | ObjectKind::Component => {
             write_fields(&mut page, object, object_map);
         }
-        ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
+        ObjectKind::Archetype => {
+            write_archetype_fields(&mut page, object, object_map, views_per_archetype);
+        }
+        ObjectKind::View => {
+            write_view_properties(reporter, &mut page, object, object_map);
+        }
     }
 
-    {
-        let speculative_marker = if is_unreleased {
-            "?speculative-link"
-        } else {
-            ""
-        };
-        putln!(page);
-        putln!(page, "## Links");
-        // In alphabetical order by language.
-        putln!(
-            page,
-            // `_1` is doxygen's replacement for ':'
-            // https://github.com/doxygen/doxygen/blob/Release_1_9_8/src/util.cpp#L3532
-            " * 🌊 [C++ API docs for `{}`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1{}_1_1{}.html{})",
-            object.name,
-            object.kind.plural_snake_case(),
-            object.name,
-            speculative_marker,
-        );
-        putln!(
-            page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
-            object.name,
-            object.kind.plural_snake_case(),
-            speculative_marker,
-            object.kind.plural_snake_case(),
-            object.name
-        );
-        putln!(
-            page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{})",
-            object.name,
-            object.kind.plural_snake_case(),
-            if object.is_struct() { "struct" } else { "enum" },
-            object.name,
-            speculative_marker
-        );
-    }
+    putln!(page);
+    putln!(page, "## API reference links");
+    list_links(is_unreleased, &mut page, object);
 
     putln!(page);
     write_example_list(&mut page, &examples);
@@ -250,9 +290,84 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
                 }
             }
         }
+        ObjectKind::View => {
+            putln!(page);
+            write_visualized_archetypes(
+                reporter,
+                &mut page,
+                object,
+                object_map,
+                views_per_archetype,
+            );
+        }
     }
 
     page
+}
+
+fn list_links(is_unreleased: bool, page: &mut String, object: &Object) {
+    let speculative_marker = if is_unreleased {
+        "?speculative-link"
+    } else {
+        ""
+    };
+
+    if object.kind == ObjectKind::View {
+        // More complicated link due to scope
+        putln!(
+            page,
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}_{}{}#rerun.{}.{}.{})",
+            object.name,
+            object.scope().unwrap_or_default(),
+            object.kind.plural_snake_case(),
+            speculative_marker,
+            object.scope().unwrap_or_default(),
+            object.kind.plural_snake_case(),
+            object.name
+        );
+    } else {
+        let cpp_link = if object.is_enum() {
+            // Can't link to enums directly 🤷
+            format!(
+                "https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1{}.html",
+                object.kind.plural_snake_case()
+            )
+        } else {
+            // `_1` is doxygen's replacement for ':'
+            // https://github.com/doxygen/doxygen/blob/Release_1_9_8/src/util.cpp#L3532
+            format!(
+                "https://ref.rerun.io/docs/cpp/stable/structrerun_1_1{}_1_1{}.html",
+                object.kind.plural_snake_case(),
+                object.name
+            )
+        };
+
+        // In alphabetical order by language.
+        putln!(
+            page,
+            " * 🌊 [C++ API docs for `{}`]({cpp_link}{speculative_marker})",
+            object.name,
+        );
+
+        putln!(
+            page,
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
+            object.name,
+            object.module_name().replace('/', "_"), // E.g. `blueprint_archetypes`
+            speculative_marker,
+            object.module_name().replace('/', "."), // E.g. `blueprint.archetypes`
+            object.name
+        );
+
+        putln!(
+            page,
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
+            object.name,
+            object.kind.plural_snake_case(),
+            if object.is_struct() { "struct" } else { "enum" },
+            object.name,
+        );
+    }
 }
 
 fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
@@ -263,6 +378,8 @@ fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
         putln!(o, "order: {order}");
     }
     putln!(o, "---");
+    // Can't put the autogen warning before the frontmatter, stuff breaks down then.
+    putln!(o, "<!-- {} -->", autogen_warning!());
 }
 
 fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
@@ -367,6 +484,8 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
             }
         }
     }
+    used_by.sort();
+    used_by.dedup(); // The same datatype can be used multiple times by the same component
 
     if used_by.is_empty() {
         // NOTE: there are some false positives here, because unions can only
@@ -385,7 +504,12 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
     }
 }
 
-fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
+fn write_archetype_fields(
+    page: &mut String,
+    object: &Object,
+    object_map: &ObjectMap,
+    view_per_archetype: &ViewsPerArchetype,
+) {
     if object.fields.is_empty() {
         return;
     }
@@ -417,19 +541,146 @@ fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMa
         return;
     }
 
-    putln!(o, "## Components");
+    putln!(page, "## Components");
     if !required.is_empty() {
-        putln!(o);
-        putln!(o, "**Required**: {}", required.join(", "));
+        putln!(page);
+        putln!(page, "**Required**: {}", required.join(", "));
     }
     if !recommended.is_empty() {
-        putln!(o);
-        putln!(o, "**Recommended**: {}", recommended.join(", "));
+        putln!(page);
+        putln!(page, "**Recommended**: {}", recommended.join(", "));
     }
     if !optional.is_empty() {
-        putln!(o);
-        putln!(o, "**Optional**: {}", optional.join(", "));
+        putln!(page);
+        putln!(page, "**Optional**: {}", optional.join(", "));
     }
+
+    if let Some(view_types) = view_per_archetype.get(&object.fqname) {
+        putln!(page);
+        putln!(page, "## Shown in");
+        for ViewReference {
+            view_name,
+            explanation,
+        } in view_types
+        {
+            page.push_str(&format!(
+                "* [{view_name}](../views/{}.md)",
+                crate::to_snake_case(view_name)
+            ));
+            if let Some(explanation) = explanation {
+                page.push_str(&format!(" ({explanation})"));
+            }
+            putln!(page);
+        }
+    }
+}
+
+fn write_visualized_archetypes(
+    reporter: &Reporter,
+    page: &mut String,
+    view: &Object,
+    object_map: &ObjectMap,
+    views_per_archetype: &ViewsPerArchetype,
+) {
+    let mut archetype_fqnames = Vec::new();
+    for (fqname, reference) in views_per_archetype {
+        for ViewReference {
+            view_name,
+            explanation,
+        } in reference
+        {
+            if view_name == &view.name {
+                archetype_fqnames.push((fqname.clone(), explanation));
+            }
+        }
+    }
+
+    if archetype_fqnames.is_empty() {
+        reporter.error(&view.virtpath, &view.fqname, "No archetypes use this view.");
+        return;
+    }
+
+    // Put the archetypes in alphabetical order but put the ones with extra explanation last.
+    archetype_fqnames.sort_by_key(|(fqname, explanation)| (explanation.is_some(), fqname.clone()));
+
+    putln!(page, "## Visualized archetypes");
+    putln!(page);
+    for (fqname, explanation) in archetype_fqnames {
+        let object = &object_map[&fqname];
+        page.push_str(&format!(
+            "* [`{}`](../{}/{}.md)",
+            object.name,
+            object.kind.plural_snake_case(),
+            object.snake_case_name()
+        ));
+        if let Some(explanation) = explanation {
+            page.push_str(&format!(" ({explanation})"));
+        }
+        putln!(page);
+    }
+    putln!(page);
+}
+
+fn write_view_properties(
+    reporter: &Reporter,
+    page: &mut String,
+    view: &Object,
+    object_map: &ObjectMap,
+) {
+    if view.fields.is_empty() {
+        return;
+    }
+
+    putln!(page, "## Properties");
+    putln!(page);
+
+    // Each field in a view should be a property
+    for field in &view.fields {
+        write_view_property(reporter, page, field, object_map);
+    }
+}
+
+fn write_view_property(
+    reporter: &Reporter,
+    o: &mut String,
+    field: &ObjectField,
+    object_map: &ObjectMap,
+) {
+    putln!(o, "### `{}`", field.name);
+
+    let top_level_docs = field.docs.untagged();
+
+    if top_level_docs.is_empty() {
+        reporter.error(&field.virtpath, &field.fqname, "Undocumented view property");
+    }
+
+    for line in top_level_docs {
+        putln!(o, "{line}");
+    }
+
+    // If there's more than one fields on this type, list them:
+    let Some(field_fqname) = field.typ.fqname() else {
+        return;
+    };
+    let object = &object_map[field_fqname];
+
+    let mut fields = Vec::new();
+    for field in &object.fields {
+        fields.push(format!(
+            "* `{}`: {}",
+            field.name,
+            field.docs.first_line().unwrap_or_default()
+        ));
+    }
+
+    if fields.len() > 1 {
+        putln!(o);
+        for field in fields {
+            putln!(o, "{field}");
+        }
+    }
+
+    // Note that we don't list links to reference docs for this type since this causes a lot of clutter.
 }
 
 fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
@@ -445,6 +696,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
     putln!(o);
 
     for ExampleInfo {
+        path,
         name,
         title,
         image,
@@ -454,10 +706,10 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         let title = title.unwrap_or(name);
         putln!(o, "### {title}");
         putln!(o);
-        putln!(o, "code-example: {name}");
+        putln!(o, "snippet: {path}");
         if let Some(image_url) = image {
             putln!(o);
-            for line in image_url.image_stack() {
+            for line in image_url.image_stack().snippet_id(name).finish() {
                 putln!(o, "{line}");
             }
         }

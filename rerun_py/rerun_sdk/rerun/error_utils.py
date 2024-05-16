@@ -10,10 +10,6 @@ from typing import Any, Callable, TypeVar, cast
 
 from .recording_stream import RecordingStream
 
-__all__ = [
-    "_send_warning_or_raise",
-]
-
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
 

@@ -1,12 +1,7 @@
-use re_log_types::{
-    DataCellColumn, NumInstances, RowId, TimeInt, TimeRange, VecDequeSortingExt as _,
-};
+use re_log_types::{ResolvedTimeRange, RowId, TimeInt, VecDequeSortingExt as _};
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
-use crate::{
-    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
-    PersistentIndexedTable,
-};
+use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable};
 
 // ---
 
@@ -18,7 +13,10 @@ pub enum SanityError {
     #[error(
         "Reported time range for indexed bucket is out of sync: got {got:?}, expected {expected:?}"
     )]
-    TimeRangeOutOfSync { expected: TimeRange, got: TimeRange },
+    TimeRangeOutOfSync {
+        expected: ResolvedTimeRange,
+        got: ResolvedTimeRange,
+    },
 
     #[error(
         "Reported max RowId for indexed bucket is out of sync: got {got}, expected {expected}"
@@ -46,12 +44,6 @@ pub enum SanityError {
         got: u64,
     },
 
-    #[error("Couldn't find any column for the configured cluster key ('{cluster_key}')")]
-    ClusterColumnMissing { cluster_key: ComponentName },
-
-    #[error("The cluster column must be dense, found holes: {cluster_column:?}")]
-    ClusterColumnSparse { cluster_column: Box<DataCellColumn> },
-
     #[error("Found overlapping indexed buckets: {t1_max_formatted} ({t1_max}) <-> {t2_max_formatted} ({t2_max})")]
     OverlappingBuckets {
         t1_max: i64,
@@ -71,10 +63,6 @@ impl DataStore {
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> SanityResult<()> {
         re_tracing::profile_function!();
-
-        for table in self.timeless_tables.values() {
-            table.sanity_check()?;
-        }
 
         for table in self.tables.values() {
             table.sanity_check()?;
@@ -104,12 +92,12 @@ impl IndexedTable {
                 let &[t1, t2] = time_ranges else {
                     unreachable!()
                 };
-                if t1.max.as_i64() >= t2.min.as_i64() {
+                if t1.max().as_i64() >= t2.min().as_i64() {
                     return Err(SanityError::OverlappingBuckets {
-                        t1_max: t1.max.as_i64(),
-                        t1_max_formatted: self.timeline.typ().format_utc(t1.max),
-                        t2_max: t2.max.as_i64(),
-                        t2_max_formatted: self.timeline.typ().format_utc(t2.max),
+                        t1_max: t1.max().as_i64(),
+                        t1_max_formatted: self.timeline.typ().format_utc(t1.max()),
+                        t2_max: t2.max().as_i64(),
+                        t2_max_formatted: self.timeline.typ().format_utc(t2.max()),
                     });
                 }
             }
@@ -122,8 +110,8 @@ impl IndexedTable {
             if num_rows != num_rows_uncached {
                 return Err(SanityError::RowsOutOfSync {
                     origin: std::any::type_name::<Self>(),
-                    expected: re_format::format_number(num_rows_uncached as _),
-                    got: re_format::format_number(num_rows as _),
+                    expected: re_format::format_uint(num_rows_uncached),
+                    got: re_format::format_uint(num_rows),
                 });
             }
         }
@@ -157,11 +145,7 @@ impl IndexedBucket {
     pub fn sanity_check(&self) -> SanityResult<()> {
         re_tracing::profile_function!();
 
-        let Self {
-            timeline: _,
-            cluster_key,
-            inner,
-        } = self;
+        let Self { timeline: _, inner } = self;
 
         {
             let IndexedBucketInner {
@@ -171,7 +155,6 @@ impl IndexedBucket {
                 col_insert_id,
                 col_row_id,
                 max_row_id,
-                col_num_instances,
                 columns,
                 size_bytes: _,
             } = &*inner.read();
@@ -184,14 +167,14 @@ impl IndexedBucket {
                 let expected_min = times
                     .front()
                     .copied()
-                    .unwrap_or(TimeInt::MAX.as_i64())
-                    .into();
+                    .and_then(|t| TimeInt::try_from(t).ok())
+                    .unwrap_or(TimeInt::MAX);
                 let expected_max = times
                     .back()
                     .copied()
-                    .unwrap_or(TimeInt::MIN.as_i64())
-                    .into();
-                let expected_time_range = TimeRange::new(expected_min, expected_max);
+                    .and_then(|t| TimeInt::try_from(t).ok())
+                    .unwrap_or(TimeInt::MIN);
+                let expected_time_range = ResolvedTimeRange::new(expected_min, expected_max);
 
                 if expected_time_range != *time_range {
                     return Err(SanityError::TimeRangeOutOfSync {
@@ -223,7 +206,6 @@ impl IndexedBucket {
                         .then(|| (DataStore::insert_id_component_name(), col_insert_id.len())), //
                     Some((COLUMN_TIMEPOINT.into(), col_time.len())),
                     Some((RowId::name(), col_row_id.len())),
-                    Some((NumInstances::name(), col_num_instances.len())),
                 ]
                 .into_iter()
                 .flatten()
@@ -244,21 +226,6 @@ impl IndexedBucket {
                     }
                 }
             }
-
-            // The cluster column must be fully dense.
-            if self.num_rows() > 0 {
-                let cluster_column =
-                    columns
-                        .get(cluster_key)
-                        .ok_or(SanityError::ClusterColumnMissing {
-                            cluster_key: *cluster_key,
-                        })?;
-                if !cluster_column.iter().all(|cell| cell.is_some()) {
-                    return Err(SanityError::ClusterColumnSparse {
-                        cluster_column: cluster_column.clone().into(),
-                    });
-                }
-            }
         }
 
         // Make sure size values aren't out of sync
@@ -270,79 +237,6 @@ impl IndexedBucket {
                     origin: std::any::type_name::<Self>(),
                     expected: re_format::format_bytes(size_bytes_uncached as _),
                     got: re_format::format_bytes(size_bytes as _),
-                });
-            }
-        }
-
-        Ok(())
-    }
-}
-
-// --- Timeless ---
-
-impl PersistentIndexedTable {
-    /// Runs the sanity check suite for the entire table.
-    ///
-    /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> SanityResult<()> {
-        re_tracing::profile_function!();
-
-        let Self {
-            ent_path: _,
-            cluster_key,
-            inner,
-        } = self;
-
-        let inner = &*inner.read();
-        let PersistentIndexedTableInner {
-            col_insert_id,
-            col_row_id,
-            col_num_instances,
-            columns,
-            is_sorted: _,
-        } = inner;
-
-        // All columns should be `Self::num_rows` long.
-        {
-            let num_rows = inner.num_rows();
-
-            let column_lengths = [
-                (!col_insert_id.is_empty())
-                    .then(|| (DataStore::insert_id_component_name(), col_insert_id.len())), //
-                Some((RowId::name(), col_row_id.len())),
-                Some((NumInstances::name(), col_num_instances.len())),
-            ]
-            .into_iter()
-            .flatten()
-            .chain(
-                columns
-                    .iter()
-                    .map(|(component, column)| (*component, column.len())),
-            )
-            .map(|(component, len)| (component, len as u64));
-
-            for (component, len) in column_lengths {
-                if len != num_rows {
-                    return Err(SanityError::ColumnLengthMismatch {
-                        component,
-                        expected: num_rows,
-                        got: len,
-                    });
-                }
-            }
-        }
-
-        // The cluster column must be fully dense.
-        if inner.num_rows() > 0 {
-            let cluster_column =
-                columns
-                    .get(cluster_key)
-                    .ok_or(SanityError::ClusterColumnMissing {
-                        cluster_key: *cluster_key,
-                    })?;
-            if !cluster_column.iter().all(|cell| cell.is_some()) {
-                return Err(SanityError::ClusterColumnSparse {
-                    cluster_column: cluster_column.clone().into(),
                 });
             }
         }

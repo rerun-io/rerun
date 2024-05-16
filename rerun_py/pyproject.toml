@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "maturin"
-requires = ["maturin>=1.4.0"]
+requires = ["maturin>=1.5.1"]
 
 [project]
 classifiers = [
@@ -15,7 +15,7 @@ dependencies = [
   # Must match list in `.github/workflows/reusable_test_wheels.yml`
   "attrs>=23.1.0",
   "numpy>=1.23,<2",
-  "pillow",                 # Used for JPEG encoding
+  "pillow>=8.0.0",          # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
   "pyarrow>=14.0.2",
   "typing_extensions>=4.5", # Used for PEP-702 deprecated decorator
 ]
@@ -40,12 +40,21 @@ homepage = "https://www.rerun.io"
 repository = "https://github.com/rerun-io/rerun"
 
 [project.scripts]
-rerun = "rerun_bindings:main"
+rerun = "rerun_cli.__main__:main"
 
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
 
 # target-version = "py38"  # inferred from requires-python, see https://beta.ruff.rs/docs/settings/#target-version
+
+# Enable unsafe fixes to allow ruff to apply fixes that may change the behavior of the code.
+# This is needed because otherwise ruff will not be able to trim whitespaces in (codegened) docstrings.
+unsafe-fixes = true
+
+# Allow preview lints to be enabled (like `PLW1514` to force `encoding` on open).
+preview = true
+# But we only want to opt-in to certain preview rules!
+lint.explicit-preview-rules = true
 
 extend-exclude = [
   # Automatically generated test artifacts
@@ -53,19 +62,20 @@ extend-exclude = [
   "target/",
 
   # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
-  "docs/code-examples/all/text_document.py",
+  "docs/snippets/all/archetypes/text_document.py",
+  "docs/snippets/all/views/text_document.py",
 
   # TODO(#4047): incomplete example snippet
-  "docs/code-examples/all/timelines_example.py",
+  "docs/snippets/all/tutorials/timelines_example.py",
 
   # generated
-  "examples/python/objectron/proto/objectron/proto.py",
+  "examples/python/objectron/objectron/proto/objectron/proto.py",
 
-  # Copied from https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_depth2img.py
-  "examples/python/depth_guided_stable_diffusion/huggingface_pipeline.py",
+  # Copied from https://github.com/huggingface/diffusers/blob/fc9fecc217e58d72c0d5796575c72088251ff4df/src/diffusers/pipelines/stable_diffusion/pipeline_stable_diffusion_depth2img.py
+  "examples/python/depth_guided_stable_diffusion/depth_guided_stable_diffusion/huggingface_pipeline.py",
 
   # Copied from https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/scripts/python/read_write_model.py
-  "examples/python/structure_from_motion/read_write_model.py",
+  "examples/python/structure_from_motion/structure_from_motion/read_write_model.py",
 ]
 
 lint.ignore = [
@@ -85,9 +95,8 @@ lint.ignore = [
   "D415",
   "D416",
 
-  # Black is going to handle this for us, and ruff can't fix this error on its own (yet)
-  # Having ruff check this causes errors that prevent the code-formatting process from
-  # completing.
+  # Ruff can't fix this error on its own (yet)
+  # Having ruff check this causes errors that prevent the code-formatting process from completing.
   "E501",
 
   # allow relative imports
@@ -98,17 +107,22 @@ lint.ignore = [
 
 line-length = 120
 lint.select = [
-  "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
-  "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  "F",   # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
-  "I",   # Isort
-  "TID", # flake8-tidy-imports
-  "W",   # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  "UP",  # pyupgrade (ensures idomatic code for supported python version)
+  "D",       # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
+  "E",       # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
+  "I",       # Isort
+  "TID",     # flake8-tidy-imports
+  "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "UP",      # pyupgrade (ensures idomatic code for supported python version)
+  "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
+]
+
+lint.unfixable = [
+  "PLW1514", # Automatic fix for `encoding` doesn't do what we want - it queries the locale for the preferred encoding which is exactly what we want to avoid.
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"docs/code-examples/all/*" = [
+"docs/snippets/all/*" = [
   # Missing required import: `from __future__ import annotations`
   "I002",
 ]
@@ -126,10 +140,22 @@ required-imports = ["from __future__ import annotations"]
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
 # which then allows `import rerun` to work as expected.
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
-include = ["rerun_sdk.pth"]
+# Even though both `rerun` and `rerun.exe` are here, only one will be included since
+# they both should not be fetched in CI when running the build.
+# Files missing from this list is not a packaging failure.
+include = [
+  "rerun_sdk.pth",
+  "rerun_sdk/rerun_cli/rerun",
+  "rerun_sdk/rerun_cli/rerun.exe",
+]
 locked = true
 name = "rerun_bindings"
-python-packages = ["rerun_sdk/rerun"]
+python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_cli"]
+
+# Setting this to 1 causes lets the build.rs script know we are building a wheel,
+# which will cause it to check for the existence of the `rerun` binary.
+config = ["env.RERUN_BUILDING_WHEEL=\"1\""]
+
 
 [tool.pytest.ini_options]
 # These conform to Python's Warning Filter syntax:

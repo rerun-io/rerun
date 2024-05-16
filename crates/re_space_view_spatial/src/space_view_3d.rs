@@ -1,21 +1,22 @@
 use itertools::Itertools;
 use nohash_hasher::IntSet;
+
 use re_entity_db::{EntityDb, EntityProperties};
-use re_log_types::{EntityPath, EntityPathFilter};
-use re_types::{components::ViewCoordinates, Loggable};
+use re_log_types::EntityPath;
+use re_types::{components::ViewCoordinates, Loggable, SpaceViewClassIdentifier};
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizableFilterContext,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
-        default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
+        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
     },
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialSpaceViewState,
+    ui::{format_vector, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
@@ -36,11 +37,17 @@ impl VisualizableFilterContext for VisualizableFilterContext3D {
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
 
-impl SpaceViewClass for SpatialSpaceView3D {
-    type State = SpatialSpaceViewState;
+use re_types::View;
+type ViewType = re_types::blueprint::views::Spatial3DView;
 
-    const IDENTIFIER: &'static str = "3D";
-    const DISPLAY_NAME: &'static str = "3D";
+impl SpaceViewClass for SpatialSpaceView3D {
+    fn identifier() -> SpaceViewClassIdentifier {
+        ViewType::identifier()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "3D"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_3D
@@ -48,6 +55,10 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
         super::ui_3d::help_text(re_ui)
+    }
+
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<SpatialSpaceViewState>::default()
     }
 
     fn on_register(
@@ -63,7 +74,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         Ok(())
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -85,14 +96,16 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Also, if a ViewCoordinate3D is logged somewhere between the common ancestor and the
         // subspace origin, we use it as origin.
         SpatialTopology::access(entity_db.store_id(), |topo| {
-            let subspace = topo.subspace_for_entity(&common_ancestor);
+            let common_ancestor_subspace = topo.subspace_for_entity(&common_ancestor);
 
-            let subspace_origin = if subspace.supports_3d_content() {
-                Some(subspace)
+            // Consider the case where the common ancestor might be in a 2D space that is connected
+            // to a parent space. In this case, the parent space is the correct space.
+            let subspace = if common_ancestor_subspace.supports_3d_content() {
+                Some(common_ancestor_subspace)
             } else {
-                topo.subspace_for_subspace_origin(subspace.parent_space)
-            }
-            .map(|subspace| subspace.origin.clone());
+                topo.subspace_for_subspace_origin(common_ancestor_subspace.parent_space)
+            };
+            let subspace_origin = subspace.map(|subspace| subspace.origin.clone());
 
             // Find the first ViewCoordinates3d logged, walking up from the common ancestor to the
             // subspace origin.
@@ -101,10 +114,12 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 .into_iter()
                 .rev()
                 .find(|path| {
-                    subspace
-                        .heuristic_hints
-                        .get(path)
-                        .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                    subspace.is_some_and(|subspace| {
+                        subspace
+                            .heuristic_hints
+                            .get(path)
+                            .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                    })
                 })
                 .or(subspace_origin)
         })
@@ -133,7 +148,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 };
             }
 
-            // All entities in the 3d space are visualizable + everything under pinholes.
+            // All entities in the 3D space are visualizable + everything under pinholes.
             let mut entities_in_main_3d_space = primary_space.entities.clone();
             let mut entities_under_pinholes = IntSet::<EntityPath>::default();
 
@@ -149,7 +164,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                     .contains(SubSpaceConnectionFlags::Pinhole)
                 {
                     // Note that for this the connection to the parent is allowed to contain the disconnected flag.
-                    // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
+                    // Entities _at_ pinholes are a special case: we display both 3D and 2D visualizers for them.
                     entities_in_main_3d_space.insert(child_space.origin.clone());
                     entities_under_pinholes.extend(child_space.entities.iter().cloned());
                 }
@@ -172,7 +187,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
-            self.identifier(),
+            Self::identifier(),
             SpatialSpaceViewKind::ThreeD,
         );
 
@@ -180,11 +195,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
         // from splitting the root space into several subspaces.
         //
-        // TODO(andreas)/TODO(#4926):
+        // TODO(andreas):
         // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
         // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
-        ctx.entity_db
+        ctx.recording()
             .tree()
             .visit_children_recursively(&mut |path, info| {
                 if info.components.contains_key(&ViewCoordinates::name()) {
@@ -195,19 +210,38 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
-            recommended_space_views: topo
-                .iter_subspaces()
-                .filter_map(|subspace| {
-                    if !subspace.supports_3d_content() || subspace.entities.is_empty() {
-                        None
-                    } else {
+        SpatialTopology::access(ctx.recording_id(), |topo| {
+            SpaceViewSpawnHeuristics::new(
+                topo.iter_subspaces()
+                    .filter_map(|subspace| {
+                        if !subspace.supports_3d_content() {
+                            return None;
+                        }
+
+                        let mut pinhole_child_spaces = subspace
+                            .child_spaces
+                            .iter()
+                            .filter(|child| {
+                                topo.subspace_for_subspace_origin(child.hash()).map_or(
+                                    false,
+                                    |child_space| {
+                                        child_space.connection_to_parent.is_connected_pinhole()
+                                    },
+                                )
+                            })
+                            .peekable(); // Don't collect the iterator, we're only interested in 'any'-style operations.
+
+                        // Empty space views are still of interest if any of the child spaces is connected via a pinhole.
+                        if subspace.entities.is_empty() && pinhole_child_spaces.peek().is_none() {
+                            return None;
+                        }
+
                         // Creates space views at each view coordinates if there's any.
                         // (yes, we do so even if they're empty at the moment!)
                         //
                         // An exception to this rule is not to create a view there if this is already _also_ a subspace root.
                         // (e.g. this also has a camera or a `disconnect` logged there)
-                        let mut roots = subspace
+                        let mut origins = subspace
                             .heuristic_hints
                             .iter()
                             .filter(|(path, hint)| {
@@ -217,24 +251,24 @@ impl SpaceViewClass for SpatialSpaceView3D {
                             .map(|(path, _)| path.clone())
                             .collect::<Vec<_>>();
 
+                        let path_not_covered_yet =
+                            |e: &EntityPath| origins.iter().all(|origin| !e.starts_with(origin));
+
                         // If there's no view coordinates or there are still some entities not covered,
                         // create a view at the subspace origin.
-                        if !roots.iter().contains(&subspace.origin)
-                            && indicated_entities
+                        if !origins.iter().contains(&subspace.origin)
+                            && (indicated_entities
                                 .intersection(&subspace.entities)
-                                .any(|e| roots.iter().all(|root| !e.starts_with(root)))
+                                .any(path_not_covered_yet)
+                                || pinhole_child_spaces.any(path_not_covered_yet))
                         {
-                            roots.push(subspace.origin.clone());
+                            origins.push(subspace.origin.clone());
                         }
 
-                        Some(roots.into_iter().map(|root| RecommendedSpaceView {
-                            query_filter: EntityPathFilter::subtree_entity_filter(&root),
-                            root,
-                        }))
-                    }
-                })
-                .flatten()
-                .collect(),
+                        Some(origins.into_iter().map(RecommendedSpaceView::new_subtree))
+                    })
+                    .flatten(),
+            )
         })
         .unwrap_or_default()
     }
@@ -242,14 +276,16 @@ impl SpaceViewClass for SpatialSpaceView3D {
     fn on_frame_start(
         &self,
         ctx: &ViewerContext<'_>,
-        state: &Self::State,
+        state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_entity_db::EntityPropertyMap,
+        auto_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
-        update_object_property_heuristics(
+        let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
+            return;
+        };
+        *auto_properties = generate_auto_legacy_properties(
             ctx,
             ent_paths,
-            entity_properties,
             &state.bounding_boxes.accumulated,
             SpatialSpaceViewKind::ThreeD,
         );
@@ -259,24 +295,100 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
-        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::ThreeD);
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
+
+        // TODO(#5607): what should happen if the promise is still pending?
+        let scene_view_coordinates = ctx
+            .recording()
+            .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
+            .map(|c| c.value);
+
+        ctx.re_ui
+            .selection_grid(ui, "spatial_settings_ui")
+            .show(ui, |ui| {
+                state.default_sizes_ui(ctx, ui);
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Camera")
+                    .on_hover_text("The virtual camera which controls what is shown on screen");
+                ui.vertical(|ui| {
+                    state.view_eye_ui(ctx.re_ui, ui, scene_view_coordinates);
+                });
+                ui.end_row();
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Coordinates")
+                    .on_hover_text("The world coordinate system used for this view");
+                ui.vertical(|ui| {
+                    let up_description =
+                        if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                            format!("Scene up is {scene_up}")
+                        } else {
+                            "Scene up is unspecified".to_owned()
+                        };
+                    ui.label(up_description).on_hover_ui(|ui| {
+                        re_ui::markdown_ui(
+                            ui,
+                            egui::Id::new("view_coordinates_tooltip"),
+                            "Set with `rerun.ViewCoordinates`.",
+                        );
+                    });
+
+                    if let Some(eye) = &state.state_3d.view_eye {
+                        if let Some(eye_up) = eye.eye_up() {
+                            ui.label(format!(
+                                "Current camera-eye up-axis is {}",
+                                format_vector(eye_up)
+                            ));
+                        }
+                    }
+
+                    ctx.re_ui
+                        .checkbox(ui, &mut state.state_3d.show_axes, "Show origin axes")
+                        .on_hover_text("Show X-Y-Z axes");
+                    ctx.re_ui
+                        .checkbox(ui, &mut state.state_3d.show_bbox, "Show bounding box")
+                        .on_hover_text("Show the current scene bounding box");
+                    ctx.re_ui
+                        .checkbox(
+                            ui,
+                            &mut state.state_3d.show_accumulated_bbox,
+                            "Show accumulated bounding box",
+                        )
+                        .on_hover_text("Show bounding box accumulated over all rendered frames");
+                });
+                ui.end_row();
+
+                crate::ui::background_ui(
+                    ctx,
+                    ui,
+                    space_view_id,
+                    re_types::blueprint::archetypes::Background::DEFAULT_3D,
+                );
+
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
+            });
+
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
         state.bounding_boxes.update(&system_output.view_systems);
         state.scene_num_primitives = system_output

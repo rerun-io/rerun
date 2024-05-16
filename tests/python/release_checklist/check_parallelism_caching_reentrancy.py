@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 
 README = """
 # Parallelism, caching, reentrancy, etc
@@ -16,26 +17,60 @@ This check simply puts a lot of pressure on all things parallel.
 
 ### Actions
 
-TODO(cmc): simplify these instructions once we can log blueprint stuff!
-
-* Clone the `plots` view a handful of times.
-* Clone the `text_logs` view a handful of times.
-* 2D spatial:
-    * Clone the `2d` view a handful of times.
-    * Edit one of the `2d` views so that it requests a visible time range of `-inf:current` instead.
-    * Clone that edited `2d` view a bunch of times.
-* 3D spatial:
-    * Clone the `3d` view a handful of times.
-    * Edit one of the `3d` views so that it requests a visible time range of `-inf:+inf` instead.
-    * Clone that edited `3d` view a bunch of times.
-* Now scrub the time cursor like crazy: do your worst!
+* Scrub the time cursor like crazy: do your worst!
 
 If nothing weird happens, you can close this recording.
 """
 
 
+def blueprint() -> rrb.BlueprintLike:
+    return rrb.Grid(
+        rrb.Vertical(*[rrb.TimeSeriesView(name="plots", origin="/plots") for _ in range(0, 3)]),
+        rrb.Vertical(*[
+            rrb.TimeSeriesView(
+                name="plots",
+                origin="/plots",
+                time_ranges=rrb.VisibleTimeRange(
+                    "frame_nr",
+                    start=rrb.TimeRangeBoundary.cursor_relative(seq=50 - i * 10),
+                    end=rrb.TimeRangeBoundary.cursor_relative(seq=50 - i * 10 + 10),
+                ),
+            )
+            for i in range(0, 10)
+        ]),
+        rrb.Vertical(*[rrb.TextLogView(name="logs", origin="/text") for _ in range(0, 3)]),
+        rrb.Vertical(*[rrb.Spatial2DView(name="2D", origin="/2D") for _ in range(0, 3)]),
+        rrb.Vertical(*[
+            rrb.Spatial2DView(
+                name="2D",
+                origin="/2D",
+                time_ranges=rrb.VisibleTimeRange(
+                    "frame_nr",
+                    start=rrb.TimeRangeBoundary.infinite(),
+                    end=rrb.TimeRangeBoundary.cursor_relative(),
+                ),
+            )
+            for _ in range(0, 3)
+        ]),
+        rrb.Vertical(*[rrb.Spatial3DView(name="3D", origin="/3D") for _ in range(0, 3)]),
+        rrb.Vertical(*[
+            rrb.Spatial3DView(
+                name="3D",
+                origin="/3D",
+                time_ranges=rrb.VisibleTimeRange(
+                    "frame_nr",
+                    start=rrb.TimeRangeBoundary.infinite(),
+                    end=rrb.TimeRangeBoundary.infinite(),
+                ),
+            )
+            for _ in range(0, 3)
+        ]),
+        grid_columns=4,
+    )
+
+
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_text_logs() -> None:
@@ -48,14 +83,17 @@ def log_text_logs() -> None:
 def log_plots() -> None:
     from math import cos, sin, tau
 
+    rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
+    rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
+
     for t in range(0, int(tau * 2 * 10.0)):
         rr.set_time_sequence("frame_nr", t)
 
         sin_of_t = sin(float(t) / 10.0)
-        rr.log("plots/sin", rr.TimeSeriesScalar(sin_of_t, label="sin(0.01t)", color=[255, 0, 0]))
+        rr.log("plots/sin", rr.Scalar(sin_of_t))
 
         cos_of_t = cos(float(t) / 10.0)
-        rr.log("plots/cos", rr.TimeSeriesScalar(cos_of_t, label="cos(0.01t)", color=[0, 255, 0]))
+        rr.log("plots/cos", rr.Scalar(cos_of_t))
 
 
 def log_spatial() -> None:
@@ -67,7 +105,7 @@ def log_spatial() -> None:
         ]
 
         rr.log(
-            "3d/points",
+            "3D/points",
             rr.Points3D(
                 np.array(positions3d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -75,7 +113,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "3d/lines",
+            "3D/lines",
             rr.LineStrips3D(
                 np.array(positions3d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -83,7 +121,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "3d/arrows",
+            "3D/arrows",
             rr.Arrows3D(
                 vectors=np.array(positions3d),
                 radii=0.1,
@@ -92,7 +130,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "3d/boxes",
+            "3D/boxes",
             rr.Boxes3D(
                 half_sizes=np.array(positions3d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -103,7 +141,7 @@ def log_spatial() -> None:
         positions2d = [[math.sin(i * math.tau / 100.0) * t, math.cos(i * math.tau / 100.0) * t] for i in range(0, 100)]
 
         rr.log(
-            "2d/points",
+            "2D/points",
             rr.Points2D(
                 np.array(positions2d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -111,7 +149,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "2d/lines",
+            "2D/lines",
             rr.LineStrips2D(
                 np.array(positions2d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -119,7 +157,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "2d/arrows",
+            "2D/arrows",
             rr.Arrows2D(
                 vectors=np.array(positions2d),
                 radii=0.1,
@@ -128,7 +166,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "2d/boxes",
+            "2D/boxes",
             rr.Boxes2D(
                 half_sizes=np.array(positions2d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -138,9 +176,7 @@ def log_spatial() -> None:
 
 
 def run(args: Namespace) -> None:
-    # TODO(cmc): I have no idea why this works without specifying a `recording_id`, but
-    # I'm not gonna rely on it anyway.
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
     log_text_logs()

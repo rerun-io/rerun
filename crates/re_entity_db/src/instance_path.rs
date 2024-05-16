@@ -1,13 +1,12 @@
 use std::{hash::Hash, str::FromStr};
 
-use re_log_types::{DataPath, EntityPath, EntityPathHash, PathParseError, RowId};
-use re_types_core::components::InstanceKey;
+use re_log_types::{DataPath, EntityPath, EntityPathHash, Instance, PathParseError, RowId};
 
 use crate::{EntityDb, VersionedInstancePath, VersionedInstancePathHash};
 
 // ----------------------------------------------------------------------------
 
-/// The path to either a specific instance of an entity, or the whole entity (splat).
+/// The path to either a specific instance of an entity, or the whole entity.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct InstancePath {
@@ -15,36 +14,36 @@ pub struct InstancePath {
 
     /// If this is a concrete instance, what instance index are we?
     ///
-    /// If we refer to all instance, [`InstanceKey::SPLAT`] is used.
-    pub instance_key: InstanceKey,
+    /// If we refer to all instances, [`Instance::ALL`] is used.
+    pub instance: Instance,
 }
 
 impl From<EntityPath> for InstancePath {
     #[inline]
     fn from(entity_path: EntityPath) -> Self {
-        Self::entity_splat(entity_path)
+        Self::entity_all(entity_path)
     }
 }
 
 impl InstancePath {
-    /// Indicate the whole entity (all instances of it) - i.e. a splat.
+    /// Indicate the whole entity (all instances of it).
     ///
     /// For example: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn entity_splat(entity_path: EntityPath) -> Self {
+    pub fn entity_all(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            instance_key: InstanceKey::SPLAT,
+            instance: Instance::ALL,
         }
     }
 
     /// Indicate a specific instance of the entity,
     /// e.g. a specific point in a point cloud entity.
     #[inline]
-    pub fn instance(entity_path: EntityPath, instance_key: InstanceKey) -> Self {
+    pub fn instance(entity_path: EntityPath, instance: Instance) -> Self {
         Self {
             entity_path,
-            instance_key,
+            instance,
         }
     }
 
@@ -52,8 +51,8 @@ impl InstancePath {
     ///
     /// For example: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn is_splat(&self) -> bool {
-        self.instance_key.is_splat()
+    pub fn is_all(&self) -> bool {
+        self.instance.is_all()
     }
 
     /// Versions this instance path by stamping it with the specified [`RowId`].
@@ -69,17 +68,17 @@ impl InstancePath {
     pub fn hash(&self) -> InstancePathHash {
         InstancePathHash {
             entity_path_hash: self.entity_path.hash(),
-            instance_key: self.instance_key,
+            instance: self.instance,
         }
     }
 }
 
 impl std::fmt::Display for InstancePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.instance_key.is_splat() {
+        if self.instance.is_all() {
             self.entity_path.fmt(f)
         } else {
-            format!("{}[{}]", self.entity_path, self.instance_key).fmt(f)
+            format!("{}[{}]", self.entity_path, self.instance).fmt(f)
         }
     }
 }
@@ -90,7 +89,7 @@ impl FromStr for InstancePath {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let DataPath {
             entity_path,
-            instance_key,
+            instance,
             component_name,
         } = DataPath::from_str(s)?;
 
@@ -98,11 +97,11 @@ impl FromStr for InstancePath {
             return Err(PathParseError::UnexpectedComponentName(component_name));
         }
 
-        let instance_key = instance_key.unwrap_or(InstanceKey::SPLAT);
+        let instance = instance.unwrap_or(Instance::ALL);
 
         Ok(InstancePath {
             entity_path,
-            instance_key,
+            instance,
         })
     }
 }
@@ -113,7 +112,7 @@ fn test_parse_instance_path() {
         InstancePath::from_str("world/points[#123]"),
         Ok(InstancePath {
             entity_path: EntityPath::from("world/points"),
-            instance_key: InstanceKey(123)
+            instance: Instance::from(123)
         })
     );
 }
@@ -122,30 +121,30 @@ fn test_parse_instance_path() {
 
 /// Hashes of the components of an [`InstancePath`].
 ///
-/// This is unique to either a specific instance of an entity, or the whole entity (splat).
+/// This is unique to either a specific instance of an entity, or the whole entity.
 #[derive(Clone, Copy, Eq)]
 pub struct InstancePathHash {
     pub entity_path_hash: EntityPathHash,
 
     /// If this is a concrete instance, what instance index are we?
     ///
-    /// If we refer to all instance, [`InstanceKey::SPLAT`] is used.
+    /// If we refer to all instance, [`Instance::ALL`] is used.
     ///
     /// Note that this is NOT hashed, because we don't need to (it's already small).
-    pub instance_key: InstanceKey,
+    pub instance: Instance,
 }
 
 impl std::fmt::Debug for InstancePathHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path_hash,
-            instance_key,
+            instance,
         } = self;
         write!(
             f,
             "InstancePathHash({:016X}, {})",
             entity_path_hash.hash64(),
-            instance_key.0
+            instance.get()
         )
     }
 }
@@ -155,11 +154,11 @@ impl std::hash::Hash for InstancePathHash {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let Self {
             entity_path_hash,
-            instance_key,
+            instance,
         } = self;
 
         state.write_u64(entity_path_hash.hash64());
-        state.write_u64(instance_key.0);
+        state.write_u64(instance.get());
     }
 }
 
@@ -168,37 +167,37 @@ impl std::cmp::PartialEq for InstancePathHash {
     fn eq(&self, other: &Self) -> bool {
         let Self {
             entity_path_hash,
-            instance_key,
+            instance,
         } = self;
 
-        entity_path_hash == &other.entity_path_hash && instance_key == &other.instance_key
+        entity_path_hash == &other.entity_path_hash && instance == &other.instance
     }
 }
 
 impl InstancePathHash {
     pub const NONE: Self = Self {
         entity_path_hash: EntityPathHash::NONE,
-        instance_key: InstanceKey::SPLAT,
+        instance: Instance::ALL,
     };
 
-    /// Indicate the whole entity (all instances of it) - i.e. a splat.
+    /// Indicate the whole entity (all instances of it).
     ///
     /// For example: the whole point cloud, rather than a specific point.
     #[inline]
-    pub fn entity_splat(entity_path: &EntityPath) -> Self {
+    pub fn entity_all(entity_path: &EntityPath) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
-            instance_key: InstanceKey::SPLAT,
+            instance: Instance::ALL,
         }
     }
 
     /// Indicate a specific instance of the entity,
     /// e.g. a specific point in a point cloud entity.
     #[inline]
-    pub fn instance(entity_path: &EntityPath, instance_key: InstanceKey) -> Self {
+    pub fn instance(entity_path: &EntityPath, instance: Instance) -> Self {
         Self {
             entity_path_hash: entity_path.hash(),
-            instance_key,
+            instance,
         }
     }
 
@@ -226,11 +225,11 @@ impl InstancePathHash {
             .entity_path_from_hash(&self.entity_path_hash)
             .cloned()?;
 
-        let instance_key = self.instance_key;
+        let instance = self.instance;
 
         Some(InstancePath {
             entity_path,
-            instance_key,
+            instance,
         })
     }
 }

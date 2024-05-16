@@ -3,6 +3,7 @@ use crate::tensor_data::TensorDataType;
 use super::TensorBuffer;
 
 impl TensorBuffer {
+    /// The underlying data type of the buffer.
     #[allow(clippy::match_same_arms)]
     pub fn dtype(&self) -> TensorDataType {
         match self {
@@ -23,6 +24,7 @@ impl TensorBuffer {
         }
     }
 
+    /// The size of the buffer in bytes.
     #[allow(clippy::match_same_arms)]
     pub fn size_in_bytes(&self) -> usize {
         match self {
@@ -43,10 +45,13 @@ impl TensorBuffer {
         }
     }
 
+    /// Is this buffer empty?
     pub fn is_empty(&self) -> bool {
         self.size_in_bytes() == 0
     }
 
+    /// Is this tensor represented by a compressed image format
+    /// (JPEG, NV12, YUY2)?
     pub fn is_compressed_image(&self) -> bool {
         match self {
             Self::U8(_)
