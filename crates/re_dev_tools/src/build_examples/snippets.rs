@@ -133,7 +133,7 @@ fn collect_snippets_recursively(
             .cloned()
             .unwrap_or_default()
             .into_iter()
-            .map(|value| value.replace("$config_dir", dir.as_str()))
+            .map(|value| value.replace("$config_dir", snippet_root_path.parent().unwrap().as_str()))
             .collect();
         snippets.push(Snippet {
             extra_args,
