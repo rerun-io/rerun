@@ -47,7 +47,30 @@ impl TensorData {
 
     /// If the tensor can be interpreted as an image, return the height, width, and channels/depth of it.
     pub fn image_height_width_channels(&self) -> Option<[u64; 3]> {
-        let shape_short = self.shape_short();
+        let mut shape_short = self.shape.as_slice();
+
+        // Ignore trailing dimensions of size 1:
+        while 2 < shape_short.len() && shape_short.last().map_or(false, |d| d.size == 1) {
+            shape_short = &shape_short[..shape_short.len() - 1];
+        }
+
+        // If the trailing dimension looks like a channel we ignore leading dimensions of size 1 down to
+        // a minimum of 3 dimensions. Otherwise we ignore leading dimensions of size 1 down to 2 dimensions.
+        let shrink_to = if shape_short
+            .last()
+            .map_or(false, |d| matches!(d.size, 1 | 3 | 4))
+        {
+            3
+        } else {
+            2
+        };
+
+        while shrink_to < shape_short.len() && shape_short.first().map_or(false, |d| d.size == 1) {
+            shape_short = &shape_short[1..];
+        }
+
+        // TODO(emilk): check dimension names against our standard dimension names ("height", "width", "depth")
+
         match &self.buffer {
             // In the case of NV12, return the shape of the RGB image, not the tensor size.
             TensorBuffer::Nv12(_) => {
@@ -809,5 +832,77 @@ where
 
     fn try_from(value: image::ImageBuffer<P, S>) -> Result<Self, Self::Error> {
         Self::from_image(value)
+    }
+}
+
+#[test]
+fn test_image_height_width_channels() {
+    let test_cases = [
+        // Normal grayscale:
+        (vec![1, 1, 480, 640, 1, 1], Some([480, 640, 1])),
+        (vec![1, 1, 480, 640, 1], Some([480, 640, 1])),
+        (vec![1, 1, 480, 640], Some([480, 640, 1])),
+        (vec![1, 480, 640, 1, 1], Some([480, 640, 1])),
+        (vec![1, 480, 640], Some([480, 640, 1])),
+        (vec![480, 640, 1, 1], Some([480, 640, 1])),
+        (vec![480, 640, 1], Some([480, 640, 1])),
+        (vec![480, 640], Some([480, 640, 1])),
+        //
+        // Normal RGB:
+        (vec![1, 1, 480, 640, 3, 1], Some([480, 640, 3])),
+        (vec![1, 1, 480, 640, 3], Some([480, 640, 3])),
+        (vec![1, 480, 640, 3, 1], Some([480, 640, 3])),
+        (vec![480, 640, 3, 1], Some([480, 640, 3])),
+        (vec![480, 640, 3], Some([480, 640, 3])),
+        //
+        // h=1, w=640, grayscale:
+        (vec![1, 640], Some([1, 640, 1])),
+        //
+        // h=1, w=640, RGB:
+        (vec![1, 640, 3], Some([1, 640, 3])),
+        //
+        // h=480, w=1, grayscale:
+        (vec![480, 1], Some([480, 1, 1])),
+        //
+        // h=480, w=1, RGB:
+        (vec![480, 1, 3], Some([480, 1, 3])),
+        //
+        // h=1, w=1, grayscale:
+        (vec![1, 1], Some([1, 1, 1])),
+        (vec![1, 1, 1], Some([1, 1, 1])),
+        (vec![1, 1, 1, 1], Some([1, 1, 1])),
+        //
+        // h=1, w=1, RGB:
+        (vec![1, 1, 3], Some([1, 1, 3])),
+        (vec![1, 1, 1, 3], Some([1, 1, 3])),
+        //
+        // h=1, w=3, Mono:
+        (vec![1, 3, 1], Some([1, 3, 1])),
+        //
+        // Ambiguous cases.
+        //
+        // These are here to show how the current implementation behaves, not to suggest that it is a
+        // commitment to preserving this behavior going forward.
+        // If you need to change this test, it's ok but we should still communicate the subtle change
+        // in behavior.
+        (vec![1, 1, 3, 1], Some([1, 1, 3])), // Could be [1, 3, 1]
+        (vec![1, 3, 1, 1], Some([1, 3, 1])), // Could be [3, 1, 1]
+    ];
+
+    for (shape, expected_hwc) in test_cases {
+        let tensor = TensorData::new(
+            shape
+                .iter()
+                .map(|&size| TensorDimension::unnamed(size as u64))
+                .collect(),
+            TensorBuffer::U8(vec![0; shape.iter().product()].into()),
+        );
+
+        let hwc = tensor.image_height_width_channels();
+
+        assert_eq!(
+            hwc, expected_hwc,
+            "Shape {shape:?} produced HWC {hwc:?}, but expected {expected_hwc:?}"
+        );
     }
 }

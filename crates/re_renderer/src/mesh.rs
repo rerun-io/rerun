@@ -50,8 +50,12 @@ pub mod mesh_vertices {
 pub struct Mesh {
     pub label: DebugLabel,
 
+    /// Non-empty array of vertex triangle indices.
+    ///
+    /// The length has to be a multiple of 3.
     pub triangle_indices: Vec<glam::UVec3>,
 
+    /// Non-empty array of vertex positions.
     pub vertex_positions: Vec<glam::Vec3>,
 
     /// Per-vertex albedo color.
@@ -72,10 +76,20 @@ impl Mesh {
     pub fn sanity_check(&self) -> Result<(), MeshError> {
         re_tracing::profile_function!();
 
-        let num_pos = self.vertex_positions.len();
-        let num_color = self.vertex_colors.len();
-        let num_normals = self.vertex_normals.len();
-        let num_texcoords = self.vertex_texcoords.len();
+        let Mesh {
+            label: _,
+            triangle_indices,
+            vertex_positions,
+            vertex_colors,
+            vertex_normals,
+            vertex_texcoords,
+            materials: _,
+        } = self;
+
+        let num_pos = vertex_positions.len();
+        let num_color = vertex_colors.len();
+        let num_normals = vertex_normals.len();
+        let num_texcoords = vertex_texcoords.len();
 
         if num_pos != num_color {
             return Err(MeshError::WrongNumberOfColors { num_pos, num_color });
@@ -92,8 +106,15 @@ impl Mesh {
                 num_texcoords,
             });
         }
+        if self.vertex_positions.is_empty() {
+            return Err(MeshError::ZeroVertices);
+        }
 
-        for indices in &self.triangle_indices {
+        if self.triangle_indices.is_empty() {
+            return Err(MeshError::ZeroIndices);
+        }
+
+        for indices in triangle_indices {
             let max_index = indices.max_element();
             if num_pos <= max_index as usize {
                 return Err(MeshError::IndexOutOfBounds {
@@ -120,6 +141,12 @@ pub enum MeshError {
         num_pos: usize,
         num_texcoords: usize,
     },
+
+    #[error("Mesh has no vertices.")]
+    ZeroVertices,
+
+    #[error("Mesh has no triangle indices.")]
+    ZeroIndices,
 
     #[error("Index {index} was out of bounds for {num_pos} vertex positions")]
     IndexOutOfBounds { num_pos: usize, index: u32 },
