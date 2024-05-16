@@ -15,11 +15,16 @@ impl Icon {
     }
 
     #[inline]
-    pub fn as_image(&self) -> Image<'static> {
-        Image::new(ImageSource::Bytes {
+    pub fn as_image_source(&self) -> ImageSource<'static> {
+        ImageSource::Bytes {
             uri: self.id.into(),
             bytes: self.png_bytes.into(),
-        })
+        }
+    }
+
+    #[inline]
+    pub fn as_image(&self) -> Image<'static> {
+        Image::new(self.as_image_source())
     }
 }
 
