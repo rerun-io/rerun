@@ -409,6 +409,10 @@ pub fn component_path_button_to(
     );
 
     let response = response.on_hover_ui(|ui| {
+        // TODO(egui#4471): better tooltip size management
+        ui.set_max_width(250.0);
+        ui.style_mut().wrap = Some(false);
+
         re_ui::ListItem::new(
             ctx.re_ui,
             if is_static {
