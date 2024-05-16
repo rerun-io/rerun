@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **View**: A text log view.
+/// **View**: A view of a text log, for use with the `TextLog` archetype.
 #[derive(Clone, Debug)]
 pub struct TextLogView {}
 

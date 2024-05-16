@@ -8,10 +8,10 @@ Views are the panels shown in the viewer's viewport and the primary means of ins
 
 
 * [`BarChartView`](views/bar_chart_view.md): A bar chart view.
-* [`Spatial2DView`](views/spatial2d_view.md): A Spatial 2D view.
-* [`Spatial3DView`](views/spatial3d_view.md): A Spatial 3D view.
+* [`Spatial2DView`](views/spatial2d_view.md): For viewing spatial 2D data.
+* [`Spatial3DView`](views/spatial3d_view.md): For viewing spatial 3D data.
 * [`TensorView`](views/tensor_view.md): A tensor view.
-* [`TextDocumentView`](views/text_document_view.md): A text document view.
-* [`TextLogView`](views/text_log_view.md): A text log view.
-* [`TimeSeriesView`](views/time_series_view.md): A time series view.
+* [`TextDocumentView`](views/text_document_view.md): A view of a single text document, for use with the `TextDocument` archetype.
+* [`TextLogView`](views/text_log_view.md): A view of a text log, for use with the `TextLog` archetype.
+* [`TimeSeriesView`](views/time_series_view.md): A time series view for scalars over time, for use with the `Scalars` archetype.
 
