@@ -32,7 +32,8 @@ For each of the views:
 * Double-click the background of the view and verify it resets the view to its default state.
 
 ### Deselect
-Finally, try hitting escape and check whether that deselects whatever was currently selected.
+Finally, try hitting escape and check whether that deselects whatever was currently selected and the recording is
+selected instead.
 """
 
 

@@ -22,7 +22,12 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Blueprint(rrb.Spatial3DView(name="TEST", origin="/", contents="$origin/box/points/**"))
+    return rrb.Blueprint(
+        rrb.Horizontal(
+            rrb.TextDocumentView(origin="readme"),
+            rrb.Spatial3DView(name="TEST", origin="/", contents="$origin/box/points/**"),
+        )
+    )
 
 
 def log_data() -> None:
