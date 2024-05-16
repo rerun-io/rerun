@@ -367,17 +367,21 @@ fn what_is_selected_ui(
                 Some(if is_static {
                     &icons::COMPONENT_STATIC
                 } else {
-                    &icons::COMPONENT
+                    &icons::COMPONENT_TEMPORAL
                 }),
                 &format!(
-                    "Component {} of entity '{}'",
+                    "{} component {} of entity '{}'",
+                    if is_static { "Static" } else { "Temporal" },
                     component_name.full_name(),
                     entity_path
                 ),
             );
 
             ui.horizontal(|ui| {
-                ui.label("component of");
+                ui.label(format!(
+                    "{} component of",
+                    if is_static { "Static" } else { "Temporal" }
+                ));
                 item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
             });
 

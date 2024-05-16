@@ -109,7 +109,10 @@ pub enum SmartMessageSource {
     File(std::path::PathBuf),
 
     /// The sender is a background thread fetching data from an HTTP file server.
-    RrdHttpStream { url: String },
+    RrdHttpStream {
+        /// Should include `http(s)://` prefix.
+        url: String,
+    },
 
     /// The sender is a javascript callback triggered by a `postMessage` event.
     ///
@@ -146,7 +149,7 @@ impl std::fmt::Display for SmartMessageSource {
         f.write_str(&match self {
             SmartMessageSource::Unknown => "unknown".into(),
             SmartMessageSource::File(path) => format!("file://{}", path.to_string_lossy()),
-            SmartMessageSource::RrdHttpStream { url } => format!("http://{url}"),
+            SmartMessageSource::RrdHttpStream { url } => url.clone(),
             SmartMessageSource::RrdWebEventCallback => "web_callback".into(),
             SmartMessageSource::JsChannelPush => "javascript".into(),
             SmartMessageSource::Sdk => "sdk".into(),

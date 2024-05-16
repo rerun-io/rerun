@@ -185,7 +185,7 @@ pub fn guess_query_and_db_for_selected_entity<'a>(
 pub fn guess_instance_path_icon(
     ctx: &ViewerContext<'_>,
     instance_path: &InstancePath,
-) -> &'static re_ui::icons::Icon {
+) -> &'static icons::Icon {
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
     instance_path_icon(&query.timeline(), db, instance_path)
 }
@@ -383,7 +383,6 @@ pub fn component_path_button(
         component_path,
         db,
     )
-    .on_hover_text(component_path.component_name.full_name()) // we should show the full name somewhere
 }
 
 /// Show a component path and make it selectable.
@@ -395,18 +394,43 @@ pub fn component_path_button_to(
     db: &re_entity_db::EntityDb,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let is_component_static = db.is_component_static(component_path).unwrap_or_default();
+    let is_static = db.is_component_static(component_path).unwrap_or_default();
+    let icon = if is_static {
+        &icons::COMPONENT_STATIC
+    } else {
+        &icons::COMPONENT_TEMPORAL
+    };
     let response = ctx.re_ui.selectable_label_with_icon(
         ui,
-        if is_component_static {
-            &icons::COMPONENT_STATIC
-        } else {
-            &icons::COMPONENT
-        },
+        icon,
         text,
         ctx.selection().contains_item(&item),
         re_ui::LabelStyle::Normal,
     );
+
+    let response = response.on_hover_ui(|ui| {
+        // TODO(egui#4471): better tooltip size management
+        ui.set_max_width(250.0);
+        ui.style_mut().wrap = Some(false);
+
+        re_ui::ListItem::new(
+            ctx.re_ui,
+            if is_static {
+                "Static component"
+            } else {
+                "Temporal component"
+            },
+        )
+        .with_icon(icon)
+        .interactive(false)
+        .show_flat(ui);
+
+        ui.label(format!(
+            "Full name: {}",
+            component_path.component_name.full_name()
+        ));
+    });
+
     cursor_interact_with_selectable(ctx, response, item)
 }
 
