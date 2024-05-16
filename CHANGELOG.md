@@ -21,9 +21,11 @@
     * …will override previous static data and not keep old data in memory.
   * Check out our [migration guide](https://www.rerun.io/docs/reference/migration/migration-0-16).
 * 🖼️ 2D View's pan & zoom got redone, it's now a free canvas without any scroll bar
+* 🤖 Added [an example](https://www.rerun.io/examples/robotics/ros2_bridge) to use Rerun with ROS2.
 
 As always there's a lot going on under the hood:
 * 🚚 We streamlined our development processes & CI and examples.
+* 🕸️ Our web page is about to switch from React to Svelte, making it a lot snappier!
 * 💿 Instance key removal in 0.15.0 opened the door to major simplifications in our data store, this
   will make it easier for us to improve performance and implement data streaming.
 * 🤗 We're making it easier to work with [HuggingFace](https://huggingface.co/)'s [Gradio API](https://www.gradio.app/). Stay tuned! Most things for this already landed in this release and we'll soon build more direct support on top.
