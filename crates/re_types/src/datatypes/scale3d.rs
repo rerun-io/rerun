@@ -172,13 +172,7 @@ impl ::re_types_core::Loggable for Scale3D {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::datatypes::Scale3D>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 

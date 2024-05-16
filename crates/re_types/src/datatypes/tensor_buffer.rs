@@ -932,13 +932,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 

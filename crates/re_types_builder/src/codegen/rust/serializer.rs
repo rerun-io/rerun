@@ -19,11 +19,7 @@ pub fn quote_arrow_serializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
-    let DataType::Extension(fqname, _, _) = datatype else {
-        unreachable!()
-    };
-    let fqname_use = quote_fqname_as_type_path(fqname);
-    let quoted_datatype = quote!(<#fqname_use>::arrow_datatype());
+    let quoted_datatype = quote! { Self::arrow_datatype() };
 
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
@@ -71,7 +67,6 @@ pub fn quote_arrow_serializer(
         };
 
         let datatype = &arrow_registry.get(&obj_field.fqname);
-        let quoted_datatype = quote! { Self::arrow_datatype() };
         let elements_are_nullable = true;
 
         let quoted_serializer = quote_arrow_field_serializer(

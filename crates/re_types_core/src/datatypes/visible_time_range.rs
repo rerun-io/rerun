@@ -94,7 +94,7 @@ impl crate::Loggable for VisibleTimeRange {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::VisibleTimeRange>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, timeline): (Vec<_>, Vec<_>) = data

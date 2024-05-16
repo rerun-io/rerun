@@ -96,7 +96,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::ClassDescriptionMapElem>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, class_id): (Vec<_>, Vec<_>) = data

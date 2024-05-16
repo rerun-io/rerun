@@ -187,13 +187,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 

@@ -95,7 +95,7 @@ impl crate::Loggable for TimeRange {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::TimeRange>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, start): (Vec<_>, Vec<_>) = data

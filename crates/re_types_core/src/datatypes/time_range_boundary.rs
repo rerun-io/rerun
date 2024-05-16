@@ -185,13 +185,7 @@ impl crate::Loggable for TimeRangeBoundary {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 
