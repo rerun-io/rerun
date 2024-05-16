@@ -270,9 +270,9 @@ impl TryFrom<std::time::SystemTime> for Time {
 impl TryFrom<web_time::SystemTime> for Time {
     type Error = web_time::SystemTimeError;
 
-    fn try_from(time: web_time::SystemTime) -> Result<Time, Self::Error> {
+    fn try_from(time: web_time::SystemTime) -> Result<Self, Self::Error> {
         time.duration_since(web_time::SystemTime::UNIX_EPOCH)
-            .map(|duration_since_epoch| Time(duration_since_epoch.as_nanos() as _))
+            .map(|duration_since_epoch| Self(duration_since_epoch.as_nanos() as _))
     }
 }
 

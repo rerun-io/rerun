@@ -53,7 +53,7 @@ impl Config {
     }
 
     #[allow(clippy::map_err_ignore)]
-    pub fn load() -> Result<Option<Config>, ConfigError> {
+    pub fn load() -> Result<Option<Self>, ConfigError> {
         let storage = get_local_storage()?;
         let value = storage
             .get_item(Self::STORAGE_KEY)
@@ -64,10 +64,10 @@ impl Config {
         }
     }
 
-    pub fn load_or_default() -> Result<Config, ConfigError> {
+    pub fn load_or_default() -> Result<Self, ConfigError> {
         match Self::load()? {
             Some(config) => Ok(config),
-            None => Config::new(),
+            None => Self::new(),
         }
     }
 
