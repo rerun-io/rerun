@@ -983,7 +983,6 @@ impl App {
                             format!("Data source {} has left unexpectedly: {err}", msg.source);
 
                         #[cfg(not(target_arch = "wasm32"))]
-                        #[cfg(feature = "server")]
                         if err
                             .downcast_ref::<re_sdk_comms::ConnectionError>()
                             .is_some_and(|e| {
