@@ -33,7 +33,7 @@ A more detailed explanation can be found in the original paper
 Karaman, S. Frazzoli, S. 2011. "Sampling-based algorithms for optimal motion planning".
 or in [this medium article](https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378).
 
-The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/rrt-star).
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/rrt_star).
 """.strip()
 
 Point2D = Annotated[npt.NDArray[np.float64], Literal[2]]
