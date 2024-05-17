@@ -96,11 +96,13 @@ pub struct ModalResponse<R> {
 /// └──────────────────▼─────────────────────┘
 /// ```
 ///
-/// The modal sets the clip rect such as to allow full-span highlighting behavior (e.g. with [`crate::ListItem`]).
-/// Consider using [`crate::ReUi::full_span_separator`] to draw a separator that spans the full width of the modal
-/// instead of the usual [`egui::Ui::separator`] method.
+/// The modal sets the clip rect such as to allow full-span highlighting behavior (e.g. with
+/// [`crate::list_item2::ListItem`]). Consider using [`crate::ReUi::full_span_separator`] to draw a
+/// separator that spans the full width of the modal instead of the usual [`egui::Ui::separator`]
+/// method.
 ///
-/// Note that [`Modal`] are typically used via the [`ModalHandler`] helper object to reduce boilerplate.
+/// Note that [`Modal`] are typically used via the [`ModalHandler`] helper object to reduce
+/// boilerplate.
 pub struct Modal {
     title: String,
     min_width: Option<f32>,
