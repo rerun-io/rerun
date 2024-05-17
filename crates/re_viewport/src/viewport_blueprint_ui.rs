@@ -7,7 +7,7 @@ use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::Visible;
-use re_ui::{drag_and_drop::DropTarget, list_item2, ReUi};
+use re_ui::{drag_and_drop::DropTarget, list_item, ReUi};
 use re_viewer_context::{CollapseScope, Contents, ContentsName, DataResultTree};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
@@ -68,7 +68,7 @@ impl Viewport<'_, '_> {
                         .as_ref()
                         .and_then(|item| self.handle_focused_item(ctx, ui, item));
 
-                    list_item2::list_item_scope(ui, "blueprint tree", |ui| {
+                    list_item::list_item_scope(ui, "blueprint tree", |ui| {
                         self.root_container_tree_ui(ctx, ui);
                     });
 
@@ -264,13 +264,13 @@ impl Viewport<'_, '_> {
         let item = Item::Container(container_id);
         let container_name = container_blueprint.display_name_or_default();
 
-        let item_response = list_item2::ListItem::new(ctx.re_ui)
+        let item_response = list_item::ListItem::new(ctx.re_ui)
             .selected(ctx.selection().contains_item(&item))
             .draggable(false)
             .drop_target_style(self.state.is_candidate_drop_parent_container(&container_id))
             .show_flat(
                 ui,
-                list_item2::LabelContent::new(format!("Viewport ({})", container_name.as_ref()))
+                list_item::LabelContent::new(format!("Viewport ({})", container_name.as_ref()))
                     .label_style(contents_name_style(&container_name))
                     .with_icon(crate::icon_for_container_kind(
                         &container_blueprint.container_kind,
@@ -320,7 +320,7 @@ impl Viewport<'_, '_> {
 
         let container_name = container_blueprint.display_name_or_default();
 
-        let item_content = list_item2::LabelContent::new(container_name.as_ref())
+        let item_content = list_item::LabelContent::new(container_name.as_ref())
             .subdued(!container_visible)
             .label_style(contents_name_style(&container_name))
             .with_icon(crate::icon_for_container_kind(
@@ -338,10 +338,10 @@ impl Viewport<'_, '_> {
                 remove_response | vis_response
             });
 
-        let list_item2::ShowCollapsingResponse {
+        let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
-        } = list_item2::ListItem::new(ctx.re_ui)
+        } = list_item::ListItem::new(ctx.re_ui)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
@@ -408,7 +408,7 @@ impl Viewport<'_, '_> {
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let space_view_name = space_view.display_name_or_default();
-        let item_content = list_item2::LabelContent::new(space_view_name.as_ref())
+        let item_content = list_item::LabelContent::new(space_view_name.as_ref())
             .label_style(contents_name_style(&space_view_name))
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .subdued(!space_view_visible)
@@ -424,10 +424,10 @@ impl Viewport<'_, '_> {
 
                 response | vis_response
             });
-        let list_item2::ShowCollapsingResponse {
+        let list_item::ShowCollapsingResponse {
             item_response: mut response,
             body_response,
-        } = list_item2::ListItem::new(ctx.re_ui)
+        } = list_item::ListItem::new(ctx.re_ui)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .force_hovered(is_item_hovered)
@@ -469,11 +469,11 @@ impl Viewport<'_, '_> {
                         }
                     });
                     if !projections.is_empty() {
-                        list_item2::ListItem::new(ctx.re_ui)
+                        list_item::ListItem::new(ctx.re_ui)
                             .interactive(false)
                             .show_flat(
                                 ui,
-                                list_item2::LabelContent::new("Projections:").italics(true),
+                                list_item::LabelContent::new("Projections:").italics(true),
                             );
 
                         for projection in projections {
@@ -534,10 +534,10 @@ impl Viewport<'_, '_> {
         let entity_path = node_or_path.path();
 
         if projection_mode && entity_path == &space_view.space_origin {
-            if list_item2::ListItem::new(ctx.re_ui)
+            if list_item::ListItem::new(ctx.re_ui)
                 .show_hierarchical(
                     ui,
-                    list_item2::LabelContent::new("$origin")
+                    list_item::LabelContent::new("$origin")
                         .subdued(true)
                         .italics(true)
                         .with_icon(&re_ui::icons::LINK),
@@ -582,14 +582,14 @@ impl Viewport<'_, '_> {
 
         let subdued = !space_view_visible || !visible;
 
-        let mut item_content = list_item2::LabelContent::new(item_label)
+        let mut item_content = list_item::LabelContent::new(item_label)
             .with_icon(guess_instance_path_icon(
                 ctx,
                 &InstancePath::from(entity_path.clone()),
             ))
             .subdued(subdued);
 
-        let list_item = list_item2::ListItem::new(ctx.re_ui)
+        let list_item = list_item::ListItem::new(ctx.re_ui)
             .selected(is_selected)
             .force_hovered(is_item_hovered);
 

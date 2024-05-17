@@ -2,7 +2,7 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use re_ui::{list_item2, toasts, CommandPalette, ReUi, UICommand, UICommandSender};
+use re_ui::{list_item, toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -233,12 +233,10 @@ impl eframe::App for ExampleApp {
                 ui.ctx(),
                 || re_ui::modal::Modal::new("Modal window").full_span_content(true),
                 |_, ui, _| {
-                    list_item2::list_item_scope(ui, "modal demo", |ui| {
+                    list_item::list_item_scope(ui, "modal demo", |ui| {
                         for idx in 0..10 {
-                            list_item2::ListItem::new(&self.re_ui).show_flat(
-                                ui,
-                                list_item2::LabelContent::new(format!("Item {idx}")),
-                            );
+                            list_item::ListItem::new(&self.re_ui)
+                                .show_flat(ui, list_item::LabelContent::new(format!("Item {idx}")));
                         }
                     });
                 },

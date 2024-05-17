@@ -97,7 +97,7 @@ pub struct ModalResponse<R> {
 /// ```
 ///
 /// The modal sets the clip rect such as to allow full-span highlighting behavior (e.g. with
-/// [`crate::list_item2::ListItem`]). Consider using [`crate::ReUi::full_span_separator`] to draw a
+/// [`crate::list_item::ListItem`]). Consider using [`crate::ReUi::full_span_separator`] to draw a
 /// separator that spans the full width of the modal instead of the usual [`egui::Ui::separator`]
 /// method.
 ///

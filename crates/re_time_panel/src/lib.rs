@@ -23,7 +23,7 @@ use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal,
 };
-use re_ui::list_item2;
+use re_ui::list_item;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
@@ -434,7 +434,7 @@ impl TimePanel {
 
         // All the entity rows and their data density graphs:
         re_ui::full_span::full_span_scope(ui, (0.0..=time_x_left).into(), |ui| {
-            list_item2::list_item_scope(ui, "streams_tree", |ui| {
+            list_item::list_item_scope(ui, "streams_tree", |ui| {
                 self.tree_ui(
                     ctx,
                     viewport_blueprint,
@@ -597,17 +597,17 @@ impl TimePanel {
                 .set_open(ui.ctx(), true);
         }
 
-        let list_item2::ShowCollapsingResponse {
+        let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
-        } = list_item2::ListItem::new(ctx.re_ui)
+        } = list_item::ListItem::new(ctx.re_ui)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
             .show_hierarchical_with_children(
                 ui,
                 CollapseScope::StreamsTree.entity(tree.path.clone()),
                 default_open,
-                list_item2::LabelContent::new(text)
+                list_item::LabelContent::new(text)
                     .with_icon(guess_instance_path_icon(
                         ctx,
                         &InstancePath::from(tree.path.clone()),
@@ -742,7 +742,7 @@ impl TimePanel {
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
 
-                let response = list_item2::ListItem::new(ctx.re_ui)
+                let response = list_item::ListItem::new(ctx.re_ui)
                     .selected(ctx.selection().contains_item(&item.to_item()))
                     .force_hovered(
                         ctx.selection_state()
@@ -751,7 +751,7 @@ impl TimePanel {
                     )
                     .show_hierarchical(
                         ui,
-                        list_item2::LabelContent::new(short_component_name)
+                        list_item::LabelContent::new(short_component_name)
                             .with_icon(if is_static {
                                 &re_ui::icons::COMPONENT_STATIC
                             } else {
@@ -786,12 +786,12 @@ impl TimePanel {
                             timeline.name()
                         )));
                     } else {
-                        list_item2::list_item_scope(ui, "hover tooltip", |ui| {
-                            list_item2::ListItem::new(ctx.re_ui)
+                        list_item::list_item_scope(ui, "hover tooltip", |ui| {
+                            list_item::ListItem::new(ctx.re_ui)
                                 .interactive(false)
                                 .show_flat(
                                     ui,
-                                    list_item2::LabelContent::new(format!(
+                                    list_item::LabelContent::new(format!(
                                         "{} component, logged {}",
                                         if is_static { "Static" } else { "Temporal" },
                                         if total_num_messages == 1 {

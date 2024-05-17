@@ -38,7 +38,7 @@ pub fn recordings_panel_ui(
         .max_height(300.)
         .show(ui, |ui| {
             ctx.re_ui.panel_content(ui, |_re_ui, ui| {
-                re_ui::list_item2::list_item_scope(ui, "recording panel", |ui| {
+                re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
                     recording_list_ui(ctx, ui, welcome_screen_state);
 
                     // Show currently loading things after.
@@ -80,9 +80,9 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         // but it is possible to send multiple recordings over the same channel.
         if !sources_with_stores.contains(&source) {
             // never more than one level deep
-            let response = ctx.re_ui.list_item2().show_flat(
+            let response = ctx.re_ui.list_item().show_flat(
                 ui,
-                re_ui::list_item2::LabelContent::new(string).with_buttons(|re_ui, ui| {
+                re_ui::list_item::LabelContent::new(string).with_buttons(|re_ui, ui| {
                     let resp = re_ui
                         .small_icon_button(ui, &re_ui::icons::REMOVE)
                         .on_hover_text("Disconnect from this source");
@@ -145,9 +145,9 @@ fn recording_list_ui(
     }
 
     if entity_dbs_map.is_empty() && welcome_screen_state.hide {
-        ctx.re_ui.list_item2().interactive(false).show_flat(
+        ctx.re_ui.list_item().interactive(false).show_flat(
             ui,
-            re_ui::list_item2::LabelContent::new("No recordings loaded")
+            re_ui::list_item::LabelContent::new("No recordings loaded")
                 .weak(true)
                 .italics(true),
         );
@@ -169,8 +169,8 @@ fn app_and_its_recordings_ui(
     let app_item = Item::AppId(app_id.clone());
     let selected = ctx.selection().contains_item(&app_item);
 
-    let app_list_item = ctx.re_ui.list_item2().selected(selected);
-    let app_list_item_content = re_ui::list_item2::LabelContent::new(app_id.to_string())
+    let app_list_item = ctx.re_ui.list_item().selected(selected);
+    let app_list_item_content = re_ui::list_item::LabelContent::new(app_id.to_string())
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
             // Color icon based on whether this is the active application or not:
             let color = if &ctx.store_context.app_id == app_id {
