@@ -1,6 +1,6 @@
 ---
 title: External data-loader example
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/external_data_loader/rerun-loader-python-file.py?speculative-link
+python: https://github.com/rerun-io/rerun/tree/latest/examples/python/external_data_loader/rerun-loader-python-file.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/external_data_loader/src/main.rs
 cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/external_data_loader/main.cpp
 thumbnail: https://static.rerun.io/external_data_loader_rs/74eecea3b16fee7fab01045e3bfdd90ba6c59bc9/480w.png

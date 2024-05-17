@@ -1,6 +1,0 @@
--r ../../examples/python/arkit_scenes/requirements.txt
--r ../../examples/python/dicom_mri/requirements.txt
--r ../../examples/python/dna/requirements.txt
--r ../../examples/python/human_pose_tracking/requirements.txt
--r ../../examples/python/plots/requirements.txt
--r ../../examples/python/structure_from_motion/requirements.txt
