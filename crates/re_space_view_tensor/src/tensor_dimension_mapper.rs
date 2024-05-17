@@ -12,27 +12,27 @@ enum DragDropAddress {
 
 impl DragDropAddress {
     fn is_some(&self) -> bool {
-        *self != DragDropAddress::None
+        *self != Self::None
     }
 
     fn read_from_address(&self, dimension_mapping: &DimensionMapping) -> Option<usize> {
         match self {
-            DragDropAddress::None => unreachable!(),
-            DragDropAddress::Width => dimension_mapping.width,
-            DragDropAddress::Height => dimension_mapping.height,
-            DragDropAddress::Selector(selector_idx) => {
+            Self::None => unreachable!(),
+            Self::Width => dimension_mapping.width,
+            Self::Height => dimension_mapping.height,
+            Self::Selector(selector_idx) => {
                 Some(dimension_mapping.selectors[*selector_idx].dim_idx)
             }
-            DragDropAddress::NewSelector => None,
+            Self::NewSelector => None,
         }
     }
 
     fn write_to_address(&self, dimension_mapping: &mut DimensionMapping, dim_idx: Option<usize>) {
         match self {
-            DragDropAddress::None => unreachable!(),
-            DragDropAddress::Width => dimension_mapping.width = dim_idx,
-            DragDropAddress::Height => dimension_mapping.height = dim_idx,
-            DragDropAddress::Selector(selector_idx) => {
+            Self::None => unreachable!(),
+            Self::Width => dimension_mapping.width = dim_idx,
+            Self::Height => dimension_mapping.height = dim_idx,
+            Self::Selector(selector_idx) => {
                 if let Some(dim_idx) = dim_idx {
                     dimension_mapping.selectors[*selector_idx] = DimensionSelector::new(dim_idx);
                 } else {
@@ -40,7 +40,7 @@ impl DragDropAddress {
                 }
             }
             // NewSelector can only be a drop *target*, therefore dim_idx can't be None!
-            DragDropAddress::NewSelector => dimension_mapping
+            Self::NewSelector => dimension_mapping
                 .selectors
                 .push(DimensionSelector::new(dim_idx.unwrap())),
         };

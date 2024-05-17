@@ -132,7 +132,7 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
         fn from_props(
             mut props: LinkedHashMap<String, Property>,
             ignored_props: &mut BTreeSet<String>,
-        ) -> Option<Vertex> {
+        ) -> Option<Self> {
             // NOTE: Empirical evidence points to these being de-facto standard…
             const PROP_X: &str = "x";
             const PROP_Y: &str = "y";

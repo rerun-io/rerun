@@ -53,9 +53,9 @@ enum ArrayKind {
 impl std::fmt::Display for ArrayKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            ArrayKind::Primitive => "primitive",
-            ArrayKind::Struct => "struct",
-            ArrayKind::StructLarge => "struct_large",
+            Self::Primitive => "primitive",
+            Self::Struct => "struct",
+            Self::StructLarge => "struct_large",
         })
     }
 }

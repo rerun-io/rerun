@@ -296,7 +296,7 @@ impl PickingLayerProcessor {
             }),
         ));
 
-        PickingLayerProcessor {
+        Self {
             bind_group_0,
             picking_target,
             picking_depth_target,
@@ -483,7 +483,7 @@ impl DepthReadbackWorkaround {
         ctx: &RenderContext,
         extent: glam::UVec2,
         depth_target_handle: GpuTextureHandle,
-    ) -> DepthReadbackWorkaround {
+    ) -> Self {
         let readable_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &TextureDesc {

@@ -289,20 +289,20 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(TensorBuffer::U8(_)) => 1i8,
-                    Some(TensorBuffer::U16(_)) => 2i8,
-                    Some(TensorBuffer::U32(_)) => 3i8,
-                    Some(TensorBuffer::U64(_)) => 4i8,
-                    Some(TensorBuffer::I8(_)) => 5i8,
-                    Some(TensorBuffer::I16(_)) => 6i8,
-                    Some(TensorBuffer::I32(_)) => 7i8,
-                    Some(TensorBuffer::I64(_)) => 8i8,
-                    Some(TensorBuffer::F16(_)) => 9i8,
-                    Some(TensorBuffer::F32(_)) => 10i8,
-                    Some(TensorBuffer::F64(_)) => 11i8,
-                    Some(TensorBuffer::Jpeg(_)) => 12i8,
-                    Some(TensorBuffer::Nv12(_)) => 13i8,
-                    Some(TensorBuffer::Yuy2(_)) => 14i8,
+                    Some(Self::U8(_)) => 1i8,
+                    Some(Self::U16(_)) => 2i8,
+                    Some(Self::U32(_)) => 3i8,
+                    Some(Self::U64(_)) => 4i8,
+                    Some(Self::I8(_)) => 5i8,
+                    Some(Self::I16(_)) => 6i8,
+                    Some(Self::I32(_)) => 7i8,
+                    Some(Self::I64(_)) => 8i8,
+                    Some(Self::F16(_)) => 9i8,
+                    Some(Self::F32(_)) => 10i8,
+                    Some(Self::F64(_)) => 11i8,
+                    Some(Self::Jpeg(_)) => 12i8,
+                    Some(Self::Nv12(_)) => 13i8,
+                    Some(Self::Yuy2(_)) => 14i8,
                 })
                 .collect();
             let fields = vec![
@@ -311,7 +311,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u8: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::U8(v)) => Some(v.clone()),
+                            Some(Self::U8(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -347,7 +347,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u16: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::U16(v)) => Some(v.clone()),
+                            Some(Self::U16(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -383,7 +383,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u32: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::U32(v)) => Some(v.clone()),
+                            Some(Self::U32(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -419,7 +419,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u64: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::U64(v)) => Some(v.clone()),
+                            Some(Self::U64(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -455,7 +455,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i8: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::I8(v)) => Some(v.clone()),
+                            Some(Self::I8(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -491,7 +491,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i16: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::I16(v)) => Some(v.clone()),
+                            Some(Self::I16(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -527,7 +527,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i32: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::I32(v)) => Some(v.clone()),
+                            Some(Self::I32(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -563,7 +563,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i64: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::I64(v)) => Some(v.clone()),
+                            Some(Self::I64(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -599,7 +599,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f16: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::F16(v)) => Some(v.clone()),
+                            Some(Self::F16(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -639,7 +639,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f32: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::F32(v)) => Some(v.clone()),
+                            Some(Self::F32(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -679,7 +679,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f64: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::F64(v)) => Some(v.clone()),
+                            Some(Self::F64(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -719,7 +719,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let jpeg: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::Jpeg(v)) => Some(v.clone()),
+                            Some(Self::Jpeg(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -759,7 +759,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let nv12: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::Nv12(v)) => Some(v.clone()),
+                            Some(Self::Nv12(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -799,7 +799,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let yuy2: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(TensorBuffer::Yuy2(v)) => Some(v.clone()),
+                            Some(Self::Yuy2(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -859,72 +859,72 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::U8(_)) => {
+                        Some(Self::U8(_)) => {
                             let offset = u8_offset;
                             u8_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::U16(_)) => {
+                        Some(Self::U16(_)) => {
                             let offset = u16_offset;
                             u16_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::U32(_)) => {
+                        Some(Self::U32(_)) => {
                             let offset = u32_offset;
                             u32_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::U64(_)) => {
+                        Some(Self::U64(_)) => {
                             let offset = u64_offset;
                             u64_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::I8(_)) => {
+                        Some(Self::I8(_)) => {
                             let offset = i8_offset;
                             i8_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::I16(_)) => {
+                        Some(Self::I16(_)) => {
                             let offset = i16_offset;
                             i16_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::I32(_)) => {
+                        Some(Self::I32(_)) => {
                             let offset = i32_offset;
                             i32_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::I64(_)) => {
+                        Some(Self::I64(_)) => {
                             let offset = i64_offset;
                             i64_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::F16(_)) => {
+                        Some(Self::F16(_)) => {
                             let offset = f16_offset;
                             f16_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::F32(_)) => {
+                        Some(Self::F32(_)) => {
                             let offset = f32_offset;
                             f32_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::F64(_)) => {
+                        Some(Self::F64(_)) => {
                             let offset = f64_offset;
                             f64_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::Jpeg(_)) => {
+                        Some(Self::Jpeg(_)) => {
                             let offset = jpeg_offset;
                             jpeg_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::Nv12(_)) => {
+                        Some(Self::Nv12(_)) => {
                             let offset = nv12_offset;
                             nv12_offset += 1;
                             offset
                         }
-                        Some(TensorBuffer::Yuy2(_)) => {
+                        Some(Self::Yuy2(_)) => {
                             let offset = yuy2_offset;
                             yuy2_offset += 1;
                             offset
@@ -932,13 +932,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 
@@ -1942,7 +1936,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => TensorBuffer::U8({
+                                1i8 => Self::U8({
                                     if offset as usize >= u8.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -1957,7 +1951,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U8")?
                                 }),
-                                2i8 => TensorBuffer::U16({
+                                2i8 => Self::U16({
                                     if offset as usize >= u16.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -1972,7 +1966,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U16")?
                                 }),
-                                3i8 => TensorBuffer::U32({
+                                3i8 => Self::U32({
                                     if offset as usize >= u32.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -1987,7 +1981,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U32")?
                                 }),
-                                4i8 => TensorBuffer::U64({
+                                4i8 => Self::U64({
                                     if offset as usize >= u64.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2002,7 +1996,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U64")?
                                 }),
-                                5i8 => TensorBuffer::I8({
+                                5i8 => Self::I8({
                                     if offset as usize >= i8.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2017,7 +2011,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I8")?
                                 }),
-                                6i8 => TensorBuffer::I16({
+                                6i8 => Self::I16({
                                     if offset as usize >= i16.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2032,7 +2026,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I16")?
                                 }),
-                                7i8 => TensorBuffer::I32({
+                                7i8 => Self::I32({
                                     if offset as usize >= i32.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2047,7 +2041,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I32")?
                                 }),
-                                8i8 => TensorBuffer::I64({
+                                8i8 => Self::I64({
                                     if offset as usize >= i64.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2062,7 +2056,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I64")?
                                 }),
-                                9i8 => TensorBuffer::F16({
+                                9i8 => Self::F16({
                                     if offset as usize >= f16.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2077,7 +2071,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F16")?
                                 }),
-                                10i8 => TensorBuffer::F32({
+                                10i8 => Self::F32({
                                     if offset as usize >= f32.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2092,7 +2086,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F32")?
                                 }),
-                                11i8 => TensorBuffer::F64({
+                                11i8 => Self::F64({
                                     if offset as usize >= f64.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2107,7 +2101,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F64")?
                                 }),
-                                12i8 => TensorBuffer::Jpeg({
+                                12i8 => Self::Jpeg({
                                     if offset as usize >= jpeg.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2122,7 +2116,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#JPEG")?
                                 }),
-                                13i8 => TensorBuffer::Nv12({
+                                13i8 => Self::Nv12({
                                     if offset as usize >= nv12.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2137,7 +2131,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                 }),
-                                14i8 => TensorBuffer::Yuy2({
+                                14i8 => Self::Yuy2({
                                     if offset as usize >= yuy2.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

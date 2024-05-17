@@ -122,13 +122,7 @@ impl ::re_types_core::Loggable for BackgroundKind {
                 std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
                     .take(1 + num_variants)
                     .collect();
-            UnionArray::new(
-                <crate::blueprint::components::BackgroundKind>::arrow_datatype(),
-                types,
-                fields,
-                None,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
         })
     }
 
@@ -156,9 +150,9 @@ impl ::re_types_core::Loggable for BackgroundKind {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(BackgroundKind::GradientDark)),
-                    2 => Ok(Some(BackgroundKind::GradientBright)),
-                    3 => Ok(Some(BackgroundKind::SolidColor)),
+                    1 => Ok(Some(Self::GradientDark)),
+                    2 => Ok(Some(Self::GradientBright)),
+                    3 => Ok(Some(Self::SolidColor)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

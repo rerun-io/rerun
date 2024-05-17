@@ -33,7 +33,7 @@ impl Pipeline {
     const URL: &'static str = "https://tel.rerun.io/api/pog";
 
     pub(crate) fn new(config: &Config, _tick: Duration) -> Result<Option<Self>, PipelineError> {
-        Ok(Some(Pipeline {
+        Ok(Some(Self {
             analytics_id: config.analytics_id.as_str().into(),
             session_id: config.session_id.to_string().into(),
         }))

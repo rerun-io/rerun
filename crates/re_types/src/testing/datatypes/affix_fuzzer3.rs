@@ -114,10 +114,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(AffixFuzzer3::Degrees(_)) => 1i8,
-                    Some(AffixFuzzer3::Craziness(_)) => 2i8,
-                    Some(AffixFuzzer3::FixedSizeShenanigans(_)) => 3i8,
-                    Some(AffixFuzzer3::EmptyVariant) => 4i8,
+                    Some(Self::Degrees(_)) => 1i8,
+                    Some(Self::Craziness(_)) => 2i8,
+                    Some(Self::FixedSizeShenanigans(_)) => 3i8,
+                    Some(Self::EmptyVariant) => 4i8,
                 })
                 .collect();
             let fields = vec![
@@ -126,7 +126,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     let degrees: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(AffixFuzzer3::Degrees(v)) => Some(v.clone()),
+                            Some(Self::Degrees(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -142,7 +142,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     let craziness: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(AffixFuzzer3::Craziness(v)) => Some(v.clone()),
+                            Some(Self::Craziness(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -178,7 +178,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     let fixed_size_shenanigans: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(AffixFuzzer3::FixedSizeShenanigans(v)) => Some(v.clone()),
+                            Some(Self::FixedSizeShenanigans(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -208,9 +208,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 NullArray::new(
                     DataType::Null,
                     data.iter()
-                        .filter(|datum| {
-                            matches!(datum.as_deref(), Some(AffixFuzzer3::EmptyVariant))
-                        })
+                        .filter(|datum| matches!(datum.as_deref(), Some(Self::EmptyVariant)))
                         .count(),
                 )
                 .boxed(),
@@ -228,22 +226,22 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(AffixFuzzer3::Degrees(_)) => {
+                        Some(Self::Degrees(_)) => {
                             let offset = degrees_offset;
                             degrees_offset += 1;
                             offset
                         }
-                        Some(AffixFuzzer3::Craziness(_)) => {
+                        Some(Self::Craziness(_)) => {
                             let offset = craziness_offset;
                             craziness_offset += 1;
                             offset
                         }
-                        Some(AffixFuzzer3::FixedSizeShenanigans(_)) => {
+                        Some(Self::FixedSizeShenanigans(_)) => {
                             let offset = fixed_size_shenanigans_offset;
                             fixed_size_shenanigans_offset += 1;
                             offset
                         }
-                        Some(AffixFuzzer3::EmptyVariant) => {
+                        Some(Self::EmptyVariant) => {
                             let offset = empty_variant_offset;
                             empty_variant_offset += 1;
                             offset
@@ -251,13 +249,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 
@@ -479,7 +471,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 Some(
                                     match typ {
                                         1i8 => {
-                                            AffixFuzzer3::Degrees({
+                                            Self::Degrees({
                                                 if offset as usize >= degrees.len() {
                                                     return Err(
                                                             DeserializationError::offset_oob(offset as _, degrees.len()),
@@ -499,7 +491,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             })
                                         }
                                         2i8 => {
-                                            AffixFuzzer3::Craziness({
+                                            Self::Craziness({
                                                 if offset as usize >= craziness.len() {
                                                     return Err(
                                                             DeserializationError::offset_oob(
@@ -522,7 +514,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             })
                                         }
                                         3i8 => {
-                                            AffixFuzzer3::FixedSizeShenanigans({
+                                            Self::FixedSizeShenanigans({
                                                 if offset as usize >= fixed_size_shenanigans.len() {
                                                     return Err(
                                                             DeserializationError::offset_oob(
@@ -546,7 +538,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                     )?
                                             })
                                         }
-                                        4i8 => AffixFuzzer3::EmptyVariant,
+                                        4i8 => Self::EmptyVariant,
                                         _ => {
                                             return Err(
                                                 DeserializationError::missing_union_arm(

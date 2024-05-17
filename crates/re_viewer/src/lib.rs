@@ -132,18 +132,18 @@ impl AppEnvironment {
 
     pub fn name(&self) -> &'static str {
         match self {
-            AppEnvironment::CSdk => "c_sdk",
-            AppEnvironment::PythonSdk(_) => "python_sdk",
-            AppEnvironment::RustSdk { .. } => "rust_sdk",
-            AppEnvironment::RerunCli { .. } => "rerun_cli",
-            AppEnvironment::Web { .. } => "web_viewer",
-            AppEnvironment::Custom(_) => "custom",
+            Self::CSdk => "c_sdk",
+            Self::PythonSdk(_) => "python_sdk",
+            Self::RustSdk { .. } => "rust_sdk",
+            Self::RerunCli { .. } => "rerun_cli",
+            Self::Web { .. } => "web_viewer",
+            Self::Custom(_) => "custom",
         }
     }
 
     pub fn url(&self) -> Option<&String> {
         match self {
-            AppEnvironment::Web { url } => Some(url),
+            Self::Web { url } => Some(url),
             _ => None,
         }
     }

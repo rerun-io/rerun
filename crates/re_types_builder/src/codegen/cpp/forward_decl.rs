@@ -43,16 +43,16 @@ impl PartialOrd for ForwardDecl {
 impl Ord for ForwardDecl {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
-            (ForwardDecl::TemplateClass(a), ForwardDecl::TemplateClass(b))
-            | (ForwardDecl::Class(a), ForwardDecl::Class(b))
-            | (ForwardDecl::Alias { from: a, .. }, ForwardDecl::Alias { from: b, .. }) => {
+            (Self::TemplateClass(a), Self::TemplateClass(b))
+            | (Self::Class(a), Self::Class(b))
+            | (Self::Alias { from: a, .. }, Self::Alias { from: b, .. }) => {
                 a.to_string().cmp(&b.to_string())
             }
-            (ForwardDecl::TemplateClass(_), _) => std::cmp::Ordering::Less,
-            (_, ForwardDecl::TemplateClass(_)) => std::cmp::Ordering::Greater,
+            (Self::TemplateClass(_), _) => std::cmp::Ordering::Less,
+            (_, Self::TemplateClass(_)) => std::cmp::Ordering::Greater,
 
-            (ForwardDecl::Class(_), _) => std::cmp::Ordering::Less,
-            (_, ForwardDecl::Class(_)) => std::cmp::Ordering::Greater,
+            (Self::Class(_), _) => std::cmp::Ordering::Less,
+            (_, Self::Class(_)) => std::cmp::Ordering::Greater,
         }
     }
 }
@@ -60,10 +60,10 @@ impl Ord for ForwardDecl {
 impl quote::ToTokens for ForwardDecl {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ForwardDecl::Class(name) => {
+            Self::Class(name) => {
                 quote! { class #name; }
             }
-            ForwardDecl::TemplateClass(name) => {
+            Self::TemplateClass(name) => {
                 // Doxygen likes including template declarations in the docs.
                 let hide_from_docs = quote_hide_from_docs();
                 quote! {
@@ -73,7 +73,7 @@ impl quote::ToTokens for ForwardDecl {
                     #NEWLINE_TOKEN
                 }
             }
-            ForwardDecl::Alias { from, to } => {
+            Self::Alias { from, to } => {
                 quote! { using #from = #to; }
             }
         }

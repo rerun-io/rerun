@@ -20,7 +20,7 @@ impl re_types_core::SizeBytes for EntityPathHash {
 
 impl EntityPathHash {
     /// Sometimes used as the hash of `None`.
-    pub const NONE: EntityPathHash = EntityPathHash(Hash64::ZERO);
+    pub const NONE: Self = Self(Hash64::ZERO);
 
     /// From an existing u64. Use this only for data conversions.
     #[inline]
@@ -170,7 +170,7 @@ impl EntityPath {
 
     /// Is this equals to, or a descendant of, the given path.
     #[inline]
-    pub fn starts_with(&self, prefix: &EntityPath) -> bool {
+    pub fn starts_with(&self, prefix: &Self) -> bool {
         if self.hash == prefix.hash {
             return true; // optimization!
         }
@@ -180,13 +180,13 @@ impl EntityPath {
 
     /// Is this a strict descendant of the given path.
     #[inline]
-    pub fn is_descendant_of(&self, other: &EntityPath) -> bool {
+    pub fn is_descendant_of(&self, other: &Self) -> bool {
         other.len() < self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
     /// Is this a direct child of the other path.
     #[inline]
-    pub fn is_child_of(&self, other: &EntityPath) -> bool {
+    pub fn is_child_of(&self, other: &Self) -> bool {
         other.len() + 1 == self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
@@ -225,14 +225,14 @@ impl EntityPath {
     ///
     /// For example `incremental_walk("foo", "foo/bar/baz")` returns: `["foo/bar", "foo/bar/baz"]`
     pub fn incremental_walk<'a>(
-        start: Option<&'_ EntityPath>,
-        end: &'a EntityPath,
-    ) -> impl Iterator<Item = EntityPath> + 'a {
+        start: Option<&'_ Self>,
+        end: &'a Self,
+    ) -> impl Iterator<Item = Self> + 'a {
         re_tracing::profile_function!();
         if start.map_or(true, |start| end.is_descendant_of(start)) {
             let first_ind = start.map_or(0, |start| start.len() + 1);
             let parts = end.as_slice();
-            itertools::Either::Left((first_ind..=end.len()).map(|i| EntityPath::from(&parts[0..i])))
+            itertools::Either::Left((first_ind..=end.len()).map(|i| Self::from(&parts[0..i])))
         } else {
             itertools::Either::Right(std::iter::empty())
         }
@@ -241,7 +241,7 @@ impl EntityPath {
     /// Returns the first common ancestor of two paths.
     ///
     /// If both paths are the same, the common ancestor is the path itself.
-    pub fn common_ancestor(&self, other: &EntityPath) -> EntityPath {
+    pub fn common_ancestor(&self, other: &Self) -> Self {
         let mut common = Vec::new();
         for (a, b) in self.iter().zip(other.iter()) {
             if a == b {
@@ -250,12 +250,12 @@ impl EntityPath {
                 break;
             }
         }
-        EntityPath::new(common)
+        Self::new(common)
     }
 
     /// Returns the first common ancestor of a list of entity paths.
     pub fn common_ancestor_of<'a>(mut entities: impl Iterator<Item = &'a Self>) -> Self {
-        let first = entities.next().cloned().unwrap_or(EntityPath::root());
+        let first = entities.next().cloned().unwrap_or(Self::root());
         entities.fold(first, |acc, e| acc.common_ancestor(e))
     }
 }
@@ -293,14 +293,14 @@ impl From<&[EntityPathPart]> for EntityPath {
 impl From<&str> for EntityPath {
     #[inline]
     fn from(path: &str) -> Self {
-        EntityPath::parse_forgiving(path)
+        Self::parse_forgiving(path)
     }
 }
 
 impl From<String> for EntityPath {
     #[inline]
     fn from(path: String) -> Self {
-        EntityPath::parse_forgiving(&path)
+        Self::parse_forgiving(&path)
     }
 }
 
@@ -314,7 +314,7 @@ impl From<EntityPath> for String {
 impl From<re_types_core::datatypes::EntityPath> for EntityPath {
     #[inline]
     fn from(value: re_types_core::datatypes::EntityPath) -> Self {
-        EntityPath::parse_forgiving(&value.0)
+        Self::parse_forgiving(&value.0)
     }
 }
 

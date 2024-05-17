@@ -7,7 +7,7 @@ impl Mat3x3 {
     ///
     /// The multiplicative identity, representing no transform.
     #[rustfmt::skip]
-    pub const IDENTITY: Mat3x3 = Mat3x3([
+    pub const IDENTITY: Self = Self([
         1.0, 0.0, 0.0,
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,

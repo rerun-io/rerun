@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // build tool, so okay here
+
 use super::Context;
 use super::DocumentData;
 use super::DocumentKind;

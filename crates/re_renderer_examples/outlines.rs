@@ -31,7 +31,7 @@ impl framework::Example for Outlines {
     }
 
     fn new(re_ctx: &re_renderer::RenderContext) -> Self {
-        Outlines {
+        Self {
             is_paused: false,
             seconds_since_startup: 0.0,
             model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx),

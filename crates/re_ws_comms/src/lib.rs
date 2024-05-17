@@ -73,7 +73,7 @@ impl FromStr for RerunServerPort {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.parse::<u16>() {
-            Ok(port) => Ok(RerunServerPort(port)),
+            Ok(port) => Ok(Self(port)),
             Err(err) => Err(format!("Failed to parse port: {err}")),
         }
     }

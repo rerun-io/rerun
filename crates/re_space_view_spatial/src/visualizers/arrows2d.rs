@@ -215,7 +215,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
         let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        super::entity_iterator::process_archetype::<Arrows2DVisualizer, Arrows2D, _>(
+        super::entity_iterator::process_archetype::<Self, Arrows2D, _>(
             ctx,
             view_query,
             view_ctx,

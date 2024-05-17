@@ -106,7 +106,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::testing::datatypes::AffixFuzzer5>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![{
                     let (somes, single_optional_union): (Vec<_>, Vec<_>) = data
                         .iter()

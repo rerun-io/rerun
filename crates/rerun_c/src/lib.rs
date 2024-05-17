@@ -133,8 +133,8 @@ pub enum CStoreKind {
 impl From<CStoreKind> for StoreKind {
     fn from(kind: CStoreKind) -> Self {
         match kind {
-            CStoreKind::Recording => StoreKind::Recording,
-            CStoreKind::Blueprint => StoreKind::Blueprint,
+            CStoreKind::Recording => Self::Recording,
+            CStoreKind::Blueprint => Self::Blueprint,
         }
     }
 }

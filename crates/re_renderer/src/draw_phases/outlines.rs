@@ -70,11 +70,11 @@ use smallvec::smallvec;
 pub struct OutlineMaskPreference(pub Option<[u8; 2]>);
 
 impl OutlineMaskPreference {
-    pub const NONE: OutlineMaskPreference = OutlineMaskPreference(None);
+    pub const NONE: Self = Self(None);
 
     #[inline]
     pub fn some(channel_a: u8, channel_b: u8) -> Self {
-        OutlineMaskPreference(Some([channel_a, channel_b]))
+        Self(Some([channel_a, channel_b]))
     }
 
     #[inline]
@@ -92,7 +92,7 @@ impl OutlineMaskPreference {
     pub fn with_fallback_to(self, other: Self) -> Self {
         if let Some([a, b]) = self.0 {
             if let Some([other_a, other_b]) = other.0 {
-                OutlineMaskPreference::some(
+                Self::some(
                     if a == 0 { other_a } else { a },
                     if b == 0 { other_b } else { b },
                 )

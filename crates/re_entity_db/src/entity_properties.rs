@@ -293,12 +293,12 @@ pub enum Colormap {
 impl std::fmt::Display for Colormap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Colormap::Grayscale => "Grayscale",
-            Colormap::Inferno => "Inferno",
-            Colormap::Magma => "Magma",
-            Colormap::Plasma => "Plasma",
-            Colormap::Turbo => "Turbo",
-            Colormap::Viridis => "Viridis",
+            Self::Grayscale => "Grayscale",
+            Self::Inferno => "Inferno",
+            Self::Magma => "Magma",
+            Self::Plasma => "Plasma",
+            Self::Turbo => "Turbo",
+            Self::Viridis => "Viridis",
         })
     }
 }
@@ -315,7 +315,7 @@ pub enum ColorMapper {
 impl std::fmt::Display for ColorMapper {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ColorMapper::Colormap(colormap) => colormap.fmt(f),
+            Self::Colormap(colormap) => colormap.fmt(f),
         }
     }
 }
@@ -344,10 +344,10 @@ pub enum LegendCorner {
 impl std::fmt::Display for LegendCorner {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            LegendCorner::LeftTop => write!(f, "Top Left"),
-            LegendCorner::RightTop => write!(f, "Top Right"),
-            LegendCorner::LeftBottom => write!(f, "Bottom Left"),
-            LegendCorner::RightBottom => write!(f, "Bottom Right"),
+            Self::LeftTop => write!(f, "Top Left"),
+            Self::RightTop => write!(f, "Top Right"),
+            Self::LeftBottom => write!(f, "Bottom Left"),
+            Self::RightBottom => write!(f, "Bottom Right"),
         }
     }
 }
@@ -385,49 +385,49 @@ pub enum TimeSeriesAggregator {
 impl std::fmt::Display for TimeSeriesAggregator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TimeSeriesAggregator::Off => write!(f, "Off"),
-            TimeSeriesAggregator::Average => write!(f, "Average"),
-            TimeSeriesAggregator::Max => write!(f, "Max"),
-            TimeSeriesAggregator::Min => write!(f, "Min"),
-            TimeSeriesAggregator::MinMax => write!(f, "MinMax"),
-            TimeSeriesAggregator::MinMaxAverage => write!(f, "MinMaxAverage"),
+            Self::Off => write!(f, "Off"),
+            Self::Average => write!(f, "Average"),
+            Self::Max => write!(f, "Max"),
+            Self::Min => write!(f, "Min"),
+            Self::MinMax => write!(f, "MinMax"),
+            Self::MinMaxAverage => write!(f, "MinMaxAverage"),
         }
     }
 }
 
 impl TimeSeriesAggregator {
     #[inline]
-    pub fn variants() -> [TimeSeriesAggregator; 6] {
+    pub fn variants() -> [Self; 6] {
         // Just making sure this method won't compile if the enum gets modified.
         #[allow(clippy::match_same_arms)]
         match Self::default() {
-            TimeSeriesAggregator::Off => {}
-            TimeSeriesAggregator::Average => {}
-            TimeSeriesAggregator::Max => {}
-            TimeSeriesAggregator::Min => {}
-            TimeSeriesAggregator::MinMax => {}
-            TimeSeriesAggregator::MinMaxAverage => {}
+            Self::Off => {}
+            Self::Average => {}
+            Self::Max => {}
+            Self::Min => {}
+            Self::MinMax => {}
+            Self::MinMaxAverage => {}
         }
 
         [
-            TimeSeriesAggregator::Off,
-            TimeSeriesAggregator::Average,
-            TimeSeriesAggregator::Max,
-            TimeSeriesAggregator::Min,
-            TimeSeriesAggregator::MinMax,
-            TimeSeriesAggregator::MinMaxAverage,
+            Self::Off,
+            Self::Average,
+            Self::Max,
+            Self::Min,
+            Self::MinMax,
+            Self::MinMaxAverage,
         ]
     }
 
     #[inline]
     pub fn description(&self) -> &'static str {
         match self {
-            TimeSeriesAggregator::Off => "No aggregation.",
-            TimeSeriesAggregator::Average => "Average all points in the range together.",
-            TimeSeriesAggregator::Max => "Keep only the maximum values in the range.",
-            TimeSeriesAggregator::Min => "Keep only the minimum values in the range.",
-            TimeSeriesAggregator::MinMax => "Keep both the minimum and maximum values in the range.\nThis will yield two aggregated points instead of one, effectively creating a vertical line.",
-            TimeSeriesAggregator::MinMaxAverage => "Find both the minimum and maximum values in the range, then use the average of those",
+            Self::Off => "No aggregation.",
+            Self::Average => "Average all points in the range together.",
+            Self::Max => "Keep only the maximum values in the range.",
+            Self::Min => "Keep only the minimum values in the range.",
+            Self::MinMax => "Keep both the minimum and maximum values in the range.\nThis will yield two aggregated points instead of one, effectively creating a vertical line.",
+            Self::MinMaxAverage => "Find both the minimum and maximum values in the range, then use the average of those",
         }
     }
 }

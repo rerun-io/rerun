@@ -56,7 +56,7 @@ pub enum TensorImageLoadError {
 impl From<image::ImageError> for TensorImageLoadError {
     #[inline]
     fn from(err: image::ImageError) -> Self {
-        TensorImageLoadError::Image(std::sync::Arc::new(err))
+        Self::Image(std::sync::Arc::new(err))
     }
 }
 
@@ -64,7 +64,7 @@ impl From<image::ImageError> for TensorImageLoadError {
 impl From<std::io::Error> for TensorImageLoadError {
     #[inline]
     fn from(err: std::io::Error) -> Self {
-        TensorImageLoadError::ReadError(std::sync::Arc::new(err))
+        Self::ReadError(std::sync::Arc::new(err))
     }
 }
 
@@ -381,17 +381,17 @@ impl TensorElement {
 impl std::fmt::Display for TensorElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TensorElement::U8(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::U16(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::U32(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::U64(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::I8(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::I16(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::I32(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::I64(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::F16(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::F32(elem) => std::fmt::Display::fmt(elem, f),
-            TensorElement::F64(elem) => std::fmt::Display::fmt(elem, f),
+            Self::U8(elem) => std::fmt::Display::fmt(elem, f),
+            Self::U16(elem) => std::fmt::Display::fmt(elem, f),
+            Self::U32(elem) => std::fmt::Display::fmt(elem, f),
+            Self::U64(elem) => std::fmt::Display::fmt(elem, f),
+            Self::I8(elem) => std::fmt::Display::fmt(elem, f),
+            Self::I16(elem) => std::fmt::Display::fmt(elem, f),
+            Self::I32(elem) => std::fmt::Display::fmt(elem, f),
+            Self::I64(elem) => std::fmt::Display::fmt(elem, f),
+            Self::F16(elem) => std::fmt::Display::fmt(elem, f),
+            Self::F32(elem) => std::fmt::Display::fmt(elem, f),
+            Self::F64(elem) => std::fmt::Display::fmt(elem, f),
         }
     }
 }
@@ -457,18 +457,14 @@ impl DecodedTensor {
     /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_image(
-        image: impl Into<image::DynamicImage>,
-    ) -> Result<DecodedTensor, TensorImageLoadError> {
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageLoadError> {
         Self::from_dynamic_image(image.into())
     }
 
     /// Construct a tensor from [`image::DynamicImage`].
     ///
     /// Requires the `image` feature.
-    pub fn from_dynamic_image(
-        image: image::DynamicImage,
-    ) -> Result<DecodedTensor, TensorImageLoadError> {
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageLoadError> {
         re_tracing::profile_function!();
 
         let (w, h) = (image.width(), image.height());
@@ -528,7 +524,7 @@ impl DecodedTensor {
             ]
         };
         let tensor = TensorData { shape, buffer };
-        Ok(DecodedTensor(tensor))
+        Ok(Self(tensor))
     }
 
     /// Try to decode this tensor, if it was encoded as a JPEG,
@@ -569,7 +565,7 @@ impl DecodedTensor {
     fn decode_jpeg_bytes(
         jpeg_bytes: &[u8],
         [expected_height, expected_width, expected_channels]: [u64; 3],
-    ) -> Result<DecodedTensor, TensorImageLoadError> {
+    ) -> Result<Self, TensorImageLoadError> {
         re_tracing::profile_function!(format!("{expected_width}x{expected_height}"));
 
         use zune_core::colorspace::ColorSpace;
@@ -619,7 +615,7 @@ impl DecodedTensor {
             ],
             buffer: TensorBuffer::U8(pixels.into()),
         };
-        let decoded_tensor = DecodedTensor(tensor);
+        let decoded_tensor = Self(tensor);
 
         Ok(decoded_tensor)
     }

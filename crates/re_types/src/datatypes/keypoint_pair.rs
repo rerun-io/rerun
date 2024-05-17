@@ -94,7 +94,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::KeypointPair>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, keypoint0): (Vec<_>, Vec<_>) = data

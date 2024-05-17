@@ -76,7 +76,7 @@ impl Mesh {
     pub fn sanity_check(&self) -> Result<(), MeshError> {
         re_tracing::profile_function!();
 
-        let Mesh {
+        let Self {
             label: _,
             triangle_indices,
             vertex_positions,
@@ -334,7 +334,7 @@ impl GpuMesh {
         let vb_normals_start = vb_colors_start + vb_color_size;
         let vb_texcoord_start = vb_normals_start + vb_normals_size;
 
-        Ok(GpuMesh {
+        Ok(Self {
             index_buffer,
             vertex_buffer_combined,
             vertex_buffer_positions_range: 0..vb_positions_size,

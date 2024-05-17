@@ -512,11 +512,11 @@ impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>
             })
             .collect();
         match view.to_slice() {
-            Some(slice) => Ok(TensorData {
+            Some(slice) => Ok(Self {
                 shape,
                 buffer: TensorBuffer::F16(Vec::from(bytemuck::cast_slice(slice)).into()),
             }),
-            None => Ok(TensorData {
+            None => Ok(Self {
                 shape,
                 buffer: TensorBuffer::F16(
                     view.iter()
@@ -542,7 +542,7 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
             })
             .collect();
         if value.is_standard_layout() {
-            Ok(TensorData {
+            Ok(Self {
                 shape,
                 buffer: TensorBuffer::F16(
                     bytemuck::cast_slice(value.into_raw_vec().as_slice())
@@ -551,7 +551,7 @@ impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for Tensor
                 ),
             })
         } else {
-            Ok(TensorData {
+            Ok(Self {
                 shape,
                 buffer: TensorBuffer::F16(
                     value
@@ -679,9 +679,7 @@ impl TensorData {
     ///
     /// This is a convenience function that calls [`DecodedTensor::from_image`].
     #[inline]
-    pub fn from_image(
-        image: impl Into<image::DynamicImage>,
-    ) -> Result<TensorData, TensorImageLoadError> {
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageLoadError> {
         Self::from_dynamic_image(image.into())
     }
 
@@ -691,9 +689,7 @@ impl TensorData {
     ///
     /// This is a convenience function that calls [`DecodedTensor::from_dynamic_image`].
     #[inline]
-    pub fn from_dynamic_image(
-        image: image::DynamicImage,
-    ) -> Result<TensorData, TensorImageLoadError> {
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageLoadError> {
         DecodedTensor::from_dynamic_image(image).map(DecodedTensor::into_inner)
     }
 

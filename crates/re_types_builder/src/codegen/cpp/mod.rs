@@ -428,7 +428,7 @@ impl QuotedObject {
         obj: &Object,
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
-    ) -> QuotedObject {
+    ) -> Self {
         let type_ident = obj.ident();
         let quoted_docs = quote_obj_docs(obj);
 
@@ -635,7 +635,7 @@ impl QuotedObject {
         obj: &Object,
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
-    ) -> QuotedObject {
+    ) -> Self {
         let namespace_ident = obj.namespace_ident();
 
         let quoted_namespace = if let Some(scope) = obj.scope() {
@@ -762,7 +762,7 @@ impl QuotedObject {
         obj: &Object,
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
-    ) -> QuotedObject {
+    ) -> Self {
         // We implement sum-types as tagged unions;
         // Putting non-POD types in a union requires C++11.
         //
@@ -1183,7 +1183,7 @@ impl QuotedObject {
     }
 
     // C-style enum
-    fn from_enum(objects: &Objects, obj: &Object, mut hpp_includes: Includes) -> QuotedObject {
+    fn from_enum(objects: &Objects, obj: &Object, mut hpp_includes: Includes) -> Self {
         // We use a simple `enum class`, which is a type-safe enum.
         // They don't support methods, but we don't need them,
         // since `Loggable` is implemented outside the type.

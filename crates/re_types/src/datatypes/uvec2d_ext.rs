@@ -37,8 +37,8 @@ impl From<(u32, u32)> for UVec2D {
 // slices, because Rust cannot keep track of the inherent `Copy` capability of it all across all the
 // layers of `Into`/`IntoIterator`.
 
-impl<'a> From<&'a UVec2D> for UVec2D {
-    fn from(v: &'a UVec2D) -> Self {
+impl<'a> From<&'a Self> for UVec2D {
+    fn from(v: &'a Self) -> Self {
         Self(v.0)
     }
 }

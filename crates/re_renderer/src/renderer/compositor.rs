@@ -77,7 +77,7 @@ impl CompositorDrawData {
             |t| t.handle,
         );
 
-        CompositorDrawData {
+        Self {
             bind_group: ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &ctx.gpu_resources,
@@ -179,7 +179,7 @@ impl Renderer for Compositor {
             },
         );
 
-        Compositor {
+        Self {
             render_pipeline_regular,
             render_pipeline_screenshot,
             bind_group_layout,

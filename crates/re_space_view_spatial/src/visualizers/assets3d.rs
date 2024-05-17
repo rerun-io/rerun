@@ -135,7 +135,7 @@ impl VisualizerSystem for Asset3DVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut instances = Vec::new();
 
-        super::entity_iterator::process_archetype::<Asset3DVisualizer, Asset3D, _>(
+        super::entity_iterator::process_archetype::<Self, Asset3D, _>(
             ctx,
             view_query,
             view_ctx,

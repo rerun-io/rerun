@@ -70,7 +70,7 @@ impl TimeInt {
     ///
     /// This can't return [`TimeInt::STATIC`], ever.
     #[inline]
-    pub fn new_temporal(time: i64) -> TimeInt {
+    pub fn new_temporal(time: i64) -> Self {
         NonMinI64::new(time).map_or(Self::MIN, |t| Self(Some(t)))
     }
 

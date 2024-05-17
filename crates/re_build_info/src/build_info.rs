@@ -133,13 +133,13 @@ impl CrateVersion {
     /// ```ignore
     /// <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
     /// ```
-    pub fn try_parse_from_build_info_string(s: impl AsRef<str>) -> Result<CrateVersion, String> {
+    pub fn try_parse_from_build_info_string(s: impl AsRef<str>) -> Result<Self, String> {
         let s = s.as_ref();
         let parts = s.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
             return Err(format!("{s:?} is not a valid BuildInfo string"));
         }
-        CrateVersion::try_parse(parts[1]).map_err(ToOwned::to_owned)
+        Self::try_parse(parts[1]).map_err(ToOwned::to_owned)
     }
 }
 

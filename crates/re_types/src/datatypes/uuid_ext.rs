@@ -3,7 +3,7 @@ use super::Uuid;
 impl From<Uuid> for uuid::Uuid {
     #[inline]
     fn from(uuid: Uuid) -> Self {
-        uuid::Uuid::from_bytes(uuid.bytes)
+        Self::from_bytes(uuid.bytes)
     }
 }
 

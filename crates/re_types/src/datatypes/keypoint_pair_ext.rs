@@ -20,7 +20,7 @@ impl From<(KeypointId, KeypointId)> for KeypointPair {
 
 impl KeypointPair {
     /// Create a vector of [`KeypointPair`] from an array of tuples.
-    pub fn vec_from<T: Into<KeypointPair>, const N: usize>(value: [T; N]) -> Vec<Self> {
+    pub fn vec_from<T: Into<Self>, const N: usize>(value: [T; N]) -> Vec<Self> {
         value.into_iter().map(|v| v.into()).collect()
     }
 }

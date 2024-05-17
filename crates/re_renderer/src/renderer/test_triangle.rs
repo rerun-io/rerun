@@ -22,7 +22,7 @@ impl DrawData for TestTriangleDrawData {
 impl TestTriangleDrawData {
     pub fn new(ctx: &RenderContext) -> Self {
         let _ = ctx.renderer::<TestTriangle>(); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
-        TestTriangleDrawData {}
+        Self {}
     }
 }
 
@@ -66,7 +66,7 @@ impl Renderer for TestTriangle {
             },
         );
 
-        TestTriangle { render_pipeline }
+        Self { render_pipeline }
     }
 
     fn draw<'a>(

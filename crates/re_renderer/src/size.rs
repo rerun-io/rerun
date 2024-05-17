@@ -63,7 +63,7 @@ impl PartialEq for Size {
 }
 
 impl std::ops::Mul<f32> for Size {
-    type Output = Size;
+    type Output = Self;
 
     #[inline]
     fn mul(self, rhs: f32) -> Self::Output {
@@ -90,6 +90,6 @@ pub struct SizeHalf(half::f16);
 impl From<Size> for SizeHalf {
     #[inline]
     fn from(size: Size) -> Self {
-        SizeHalf(half::f16::from_f32(size.0))
+        Self(half::f16::from_f32(size.0))
     }
 }

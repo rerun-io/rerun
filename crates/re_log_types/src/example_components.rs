@@ -47,7 +47,7 @@ impl MyPoint {
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
         it.into_iter()
-            .map(|i| MyPoint::new(i as f32, i as f32))
+            .map(|i| Self::new(i as f32, i as f32))
             .collect()
     }
 }

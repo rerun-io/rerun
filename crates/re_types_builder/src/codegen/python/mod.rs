@@ -192,7 +192,7 @@ struct ExtensionClass {
 }
 
 impl ExtensionClass {
-    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object) -> ExtensionClass {
+    fn new(reporter: &Reporter, base_path: &Utf8Path, obj: &Object) -> Self {
         let file_name = format!("{}_ext.py", obj.snake_case_name());
         let ext_filepath = base_path.join(file_name.clone());
         let module_name = ext_filepath.file_stem().unwrap().to_owned();
@@ -245,7 +245,7 @@ impl ExtensionClass {
                 .map(|l| l.to_owned())
                 .collect();
 
-            ExtensionClass {
+            Self {
                 found: true,
                 file_name,
                 module_name,
@@ -257,7 +257,7 @@ impl ExtensionClass {
                 has_deferred_patch_class,
             }
         } else {
-            ExtensionClass {
+            Self {
                 found: false,
                 file_name,
                 module_name,

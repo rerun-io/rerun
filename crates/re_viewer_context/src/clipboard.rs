@@ -29,7 +29,7 @@ impl Clipboard {
     }
 
     /// Get access to the thread-local [`Clipboard`].
-    pub fn with<R>(f: impl FnOnce(&mut Clipboard) -> R) -> R {
+    pub fn with<R>(f: impl FnOnce(&mut Self) -> R) -> R {
         use std::cell::RefCell;
         thread_local! {
             static CLIPBOARD: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
@@ -37,7 +37,7 @@ impl Clipboard {
 
         CLIPBOARD.with(|clipboard| {
             let mut clipboard = clipboard.borrow_mut();
-            let clipboard = clipboard.get_or_insert_with(Clipboard::new);
+            let clipboard = clipboard.get_or_insert_with(Self::new);
             f(clipboard)
         })
     }
