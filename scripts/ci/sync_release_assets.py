@@ -138,7 +138,7 @@ def fetch_binary_assets(
                 # we also rely on https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip
                 # to always give you the latest stable version of the Rerun SDK.
                 # -> The name should *not* contain the version number.
-                assets[f"rerun_cpp_sdk.zip"] = blob
+                assets["rerun_cpp_sdk.zip"] = blob
             else:
                 all_found = False
                 print("Rerun cross-platform bundle not found")
