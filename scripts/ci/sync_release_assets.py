@@ -129,7 +129,12 @@ def fetch_binary_assets(
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
                 print(f"Found Rerun cross-platform bundle: {name}")
-                assets[f"rerun_cpp_sdk-{tag}-multiplatform.zip"] = blob
+                # ATTENTION: Renaming this file has tremendous ripple effects:
+                # Not only is this the convenient short name we use examples,
+                # we also rely on https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip
+                # to always give you the latest stable version of the Rerun SDK.
+                # -> The name should *not* contain the version number.
+                assets[f"rerun_cpp_sdk.zip"] = blob
             else:
                 all_found = False
                 print("Rerun cross-platform bundle not found")
