@@ -43,8 +43,8 @@ impl ContextMenuAction for CollapseExpandAllAction {
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
         match self {
-            CollapseExpandAllAction::CollapseAll => "Collapse all".to_owned(),
-            CollapseExpandAllAction::ExpandAll => "Expand all".to_owned(),
+            Self::CollapseAll => "Collapse all".to_owned(),
+            Self::ExpandAll => "Expand all".to_owned(),
         }
     }
 
@@ -119,8 +119,8 @@ impl ContextMenuAction for CollapseExpandAllAction {
 impl CollapseExpandAllAction {
     fn open(&self) -> bool {
         match self {
-            CollapseExpandAllAction::CollapseAll => false,
-            CollapseExpandAllAction::ExpandAll => true,
+            Self::CollapseAll => false,
+            Self::ExpandAll => true,
         }
     }
 }

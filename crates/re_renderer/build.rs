@@ -47,11 +47,11 @@ impl std::str::FromStr for ImportClause {
         let s = clause_str.trim();
 
         ensure!(
-            s.starts_with(ImportClause::PREFIX),
+            s.starts_with(Self::PREFIX),
             "import clause must start with {prefix:?}, got {s:?}",
-            prefix = ImportClause::PREFIX,
+            prefix = Self::PREFIX,
         );
-        let s = s.trim_start_matches(ImportClause::PREFIX).trim();
+        let s = s.trim_start_matches(Self::PREFIX).trim();
 
         let rs = s.chars().rev().collect::<String>();
 

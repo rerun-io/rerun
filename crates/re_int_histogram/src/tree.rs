@@ -323,13 +323,13 @@ impl Node {
 
     fn increment(&mut self, level: Level, addr: u64, inc: u32) {
         match self {
-            Node::BranchNode(node) => {
+            Self::BranchNode(node) => {
                 node.increment(level, addr, inc);
             }
-            Node::SparseLeaf(sparse) => {
+            Self::SparseLeaf(sparse) => {
                 *self = std::mem::take(sparse).increment(level, addr, inc);
             }
-            Node::DenseLeaf(dense) => {
+            Self::DenseLeaf(dense) => {
                 dense.increment(addr, inc);
             }
         }
@@ -339,76 +339,76 @@ impl Node {
     #[must_use]
     fn decrement(&mut self, level: Level, addr: u64, dec: u32) -> u32 {
         match self {
-            Node::BranchNode(node) => {
+            Self::BranchNode(node) => {
                 let count_loss = node.decrement(level, addr, dec);
                 if node.is_empty() {
-                    *self = Node::SparseLeaf(SparseLeaf::default());
+                    *self = Self::SparseLeaf(SparseLeaf::default());
                 }
                 // TODO(emilk): if we only have leaf children (sparse or dense)
                 // and the number of keys in all of them is less then `MAX_SPARSE_LEAF_LEN`,
                 // then we should convert this BranchNode into a SparseLeaf.
                 count_loss
             }
-            Node::SparseLeaf(sparse) => sparse.decrement(addr, dec),
-            Node::DenseLeaf(dense) => dense.decrement(addr, dec),
+            Self::SparseLeaf(sparse) => sparse.decrement(addr, dec),
+            Self::DenseLeaf(dense) => dense.decrement(addr, dec),
         }
     }
 
     /// Returns how much the total count decreased by.
     fn remove(&mut self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
-            Node::BranchNode(node) => {
+            Self::BranchNode(node) => {
                 let count_loss = node.remove(my_addr, my_level, range);
                 if node.is_empty() {
-                    *self = Node::SparseLeaf(SparseLeaf::default());
+                    *self = Self::SparseLeaf(SparseLeaf::default());
                 }
                 // TODO(emilk): if we only have leaf children (sparse or dense)
                 // and the number of keys in all of them is less then `MAX_SPARSE_LEAF_LEN`,
                 // then we should convert this BranchNode into a SparseLeaf.
                 count_loss
             }
-            Node::SparseLeaf(sparse) => sparse.remove(range),
-            Node::DenseLeaf(dense) => dense.remove(my_addr, range),
+            Self::SparseLeaf(sparse) => sparse.remove(range),
+            Self::DenseLeaf(dense) => dense.remove(my_addr, range),
         }
     }
 
     fn is_empty(&self) -> bool {
         match self {
-            Node::BranchNode(node) => node.is_empty(),
-            Node::SparseLeaf(sparse) => sparse.is_empty(),
-            Node::DenseLeaf(dense) => dense.is_empty(),
+            Self::BranchNode(node) => node.is_empty(),
+            Self::SparseLeaf(sparse) => sparse.is_empty(),
+            Self::DenseLeaf(dense) => dense.is_empty(),
         }
     }
 
     fn total_count(&self) -> u64 {
         match self {
-            Node::BranchNode(node) => node.total_count(),
-            Node::SparseLeaf(sparse) => sparse.total_count(),
-            Node::DenseLeaf(dense) => dense.total_count(),
+            Self::BranchNode(node) => node.total_count(),
+            Self::SparseLeaf(sparse) => sparse.total_count(),
+            Self::DenseLeaf(dense) => dense.total_count(),
         }
     }
 
     fn min_key(&self, my_addr: u64, my_level: Level) -> Option<u64> {
         match self {
-            Node::BranchNode(node) => node.min_key(my_addr, my_level),
-            Node::SparseLeaf(sparse) => sparse.min_key(),
-            Node::DenseLeaf(dense) => dense.min_key(my_addr),
+            Self::BranchNode(node) => node.min_key(my_addr, my_level),
+            Self::SparseLeaf(sparse) => sparse.min_key(),
+            Self::DenseLeaf(dense) => dense.min_key(my_addr),
         }
     }
 
     fn max_key(&self, my_addr: u64, my_level: Level) -> Option<u64> {
         match self {
-            Node::BranchNode(node) => node.max_key(my_addr, my_level),
-            Node::SparseLeaf(sparse) => sparse.max_key(),
-            Node::DenseLeaf(dense) => dense.max_key(my_addr),
+            Self::BranchNode(node) => node.max_key(my_addr, my_level),
+            Self::SparseLeaf(sparse) => sparse.max_key(),
+            Self::DenseLeaf(dense) => dense.max_key(my_addr),
         }
     }
 
     fn range_count(&self, my_addr: u64, my_level: Level, range: RangeU64) -> u64 {
         match self {
-            Node::BranchNode(node) => node.range_count(my_addr, my_level, range),
-            Node::SparseLeaf(sparse) => sparse.range_count(range),
-            Node::DenseLeaf(dense) => dense.range_count(my_addr, range),
+            Self::BranchNode(node) => node.range_count(my_addr, my_level, range),
+            Self::SparseLeaf(sparse) => sparse.range_count(range),
+            Self::DenseLeaf(dense) => dense.range_count(my_addr, range),
         }
     }
 }

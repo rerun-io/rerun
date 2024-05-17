@@ -50,7 +50,7 @@ impl framework::Example for Render2D {
                 },
             )
             .expect("Failed to create texture for rerun logo");
-        Render2D {
+        Self {
             rerun_logo_texture,
 
             rerun_logo_texture_width: rerun_logo.width(),

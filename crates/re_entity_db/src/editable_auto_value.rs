@@ -22,7 +22,7 @@ where
 {
     #[inline]
     fn default() -> Self {
-        EditableAutoValue::Auto(T::default())
+        Self::Auto(T::default())
     }
 }
 
@@ -33,20 +33,20 @@ where
 {
     #[inline]
     pub fn is_auto(&self) -> bool {
-        matches!(self, EditableAutoValue::Auto(_))
+        matches!(self, Self::Auto(_))
     }
 
     /// Gets the value, disregarding if it was user edited or determined by a heuristic.
     #[inline]
     pub fn get(&self) -> &T {
         match self {
-            EditableAutoValue::Auto(v) | EditableAutoValue::UserEdited(v) => v,
+            Self::Auto(v) | Self::UserEdited(v) => v,
         }
     }
 
     /// Returns other if self is auto, self otherwise.
     #[inline]
-    pub fn or<'a>(&'a self, other: &'a EditableAutoValue<T>) -> &'a EditableAutoValue<T> {
+    pub fn or<'a>(&'a self, other: &'a Self) -> &'a Self {
         if self.is_auto() {
             other
         } else {
@@ -59,8 +59,8 @@ where
     #[inline]
     pub fn has_edits(&self, other: &Self) -> bool {
         match (self, other) {
-            (EditableAutoValue::UserEdited(s), EditableAutoValue::UserEdited(o)) => s != o,
-            (EditableAutoValue::Auto(_), EditableAutoValue::Auto(_)) => false,
+            (Self::UserEdited(s), Self::UserEdited(o)) => s != o,
+            (Self::Auto(_), Self::Auto(_)) => false,
             _ => true,
         }
     }
@@ -76,7 +76,7 @@ where
     #[inline]
     fn deref(&self) -> &Self::Target {
         match self {
-            EditableAutoValue::Auto(v) | EditableAutoValue::UserEdited(v) => v,
+            Self::Auto(v) | Self::UserEdited(v) => v,
         }
     }
 }

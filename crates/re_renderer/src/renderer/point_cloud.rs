@@ -180,7 +180,7 @@ impl PointCloudDrawData {
         let batches = batches.as_slice();
 
         if vertices_buffer.is_empty() {
-            return Ok(PointCloudDrawData {
+            return Ok(Self {
                 bind_group_all_points: None,
                 bind_group_all_points_outline_mask: None,
                 batches: Vec::new(),
@@ -357,7 +357,7 @@ impl PointCloudDrawData {
             }
         }
 
-        Ok(PointCloudDrawData {
+        Ok(Self {
             bind_group_all_points: Some(bind_group_all_points),
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
@@ -562,7 +562,7 @@ impl Renderer for PointCloudRenderer {
             },
         );
 
-        PointCloudRenderer {
+        Self {
             render_pipeline_color,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,

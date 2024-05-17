@@ -112,9 +112,9 @@ impl<T> PromiseResult<T> {
         F: FnMut(T) -> B,
     {
         match self {
-            PromiseResult::Ready(v) => PromiseResult::Ready(f(v)),
-            PromiseResult::Pending => PromiseResult::Pending,
-            PromiseResult::Error(err) => PromiseResult::Error(err),
+            Self::Ready(v) => PromiseResult::Ready(f(v)),
+            Self::Pending => PromiseResult::Pending,
+            Self::Error(err) => PromiseResult::Error(err),
         }
     }
 
@@ -127,9 +127,9 @@ impl<T> PromiseResult<T> {
         F: FnMut(T) -> PromiseResult<B>,
     {
         match self {
-            PromiseResult::Ready(v) => f(v),
-            PromiseResult::Pending => PromiseResult::Pending,
-            PromiseResult::Error(err) => PromiseResult::Error(err),
+            Self::Ready(v) => f(v),
+            Self::Pending => PromiseResult::Pending,
+            Self::Error(err) => PromiseResult::Error(err),
         }
     }
 
@@ -137,7 +137,7 @@ impl<T> PromiseResult<T> {
     #[inline]
     pub fn ok(self) -> Option<T> {
         match self {
-            PromiseResult::Ready(v) => Some(v),
+            Self::Ready(v) => Some(v),
             _ => None,
         }
     }
@@ -146,9 +146,9 @@ impl<T> PromiseResult<T> {
     #[inline]
     pub fn unwrap(self) -> T {
         match self {
-            PromiseResult::Ready(v) => v,
-            PromiseResult::Pending => panic!("tried to unwrap a pending `PromiseResult`"),
-            PromiseResult::Error(err) => {
+            Self::Ready(v) => v,
+            Self::Pending => panic!("tried to unwrap a pending `PromiseResult`"),
+            Self::Error(err) => {
                 panic!("tried to unwrap an errored `PromiseResult`: {err}")
             }
         }

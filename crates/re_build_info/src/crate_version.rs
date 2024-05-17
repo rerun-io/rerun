@@ -64,9 +64,9 @@ pub enum Meta {
 impl Meta {
     pub const fn to_byte(self) -> u8 {
         match self {
-            Meta::Rc(value) => value | meta::RC,
-            Meta::Alpha(value) => value | meta::ALPHA,
-            Meta::DevAlpha(value) => value | meta::DEV_ALPHA,
+            Self::Rc(value) => value | meta::RC,
+            Self::Alpha(value) => value | meta::ALPHA,
+            Self::DevAlpha(value) => value | meta::DEV_ALPHA,
         }
     }
 
@@ -208,7 +208,7 @@ impl CrateVersion {
     }
 
     #[allow(clippy::unnested_or_patterns)]
-    pub fn is_compatible_with(self, other: CrateVersion) -> bool {
+    pub fn is_compatible_with(self, other: Self) -> bool {
         match (self.meta, other.meta) {
             // release candidates are always compatible with each other
             // and their finalized version:
@@ -388,9 +388,9 @@ impl CrateVersion {
 impl std::fmt::Display for Meta {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Meta::Rc(build) => write!(f, "-rc.{build}"),
-            Meta::Alpha(build) => write!(f, "-alpha.{build}"),
-            Meta::DevAlpha(build) => write!(f, "-alpha.{build}+dev"),
+            Self::Rc(build) => write!(f, "-rc.{build}"),
+            Self::Alpha(build) => write!(f, "-alpha.{build}"),
+            Self::DevAlpha(build) => write!(f, "-alpha.{build}+dev"),
         }
     }
 }

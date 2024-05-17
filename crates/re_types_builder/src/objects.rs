@@ -243,14 +243,14 @@ impl ObjectKind {
 
         let pkg_name = pkg_name.replace(".testing", "");
         if pkg_name.starts_with(format!("rerun{scope}.datatypes").as_str()) {
-            ObjectKind::Datatype
+            Self::Datatype
         } else if pkg_name.starts_with(format!("rerun{scope}.components").as_str()) {
-            ObjectKind::Component
+            Self::Component
         } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
-            ObjectKind::Archetype
+            Self::Archetype
         } else if pkg_name.starts_with("rerun.blueprint.views") {
             // Not bothering with scope attributes on views since they're always part of the blueprint.
-            ObjectKind::View
+            Self::View
         } else {
             panic!("unknown package {pkg_name:?}");
         }
@@ -258,28 +258,28 @@ impl ObjectKind {
 
     pub fn plural_snake_case(&self) -> &'static str {
         match self {
-            ObjectKind::Datatype => "datatypes",
-            ObjectKind::Component => "components",
-            ObjectKind::Archetype => "archetypes",
-            ObjectKind::View => "views",
+            Self::Datatype => "datatypes",
+            Self::Component => "components",
+            Self::Archetype => "archetypes",
+            Self::View => "views",
         }
     }
 
     pub fn singular_name(&self) -> &'static str {
         match self {
-            ObjectKind::Datatype => "Datatype",
-            ObjectKind::Component => "Component",
-            ObjectKind::Archetype => "Archetype",
-            ObjectKind::View => "View",
+            Self::Datatype => "Datatype",
+            Self::Component => "Component",
+            Self::Archetype => "Archetype",
+            Self::View => "View",
         }
     }
 
     pub fn plural_name(&self) -> &'static str {
         match self {
-            ObjectKind::Datatype => "Datatypes",
-            ObjectKind::Component => "Components",
-            ObjectKind::Archetype => "Archetypes",
-            ObjectKind::View => "Views",
+            Self::Datatype => "Datatypes",
+            Self::Component => "Components",
+            Self::Archetype => "Archetypes",
+            Self::View => "Views",
         }
     }
 }

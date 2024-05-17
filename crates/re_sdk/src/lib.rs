@@ -46,12 +46,12 @@ pub use global::cleanup_if_forked_child;
 #[cfg(not(target_arch = "wasm32"))]
 impl crate::sink::LogSink for re_log_encoding::FileSink {
     fn send(&self, msg: re_log_types::LogMsg) {
-        re_log_encoding::FileSink::send(self, msg);
+        Self::send(self, msg);
     }
 
     #[inline]
     fn flush_blocking(&self) {
-        re_log_encoding::FileSink::flush_blocking(self);
+        Self::flush_blocking(self);
     }
 }
 

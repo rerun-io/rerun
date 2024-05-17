@@ -43,8 +43,8 @@ impl Contents {
     #[inline]
     pub fn as_item(&self) -> Item {
         match self {
-            Contents::Container(container_id) => Item::Container(*container_id),
-            Contents::SpaceView(space_view_id) => Item::SpaceView(*space_view_id),
+            Self::Container(container_id) => Item::Container(*container_id),
+            Self::SpaceView(space_view_id) => Item::SpaceView(*space_view_id),
         }
     }
 
@@ -113,7 +113,7 @@ impl AsRef<str> for ContentsName {
     #[inline]
     fn as_ref(&self) -> &str {
         match self {
-            ContentsName::Named(name) | ContentsName::Placeholder(name) => name,
+            Self::Named(name) | Self::Placeholder(name) => name,
         }
     }
 }

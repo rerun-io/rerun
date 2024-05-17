@@ -76,7 +76,7 @@ impl GenericSkyboxDrawData {
             },
         );
 
-        GenericSkyboxDrawData { bind_group }
+        Self { bind_group }
     }
 }
 
@@ -140,7 +140,7 @@ impl Renderer for GenericSkybox {
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
         );
-        GenericSkybox {
+        Self {
             render_pipeline,
             bind_group_layout,
         }

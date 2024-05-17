@@ -74,7 +74,7 @@ pub struct PerTensorState {
 }
 
 impl PerTensorState {
-    pub fn create(tensor_data_row_id: RowId, tensor: &DecodedTensor) -> PerTensorState {
+    pub fn create(tensor_data_row_id: RowId, tensor: &DecodedTensor) -> Self {
         Self {
             slice: SliceSelection {
                 dim_mapping: DimensionMapping::create(tensor.shape()),
@@ -433,7 +433,7 @@ impl ColorMapping {
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
     ) {
-        let ColorMapping { map, gamma } = self;
+        let Self { map, gamma } = self;
 
         re_ui.grid_left_hand_label(ui, "Color map");
         colormap_dropdown_button_ui(render_ctx, ui, map);
@@ -468,8 +468,8 @@ impl Default for TextureScaling {
 impl Display for TextureScaling {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TextureScaling::Original => "Original".fmt(f),
-            TextureScaling::Fill => "Fill".fmt(f),
+            Self::Original => "Original".fmt(f),
+            Self::Fill => "Fill".fmt(f),
         }
     }
 }
@@ -505,7 +505,7 @@ impl Default for TextureSettings {
 // ui
 impl TextureSettings {
     fn ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
-        let TextureSettings {
+        let Self {
             keep_aspect_ratio,
             scaling,
             options,

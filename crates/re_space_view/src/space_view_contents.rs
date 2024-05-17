@@ -43,7 +43,7 @@ pub struct SpaceViewContents {
 }
 
 impl SpaceViewContents {
-    pub fn is_equivalent(&self, other: &SpaceViewContents) -> bool {
+    pub fn is_equivalent(&self, other: &Self) -> bool {
         self.space_view_class_identifier
             .eq(&other.space_view_class_identifier)
             && self.entity_path_filter.eq(&other.entity_path_filter)
@@ -57,7 +57,7 @@ impl SpaceViewContents {
     /// This is a conservative estimate, and may return `false` in situations where the
     /// query does in fact cover the other query. However, it should never return `true`
     /// in a case where the other query would not be fully covered.
-    pub fn entity_path_filter_is_superset_of(&self, other: &SpaceViewContents) -> bool {
+    pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
         // A query can't fully contain another if their space-view classes don't match
         if self.space_view_class_identifier != other.space_view_class_identifier {
             return false;

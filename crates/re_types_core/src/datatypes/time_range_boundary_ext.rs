@@ -7,18 +7,18 @@ impl TimeRangeBoundary {
     /// Returns the time assuming this boundary is a start boundary.
     pub fn start_boundary_time(&self, cursor: TimeInt) -> TimeInt {
         match *self {
-            TimeRangeBoundary::Absolute(time) => time,
-            TimeRangeBoundary::CursorRelative(time) => cursor + time,
-            TimeRangeBoundary::Infinite => TimeInt::MIN,
+            Self::Absolute(time) => time,
+            Self::CursorRelative(time) => cursor + time,
+            Self::Infinite => TimeInt::MIN,
         }
     }
 
     /// Returns the correct time assuming this boundary is an end boundary.
     pub fn end_boundary_time(&self, cursor: TimeInt) -> TimeInt {
         match *self {
-            TimeRangeBoundary::Absolute(time) => time,
-            TimeRangeBoundary::CursorRelative(time) => cursor + time,
-            TimeRangeBoundary::Infinite => TimeInt::MAX,
+            Self::Absolute(time) => time,
+            Self::CursorRelative(time) => cursor + time,
+            Self::Infinite => TimeInt::MAX,
         }
     }
 }

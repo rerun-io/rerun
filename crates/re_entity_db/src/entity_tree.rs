@@ -156,7 +156,7 @@ pub struct CompactedStoreEvents {
 
 impl CompactedStoreEvents {
     pub fn new(store_events: &[&StoreEvent]) -> Self {
-        let mut this = CompactedStoreEvents {
+        let mut this = Self {
             row_ids: store_events.iter().map(|event| event.row_id).collect(),
             temporal: Default::default(),
             timeless: Default::default(),
@@ -288,7 +288,7 @@ impl EntityTree {
 
         for (i, part) in entity_path.iter().enumerate() {
             tree = tree.children.entry(part.clone()).or_insert_with(|| {
-                EntityTree::new(
+                Self::new(
                     entity_path.as_slice()[..=i].into(),
                     tree.subtree.clears.clone(),
                 )

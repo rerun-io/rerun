@@ -71,12 +71,12 @@ impl RangeU64 {
     }
 
     #[inline]
-    pub fn contains_all_of(&self, other: RangeU64) -> bool {
+    pub fn contains_all_of(&self, other: Self) -> bool {
         self.contains(other.min) && self.contains(other.max)
     }
 
     #[inline]
-    pub fn intersects(&self, other: RangeU64) -> bool {
+    pub fn intersects(&self, other: Self) -> bool {
         self.min <= other.max && other.min <= self.max
     }
 }

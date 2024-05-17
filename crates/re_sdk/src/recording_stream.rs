@@ -763,7 +763,7 @@ impl RecordingStreamInner {
                 })?
         };
 
-        Ok(RecordingStreamInner {
+        Ok(Self {
             info,
             tick: AtomicI64::new(0),
             cmds_tx,
@@ -1804,7 +1804,7 @@ impl ThreadInfo {
     }
 
     /// Get access to the thread-local [`ThreadInfo`].
-    fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
+    fn with<R>(f: impl FnOnce(&mut Self) -> R) -> R {
         use std::cell::RefCell;
         thread_local! {
             static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None);
@@ -1812,7 +1812,7 @@ impl ThreadInfo {
 
         THREAD_INFO.with(|thread_info| {
             let mut thread_info = thread_info.borrow_mut();
-            let thread_info = thread_info.get_or_insert_with(ThreadInfo::default);
+            let thread_info = thread_info.get_or_insert_with(Self::default);
             f(thread_info)
         })
     }

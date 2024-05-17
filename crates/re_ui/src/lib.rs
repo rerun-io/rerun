@@ -410,7 +410,7 @@ impl ReUi {
         }
 
         let button_size = Vec2::splat(28.0);
-        let icon_size = ReUi::small_icon_size(); // centered inside the button
+        let icon_size = Self::small_icon_size(); // centered inside the button
         let rounding = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
@@ -599,7 +599,7 @@ impl ReUi {
     pub fn panel_content<R>(
         &self,
         ui: &mut egui::Ui,
-        add_contents: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
+        add_contents: impl FnOnce(&Self, &mut egui::Ui) -> R,
     ) -> R {
         egui::Frame {
             inner_margin: Self::panel_margin(),
@@ -1039,7 +1039,7 @@ impl ReUi {
 
         let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
-        let icon_width_plus_padding = Self::small_icon_size().x + ReUi::text_to_icon_padding();
+        let icon_width_plus_padding = Self::small_icon_size().x + Self::text_to_icon_padding();
 
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
@@ -1072,7 +1072,7 @@ impl ReUi {
             let image_rect = egui::Rect::from_min_size(
                 ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x.ceil(),
-                    (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
+                    (rect.center().y - 0.5 * Self::small_icon_size().y).ceil(),
                 )),
                 image_size,
             );
@@ -1083,7 +1083,7 @@ impl ReUi {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + ReUi::text_to_icon_padding();
+            text_rect.min.x = image_rect.max.x + Self::text_to_icon_padding();
             let text_pos = ui
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)

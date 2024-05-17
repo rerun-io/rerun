@@ -798,11 +798,7 @@ impl PyMemorySinkStorage {
     /// Concatenate the contents of the [`MemorySinkStorage`] as bytes.
     ///
     /// Note: This will do a blocking flush before returning!
-    fn concat_as_bytes<'p>(
-        &self,
-        concat: Option<&PyMemorySinkStorage>,
-        py: Python<'p>,
-    ) -> PyResult<&'p PyBytes> {
+    fn concat_as_bytes<'p>(&self, concat: Option<&Self>, py: Python<'p>) -> PyResult<&'p PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             let concat_bytes = MemorySinkStorage::concat_memory_sinks_as_bytes(

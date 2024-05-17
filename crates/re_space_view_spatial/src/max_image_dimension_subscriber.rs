@@ -42,11 +42,8 @@ impl MaxImageDimensionSubscriber {
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> StoreSubscriberHandle {
         static SUBSCRIPTION: OnceCell<re_data_store::StoreSubscriberHandle> = OnceCell::new();
-        *SUBSCRIPTION.get_or_init(|| {
-            re_data_store::DataStore::register_subscriber(
-                Box::<MaxImageDimensionSubscriber>::default(),
-            )
-        })
+        *SUBSCRIPTION
+            .get_or_init(|| re_data_store::DataStore::register_subscriber(Box::<Self>::default()))
     }
 }
 

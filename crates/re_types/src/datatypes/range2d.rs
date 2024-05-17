@@ -95,7 +95,7 @@ impl ::re_types_core::Loggable for Range2D {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::Range2D>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, x_range): (Vec<_>, Vec<_>) = data

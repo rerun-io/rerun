@@ -130,7 +130,7 @@ impl RangeComponentResults {
     #[inline]
     pub fn empty() -> &'static Self {
         static EMPTY: OnceLock<RangeComponentResults> = OnceLock::new();
-        EMPTY.get_or_init(RangeComponentResults::default)
+        EMPTY.get_or_init(Self::default)
     }
 }
 

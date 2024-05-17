@@ -25,7 +25,7 @@ impl From<RotationAxisAngle> for glam::Quat {
     fn from(val: RotationAxisAngle) -> Self {
         let axis: glam::Vec3 = val.axis.into();
         axis.try_normalize()
-            .map(|axis| glam::Quat::from_axis_angle(axis, val.angle.radians()))
+            .map(|axis| Self::from_axis_angle(axis, val.angle.radians()))
             .unwrap_or_default()
     }
 }

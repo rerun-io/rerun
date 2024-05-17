@@ -173,7 +173,7 @@ impl EntityPath {
             .map(|part| EntityPathPart::parse_forgiving_with_warning(part, Some(&mut warnings)))
             .collect();
 
-        let path = EntityPath::from(parts);
+        let path = Self::from(parts);
 
         if let Some(warning) = warnings.first() {
             // We want to warn on some things, like
@@ -204,7 +204,7 @@ impl FromStr for ComponentPath {
             return Err(PathParseError::MissingComponentName);
         };
 
-        Ok(ComponentPath {
+        Ok(Self {
             entity_path,
             component_name,
         })

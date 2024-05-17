@@ -95,22 +95,22 @@ where
 
     #[inline]
     fn dyn_remove(&mut self, at: usize) {
-        FlatVecDeque::<T>::remove(self, at);
+        Self::remove(self, at);
     }
 
     #[inline]
     fn dyn_remove_range(&mut self, range: Range<usize>) {
-        FlatVecDeque::<T>::remove_range(self, range);
+        Self::remove_range(self, range);
     }
 
     #[inline]
     fn dyn_truncate(&mut self, at: usize) {
-        FlatVecDeque::<T>::truncate(self, at);
+        Self::truncate(self, at);
     }
 
     #[inline]
     fn dyn_total_size_bytes(&self) -> u64 {
-        <FlatVecDeque<T> as SizeBytes>::total_size_bytes(self)
+        <Self as SizeBytes>::total_size_bytes(self)
     }
 }
 
@@ -403,7 +403,7 @@ impl<T> FlatVecDeque<T> {
     ///
     /// See [`Self::insert_deque`] for more information.
     #[inline]
-    pub fn push_front_deque(&mut self, rhs: FlatVecDeque<T>) {
+    pub fn push_front_deque(&mut self, rhs: Self) {
         self.insert_deque(0, rhs);
     }
 
@@ -413,7 +413,7 @@ impl<T> FlatVecDeque<T> {
     ///
     /// See [`Self::insert_deque`] for more information.
     #[inline]
-    pub fn push_back_deque(&mut self, rhs: FlatVecDeque<T>) {
+    pub fn push_back_deque(&mut self, rhs: Self) {
         self.insert_deque(self.num_entries(), rhs);
     }
 
@@ -425,7 +425,7 @@ impl<T> FlatVecDeque<T> {
     ///
     /// Panics if `entry_index` is out of bounds.
     /// Panics if any of the value arrays in `entries` is empty.
-    pub fn insert_deque(&mut self, entry_index: usize, mut rhs: FlatVecDeque<T>) {
+    pub fn insert_deque(&mut self, entry_index: usize, mut rhs: Self) {
         // NOTE: We're inserting _beyond_ the last element.
         if entry_index == self.num_entries() {
             let max_value_offset = self.offsets.back().copied().unwrap_or_default();

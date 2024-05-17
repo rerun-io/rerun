@@ -96,7 +96,7 @@ impl MemFileSystem {
 // Singleton API
 impl MemFileSystem {
     /// Returns a reference to the global `MemFileSystem`.
-    pub fn get() -> &'static MemFileSystem {
+    pub fn get() -> &'static Self {
         if MEM_FILE_SYSTEM.files.read().is_some() {
             return &MEM_FILE_SYSTEM;
         }

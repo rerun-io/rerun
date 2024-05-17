@@ -80,10 +80,10 @@ impl DataUi for Transform3D {
             UiLayout::SelectionPanelFull
             | UiLayout::SelectionPanelLimitHeight
             | UiLayout::Tooltip => match self {
-                Transform3D::TranslationAndMat3x3(translation_matrix) => {
+                Self::TranslationAndMat3x3(translation_matrix) => {
                     translation_matrix.data_ui(ctx, ui, ui_layout, query, db);
                 }
-                Transform3D::TranslationRotationScale(translation_rotation_scale) => {
+                Self::TranslationRotationScale(translation_rotation_scale) => {
                     translation_rotation_scale.data_ui(ctx, ui, ui_layout, query, db);
                 }
             },
@@ -100,7 +100,7 @@ impl DataUi for TranslationRotationScale3D {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        let TranslationRotationScale3D {
+        let Self {
             translation,
             rotation,
             scale,
@@ -143,10 +143,10 @@ impl DataUi for Scale3D {
         db: &re_entity_db::EntityDb,
     ) {
         match self {
-            Scale3D::Uniform(scale) => {
+            Self::Uniform(scale) => {
                 ui.label(re_format::format_f32(*scale));
             }
-            Scale3D::ThreeD(v) => {
+            Self::ThreeD(v) => {
                 v.data_ui(ctx, ui, ui_layout, query, db);
             }
         }
@@ -162,7 +162,7 @@ impl DataUi for TranslationAndMat3x3 {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        let TranslationAndMat3x3 {
+        let Self {
             translation,
             mat3x3,
             from_parent: _,

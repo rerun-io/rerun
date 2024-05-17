@@ -37,7 +37,7 @@ pub struct QueueableDrawData {
 
 impl<D: DrawData + Sync + Send + 'static> From<D> for QueueableDrawData {
     fn from(draw_data: D) -> Self {
-        QueueableDrawData {
+        Self {
             draw_func: Box::new(move |renderers, gpu_resources, phase, pass, draw_data| {
                 let renderer = renderers.get::<D::Renderer>().ok_or(
                     QueueableDrawDataError::FailedToRetrieveRenderer(std::any::type_name::<

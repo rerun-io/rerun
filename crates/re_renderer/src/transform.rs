@@ -50,7 +50,7 @@ pub struct RectTransform {
 
 impl RectTransform {
     /// No-op rect transform that transforms from a unit rectangle to a unit rectangle.
-    pub const IDENTITY: RectTransform = RectTransform {
+    pub const IDENTITY: Self = Self {
         region_of_interest: RectF32::UNIT,
         region: RectF32::UNIT,
     };

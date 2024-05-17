@@ -166,7 +166,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut instances = Vec::new();
 
-        super::entity_iterator::process_archetype::<Mesh3DVisualizer, Mesh3D, _>(
+        super::entity_iterator::process_archetype::<Self, Mesh3D, _>(
             ctx,
             view_query,
             view_ctx,

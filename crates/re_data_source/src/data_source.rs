@@ -39,7 +39,7 @@ impl DataSource {
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_uri(file_source: re_log_types::FileSource, mut uri: String) -> DataSource {
+    pub fn from_uri(file_source: re_log_types::FileSource, mut uri: String) -> Self {
         use itertools::Itertools as _;
 
         fn looks_like_windows_abs_path(path: &str) -> bool {
@@ -81,29 +81,29 @@ impl DataSource {
         // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
         // throwing errors when we shouldn't), we just make reading from standard input explicit.
         if uri == "-" {
-            return DataSource::Stdin;
+            return Self::Stdin;
         }
 
         let path = std::path::Path::new(&uri).to_path_buf();
 
         if uri.starts_with("file://") || path.exists() {
-            DataSource::FilePath(file_source, path)
+            Self::FilePath(file_source, path)
         } else if uri.starts_with("http://")
             || uri.starts_with("https://")
             || (uri.starts_with("www.") && (uri.ends_with(".rrd") || uri.ends_with(".rbl")))
         {
-            DataSource::RrdHttpUrl {
+            Self::RrdHttpUrl {
                 url: uri,
                 follow: false,
             }
         } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
-            DataSource::WebSocketAddr(uri)
+            Self::WebSocketAddr(uri)
 
         // Now we are into heuristics territory:
         } else if looks_like_a_file_path(&uri) {
-            DataSource::FilePath(file_source, path)
+            Self::FilePath(file_source, path)
         } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            DataSource::RrdHttpUrl {
+            Self::RrdHttpUrl {
                 url: uri,
                 follow: false,
             }
@@ -114,21 +114,19 @@ impl DataSource {
             if !uri.contains("://") {
                 uri = format!("{}://{uri}", re_ws_comms::PROTOCOL);
             }
-            DataSource::WebSocketAddr(uri)
+            Self::WebSocketAddr(uri)
         }
     }
 
     pub fn file_name(&self) -> Option<String> {
         match self {
-            DataSource::RrdHttpUrl { url, .. } => url.split('/').last().map(|r| r.to_owned()),
+            Self::RrdHttpUrl { url, .. } => url.split('/').last().map(|r| r.to_owned()),
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::FilePath(_, path) => {
-                path.file_name().map(|s| s.to_string_lossy().to_string())
-            }
-            DataSource::FileContents(_, file_contents) => Some(file_contents.name.clone()),
-            DataSource::WebSocketAddr(_) => None,
+            Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
+            Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
+            Self::WebSocketAddr(_) => None,
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::Stdin => None,
+            Self::Stdin => None,
         }
     }
 
@@ -148,14 +146,14 @@ impl DataSource {
     ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
         match self {
-            DataSource::RrdHttpUrl { url, follow } => Ok(
+            Self::RrdHttpUrl { url, follow } => Ok(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::FilePath(file_source, path) => {
+            Self::FilePath(file_source, path) => {
                 let (tx, rx) = re_smart_channel::smart_channel(
                     SmartMessageSource::File(path.clone()),
                     SmartChannelSource::File(path.clone()),
@@ -178,7 +176,7 @@ impl DataSource {
             }
 
             // When loading a file on Web, or when using drag-n-drop.
-            DataSource::FileContents(file_source, file_contents) => {
+            Self::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
                 let (tx, rx) = re_smart_channel::smart_channel(
                     SmartMessageSource::File(name.clone().into()),
@@ -206,12 +204,12 @@ impl DataSource {
                 Ok(rx)
             }
 
-            DataSource::WebSocketAddr(rerun_server_ws_url) => {
+            Self::WebSocketAddr(rerun_server_ws_url) => {
                 crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url, on_msg)
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            DataSource::Stdin => {
+            Self::Stdin => {
                 let (tx, rx) = re_smart_channel::smart_channel(
                     SmartMessageSource::Stdin,
                     SmartChannelSource::Stdin,

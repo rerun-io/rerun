@@ -88,7 +88,7 @@ impl framework::Example for Picking {
 
         let model_mesh_instances = crate::framework::load_rerun_mesh(re_ctx);
 
-        Picking {
+        Self {
             point_sets,
             model_mesh_instances,
             picking_position: glam::UVec2::ZERO,

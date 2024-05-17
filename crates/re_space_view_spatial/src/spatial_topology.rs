@@ -21,8 +21,7 @@ impl SubSpaceConnectionFlags {
     /// Pinhole flag but not disconnected
     #[inline]
     pub fn is_connected_pinhole(&self) -> bool {
-        self.contains(SubSpaceConnectionFlags::Pinhole)
-            && !self.contains(SubSpaceConnectionFlags::Disconnected)
+        self.contains(Self::Pinhole) && !self.contains(Self::Disconnected)
     }
 }
 
@@ -127,11 +126,8 @@ impl SpatialTopologyStoreSubscriber {
     /// Lazily registers the subscriber if it hasn't been registered yet.
     pub fn subscription_handle() -> StoreSubscriberHandle {
         static SUBSCRIPTION: OnceCell<re_data_store::StoreSubscriberHandle> = OnceCell::new();
-        *SUBSCRIPTION.get_or_init(|| {
-            re_data_store::DataStore::register_subscriber(
-                Box::<SpatialTopologyStoreSubscriber>::default(),
-            )
-        })
+        *SUBSCRIPTION
+            .get_or_init(|| re_data_store::DataStore::register_subscriber(Box::<Self>::default()))
     }
 }
 
@@ -209,7 +205,7 @@ impl Default for SpatialTopology {
 
 impl SpatialTopology {
     /// Accesses the spatial topology for a given store.
-    pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&SpatialTopology) -> T) -> Option<T> {
+    pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&Self) -> T) -> Option<T> {
         re_data_store::DataStore::with_subscriber_once(
             SpatialTopologyStoreSubscriber::subscription_handle(),
             move |topology_subscriber: &SpatialTopologyStoreSubscriber| {

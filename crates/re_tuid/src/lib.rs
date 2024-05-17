@@ -83,7 +83,7 @@ impl Tuid {
         LATEST_TUID.with(|latest_tuid| {
             let mut latest = latest_tuid.borrow_mut();
 
-            let new = Tuid {
+            let new = Self {
                 time_ns: monotonic_nanos_since_epoch(),
                 inc: latest.inc + 1,
             };

@@ -95,8 +95,8 @@ impl ::re_types_core::Loggable for Angle {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(Angle::Radians(_)) => 1i8,
-                    Some(Angle::Degrees(_)) => 2i8,
+                    Some(Self::Radians(_)) => 1i8,
+                    Some(Self::Degrees(_)) => 2i8,
                 })
                 .collect();
             let fields = vec![
@@ -105,7 +105,7 @@ impl ::re_types_core::Loggable for Angle {
                     let radians: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Angle::Radians(v)) => Some(v.clone()),
+                            Some(Self::Radians(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -121,7 +121,7 @@ impl ::re_types_core::Loggable for Angle {
                     let degrees: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Angle::Degrees(v)) => Some(v.clone()),
+                            Some(Self::Degrees(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -145,12 +145,12 @@ impl ::re_types_core::Loggable for Angle {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(Angle::Radians(_)) => {
+                        Some(Self::Radians(_)) => {
                             let offset = radians_offset;
                             radians_offset += 1;
                             offset
                         }
-                        Some(Angle::Degrees(_)) => {
+                        Some(Self::Degrees(_)) => {
                             let offset = degrees_offset;
                             degrees_offset += 1;
                             offset
@@ -158,13 +158,7 @@ impl ::re_types_core::Loggable for Angle {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::datatypes::Angle>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 
@@ -252,7 +246,7 @@ impl ::re_types_core::Loggable for Angle {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Angle::Radians({
+                                1i8 => Self::Radians({
                                     if offset as usize >= radians.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -267,7 +261,7 @@ impl ::re_types_core::Loggable for Angle {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Angle#Radians")?
                                 }),
-                                2i8 => Angle::Degrees({
+                                2i8 => Self::Degrees({
                                     if offset as usize >= degrees.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
