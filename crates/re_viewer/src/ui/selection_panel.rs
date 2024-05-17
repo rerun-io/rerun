@@ -15,8 +15,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::{icons, list_item::ListItem};
-use re_ui::{ReUi, SyntaxHighlighting as _};
+use re_ui::{icons, list_item2, ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
     HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiLayout, ViewerContext,
@@ -220,11 +219,14 @@ fn container_children(
         }
 
         if !has_child {
-            ListItem::new(ctx.re_ui, "empty — use the + button to add content")
-                .weak(true)
-                .italics(true)
+            list_item2::ListItem::new(ctx.re_ui)
                 .interactive(false)
-                .show_flat(ui);
+                .show_flat(
+                    ui,
+                    list_item2::LabelContent::new("empty — use the + button to add content")
+                        .weak(true)
+                        .italics(true),
+                );
         }
     };
 
@@ -236,13 +238,15 @@ fn container_children(
     }
     .show(ui, |ui| {
         re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
+            list_item2::list_item_scope(ui, "children list", |ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
 
-            egui::Frame {
-                inner_margin: egui::Margin::symmetric(4.0, 0.0),
-                ..Default::default()
-            }
-            .show(ui, show_content);
+                egui::Frame {
+                    inner_margin: egui::Margin::symmetric(4.0, 0.0),
+                    ..Default::default()
+                }
+                .show(ui, show_content);
+            });
         });
     });
 }
@@ -295,11 +299,25 @@ fn what_is_selected_ui(
     match item {
         Item::AppId(app_id) => {
             let title = app_id.to_string();
-            item_title_ui(ctx.re_ui, ui, &title, Some(&icons::APPLICATION), &title);
+            item_title_ui(
+                ctx.re_ui,
+                ui,
+                &title,
+                Some(&icons::APPLICATION),
+                None,
+                &title,
+            );
         }
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
-            item_title_ui(ctx.re_ui, ui, &title, Some(&icons::DATA_SOURCE), &title);
+            item_title_ui(
+                ctx.re_ui,
+                ui,
+                &title,
+                Some(&icons::DATA_SOURCE),
+                None,
+                &title,
+            );
         }
 
         Item::StoreId(store_id) => {
@@ -325,7 +343,7 @@ fn what_is_selected_ui(
                 re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
             };
 
-            item_title_ui(ctx.re_ui, ui, &title, Some(icon), &id_str);
+            item_title_ui(ctx.re_ui, ui, &title, Some(icon), None, &id_str);
         }
 
         Item::Container(container_id) => {
@@ -341,15 +359,16 @@ fn what_is_selected_ui(
                     };
 
                 let container_name = container_blueprint.display_name_or_default();
-                ListItem::new(ctx.re_ui, container_name.as_ref())
-                    .label_style(contents_name_style(&container_name))
-                    .with_icon(re_viewport::icon_for_container_kind(
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    container_name.as_ref(),
+                    Some(re_viewport::icon_for_container_kind(
                         &container_blueprint.container_kind,
-                    ))
-                    .with_height(ReUi::title_bar_height())
-                    .selected(true)
-                    .show_flat(ui)
-                    .on_hover_text(hover_text);
+                    )),
+                    Some(contents_name_style(&container_name)),
+                    &hover_text,
+                );
             }
         }
 
@@ -369,6 +388,7 @@ fn what_is_selected_ui(
                 } else {
                     &icons::COMPONENT_TEMPORAL
                 }),
+                None,
                 &format!(
                     "{} component {} of entity '{}'",
                     if is_static { "Static" } else { "Temporal" },
@@ -406,13 +426,14 @@ fn what_is_selected_ui(
                 };
 
                 let space_view_name = space_view.display_name_or_default();
-                ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(contents_name_style(&space_view_name))
-                    .with_icon(space_view.class(ctx.space_view_class_registry).icon())
-                    .with_height(ReUi::title_bar_height())
-                    .selected(true)
-                    .show_flat(ui)
-                    .on_hover_text(hover_text);
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    space_view_name.as_ref(),
+                    Some(space_view.class(ctx.space_view_class_registry).icon()),
+                    Some(contents_name_style(&space_view_name)),
+                    &hover_text,
+                );
             }
         }
 
@@ -425,6 +446,7 @@ fn what_is_selected_ui(
                 ui,
                 name,
                 Some(guess_instance_path_icon(ctx, instance_path)),
+                None,
                 &format!("{typ} '{instance_path}'"),
             );
 
@@ -458,6 +480,7 @@ fn what_is_selected_ui(
                     ui,
                     name,
                     Some(guess_instance_path_icon(ctx, instance_path)),
+                    None,
                     &format!(
                         "{typ} '{instance_path}' as shown in space view {:?}",
                         space_view.display_name
@@ -506,17 +529,26 @@ fn item_title_ui(
     ui: &mut egui::Ui,
     name: impl Into<egui::WidgetText>,
     icon: Option<&re_ui::Icon>,
+    label_style: Option<re_ui::LabelStyle>,
     hover: &str,
 ) -> egui::Response {
-    let mut list_item = ListItem::new(re_ui, name)
-        .with_height(ReUi::title_bar_height())
-        .selected(true);
+    let mut content = list_item2::LabelContent::new(name);
 
     if let Some(icon) = icon {
-        list_item = list_item.with_icon(icon);
+        content = content.with_icon(icon);
     }
 
-    list_item.show_flat(ui).on_hover_text(hover)
+    if let Some(label_style) = label_style {
+        content = content.label_style(label_style);
+    }
+
+    list_item2::list_item_scope(ui, ui.next_auto_id(), |ui| {
+        list_item2::ListItem::new(re_ui)
+            .with_height(ReUi::title_bar_height())
+            .selected(true)
+            .show_flat(ui, content)
+            .on_hover_text(hover)
+    })
 }
 
 /// Display a list of all the space views an entity appears in.
@@ -746,7 +778,7 @@ fn container_kind_selection_ui(
                 .selected(*in_out_kind == kind)
                 .show_flat(
                     ui,
-                    re_ui::list_item2::LabelContent::new(format!("{kind:?}")).with_icon(icon),
+                    list_item2::LabelContent::new(format!("{kind:?}")).with_icon(icon),
                 );
 
             if response.clicked() {
@@ -767,7 +799,7 @@ fn show_list_item_for_container_child(
     child_contents: &Contents,
 ) -> bool {
     let mut remove_contents = false;
-    let (item, mut list_item) = match child_contents {
+    let (item, list_item_content) = match child_contents {
         Contents::SpaceView(space_view_id) => {
             let Some(space_view) = viewport.blueprint.space_view(space_view_id) else {
                 re_log::warn_once!("Could not find space view with ID {space_view_id:?}",);
@@ -777,7 +809,7 @@ fn show_list_item_for_container_child(
             let space_view_name = space_view.display_name_or_default();
             (
                 Item::SpaceView(*space_view_id),
-                ListItem::new(ctx.re_ui, space_view_name.as_ref())
+                list_item2::LabelContent::new(space_view_name.as_ref())
                     .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
@@ -803,7 +835,7 @@ fn show_list_item_for_container_child(
 
             (
                 Item::Container(*container_id),
-                ListItem::new(ctx.re_ui, container_name.as_ref())
+                list_item2::LabelContent::new(container_name.as_ref())
                     .label_style(contents_name_style(&container_name))
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
@@ -824,11 +856,9 @@ fn show_list_item_for_container_child(
     let is_item_hovered =
         ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    if is_item_hovered {
-        list_item = list_item.force_hovered(true);
-    }
-
-    let response = list_item.show_flat(ui);
+    let response = list_item2::ListItem::new(ctx.re_ui)
+        .force_hovered(is_item_hovered)
+        .show_flat(ui, list_item_content);
 
     context_menu_ui_for_item(
         ctx,
