@@ -29,6 +29,13 @@ include_verbatim = true
 # Proceed for server connections considered insecure (invalid TLS).
 insecure = true
 
+# Comma-separated list of accepted status codes for valid links.
+accept = [
+  "100..=103", # Informational codes.
+  "200..=299", # Success codes.
+  "429",       # Too many requests. This is practically never a sign of a broken link.
+]
+
 # Exclude these filesystem paths from getting checked.
 exclude_path = [
   # Unfortunately lychee doesn't yet read .gitignore https://github.com/lycheeverse/lychee/issues/1331
