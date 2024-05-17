@@ -29,6 +29,9 @@ include_verbatim = true
 # Proceed for server connections considered insecure (invalid TLS).
 insecure = true
 
+# Maximum number of allowed retries before a link is declared dead.
+max_retries = 4
+
 # Comma-separated list of accepted status codes for valid links.
 accept = [
   "100..=103", # Informational codes.
