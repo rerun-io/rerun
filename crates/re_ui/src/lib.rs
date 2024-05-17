@@ -10,7 +10,6 @@ mod toggle_switch;
 pub mod drag_and_drop;
 pub mod full_span;
 pub mod icons;
-pub mod list_item;
 pub mod list_item2;
 pub mod modal;
 pub mod toasts;
@@ -21,7 +20,6 @@ pub use self::{
     design_tokens::DesignTokens,
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
-    list_item::ListItem,
     syntax_highlighting::SyntaxHighlighting,
     toggle_switch::toggle_switch,
 };
@@ -1006,11 +1004,6 @@ impl ReUi {
             texture_id: Default::default(),
         };
         ui.painter().add(shadow);
-    }
-
-    /// Convenience function to create a [`ListItem`] with the given text.
-    pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
-        ListItem::new(self, text)
     }
 
     /// Convenience function to create a [`list_item2::ListItem`].
