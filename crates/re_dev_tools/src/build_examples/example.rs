@@ -379,10 +379,9 @@ impl Frontmatter {
 
         let frontmatter: Frontmatter =
             toml::from_str(content[start..end].trim()).map_err(|err| {
-                anyhow::anyhow!(
-                    "Failed to parse TOML metadata of {:?}: {err}",
-                    path.parent().unwrap().file_name().unwrap()
-                )
+                #[allow(clippy::unwrap_used)]
+                let p = path.parent().unwrap().file_name().unwrap();
+                anyhow::anyhow!("Failed to parse TOML metadata of {p:?}: {err}")
             })?;
 
         Ok(Some((

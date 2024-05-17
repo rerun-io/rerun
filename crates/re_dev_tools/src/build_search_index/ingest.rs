@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // build tool, so okay here
+
 /// Docs read from `/docs`
 mod docs;
 
