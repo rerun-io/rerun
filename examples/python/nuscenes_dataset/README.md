@@ -9,7 +9,7 @@ build_args = ["--seconds=5"]
 
 Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
-<picture data-inline-viewer="examples/nuscenes">
+<picture data-inline-viewer="examples/nuscenes_dataset">
   <img src="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/768w.png">
@@ -142,7 +142,7 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -e examples/python/nuscenes
+pip install -e examples/python/nuscenes_dataset
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
