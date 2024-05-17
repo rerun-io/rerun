@@ -29,6 +29,13 @@ include_verbatim = true
 # Proceed for server connections considered insecure (invalid TLS).
 insecure = true
 
+# Comma-separated list of accepted status codes for valid links.
+accept = [
+  "100..=103", # Informational codes.
+  "200..=299", # Success codes.
+  "429",       # Too many requests. This is practically never a sign of a broken link.
+]
+
 # Exclude these filesystem paths from getting checked.
 exclude_path = [
   # Unfortunately lychee doesn't yet read .gitignore https://github.com/lycheeverse/lychee/issues/1331
@@ -77,9 +84,10 @@ exclude = [
   're_viewer.js',     # Build artifact that html is linking to.
 
   # Api endpoints.
-  'https://fonts.googleapis.com/', # Font API entrypoint, not a link.
-  'https://fonts.gstatic.com/',    # Font API entrypoint, not a link.
-  'https://tel.rerun.io/',         # Analytics endpoint.
+  'https://fonts.googleapis.com/',                                               # Font API entrypoint, not a link.
+  'https://fonts.gstatic.com/',                                                  # Font API entrypoint, not a link.
+  'https://tel.rerun.io/',                                                       # Analytics endpoint.
+  'https://docs-assets.developer.apple.com/ml-research/datasets/arkitscenes/v1', # Used by arkit_scenes.
 
   # Avoid rate limiting.
   'https://crates.io/crates/.*',                  # Avoid crates.io rate-limiting
@@ -99,10 +107,12 @@ exclude = [
   'https://storage.googleapis.com/',                           # Storage API entrypoint, not a link.
 
   # Not accessible from CI.
-  '.github/workflows/.*.yml',            # GitHub action workflows cause issues on CI.
-  'https://stackoverflow.com/.',         # Stackoverflow links are no longer accessible from CI.
-  'https://www.tensorflow.org/',         # tensorflow.org apparently blocks CI.
-  'https://9p.io/sys/doc/lexnames.html', # Works locally but on ci we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
+  '.github/workflows/.*.yml',                                          # GitHub action workflows cause issues on CI.
+  'https://stackoverflow.com/.',                                       # Stackoverflow links are no longer accessible from CI.
+  'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
+  'https://9p.io/sys/doc/lexnames.html',                               # Works locally but on ci we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
+  'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
+  'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
