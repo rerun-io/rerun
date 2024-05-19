@@ -110,6 +110,34 @@ Make sure to compile with C++17 or newer.
 
 There's a user provided minimal Bazel example here: https://github.com/kyle-figure/bazel-minimal-rerun/
 
+### Install with conda package
+
+If you are using a package manager that supports conda packages such as `conda` or `pixi` to manage your C++ dependencies,
+the Rerun C++ SDK is available from conda-forge channel in the [`librerun-sdk` package](). 
+After you installed the `librerun-sdk` package. The `rerun` viewer is instead provided by the 
+`rerun-sdk` package, anb you can install both with:
+
+~~~bash
+conda install -c conda-forge librerun-sdk rerun-sdk
+~~~
+
+or 
+
+~~~bash
+pixi add librerun-sdk rerun-sdk
+~~~
+
+Once the package is availble,  can find and consume it in your CMake project
+as you consume any other installed C++ library that provides a CMake config file:
+
+~~~cmake
+find_package(rerun_sdk REQUIRED)
+
+# ...
+
+target_link_libraries(<yourtarget> PRIVATE rerun_sdk)
+~~~
+
 
 ## Development in the Rerun repository
 
