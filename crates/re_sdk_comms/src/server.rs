@@ -9,6 +9,8 @@ use rand::{Rng as _, SeedableRng};
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
 use re_smart_channel::{Receiver, Sender};
 
+use crate::{ConnectionError, VersionError};
+
 #[derive(thiserror::Error, Debug)]
 pub enum ServerError {
     #[error("Failed to bind TCP address {bind_addr:?}. Another Rerun instance is probably running. {err}")]
@@ -19,39 +21,6 @@ pub enum ServerError {
 
     #[error(transparent)]
     FailedToSpawnThread(#[from] std::io::Error),
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum VersionError {
-    #[error("SDK client is using an older protocol version ({client_version}) than the SDK server ({server_version})")]
-    ClientIsOlder {
-        client_version: u16,
-        server_version: u16,
-    },
-
-    #[error("SDK client is using a newer protocol version ({client_version}) than the SDK server ({server_version})")]
-    ClientIsNewer {
-        client_version: u16,
-        server_version: u16,
-    },
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum ConnectionError {
-    #[error("An unknown client tried to connect")]
-    UnknownClient,
-
-    #[error(transparent)]
-    VersionError(#[from] VersionError),
-
-    #[error(transparent)]
-    SendError(#[from] std::io::Error),
-
-    #[error(transparent)]
-    DecodeError(#[from] re_log_encoding::decoder::DecodeError),
-
-    #[error("The receiving end of the channel was closed")]
-    ChannelDisconnected(#[from] re_smart_channel::SendError<LogMsg>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

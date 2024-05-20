@@ -87,6 +87,7 @@ As always there's a lot going on under the hood:
 - New data APIs 14: port everything that used to be uncached [#6035](https://github.com/rerun-io/rerun/pull/6035)
 - Make visible time range ui aware of latest-at & `QueryRange` [#6176](https://github.com/rerun-io/rerun/pull/6176)
 - Visible time ranges are now specified per timeline, not per timeline type [#6204](https://github.com/rerun-io/rerun/pull/6204)
+- Send TCP protocol header to ignore non-rerun clients [#6253](https://github.com/rerun-io/rerun/pull/6253) (thanks [@gurry](https://github.com/gurry)!)
 
 #### 🚀 Performance Improvements
 - New data APIs 4: cached latest-at mono helpers everywhere [#5606](https://github.com/rerun-io/rerun/pull/5606)
@@ -168,7 +169,6 @@ As always there's a lot going on under the hood:
 - New data APIs 8: uncached range queries [#5687](https://github.com/rerun-io/rerun/pull/5687)
 - New data APIs 10: stats and debug tools for new caches [#5990](https://github.com/rerun-io/rerun/pull/5990)
 - Validate the blueprint schema when we try to activate a blueprint sent from SDK [#6283](https://github.com/rerun-io/rerun/pull/6283)
-- Send TCP protocol header to ignore non-rerun clients [#6253](https://github.com/rerun-io/rerun/pull/6253) (thanks [@gurry](https://github.com/gurry)!)
 
 
 ## [0.15.1](https://github.com/rerun-io/rerun/compare/0.15.0...0.15.1) - Bug fix for notebooks - 2024-04-11

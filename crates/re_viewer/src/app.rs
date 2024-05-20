@@ -989,8 +989,9 @@ impl App {
                                 matches!(e, re_sdk_comms::ConnectionError::UnknownClient)
                             })
                         {
-                            // An unknown client that probably stumbled onto the wrong port.
-                            // Don't log as an error (https://github.com/rerun-io/rerun/issues/5883).
+                            // This can happen if a client tried to connect but didn't send the `re_sdk_comms::PROTOCOL_HEADER`.
+                            // Likely an unknown client stumbled onto the wrong port - don't log as an error.
+                            // (for more information see https://github.com/rerun-io/rerun/issues/5883).
                             re_log::debug!("{log_msg}");
                             continue;
                         }

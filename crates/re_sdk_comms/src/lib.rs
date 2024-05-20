@@ -17,7 +17,47 @@ pub use {buffered_client::Client, tcp_client::ClientError};
 mod server;
 
 #[cfg(feature = "server")]
-pub use server::{serve, ConnectionError, ServerError, ServerOptions};
+pub use server::{serve, ServerError, ServerOptions};
+
+/// Server connection error.
+///
+/// This can only occur when using the `server` feature,
+/// However it is defined here so that crates that want to react to this error can do so without
+/// needing to depend on the `server` feature directly.
+/// This is useful when processing errors from a passed-in `re_smart_channel` channel as done by `re_viewer` as of writing.
+#[derive(thiserror::Error, Debug)]
+pub enum ConnectionError {
+    #[error("An unknown client tried to connect")]
+    UnknownClient,
+
+    #[error(transparent)]
+    VersionError(#[from] VersionError),
+
+    #[error(transparent)]
+    SendError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    DecodeError(#[from] re_log_encoding::decoder::DecodeError),
+
+    #[error("The receiving end of the channel was closed")]
+    ChannelDisconnected(#[from] re_smart_channel::SendError<re_log_types::LogMsg>),
+}
+
+#[derive(thiserror::Error, Debug)]
+#[allow(unused)]
+pub enum VersionError {
+    #[error("SDK client is using an older protocol version ({client_version}) than the SDK server ({server_version})")]
+    ClientIsOlder {
+        client_version: u16,
+        server_version: u16,
+    },
+
+    #[error("SDK client is using a newer protocol version ({client_version}) than the SDK server ({server_version})")]
+    ClientIsNewer {
+        client_version: u16,
+        server_version: u16,
+    },
+}
 
 pub const PROTOCOL_VERSION_0: u16 = 0;
 
