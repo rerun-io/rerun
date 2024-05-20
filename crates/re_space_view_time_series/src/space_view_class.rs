@@ -706,7 +706,7 @@ fn axis_ui(
                     });
 
                     if !auto_range {
-                        let range_edit = y_range
+                        let mut range_edit = y_range
                             .unwrap_or_else(|| y_range.unwrap_or(state.saved_y_axis_range.into()));
 
                         ui.horizontal(|ui| {
@@ -718,13 +718,13 @@ fn axis_ui(
                             let speed = ((prev_max - prev_min) * 0.01).at_least(0.001);
                             ui.label("Min");
                             ui.add(
-                                egui::DragValue::new(&mut range_edit.start())
+                                egui::DragValue::new(range_edit.start_mut())
                                     .speed(speed)
                                     .clamp_range(std::f64::MIN..=prev_max),
                             );
                             ui.label("Max");
                             ui.add(
-                                egui::DragValue::new(&mut range_edit.end())
+                                egui::DragValue::new(range_edit.end_mut())
                                     .speed(speed)
                                     .clamp_range(prev_min..=std::f64::MAX),
                             );
