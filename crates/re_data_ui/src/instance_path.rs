@@ -2,7 +2,7 @@ use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 
-use super::{label_for_ui_layout, DataUi};
+use super::DataUi;
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -24,18 +24,16 @@ impl DataUi for InstancePath {
         else {
             if ctx.recording().is_known_entity(entity_path) {
                 // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
-                label_for_ui_layout(
+                ui_layout.label(
                     ui,
-                    ui_layout,
                     format!(
                         "No components logged on timeline {:?}",
                         query.timeline().name()
                     ),
                 );
             } else {
-                label_for_ui_layout(
+                ui_layout.label(
                     ui,
-                    ui_layout,
                     ctx.re_ui
                         .error_text(format!("Unknown entity: {entity_path:?}")),
                 );
@@ -50,9 +48,8 @@ impl DataUi for InstancePath {
             .count();
 
         if ui_layout == UiLayout::List {
-            label_for_ui_layout(
+            ui_layout.label(
                 ui,
-                ui_layout,
                 format!(
                     "{} component{} (including {} indicator component{})",
                     components.len(),
