@@ -84,7 +84,7 @@ impl DataUi for InstancePath {
                 let icon = if is_static {
                     &re_ui::icons::COMPONENT_STATIC
                 } else {
-                    &re_ui::icons::COMPONENT
+                    &re_ui::icons::COMPONENT_TEMPORAL
                 };
                 let item = Item::ComponentPath(component_path);
 
