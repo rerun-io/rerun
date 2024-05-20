@@ -10,6 +10,7 @@ use re_types::{
     blueprint::components::Corner2D, components::Range1D, datatypes::TimeRange,
     SpaceViewClassIdentifier, View,
 };
+use re_ui::list_item2;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
@@ -156,35 +157,44 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
-        ctx.re_ui
-        .selection_grid(ui, "time_series_selection_ui_aggregation")
-        .show(ui, |ui| {
-            ctx.re_ui
-                .grid_left_hand_label(ui, "Zoom Aggregation")
-                .on_hover_text("Configures the zoom-dependent scalar aggregation.\n
-This is done only if steps on the X axis go below 1.0, i.e. a single pixel covers more than one tick worth of data.\n
-It can greatly improve performance (and readability) in such situations as it prevents overdraw.");
+        list_item2::list_item_scope(ui, "time_series_selection_ui", |ui| {
+            list_item2::ListItem::new(ctx.re_ui)
+                .interactive(false)
+                .show_hierarchical(
+                    ui,
+                    list_item2::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
+                        let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
-            let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
+                        egui::ComboBox::from_id_source("aggregation_mode")
+                            .selected_text(agg_mode.to_string())
+                            .show_ui(ui, |ui| {
+                                ui.style_mut().wrap = Some(false);
+                                ui.set_min_width(64.0);
 
-            egui::ComboBox::from_id_source("aggregation_mode")
-                .selected_text(agg_mode.to_string())
-                .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
+                                for variant in TimeSeriesAggregator::variants() {
+                                    ui.selectable_value(
+                                        &mut agg_mode,
+                                        variant,
+                                        variant.to_string(),
+                                    )
+                                    .on_hover_text(variant.description());
+                                }
+                            });
 
-                    for variant in TimeSeriesAggregator::variants() {
-                        ui.selectable_value(&mut agg_mode, variant, variant.to_string())
-                            .on_hover_text(variant.description());
-                    }
-                });
+                        root_entity_properties.time_series_aggregator =
+                            EditableAutoValue::UserEdited(agg_mode);
+                    }),
+                )
+                .on_hover_text(
+                    "Configures the zoom-dependent scalar aggregation.\n\
+                     This is done only if steps on the X axis go below 1.0, i.e. a single pixel \
+                     covers more than one tick worth of data. It can greatly improve performance \
+                     (and readability) in such situations as it prevents overdraw.",
+                );
 
-            root_entity_properties.time_series_aggregator =
-                EditableAutoValue::UserEdited(agg_mode);
+            legend_ui(ctx, space_view_id, ui);
+            axis_ui(ctx, space_view_id, ui, state);
         });
-
-        legend_ui(ctx, space_view_id, ui);
-        axis_ui(ctx, space_view_id, ui, state);
 
         Ok(())
     }
@@ -609,62 +619,86 @@ It can greatly improve performance (and readability) in such situations as it pr
 }
 
 fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
-    // TODO(jleibs): use editors
-
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
     let (re_types::blueprint::archetypes::PlotLegend { visible, corner }, blueprint_path) =
         query_view_property_or_default(space_view_id, blueprint_db, blueprint_query);
 
-    ctx.re_ui
-        .selection_grid(ui, "time_series_selection_ui_legend")
-        .show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Legend");
+    let visible = visible.unwrap_or(true.into());
+    let corner = corner.unwrap_or(DEFAULT_LEGEND_CORNER.into());
 
-            ui.vertical(|ui| {
-                let visible = visible.unwrap_or(true.into());
-                let mut edit_visibility = visible;
-                ctx.re_ui.checkbox(ui, &mut edit_visibility.0, "Visible");
-                if visible != edit_visibility {
-                    ctx.save_blueprint_component(&blueprint_path, &edit_visibility);
-                }
+    let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
+        // TODO(ab): components should provide the `value_fn` closure or the entire
+        // `PropertyContent` object
 
-                let corner = corner.unwrap_or(DEFAULT_LEGEND_CORNER.into());
-                let mut edit_corner = corner;
-                egui::ComboBox::from_id_source("legend_corner")
-                    .selected_text(format!("{corner}"))
-                    .show_ui(ui, |ui| {
-                        ui.style_mut().wrap = Some(false);
-                        ui.set_min_width(64.0);
+        //
+        // Visible
+        //
 
-                        ui.selectable_value(
-                            &mut edit_corner,
-                            egui_plot::Corner::LeftTop.into(),
-                            format!("{}", Corner2D::from(egui_plot::Corner::LeftTop)),
-                        );
-                        ui.selectable_value(
-                            &mut edit_corner,
-                            egui_plot::Corner::RightTop.into(),
-                            format!("{}", Corner2D::from(egui_plot::Corner::RightTop)),
-                        );
-                        ui.selectable_value(
-                            &mut edit_corner,
-                            egui_plot::Corner::LeftBottom.into(),
-                            format!("{}", Corner2D::from(egui_plot::Corner::LeftBottom)),
-                        );
-                        ui.selectable_value(
-                            &mut edit_corner,
-                            egui_plot::Corner::RightBottom.into(),
-                            format!("{}", Corner2D::from(egui_plot::Corner::RightBottom)),
-                        );
-                    });
-                if corner != edit_corner {
-                    ctx.save_blueprint_component(&blueprint_path, &edit_corner);
-                }
-            });
+        let mut edit_visibility = visible;
+        list_item2::ListItem::new(re_ui)
+            .interactive(false)
+            .show_flat(
+                ui,
+                list_item2::PropertyContent::new("Visible").value_bool_mut(&mut edit_visibility.0),
+            );
+        if visible != edit_visibility {
+            ctx.save_blueprint_component(&blueprint_path, &edit_visibility);
+        }
 
-            ui.end_row();
-        });
+        //
+        // Corner
+        //
+
+        let mut edit_corner = corner;
+        list_item2::ListItem::new(re_ui)
+            .interactive(false)
+            .show_flat(
+                ui,
+                list_item2::PropertyContent::new("Corner").value_fn(|_, ui, _| {
+                    egui::ComboBox::from_id_source("legend_corner")
+                        .selected_text(format!("{corner}"))
+                        .show_ui(ui, |ui| {
+                            ui.style_mut().wrap = Some(false);
+                            ui.set_min_width(64.0);
+
+                            ui.selectable_value(
+                                &mut edit_corner,
+                                egui_plot::Corner::LeftTop.into(),
+                                format!("{}", Corner2D::from(egui_plot::Corner::LeftTop)),
+                            );
+                            ui.selectable_value(
+                                &mut edit_corner,
+                                egui_plot::Corner::RightTop.into(),
+                                format!("{}", Corner2D::from(egui_plot::Corner::RightTop)),
+                            );
+                            ui.selectable_value(
+                                &mut edit_corner,
+                                egui_plot::Corner::LeftBottom.into(),
+                                format!("{}", Corner2D::from(egui_plot::Corner::LeftBottom)),
+                            );
+                            ui.selectable_value(
+                                &mut edit_corner,
+                                egui_plot::Corner::RightBottom.into(),
+                                format!("{}", Corner2D::from(egui_plot::Corner::RightBottom)),
+                            );
+                        });
+                }),
+            );
+        if corner != edit_corner {
+            ctx.save_blueprint_component(&blueprint_path, &edit_corner);
+        }
+    };
+
+    list_item2::ListItem::new(ctx.re_ui)
+        .interactive(false)
+        .show_hierarchical_with_children(
+            ui,
+            "time_series_selection_ui_legend",
+            true,
+            list_item2::LabelContent::new("Legend"),
+            sub_prop_ui,
+        );
 }
 
 fn axis_ui(
@@ -673,8 +707,6 @@ fn axis_ui(
     ui: &mut egui::Ui,
     state: &TimeSeriesSpaceViewState,
 ) {
-    // TODO(jleibs): use editors
-
     let (
         re_types::blueprint::archetypes::ScalarAxis {
             range: y_range,
@@ -687,25 +719,41 @@ fn axis_ui(
         ctx.blueprint_query,
     );
 
-    ctx.re_ui.collapsing_header(ui, "Y Axis", true, |ui| {
-        ctx.re_ui
-            .selection_grid(ui, "time_series_selection_ui_y_axis_range")
-            .show(ui, |ui| {
-                ctx.re_ui.grid_left_hand_label(ui, "Range");
+    let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
 
-                ui.vertical(|ui| {
-                    let mut auto_range = y_range.is_none();
+    let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
+        //
+        // Range auto?
+        //
 
+        let mut auto_range = y_range.is_none();
+        list_item2::ListItem::new(re_ui)
+            .interactive(false)
+            .show_flat(
+                ui,
+                list_item2::PropertyContent::new("Default range").value_fn(|_, ui, _| {
                     ui.horizontal(|ui| {
-                        ctx.re_ui
-                            .radio_value(ui, &mut auto_range, true, "Auto")
-                            .on_hover_text("Automatically adjust the Y axis to fit the data.");
-                        ctx.re_ui
-                            .radio_value(ui, &mut auto_range, false, "Manual")
-                            .on_hover_text("Manually specify a min and max Y value. This will define the range when resetting or locking the view range.");
+                        ctx.re_ui.radio_value(ui, &mut auto_range, true, "Auto");
+                        ctx.re_ui.radio_value(ui, &mut auto_range, false, "Manual");
                     });
+                }),
+            )
+            .on_hover_text(
+                "The default range is applied when double-clicking on the space \
+             view. In auto mode, the Y axis range is based on the data. In manual mode, the \
+             provided values are used instead.",
+            );
 
-                    if !auto_range {
+        //
+        // Manual range
+        //
+
+        if !auto_range {
+            list_item2::ListItem::new(re_ui)
+                .interactive(false)
+                .show_flat(
+                    ui,
+                    list_item2::PropertyContent::new("").value_fn(|_, ui, _| {
                         let mut range_edit = y_range
                             .unwrap_or_else(|| y_range.unwrap_or(state.saved_y_axis_range.into()));
 
@@ -733,37 +781,40 @@ fn axis_ui(
                         if y_range != Some(range_edit) {
                             ctx.save_blueprint_component(&blueprint_path, &range_edit);
                         }
-                    } else if y_range.is_some() {
-                        ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
-                    }
-                });
+                    }),
+                );
+        } else if y_range.is_some() {
+            ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
+        }
 
-                ui.end_row();
-            });
+        //
+        // Lock range
+        //
 
-        ctx.re_ui
-            .selection_grid(ui, "time_series_selection_ui_y_axis_zoom")
-            .show(ui, |ui| {
-                ctx.re_ui.grid_left_hand_label(ui, "Zoom Behavior");
+        let mut edit_locked = y_lock_zoom;
+        list_item2::ListItem::new(re_ui)
+            .interactive(false)
+            .show_flat(
+                ui,
+                list_item2::PropertyContent::new("Zoom lock").value_bool_mut(&mut edit_locked.0 .0),
+            )
+            .on_hover_text(
+                "If enabled, the Y axis range will remain locked to the specified range when zooming.",
+            );
+        if y_lock_zoom != edit_locked {
+            ctx.save_blueprint_component(&blueprint_path, &edit_locked);
+        }
+    };
 
-                ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
-                        let mut edit_locked = y_lock_zoom;
-                        ctx.re_ui
-                            .checkbox(ui, &mut edit_locked.0.0, "Lock Range")
-                            .on_hover_text(
-                            "If set, when zooming, the Y axis range will remain locked to the specified range.",
-                        );
-                        if y_lock_zoom != edit_locked {
-                            ctx.save_blueprint_component(&blueprint_path, &edit_locked);
-                        }
-                    })
-                });
-
-                ui.end_row();
-            });
-    });
+    list_item2::ListItem::new(ctx.re_ui)
+        .interactive(false)
+        .show_hierarchical_with_children(
+            ui,
+            "time_series_selection_ui_y_axis",
+            true,
+            list_item2::LabelContent::new("Y Axis"),
+            sub_prop_ui,
+        );
 }
 
 fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: TimeZone) -> String {
