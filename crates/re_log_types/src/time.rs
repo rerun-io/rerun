@@ -207,15 +207,14 @@ impl Time {
         time_format: &str,
         time_zone_for_timestamps: TimeZone,
     ) -> Option<String> {
-        if let Some(datetime) = self.to_datetime() {
-            let parsed_format = time::format_description::parse(time_format).ok()?;
-            return Some(Self::time_string(
-                datetime,
-                &parsed_format,
-                time_zone_for_timestamps,
-            ));
-        }
-        None
+        let datetime = self.to_datetime()?
+        let parsed_format = time::format_description::parse(time_format).ok()?;
+        
+        Some(Self::time_string(
+            datetime,
+            &parsed_format,
+            time_zone_for_timestamps,
+        ))
     }
 
     #[inline]
