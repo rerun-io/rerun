@@ -150,12 +150,12 @@ impl<'a> ListItem<'a> {
     pub fn show_hierarchical_with_children<R>(
         mut self,
         ui: &mut Ui,
-        id: impl Into<egui::Id>,
+        id_source: impl std::hash::Hash,
         default_open: bool,
         content: impl ListItemContent + 'a,
         add_childrens: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
-        let id = id.into();
+        let id = ui.id().with(id_source);
 
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
