@@ -251,35 +251,6 @@ impl ExampleSection {
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
-        let Some(examples) = examples.ready_mut() else {
-            // Still waiting for example to load
-
-            header_ui(ui); // Always show the header
-
-            ui.separator();
-
-            ui.spinner(); // Placeholder for the examples
-            return;
-        };
-
-        let examples = match examples {
-            Ok(examples) => examples,
-            Err(err) => {
-                // Examples failed to load.
-
-                header_ui(ui); // Always show the header
-
-                re_log::warn_once!("Failed to load examples: {err}");
-
-                return;
-            }
-        };
-
-        if examples.is_empty() {
-            ui.label("No examples found.");
-            return;
-        }
-
         // vertical spacing isn't homogeneous so it's handled manually
         let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
         let column_count = (((ui.available_width() + grid_spacing.x)
@@ -302,6 +273,29 @@ impl ExampleSection {
 
             ui.vertical(|ui| {
                 header_ui(ui);
+
+                let Some(examples) = examples.ready_mut() else {
+                    // Still waiting for example to load
+                    ui.separator();
+
+                    ui.spinner(); // Placeholder for the examples
+                    return;
+                };
+
+                let examples = match examples {
+                    Ok(examples) => examples,
+                    Err(err) => {
+                        // Examples failed to load.
+                        re_log::warn_once!("Failed to load examples: {err}");
+
+                        return;
+                    }
+                };
+
+                if examples.is_empty() {
+                    ui.label("No examples found.");
+                    return;
+                }
 
                 ui.add(egui::Label::new(
                     egui::RichText::new("View example recordings")
