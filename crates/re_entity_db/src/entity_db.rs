@@ -241,6 +241,22 @@ impl EntityDb {
         }
     }
 
+    /// Queries for the given `component_names` using latest-at semantics.
+    ///
+    /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
+    ///
+    /// This is a cached API -- data will be lazily cached upon access.
+    #[inline]
+    pub fn latest_at(
+        &self,
+        query: &re_data_store::LatestAtQuery,
+        entity_path: &EntityPath,
+        component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
+    ) -> re_query::LatestAtResults {
+        self.query_caches()
+            .latest_at(self.store(), query, entity_path, component_names)
+    }
+
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
     ///
     /// This assumes that the row we get from the store contains at most one instance for this
