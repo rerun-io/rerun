@@ -1,13 +1,14 @@
 // TODO(jleibs): Turn these methods into a trait.
 
 mod corner2d;
+mod visible;
 
 use egui::NumExt as _;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::{EntityPath, Instance};
 use re_types::{
-    blueprint::components::Corner2D,
+    blueprint::components::{Corner2D, Visible},
     components::{
         Color, MarkerShape, MarkerSize, Name, Radius, ScalarScattering, StrokeWidth, Text,
     },
@@ -477,4 +478,5 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);
     register_editor::<StrokeWidth>(registry, default_stroke_width, edit_stroke_width_ui);
     register_editor::<Text>(registry, default_text, edit_text_ui);
+    register_editor::<Visible>(registry, visible::default_visible, visible::edit_visible);
 }
