@@ -407,7 +407,7 @@ impl ReUi {
         }
 
         let button_size = Vec2::splat(22.0);
-        let icon_size = Self::small_icon_size(); // centered inside the button
+        let icon_size = Vec2::splat(12.0); // centered inside the button
         let rounding = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
