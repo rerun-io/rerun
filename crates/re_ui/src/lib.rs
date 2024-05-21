@@ -185,7 +185,7 @@ impl ReUi {
 
     /// Height of the top-most bar.
     pub fn top_bar_height() -> f32 {
-        44.0 // from figma 2022-02-03
+        28.0 // Don't waste vertical space, especially important for embedded web viewers
     }
 
     /// Height of the title row in the blueprint view and selection view,
