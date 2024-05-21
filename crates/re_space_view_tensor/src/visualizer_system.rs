@@ -9,7 +9,7 @@ use re_viewer_context::{
 
 #[derive(Default)]
 pub struct TensorSystem {
-    pub tensors: std::collections::BTreeMap<EntityPath, (RowId, DecodedTensor)>,
+    pub tensors: Vec<(RowId, DecodedTensor)>,
 }
 
 impl IdentifiedViewSystem for TensorSystem {
@@ -64,8 +64,7 @@ impl TensorSystem {
             .entry(|c: &mut TensorDecodeCache| c.entry(row_id, tensor.value.0))
         {
             Ok(decoded_tensor) => {
-                self.tensors
-                    .insert(ent_path.clone(), (row_id, decoded_tensor));
+                self.tensors.push((row_id, decoded_tensor));
             }
             Err(err) => {
                 re_log::warn_once!("Failed to decode decoding tensor at path {ent_path}: {err}");

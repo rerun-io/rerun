@@ -32,10 +32,7 @@ type ViewType = re_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
-    /// Selects in [`Self::state_tensors`].
-    pub selected_tensor: Option<EntityPath>,
-
-    pub state_tensors: ahash::HashMap<EntityPath, PerTensorState>,
+    pub tensor_state: Option<PerTensorState>,
 }
 
 impl SpaceViewState for ViewTensorState {
@@ -207,10 +204,8 @@ impl SpaceViewClass for TensorSpaceView {
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
-        if let Some(selected_tensor) = &state.selected_tensor {
-            if let Some(state_tensor) = state.state_tensors.get_mut(selected_tensor) {
-                state_tensor.ui(ctx, ui);
-            }
+        if let Some(tensor_state) = &mut state.tensor_state {
+            tensor_state.ui(ctx, ui);
         }
         Ok(())
     }
@@ -238,40 +233,26 @@ impl SpaceViewClass for TensorSpaceView {
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
-        if tensors.is_empty() {
-            ui.centered_and_justified(|ui| ui.label("(empty)"));
-            state.selected_tensor = None;
+        if tensors.len() > 1 {
+            egui::Frame {
+                inner_margin: re_ui::ReUi::view_padding().into(),
+                ..egui::Frame::default()
+            }
+            .show(ui, |ui| {
+                ui.label(format!(
+                    "Can only show one tensor at a time; was given {}.",
+                    tensors.len()
+                ));
+            });
+            state.tensor_state = None;
+        } else if let Some((tensor_data_row_id, tensor)) = tensors.first() {
+            let tensor_state = state
+                .tensor_state
+                .get_or_insert_with(|| PerTensorState::create(*tensor_data_row_id, tensor));
+            view_tensor(ctx, ui, tensor_state, *tensor_data_row_id, tensor);
         } else {
-            if let Some(selected_tensor) = &state.selected_tensor {
-                if !tensors.contains_key(selected_tensor) {
-                    state.selected_tensor = None;
-                }
-            }
-            if state.selected_tensor.is_none() {
-                state.selected_tensor = Some(tensors.iter().next().unwrap().0.clone());
-            }
-
-            if tensors.len() > 1 {
-                // Show radio buttons for the different tensors we have in this view - better than nothing!
-                ui.horizontal(|ui| {
-                    for instance_path in tensors.keys() {
-                        let is_selected = state.selected_tensor.as_ref() == Some(instance_path);
-                        if ui.radio(is_selected, instance_path.to_string()).clicked() {
-                            state.selected_tensor = Some(instance_path.clone());
-                        }
-                    }
-                });
-            }
-
-            if let Some(selected_tensor) = &state.selected_tensor {
-                if let Some((tensor_data_row_id, tensor)) = tensors.get(selected_tensor) {
-                    let state_tensor = state
-                        .state_tensors
-                        .entry(selected_tensor.clone())
-                        .or_insert_with(|| PerTensorState::create(*tensor_data_row_id, tensor));
-                    view_tensor(ctx, ui, state_tensor, *tensor_data_row_id, tensor);
-                }
-            }
+            ui.centered_and_justified(|ui| ui.label("(empty)"));
+            state.tensor_state = None;
         }
 
         Ok(())
