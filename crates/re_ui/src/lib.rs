@@ -216,8 +216,8 @@ impl ReUi {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn bottom_panel_margin(&self) -> egui::Vec2 {
-        egui::Vec2::splat(8.0)
+    pub fn bottom_panel_margin(&self) -> egui::Margin {
+        Self::top_bar_margin()
     }
 
     /// For the streams view (time panel)
@@ -230,10 +230,7 @@ impl ReUi {
 
         let mut frame = egui::Frame {
             fill: self.design_tokens.bottom_bar_color,
-            inner_margin: egui::Margin::symmetric(
-                margin.x + margin_offset,
-                margin.y + margin_offset,
-            ),
+            inner_margin: margin + margin_offset,
             outer_margin: egui::Margin {
                 left: -margin_offset,
                 right: -margin_offset,

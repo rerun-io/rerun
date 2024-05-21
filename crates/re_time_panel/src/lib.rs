@@ -204,8 +204,8 @@ impl TimePanel {
                     ui.vertical(|ui| {
                         // Add back the margin we removed from the panel:
                         let mut top_row_frame = egui::Frame::default();
-                        top_row_frame.inner_margin.right = margin.x;
-                        top_row_frame.inner_margin.bottom = margin.y;
+                        top_row_frame.inner_margin.right = margin.right;
+                        top_row_frame.inner_margin.bottom = margin.bottom;
                         let top_row_rect = top_row_frame
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -228,7 +228,7 @@ impl TimePanel {
 
                         // Add extra margin on the left which was intentionally missing on the controls.
                         let mut streams_frame = egui::Frame::default();
-                        streams_frame.inner_margin.left = margin.x;
+                        streams_frame.inner_margin.left = margin.left;
                         streams_frame.show(ui, |ui| {
                             self.expanded_ui(
                                 ctx,
