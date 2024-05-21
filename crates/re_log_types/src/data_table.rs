@@ -1271,9 +1271,9 @@ impl DataTable {
 /// Crafts a simple but interesting [`DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
 impl DataTable {
-    /// NOTE: because everything here is predetermined and there is no input we assume it's safe here
-    #[allow(clippy::unwrap_used)]
     pub fn example(timeless: bool) -> Self {
+        // NOTE: because everything here is predetermined and there is no input we assume it's safe here
+        #![allow(clippy::unwrap_used)]
         use crate::{
             example_components::{MyColor, MyLabel, MyPoint},
             Time,
