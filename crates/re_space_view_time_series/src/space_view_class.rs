@@ -75,8 +75,6 @@ pub struct TimeSeriesSpaceView;
 
 type ViewType = re_types::blueprint::views::TimeSeriesView;
 
-const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
-
 impl SpaceViewClass for TimeSeriesSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
         ViewType::identifier()

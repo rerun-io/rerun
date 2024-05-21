@@ -62,8 +62,11 @@ pub fn default_corner2d(
     _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> Corner2D {
-    // TODO: Want to distinguish the space view this happens in.
+    // TODO(andreas): Want to distinguish the space view this happens in.
     // TimeSeriesView: RightBottom
     // BarChart: RightTop
+    // Need to make handling of editors a bit more powerful for this.
+    // Rough idea right now is to have "default providers" which can be either a View or a Visualizer.
+    // They then get queried with a ComponentName and return LatestAtComponentResults (or similar).
     Corner2D::RightBottom
 }
