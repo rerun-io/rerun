@@ -164,16 +164,12 @@ impl ComponentUiRegistry {
         entity_path: &EntityPath,
         override_path: &EntityPath,
         component: &LatestAtComponentResults,
+        component_name: &ComponentName,
         instance: &Instance,
     ) {
-        let Some(component_name) = component.component_name(db.resolver()) else {
-            // TODO(#5607): what should happen if the promise is still pending?
-            return;
-        };
-
         re_tracing::profile_function!(component_name.full_name());
 
-        if let Some((_, edit_callback)) = self.component_editors.get(&component_name) {
+        if let Some((_, edit_callback)) = self.component_editors.get(component_name) {
             (*edit_callback)(
                 ctx,
                 ui,
