@@ -185,7 +185,8 @@ impl ComponentName {
 
     /// Is this an indicator component for an archetype?
     pub fn is_indicator_component(&self) -> bool {
-        self.starts_with("rerun.components.") && self.ends_with("Indicator")
+        (self.starts_with("rerun.components.") || self.starts_with("rerun.blueprint.components."))
+            && self.ends_with("Indicator")
     }
 
     /// If this is an indicator component, for which archetype?
