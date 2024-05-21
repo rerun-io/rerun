@@ -406,7 +406,7 @@ impl ReUi {
             visuals.widgets.open.expansion = 0.0;
         }
 
-        let button_size = Vec2::splat(28.0);
+        let button_size = Vec2::splat(22.0);
         let icon_size = Self::small_icon_size(); // centered inside the button
         let rounding = 6.0;
 
