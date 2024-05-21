@@ -56,7 +56,7 @@ pub enum DesiredWidth {
 
 impl Default for DesiredWidth {
     fn default() -> Self {
-        DesiredWidth::AtLeast(0.0)
+        Self::AtLeast(0.0)
     }
 }
 

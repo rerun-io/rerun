@@ -6,7 +6,6 @@ namespace rerun.blueprint.views;
 ///
 /// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1200w.png"
 table Spatial2DView (
-    "attr.docs.unreleased",
     "attr.rerun.view_identifier": "2D"
 ) {
     /// Configuration for the background of the view.

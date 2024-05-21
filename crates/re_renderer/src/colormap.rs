@@ -34,12 +34,12 @@ impl Colormap {
 impl std::fmt::Display for Colormap {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Colormap::Grayscale => write!(f, "Grayscale"),
-            Colormap::Inferno => write!(f, "Inferno"),
-            Colormap::Magma => write!(f, "Magma"),
-            Colormap::Plasma => write!(f, "Plasma"),
-            Colormap::Turbo => write!(f, "Turbo"),
-            Colormap::Viridis => write!(f, "Viridis"),
+            Self::Grayscale => write!(f, "Grayscale"),
+            Self::Inferno => write!(f, "Inferno"),
+            Self::Magma => write!(f, "Magma"),
+            Self::Plasma => write!(f, "Plasma"),
+            Self::Turbo => write!(f, "Turbo"),
+            Self::Viridis => write!(f, "Viridis"),
         }
     }
 }

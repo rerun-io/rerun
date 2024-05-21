@@ -111,7 +111,7 @@ impl From<arrow2::error::Error> for ArcArrowError {
 
 impl From<arrow2::error::Error> for SerializationError {
     fn from(e: arrow2::error::Error) -> Self {
-        SerializationError::ArrowError(ArcArrowError::from(e))
+        Self::ArrowError(ArcArrowError::from(e))
     }
 }
 
@@ -332,23 +332,21 @@ impl DeserializationError {
     #[inline]
     pub fn backtrace(&self) -> Option<_Backtrace> {
         match self {
-            DeserializationError::Context {
+            Self::Context {
                 location: _,
                 source,
             } => source.backtrace(),
-            DeserializationError::NotImplemented { backtrace, .. }
-            | DeserializationError::MissingStructField { backtrace, .. }
-            | DeserializationError::MismatchedStructFieldLengths { backtrace, .. }
-            | DeserializationError::MissingUnionArm { backtrace, .. }
-            | DeserializationError::MissingData { backtrace }
-            | DeserializationError::MissingComponent { backtrace, .. }
-            | DeserializationError::DatatypeMismatch { backtrace, .. }
-            | DeserializationError::OffsetOutOfBounds { backtrace, .. }
-            | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. }
-            | DeserializationError::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
-            DeserializationError::DataCellError(_) | DeserializationError::ValidationError(_) => {
-                None
-            }
+            Self::NotImplemented { backtrace, .. }
+            | Self::MissingStructField { backtrace, .. }
+            | Self::MismatchedStructFieldLengths { backtrace, .. }
+            | Self::MissingUnionArm { backtrace, .. }
+            | Self::MissingData { backtrace }
+            | Self::MissingComponent { backtrace, .. }
+            | Self::DatatypeMismatch { backtrace, .. }
+            | Self::OffsetOutOfBounds { backtrace, .. }
+            | Self::OffsetSliceOutOfBounds { backtrace, .. }
+            | Self::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
+            Self::DataCellError(_) | Self::ValidationError(_) => None,
         }
     }
 }

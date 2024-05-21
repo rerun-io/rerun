@@ -73,7 +73,7 @@ pub struct InteractionHighlight {
 impl InteractionHighlight {
     /// Picks the stronger selection & hover highlight from two highlight descriptions.
     #[inline]
-    pub fn max(&self, other: InteractionHighlight) -> Self {
+    pub fn max(&self, other: Self) -> Self {
         Self {
             selection: self.selection.max(other.selection),
             hover: self.hover.max(other.hover),
@@ -90,7 +90,7 @@ pub struct ItemCollection(IndexMap<Item, Option<ItemSpaceContext>>);
 impl From<Item> for ItemCollection {
     #[inline]
     fn from(val: Item) -> Self {
-        ItemCollection([(val, None)].into())
+        Self([(val, None)].into())
     }
 }
 
@@ -100,7 +100,7 @@ where
 {
     #[inline]
     fn from(value: T) -> Self {
-        ItemCollection(value.collect())
+        Self(value.collect())
     }
 }
 
@@ -108,7 +108,7 @@ impl ItemCollection {
     /// For each item in this selection, if it refers to the first element of an instance with a
     /// single element, resolve it to a unindexed entity path.
     pub fn into_mono_instance_path_items(self, ctx: &ViewerContext<'_>) -> Self {
-        ItemCollection(
+        Self(
             self.0
                 .into_iter()
                 .map(|(item, space_ctx)| {

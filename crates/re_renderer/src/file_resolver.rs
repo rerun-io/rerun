@@ -205,8 +205,8 @@ impl SearchPath {
         const RERUN_SHADER_PATH: &str = "RERUN_SHADER_PATH";
 
         std::env::var(RERUN_SHADER_PATH)
-            .map_or_else(|_| Ok(SearchPath::default()), |s| s.parse())
-            .unwrap_or_else(|_| SearchPath::default())
+            .map_or_else(|_| Ok(Self::default()), |s| s.parse())
+            .unwrap_or_else(|_| Self::default())
     }
 
     /// Push a path to search path.
@@ -294,11 +294,11 @@ impl std::str::FromStr for ImportClause {
         let s = clause_str.trim();
 
         ensure!(
-            s.starts_with(ImportClause::PREFIX),
+            s.starts_with(Self::PREFIX),
             "import clause must start with {prefix:?}, got {s:?}",
-            prefix = ImportClause::PREFIX,
+            prefix = Self::PREFIX,
         );
-        let s = s.trim_start_matches(ImportClause::PREFIX).trim();
+        let s = s.trim_start_matches(Self::PREFIX).trim();
 
         let rs = s.chars().rev().collect::<String>();
 

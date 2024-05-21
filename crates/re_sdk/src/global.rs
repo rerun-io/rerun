@@ -19,8 +19,8 @@ enum RecordingScope {
 impl std::fmt::Display for RecordingScope {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            RecordingScope::Global => "global",
-            RecordingScope::ThreadLocal => "thread-local",
+            Self::Global => "global",
+            Self::ThreadLocal => "thread-local",
         })
     }
 }
@@ -111,7 +111,7 @@ impl RecordingStream {
     /// Returns `overrides` if it exists, otherwise returns the most appropriate active recording
     /// of the specified type (i.e. thread-local first, then global scope), if any.
     #[inline]
-    pub fn get(kind: StoreKind, overrides: Option<RecordingStream>) -> Option<RecordingStream> {
+    pub fn get(kind: StoreKind, overrides: Option<Self>) -> Option<Self> {
         let rec = overrides.or_else(|| {
             Self::get_any(RecordingScope::ThreadLocal, kind)
                 .or_else(|| Self::get_any(RecordingScope::Global, kind))
@@ -135,10 +135,7 @@ impl RecordingStream {
     // Used from python-bridge.
     #[inline]
     #[doc(hidden)]
-    pub fn get_quiet(
-        kind: StoreKind,
-        overrides: Option<RecordingStream>,
-    ) -> Option<RecordingStream> {
+    pub fn get_quiet(kind: StoreKind, overrides: Option<Self>) -> Option<Self> {
         let rec = overrides.or_else(|| {
             Self::get_any(RecordingScope::ThreadLocal, kind)
                 .or_else(|| Self::get_any(RecordingScope::Global, kind))
@@ -162,7 +159,7 @@ impl RecordingStream {
 
     /// Returns the currently active recording of the specified type in the global scope, if any.
     #[inline]
-    pub fn global(kind: StoreKind) -> Option<RecordingStream> {
+    pub fn global(kind: StoreKind) -> Option<Self> {
         Self::get_any(RecordingScope::Global, kind)
     }
 
@@ -171,7 +168,7 @@ impl RecordingStream {
     ///
     /// Returns the previous one, if any.
     #[inline]
-    pub fn set_global(kind: StoreKind, rec: Option<RecordingStream>) -> Option<RecordingStream> {
+    pub fn set_global(kind: StoreKind, rec: Option<Self>) -> Option<Self> {
         Self::set_any(RecordingScope::Global, kind, rec)
     }
 
@@ -189,17 +186,14 @@ impl RecordingStream {
     /// Returns the currently active recording of the specified type in the thread-local scope,
     /// if any.
     #[inline]
-    pub fn thread_local(kind: StoreKind) -> Option<RecordingStream> {
+    pub fn thread_local(kind: StoreKind) -> Option<Self> {
         Self::get_any(RecordingScope::ThreadLocal, kind)
     }
 
     /// Replaces the currently active recording of the specified type in the thread-local scope
     /// with the specified one.
     #[inline]
-    pub fn set_thread_local(
-        kind: StoreKind,
-        rec: Option<RecordingStream>,
-    ) -> Option<RecordingStream> {
+    pub fn set_thread_local(kind: StoreKind, rec: Option<Self>) -> Option<Self> {
         Self::set_any(RecordingScope::ThreadLocal, kind, rec)
     }
 
@@ -214,7 +208,7 @@ impl RecordingStream {
 
     // --- Internal helpers ---
 
-    fn get_any(scope: RecordingScope, kind: StoreKind) -> Option<RecordingStream> {
+    fn get_any(scope: RecordingScope, kind: StoreKind) -> Option<Self> {
         match kind {
             StoreKind::Recording => match scope {
                 RecordingScope::Global => GLOBAL_DATA_RECORDING
@@ -235,11 +229,7 @@ impl RecordingStream {
         }
     }
 
-    fn set_any(
-        scope: RecordingScope,
-        kind: StoreKind,
-        rec: Option<RecordingStream>,
-    ) -> Option<RecordingStream> {
+    fn set_any(scope: RecordingScope, kind: StoreKind, rec: Option<Self>) -> Option<Self> {
         match kind {
             StoreKind::Recording => match scope {
                 RecordingScope::Global => std::mem::replace(

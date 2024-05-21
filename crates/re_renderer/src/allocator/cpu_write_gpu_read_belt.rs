@@ -467,11 +467,11 @@ impl CpuWriteGpuReadBelt {
             wgpu::TextureFormat::Rgba32Uint
                 .block_copy_size(None)
                 .unwrap() as u64
-                <= CpuWriteGpuReadBelt::MIN_OFFSET_ALIGNMENT
+                <= Self::MIN_OFFSET_ALIGNMENT
         );
 
         let (sender, receiver) = mpsc::channel();
-        CpuWriteGpuReadBelt {
+        Self {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_OFFSET_ALIGNMENT),
             active_chunks: Vec::new(),
             closed_chunks: Vec::new(),

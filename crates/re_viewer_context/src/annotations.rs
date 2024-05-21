@@ -30,11 +30,10 @@ impl Annotations {
     }
 
     /// Fast access to an [`Arc`] sharing the same [`Annotations::missing`] instance.
-    pub fn missing_arc() -> Arc<Annotations> {
+    pub fn missing_arc() -> Arc<Self> {
         use std::sync::OnceLock;
         static CELL: OnceLock<Arc<Annotations>> = OnceLock::new();
-        CELL.get_or_init(|| Arc::new(Annotations::missing()))
-            .clone()
+        CELL.get_or_init(|| Arc::new(Self::missing())).clone()
     }
 
     #[inline]

@@ -17,4 +17,4 @@ A uint32 vector in 3D space.
 
 ## Used by
 
-* [`TriangleIndices`](../components/triangle_indices.md?speculative-link)
+* [`TriangleIndices`](../components/triangle_indices.md)

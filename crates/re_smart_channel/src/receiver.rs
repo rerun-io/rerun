@@ -133,7 +133,7 @@ impl<T: Send> Receiver<T> {
     ///
     /// Care must be taken to use [`Self::recv_with_send_time`] and [`crate::Sender::send_at`].
     /// This is a very leaky abstraction, and it would be nice with a refactor.
-    pub fn chained_channel(&self) -> (crate::Sender<T>, Receiver<T>) {
+    pub fn chained_channel(&self) -> (crate::Sender<T>, Self) {
         crate::smart_channel_with_stats(
             // NOTE: We cannot know yet, and it doesn't matter as the new sender will only be used
             // to forward existing messages.

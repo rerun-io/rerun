@@ -21,6 +21,18 @@ impl Range1D {
     pub fn end(&self) -> f64 {
         self.0 .0[1]
     }
+
+    /// The start of the range.
+    #[inline]
+    pub fn start_mut(&mut self) -> &mut f64 {
+        &mut self.0 .0[0]
+    }
+
+    /// The end of the range.
+    #[inline]
+    pub fn end_mut(&mut self) -> &mut f64 {
+        &mut self.0 .0[1]
+    }
 }
 
 impl From<Range1D> for emath::Rangef {

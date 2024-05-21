@@ -108,7 +108,7 @@ impl ::re_types_core::Loggable for Material {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::Material>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![{
                     let (somes, albedo_factor): (Vec<_>, Vec<_>) = data
                         .iter()

@@ -153,7 +153,7 @@ impl EntityDb {
         store_info: StoreInfo,
         rows: impl IntoIterator<Item = DataRow>,
     ) -> Result<Self, Error> {
-        let mut entity_db = EntityDb::new(store_info.store_id.clone());
+        let mut entity_db = Self::new(store_info.store_id.clone());
 
         entity_db.set_store_info(SetStoreInfo {
             row_id: RowId::new(),
@@ -728,12 +728,12 @@ impl EntityDb {
     }
 
     /// Make a clone of this [`EntityDb`], assigning it a new [`StoreId`].
-    pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
+    pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
         self.store().sort_indices_if_needed();
 
-        let mut new_db = EntityDb::new(new_id.clone());
+        let mut new_db = Self::new(new_id.clone());
 
         new_db.last_modified_at = self.last_modified_at;
         new_db.latest_row_id = self.latest_row_id;

@@ -13,7 +13,7 @@ use re_tuid::Tuid;
 impl SizeBytes for Tuid {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        Tuid::heap_size_bytes(self)
+        Self::heap_size_bytes(self)
     }
 }
 

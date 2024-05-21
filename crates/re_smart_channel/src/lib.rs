@@ -147,18 +147,18 @@ pub enum SmartMessageSource {
 impl std::fmt::Display for SmartMessageSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&match self {
-            SmartMessageSource::Unknown => "unknown".into(),
-            SmartMessageSource::File(path) => format!("file://{}", path.to_string_lossy()),
-            SmartMessageSource::RrdHttpStream { url } => url.clone(),
-            SmartMessageSource::RrdWebEventCallback => "web_callback".into(),
-            SmartMessageSource::JsChannelPush => "javascript".into(),
-            SmartMessageSource::Sdk => "sdk".into(),
-            SmartMessageSource::WsClient { ws_server_url } => ws_server_url.clone(),
-            SmartMessageSource::TcpClient { addr } => format!(
+            Self::Unknown => "unknown".into(),
+            Self::File(path) => format!("file://{}", path.to_string_lossy()),
+            Self::RrdHttpStream { url } => url.clone(),
+            Self::RrdWebEventCallback => "web_callback".into(),
+            Self::JsChannelPush => "javascript".into(),
+            Self::Sdk => "sdk".into(),
+            Self::WsClient { ws_server_url } => ws_server_url.clone(),
+            Self::TcpClient { addr } => format!(
                 "tcp://{}",
                 addr.map_or_else(|| "(unknown ip)".to_owned(), |addr| addr.to_string())
             ),
-            SmartMessageSource::Stdin => "stdin".into(),
+            Self::Stdin => "stdin".into(),
         })
     }
 }
@@ -218,9 +218,9 @@ pub enum SmartMessagePayload<T: Send> {
 impl<T: Send> std::fmt::Debug for SmartMessagePayload<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SmartMessagePayload::Msg(_) => f.write_str("Msg(_)"),
-            SmartMessagePayload::Flush { .. } => f.write_str("Flush"),
-            SmartMessagePayload::Quit(_) => f.write_str("Quit"),
+            Self::Msg(_) => f.write_str("Msg(_)"),
+            Self::Flush { .. } => f.write_str("Flush"),
+            Self::Quit(_) => f.write_str("Quit"),
         }
     }
 }
@@ -228,7 +228,7 @@ impl<T: Send> std::fmt::Debug for SmartMessagePayload<T> {
 impl<T: Send + PartialEq> PartialEq for SmartMessagePayload<T> {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
-            (SmartMessagePayload::Msg(msg1), SmartMessagePayload::Msg(msg2)) => msg1.eq(msg2),
+            (Self::Msg(msg1), Self::Msg(msg2)) => msg1.eq(msg2),
             _ => false,
         }
     }

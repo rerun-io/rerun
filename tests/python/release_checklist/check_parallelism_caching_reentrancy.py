@@ -65,6 +65,7 @@ def blueprint() -> rrb.BlueprintLike:
             )
             for _ in range(0, 3)
         ]),
+        rrb.TextDocumentView(origin="readme"),
         grid_columns=4,
     )
 

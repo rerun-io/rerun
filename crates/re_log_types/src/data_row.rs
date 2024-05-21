@@ -329,7 +329,7 @@ impl DataRow {
             .map(DataCell::from_component_batch)
             .collect::<Result<Vec<DataCell>, _>>()?;
 
-        let mut row = DataRow::from_cells(row_id, timepoint, entity_path, data_cells)?;
+        let mut row = Self::from_cells(row_id, timepoint, entity_path, data_cells)?;
         row.compute_all_size_bytes();
         Ok(row)
     }
@@ -473,7 +473,7 @@ impl DataRow {
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         into_cells: C0,
-    ) -> DataReadResult<DataRow>
+    ) -> DataReadResult<Self>
     where
         C0: Into<DataCell>,
     {
@@ -492,7 +492,7 @@ impl DataRow {
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         into_cells: C0,
-    ) -> DataRowResult<DataRow>
+    ) -> DataRowResult<Self>
     where
         C0: TryInto<DataCell>,
         DataRowError: From<<C0 as TryInto<DataCell>>::Error>,
@@ -515,7 +515,7 @@ impl DataRow {
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         into_cells: (C0, C1),
-    ) -> DataRowResult<DataRow>
+    ) -> DataRowResult<Self>
     where
         C0: Into<DataCell>,
         C1: Into<DataCell>,
@@ -538,7 +538,7 @@ impl DataRow {
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         into_cells: (C0, C1),
-    ) -> DataRowResult<DataRow>
+    ) -> DataRowResult<Self>
     where
         C0: TryInto<DataCell>,
         C1: TryInto<DataCell>,
@@ -561,7 +561,7 @@ impl DataRow {
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
         into_cells: (C0, C1, C2),
-    ) -> DataRowResult<DataRow>
+    ) -> DataRowResult<Self>
     where
         C0: TryInto<DataCell>,
         C1: TryInto<DataCell>,

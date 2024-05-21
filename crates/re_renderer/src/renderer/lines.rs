@@ -147,7 +147,7 @@ pub mod gpu_data {
 
     impl LineVertex {
         /// Sentinel vertex used at the start and the end of the line vertex data texture to facilitate caps.
-        pub const SENTINEL: LineVertex = LineVertex {
+        pub const SENTINEL: Self = Self {
             position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
             strip_index: u32::MAX,
         };
@@ -364,7 +364,7 @@ impl LineDrawData {
         let line_renderer = ctx.renderer::<LineRenderer>();
 
         if strips_buffer.is_empty() {
-            return Ok(LineDrawData {
+            return Ok(Self {
                 bind_group_all_lines: None,
                 bind_group_all_lines_outline_mask: None,
                 batches: Vec::new(),
@@ -530,7 +530,7 @@ impl LineDrawData {
             }
         }
 
-        Ok(LineDrawData {
+        Ok(Self {
             bind_group_all_lines: Some(bind_group_all_lines),
             bind_group_all_lines_outline_mask: Some(bind_group_all_lines_outline_mask),
             batches: batches_internal,
@@ -735,7 +735,7 @@ impl Renderer for LineRenderer {
             },
         );
 
-        LineRenderer {
+        Self {
             render_pipeline_color,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,

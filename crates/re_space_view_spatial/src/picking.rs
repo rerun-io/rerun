@@ -88,12 +88,12 @@ impl PickingContext {
         ui_clip_rect: egui::Rect,
         pixels_per_point: f32,
         eye: &Eye,
-    ) -> PickingContext {
+    ) -> Self {
         let pointer_in_space2d = space2d_from_ui.transform_pos(pointer_in_ui);
         let pointer_in_space2d = glam::vec2(pointer_in_space2d.x, pointer_in_space2d.y);
         let pointer_in_pixel = (pointer_in_ui - ui_clip_rect.left_top()) * pixels_per_point;
 
-        PickingContext {
+        Self {
             pointer_in_space2d,
             pointer_in_pixel: glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
             pointer_in_ui: glam::vec2(pointer_in_ui.x, pointer_in_ui.y),

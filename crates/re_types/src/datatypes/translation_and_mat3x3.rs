@@ -103,7 +103,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, translation): (Vec<_>, Vec<_>) = data

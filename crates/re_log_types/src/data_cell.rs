@@ -188,7 +188,7 @@ impl DataCell {
     ) -> re_types_core::SerializationResult<Self> {
         batch
             .to_arrow()
-            .map(|arrow| DataCell::from_arrow(batch.name(), arrow))
+            .map(|arrow| Self::from_arrow(batch.name(), arrow))
     }
 
     /// Builds a new `DataCell` from a uniform iterable of native component values.

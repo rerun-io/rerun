@@ -250,7 +250,7 @@ impl framework::Example for RenderDepthClouds {
         )
         .transpose();
 
-        RenderDepthClouds {
+        Self {
             depth,
             albedo,
 

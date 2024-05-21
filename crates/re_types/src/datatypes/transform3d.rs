@@ -107,8 +107,8 @@ impl ::re_types_core::Loggable for Transform3D {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(Transform3D::TranslationAndMat3x3(_)) => 1i8,
-                    Some(Transform3D::TranslationRotationScale(_)) => 2i8,
+                    Some(Self::TranslationAndMat3x3(_)) => 1i8,
+                    Some(Self::TranslationRotationScale(_)) => 2i8,
                 })
                 .collect();
             let fields = vec![
@@ -117,7 +117,7 @@ impl ::re_types_core::Loggable for Transform3D {
                     let translation_and_mat3x3: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Transform3D::TranslationAndMat3x3(v)) => Some(v.clone()),
+                            Some(Self::TranslationAndMat3x3(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -133,7 +133,7 @@ impl ::re_types_core::Loggable for Transform3D {
                     let translation_rotation_scale: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Transform3D::TranslationRotationScale(v)) => Some(v.clone()),
+                            Some(Self::TranslationRotationScale(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -157,12 +157,12 @@ impl ::re_types_core::Loggable for Transform3D {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(Transform3D::TranslationAndMat3x3(_)) => {
+                        Some(Self::TranslationAndMat3x3(_)) => {
                             let offset = translation_and_mat3x3_offset;
                             translation_and_mat3x3_offset += 1;
                             offset
                         }
-                        Some(Transform3D::TranslationRotationScale(_)) => {
+                        Some(Self::TranslationRotationScale(_)) => {
                             let offset = translation_rotation_scale_offset;
                             translation_rotation_scale_offset += 1;
                             offset
@@ -170,13 +170,7 @@ impl ::re_types_core::Loggable for Transform3D {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::datatypes::Transform3D>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 
@@ -248,7 +242,7 @@ impl ::re_types_core::Loggable for Transform3D {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Transform3D::TranslationAndMat3x3({
+                                1i8 => Self::TranslationAndMat3x3({
                                     if offset as usize >= translation_and_mat3x3.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -267,7 +261,7 @@ impl ::re_types_core::Loggable for Transform3D {
                                             "rerun.datatypes.Transform3D#TranslationAndMat3x3",
                                         )?
                                 }),
-                                2i8 => Transform3D::TranslationRotationScale({
+                                2i8 => Self::TranslationRotationScale({
                                     if offset as usize >= translation_rotation_scale.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

@@ -706,7 +706,7 @@ impl DataTable {
     ) -> (Field, Box<dyn Array>) {
         re_tracing::profile_function!();
 
-        let data = DataTable::serialize_primitive_deque(values);
+        let data = Self::serialize_primitive_deque(values);
 
         let datatype = datatype.unwrap_or(data.data_type().clone());
         let data = data.to(datatype.clone()).boxed();
@@ -1063,7 +1063,7 @@ impl DataTable {
     /// functionally equivalent.
     ///
     /// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
-    pub fn similar(table1: &DataTable, table2: &DataTable) -> anyhow::Result<()> {
+    pub fn similar(table1: &Self, table2: &Self) -> anyhow::Result<()> {
         /// Given a [`DataTable`], returns all of its rows grouped by timeline.
         fn compute_rows(table: &DataTable) -> anyhow::Result<HashMap<Timeline, Vec<DataRow>>> {
             let mut rows_by_timeline: HashMap<Timeline, Vec<DataRow>> = Default::default();
@@ -1266,7 +1266,7 @@ impl DataTable {
 /// Crafts a simple but interesting [`DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
 impl DataTable {
-    pub fn example(timeless: bool) -> DataTable {
+    pub fn example(timeless: bool) -> Self {
         use crate::{
             example_components::{MyColor, MyLabel, MyPoint},
             Time,
@@ -1308,7 +1308,7 @@ impl DataTable {
             DataRow::from_cells2(RowId::new(), "c", timepoint(2), (colors, labels)).unwrap()
         };
 
-        let mut table = DataTable::from_rows(table_id, [row0, row1, row2]);
+        let mut table = Self::from_rows(table_id, [row0, row1, row2]);
         table.compute_all_size_bytes();
 
         table

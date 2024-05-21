@@ -300,40 +300,38 @@ pub enum LazyDatatype {
 impl From<DataType> for LazyDatatype {
     fn from(datatype: DataType) -> Self {
         match datatype {
-            DataType::Null => LazyDatatype::Null,
-            DataType::Boolean => LazyDatatype::Boolean,
-            DataType::Int8 => LazyDatatype::Int8,
-            DataType::Int16 => LazyDatatype::Int16,
-            DataType::Int32 => LazyDatatype::Int32,
-            DataType::Int64 => LazyDatatype::Int64,
-            DataType::UInt8 => LazyDatatype::UInt8,
-            DataType::UInt16 => LazyDatatype::UInt16,
-            DataType::UInt32 => LazyDatatype::UInt32,
-            DataType::UInt64 => LazyDatatype::UInt64,
-            DataType::Float16 => LazyDatatype::Float16,
-            DataType::Float32 => LazyDatatype::Float32,
-            DataType::Float64 => LazyDatatype::Float64,
-            DataType::Binary => LazyDatatype::Binary,
-            DataType::FixedSizeBinary(length) => LazyDatatype::FixedSizeBinary(length),
-            DataType::LargeBinary => LazyDatatype::LargeBinary,
-            DataType::Utf8 => LazyDatatype::Utf8,
-            DataType::LargeUtf8 => LazyDatatype::LargeUtf8,
-            DataType::List(field) => LazyDatatype::List(Box::new((*field).clone().into())),
+            DataType::Null => Self::Null,
+            DataType::Boolean => Self::Boolean,
+            DataType::Int8 => Self::Int8,
+            DataType::Int16 => Self::Int16,
+            DataType::Int32 => Self::Int32,
+            DataType::Int64 => Self::Int64,
+            DataType::UInt8 => Self::UInt8,
+            DataType::UInt16 => Self::UInt16,
+            DataType::UInt32 => Self::UInt32,
+            DataType::UInt64 => Self::UInt64,
+            DataType::Float16 => Self::Float16,
+            DataType::Float32 => Self::Float32,
+            DataType::Float64 => Self::Float64,
+            DataType::Binary => Self::Binary,
+            DataType::FixedSizeBinary(length) => Self::FixedSizeBinary(length),
+            DataType::LargeBinary => Self::LargeBinary,
+            DataType::Utf8 => Self::Utf8,
+            DataType::LargeUtf8 => Self::LargeUtf8,
+            DataType::List(field) => Self::List(Box::new((*field).clone().into())),
             DataType::FixedSizeList(field, length) => {
-                LazyDatatype::FixedSizeList(Box::new((*field).clone().into()), length)
+                Self::FixedSizeList(Box::new((*field).clone().into()), length)
             }
-            DataType::LargeList(field) => {
-                LazyDatatype::LargeList(Box::new((*field).clone().into()))
-            }
+            DataType::LargeList(field) => Self::LargeList(Box::new((*field).clone().into())),
             DataType::Struct(fields) => {
-                LazyDatatype::Struct(fields.iter().cloned().map(Into::into).collect())
+                Self::Struct(fields.iter().cloned().map(Into::into).collect())
             }
-            DataType::Union(fields, x, mode) => LazyDatatype::Union(
+            DataType::Union(fields, x, mode) => Self::Union(
                 fields.iter().cloned().map(Into::into).collect(),
                 x.map(|arc| arc.to_vec()),
                 mode,
             ),
-            DataType::Extension(name, datatype, metadata) => LazyDatatype::Extension(
+            DataType::Extension(name, datatype, metadata) => Self::Extension(
                 name,
                 Box::new((*datatype).clone().into()),
                 metadata.map(|arc| arc.to_string()),
@@ -347,45 +345,43 @@ impl LazyDatatype {
     /// Recursively resolves the datatype using the specified `registry`.
     fn resolve(&self, registry: &ArrowRegistry) -> DataType {
         match self {
-            LazyDatatype::Null => DataType::Null,
-            LazyDatatype::Boolean => DataType::Boolean,
-            LazyDatatype::Int8 => DataType::Int8,
-            LazyDatatype::Int16 => DataType::Int16,
-            LazyDatatype::Int32 => DataType::Int32,
-            LazyDatatype::Int64 => DataType::Int64,
-            LazyDatatype::UInt8 => DataType::UInt8,
-            LazyDatatype::UInt16 => DataType::UInt16,
-            LazyDatatype::UInt32 => DataType::UInt32,
-            LazyDatatype::UInt64 => DataType::UInt64,
-            LazyDatatype::Float16 => DataType::Float16,
-            LazyDatatype::Float32 => DataType::Float32,
-            LazyDatatype::Float64 => DataType::Float64,
-            LazyDatatype::Binary => DataType::Binary,
-            LazyDatatype::FixedSizeBinary(length) => DataType::FixedSizeBinary(*length),
-            LazyDatatype::LargeBinary => DataType::LargeBinary,
-            LazyDatatype::Utf8 => DataType::Utf8,
-            LazyDatatype::LargeUtf8 => DataType::LargeUtf8,
-            LazyDatatype::List(field) => DataType::List(Arc::new(field.resolve(registry))),
-            LazyDatatype::FixedSizeList(field, length) => {
+            Self::Null => DataType::Null,
+            Self::Boolean => DataType::Boolean,
+            Self::Int8 => DataType::Int8,
+            Self::Int16 => DataType::Int16,
+            Self::Int32 => DataType::Int32,
+            Self::Int64 => DataType::Int64,
+            Self::UInt8 => DataType::UInt8,
+            Self::UInt16 => DataType::UInt16,
+            Self::UInt32 => DataType::UInt32,
+            Self::UInt64 => DataType::UInt64,
+            Self::Float16 => DataType::Float16,
+            Self::Float32 => DataType::Float32,
+            Self::Float64 => DataType::Float64,
+            Self::Binary => DataType::Binary,
+            Self::FixedSizeBinary(length) => DataType::FixedSizeBinary(*length),
+            Self::LargeBinary => DataType::LargeBinary,
+            Self::Utf8 => DataType::Utf8,
+            Self::LargeUtf8 => DataType::LargeUtf8,
+            Self::List(field) => DataType::List(Arc::new(field.resolve(registry))),
+            Self::FixedSizeList(field, length) => {
                 DataType::FixedSizeList(Arc::new(field.resolve(registry)), *length)
             }
-            LazyDatatype::LargeList(field) => {
-                DataType::LargeList(Arc::new(field.resolve(registry)))
-            }
-            LazyDatatype::Struct(fields) => DataType::Struct(Arc::new(
+            Self::LargeList(field) => DataType::LargeList(Arc::new(field.resolve(registry))),
+            Self::Struct(fields) => DataType::Struct(Arc::new(
                 fields.iter().map(|field| field.resolve(registry)).collect(),
             )),
-            LazyDatatype::Union(fields, x, mode) => DataType::Union(
+            Self::Union(fields, x, mode) => DataType::Union(
                 Arc::new(fields.iter().map(|field| field.resolve(registry)).collect()),
                 x.as_ref().map(|x| Arc::new(x.clone())),
                 *mode,
             ),
-            LazyDatatype::Extension(name, datatype, metadata) => DataType::Extension(
+            Self::Extension(name, datatype, metadata) => DataType::Extension(
                 name.clone(),
                 Arc::new(datatype.resolve(registry)),
                 metadata.as_ref().map(|s| Arc::new(s.clone())),
             ),
-            LazyDatatype::Unresolved(fqname) => registry.get(fqname),
+            Self::Unresolved(fqname) => registry.get(fqname),
         }
     }
 }

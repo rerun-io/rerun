@@ -318,11 +318,11 @@ impl Visit for Item {
     #[inline]
     fn visit<T: ?Sized + Visitor>(&self, visitor: &mut T) {
         match self {
-            Item::Module(v) => visitor.visit_module(v),
-            Item::Alias(v) => visitor.visit_alias(v),
-            Item::Attribute(v) => visitor.visit_attribute(v),
-            Item::Function(v) => visitor.visit_function(v),
-            Item::Class(v) => visitor.visit_class(v),
+            Self::Module(v) => visitor.visit_module(v),
+            Self::Alias(v) => visitor.visit_alias(v),
+            Self::Attribute(v) => visitor.visit_attribute(v),
+            Self::Function(v) => visitor.visit_function(v),
+            Self::Class(v) => visitor.visit_class(v),
         }
     }
 }

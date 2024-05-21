@@ -17,7 +17,7 @@ pub struct F32RowPadded {
 impl From<f32> for F32RowPadded {
     #[inline]
     fn from(v: f32) -> Self {
-        F32RowPadded {
+        Self {
             v,
             padding0: 0.0,
             padding1: 0.0,
@@ -38,7 +38,7 @@ pub struct U32RowPadded {
 impl From<u32> for U32RowPadded {
     #[inline]
     fn from(v: u32) -> Self {
-        U32RowPadded {
+        Self {
             v,
             padding0: 0,
             padding1: 0,
@@ -57,14 +57,14 @@ pub struct Vec2 {
 impl From<glam::Vec2> for Vec2 {
     #[inline]
     fn from(v: glam::Vec2) -> Self {
-        Vec2 { x: v.x, y: v.y }
+        Self { x: v.x, y: v.y }
     }
 }
 
 impl From<[f32; 2]> for Vec2 {
     #[inline]
     fn from([x, y]: [f32; 2]) -> Self {
-        Vec2 { x, y }
+        Self { x, y }
     }
 }
 
@@ -80,7 +80,7 @@ pub struct Vec2RowPadded {
 impl From<glam::Vec2> for Vec2RowPadded {
     #[inline]
     fn from(v: glam::Vec2) -> Self {
-        Vec2RowPadded {
+        Self {
             x: v.x,
             y: v.y,
             padding0: 0.0,
@@ -99,14 +99,14 @@ pub struct UVec2 {
 impl From<glam::UVec2> for UVec2 {
     #[inline]
     fn from(v: glam::UVec2) -> Self {
-        UVec2 { x: v.x, y: v.y }
+        Self { x: v.x, y: v.y }
     }
 }
 
 impl From<[u8; 2]> for UVec2 {
     #[inline]
     fn from([x, y]: [u8; 2]) -> Self {
-        UVec2 {
+        Self {
             x: x as u32,
             y: y as u32,
         }
@@ -125,7 +125,7 @@ pub struct UVec2RowPadded {
 impl From<glam::UVec2> for UVec2RowPadded {
     #[inline]
     fn from(v: glam::UVec2) -> Self {
-        UVec2RowPadded {
+        Self {
             x: v.x,
             y: v.y,
             padding0: 0,
@@ -137,7 +137,7 @@ impl From<glam::UVec2> for UVec2RowPadded {
 impl From<[u8; 2]> for UVec2RowPadded {
     #[inline]
     fn from([x, y]: [u8; 2]) -> Self {
-        UVec2RowPadded {
+        Self {
             x: x as u32,
             y: y as u32,
             padding0: 0,
@@ -158,7 +158,7 @@ pub struct Vec3RowPadded {
 impl From<glam::Vec3> for Vec3RowPadded {
     #[inline]
     fn from(v: glam::Vec3) -> Self {
-        Vec3RowPadded {
+        Self {
             x: v.x,
             y: v.y,
             z: v.z,
@@ -170,7 +170,7 @@ impl From<glam::Vec3> for Vec3RowPadded {
 impl From<glam::Vec3A> for Vec3RowPadded {
     #[inline]
     fn from(v: glam::Vec3A) -> Self {
-        Vec3RowPadded {
+        Self {
             x: v.x,
             y: v.y,
             z: v.z,
@@ -190,7 +190,7 @@ pub struct Vec3Unpadded {
 impl From<glam::Vec3> for Vec3Unpadded {
     #[inline]
     fn from(v: glam::Vec3) -> Self {
-        Vec3Unpadded {
+        Self {
             x: v.x,
             y: v.y,
             z: v.z,
@@ -201,7 +201,7 @@ impl From<glam::Vec3> for Vec3Unpadded {
 impl From<glam::Vec3A> for Vec3Unpadded {
     #[inline]
     fn from(v: glam::Vec3A) -> Self {
-        Vec3Unpadded {
+        Self {
             x: v.x,
             y: v.y,
             z: v.z,
@@ -221,7 +221,7 @@ pub struct Vec4 {
 impl From<glam::Vec4> for Vec4 {
     #[inline]
     fn from(v: glam::Vec4) -> Self {
-        Vec4 {
+        Self {
             x: v.x,
             y: v.y,
             z: v.z,
@@ -233,7 +233,7 @@ impl From<glam::Vec4> for Vec4 {
 impl From<crate::Rgba> for Vec4 {
     #[inline]
     fn from(c: crate::Rgba) -> Self {
-        Vec4 {
+        Self {
             x: c.r(),
             y: c.g(),
             z: c.b(),
@@ -280,7 +280,7 @@ pub struct Mat4 {
 impl From<glam::Mat4> for Mat4 {
     #[inline]
     fn from(m: glam::Mat4) -> Self {
-        Mat4 {
+        Self {
             c0: m.x_axis.into(),
             c1: m.y_axis.into(),
             c2: m.z_axis.into(),
@@ -299,7 +299,7 @@ impl From<glam::Affine3A> for Mat4 {
 impl From<Mat4> for glam::Mat4 {
     #[inline]
     fn from(val: Mat4) -> Self {
-        glam::Mat4::from_cols(val.c0.into(), val.c1.into(), val.c2.into(), val.c3.into())
+        Self::from_cols(val.c0.into(), val.c1.into(), val.c2.into(), val.c3.into())
     }
 }
 
@@ -315,7 +315,7 @@ pub struct Mat4x3 {
 impl From<glam::Affine3A> for Mat4x3 {
     #[inline]
     fn from(m: glam::Affine3A) -> Self {
-        Mat4x3 {
+        Self {
             c0: m.matrix3.x_axis.into(),
             c1: m.matrix3.y_axis.into(),
             c2: m.matrix3.z_axis.into(),

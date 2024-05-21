@@ -16,9 +16,9 @@ impl DataUi for LogMsg {
         db: &re_entity_db::EntityDb,
     ) {
         match self {
-            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, ui_layout, query, db),
-            LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, ui_layout, query, db),
-            LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+            Self::SetStoreInfo(msg) => msg.data_ui(ctx, ui, ui_layout, query, db),
+            Self::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, ui_layout, query, db),
+            Self::BlueprintActivationCommand(BlueprintActivationCommand {
                 blueprint_id,
                 make_active,
                 make_default,
@@ -40,7 +40,7 @@ impl DataUi for SetStoreInfo {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        let SetStoreInfo { row_id: _, info } = self;
+        let Self { row_id: _, info } = self;
         let StoreInfo {
             application_id,
             store_id,

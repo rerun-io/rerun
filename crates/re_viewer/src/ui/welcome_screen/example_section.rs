@@ -60,7 +60,7 @@ struct ExampleDescLayout {
 
 impl ExampleDescLayout {
     fn new(egui_ctx: &egui::Context, desc: ExampleDesc) -> Self {
-        ExampleDescLayout {
+        Self {
             rrd_byte_size_promise: load_file_size(egui_ctx, desc.rrd_url.clone()),
             desc,
             rect: egui::Rect::NOTHING,
@@ -86,10 +86,10 @@ enum LoadError {
 impl std::fmt::Display for LoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoadError::Deserialize(err) => {
+            Self::Deserialize(err) => {
                 write!(f, "manifest is invalid, it may be outdated: {err}")
             }
-            LoadError::Fetch(err) => f.write_str(err),
+            Self::Fetch(err) => f.write_str(err),
         }
     }
 }

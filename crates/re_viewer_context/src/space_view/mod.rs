@@ -65,12 +65,12 @@ pub enum SpaceViewSystemExecutionError {
 
 impl From<re_renderer::renderer::LineDrawDataError> for SpaceViewSystemExecutionError {
     fn from(val: re_renderer::renderer::LineDrawDataError) -> Self {
-        SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(val))
+        Self::DrawDataCreationError(Box::new(val))
     }
 }
 
 impl From<re_renderer::renderer::PointCloudDrawDataError> for SpaceViewSystemExecutionError {
     fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
-        SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(val))
+        Self::DrawDataCreationError(Box::new(val))
     }
 }

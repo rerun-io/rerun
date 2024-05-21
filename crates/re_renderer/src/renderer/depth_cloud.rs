@@ -244,7 +244,7 @@ impl DepthCloudDrawData {
         let bg_layout = renderer.bind_group_layout;
 
         if depth_clouds.is_empty() {
-            return Ok(DepthCloudDrawData {
+            return Ok(Self {
                 instances: Vec::new(),
             });
         }
@@ -323,7 +323,7 @@ impl DepthCloudDrawData {
             });
         }
 
-        Ok(DepthCloudDrawData { instances })
+        Ok(Self { instances })
     }
 }
 
@@ -465,7 +465,7 @@ impl Renderer for DepthCloudRenderer {
             },
         );
 
-        DepthCloudRenderer {
+        Self {
             render_pipeline_color,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,

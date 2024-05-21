@@ -74,14 +74,14 @@ impl Config {
         })
     }
 
-    pub fn load_or_default() -> Result<Config, ConfigError> {
+    pub fn load_or_default() -> Result<Self, ConfigError> {
         match Self::load()? {
             Some(config) => Ok(config),
-            None => Config::new(),
+            None => Self::new(),
         }
     }
 
-    pub fn load() -> Result<Option<Config>, ConfigError> {
+    pub fn load() -> Result<Option<Self>, ConfigError> {
         let dirs = Self::project_dirs()?;
         let config_path = dirs.config_dir().join("analytics.json");
         match File::open(config_path) {

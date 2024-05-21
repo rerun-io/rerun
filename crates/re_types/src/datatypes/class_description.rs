@@ -127,7 +127,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::ClassDescription>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, info): (Vec<_>, Vec<_>) = data
