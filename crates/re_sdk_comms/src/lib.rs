@@ -37,6 +37,7 @@ pub enum ConnectionError {
     SendError(#[from] std::io::Error),
 
     #[error(transparent)]
+    #[cfg(feature = "server")]
     DecodeError(#[from] re_log_encoding::decoder::DecodeError),
 
     #[error("The receiving end of the channel was closed")]
