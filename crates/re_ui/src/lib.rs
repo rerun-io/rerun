@@ -807,7 +807,8 @@ impl ReUi {
 
         let openness = state.openness(ui.ctx());
 
-        let header_size = egui::vec2(ui.available_width(), 28.0);
+        let height = Self::list_item_height();
+        let header_size = egui::vec2(ui.available_width(), height);
 
         // Draw custom header.
         ui.allocate_ui_with_layout(
