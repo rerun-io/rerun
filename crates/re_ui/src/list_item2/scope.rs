@@ -231,10 +231,10 @@ impl LayoutInfoStack {
 ///   list items.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
-    id_source: impl Into<egui::Id>,
+    id_source: impl std::hash::Hash,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
-    let scope_id = ui.id().with(id_source.into());
+    let scope_id = ui.id().with(id_source);
 
     // read last frame layout statistics and reset for the new frame
     let layout_stats = LayoutStatistics::read(ui.ctx(), scope_id);
