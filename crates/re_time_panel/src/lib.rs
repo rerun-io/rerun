@@ -270,8 +270,11 @@ impl TimePanel {
                     let times_per_timeline = entity_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
-                    self.time_control_ui.playback_speed_ui(time_ctrl, ui);
-                    self.time_control_ui.fps_ui(time_ctrl, ui);
+
+                    if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+                        self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                        self.time_control_ui.fps_ui(time_ctrl, ui);
+                    }
                 });
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
@@ -290,8 +293,11 @@ impl TimePanel {
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
-            self.time_control_ui.playback_speed_ui(time_ctrl, ui);
-            self.time_control_ui.fps_ui(time_ctrl, ui);
+
+            if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+                self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                self.time_control_ui.fps_ui(time_ctrl, ui);
+            }
 
             collapsed_time_marker_and_time(ui, ctx, entity_db, time_ctrl);
         }
@@ -952,7 +958,13 @@ fn collapsed_time_marker_and_time(
     entity_db: &re_entity_db::EntityDb,
     time_ctrl: &mut TimeControl,
 ) {
-    let space_needed_for_current_time = match time_ctrl.timeline().typ() {
+    let timeline = time_ctrl.timeline();
+
+    if !entity_db.has_any_data_on_timeline(timeline) {
+        return;
+    }
+
+    let space_needed_for_current_time = match timeline.typ() {
         re_data_store::TimeType::Time => 220.0,
         re_data_store::TimeType::Sequence => 100.0,
     };
