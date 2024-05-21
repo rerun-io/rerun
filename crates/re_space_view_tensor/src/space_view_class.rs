@@ -436,7 +436,7 @@ impl ColorMapping {
         let Self { map, gamma } = self;
 
         re_ui.grid_left_hand_label(ui, "Color map");
-        colormap_dropdown_button_ui(render_ctx, ui, map);
+        colormap_dropdown_button_ui(render_ctx, re_ui, ui, map);
         ui.end_row();
 
         re_ui.grid_left_hand_label(ui, "Brightness");
