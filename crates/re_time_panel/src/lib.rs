@@ -980,7 +980,7 @@ fn collapsed_time_marker_and_time(
             painter.hline(
                 time_range_rect.x_range(),
                 time_range_rect.center().y,
-                ui.visuals().widgets.inactive.fg_stroke,
+                ui.visuals().widgets.noninteractive.fg_stroke,
             );
             time_marker_ui(
                 &time_ranges_ui,
