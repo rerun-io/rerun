@@ -812,7 +812,7 @@ fn axis_ui(
             ui,
             "time_series_selection_ui_y_axis",
             true,
-            list_item2::LabelContent::new("Y Axis"),
+            list_item2::LabelContent::new("Y axis"),
             sub_prop_ui,
         );
 }
