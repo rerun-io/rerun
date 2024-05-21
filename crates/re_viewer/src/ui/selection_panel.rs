@@ -124,7 +124,7 @@ impl SelectionPanel {
             UiLayout::SelectionPanelFull
         };
         for (i, item) in selection.iter_items().enumerate() {
-            ui.push_id(i, |ui| {
+            ui.push_id(item, |ui| {
                 what_is_selected_ui(ui, ctx, viewport.blueprint, item);
 
                 match item {
