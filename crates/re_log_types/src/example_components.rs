@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_types_core::{Loggable, SizeBytes};
+use re_types_core::{DeserializationError, Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -112,7 +112,9 @@ impl Loggable for MyPoint {
         let array = data
             .as_any()
             .downcast_ref::<arrow2::array::StructArray>()
-            .unwrap();
+            .ok_or(DeserializationError::downcast_error::<
+                arrow2::array::StructArray,
+            >())?;
 
         let x_array = array.values()[0].as_ref();
         let y_array = array.values()[1].as_ref();
@@ -120,11 +122,15 @@ impl Loggable for MyPoint {
         let xs = x_array
             .as_any()
             .downcast_ref::<arrow2::array::Float32Array>()
-            .unwrap();
+            .ok_or(DeserializationError::downcast_error::<
+                arrow2::array::Float32Array,
+            >())?;
         let ys = y_array
             .as_any()
             .downcast_ref::<arrow2::array::Float32Array>()
-            .unwrap();
+            .ok_or(DeserializationError::downcast_error::<
+                arrow2::array::Float32Array,
+            >())?;
 
         Ok(xs
             .values_iter()

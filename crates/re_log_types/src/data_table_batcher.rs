@@ -405,6 +405,7 @@ impl DataTableBatcher {
     pub fn tables(&self) -> Receiver<DataTable> {
         // NOTE: `rx_tables` is only ever taken when the batcher as a whole is dropped, at which
         // point it is impossible to call this method.
+        #![allow(clippy::unwrap_used)]
         self.inner.rx_tables.clone().unwrap()
     }
 }

@@ -437,7 +437,9 @@ impl DataTable {
             for cell in cells.0 {
                 let component = cell.component_name();
                 // NOTE: unwrap cannot fail, all arrays pre-allocated above.
-                columns.get_mut(&component).unwrap()[i] = Some(cell);
+                #[allow(clippy::unwrap_used)]
+                let column = columns.get_mut(&component).unwrap();
+                column[i] = Some(cell);
             }
         }
 
@@ -790,10 +792,10 @@ impl DataTable {
             let offsets = Offsets::try_from_lengths(column.iter().map(|cell| {
                 cell.as_ref()
                     .map_or(0, |cell| cell.num_instances() as usize)
-            }))
+            }));
             // NOTE: cannot fail, `data` has as many instances as `column`
-            .unwrap()
-            .into();
+            #[allow(clippy::unwrap_used)]
+            let offsets = offsets.unwrap().into();
 
             #[allow(clippy::from_iter_instead_of_collect)]
             let validity = Bitmap::from_iter(column.iter().map(|cell| cell.is_some()));
@@ -911,12 +913,14 @@ impl DataTable {
         };
 
         // NOTE: the unwrappings cannot fail since control_index() makes sure the index is valid
+        #[allow(clippy::unwrap_used)]
         let col_row_id = RowId::from_arrow(
             chunk
                 .get(control_index(RowId::name().as_str())?)
                 .unwrap()
                 .as_ref(),
         )?;
+        #[allow(clippy::unwrap_used)]
         let col_entity_path = EntityPath::from_arrow(
             chunk
                 .get(control_index(EntityPath::name().as_str())?)
@@ -976,10 +980,11 @@ impl DataTable {
             }
         };
 
+        // NOTE: unwrap cannot fail here, datatype checked above
+        #[allow(clippy::unwrap_used)]
         let col_time = column
             .as_any()
             .downcast_ref::<PrimitiveArray<i64>>()
-            // NOTE: cannot fail, datatype checked above
             .unwrap();
         let col_time: TimeOptVec = col_time.into_iter().map(|time| time.copied()).collect();
 
@@ -1100,7 +1105,8 @@ impl DataTable {
         rows_by_timeline2.remove(&Timeline::log_time());
 
         for (timeline, rows1) in &mut rows_by_timeline1 {
-            let rows2 = rows_by_timeline2.get_mut(timeline).unwrap(); // safe
+            #[allow(clippy::unwrap_used)] // safe, the keys are checked above
+            let rows2 = rows_by_timeline2.get_mut(timeline).unwrap();
 
             // NOTE: We need both sets of rows to follow a common natural order for the comparison
             // to make sense.
@@ -1196,30 +1202,29 @@ impl DataTable {
                             c2.component_name(),
                         ));
 
-                        fn cell_to_bytes(cell: DataCell) -> Vec<u8> {
+                        fn cell_to_bytes(cell: DataCell) -> anyhow::Result<Vec<u8>> {
                             let row = DataRow::from_cells1(
                                 RowId::ZERO,
                                 "cell",
                                 TimePoint::default(),
                                 cell,
-                            )
-                            .unwrap();
+                            )?;
                             let table = DataTable::from_rows(TableId::ZERO, [row]);
 
-                            let msg = table.to_arrow_msg().unwrap();
+                            let msg = table.to_arrow_msg()?;
 
                             use arrow2::io::ipc::write::StreamWriter;
                             let mut buf = Vec::<u8>::new();
                             let mut writer = StreamWriter::new(&mut buf, Default::default());
-                            writer.start(&msg.schema, None).unwrap();
-                            writer.write(&msg.chunk, None).unwrap();
-                            writer.finish().unwrap();
+                            writer.start(&msg.schema, None)?;
+                            writer.write(&msg.chunk, None)?;
+                            writer.finish()?;
 
-                            buf
+                            Ok(buf)
                         }
 
-                        let c1_bytes = cell_to_bytes(c1.clone());
-                        let c2_bytes = cell_to_bytes(c2.clone());
+                        let c1_bytes = cell_to_bytes(c1.clone())?;
+                        let c2_bytes = cell_to_bytes(c2.clone())?;
 
                         size_mismatches.push(format!(
                             "IPC size is {} vs {} bytes",
@@ -1266,6 +1271,8 @@ impl DataTable {
 /// Crafts a simple but interesting [`DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
 impl DataTable {
+    /// NOTE: because everything here is predetermined and there is no input we assume it's safe here
+    #[allow(clippy::unwrap_used)]
     pub fn example(timeless: bool) -> Self {
         use crate::{
             example_components::{MyColor, MyLabel, MyPoint},
