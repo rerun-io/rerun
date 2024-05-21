@@ -1,10 +1,13 @@
-// TODO(jleibs): Turn this into a trait
+// TODO(jleibs): Turn these methods into a trait.
+
+mod corner2d;
 
 use egui::NumExt as _;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::{EntityPath, Instance};
 use re_types::{
+    blueprint::components::Corner2D,
     components::{
         Color, MarkerShape, MarkerSize, Name, Radius, ScalarScattering, StrokeWidth, Text,
     },
@@ -462,6 +465,11 @@ fn register_editor<'a, C>(
 
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Color>(registry, default_color, edit_color_ui);
+    register_editor::<Corner2D>(
+        registry,
+        corner2d::default_corner2d,
+        corner2d::edit_corner2d,
+    );
     register_editor::<MarkerShape>(registry, default_marker_shape, edit_marker_shape_ui);
     register_editor::<MarkerSize>(registry, default_marker_size, edit_marker_size_ui);
     register_editor::<Name>(registry, default_name, edit_name_ui);
