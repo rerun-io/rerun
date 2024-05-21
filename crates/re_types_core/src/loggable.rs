@@ -172,7 +172,9 @@ impl ComponentName {
     #[inline]
     pub fn short_name(&self) -> &'static str {
         let full_name = self.0.as_str();
-        if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
+        if let Some(short_name) = full_name.strip_prefix("rerun.blueprint.components.") {
+            short_name
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
             short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
