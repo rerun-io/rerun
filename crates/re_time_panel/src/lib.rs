@@ -154,7 +154,7 @@ impl TimePanel {
         // etc.)
         let screen_header_height = ui.cursor().top();
 
-        let top_bar_height = 28.0;
+        let top_bar_height = re_ui::ReUi::top_bar_height();
         let margin = ctx.re_ui.bottom_panel_margin();
         let mut panel_frame = ctx.re_ui.bottom_panel_frame();
 
