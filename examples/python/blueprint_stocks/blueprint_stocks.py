@@ -86,8 +86,8 @@ def hide_panels(viewport: rrb.ContainerLike) -> rrb.BlueprintLike:
     """Wrap a viewport in a blueprint that hides the time and selection panels."""
     return rrb.Blueprint(
         viewport,
-        rrb.TimePanel(expanded=False),
-        rrb.SelectionPanel(expanded=False),
+        rrb.TimePanel(state="collapsed"),
+        rrb.SelectionPanel(state="collapsed"),
     )
 
 

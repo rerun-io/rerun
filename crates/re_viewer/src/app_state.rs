@@ -5,6 +5,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
+use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
@@ -320,7 +321,7 @@ impl AppState {
                 ctx.store_context.blueprint,
                 blueprint_cfg,
                 ui,
-                true,
+                PanelState::Expanded,
             );
         }
 
@@ -334,7 +335,7 @@ impl AppState {
             ctx.recording(),
             ctx.rec_cfg,
             ui,
-            app_blueprint.time_panel_expanded,
+            app_blueprint.time_panel_state,
         );
 
         //
@@ -345,7 +346,7 @@ impl AppState {
             &ctx,
             ui,
             &mut viewport,
-            app_blueprint.selection_panel_expanded,
+            app_blueprint.selection_panel_state.is_expanded(),
         );
 
         //
@@ -373,7 +374,7 @@ impl AppState {
 
         left_panel.show_animated_inside(
             ui,
-            app_blueprint.blueprint_panel_expanded,
+            app_blueprint.blueprint_panel_state.is_expanded(),
             |ui: &mut egui::Ui| {
                 //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
                 let max_rect = ui.max_rect();
