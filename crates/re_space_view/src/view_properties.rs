@@ -13,6 +13,8 @@ use re_viewer_context::{
     SpaceViewId, ViewerContext,
 };
 
+use ahash::HashMap;
+
 pub fn entity_path_for_view_property<T: Archetype>(
     space_view_id: SpaceViewId,
     _blueprint_entity_tree: &EntityTree,
@@ -148,34 +150,48 @@ pub fn view_property_ui<A: Archetype>(
         component_names.iter().copied(),
     );
 
+    let field_info_per_component: HashMap<_, _> = A::field_infos()
+        .map(|field_infos| {
+            field_infos
+                .iter()
+                .cloned()
+                .map(|field_info| (field_info.component_name, field_info))
+                .collect()
+        })
+        .unwrap_or_default();
+
     let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
         for component_name in component_names.as_ref() {
             if component_name.is_indicator_component() {
                 continue;
             }
 
-            list_item::ListItem::new(re_ui)
+            let field_info = field_info_per_component.get(component_name);
+            let name = field_info.map_or_else(|| component_name.short_name(), |info| info.name);
+
+            let list_item_response = list_item::ListItem::new(re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    // TODO(andreas): Note that we loose the archetype's field name here, instead we label the item with the component name.
-                    list_item::PropertyContent::new(component_name.short_name()).value_fn(
-                        |_, ui, _| {
-                            ctx.component_ui_registry.edit_ui(
-                                ctx,
-                                ui,
-                                re_viewer_context::UiLayout::List,
-                                blueprint_query,
-                                blueprint_db,
-                                &blueprint_path,
-                                &blueprint_path,
-                                component_results.get_or_empty(*component_name),
-                                component_name,
-                                &0.into(),
-                            );
-                        },
-                    ),
+                    list_item::PropertyContent::new(name).value_fn(|_, ui, _| {
+                        ctx.component_ui_registry.edit_ui(
+                            ctx,
+                            ui,
+                            re_viewer_context::UiLayout::List,
+                            blueprint_query,
+                            blueprint_db,
+                            &blueprint_path,
+                            &blueprint_path,
+                            component_results.get_or_empty(*component_name),
+                            component_name,
+                            &0.into(),
+                        );
+                    }),
                 );
+
+            if let Some(tooltip) = field_info.map(|info| info.documentation) {
+                list_item_response.on_hover_text(tooltip);
+            }
         }
     };
 

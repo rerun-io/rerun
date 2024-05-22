@@ -10,6 +10,19 @@ use crate::{Component, Loggable, LoggableBatch};
 
 // ---
 
+/// Additional information about an archetype's field.
+#[derive(Debug, Clone)]
+pub struct ArchetypeFieldInfo {
+    /// The name of the field.
+    pub name: &'static str,
+
+    /// Documentation string for the field (not the component type).
+    pub documentation: &'static str,
+
+    /// The component name of the field's type.
+    pub component_name: ComponentName,
+}
+
 /// An archetype is a high-level construct that represents a set of [`Component`]s that usually
 /// play well with each other (i.e. they compose nicely).
 ///
@@ -91,6 +104,15 @@ pub trait Archetype {
         .flatten()
         .collect::<Vec<_>>()
         .into()
+    }
+
+    /// Returns information about the archetype's fields.
+    ///s
+    /// This is optional and not implemented by all archetypes.
+    /// If present, it can be used to display additional information in the viewer.
+    #[inline]
+    fn field_infos() -> Option<::std::borrow::Cow<'static, [ArchetypeFieldInfo]>> {
+        None
     }
 
     // ---

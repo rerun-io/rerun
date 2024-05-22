@@ -194,6 +194,7 @@ pub const ATTR_RUST_OVERRIDE_CRATE: &str = "attr.rust.override_crate";
 pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
 pub const ATTR_RUST_SERDE_TYPE: &str = "attr.rust.serde_type";
 pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
+pub const ATTR_RUST_GENERATE_FIELD_INFO: &str = "attr.rust.generate_field_info";
 
 pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 
