@@ -1253,6 +1253,7 @@ fn entity_props_ui(
 
 fn colormap_props_ui(
     ctx: &ViewerContext<'_>,
+    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     entity_props: &mut EntityProperties,
 ) {
@@ -1266,7 +1267,7 @@ fn colormap_props_ui(
     };
 
     ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
+    colormap_dropdown_button_ui(ctx.render_ctx, re_ui, ui, &mut re_renderer_colormap);
 
     let new_colormap = match re_renderer_colormap {
         re_renderer::Colormap::Grayscale => Colormap::Grayscale,
@@ -1358,7 +1359,7 @@ fn depth_props_ui(
 
         // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
         // need to get the current hardcoded colormapping out of the image cache first.
-        colormap_props_ui(ctx, ui, entity_props);
+        colormap_props_ui(ctx, ctx.re_ui, ui, entity_props);
     }
 
     Some(())
