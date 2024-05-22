@@ -11,7 +11,6 @@ pub mod drag_and_drop;
 pub mod full_span;
 pub mod icons;
 pub mod list_item;
-pub mod list_item2;
 pub mod modal;
 pub mod toasts;
 
@@ -21,7 +20,6 @@ pub use self::{
     design_tokens::DesignTokens,
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
-    list_item::ListItem,
     syntax_highlighting::SyntaxHighlighting,
     toggle_switch::toggle_switch,
 };
@@ -545,7 +543,9 @@ impl ReUi {
     }
 
     /// Popup similar to [`egui::popup_below_widget`] but suitable for use with
-    /// [`crate::ListItem`].
+    /// [`crate::list_item::ListItem`].
+    ///
+    /// Note that `add_contents` is called within a [`crate::list_item::list_item_scope`].
     pub fn list_item_popup<R>(
         ui: &egui::Ui,
         popup_id: egui::Id,
@@ -577,13 +577,15 @@ impl ReUi {
                         ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
                         crate::full_span::full_span_scope(ui, ui.cursor().x_range(), |ui| {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                egui::Frame {
-                                    //TODO(ab): use design token
-                                    inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                    ..Default::default()
-                                }
-                                .show(ui, |ui| ret = Some(add_contents(ui)))
+                            crate::list_item::list_item_scope(ui, popup_id, |ui| {
+                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                    egui::Frame {
+                                        //TODO(ab): use design token
+                                        inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                        ..Default::default()
+                                    }
+                                    .show(ui, |ui| ret = Some(add_contents(ui)))
+                                })
                             })
                         })
                     })
@@ -620,7 +622,7 @@ impl ReUi {
     }
 
     /// Static title bar used to separate panels into section with custom buttons when hovered.
-    ///
+    ///h
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
     /// set.
     #[allow(clippy::unused_self)]
@@ -1004,14 +1006,9 @@ impl ReUi {
         ui.painter().add(shadow);
     }
 
-    /// Convenience function to create a [`ListItem`] with the given text.
-    pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
-        ListItem::new(self, text)
-    }
-
-    /// Convenience function to create a [`list_item2::ListItem`].
-    pub fn list_item2(&self) -> list_item2::ListItem<'_> {
-        list_item2::ListItem::new(self)
+    /// Convenience function to create a [`list_item::ListItem`].
+    pub fn list_item(&self) -> list_item::ListItem<'_> {
+        list_item::ListItem::new(self)
     }
 
     #[allow(clippy::unused_self)]
@@ -1297,7 +1294,7 @@ pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
 
 /// A drop-down menu with a list of options.
 ///
-/// Designed for use with [`list_item2`] content.
+/// Designed for use with [`list_item`] content.
 ///
 /// Use this instead of using [`egui::ComboBox`] directly.
 pub fn drop_down_menu(
@@ -1319,7 +1316,7 @@ pub fn drop_down_menu(
                 .expand_rect(ui.max_rect())
                 .x_range();
 
-            list_item2::list_item_scope(ui, "inner_scope", |ui| {
+            list_item::list_item_scope(ui, "inner_scope", |ui| {
                 full_span::full_span_scope(ui, background_x_range, |ui| {
                     content(ui);
                 });
