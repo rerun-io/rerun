@@ -3,6 +3,7 @@
 //! TODO(ab): provide some top-level documentation here.
 
 mod label_content;
+#[allow(clippy::module_inception)]
 mod list_item;
 mod other_contents;
 mod property_content;

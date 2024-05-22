@@ -7,7 +7,7 @@ use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::Visible;
-use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
+use re_ui::{drag_and_drop::DropTarget, list_item, ReUi};
 use re_viewer_context::{CollapseScope, Contents, ContentsName, DataResultTree};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
@@ -68,7 +68,9 @@ impl Viewport<'_, '_> {
                         .as_ref()
                         .and_then(|item| self.handle_focused_item(ctx, ui, item));
 
-                    self.root_container_tree_ui(ctx, ui);
+                    list_item::list_item_scope(ui, "blueprint tree", |ui| {
+                        self.root_container_tree_ui(ctx, ui);
+                    });
 
                     let empty_space_response =
                         ui.allocate_response(ui.available_size(), egui::Sense::click());
@@ -262,16 +264,18 @@ impl Viewport<'_, '_> {
         let item = Item::Container(container_id);
         let container_name = container_blueprint.display_name_or_default();
 
-        let item_response =
-            ListItem::new(ctx.re_ui, format!("Viewport ({})", container_name.as_ref()))
-                .selected(ctx.selection().contains_item(&item))
-                .draggable(false)
-                .drop_target_style(self.state.is_candidate_drop_parent_container(&container_id))
-                .label_style(contents_name_style(&container_name))
-                .with_icon(crate::icon_for_container_kind(
-                    &container_blueprint.container_kind,
-                ))
-                .show_flat(ui);
+        let item_response = list_item::ListItem::new(ctx.re_ui)
+            .selected(ctx.selection().contains_item(&item))
+            .draggable(false)
+            .drop_target_style(self.state.is_candidate_drop_parent_container(&container_id))
+            .show_flat(
+                ui,
+                list_item::LabelContent::new(format!("Viewport ({})", container_name.as_ref()))
+                    .label_style(contents_name_style(&container_name))
+                    .with_icon(crate::icon_for_container_kind(
+                        &container_blueprint.container_kind,
+                    )),
+            );
 
         for child in &container_blueprint.contents {
             self.contents_ui(ctx, ui, child, true);
@@ -316,14 +320,8 @@ impl Viewport<'_, '_> {
 
         let container_name = container_blueprint.display_name_or_default();
 
-        let re_ui::list_item::ShowCollapsingResponse {
-            item_response: response,
-            body_response,
-        } = ListItem::new(ctx.re_ui, container_name.as_ref())
+        let item_content = list_item::LabelContent::new(container_name.as_ref())
             .subdued(!container_visible)
-            .selected(ctx.selection().contains_item(&item))
-            .draggable(true)
-            .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
             .label_style(contents_name_style(&container_name))
             .with_icon(crate::icon_for_container_kind(
                 &container_blueprint.container_kind,
@@ -338,11 +336,20 @@ impl Viewport<'_, '_> {
                 }
 
                 remove_response | vis_response
-            })
-            .show_hierarchical_with_content(
+            });
+
+        let list_item::ShowCollapsingResponse {
+            item_response: response,
+            body_response,
+        } = list_item::ListItem::new(ctx.re_ui)
+            .selected(ctx.selection().contains_item(&item))
+            .draggable(true)
+            .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
+            .show_hierarchical_with_children(
                 ui,
                 CollapseScope::BlueprintTree.container(*container_id),
                 default_open,
+                item_content,
                 |_, ui| {
                     for child in &container_blueprint.contents {
                         self.contents_ui(ctx, ui, child, container_visible);
@@ -401,17 +408,10 @@ impl Viewport<'_, '_> {
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let space_view_name = space_view.display_name_or_default();
-
-        let re_ui::list_item::ShowCollapsingResponse {
-            item_response: mut response,
-            body_response,
-        } = ListItem::new(ctx.re_ui, space_view_name.as_ref())
+        let item_content = list_item::LabelContent::new(space_view_name.as_ref())
             .label_style(contents_name_style(&space_view_name))
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
-            .selected(ctx.selection().contains_item(&item))
-            .draggable(true)
             .subdued(!space_view_visible)
-            .force_hovered(is_item_hovered)
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, container_visible, &mut visible);
 
@@ -423,11 +423,19 @@ impl Viewport<'_, '_> {
                 }
 
                 response | vis_response
-            })
-            .show_hierarchical_with_content(
+            });
+        let list_item::ShowCollapsingResponse {
+            item_response: mut response,
+            body_response,
+        } = list_item::ListItem::new(ctx.re_ui)
+            .selected(ctx.selection().contains_item(&item))
+            .draggable(true)
+            .force_hovered(is_item_hovered)
+            .show_hierarchical_with_children(
                 ui,
                 CollapseScope::BlueprintTree.space_view(*space_view_id),
                 default_open,
+                item_content,
                 |_, ui| {
                     // Always show the origin hierarchy first.
                     self.space_view_entity_hierarchy_ui(
@@ -461,10 +469,12 @@ impl Viewport<'_, '_> {
                         }
                     });
                     if !projections.is_empty() {
-                        ListItem::new(ctx.re_ui, "Projections:")
+                        list_item::ListItem::new(ctx.re_ui)
                             .interactive(false)
-                            .italics(true)
-                            .show_flat(ui);
+                            .show_flat(
+                                ui,
+                                list_item::LabelContent::new("Projections:").italics(true),
+                            );
 
                         for projection in projections {
                             self.space_view_entity_hierarchy_ui(
@@ -524,11 +534,14 @@ impl Viewport<'_, '_> {
         let entity_path = node_or_path.path();
 
         if projection_mode && entity_path == &space_view.space_origin {
-            if ListItem::new(ctx.re_ui, "$origin")
-                .subdued(true)
-                .italics(true)
-                .with_icon(&re_ui::icons::LINK)
-                .show_hierarchical(ui)
+            if list_item::ListItem::new(ctx.re_ui)
+                .show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("$origin")
+                        .subdued(true)
+                        .italics(true)
+                        .with_icon(&re_ui::icons::LINK),
+                )
                 .on_hover_text(
                     "This subtree corresponds to the Space View's origin, and is displayed above \
                     the 'Projections' section. Click to select it.",
@@ -569,19 +582,21 @@ impl Viewport<'_, '_> {
 
         let subdued = !space_view_visible || !visible;
 
-        let mut list_item = ListItem::new(ctx.re_ui, item_label)
-            .selected(is_selected)
+        let mut item_content = list_item::LabelContent::new(item_label)
             .with_icon(guess_instance_path_icon(
                 ctx,
                 &InstancePath::from(entity_path.clone()),
             ))
-            .subdued(subdued)
+            .subdued(subdued);
+
+        let list_item = list_item::ListItem::new(ctx.re_ui)
+            .selected(is_selected)
             .force_hovered(is_item_hovered);
 
         // We force the origin to be displayed, even if it's fully empty, in which case it can be
         // neither shown/hidden nor removed.
         if !empty_origin {
-            list_item = list_item.with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
+            item_content = item_content.with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
                 let mut visible_after = visible;
                 let vis_response =
                     visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
@@ -620,10 +635,11 @@ impl Viewport<'_, '_> {
                 && Self::default_open_for_data_result(node);
 
             list_item
-                .show_hierarchical_with_content(
+                .show_hierarchical_with_children(
                     ui,
                     CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
                     default_open,
+                    item_content,
                     |_, ui| {
                         for child in node.children.iter().sorted_by_key(|c| {
                             query_result
@@ -653,7 +669,7 @@ impl Viewport<'_, '_> {
                 )
                 .item_response
         } else {
-            list_item.show_hierarchical(ui)
+            list_item.show_hierarchical(ui, item_content)
         };
 
         let response = response.on_hover_ui(|ui| {
