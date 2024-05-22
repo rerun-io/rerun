@@ -23,7 +23,7 @@ use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal,
 };
-use re_ui::list_item::{ListItem, WidthAllocationMode};
+use re_ui::list_item2;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
@@ -434,15 +434,17 @@ impl TimePanel {
 
         // All the entity rows and their data density graphs:
         re_ui::full_span::full_span_scope(ui, (0.0..=time_x_left).into(), |ui| {
-            self.tree_ui(
-                ctx,
-                viewport_blueprint,
-                entity_db,
-                time_ctrl,
-                &time_area_response,
-                &lower_time_area_painter,
-                ui,
-            );
+            list_item2::list_item_scope(ui, "streams_tree", |ui| {
+                self.tree_ui(
+                    ctx,
+                    viewport_blueprint,
+                    entity_db,
+                    time_ctrl,
+                    &time_area_response,
+                    &lower_time_area_painter,
+                    ui,
+                );
+            });
         });
 
         {
@@ -595,21 +597,22 @@ impl TimePanel {
                 .set_open(ui.ctx(), true);
         }
 
-        let re_ui::list_item::ShowCollapsingResponse {
+        let list_item2::ShowCollapsingResponse {
             item_response: response,
             body_response,
-        } = ListItem::new(ctx.re_ui, text)
-            .with_icon(guess_instance_path_icon(
-                ctx,
-                &InstancePath::from(tree.path.clone()),
-            ))
-            .width_allocation_mode(WidthAllocationMode::Compact)
+        } = list_item2::ListItem::new(ctx.re_ui)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
-            .show_hierarchical_with_content(
+            .show_hierarchical_with_children(
                 ui,
                 CollapseScope::StreamsTree.entity(tree.path.clone()),
                 default_open,
+                list_item2::LabelContent::new(text)
+                    .with_icon(guess_instance_path_icon(
+                        ctx,
+                        &InstancePath::from(tree.path.clone()),
+                    ))
+                    .exact_width(true),
                 |_, ui| {
                     self.show_children(
                         ctx,
@@ -739,20 +742,23 @@ impl TimePanel {
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
 
-                let response = ListItem::new(ctx.re_ui, short_component_name)
+                let response = list_item2::ListItem::new(ctx.re_ui)
                     .selected(ctx.selection().contains_item(&item.to_item()))
-                    .width_allocation_mode(WidthAllocationMode::Compact)
                     .force_hovered(
                         ctx.selection_state()
                             .highlight_for_ui_element(&item.to_item())
                             == HoverHighlight::Hovered,
                     )
-                    .with_icon(if is_static {
-                        &re_ui::icons::COMPONENT_STATIC
-                    } else {
-                        &re_ui::icons::COMPONENT_TEMPORAL
-                    })
-                    .show_hierarchical(ui);
+                    .show_hierarchical(
+                        ui,
+                        list_item2::LabelContent::new(short_component_name)
+                            .with_icon(if is_static {
+                                &re_ui::icons::COMPONENT_STATIC
+                            } else {
+                                &re_ui::icons::COMPONENT_TEMPORAL
+                            })
+                            .exact_width(true),
+                    );
 
                 context_menu_ui_for_item(
                     ctx,
@@ -780,25 +786,31 @@ impl TimePanel {
                             timeline.name()
                         )));
                     } else {
-                        re_ui::ListItem::new(
-                            ctx.re_ui,
-                            format!(
-                                "{} component, logged {}",
-                                if is_static { "Static" } else { "Temporal" },
-                                if total_num_messages == 1 {
-                                    "once".to_owned()
-                                } else {
-                                    format!("{} times", re_format::format_uint(total_num_messages))
-                                },
-                            ),
-                        )
-                        .with_icon(if is_static {
-                            &re_ui::icons::COMPONENT_STATIC
-                        } else {
-                            &re_ui::icons::COMPONENT_TEMPORAL
-                        })
-                        .interactive(false)
-                        .show_flat(ui);
+                        list_item2::list_item_scope(ui, "hover tooltip", |ui| {
+                            list_item2::ListItem::new(ctx.re_ui)
+                                .interactive(false)
+                                .show_flat(
+                                    ui,
+                                    list_item2::LabelContent::new(format!(
+                                        "{} component, logged {}",
+                                        if is_static { "Static" } else { "Temporal" },
+                                        if total_num_messages == 1 {
+                                            "once".to_owned()
+                                        } else {
+                                            format!(
+                                                "{} times",
+                                                re_format::format_uint(total_num_messages)
+                                            )
+                                        },
+                                    ))
+                                    .exact_width(true)
+                                    .with_icon(if is_static {
+                                        &re_ui::icons::COMPONENT_STATIC
+                                    } else {
+                                        &re_ui::icons::COMPONENT_TEMPORAL
+                                    }),
+                                );
+                        });
 
                         // Static components are not displayed at all on the timeline, so cannot be
                         // previewed there. So we display their content in this tooltip instead.

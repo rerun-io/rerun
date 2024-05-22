@@ -4,7 +4,7 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
-use re_ui::{icons, SyntaxHighlighting};
+use re_ui::{icons, list_item2, SyntaxHighlighting};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -413,17 +413,21 @@ pub fn component_path_button_to(
         ui.set_max_width(250.0);
         ui.style_mut().wrap = Some(false);
 
-        re_ui::ListItem::new(
-            ctx.re_ui,
-            if is_static {
-                "Static component"
-            } else {
-                "Temporal component"
-            },
-        )
-        .with_icon(icon)
-        .interactive(false)
-        .show_flat(ui);
+        // wrap lone item
+        list_item2::list_item_scope(ui, "component_path_tooltip", |ui| {
+            list_item2::ListItem::new(ctx.re_ui)
+                .interactive(false)
+                .show_flat(
+                    ui,
+                    list_item2::LabelContent::new(if is_static {
+                        "Static component"
+                    } else {
+                        "Temporal component"
+                    })
+                    .with_icon(icon)
+                    .exact_width(true),
+                );
+        });
 
         ui.label(format!(
             "Full name: {}",
@@ -630,7 +634,8 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
-/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
+/// This uses [`list_item2::ListItem::show_hierarchical`], meaning it comes with built-in
+/// indentation.
 pub fn store_id_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -647,7 +652,8 @@ pub fn store_id_button_ui(
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.
 ///
-/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
+/// This uses [`list_item2::ListItem::show_hierarchical`], meaning it comes with built-in
+/// indentation.
 pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -684,50 +690,55 @@ pub fn entity_db_button_ui(
         re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
     };
 
-    let mut list_item =
-        ctx.re_ui
-            .list_item(title)
-            .selected(ctx.selection().contains_item(&item))
-            .with_icon_fn(|_re_ui, ui, rect, visuals| {
-                // Color icon based on whether this is the active recording or not:
-                let color = if ctx.store_context.is_active(&store_id) {
-                    visuals.fg_stroke.color
-                } else {
-                    ui.visuals().widgets.noninteractive.fg_stroke.color
-                };
-                icon.as_image().tint(color).paint_at(ui, rect);
-            })
-            .with_buttons(|re_ui, ui| {
-                // Close-button:
-                let resp = re_ui.small_icon_button(ui, &icons::REMOVE).on_hover_text(
-                    match store_id.kind {
+    let item_content = list_item2::LabelContent::new(title)
+        .with_icon_fn(|_re_ui, ui, rect, visuals| {
+            // Color icon based on whether this is the active recording or not:
+            let color = if ctx.store_context.is_active(&store_id) {
+                visuals.fg_stroke.color
+            } else {
+                ui.visuals().widgets.noninteractive.fg_stroke.color
+            };
+            icon.as_image().tint(color).paint_at(ui, rect);
+        })
+        .with_buttons(|re_ui, ui| {
+            // Close-button:
+            let resp =
+                re_ui
+                    .small_icon_button(ui, &icons::REMOVE)
+                    .on_hover_text(match store_id.kind {
                         re_log_types::StoreKind::Recording => {
                             "Close this recording (unsaved data will be lost)"
                         }
                         re_log_types::StoreKind::Blueprint => {
                             "Close this blueprint (unsaved data will be lost)"
                         }
-                    },
-                );
-                if resp.clicked() {
-                    ctx.command_sender
-                        .send_system(SystemCommand::CloseStore(store_id.clone()));
-                }
-                resp
-            });
+                    });
+            if resp.clicked() {
+                ctx.command_sender
+                    .send_system(SystemCommand::CloseStore(store_id.clone()));
+            }
+            resp
+        });
+
+    let mut list_item =
+        list_item2::ListItem::new(ctx.re_ui).selected(ctx.selection().contains_item(&item));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item.show_hierarchical(ui).on_hover_ui(|ui| {
-        entity_db.data_ui(
-            ctx,
-            ui,
-            re_viewer_context::UiLayout::Tooltip,
-            &ctx.current_query(),
-            entity_db,
-        );
+    let response = list_item2::list_item_scope(ui, "entity db button", |ui| {
+        list_item
+            .show_hierarchical(ui, item_content)
+            .on_hover_ui(|ui| {
+                entity_db.data_ui(
+                    ctx,
+                    ui,
+                    re_viewer_context::UiLayout::Tooltip,
+                    &ctx.current_query(),
+                    entity_db,
+                );
+            })
     });
 
     if response.hovered() {

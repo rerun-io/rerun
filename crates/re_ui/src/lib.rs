@@ -10,7 +10,6 @@ mod toggle_switch;
 pub mod drag_and_drop;
 pub mod full_span;
 pub mod icons;
-pub mod list_item;
 pub mod list_item2;
 pub mod modal;
 pub mod toasts;
@@ -21,7 +20,6 @@ pub use self::{
     design_tokens::DesignTokens,
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
-    list_item::ListItem,
     syntax_highlighting::SyntaxHighlighting,
     toggle_switch::toggle_switch,
 };
@@ -545,7 +543,9 @@ impl ReUi {
     }
 
     /// Popup similar to [`egui::popup_below_widget`] but suitable for use with
-    /// [`crate::ListItem`].
+    /// [`crate::list_item2::ListItem`].
+    ///
+    /// Note that `add_contents` is called within a [`crate::list_item2::list_item_scope`].
     pub fn list_item_popup<R>(
         ui: &egui::Ui,
         popup_id: egui::Id,
@@ -577,13 +577,15 @@ impl ReUi {
                         ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
                         crate::full_span::full_span_scope(ui, ui.cursor().x_range(), |ui| {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                egui::Frame {
-                                    //TODO(ab): use design token
-                                    inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                    ..Default::default()
-                                }
-                                .show(ui, |ui| ret = Some(add_contents(ui)))
+                            crate::list_item2::list_item_scope(ui, popup_id, |ui| {
+                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                    egui::Frame {
+                                        //TODO(ab): use design token
+                                        inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                        ..Default::default()
+                                    }
+                                    .show(ui, |ui| ret = Some(add_contents(ui)))
+                                })
                             })
                         })
                     })
@@ -890,7 +892,7 @@ impl ReUi {
     /// Note that this is not the _size_ of the collapsing triangle (which is defined by
     /// [`ReUi::paint_collapsing_triangle`]), but how much screen real-estate should be allocated
     /// for it. It's set to the same size as the small icon size so that everything is properly
-    /// aligned in [`list_item::ListItem`].
+    /// aligned in [`list_item2::ListItem`].
     pub fn collapsing_triangle_area() -> egui::Vec2 {
         Self::small_icon_size()
     }
@@ -1002,11 +1004,6 @@ impl ReUi {
             texture_id: Default::default(),
         };
         ui.painter().add(shadow);
-    }
-
-    /// Convenience function to create a [`ListItem`] with the given text.
-    pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
-        ListItem::new(self, text)
     }
 
     /// Convenience function to create a [`list_item2::ListItem`].
