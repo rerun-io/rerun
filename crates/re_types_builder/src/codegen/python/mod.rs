@@ -847,7 +847,12 @@ fn code_for_enum(
         }
     }
 
-    code.push_unindented(format!("{name}Like = Union[{name}, str]"), 1);
+    let variants = obj
+        .fields
+        .iter()
+        .map(|v| format!("Literal[{:?}]", v.snake_case_name()))
+        .join(" | ");
+    code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
     code.push_unindented(
         format!(
             r#"

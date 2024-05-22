@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Literal, Sequence, Union
 
 import pyarrow as pa
 
@@ -44,7 +44,9 @@ class BackgroundKind(Enum):
     """Simple uniform color."""
 
 
-BackgroundKindLike = Union[BackgroundKind, str]
+BackgroundKindLike = Union[
+    BackgroundKind, Literal["gradient_dark"] | Literal["gradient_bright"] | Literal["solid_color"]
+]
 BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]]
 
 
