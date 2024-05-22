@@ -183,7 +183,7 @@ impl ReUi {
 
     /// Height of the top-most bar.
     pub fn top_bar_height() -> f32 {
-        44.0 // from figma 2022-02-03
+        28.0 // Don't waste vertical space, especially important for embedded web viewers
     }
 
     /// Height of the title row in the blueprint view and selection view,
@@ -214,8 +214,8 @@ impl ReUi {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn bottom_panel_margin(&self) -> egui::Vec2 {
-        egui::Vec2::splat(8.0)
+    pub fn bottom_panel_margin(&self) -> egui::Margin {
+        Self::top_bar_margin()
     }
 
     /// For the streams view (time panel)
@@ -228,10 +228,7 @@ impl ReUi {
 
         let mut frame = egui::Frame {
             fill: self.design_tokens.bottom_bar_color,
-            inner_margin: egui::Margin::symmetric(
-                margin.x + margin_offset,
-                margin.y + margin_offset,
-            ),
+            inner_margin: margin + margin_offset,
             outer_margin: egui::Margin {
                 left: -margin_offset,
                 right: -margin_offset,
@@ -407,8 +404,8 @@ impl ReUi {
             visuals.widgets.open.expansion = 0.0;
         }
 
-        let button_size = Vec2::splat(28.0);
-        let icon_size = Self::small_icon_size(); // centered inside the button
+        let button_size = Vec2::splat(22.0);
+        let icon_size = Vec2::splat(12.0); // centered inside the button
         let rounding = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
@@ -812,7 +809,8 @@ impl ReUi {
 
         let openness = state.openness(ui.ctx());
 
-        let header_size = egui::vec2(ui.available_width(), 28.0);
+        let height = Self::list_item_height();
+        let header_size = egui::vec2(ui.available_width(), height);
 
         // Draw custom header.
         ui.allocate_ui_with_layout(

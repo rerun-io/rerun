@@ -154,7 +154,7 @@ impl TimePanel {
         // etc.)
         let screen_header_height = ui.cursor().top();
 
-        let top_bar_height = 28.0;
+        let top_bar_height = re_ui::ReUi::top_bar_height();
         let margin = ctx.re_ui.bottom_panel_margin();
         let mut panel_frame = ctx.re_ui.bottom_panel_frame();
 
@@ -204,8 +204,8 @@ impl TimePanel {
                     ui.vertical(|ui| {
                         // Add back the margin we removed from the panel:
                         let mut top_row_frame = egui::Frame::default();
-                        top_row_frame.inner_margin.right = margin.x;
-                        top_row_frame.inner_margin.bottom = margin.y;
+                        top_row_frame.inner_margin.right = margin.right;
+                        top_row_frame.inner_margin.bottom = margin.bottom;
                         let top_row_rect = top_row_frame
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -228,7 +228,7 @@ impl TimePanel {
 
                         // Add extra margin on the left which was intentionally missing on the controls.
                         let mut streams_frame = egui::Frame::default();
-                        streams_frame.inner_margin.left = margin.x;
+                        streams_frame.inner_margin.left = margin.left;
                         streams_frame.show(ui, |ui| {
                             self.expanded_ui(
                                 ctx,
@@ -270,8 +270,11 @@ impl TimePanel {
                     let times_per_timeline = entity_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
-                    self.time_control_ui.playback_speed_ui(time_ctrl, ui);
-                    self.time_control_ui.fps_ui(time_ctrl, ui);
+
+                    if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+                        self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                        self.time_control_ui.fps_ui(time_ctrl, ui);
+                    }
                 });
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
@@ -290,8 +293,11 @@ impl TimePanel {
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
-            self.time_control_ui.playback_speed_ui(time_ctrl, ui);
-            self.time_control_ui.fps_ui(time_ctrl, ui);
+
+            if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+                self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                self.time_control_ui.fps_ui(time_ctrl, ui);
+            }
 
             collapsed_time_marker_and_time(ui, ctx, entity_db, time_ctrl);
         }
@@ -964,7 +970,13 @@ fn collapsed_time_marker_and_time(
     entity_db: &re_entity_db::EntityDb,
     time_ctrl: &mut TimeControl,
 ) {
-    let space_needed_for_current_time = match time_ctrl.timeline().typ() {
+    let timeline = time_ctrl.timeline();
+
+    if !entity_db.has_any_data_on_timeline(timeline) {
+        return;
+    }
+
+    let space_needed_for_current_time = match timeline.typ() {
         re_data_store::TimeType::Time => 220.0,
         re_data_store::TimeType::Sequence => 100.0,
     };
@@ -992,7 +1004,7 @@ fn collapsed_time_marker_and_time(
             painter.hline(
                 time_range_rect.x_range(),
                 time_range_rect.center().y,
-                ui.visuals().widgets.inactive.fg_stroke,
+                ui.visuals().widgets.noninteractive.fg_stroke,
             );
             time_marker_ui(
                 &time_ranges_ui,
