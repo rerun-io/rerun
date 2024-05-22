@@ -11,6 +11,7 @@ mod collapsed_id;
 mod command_sender;
 mod component_ui_registry;
 mod contents;
+mod in_viewer_tests;
 mod item;
 mod query_context;
 mod query_range;
@@ -41,6 +42,7 @@ pub use command_sender::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
+pub use in_viewer_tests::{ExecuteOutcome, InViewerTest, InViewerTestManager};
 pub use item::Item;
 pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
 pub use query_range::QueryRange;

@@ -8,8 +8,9 @@ use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyRes
 use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
-    StoreHub, SystemCommandSender as _, ViewerContext,
+    ComponentUiRegistry, ExecuteOutcome, InViewerTest, InViewerTestManager, PlayState,
+    RecordingConfig, SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _,
+    ViewerContext,
 };
 use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
 
@@ -53,10 +54,24 @@ pub struct AppState {
     /// that last several frames.
     #[serde(skip)]
     pub(crate) focused_item: Option<re_viewer_context::Item>,
+
+    frame_number: u64,
+}
+
+//TODO: clean that up
+#[derive(Default)]
+struct DummyTest;
+
+impl InViewerTest for DummyTest {
+    fn execute(&mut self, _frame_nr: u64, _ctx: &ViewerContext<'_>) -> ExecuteOutcome {
+        ExecuteOutcome::Failure("DummyTest failed".into())
+    }
 }
 
 impl Default for AppState {
     fn default() -> Self {
+        InViewerTestManager::register_test::<DummyTest>("empty");
+
         Self {
             app_options: Default::default(),
             cache: Default::default(),
@@ -69,6 +84,7 @@ impl Default for AppState {
             viewport_state: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+            frame_number: 0,
         }
     }
 }
@@ -141,6 +157,7 @@ impl AppState {
             viewport_state,
             selection_state,
             focused_item,
+            frame_number,
         } = self;
 
         // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
@@ -425,6 +442,10 @@ impl AppState {
                     viewport.viewport_ui(ui, &ctx);
                 }
             });
+
+        // This must run before end-of-frame sync and clean-up it should have a UI-like context.
+        InViewerTestManager::run_tests(*frame_number, &ctx);
+        *frame_number = frame_number.wrapping_add(1);
 
         // Process deferred layout operations and apply updates back to blueprint
         viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
