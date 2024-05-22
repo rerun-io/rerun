@@ -4836,6 +4836,7 @@ dependencies = [
  "re_format",
  "re_log_types",
  "re_tracing",
+ "re_types",
  "re_ui",
  "re_viewer_context",
  "re_viewport",

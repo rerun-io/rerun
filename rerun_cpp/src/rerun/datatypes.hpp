@@ -15,6 +15,7 @@
 #include "datatypes/mat3x3.hpp"
 #include "datatypes/mat4x4.hpp"
 #include "datatypes/material.hpp"
+#include "datatypes/panel_state.hpp"
 #include "datatypes/quaternion.hpp"
 #include "datatypes/range1d.hpp"
 #include "datatypes/range2d.hpp"

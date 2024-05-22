@@ -9,12 +9,13 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether an application panel is expanded or not.
-struct PanelExpanded (
+/// Panel state
+struct PanelState (
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  expanded: rerun.datatypes.Bool (order: 100);
+  /// Panel state
+  state: rerun.datatypes.PanelState (order: 100);
 }

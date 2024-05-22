@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "rust/attributes.fbs";
+include "fbs/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// State of a app blueprint panel.
+enum PanelState: byte (
+  "attr.rust.derive": "Copy, PartialEq, Eq"
+) {
+  /// Completely hidden
+  Hidden,
+
+  /// Visible, but as small as possible on its shorter axis
+  Collapsed,
+
+  /// Fully expanded
+  Expanded,
+}

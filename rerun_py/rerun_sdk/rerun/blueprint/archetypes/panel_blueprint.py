@@ -21,27 +21,19 @@ __all__ = ["PanelBlueprint"]
 class PanelBlueprint(Archetype):
     """**Archetype**: Shared state for the 3 collapsible panels."""
 
-    def __init__(self: Any, *, expanded: datatypes.BoolLike | None = None):
-        """
-        Create a new instance of the PanelBlueprint archetype.
-
-        Parameters
-        ----------
-        expanded:
-            Whether or not the panel is expanded.
-
-        """
+    def __init__(self: Any, *, state: datatypes.PanelStateLike | None = None):
+        """Create a new instance of the PanelBlueprint archetype."""
 
         # You can define your own __init__ function as a member of PanelBlueprintExt in panel_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(expanded=expanded)
+            self.__attrs_init__(state=state)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            expanded=None,  # type: ignore[arg-type]
+            state=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -51,14 +43,10 @@ class PanelBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    expanded: blueprint_components.PanelExpandedBatch | None = field(
+    state: blueprint_components.PanelStateBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.PanelExpandedBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.PanelStateBatch._optional,  # type: ignore[misc]
     )
-    # Whether or not the panel is expanded.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]

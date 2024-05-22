@@ -33,6 +33,7 @@ from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatc
 from .mat3x3 import Mat3x3, Mat3x3ArrayLike, Mat3x3Batch, Mat3x3Like, Mat3x3Type
 from .mat4x4 import Mat4x4, Mat4x4ArrayLike, Mat4x4Batch, Mat4x4Like, Mat4x4Type
 from .material import Material, MaterialArrayLike, MaterialBatch, MaterialLike, MaterialType
+from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike, QuaternionType
 from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
 from .range2d import Range2D, Range2DArrayLike, Range2DBatch, Range2DLike, Range2DType
@@ -163,6 +164,11 @@ __all__ = [
     "MaterialBatch",
     "MaterialLike",
     "MaterialType",
+    "PanelState",
+    "PanelStateArrayLike",
+    "PanelStateBatch",
+    "PanelStateLike",
+    "PanelStateType",
     "Quaternion",
     "QuaternionArrayLike",
     "QuaternionBatch",
