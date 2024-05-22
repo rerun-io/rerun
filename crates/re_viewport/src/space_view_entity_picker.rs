@@ -4,8 +4,9 @@ use nohash_hasher::IntMap;
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
-use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
+use re_space_view::determine_visualizable_entities;
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::ViewportBlueprint;
 

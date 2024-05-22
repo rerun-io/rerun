@@ -10,7 +10,6 @@ use smallvec::SmallVec;
 use re_data_store::LatestAtQuery;
 use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::EntityPath;
-use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_types_blueprint::blueprint::components::{
     AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
@@ -18,6 +17,7 @@ use re_types_blueprint::blueprint::components::{
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
 };
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::{container::ContainerBlueprint, viewport::TreeAction, VIEWPORT_PATH};
 

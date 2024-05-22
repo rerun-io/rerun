@@ -118,7 +118,7 @@ fn ui_from_scene(
         RectTransform::from_to(letterboxed_bounds, response.rect)
     }
 
-    re_space_view::edit_blueprint_component::<
+    re_viewport_blueprint::edit_blueprint_component::<
         VisualBounds2D,
         blueprint_components::VisualBounds2D,
         RectTransform,
@@ -285,7 +285,7 @@ pub fn view_2d(
         view_builder.queue_draw(draw_data);
     }
 
-    let background = re_space_view::view_property::<Background>(ctx, query.space_view_id)
+    let background = re_viewport_blueprint::view_property::<Background>(ctx, query.space_view_id)
         .unwrap_or(Background::DEFAULT_2D);
     let (background_drawable, clear_color) = crate::configure_background(
         ctx,
