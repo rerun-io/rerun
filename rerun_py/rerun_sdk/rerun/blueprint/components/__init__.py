@@ -38,7 +38,7 @@ from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, G
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
-from .panel_state import PanelState, PanelStateBatch, PanelStateType
+from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
@@ -108,7 +108,9 @@ __all__ = [
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
     "PanelState",
+    "PanelStateArrayLike",
     "PanelStateBatch",
+    "PanelStateLike",
     "PanelStateType",
     "QueryExpression",
     "QueryExpressionBatch",

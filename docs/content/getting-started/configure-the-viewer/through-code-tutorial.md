@@ -229,9 +229,9 @@ Let's modify the code again to include additional blueprint specifications for t
     # Create a single chart for all the AAPL data, and collapse the selection and time panels:
     blueprint = rrb.Blueprint(
         rrb.TimeSeriesView(name="AAPL", origin="/stocks/AAPL"),
-        rrb.BlueprintPanel(expanded=True),
-        rrb.SelectionPanel(expanded=False),
-        rrb.TimePanel(expanded=False),
+        rrb.BlueprintPanel(state="expanded"),
+        rrb.SelectionPanel(state="collapsed"),
+        rrb.TimePanel(state="collapsed"),
     )
     rr.send_blueprint(blueprint)
 ```
@@ -263,9 +263,9 @@ Let's modify the code to include the info card as well. We will use the `Vertica
             rrb.TimeSeriesView(name="Chart", origin="/stocks/AAPL"),
             row_shares=[1, 4],
         ),
-        rrb.BlueprintPanel(expanded=True),
-        rrb.SelectionPanel(expanded=False),
-        rrb.TimePanel(expanded=False),
+        rrb.BlueprintPanel(state="expanded"),
+        rrb.SelectionPanel(state="collapsed"),
+        rrb.TimePanel(state="collapsed"),
     )
     rr.send_blueprint(blueprint)
 ```
@@ -298,9 +298,9 @@ the same chart. Using `origin` alone there is no way we could have expressed thi
                 "+ /stocks/MSFT/2024-03-19",
             ],
         ),
-        rrb.BlueprintPanel(expanded=True),
-        rrb.SelectionPanel(expanded=False),
-        rrb.TimePanel(expanded=False),
+        rrb.BlueprintPanel(state="expanded"),
+        rrb.SelectionPanel(state="collapsed"),
+        rrb.TimePanel(state="collapsed"),
     )
     rr.send_blueprint(blueprint)
 ```
@@ -337,9 +337,9 @@ Going back to our single stock example, we can filter out the peaks data by excl
                 "- $origin/peaks/**",
             ],
         ),
-        rrb.BlueprintPanel(expanded=True),
-        rrb.SelectionPanel(expanded=False),
-        rrb.TimePanel(expanded=False),
+        rrb.BlueprintPanel(state="expanded"),
+        rrb.SelectionPanel(state="collapsed"),
+        rrb.TimePanel(state="collapsed"),
     )
     rr.send_blueprint(blueprint)
 ```
@@ -385,9 +385,9 @@ Setting this up by hand would be extremely tedious.
                 for symbol in symbols
             ]
         ),
-        rrb.BlueprintPanel(expanded=True),
-        rrb.SelectionPanel(expanded=False),
-        rrb.TimePanel(expanded=False),
+        rrb.BlueprintPanel(state="expanded"),
+        rrb.SelectionPanel(state="collapsed"),
+        rrb.TimePanel(state="collapsed"),
     )
     rr.send_blueprint(blueprint)
 ```

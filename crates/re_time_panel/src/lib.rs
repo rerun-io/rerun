@@ -23,7 +23,7 @@ use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal,
 };
-use re_types::datatypes::PanelState;
+use re_types::blueprint::components::PanelState;
 use re_ui::list_item;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,

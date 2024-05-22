@@ -9,7 +9,6 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import Archetype
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -21,7 +20,7 @@ __all__ = ["PanelBlueprint"]
 class PanelBlueprint(Archetype):
     """**Archetype**: Shared state for the 3 collapsible panels."""
 
-    def __init__(self: Any, *, state: datatypes.PanelStateLike | None = None):
+    def __init__(self: Any, *, state: blueprint_components.PanelStateLike | None = None):
         """Create a new instance of the PanelBlueprint archetype."""
 
         # You can define your own __init__ function as a member of PanelBlueprintExt in panel_blueprint_ext.py

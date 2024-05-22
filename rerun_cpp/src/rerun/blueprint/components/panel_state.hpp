@@ -3,39 +3,35 @@
 
 #pragma once
 
-#include "../../datatypes/panel_state.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
 #include <memory>
 
+namespace arrow {
+    class Array;
+    class DataType;
+    class SparseUnionBuilder;
+} // namespace arrow
+
 namespace rerun::blueprint::components {
     /// **Component**: Panel state
-    struct PanelState {
-        /// Panel state
-        rerun::datatypes::PanelState state;
+    enum class PanelState : uint8_t {
 
-      public:
-        PanelState() = default;
+        /// Completely hidden
+        Hidden = 1,
 
-        PanelState(rerun::datatypes::PanelState state_) : state(state_) {}
+        /// Visible, but as small as possible on its shorter axis
+        Collapsed = 2,
 
-        PanelState& operator=(rerun::datatypes::PanelState state_) {
-            state = state_;
-            return *this;
-        }
-
-        /// Cast to the underlying PanelState datatype
-        operator rerun::datatypes::PanelState() const {
-            return state;
-        }
+        /// Fully expanded
+        Expanded = 3,
     };
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::PanelState) == sizeof(blueprint::components::PanelState)
-    );
+    template <typename T>
+    struct Loggable;
 
     /// \private
     template <>
@@ -43,18 +39,17 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.PanelState";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::PanelState>::arrow_datatype();
-        }
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Serializes an array of `rerun::blueprint:: components::PanelState` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::PanelState* instances, size_t num_instances
-        ) {
-            return Loggable<rerun::datatypes::PanelState>::to_arrow(
-                &instances->state,
-                num_instances
-            );
-        }
+        );
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::SparseUnionBuilder* builder, const blueprint::components::PanelState* elements,
+            size_t num_elements
+        );
     };
 } // namespace rerun

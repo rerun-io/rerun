@@ -5,7 +5,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
-use re_types::datatypes::PanelState;
+use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,

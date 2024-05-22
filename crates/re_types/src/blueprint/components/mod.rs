@@ -8,6 +8,7 @@ mod corner2d_ext;
 mod included_content;
 mod lock_range_during_zoom;
 mod panel_state;
+mod panel_state_ext;
 mod query_expression;
 mod row_share;
 mod space_view_class;

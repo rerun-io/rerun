@@ -10,12 +10,18 @@ namespace rerun.blueprint.components;
 // ---
 
 /// Panel state
-struct PanelState (
+enum PanelState: byte (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  /// Panel state
-  state: rerun.datatypes.PanelState (order: 100);
+  /// Completely hidden
+  Hidden,
+
+  /// Visible, but as small as possible on its shorter axis
+  Collapsed,
+
+  /// Fully expanded
+  Expanded,
 }

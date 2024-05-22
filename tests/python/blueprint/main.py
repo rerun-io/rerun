@@ -34,7 +34,7 @@ if __name__ == "__main__":
             ),
             row_shares=[2, 1],
         ),
-        TimePanel(expanded=False),
+        TimePanel(state="collapsed"),
     )
 
     rr.init(

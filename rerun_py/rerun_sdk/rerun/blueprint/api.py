@@ -12,7 +12,7 @@ from ..memory import MemoryRecording
 from ..notebook import as_html
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
-from .components import ColumnShareArrayLike, RowShareArrayLike, VisibleLike
+from .components import ColumnShareArrayLike, RowShareArrayLike, VisibleLike, PanelState, PanelStateLike
 from .components.container_kind import ContainerKindLike
 
 SpaceViewContentsLike = Union[Utf8ArrayLike, SpaceViewContents]
@@ -242,12 +242,25 @@ class Container:
         return as_html(blueprint=self)
 
 
+def _to_state(expanded: bool | None, state: PanelStateLike | None) -> PanelStateLike | None:
+    """Handle the case where `expanded` is used over `state`."""
+
+    if expanded is not None and state is not None:
+        raise ValueError("Cannot set both 'expanded' and 'state'")
+    if state is not None:
+        return state
+    if expanded is not None:
+        return PanelState.Expanded if expanded else PanelState.Collapsed
+    return None
+
+
 class Panel:
     """
     Base class for the panel types.
 
     Consider using one of the subclasses instead of this class directly:
 
+    - [TopPanel][rerun.blueprint.TopPanel]
     - [BlueprintPanel][rerun.blueprint.BlueprintPanel]
     - [SelectionPanel][rerun.blueprint.SelectionPanel]
     - [TimePanel][rerun.blueprint.TimePanel]
@@ -255,7 +268,7 @@ class Panel:
     These are ergonomic helpers on top of [rerun.blueprint.archetypes.PanelBlueprint][].
     """
 
-    def __init__(self, *, blueprint_path: str, expanded: bool | None = None):
+    def __init__(self, *, blueprint_path: str, expanded: bool | None = None, state: PanelStateLike | None = None):
         """
         Construct a new panel.
 
@@ -264,11 +277,13 @@ class Panel:
         blueprint_path:
             The blueprint path of the panel.
         expanded:
-            Whether the panel is expanded or not.
+            Deprecated. Use `state` instead.
+        state:
+            Whether the panel is expanded, collapsed, or hidden.
 
         """
         self._blueprint_path = blueprint_path
-        self.expanded = expanded
+        self.state = _to_state(expanded, state)
 
     def blueprint_path(self) -> str:
         """
@@ -282,58 +297,82 @@ class Panel:
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         arch = PanelBlueprint(
-            expanded=self.expanded,
+            state=self.state,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
 
+class TopPanel(Panel):
+    """The state of the top panel."""
+
+    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None):
+        """
+        Construct a new top panel.
+
+        Parameters
+        ----------
+        expanded:
+            Deprecated. Use `state` instead.
+        state:
+            Whether the panel is expanded, collapsed, or hidden.
+
+        """
+        super().__init__(blueprint_path="top_panel", expanded=expanded, state=state)
+
+
 class BlueprintPanel(Panel):
     """The state of the blueprint panel."""
 
-    def __init__(self, *, expanded: bool | None = None):
+    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None):
         """
         Construct a new blueprint panel.
 
         Parameters
         ----------
         expanded:
-            Whether the panel is expanded or not.
+            Deprecated. Use `state` instead.
+        state:
+            Whether the panel is expanded, collapsed, or hidden.
 
         """
-        super().__init__(blueprint_path="blueprint_panel", expanded=expanded)
+        super().__init__(blueprint_path="blueprint_panel", expanded=expanded, state=state)
 
 
 class SelectionPanel(Panel):
     """The state of the selection panel."""
 
-    def __init__(self, *, expanded: bool | None = None):
+    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None):
         """
         Construct a new selection panel.
 
         Parameters
         ----------
         expanded:
-            Whether the panel is expanded or not.
+            Deprecated. Use `state` instead.
+        state:
+            Whether the panel is expanded, collapsed, or hidden.
 
         """
-        super().__init__(blueprint_path="selection_panel", expanded=expanded)
+        super().__init__(blueprint_path="selection_panel", expanded=expanded, state=state)
 
 
 class TimePanel(Panel):
     """The state of the time panel."""
 
-    def __init__(self, *, expanded: bool | None = None):
+    def __init__(self, *, expanded: bool | None = None, state: PanelStateLike | None = None):
         """
         Construct a new time panel.
 
         Parameters
         ----------
         expanded:
-            Whether the panel is expanded or not.
+            Deprecated. Use `state` instead.
+        state:
+            Whether the panel is expanded, collapsed, or hidden.
 
         """
-        super().__init__(blueprint_path="time_panel", expanded=expanded)
+        super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
 
 
 ContainerLike = Union[Container, SpaceView]
@@ -456,17 +495,17 @@ class Blueprint:
         if hasattr(self, "blueprint_panel"):
             self.blueprint_panel._log_to_stream(stream)
         elif self.collapse_panels:
-            BlueprintPanel(expanded=False)._log_to_stream(stream)
+            BlueprintPanel(state="collapsed")._log_to_stream(stream)
 
         if hasattr(self, "selection_panel"):
             self.selection_panel._log_to_stream(stream)
         elif self.collapse_panels:
-            SelectionPanel(expanded=False)._log_to_stream(stream)
+            SelectionPanel(state="collapsed")._log_to_stream(stream)
 
         if hasattr(self, "time_panel"):
             self.time_panel._log_to_stream(stream)
         elif self.collapse_panels:
-            TimePanel(expanded=False)._log_to_stream(stream)
+            TimePanel(state="collapsed")._log_to_stream(stream)
 
     def _repr_html_(self) -> Any:
         """IPython interface to conversion to html."""

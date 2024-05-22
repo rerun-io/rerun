@@ -23,44 +23,42 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Panel state
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct PanelState(
-    /// Panel state
-    pub crate::datatypes::PanelState,
-);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PanelState {
+    /// Completely hidden
+    Hidden = 1,
+
+    /// Visible, but as small as possible on its shorter axis
+    Collapsed = 2,
+
+    /// Fully expanded
+    Expanded = 3,
+}
+
+impl PanelState {
+    /// All the different enum variants.
+    pub const ALL: [Self; 3] = [Self::Hidden, Self::Collapsed, Self::Expanded];
+}
 
 impl ::re_types_core::SizeBytes for PanelState {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
+        0
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::PanelState>::is_pod()
+        true
     }
 }
 
-impl<T: Into<crate::datatypes::PanelState>> From<T> for PanelState {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::PanelState> for PanelState {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::PanelState {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for PanelState {
-    type Target = crate::datatypes::PanelState;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::PanelState {
-        &self.0
+impl std::fmt::Display for PanelState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Hidden => write!(f, "Hidden"),
+            Self::Collapsed => write!(f, "Collapsed"),
+            Self::Expanded => write!(f, "Expanded"),
+        }
     }
 }
 
@@ -100,22 +98,27 @@ impl ::re_types_core::Loggable for PanelState {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            // Sparse Arrow union
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            {
-                _ = data0_bitmap;
-                crate::datatypes::PanelState::to_arrow_opt(data0)?
-            }
+                .collect();
+            let num_variants = 3usize;
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(value) => *value as i8,
+                })
+                .collect();
+            let fields: Vec<_> =
+                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
+                    .take(1 + num_variants)
+                    .collect();
+            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
         })
     }
 
@@ -128,13 +131,32 @@ impl ::re_types_core::Loggable for PanelState {
     {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(crate::datatypes::PanelState::from_arrow_opt(arrow_data)
-            .with_context("rerun.blueprint.components.PanelState#state")?
-            .into_iter()
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.PanelState#state")
-            .with_context("rerun.blueprint.components.PanelState")?)
+        Ok({
+            let arrow_data = arrow_data
+                .as_any()
+                .downcast_ref::<arrow2::array::UnionArray>()
+                .ok_or_else(|| {
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
+                })
+                .with_context("rerun.blueprint.components.PanelState")?;
+            let arrow_data_types = arrow_data.types();
+            arrow_data_types
+                .iter()
+                .map(|typ| match typ {
+                    0 => Ok(None),
+                    1 => Ok(Some(Self::Hidden)),
+                    2 => Ok(Some(Self::Collapsed)),
+                    3 => Ok(Some(Self::Expanded)),
+                    _ => Err(DeserializationError::missing_union_arm(
+                        Self::arrow_datatype(),
+                        "<invalid>",
+                        *typ as _,
+                    )),
+                })
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.blueprint.components.PanelState")?
+        })
     }
 }
