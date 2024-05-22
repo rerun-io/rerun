@@ -10,7 +10,7 @@ use re_types::{
     blueprint::components::Corner2D, components::Range1D, datatypes::TimeRange,
     SpaceViewClassIdentifier, View,
 };
-use re_ui::list_item2;
+use re_ui::list_item;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
@@ -157,12 +157,12 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
-        list_item2::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            list_item2::ListItem::new(ctx.re_ui)
+        list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
+            list_item::ListItem::new(ctx.re_ui)
                 .interactive(false)
                 .show_hierarchical(
                     ui,
-                    list_item2::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
                         let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
                         egui::ComboBox::from_id_source("aggregation_mode")
@@ -636,11 +636,11 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
         //
 
         let mut edit_visibility = visible;
-        list_item2::ListItem::new(re_ui)
+        list_item::ListItem::new(re_ui)
             .interactive(false)
             .show_flat(
                 ui,
-                list_item2::PropertyContent::new("Visible").value_bool_mut(&mut edit_visibility.0),
+                list_item::PropertyContent::new("Visible").value_bool_mut(&mut edit_visibility.0),
             );
         if visible != edit_visibility {
             ctx.save_blueprint_component(&blueprint_path, &edit_visibility);
@@ -651,11 +651,11 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
         //
 
         let mut edit_corner = corner;
-        list_item2::ListItem::new(re_ui)
+        list_item::ListItem::new(re_ui)
             .interactive(false)
             .show_flat(
                 ui,
-                list_item2::PropertyContent::new("Corner").value_fn(|_, ui, _| {
+                list_item::PropertyContent::new("Corner").value_fn(|_, ui, _| {
                     egui::ComboBox::from_id_source("legend_corner")
                         .selected_text(format!("{corner}"))
                         .show_ui(ui, |ui| {
@@ -690,13 +690,13 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
         }
     };
 
-    list_item2::ListItem::new(ctx.re_ui)
+    list_item::ListItem::new(ctx.re_ui)
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
             "time_series_selection_ui_legend",
             true,
-            list_item2::LabelContent::new("Legend"),
+            list_item::LabelContent::new("Legend"),
             sub_prop_ui,
         );
 }
@@ -727,11 +727,11 @@ fn axis_ui(
         //
 
         let mut auto_range = y_range.is_none();
-        list_item2::ListItem::new(re_ui)
+        list_item::ListItem::new(re_ui)
             .interactive(false)
             .show_flat(
                 ui,
-                list_item2::PropertyContent::new("Default range").value_fn(|_, ui, _| {
+                list_item::PropertyContent::new("Default range").value_fn(|_, ui, _| {
                     ui.horizontal(|ui| {
                         ctx.re_ui.radio_value(ui, &mut auto_range, true, "Auto");
                         ctx.re_ui.radio_value(ui, &mut auto_range, false, "Manual");
@@ -749,11 +749,11 @@ fn axis_ui(
         //
 
         if !auto_range {
-            list_item2::ListItem::new(re_ui)
+            list_item::ListItem::new(re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item2::PropertyContent::new("").value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new("").value_fn(|_, ui, _| {
                         let mut range_edit = y_range
                             .unwrap_or_else(|| y_range.unwrap_or(state.saved_y_axis_range.into()));
 
@@ -792,11 +792,11 @@ fn axis_ui(
         //
 
         let mut edit_locked = y_lock_zoom;
-        list_item2::ListItem::new(re_ui)
+        list_item::ListItem::new(re_ui)
             .interactive(false)
             .show_flat(
                 ui,
-                list_item2::PropertyContent::new("Zoom lock").value_bool_mut(&mut edit_locked.0 .0),
+                list_item::PropertyContent::new("Zoom lock").value_bool_mut(&mut edit_locked.0 .0),
             )
             .on_hover_text(
                 "If enabled, the Y axis range will remain locked to the specified range when zooming.",
@@ -806,13 +806,13 @@ fn axis_ui(
         }
     };
 
-    list_item2::ListItem::new(ctx.re_ui)
+    list_item::ListItem::new(ctx.re_ui)
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
             "time_series_selection_ui_y_axis",
             true,
-            list_item2::LabelContent::new("Y Axis"),
+            list_item::LabelContent::new("Y Axis"),
             sub_prop_ui,
         );
 }
