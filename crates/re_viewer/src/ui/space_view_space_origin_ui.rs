@@ -5,7 +5,7 @@ use egui::{Key, Ui};
 
 use re_log_types::EntityPath;
 use re_space_view::SpaceViewBlueprint;
-use re_ui::{list_item2, ReUi, SyntaxHighlighting};
+use re_ui::{list_item, ReUi, SyntaxHighlighting};
 use re_viewer_context::ViewerContext;
 
 /// State of the space origin widget.
@@ -185,11 +185,11 @@ fn space_view_space_origin_widget_editing_ui(
 
     let suggestions_ui = |ui: &mut egui::Ui| {
         for (idx, suggested_space_view) in filtered_space_view_suggestions.iter().enumerate() {
-            let response = list_item2::ListItem::new(ctx.re_ui)
+            let response = list_item::ListItem::new(ctx.re_ui)
                 .force_hovered(state.selected_suggestion == Some(idx))
                 .show_flat(
                     ui,
-                    list_item2::LabelContent::new(
+                    list_item::LabelContent::new(
                         suggested_space_view
                             .space_origin
                             .syntax_highlighted(ui.style()),
@@ -207,11 +207,11 @@ fn space_view_space_origin_widget_editing_ui(
 
         let excluded_count = space_view_suggestions.len() - filtered_space_view_suggestions.len();
         if excluded_count > 0 {
-            list_item2::ListItem::new(ctx.re_ui)
+            list_item::ListItem::new(ctx.re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item2::LabelContent::new(format!("{excluded_count} hidden suggestions"))
+                    list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))
                         .weak(true)
                         .italics(true),
                 );

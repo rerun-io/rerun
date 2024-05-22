@@ -4,7 +4,7 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
-use re_ui::{icons, list_item2, SyntaxHighlighting};
+use re_ui::{icons, list_item, SyntaxHighlighting};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -414,12 +414,12 @@ pub fn component_path_button_to(
         ui.style_mut().wrap = Some(false);
 
         // wrap lone item
-        list_item2::list_item_scope(ui, "component_path_tooltip", |ui| {
-            list_item2::ListItem::new(ctx.re_ui)
+        list_item::list_item_scope(ui, "component_path_tooltip", |ui| {
+            list_item::ListItem::new(ctx.re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item2::LabelContent::new(if is_static {
+                    list_item::LabelContent::new(if is_static {
                         "Static component"
                     } else {
                         "Temporal component"
@@ -634,7 +634,7 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
-/// This uses [`list_item2::ListItem::show_hierarchical`], meaning it comes with built-in
+/// This uses [`list_item::ListItem::show_hierarchical`], meaning it comes with built-in
 /// indentation.
 pub fn store_id_button_ui(
     ctx: &ViewerContext<'_>,
@@ -652,7 +652,7 @@ pub fn store_id_button_ui(
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.
 ///
-/// This uses [`list_item2::ListItem::show_hierarchical`], meaning it comes with built-in
+/// This uses [`list_item::ListItem::show_hierarchical`], meaning it comes with built-in
 /// indentation.
 pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
@@ -690,7 +690,7 @@ pub fn entity_db_button_ui(
         re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
     };
 
-    let item_content = list_item2::LabelContent::new(title)
+    let item_content = list_item::LabelContent::new(title)
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
             // Color icon based on whether this is the active recording or not:
             let color = if ctx.store_context.is_active(&store_id) {
@@ -721,13 +721,13 @@ pub fn entity_db_button_ui(
         });
 
     let mut list_item =
-        list_item2::ListItem::new(ctx.re_ui).selected(ctx.selection().contains_item(&item));
+        list_item::ListItem::new(ctx.re_ui).selected(ctx.selection().contains_item(&item));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item2::list_item_scope(ui, "entity db button", |ui| {
+    let response = list_item::list_item_scope(ui, "entity db button", |ui| {
         list_item
             .show_hierarchical(ui, item_content)
             .on_hover_ui(|ui| {

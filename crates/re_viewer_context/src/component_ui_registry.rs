@@ -13,7 +13,7 @@ pub enum UiLayout {
     /// Display a short summary. Used in lists.
     ///
     /// Keep it small enough to fit on half a row (i.e. the second column of a
-    /// [`re_ui::list_item2::ListItem`] with [`re_ui::list_item2::PropertyContent`]. Text should
+    /// [`re_ui::list_item::ListItem`] with [`re_ui::list_item::PropertyContent`]. Text should
     /// truncate.
     List,
 

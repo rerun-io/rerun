@@ -15,7 +15,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::{icons, list_item2, ReUi, SyntaxHighlighting as _};
+use re_ui::{icons, list_item, ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
     HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiLayout, ViewerContext,
@@ -219,11 +219,11 @@ fn container_children(
         }
 
         if !has_child {
-            list_item2::ListItem::new(ctx.re_ui)
+            list_item::ListItem::new(ctx.re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item2::LabelContent::new("empty — use the + button to add content")
+                    list_item::LabelContent::new("empty — use the + button to add content")
                         .weak(true)
                         .italics(true),
                 );
@@ -238,7 +238,7 @@ fn container_children(
     }
     .show(ui, |ui| {
         re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-            list_item2::list_item_scope(ui, "children list", |ui| {
+            list_item::list_item_scope(ui, "children list", |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 egui::Frame {
@@ -532,7 +532,7 @@ fn item_title_ui(
     label_style: Option<re_ui::LabelStyle>,
     hover: &str,
 ) -> egui::Response {
-    let mut content = list_item2::LabelContent::new(name);
+    let mut content = list_item::LabelContent::new(name);
 
     if let Some(icon) = icon {
         content = content.with_icon(icon);
@@ -542,8 +542,8 @@ fn item_title_ui(
         content = content.label_style(label_style);
     }
 
-    list_item2::list_item_scope(ui, ui.next_auto_id(), |ui| {
-        list_item2::ListItem::new(re_ui)
+    list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
+        list_item::ListItem::new(re_ui)
             .with_height(ReUi::title_bar_height())
             .selected(true)
             .show_flat(ui, content)
@@ -774,11 +774,11 @@ fn container_kind_selection_ui(
         ] {
             let response = ctx
                 .re_ui
-                .list_item2()
+                .list_item()
                 .selected(*in_out_kind == kind)
                 .show_flat(
                     ui,
-                    list_item2::LabelContent::new(format!("{kind:?}")).with_icon(icon),
+                    list_item::LabelContent::new(format!("{kind:?}")).with_icon(icon),
                 );
 
             if response.clicked() {
@@ -809,7 +809,7 @@ fn show_list_item_for_container_child(
             let space_view_name = space_view.display_name_or_default();
             (
                 Item::SpaceView(*space_view_id),
-                list_item2::LabelContent::new(space_view_name.as_ref())
+                list_item::LabelContent::new(space_view_name.as_ref())
                     .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
@@ -835,7 +835,7 @@ fn show_list_item_for_container_child(
 
             (
                 Item::Container(*container_id),
-                list_item2::LabelContent::new(container_name.as_ref())
+                list_item::LabelContent::new(container_name.as_ref())
                     .label_style(contents_name_style(&container_name))
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
@@ -856,7 +856,7 @@ fn show_list_item_for_container_child(
     let is_item_hovered =
         ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    let response = list_item2::ListItem::new(ctx.re_ui)
+    let response = list_item::ListItem::new(ctx.re_ui)
         .force_hovered(is_item_hovered)
         .show_flat(ui, list_item_content);
 
