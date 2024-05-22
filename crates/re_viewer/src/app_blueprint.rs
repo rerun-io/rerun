@@ -1,6 +1,6 @@
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
+use re_log_types::{DataRow, EntityPath, RowId};
 use re_types::blueprint::components::PanelState;
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
@@ -105,8 +105,8 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
         (TIME_PANEL_PATH, PanelState::Hidden),
     ] {
         let entity_path = EntityPath::from(panel_name);
-        // TODO(jleibs): Seq instead of timeless?
-        let timepoint = TimePoint::default();
+
+        let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
         let row =
             DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, [value]).unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't

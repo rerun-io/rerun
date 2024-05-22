@@ -140,6 +140,7 @@ pub fn override_ui(
                         entity_path_overridden,
                         &overrides.individual_override_path,
                         &results,
+                        component_name,
                         instance,
                     );
                 } else {
