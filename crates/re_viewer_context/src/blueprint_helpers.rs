@@ -8,21 +8,25 @@ pub fn blueprint_timeline() -> Timeline {
     Timeline::new_sequence("blueprint")
 }
 
+/// The timepoint to use when writing an update to the blueprint.
+pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> TimePoint {
+    let timeline = blueprint_timeline();
+
+    let max_time = blueprint
+        .times_per_timeline()
+        .get(&timeline)
+        .and_then(|times| times.last_key_value())
+        .map_or(0, |(time, _)| time.as_i64())
+        .saturating_add(1);
+
+    TimePoint::from([(timeline, TimeInt::new_temporal(max_time))])
+}
+
 impl StoreContext<'_> {
     /// The timepoint to use when writing an update to the blueprint.
     #[inline]
     pub fn blueprint_timepoint_for_writes(&self) -> TimePoint {
-        let timeline = blueprint_timeline();
-
-        let max_time = self
-            .blueprint
-            .times_per_timeline()
-            .get(&timeline)
-            .and_then(|times| times.last_key_value())
-            .map_or(0, |(time, _)| time.as_i64())
-            .saturating_add(1);
-
-        TimePoint::from([(timeline, TimeInt::new_temporal(max_time))])
+        blueprint_timepoint_for_writes(self.blueprint)
     }
 }
 
