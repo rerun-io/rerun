@@ -5,6 +5,7 @@ use re_types::blueprint::components;
 use re_types::datatypes;
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
+pub const TOP_PANEL_PATH: &str = "top_panel";
 pub const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
 pub const SELECTION_PANEL_PATH: &str = "selection_panel";
 pub const TIME_PANEL_PATH: &str = "time_panel";
@@ -13,6 +14,7 @@ pub const TIME_PANEL_PATH: &str = "time_panel";
 pub struct AppBlueprint<'a> {
     store_ctx: Option<&'a StoreContext<'a>>,
     is_narrow_screen: bool,
+    pub top_panel_state: datatypes::PanelState,
     pub blueprint_panel_state: datatypes::PanelState,
     pub selection_panel_state: datatypes::PanelState,
     pub time_panel_state: datatypes::PanelState,
@@ -29,6 +31,7 @@ impl<'a> AppBlueprint<'a> {
         let mut ret = Self {
             store_ctx,
             is_narrow_screen: screen_size.x < 600.0,
+            top_panel_state: datatypes::PanelState::Expanded,
             blueprint_panel_state: if screen_size.x > 750.0 {
                 datatypes::PanelState::Expanded
             } else {
@@ -47,18 +50,19 @@ impl<'a> AppBlueprint<'a> {
         };
 
         if let Some(blueprint_db) = blueprint_db {
-            if let Some(expanded) =
-                load_panel_state(&BLUEPRINT_PANEL_PATH.into(), blueprint_db, query)
-            {
-                ret.blueprint_panel_state = expanded;
+            if let Some(state) = load_panel_state(&TOP_PANEL_PATH.into(), blueprint_db, query) {
+                ret.top_panel_state = state;
             }
-            if let Some(expanded) =
-                load_panel_state(&SELECTION_PANEL_PATH.into(), blueprint_db, query)
+            if let Some(state) = load_panel_state(&BLUEPRINT_PANEL_PATH.into(), blueprint_db, query)
             {
-                ret.selection_panel_state = expanded;
+                ret.blueprint_panel_state = state;
             }
-            if let Some(expanded) = load_panel_state(&TIME_PANEL_PATH.into(), blueprint_db, query) {
-                ret.time_panel_state = expanded;
+            if let Some(state) = load_panel_state(&SELECTION_PANEL_PATH.into(), blueprint_db, query)
+            {
+                ret.selection_panel_state = state;
+            }
+            if let Some(state) = load_panel_state(&TIME_PANEL_PATH.into(), blueprint_db, query) {
+                ret.time_panel_state = state;
             }
         }
 
@@ -104,6 +108,7 @@ impl<'a> AppBlueprint<'a> {
 
 pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     for (panel_name, default_value) in [
+        (TOP_PANEL_PATH, datatypes::PanelState::Expanded),
         (BLUEPRINT_PANEL_PATH, datatypes::PanelState::Expanded),
         (SELECTION_PANEL_PATH, datatypes::PanelState::Hidden),
         (TIME_PANEL_PATH, datatypes::PanelState::Hidden),
