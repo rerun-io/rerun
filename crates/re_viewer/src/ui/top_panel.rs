@@ -233,7 +233,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::RIGHT_PANEL_TOGGLE,
-            &mut (app_blueprint.selection_panel_state.is_expanded()),
+            &mut app_blueprint.selection_panel_state.is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle Selection View{}",
