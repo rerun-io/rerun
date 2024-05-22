@@ -16,6 +16,7 @@ from .api import (
     SelectionPanel,
     SpaceView,
     TimePanel,
+    TopPanel,
 )
 from .archetypes import (
     Background,
