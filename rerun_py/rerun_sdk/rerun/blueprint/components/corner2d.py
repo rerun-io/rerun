@@ -34,7 +34,7 @@ class Corner2D(Enum):
 
 
 Corner2DLike = Union[
-    Corner2D, Literal["left_top"] | Literal["right_top"] | Literal["left_bottom"] | Literal["right_bottom"]
+    Corner2D, Literal["lefttop"] | Literal["righttop"] | Literal["leftbottom"] | Literal["rightbottom"]
 ]
 Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
