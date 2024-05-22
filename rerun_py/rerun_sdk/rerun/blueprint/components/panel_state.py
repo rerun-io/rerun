@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Literal, Sequence, Union
 
 import pyarrow as pa
 
@@ -30,7 +30,7 @@ class PanelState(Enum):
     """Fully expanded."""
 
 
-PanelStateLike = Union[PanelState, str]
+PanelStateLike = Union[PanelState, Literal["hidden"] | Literal["collapsed"] | Literal["expanded"]]
 PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]
 
 

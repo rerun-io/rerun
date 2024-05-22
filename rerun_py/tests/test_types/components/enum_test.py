@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Literal, Sequence, Union
 
 import pyarrow as pa
 from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
@@ -38,7 +38,10 @@ class EnumTest(Enum):
     """Baby's got it."""
 
 
-EnumTestLike = Union[EnumTest, str]
+EnumTestLike = Union[
+    EnumTest,
+    Literal["up"] | Literal["down"] | Literal["right"] | Literal["left"] | Literal["forward"] | Literal["back"],
+]
 EnumTestArrayLike = Union[EnumTestLike, Sequence[EnumTestLike]]
 
 
