@@ -22,16 +22,16 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Panel state
+/// **Component**: Tri-state for panel controls.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PanelState {
-    /// Completely hidden
+    /// Completely hidden.
     Hidden = 1,
 
-    /// Visible, but as small as possible on its shorter axis
+    /// Visible, but as small as possible on its shorter axis.
     Collapsed = 2,
 
-    /// Fully expanded
+    /// Fully expanded.
     Expanded = 3,
 }
 

@@ -18,16 +18,16 @@ from enum import Enum
 
 
 class PanelState(Enum):
-    """**Component**: Panel state."""
+    """**Component**: Tri-state for panel controls."""
 
     Hidden = 1
-    """Completely hidden"""
+    """Completely hidden."""
 
     Collapsed = 2
-    """Visible, but as small as possible on its shorter axis"""
+    """Visible, but as small as possible on its shorter axis."""
 
     Expanded = 3
-    """Fully expanded"""
+    """Fully expanded."""
 
 
 PanelStateLike = Union[PanelState, str]

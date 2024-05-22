@@ -15,16 +15,16 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: Panel state
+    /// **Component**: Tri-state for panel controls.
     enum class PanelState : uint8_t {
 
-        /// Completely hidden
+        /// Completely hidden.
         Hidden = 1,
 
-        /// Visible, but as small as possible on its shorter axis
+        /// Visible, but as small as possible on its shorter axis.
         Collapsed = 2,
 
-        /// Fully expanded
+        /// Fully expanded.
         Expanded = 3,
     };
 } // namespace rerun::blueprint::components
