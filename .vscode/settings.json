@@ -66,6 +66,5 @@
     },
     "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "python.analysis.typeCheckingMode": "basic"
+    }
 }
