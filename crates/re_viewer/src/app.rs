@@ -70,6 +70,9 @@ pub struct StartupOptions {
 
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
+
+    #[cfg(target_arch = "wasm32")]
+    pub fullscreen_callback: Option<js_sys::Function>,
 }
 
 impl Default for StartupOptions {
@@ -92,6 +95,9 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+
+            #[cfg(target_arch = "wasm32")]
+            fullscreen_callback: None,
         }
     }
 }
@@ -606,6 +612,14 @@ impl App {
                 let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
             }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::ToggleFullscreen => {
+                if let Some(callback) = &self.startup_options.fullscreen_callback {
+                    callback.call0(&web_sys::window().unwrap()).unwrap();
+                }
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
                 let mut zoom_factor = egui_ctx.zoom_factor();

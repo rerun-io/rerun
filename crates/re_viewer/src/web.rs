@@ -245,6 +245,7 @@ fn create_app(
         expect_data_soon: None,
         force_wgpu_backend: None,
         hide_welcome_screen,
+        fullscreen_callback: None,
     };
     let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 
