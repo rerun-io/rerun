@@ -62,7 +62,7 @@ pub fn default_corner2d(
     _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> Corner2D {
-    // TODO(andreas): Want to distinguish the space view this happens in.
+    // TODO(#4194): Want to distinguish the space view this happens in.
     // TimeSeriesView: RightBottom
     // BarChart: RightTop
     // Need to make handling of editors a bit more powerful for this.
