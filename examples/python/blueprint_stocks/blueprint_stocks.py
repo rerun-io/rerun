@@ -115,7 +115,7 @@ def style_peak(symbol: str) -> rr.SeriesPoint:
     return rr.SeriesPoint(
         color=0xFF0000FF,
         name=f"{symbol} (peak)",
-        marker="Up",
+        marker="up",
     )
 
 

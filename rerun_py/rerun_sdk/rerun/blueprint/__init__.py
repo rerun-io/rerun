@@ -13,6 +13,8 @@ from .api import (
     BlueprintPart,
     Container,
     ContainerLike,
+    PanelState,
+    PanelStateLike,
     SelectionPanel,
     SpaceView,
     TimePanel,
