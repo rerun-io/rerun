@@ -282,11 +282,11 @@ fn edit_marker_shape_ui(
                 for marker in MarkerShape::ALL {
                     let response = ctx
                         .re_ui
-                        .list_item2()
+                        .list_item()
                         .selected(edit_marker == marker)
                         .show_flat(
                             ui,
-                            re_ui::list_item2::LabelContent::new(marker.to_string())
+                            re_ui::list_item::LabelContent::new(marker.to_string())
                                 .min_desired_width(item_width)
                                 .with_icon_fn(|_re_ui, ui, rect, visuals| {
                                     paint_marker(ui, marker.into(), rect, visuals.text_color());
@@ -300,7 +300,7 @@ fn edit_marker_shape_ui(
             };
 
             re_ui::full_span::full_span_scope(ui, background_x_range, |ui| {
-                re_ui::list_item2::list_item_scope(ui, "marker_shape", list_ui);
+                re_ui::list_item::list_item_scope(ui, "marker_shape", list_ui);
             });
         });
 

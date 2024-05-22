@@ -5,7 +5,7 @@ use egui::{Key, Ui};
 
 use re_log_types::EntityPath;
 use re_space_view::SpaceViewBlueprint;
-use re_ui::{ReUi, SyntaxHighlighting};
+use re_ui::{list_item, ReUi, SyntaxHighlighting};
 use re_viewer_context::ViewerContext;
 
 /// State of the space origin widget.
@@ -184,16 +184,17 @@ fn space_view_space_origin_widget_editing_ui(
     }
 
     let suggestions_ui = |ui: &mut egui::Ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
         for (idx, suggested_space_view) in filtered_space_view_suggestions.iter().enumerate() {
-            let response = re_ui::ListItem::new(
-                ctx.re_ui,
-                suggested_space_view
-                    .space_origin
-                    .syntax_highlighted(ui.style()),
-            )
-            .force_hovered(state.selected_suggestion == Some(idx))
-            .show_flat(ui);
+            let response = list_item::ListItem::new(ctx.re_ui)
+                .force_hovered(state.selected_suggestion == Some(idx))
+                .show_flat(
+                    ui,
+                    list_item::LabelContent::new(
+                        suggested_space_view
+                            .space_origin
+                            .syntax_highlighted(ui.style()),
+                    ),
+                );
 
             if response.hovered() {
                 state.selected_suggestion = None;
@@ -206,11 +207,14 @@ fn space_view_space_origin_widget_editing_ui(
 
         let excluded_count = space_view_suggestions.len() - filtered_space_view_suggestions.len();
         if excluded_count > 0 {
-            re_ui::ListItem::new(ctx.re_ui, format!("{excluded_count} hidden suggestions"))
-                .weak(true)
-                .italics(true)
+            list_item::ListItem::new(ctx.re_ui)
                 .interactive(false)
-                .show_flat(ui);
+                .show_flat(
+                    ui,
+                    list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))
+                        .weak(true)
+                        .italics(true),
+                );
         }
     };
 

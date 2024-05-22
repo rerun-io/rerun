@@ -352,6 +352,14 @@ impl EntityDb {
         &self.times_per_timeline
     }
 
+    pub fn has_any_data_on_timeline(&self, timeline: &Timeline) -> bool {
+        if let Some(times) = self.times_per_timeline.get(timeline) {
+            !times.is_empty()
+        } else {
+            false
+        }
+    }
+
     /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
         self.tree().subtree.time_histogram.get(timeline)

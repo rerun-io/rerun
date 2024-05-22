@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use re_ui::list_item2;
+use re_ui::list_item;
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
@@ -34,10 +34,10 @@ impl ExampleDragAndDrop {
             //
 
             let label = format!("Item {}", item_id.0);
-            let response = list_item2::ListItem::new(re_ui)
+            let response = list_item::ListItem::new(re_ui)
                 .selected(self.selected_items.contains(item_id))
                 .draggable(true)
-                .show_flat(ui, list_item2::LabelContent::new(&label));
+                .show_flat(ui, list_item::LabelContent::new(&label));
 
             //
             // Handle item selection

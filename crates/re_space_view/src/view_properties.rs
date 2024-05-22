@@ -8,7 +8,7 @@ use re_types::Archetype;
 use re_viewer_context::{
     external::{
         re_entity_db::EntityTree,
-        re_ui::{self, list_item2},
+        re_ui::{self, list_item},
     },
     SpaceViewId, ViewerContext,
 };
@@ -154,12 +154,12 @@ pub fn view_property_ui<A: Archetype>(
                 continue;
             }
 
-            list_item2::ListItem::new(re_ui)
+            list_item::ListItem::new(re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
                     // TODO(andreas): Note that we loose the archetype's field name here, instead we label the item with the component name.
-                    list_item2::PropertyContent::new(component_name.short_name()).value_fn(
+                    list_item::PropertyContent::new(component_name.short_name()).value_fn(
                         |_, ui, _| {
                             ctx.component_ui_registry.edit_ui(
                                 ctx,
@@ -179,13 +179,13 @@ pub fn view_property_ui<A: Archetype>(
         }
     };
 
-    list_item2::ListItem::new(ctx.re_ui)
+    list_item::ListItem::new(ctx.re_ui)
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
             A::name().full_name(),
             true,
-            list_item2::LabelContent::new(A::name().short_name()),
+            list_item::LabelContent::new(A::name().short_name()),
             sub_prop_ui,
         );
 }

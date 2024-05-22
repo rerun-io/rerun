@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, query_view_property_or_default, view_property_ui};
 use re_types::blueprint::archetypes::PlotLegend;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
-use re_ui::list_item2;
+use re_ui::list_item;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
@@ -153,12 +153,12 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
-        list_item2::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            list_item2::ListItem::new(ctx.re_ui)
+        list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
+            list_item::ListItem::new(ctx.re_ui)
                 .interactive(false)
                 .show_hierarchical(
                     ui,
-                    list_item2::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
                         let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
                         egui::ComboBox::from_id_source("aggregation_mode")
@@ -640,11 +640,11 @@ fn axis_ui(
         //
 
         let mut auto_range = y_range.is_none();
-        list_item2::ListItem::new(re_ui)
+        list_item::ListItem::new(re_ui)
             .interactive(false)
             .show_flat(
                 ui,
-                list_item2::PropertyContent::new("Default range").value_fn(|_, ui, _| {
+                list_item::PropertyContent::new("Default range").value_fn(|_, ui, _| {
                     ui.horizontal(|ui| {
                         ctx.re_ui.radio_value(ui, &mut auto_range, true, "Auto");
                         ctx.re_ui.radio_value(ui, &mut auto_range, false, "Manual");
@@ -662,11 +662,11 @@ fn axis_ui(
         //
 
         if !auto_range {
-            list_item2::ListItem::new(re_ui)
+            list_item::ListItem::new(re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item2::PropertyContent::new("").value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new("").value_fn(|_, ui, _| {
                         let mut range_edit = y_range
                             .unwrap_or_else(|| y_range.unwrap_or(state.saved_y_axis_range.into()));
 
@@ -705,11 +705,11 @@ fn axis_ui(
         //
 
         let mut edit_locked = y_lock_zoom;
-        list_item2::ListItem::new(re_ui)
+        list_item::ListItem::new(re_ui)
             .interactive(false)
             .show_flat(
                 ui,
-                list_item2::PropertyContent::new("Zoom lock").value_bool_mut(&mut edit_locked.0 .0),
+                list_item::PropertyContent::new("Zoom lock").value_bool_mut(&mut edit_locked.0 .0),
             )
             .on_hover_text(
                 "If enabled, the Y axis range will remain locked to the specified range when zooming.",
@@ -719,13 +719,13 @@ fn axis_ui(
         }
     };
 
-    list_item2::ListItem::new(ctx.re_ui)
+    list_item::ListItem::new(ctx.re_ui)
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
             "time_series_selection_ui_y_axis",
             true,
-            list_item2::LabelContent::new("Y Axis"),
+            list_item::LabelContent::new("Y Axis"),
             sub_prop_ui,
         );
 }
