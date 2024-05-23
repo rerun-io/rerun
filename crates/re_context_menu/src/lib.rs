@@ -1,3 +1,5 @@
+//! Support crate for context menu and actions.
+
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
