@@ -48,16 +48,9 @@ pub fn view_property_ui<A: Archetype>(
                 .show_flat(
                     ui,
                     list_item::PropertyContent::new(display_name)
-                        .action_button_with_enabled(
-                            &re_ui::icons::RESET,
-                            component_results.contains_non_empty(*component_name),
-                            || {
-                                ctx.save_empty_blueprint_component_name(
-                                    &blueprint_path,
-                                    *component_name,
-                                );
-                            },
-                        )
+                        .action_button(&re_ui::icons::RESET, || {
+                            ctx.reset_blueprint_component_by_name(&blueprint_path, *component_name);
+                        })
                         .value_fn(|_, ui, _| {
                             ctx.component_ui_registry.edit_ui(
                                 ctx,
