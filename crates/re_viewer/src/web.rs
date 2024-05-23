@@ -289,6 +289,7 @@ pub struct AppOptions {
     render_backend: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
+    on_toggle_fullscreen: Option<Callback>,
 }
 
 #[derive(Clone, Default, Deserialize)]
@@ -331,6 +332,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
         expect_data_soon: None,
         force_wgpu_backend: None,
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
+        on_toggle_fullscreen: app_options.on_toggle_fullscreen.map(|v| v.0).clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
     let re_ui = crate::customize_eframe_and_setup_renderer(cc);

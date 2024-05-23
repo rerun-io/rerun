@@ -32,6 +32,7 @@ function randomId() {
  * @property {string} [manifest_url] Use a different example manifest.
  * @property {Backend} [render_backend] Force the viewer to use a specific rendering backend.
  * @property {boolean} [hide_welcome_screen] Whether to hide the welcome screen in favor of a simpler one.
+ * @property {boolean} [allow_fullscreen] Whether to allow the viewer to enter fullscreen mode.
  */
 
 export class WebViewer {
@@ -43,6 +44,11 @@ export class WebViewer {
 
   /** @type {'ready' | 'starting' | 'stopped'} */
   #state = "stopped";
+
+  /** @type {{on: true; width: string; height: string} | {on: false}} */
+  #fullscreen_state = { on: false };
+
+  #allow_fullscreen = false;
 
   /**
    * Start the viewer.
@@ -67,6 +73,8 @@ export class WebViewer {
      * @property {Backend} [render_backend]
      * @property {Partial<{[K in Panel]: PanelState}>} [panel_state_overrides]
      * @property {boolean} [hide_welcome_screen]
+     * @property {boolean} [allow_fullscreen]
+     * @property {() => void} [on_toggle_fullscreen]
      */
     /** @typedef {(import("./re_viewer.js").WebHandle)} _WebHandle */
     /** @typedef {{ new(app_options?: AppOptions): _WebHandle }} WebHandleConstructor */
@@ -74,7 +82,8 @@ export class WebViewer {
     let WebHandle_class = /** @type {WebHandleConstructor} */ (await load());
     if (this.#state !== "starting") return;
 
-    this.#handle = new WebHandle_class({ ...options });
+    let on_toggle_fullscreen = () => this.toggle_fullscreen();
+    this.#handle = new WebHandle_class({ ...options, on_toggle_fullscreen });
     await this.#handle.start(this.#canvas.id);
     if (this.#state !== "starting") return;
 
@@ -82,8 +91,19 @@ export class WebViewer {
       throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
     }
 
-    this.#state = "ready";
+    this.#allow_fullscreen = options.allow_fullscreen || false;
 
+    if (this.#allow_fullscreen) {
+      // prepare canvas for fullscreen transition
+      const style = this.#canvas.style;
+      style.position = "relative";
+      style.top = "0px";
+      style.left = "0px";
+      style.transition =
+        "top 0.5s ease-in-out, left 0.5s ease-in-out, width 0.5s ease-in-out, height 0.5s ease-in-out";
+    }
+
+    this.#state = "ready";
     if (rrd) {
       this.open(rrd);
     }
@@ -160,6 +180,8 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
+    this.#fullscreen_state = { on: false };
+    this.#allow_fullscreen = false;
   }
 
   /**
@@ -210,6 +232,44 @@ export class WebViewer {
       );
     }
     this.#handle.override_panel_state(panel, state);
+  }
+
+  toggle_fullscreen() {
+    if (!this.#handle || !this.#canvas) {
+      throw new Error(
+        `attempted to toggle fullscreen mode in a stopped web viewer`,
+      );
+    }
+
+    if (!this.#allow_fullscreen) return;
+
+    const style = this.#canvas.style;
+    if (this.#fullscreen_state.on) {
+      style.position = "relative";
+      style.width = this.#fullscreen_state.width;
+      style.height = this.#fullscreen_state.height;
+      this.#fullscreen_state = { on: false };
+    } else {
+      const canvasRect = this.#canvas.getBoundingClientRect();
+      style.position = "fixed";
+      style.top = `${canvasRect.top - document.documentElement.scrollTop}px`;
+      style.left = `${canvasRect.left}px`;
+      style.width = `${canvasRect.width}px`;
+      style.height = `${canvasRect.height}px`;
+
+      requestAnimationFrame(() => {
+        style.top = `0px`;
+        style.left = `0px`;
+        style.width = `${window.innerWidth}px`;
+        style.height = `${window.innerHeight}px`;
+      });
+
+      this.#fullscreen_state = {
+        on: true,
+        width: style.width,
+        height: style.height,
+      };
+    }
   }
 }
 

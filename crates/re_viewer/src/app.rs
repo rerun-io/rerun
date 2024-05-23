@@ -71,6 +71,13 @@ pub struct StartupOptions {
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
 
+    /// Fullscreen is handled by JS on web.
+    ///
+    /// This gets called when the `ToggleFullscreen` UI command is triggered.
+    #[cfg(target_arch = "wasm32")]
+    pub on_toggle_fullscreen: Option<js_sys::Function>,
+
+    /// Default overrides for state of top/side/bottom panels.
     #[cfg(target_arch = "wasm32")]
     pub panel_state_overrides: PanelStateOverrides,
 }
@@ -95,6 +102,9 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+
+            #[cfg(target_arch = "wasm32")]
+            on_toggle_fullscreen: Default::default(),
 
             #[cfg(target_arch = "wasm32")]
             panel_state_overrides: Default::default(),
@@ -623,6 +633,13 @@ impl App {
             UICommand::ToggleFullscreen => {
                 let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::ToggleFullscreen => {
+                if let Some(callback) = &self.startup_options.on_toggle_fullscreen {
+                    callback.call0(&web_sys::window().unwrap()).unwrap();
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
