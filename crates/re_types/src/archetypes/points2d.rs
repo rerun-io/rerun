@@ -169,6 +169,11 @@ impl ::re_types_core::Archetype for Points2D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Points 2D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Points2DIndicator = Points2DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

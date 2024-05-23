@@ -145,6 +145,11 @@ impl ::re_types_core::Archetype for SeriesLine {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Series line"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SeriesLineIndicator = SeriesLineIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

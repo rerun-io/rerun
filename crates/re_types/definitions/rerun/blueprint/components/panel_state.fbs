@@ -9,12 +9,19 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether an application panel is expanded or not.
-struct PanelExpanded (
+/// Tri-state for panel controls.
+enum PanelState: byte (
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  expanded: rerun.datatypes.Bool (order: 100);
+  /// Completely hidden.
+  Hidden,
+
+  /// Visible, but as small as possible on its shorter axis.
+  Collapsed,
+
+  /// Fully expanded.
+  Expanded,
 }

@@ -111,6 +111,11 @@ impl ::re_types_core::Archetype for Scalar {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Scalar"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ScalarIndicator = ScalarIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

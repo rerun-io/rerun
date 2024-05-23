@@ -1,7 +1,7 @@
-use re_space_view::SpaceViewBlueprint;
 use re_types::SpaceViewClassIdentifier;
 use re_ui::Icon;
 use re_viewer_context::{ContainerId, Item, RecommendedSpaceView};
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
 

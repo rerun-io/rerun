@@ -5,11 +5,9 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
-use re_space_view::{controls, query_view_property_or_default};
-use re_types::{
-    blueprint::components::Corner2D, components::Range1D, datatypes::TimeRange,
-    SpaceViewClassIdentifier, View,
-};
+use re_space_view::{controls, view_property_ui};
+use re_types::blueprint::archetypes::PlotLegend;
+use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::list_item;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
@@ -21,6 +19,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
     ViewerContext, VisualizableEntities,
 };
+use re_viewport_blueprint::query_view_property_or_default;
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
@@ -76,8 +75,6 @@ impl SpaceViewState for TimeSeriesSpaceViewState {
 pub struct TimeSeriesSpaceView;
 
 type ViewType = re_types::blueprint::views::TimeSeriesView;
-
-const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
 
 impl SpaceViewClass for TimeSeriesSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
@@ -192,7 +189,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                      (and readability) in such situations as it prevents overdraw.",
                 );
 
-            legend_ui(ctx, space_view_id, ui);
+            view_property_ui::<PlotLegend>(ctx, space_view_id, ui);
             axis_ui(ctx, space_view_id, ui, state);
         });
 
@@ -616,89 +613,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         Ok(())
     }
-}
-
-fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
-    let blueprint_db = ctx.store_context.blueprint;
-    let blueprint_query = ctx.blueprint_query;
-    let (re_types::blueprint::archetypes::PlotLegend { visible, corner }, blueprint_path) =
-        query_view_property_or_default(space_view_id, blueprint_db, blueprint_query);
-
-    let visible = visible.unwrap_or(true.into());
-    let corner = corner.unwrap_or(DEFAULT_LEGEND_CORNER.into());
-
-    let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
-        // TODO(ab): components should provide the `value_fn` closure or the entire
-        // `PropertyContent` object
-
-        //
-        // Visible
-        //
-
-        let mut edit_visibility = visible;
-        list_item::ListItem::new(re_ui)
-            .interactive(false)
-            .show_flat(
-                ui,
-                list_item::PropertyContent::new("Visible").value_bool_mut(&mut edit_visibility.0),
-            );
-        if visible != edit_visibility {
-            ctx.save_blueprint_component(&blueprint_path, &edit_visibility);
-        }
-
-        //
-        // Corner
-        //
-
-        let mut edit_corner = corner;
-        list_item::ListItem::new(re_ui)
-            .interactive(false)
-            .show_flat(
-                ui,
-                list_item::PropertyContent::new("Corner").value_fn(|_, ui, _| {
-                    egui::ComboBox::from_id_source("legend_corner")
-                        .selected_text(format!("{corner}"))
-                        .show_ui(ui, |ui| {
-                            ui.style_mut().wrap = Some(false);
-                            ui.set_min_width(64.0);
-
-                            ui.selectable_value(
-                                &mut edit_corner,
-                                egui_plot::Corner::LeftTop.into(),
-                                format!("{}", Corner2D::from(egui_plot::Corner::LeftTop)),
-                            );
-                            ui.selectable_value(
-                                &mut edit_corner,
-                                egui_plot::Corner::RightTop.into(),
-                                format!("{}", Corner2D::from(egui_plot::Corner::RightTop)),
-                            );
-                            ui.selectable_value(
-                                &mut edit_corner,
-                                egui_plot::Corner::LeftBottom.into(),
-                                format!("{}", Corner2D::from(egui_plot::Corner::LeftBottom)),
-                            );
-                            ui.selectable_value(
-                                &mut edit_corner,
-                                egui_plot::Corner::RightBottom.into(),
-                                format!("{}", Corner2D::from(egui_plot::Corner::RightBottom)),
-                            );
-                        });
-                }),
-            );
-        if corner != edit_corner {
-            ctx.save_blueprint_component(&blueprint_path, &edit_corner);
-        }
-    };
-
-    list_item::ListItem::new(ctx.re_ui)
-        .interactive(false)
-        .show_hierarchical_with_children(
-            ui,
-            ui.make_persistent_id("time_series_selection_ui_legend"),
-            true,
-            list_item::LabelContent::new("Legend"),
-            sub_prop_ui,
-        );
 }
 
 fn axis_ui(

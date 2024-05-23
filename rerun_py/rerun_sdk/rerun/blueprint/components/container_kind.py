@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Literal, Sequence, Union
 
 import pyarrow as pa
 
@@ -26,7 +26,9 @@ class ContainerKind(Enum):
     Grid = 4
 
 
-ContainerKindLike = Union[ContainerKind, str]
+ContainerKindLike = Union[
+    ContainerKind, Literal["tabs"] | Literal["horizontal"] | Literal["vertical"] | Literal["grid"]
+]
 ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
 

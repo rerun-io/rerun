@@ -23,12 +23,14 @@ use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal,
 };
+use re_types::blueprint::components::PanelState;
 use re_ui::list_item;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
 };
-use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior, ViewportBlueprint};
+use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_viewport_blueprint::ViewportBlueprint;
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -143,7 +145,7 @@ impl TimePanel {
         entity_db: &re_entity_db::EntityDb,
         rec_cfg: &RecordingConfig,
         ui: &mut egui::Ui,
-        time_panel_expanded: bool,
+        state: PanelState,
     ) {
         // Naturally, many parts of the time panel need the time control.
         // Copy it once, read/edit, and then write back at the end if there was a change.
@@ -158,7 +160,7 @@ impl TimePanel {
         let margin = ctx.re_ui.bottom_panel_margin();
         let mut panel_frame = ctx.re_ui.bottom_panel_frame();
 
-        if time_panel_expanded {
+        if state.is_expanded() {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
             panel_frame.inner_margin.bottom = 0.0;
 
@@ -188,7 +190,7 @@ impl TimePanel {
 
         egui::TopBottomPanel::show_animated_between_inside(
             ui,
-            time_panel_expanded,
+            state.is_expanded(),
             collapsed,
             expanded,
             |ui: &mut egui::Ui, expansion: f32| {

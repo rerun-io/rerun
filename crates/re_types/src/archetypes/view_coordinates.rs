@@ -112,6 +112,11 @@ impl ::re_types_core::Archetype for ViewCoordinates {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "View coordinates"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ViewCoordinatesIndicator = ViewCoordinatesIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

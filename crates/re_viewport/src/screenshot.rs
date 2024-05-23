@@ -1,4 +1,5 @@
-use re_space_view::{ScreenshotMode, SpaceViewBlueprint};
+use re_space_view::ScreenshotMode;
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 pub fn handle_pending_space_view_screenshots(
     space_view: &SpaceViewBlueprint,

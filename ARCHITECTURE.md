@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/1200w.png">
+  <img src="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -128,6 +128,7 @@ Update instructions:
 |-----------------------------|----------------------------------------------------------------------------------------|
 | re_viewer                   | The Rerun Viewer                                                                       |
 | re_viewport                 | The central viewport panel of the Rerun viewer.                                        |
+| re_viewport_blueprint       | The data model description of the viewport panel.                                      |
 | re_time_panel               | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time. |
 | re_data_ui                  | Provides ui elements for Rerun component data for the Rerun Viewer.                    |
 | re_viewer_context           | Rerun Viewer state that is shared with the viewer's code components.                   |

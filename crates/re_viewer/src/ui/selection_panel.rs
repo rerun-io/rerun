@@ -22,8 +22,9 @@ use re_viewer_context::{
 };
 use re_viewport::{
     contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
-    SelectionUpdateBehavior, Viewport, ViewportBlueprint,
+    SelectionUpdateBehavior, Viewport,
 };
+use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ui::override_ui::override_visualizer_ui;
 use crate::{app_state::default_selection_panel_width, ui::override_ui::override_ui};
@@ -268,7 +269,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
 fn space_view_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view: &re_space_view::SpaceViewBlueprint,
+    space_view: &re_viewport_blueprint::SpaceViewBlueprint,
 ) -> egui::Response {
     let item = Item::SpaceView(space_view.id);
     let is_selected = ctx.selection().contains_item(&item);

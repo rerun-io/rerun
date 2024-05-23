@@ -166,6 +166,11 @@ impl ::re_types_core::Archetype for Boxes3D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Boxes 3D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Boxes3DIndicator = Boxes3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

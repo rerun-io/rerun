@@ -5,12 +5,13 @@ use itertools::Itertools;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataRow, RowId, StoreKind};
-use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
+use re_space_view::determine_visualizable_entities;
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataResult, OverridePath, SystemCommand, SystemCommandSender as _, UiLayout,
     ViewSystemIdentifier, ViewerContext,
 };
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 pub fn override_ui(
     ctx: &ViewerContext<'_>,
@@ -140,6 +141,7 @@ pub fn override_ui(
                         entity_path_overridden,
                         &overrides.individual_override_path,
                         &results,
+                        component_name,
                         instance,
                     );
                 } else {
