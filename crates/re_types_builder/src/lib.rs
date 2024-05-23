@@ -117,7 +117,7 @@ mod casing;
 )]
 mod reflection;
 
-use casing::{to_pascal_case, to_snake_case};
+use casing::{to_human_case, to_pascal_case, to_snake_case};
 
 use std::collections::{BTreeMap, BTreeSet};
 
