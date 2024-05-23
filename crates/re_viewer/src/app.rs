@@ -884,7 +884,7 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                if app_blueprint.top_panel_state != PanelState::Hidden {
+                if app_blueprint.top_panel_state == PanelState::Expanded {
                     crate::ui::top_panel(
                         frame,
                         self,
