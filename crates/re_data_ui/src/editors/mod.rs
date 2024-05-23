@@ -27,12 +27,12 @@ fn edit_color_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_color = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Color>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<Color>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_color(ctx, query, db, entity_path));
 
     let current_color = current_color.into();
@@ -70,12 +70,12 @@ fn edit_text_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_text = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Text>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<Text>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_text(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
@@ -110,12 +110,12 @@ fn edit_name_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_text = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Name>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<Name>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_name(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
@@ -151,12 +151,12 @@ fn edit_scatter_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_scatter = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<ScalarScattering>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<ScalarScattering>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_scatter(ctx, query, db, entity_path));
 
     let current_scatter = current_scatter.0;
@@ -200,12 +200,12 @@ fn edit_radius_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_radius = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Radius>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<Radius>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_radius(ctx, query, db, entity_path));
 
     let current_radius = current_radius.0;
@@ -247,12 +247,12 @@ fn edit_marker_shape_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_marker = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<MarkerShape>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<MarkerShape>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_marker_shape(ctx, query, db, entity_path));
 
     let mut edit_marker = current_marker;
@@ -352,12 +352,12 @@ fn edit_stroke_width_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_stroke_width = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<StrokeWidth>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<StrokeWidth>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_stroke_width(ctx, query, db, entity_path));
 
     let current_stroke_width = current_stroke_width.0;
@@ -399,12 +399,12 @@ fn edit_marker_size_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &LatestAtComponentResults,
+    component: Option<&LatestAtComponentResults>,
     instance: &Instance,
 ) {
     let current_marker_size = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<MarkerSize>(db.resolver(), instance.get() as _)
+        .and_then(|c| c.instance::<MarkerSize>(db.resolver(), instance.get() as _))
         .unwrap_or_else(|| default_marker_size(ctx, query, db, entity_path));
 
     let current_marker_size = current_marker_size.0;
@@ -437,20 +437,22 @@ fn default_marker_size(
 
 // ----
 
+type EditCallback = fn(
+    &ViewerContext<'_>,
+    &mut egui::Ui,
+    UiLayout,
+    &LatestAtQuery,
+    &EntityDb,
+    &EntityPath,
+    &EntityPath,
+    Option<&LatestAtComponentResults>,
+    &Instance,
+);
+
 fn register_editor<'a, C>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
     default: fn(&ViewerContext<'_>, &LatestAtQuery, &EntityDb, &EntityPath) -> C,
-    edit: fn(
-        &ViewerContext<'_>,
-        &mut egui::Ui,
-        UiLayout,
-        &LatestAtQuery,
-        &EntityDb,
-        &EntityPath,
-        &EntityPath,
-        &LatestAtComponentResults,
-        &Instance,
-    ),
+    edit: EditCallback,
 ) where
     C: Component + Loggable + 'static + Into<::std::borrow::Cow<'a, C>>,
 {

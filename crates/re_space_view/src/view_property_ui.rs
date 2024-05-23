@@ -60,8 +60,8 @@ pub fn view_property_ui<A: Archetype>(
                                 blueprint_db,
                                 &blueprint_path,
                                 &blueprint_path,
-                                component_results.get_or_empty(*component_name),
-                                component_name,
+                                component_results.get(*component_name),
+                                *component_name,
                                 &0.into(),
                             );
                         }),

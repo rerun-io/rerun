@@ -140,8 +140,8 @@ pub fn override_ui(
                         ctx.recording(),
                         entity_path_overridden,
                         &overrides.individual_override_path,
-                        &results,
-                        component_name,
+                        Some(&results),
+                        *component_name,
                         instance,
                     );
                 } else {
