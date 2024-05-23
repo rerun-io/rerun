@@ -1,7 +1,7 @@
 use egui::RichText;
 use re_ui::UICommand;
 use re_viewer_context::{Item, ItemCollection, SelectionHistory};
-use re_viewport::ViewportBlueprint;
+use re_viewport_blueprint::ViewportBlueprint;
 
 // ---
 

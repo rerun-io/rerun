@@ -169,6 +169,11 @@ impl ::re_types_core::Archetype for Mesh3D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Mesh 3D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Mesh3DIndicator = Mesh3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

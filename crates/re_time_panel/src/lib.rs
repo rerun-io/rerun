@@ -29,7 +29,8 @@ use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
 };
-use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior, ViewportBlueprint};
+use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_viewport_blueprint::ViewportBlueprint;
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;

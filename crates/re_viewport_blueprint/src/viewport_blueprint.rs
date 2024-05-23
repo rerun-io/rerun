@@ -7,10 +7,10 @@ use nohash_hasher::IntSet;
 use re_types::SpaceViewClassIdentifier;
 use smallvec::SmallVec;
 
+use crate::SpaceViewBlueprint;
 use re_data_store::LatestAtQuery;
 use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::EntityPath;
-use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_types_blueprint::blueprint::components::{
     AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
@@ -19,7 +19,7 @@ use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::ContainerBlueprint, viewport::TreeAction, VIEWPORT_PATH};
+use crate::{container::ContainerBlueprint, TreeAction, VIEWPORT_PATH};
 
 // ----------------------------------------------------------------------------
 
@@ -56,7 +56,7 @@ pub struct ViewportBlueprint {
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
-    /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
+    /// Channel to pass Blueprint mutation messages back to the Viewport.
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
 
@@ -201,7 +201,7 @@ impl ViewportBlueprint {
         self.space_views.get_mut(space_view_id)
     }
 
-    pub(crate) fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
+    pub fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
         self.mark_user_interaction(ctx);
 
         // Remove the space view from the store

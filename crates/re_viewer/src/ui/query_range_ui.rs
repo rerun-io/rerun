@@ -5,7 +5,6 @@ use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::TimeHistogram;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimeZone, TimelineName};
-use re_space_view::{entity_path_for_view_property, SpaceViewBlueprint};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
@@ -14,6 +13,7 @@ use re_types::{
 };
 use re_ui::{markdown_ui, ReUi};
 use re_viewer_context::{QueryRange, SpaceViewClass, ViewerContext};
+use re_viewport_blueprint::{entity_path_for_view_property, SpaceViewBlueprint};
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<

@@ -155,6 +155,11 @@ impl ::re_types_core::Archetype for Boxes2D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Boxes 2D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Boxes2DIndicator = Boxes2DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

@@ -127,6 +127,11 @@ impl ::re_types_core::Archetype for Image {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Image"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ImageIndicator = ImageIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

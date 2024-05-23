@@ -153,6 +153,11 @@ impl ::re_types_core::Archetype for TextDocument {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Text document"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TextDocumentIndicator = TextDocumentIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)
