@@ -694,7 +694,7 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
-            "time_series_selection_ui_legend",
+            ui.make_persistent_id("time_series_selection_ui_legend"),
             true,
             list_item::LabelContent::new("Legend"),
             sub_prop_ui,
@@ -810,7 +810,7 @@ fn axis_ui(
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
-            "time_series_selection_ui_y_axis",
+            ui.make_persistent_id("time_series_selection_ui_y_axis"),
             true,
             list_item::LabelContent::new("Y axis"),
             sub_prop_ui,

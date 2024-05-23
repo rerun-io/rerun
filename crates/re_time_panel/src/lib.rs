@@ -603,6 +603,10 @@ impl TimePanel {
                 .set_open(ui.ctx(), true);
         }
 
+        // Globally unique id - should ponly be one of these in view at one time.
+        // We do this so that we can support "collapse/expand all" command.
+        let id = egui::Id::new(CollapseScope::StreamsTree.entity(tree.path.clone()));
+
         let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
@@ -611,7 +615,7 @@ impl TimePanel {
             .force_hovered(is_item_hovered)
             .show_hierarchical_with_children(
                 ui,
-                CollapseScope::StreamsTree.entity(tree.path.clone()),
+                id,
                 default_open,
                 list_item::LabelContent::new(text)
                     .with_icon(guess_instance_path_icon(

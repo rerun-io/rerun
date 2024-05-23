@@ -276,13 +276,17 @@ impl HierarchicalDragAndDrop {
         item_id: ItemId,
         children: &Vec<ItemId>,
     ) {
+        // Globally unique id - should ponly be one of these in view at one time.
+        // We do this so that we can support "collapse/expand all" command.
+        let id = egui::Id::new(item_id);
+
         let response = list_item::ListItem::new(re_ui)
             .selected(self.selected(item_id))
             .draggable(true)
             .drop_target_style(self.target_container == Some(item_id))
             .show_hierarchical_with_children(
                 ui,
-                item_id,
+                id,
                 true,
                 list_item::LabelContent::new(format!("Container {item_id:?}")).subdued(true),
                 |re_ui, ui| {
