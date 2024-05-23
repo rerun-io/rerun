@@ -249,6 +249,9 @@ impl WebHandle {
     }
 }
 
+// TODO(jprochazk): figure out a way to auto-generate these types on JS side
+
+// Keep in sync with the `Panel` typedef in `rerun_js/web-viewer/index.js`
 #[derive(Clone, Deserialize, strum_macros::EnumString)]
 #[strum(serialize_all = "snake_case")]
 enum Panel {
@@ -258,6 +261,7 @@ enum Panel {
     Time,
 }
 
+// Keep in sync with the `PanelState` typedef in `rerun_js/web-viewer/index.js`
 #[derive(Clone, Deserialize, strum_macros::EnumString)]
 #[strum(serialize_all = "snake_case")]
 enum PanelState {
@@ -277,13 +281,14 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
     }
 }
 
+// Keep in sync with the `AppOptions` typedef in `rerun_js/web-viewer/index.js`
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
     url: Option<String>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
     hide_welcome_screen: Option<bool>,
-    panel_states: Option<PanelStateOverrides>,
+    panel_state_overrides: Option<PanelStateOverrides>,
 }
 
 #[derive(Clone, Default, Deserialize)]
@@ -326,7 +331,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
         expect_data_soon: None,
         force_wgpu_backend: None,
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
-        panel_state_overrides: app_options.panel_states.unwrap_or_default().into(),
+        panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
     let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 

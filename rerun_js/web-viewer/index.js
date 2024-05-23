@@ -22,7 +22,15 @@ function randomId() {
 }
 
 /**
+ * @typedef {"top" | "blueprint" | "selection" | "time"} Panel
+ * @typedef {"hidden" | "collapsed" | "expanded"} PanelState
+ * @typedef {"webgpu" | "webgl"} Backend
+ */
+
+/**
  * @typedef WebViewerOptions
+ * @property {string} [manifest_url] Use a different example manifest.
+ * @property {Backend} [render_backend] Force the viewer to use a specific rendering backend.
  * @property {boolean} [hide_welcome_screen] Whether to hide the welcome screen in favor of a simpler one.
  */
 
@@ -53,12 +61,15 @@ export class WebViewer {
     parent.append(this.#canvas);
 
     /**
-     * @typedef {{
-     *   hide_welcome_screen?: boolean
-     * }} AppOptions
+     * @typedef AppOptions
+     * @property {string} [url]
+     * @property {string} [manifest_url]
+     * @property {Backend} [render_backend]
+     * @property {Partial<{[K in Panel]: PanelState}>} [panel_state_overrides]
+     * @property {boolean} [hide_welcome_screen]
      */
-    /** @typedef {(typeof import("./re_viewer.js").WebHandle)} _WebHandleConstructor */
-    /** @typedef {_WebHandleConstructor & { new(options?: AppOptions): WebHandle }} WebHandleConstructor */
+    /** @typedef {(import("./re_viewer.js").WebHandle)} _WebHandle */
+    /** @typedef {{ new(app_options?: AppOptions): _WebHandle }} WebHandleConstructor */
 
     let WebHandle_class = /** @type {WebHandleConstructor} */ (await load());
     if (this.#state !== "starting") return;
@@ -189,8 +200,8 @@ export class WebViewer {
   }
 
   /**
-   * @param {"top" | "blueprint" | "selection" | "time"} panel
-   * @param {"hidden" | "collapsed" | "expanded"} state
+   * @param {Panel} panel
+   * @param {PanelState} state
    */
   override_panel_state(panel, state) {
     if (!this.#handle) {
