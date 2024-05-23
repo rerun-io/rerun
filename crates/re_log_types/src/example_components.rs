@@ -20,6 +20,10 @@ impl re_types_core::Archetype for MyPoints {
         "example.MyPoints".into()
     }
 
+    fn display_name() -> &'static str {
+        "MyPoints"
+    }
+
     fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentName]> {
         vec![MyPoint::name()].into()
     }

@@ -1020,6 +1020,7 @@ fn quote_trait_impls_from_obj(
         fqname, name, kind, ..
     } = obj;
 
+    let display_name = crate::to_human_case(name);
     let name = format_ident!("{name}");
 
     match kind {
@@ -1282,7 +1283,7 @@ fn quote_trait_impls_from_obj(
                 .is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
             {
                 let field_infos = obj.fields.iter().map(|field| {
-                    let name = &field.name;
+                    let display_name = crate::to_human_case(&field.name);
                     let documentation = field
                         .docs
                         .lines_with_tag_matching(|tag| tag.is_empty())
@@ -1293,7 +1294,7 @@ fn quote_trait_impls_from_obj(
 
                     quote! {
                         ::re_types_core::ArchetypeFieldInfo {
-                            name: #name,
+                            display_name: #display_name,
                             documentation: #documentation,
                             component_name: #component_name.into(),
                         }
@@ -1346,6 +1347,11 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn name() -> ::re_types_core::ArchetypeName {
                         #fqname.into()
+                    }
+
+                    #[inline]
+                    fn display_name() -> &'static str {
+                        #display_name
                     }
 
                     #[inline]

@@ -13,8 +13,8 @@ use crate::{Component, Loggable, LoggableBatch};
 /// Additional information about an archetype's field.
 #[derive(Debug, Clone)]
 pub struct ArchetypeFieldInfo {
-    /// The name of the field.
-    pub name: &'static str,
+    /// The name of the field in human case.
+    pub display_name: &'static str,
 
     /// Documentation string for the field (not the component type).
     pub documentation: &'static str,
@@ -54,6 +54,9 @@ pub trait Archetype {
 
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
+
+    /// Readable name for displaying in ui.
+    fn display_name() -> &'static str;
 
     // ---
 

@@ -76,13 +76,13 @@ static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 
     once_cell::sync::Lazy::new(|| {
         [
             ::re_types_core::ArchetypeFieldInfo {
-                name: "corner",
+                display_name: "Corner",
                 documentation:
                     "To what corner the legend is aligned.\n\nDefaults to the right bottom corner.",
                 component_name: "rerun.blueprint.components.Corner2D".into(),
             },
             ::re_types_core::ArchetypeFieldInfo {
-                name: "visible",
+                display_name: "Visible",
                 documentation: "Whether the legend is shown at all.\n\nTrue by default.",
                 component_name: "rerun.blueprint.components.Visible".into(),
             },
@@ -103,6 +103,11 @@ impl ::re_types_core::Archetype for PlotLegend {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.PlotLegend".into()
+    }
+
+    #[inline]
+    fn display_name() -> &'static str {
+        "Plot legend"
     }
 
     #[inline]

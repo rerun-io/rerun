@@ -85,6 +85,11 @@ impl ::re_types_core::Archetype for VisibleTimeRanges {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Visible time ranges"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: VisibleTimeRangesIndicator = VisibleTimeRangesIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)
