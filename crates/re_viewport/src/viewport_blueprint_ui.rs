@@ -5,13 +5,13 @@ use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
-use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item, ReUi};
 use re_viewer_context::{CollapseScope, Contents, ContentsName, DataResultTree};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::context_menu::context_menu_ui_for_item;
 use crate::{SelectionUpdateBehavior, Viewport};

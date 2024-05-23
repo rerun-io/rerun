@@ -2,8 +2,7 @@ use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
 use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, SpaceViewId, ViewerContext};
-
-use crate::{ContainerBlueprint, ViewportBlueprint};
+use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
 mod sub_menu;

@@ -4,14 +4,15 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
-use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
+use re_space_view::determine_visualizable_entities;
 use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
     StoreHub, SystemCommandSender as _, ViewerContext,
 };
-use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
+use re_viewport::{Viewport, ViewportState};
+use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};

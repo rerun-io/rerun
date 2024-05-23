@@ -1,6 +1,6 @@
 use re_viewer_context::ViewerContext;
 
-use re_space_view::SpaceViewBlueprint;
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 /// List out all space views we generate by default for the available data.
 ///
