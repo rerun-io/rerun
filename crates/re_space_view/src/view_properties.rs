@@ -167,13 +167,14 @@ pub fn view_property_ui<A: Archetype>(
             }
 
             let field_info = field_info_per_component.get(component_name);
-            let name = field_info.map_or_else(|| component_name.short_name(), |info| info.name);
+            let display_name =
+                field_info.map_or_else(|| component_name.short_name(), |info| info.display_name);
 
             let list_item_response = list_item::ListItem::new(re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item::PropertyContent::new(name).value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new(display_name).value_fn(|_, ui, _| {
                         ctx.component_ui_registry.edit_ui(
                             ctx,
                             ui,
@@ -201,7 +202,7 @@ pub fn view_property_ui<A: Archetype>(
             ui,
             A::name().full_name(),
             true,
-            list_item::LabelContent::new(A::name().short_name()),
+            list_item::LabelContent::new(A::display_name()),
             sub_prop_ui,
         );
 }
