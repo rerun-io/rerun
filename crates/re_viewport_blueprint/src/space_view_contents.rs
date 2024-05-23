@@ -382,7 +382,7 @@ pub struct DataQueryPropertyResolver<'a> {
 }
 
 impl DataQueryPropertyResolver<'_> {
-    /// Helper function to build the [`EntityOverrideContext`] for this [`DataQuery`]
+    /// Helper function to build the [`EntityOverrideContext`].
     ///
     /// The context is made up of 3 parts:
     ///  - The root properties are build by merging a stack of paths from the Blueprint Tree. This

@@ -56,7 +56,7 @@ pub struct ViewportBlueprint {
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
-    /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
+    /// Channel to pass Blueprint mutation messages back to the Viewport.
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
 
