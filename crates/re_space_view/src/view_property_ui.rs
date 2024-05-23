@@ -1,3 +1,4 @@
+use ahash::HashMap;
 use re_types_core::Archetype;
 use re_ui::list_item;
 use re_viewer_context::{SpaceViewId, ViewerContext};

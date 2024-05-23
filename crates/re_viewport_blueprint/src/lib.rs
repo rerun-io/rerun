@@ -6,7 +6,7 @@ mod container;
 mod space_view;
 mod space_view_contents;
 mod tree_actions;
-mod view_properties; // TODO(andreas): better name before `sub_archetype` sticks around?
+mod view_properties;
 mod viewport_blueprint;
 
 pub use container::ContainerBlueprint;
