@@ -215,7 +215,8 @@ impl SpaceViewClass for TensorSpaceView {
             }
             .show(ui, |ui| {
                 ui.label(format!(
-                    "Can only show one tensor at a time; was given {}.",
+                    "Can only show one tensor at a time; was given {}. Update the query so that it \
+                    returns a single tensor entity and create additional views for the others.",
                     tensors.len()
                 ));
             });
