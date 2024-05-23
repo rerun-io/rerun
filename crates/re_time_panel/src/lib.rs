@@ -264,7 +264,9 @@ impl TimePanel {
     ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        if ui.max_rect().width() < 600.0 {
+        let has_any_data_on_timeline = entity_db.has_any_data_on_timeline(time_ctrl.timeline());
+
+        if ui.max_rect().width() < 600.0 && has_any_data_on_timeline {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
@@ -273,7 +275,7 @@ impl TimePanel {
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
 
-                    if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+                    if has_any_data_on_timeline {
                         self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                         self.time_control_ui.fps_ui(time_ctrl, ui);
                     }
@@ -296,7 +298,7 @@ impl TimePanel {
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
 
-            if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+            if has_any_data_on_timeline {
                 self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                 self.time_control_ui.fps_ui(time_ctrl, ui);
             }
