@@ -13,10 +13,16 @@ pub const TIME_PANEL_PATH: &str = "time_panel";
 pub struct AppBlueprint<'a> {
     store_ctx: Option<&'a StoreContext<'a>>,
     is_narrow_screen: bool,
-    pub top_panel_state: PanelState,
-    pub blueprint_panel_state: PanelState,
-    pub selection_panel_state: PanelState,
-    pub time_panel_state: PanelState,
+    panel_states: PanelStates,
+    overrides: PanelStateOverrides,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PanelStates {
+    pub top: PanelState,
+    pub blueprint: PanelState,
+    pub selection: PanelState,
+    pub time: PanelState,
 }
 
 impl<'a> AppBlueprint<'a> {
@@ -24,52 +30,94 @@ impl<'a> AppBlueprint<'a> {
         store_ctx: Option<&'a StoreContext<'_>>,
         query: &LatestAtQuery,
         egui_ctx: &egui::Context,
+        overrides: PanelStateOverrides,
     ) -> Self {
         let blueprint_db = store_ctx.map(|ctx| ctx.blueprint);
         let screen_size = egui_ctx.screen_rect().size();
         let mut ret = Self {
             store_ctx,
             is_narrow_screen: screen_size.x < 600.0,
-            top_panel_state: PanelState::Expanded,
-            blueprint_panel_state: if screen_size.x > 750.0 {
-                PanelState::Expanded
-            } else {
-                PanelState::Collapsed
+            panel_states: PanelStates {
+                top: PanelState::Expanded,
+                blueprint: if screen_size.x > 750.0 {
+                    PanelState::Expanded
+                } else {
+                    PanelState::Collapsed
+                },
+                selection: if screen_size.x > 1000.0 {
+                    PanelState::Expanded
+                } else {
+                    PanelState::Collapsed
+                },
+                time: if screen_size.y > 600.0 {
+                    PanelState::Expanded
+                } else {
+                    PanelState::Collapsed
+                },
             },
-            selection_panel_state: if screen_size.x > 1000.0 {
-                PanelState::Expanded
-            } else {
-                PanelState::Collapsed
-            },
-            time_panel_state: if screen_size.y > 600.0 {
-                PanelState::Expanded
-            } else {
-                PanelState::Collapsed
-            },
+            overrides,
         };
 
         if let Some(blueprint_db) = blueprint_db {
             if let Some(state) = load_panel_state(&TOP_PANEL_PATH.into(), blueprint_db, query) {
-                ret.top_panel_state = state;
+                ret.panel_states.top = state;
             }
             if let Some(state) = load_panel_state(&BLUEPRINT_PANEL_PATH.into(), blueprint_db, query)
             {
-                ret.blueprint_panel_state = state;
+                ret.panel_states.blueprint = state;
             }
             if let Some(state) = load_panel_state(&SELECTION_PANEL_PATH.into(), blueprint_db, query)
             {
-                ret.selection_panel_state = state;
+                ret.panel_states.selection = state;
             }
             if let Some(state) = load_panel_state(&TIME_PANEL_PATH.into(), blueprint_db, query) {
-                ret.time_panel_state = state;
+                ret.panel_states.time = state;
             }
         }
 
         ret
     }
 
+    pub fn top_panel_state(&self) -> PanelState {
+        self.overrides.top.unwrap_or(self.panel_states.top)
+    }
+
+    pub fn blueprint_panel_state(&self) -> PanelState {
+        self.overrides
+            .blueprint
+            .unwrap_or(self.panel_states.blueprint)
+    }
+
+    pub fn selection_panel_state(&self) -> PanelState {
+        self.overrides
+            .selection
+            .unwrap_or(self.panel_states.selection)
+    }
+
+    pub fn time_panel_state(&self) -> PanelState {
+        self.overrides.time.unwrap_or(self.panel_states.time)
+    }
+
+    pub fn toggle_top_panel(&self, command_sender: &CommandSender) {
+        // don't toggle if it is overriden
+        if self.overrides.top.is_some() {
+            return;
+        }
+
+        self.send_panel_state(
+            TOP_PANEL_PATH,
+            self.panel_states.top.toggle(),
+            command_sender,
+        );
+    }
+
     pub fn toggle_blueprint_panel(&self, command_sender: &CommandSender) {
-        let new_state = self.blueprint_panel_state.toggle();
+        // don't toggle if it is overriden
+        if self.overrides.blueprint.is_some() {
+            return;
+        }
+
+        let new_state = self.panel_states.blueprint.toggle();
         self.send_panel_state(BLUEPRINT_PANEL_PATH, new_state, command_sender);
 
         // Toggle the opposite side if this panel is visible to save on screen real estate
@@ -79,7 +127,12 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_selection_panel(&self, command_sender: &CommandSender) {
-        let new_state = self.selection_panel_state.toggle();
+        // don't toggle if it is overriden
+        if self.overrides.selection.is_some() {
+            return;
+        }
+
+        let new_state = self.panel_states.selection.toggle();
         self.send_panel_state(SELECTION_PANEL_PATH, new_state, command_sender);
 
         // Toggle the opposite side if this panel is visible to save on screen real estate
@@ -89,18 +142,31 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_time_panel(&self, command_sender: &CommandSender) {
+        // don't toggle if it is overriden
+        if self.overrides.time.is_some() {
+            return;
+        }
+
         self.send_panel_state(
             TIME_PANEL_PATH,
-            self.time_panel_state.toggle(),
+            self.panel_states.time.toggle(),
             command_sender,
         );
     }
 }
 
+#[derive(Debug, Default, Clone, Copy)]
+pub struct PanelStateOverrides {
+    pub top: Option<PanelState>,
+    pub blueprint: Option<PanelState>,
+    pub selection: Option<PanelState>,
+    pub time: Option<PanelState>,
+}
+
 pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     for (panel_name, value) in [
         (TOP_PANEL_PATH, PanelState::Expanded),
-        (BLUEPRINT_PANEL_PATH, PanelState::Expanded),
+        (BLUEPRINT_PANEL_PATH, PanelState::Hidden),
         (SELECTION_PANEL_PATH, PanelState::Hidden),
         (TIME_PANEL_PATH, PanelState::Hidden),
     ] {
@@ -118,7 +184,7 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
 // ----------------------------------------------------------------------------
 
 impl<'a> AppBlueprint<'a> {
-    fn send_panel_state(
+    pub(crate) fn send_panel_state(
         &self,
         panel_name: &str,
         value: PanelState,

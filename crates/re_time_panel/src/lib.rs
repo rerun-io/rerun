@@ -146,6 +146,10 @@ impl TimePanel {
         ui: &mut egui::Ui,
         state: PanelState,
     ) {
+        if state.is_hidden() {
+            return;
+        }
+
         // Naturally, many parts of the time panel need the time control.
         // Copy it once, read/edit, and then write back at the end if there was a change.
         let time_ctrl_before = rec_cfg.time_ctrl.read().clone();

@@ -21,6 +21,11 @@ function randomId() {
     .join("");
 }
 
+/**
+ * @typedef WebViewerOptions
+ * @property {boolean} [hide_welcome_screen] Whether to hide the welcome screen in favor of a simpler one.
+ */
+
 export class WebViewer {
   /** @type {(import("./re_viewer.js").WebHandle) | null} */
   #handle = null;
@@ -36,10 +41,10 @@ export class WebViewer {
    *
    * @param {string | string[]} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
    * @param {HTMLElement} [parent] The element to attach the canvas onto.
-   * @param {boolean} [hide_welcome_screen] Whether to hide the welcome screen.
+   * @param {WebViewerOptions} [options] Whether to hide the welcome screen.
    * @returns {Promise<void>}
    */
-  async start(rrd, parent = document.body, hide_welcome_screen = false) {
+  async start(rrd, parent = document.body, options = {}) {
     if (this.#state !== "stopped") return;
     this.#state = "starting";
 
@@ -47,17 +52,19 @@ export class WebViewer {
     this.#canvas.id = randomId();
     parent.append(this.#canvas);
 
-    let WebHandle_class = await load();
+    /**
+     * @typedef {{
+     *   hide_welcome_screen?: boolean
+     * }} AppOptions
+     */
+    /** @typedef {(typeof import("./re_viewer.js").WebHandle)} _WebHandleConstructor */
+    /** @typedef {_WebHandleConstructor & { new(options?: AppOptions): WebHandle }} WebHandleConstructor */
+
+    let WebHandle_class = /** @type {WebHandleConstructor} */ (await load());
     if (this.#state !== "starting") return;
 
-    this.#handle = new WebHandle_class();
-    await this.#handle.start(
-      this.#canvas.id,
-      undefined,
-      undefined,
-      undefined,
-      hide_welcome_screen,
-    );
+    this.#handle = new WebHandle_class({ ...options });
+    await this.#handle.start(this.#canvas.id);
     if (this.#state !== "starting") return;
 
     if (this.#handle.has_panicked()) {
@@ -154,19 +161,44 @@ export class WebViewer {
    * @returns {LogChannel}
    */
   open_channel(channel_name = "rerun-io/web-viewer") {
-    if (!this.#handle) throw new Error("...");
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to open channel \"${channel_name}\" in a stopped web viewer`,
+      );
+    }
     const id = crypto.randomUUID();
     this.#handle.open_channel(id, channel_name);
     const on_send = (/** @type {Uint8Array} */ data) => {
-      if (!this.#handle) throw new Error("...");
+      if (!this.#handle) {
+        throw new Error(
+          `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
+        );
+      }
       this.#handle.send_rrd_to_channel(id, data);
     };
     const on_close = () => {
-      if (!this.#handle) throw new Error("...");
+      if (!this.#handle) {
+        throw new Error(
+          `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
+        );
+      }
       this.#handle.close_channel(id);
     };
     const get_state = () => this.#state;
     return new LogChannel(on_send, on_close, get_state);
+  }
+
+  /**
+   * @param {"top" | "blueprint" | "selection" | "time"} panel
+   * @param {"hidden" | "collapsed" | "expanded"} state
+   */
+  override_panel_state(panel, state) {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to set ${panel} panel to ${state} in a stopped web viewer`,
+      );
+    }
+    this.#handle.override_panel_state(panel, state);
   }
 }
 

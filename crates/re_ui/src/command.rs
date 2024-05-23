@@ -33,6 +33,7 @@ pub enum UICommand {
     OpenProfiler,
 
     ToggleMemoryPanel,
+    ToggleTopPanel,
     ToggleBlueprintPanel,
     ToggleSelectionPanel,
     ToggleTimePanel,
@@ -43,6 +44,7 @@ pub enum UICommand {
     #[cfg(debug_assertions)]
     ToggleEguiDebugPanel,
 
+    #[cfg(not(target_arch = "wasm32"))]
     ToggleFullscreen,
     #[cfg(not(target_arch = "wasm32"))]
     ZoomIn,
@@ -142,6 +144,7 @@ impl UICommand {
                 "Toggle memory panel",
                 "View and track current RAM usage inside Rerun Viewer",
             ),
+            Self::ToggleTopPanel => ("Toggle top panel", "Toggle the top panel"),
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
@@ -163,12 +166,6 @@ impl UICommand {
             Self::ToggleFullscreen => (
                 "Toggle fullscreen",
                 "Toggle between windowed and fullscreen viewer",
-            ),
-
-            #[cfg(target_arch = "wasm32")]
-            Self::ToggleFullscreen => (
-                "Toggle fullscreen",
-                "Toggle between full viewport dimensions and initial dimensions"
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -286,6 +283,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => Some(ctrl_shift(Key::P)),
             Self::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
+            Self::ToggleTopPanel => None,
             Self::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
@@ -298,8 +296,6 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => Some(key(Key::F11)),
-            #[cfg(target_arch = "wasm32")]
-            Self::ToggleFullscreen => None,
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomIn => Some(egui::gui_zoom::kb_shortcuts::ZOOM_IN),

@@ -24,7 +24,7 @@ pub fn top_panel(
     egui::TopBottomPanel::top("top_bar")
         .frame(app.re_ui().top_panel_frame())
         .exact_height(top_bar_style.height)
-        .show_inside(ui, |ui| {
+        .show_animated_inside(ui, app_blueprint.top_panel_state().is_expanded(), |ui| {
             // React to dragging and double-clicking the top bar:
             #[cfg(not(target_arch = "wasm32"))]
             if !re_ui::NATIVE_WINDOW_BAR {
@@ -228,12 +228,13 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+    // selection panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::RIGHT_PANEL_TOGGLE,
-            &mut app_blueprint.selection_panel_state.is_expanded(),
+            &mut app_blueprint.selection_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle Selection View{}",
@@ -244,12 +245,13 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
         app_blueprint.toggle_selection_panel(&app.command_sender);
     }
 
+    // time panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-            &mut app_blueprint.time_panel_state.is_expanded(),
+            &mut app_blueprint.time_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle Timeline View{}",
@@ -260,12 +262,13 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
         app_blueprint.toggle_time_panel(&app.command_sender);
     }
 
+    // blueprint panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::LEFT_PANEL_TOGGLE,
-            &mut app_blueprint.blueprint_panel_state.is_expanded(),
+            &mut app_blueprint.blueprint_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle blueprint view{}",
