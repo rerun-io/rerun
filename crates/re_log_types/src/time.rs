@@ -207,9 +207,9 @@ impl Time {
         time_format: &str,
         time_zone_for_timestamps: TimeZone,
     ) -> Option<String> {
-        let datetime = self.to_datetime()?
+        let datetime = self.to_datetime()?;
         let parsed_format = time::format_description::parse(time_format).ok()?;
-        
+
         Some(Self::time_string(
             datetime,
             &parsed_format,
