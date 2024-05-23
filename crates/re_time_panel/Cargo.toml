@@ -25,9 +25,11 @@ re_entity_db.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_tracing.workspace = true
+re_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
-re_viewport.workspace = true       # TODO(#5421): remove this dependency in favor of re_viewport_blueprint when it exists
+re_viewport.workspace = true           # TODO(#6414): remove this dependency in favor of re_context_menu when it exists
+re_viewport_blueprint.workspace = true
 
 egui.workspace = true
 itertools.workspace = true

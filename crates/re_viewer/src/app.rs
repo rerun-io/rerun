@@ -4,6 +4,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_types::blueprint::components::PanelState;
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
@@ -883,14 +884,16 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                crate::ui::top_panel(
-                    frame,
-                    self,
-                    app_blueprint,
-                    store_context,
-                    gpu_resource_stats,
-                    ui,
-                );
+                if app_blueprint.top_panel_state != PanelState::Hidden {
+                    crate::ui::top_panel(
+                        frame,
+                        self,
+                        app_blueprint,
+                        store_context,
+                        gpu_resource_stats,
+                        ui,
+                    );
+                }
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 

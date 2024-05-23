@@ -3,7 +3,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{ElementType, Object, ObjectKind, Type, ATTR_RUST_TUPLE_STRUCT};
+use crate::{Object, ObjectKind, ATTR_RUST_TUPLE_STRUCT};
 
 // ---
 
@@ -48,18 +48,16 @@ pub fn iter_archetype_components<'a>(
     requirement_attr_value: &'static str,
 ) -> impl Iterator<Item = String> + 'a {
     assert_eq!(ObjectKind::Archetype, obj.kind);
+
     obj.fields.iter().filter_map(move |field| {
         field
             .try_get_attr::<String>(requirement_attr_value)
-            .map(|_| match &field.typ {
-                Type::Object(fqname) => fqname.clone(),
-                Type::Vector { elem_type } => match elem_type {
-                    ElementType::Object(fqname) => fqname.clone(),
-                    _ => {
-                        panic!("archetype field must be an object/union or an array/vector of such")
-                    }
-                },
-                _ => panic!("archetype field must be an object/union or an array/vector of such"),
+            .map(|_| {
+                if let Some(fqname) = field.typ.fqname() {
+                    fqname.to_owned()
+                } else {
+                    panic!("Archetype field must be an object/union or an array/vector of such")
+                }
             })
     })
 }

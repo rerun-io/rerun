@@ -235,7 +235,7 @@ The `Blueprint` controls the default panel-state of the 3 panels: the `Blueprint
 
 ```python
 rrb.Blueprint(
-    rrb.TimePanel(expanded=False)
+    rrb.TimePanel(state="collapsed")
 )
 ```
 
@@ -243,9 +243,9 @@ As an convenience, you can also use the blueprint argument: `collapse_panels=Tru
 
 ```python
 rrb.Blueprint(
-    rrb.TimePanel(expanded=False),
-    rrb.SelectionPanel(expanded=False),
-    rrb.BlueprintPanel(expanded=False),
+    rrb.TimePanel(state="collapsed"),
+    rrb.SelectionPanel(state="collapsed"),
+    rrb.BlueprintPanel(state="collapsed"),
 )
 ```
 

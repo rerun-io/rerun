@@ -26,7 +26,8 @@ use crate::{
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
-    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_GENERATE_FIELD_INFO,
+    ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{
@@ -1019,6 +1020,7 @@ fn quote_trait_impls_from_obj(
         fqname, name, kind, ..
     } = obj;
 
+    let display_name = crate::to_human_case(name);
     let name = format_ident!("{name}");
 
     match kind {
@@ -1277,6 +1279,45 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
+            let (field_info_array, field_info_getter) = if obj
+                .is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
+            {
+                let field_infos = obj.fields.iter().map(|field| {
+                    let display_name = crate::to_human_case(&field.name);
+                    let documentation = field
+                        .docs
+                        .lines_with_tag_matching(|tag| tag.is_empty())
+                        .join("\n");
+                    let Some(component_name) = field.typ.fqname() else {
+                        panic!("archetype field must be an object/union or an array/vector of such")
+                    };
+
+                    quote! {
+                        ::re_types_core::ArchetypeFieldInfo {
+                            display_name: #display_name,
+                            documentation: #documentation,
+                            component_name: #component_name.into(),
+                        }
+                    }
+                }).collect_vec();
+                let num_field_infos = field_infos.len();
+
+                let field_info_array = quote! {
+                    static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; #num_field_infos]> =
+                    once_cell::sync::Lazy::new(|| {[#(#field_infos,)*]});
+                };
+                let field_info_getter = quote! {
+                    #[inline]
+                    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
+                        Some(FIELD_INFOS.as_slice().into())
+                    }
+                };
+
+                (field_info_array, field_info_getter)
+            } else {
+                (quote!(), quote!())
+            };
+
             quote! {
                 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_required]> =
                     once_cell::sync::Lazy::new(|| {[#required]});
@@ -1289,6 +1330,8 @@ fn quote_trait_impls_from_obj(
 
                 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_all]> =
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
+
+                #field_info_array
 
                 impl #name {
                     #num_components_docstring
@@ -1304,6 +1347,11 @@ fn quote_trait_impls_from_obj(
                     #[inline]
                     fn name() -> ::re_types_core::ArchetypeName {
                         #fqname.into()
+                    }
+
+                    #[inline]
+                    fn display_name() -> &'static str {
+                        #display_name
                     }
 
                     #[inline]
@@ -1332,6 +1380,8 @@ fn quote_trait_impls_from_obj(
                     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
                         ALL_COMPONENTS.as_slice().into()
                     }
+
+                    #field_info_getter
 
                     #[inline]
                     fn from_arrow_components(

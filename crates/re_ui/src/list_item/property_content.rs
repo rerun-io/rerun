@@ -1,6 +1,6 @@
 use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
 
-use super::{ContentContext, DesiredWidth, ListItemContent};
+use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
 use crate::{Icon, ReUi};
 
 /// Closure to draw an icon left of the label.
@@ -20,6 +20,8 @@ struct PropertyActionButton<'a> {
 pub struct PropertyContent<'a> {
     label: egui::WidgetText,
     min_desired_width: f32,
+    exact_width: bool,
+
     icon_fn: Option<Box<IconFn<'a>>>,
     show_only_when_collapsed: bool,
     value_fn: Option<Box<PropertyValueFn<'a>>>,
@@ -37,6 +39,7 @@ impl<'a> PropertyContent<'a> {
         Self {
             label: label.into(),
             min_desired_width: 200.0,
+            exact_width: false,
             icon_fn: None,
             show_only_when_collapsed: true,
             value_fn: None,
@@ -51,6 +54,17 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
         self.min_desired_width = min_desired_width;
+        self
+    }
+
+    /// Allocate the exact width required for the entire content.
+    ///
+    /// Note: this is done by tracking the maximum width in the current [`super::list_item_scope`]
+    /// during the previous frame, so this is effective on the second frame only. If the first frame
+    /// is actually rendered, this can lead to a flicker.
+    #[inline]
+    pub fn exact_width(mut self, exact_width: bool) -> Self {
+        self.exact_width = exact_width;
         self
     }
 
@@ -188,6 +202,7 @@ impl ListItemContent for PropertyContent<'_> {
             show_only_when_collapsed,
             value_fn,
             action_buttons,
+            exact_width: _,
         } = *self;
 
         // │                                                                              │
@@ -313,6 +328,11 @@ impl ListItemContent for PropertyContent<'_> {
                 let mut child_ui =
                     ui.child_ui(value_rect, egui::Layout::left_to_right(egui::Align::Center));
                 value_fn(re_ui, &mut child_ui, visuals);
+
+                context.layout_info.register_property_content_max_width(
+                    child_ui.ctx(),
+                    child_ui.min_rect().right() - context.layout_info.left_x,
+                );
             }
         }
 
@@ -336,7 +356,27 @@ impl ListItemContent for PropertyContent<'_> {
         }
     }
 
-    fn desired_width(&self, _re_ui: &ReUi, _ui: &Ui) -> DesiredWidth {
-        DesiredWidth::AtLeast(self.min_desired_width)
+    fn desired_width(&self, _re_ui: &ReUi, ui: &Ui) -> DesiredWidth {
+        let layout_info = LayoutInfoStack::top(ui.ctx());
+        if self.exact_width {
+            if let Some(max_width) = layout_info.property_content_max_width {
+                let mut desired_width = max_width + layout_info.left_x - ui.max_rect().left();
+
+                // TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
+                let action_button_dimension =
+                    ReUi::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+                let reserve_action_button_space =
+                    self.action_buttons.is_some() || layout_info.reserve_action_button_space;
+                if reserve_action_button_space {
+                    desired_width += action_button_dimension + ReUi::text_to_icon_padding();
+                }
+
+                DesiredWidth::Exact(desired_width.ceil())
+            } else {
+                DesiredWidth::AtLeast(self.min_desired_width)
+            }
+        } else {
+            DesiredWidth::AtLeast(self.min_desired_width)
+        }
     }
 }

@@ -3,9 +3,10 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
-use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
+use re_space_view::determine_visualizable_entities;
 use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::{Item, RecommendedSpaceView};
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
 

@@ -119,8 +119,8 @@ def main() -> None:
             rrb.TextDocumentView(name="Description", origin="/description"),
             column_shares=[3, 1],
         ),
-        rrb.SelectionPanel(expanded=False),
-        rrb.TimePanel(expanded=False),
+        rrb.SelectionPanel(state="collapsed"),
+        rrb.TimePanel(state="collapsed"),
     )
 
     rr.script_setup(args, "rerun_example_plot", default_blueprint=blueprint)

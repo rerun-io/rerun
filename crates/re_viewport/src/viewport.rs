@@ -14,13 +14,13 @@ use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassRegistry, SpaceViewId,
     SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
+use re_viewport_blueprint::{TreeAction, ViewportBlueprint};
 
 use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, context_menu_ui_for_item,
     icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     system_execution::execute_systems_for_all_space_views, SelectionUpdateBehavior,
-    ViewportBlueprint,
 };
 
 // State for each `SpaceView` including both the auto properties and
@@ -88,53 +88,6 @@ impl ViewportState {
     pub fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
         self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
     }
-}
-
-/// Mutation actions to perform on the tree at the end of the frame. These messages are sent by the mutation APIs from
-/// [`crate::ViewportBlueprint`].
-#[derive(Clone, Debug)]
-pub enum TreeAction {
-    /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>),
-
-    /// Add a new container of the provided kind to the provided container (or the root if `None`).
-    AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
-
-    /// Change the kind of a container.
-    SetContainerKind(ContainerId, egui_tiles::ContainerKind),
-
-    /// Ensure the tab for the provided space view is focused (see [`egui_tiles::Tree::make_active`]).
-    FocusTab(SpaceViewId),
-
-    /// Remove a container (recursively) or a space view
-    RemoveContents(Contents),
-
-    /// Simplify the container with the provided options
-    SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
-
-    /// Make all column and row shares the same for this container
-    MakeAllChildrenSameSize(ContainerId),
-
-    /// Move some contents to a different container
-    MoveContents {
-        contents_to_move: Contents,
-        target_container: ContainerId,
-        target_position_in_container: usize,
-    },
-
-    /// Move one or more [`Contents`] to a newly created container
-    MoveContentsToNewContainer {
-        contents_to_move: Vec<Contents>,
-        new_container_kind: egui_tiles::ContainerKind,
-        target_container: ContainerId,
-        target_position_in_container: usize,
-    },
-
-    /// Set the container that is currently identified as the drop target of an ongoing drag.
-    ///
-    /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
-    /// frame, so this command must be re-sent every frame as long as a drop target is identified.
-    SetDropTarget(ContainerId),
 }
 
 fn tree_simplification_options() -> egui_tiles::SimplificationOptions {

@@ -1,10 +1,14 @@
-// TODO(jleibs): Turn this into a trait
+// TODO(jleibs): Turn these methods into a trait.
+
+mod corner2d;
+mod visible;
 
 use egui::NumExt as _;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::{EntityPath, Instance};
 use re_types::{
+    blueprint::components::{Corner2D, Visible},
     components::{
         Color, MarkerShape, MarkerSize, Name, Radius, ScalarScattering, StrokeWidth, Text,
     },
@@ -278,11 +282,11 @@ fn edit_marker_shape_ui(
                 for marker in MarkerShape::ALL {
                     let response = ctx
                         .re_ui
-                        .list_item2()
+                        .list_item()
                         .selected(edit_marker == marker)
                         .show_flat(
                             ui,
-                            re_ui::list_item2::LabelContent::new(marker.to_string())
+                            re_ui::list_item::LabelContent::new(marker.to_string())
                                 .min_desired_width(item_width)
                                 .with_icon_fn(|_re_ui, ui, rect, visuals| {
                                     paint_marker(ui, marker.into(), rect, visuals.text_color());
@@ -296,7 +300,7 @@ fn edit_marker_shape_ui(
             };
 
             re_ui::full_span::full_span_scope(ui, background_x_range, |ui| {
-                re_ui::list_item2::list_item_scope(ui, "marker_shape", list_ui);
+                re_ui::list_item::list_item_scope(ui, "marker_shape", list_ui);
             });
         });
 
@@ -462,6 +466,11 @@ fn register_editor<'a, C>(
 
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Color>(registry, default_color, edit_color_ui);
+    register_editor::<Corner2D>(
+        registry,
+        corner2d::default_corner2d,
+        corner2d::edit_corner2d,
+    );
     register_editor::<MarkerShape>(registry, default_marker_shape, edit_marker_shape_ui);
     register_editor::<MarkerSize>(registry, default_marker_size, edit_marker_size_ui);
     register_editor::<Name>(registry, default_name, edit_name_ui);
@@ -469,4 +478,5 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);
     register_editor::<StrokeWidth>(registry, default_stroke_width, edit_stroke_width_ui);
     register_editor::<Text>(registry, default_text, edit_text_ui);
+    register_editor::<Visible>(registry, visible::default_visible, visible::edit_visible);
 }

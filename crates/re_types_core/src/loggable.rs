@@ -172,7 +172,9 @@ impl ComponentName {
     #[inline]
     pub fn short_name(&self) -> &'static str {
         let full_name = self.0.as_str();
-        if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
+        if let Some(short_name) = full_name.strip_prefix("rerun.blueprint.components.") {
+            short_name
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
             short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
@@ -183,7 +185,8 @@ impl ComponentName {
 
     /// Is this an indicator component for an archetype?
     pub fn is_indicator_component(&self) -> bool {
-        self.starts_with("rerun.components.") && self.ends_with("Indicator")
+        (self.starts_with("rerun.components.") || self.starts_with("rerun.blueprint.components."))
+            && self.ends_with("Indicator")
     }
 
     /// If this is an indicator component, for which archetype?

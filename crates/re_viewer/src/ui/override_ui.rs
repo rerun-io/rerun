@@ -5,12 +5,13 @@ use itertools::Itertools;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataRow, RowId, StoreKind};
-use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
+use re_space_view::determine_visualizable_entities;
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataResult, OverridePath, SystemCommand, SystemCommandSender as _, UiLayout,
     ViewSystemIdentifier, ViewerContext,
 };
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 pub fn override_ui(
     ctx: &ViewerContext<'_>,
@@ -92,7 +93,7 @@ pub fn override_ui(
         .sorted_by_key(|(c, _)| *c)
         .filter(|(c, _)| component_to_vis.contains_key(c));
 
-    re_ui::list_item2::list_item_scope(ui, "overrides", |ui| {
+    re_ui::list_item::list_item_scope(ui, "overrides", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (
             ref component_name,
@@ -140,6 +141,7 @@ pub fn override_ui(
                         entity_path_overridden,
                         &overrides.individual_override_path,
                         &results,
+                        component_name,
                         instance,
                     );
                 } else {
@@ -150,11 +152,11 @@ pub fn override_ui(
             };
 
             ctx.re_ui
-                .list_item2()
+                .list_item()
                 .interactive(false)
                 .show_flat(
                     ui,
-                    re_ui::list_item2::PropertyContent::new(component_name.short_name())
+                    re_ui::list_item::PropertyContent::new(component_name.short_name())
                         .min_desired_width(150.0)
                         .action_button(&re_ui::icons::CLOSE, || {
                             ctx.save_empty_blueprint_component_name(
@@ -330,13 +332,13 @@ pub fn override_visualizer_ui(
             &active_visualizers,
         );
 
-        re_ui::list_item2::list_item_scope(ui, "visualizers", |ui| {
+        re_ui::list_item::list_item_scope(ui, "visualizers", |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             for viz_name in &active_visualizers {
-                ctx.re_ui.list_item2().interactive(false).show_flat(
+                ctx.re_ui.list_item().interactive(false).show_flat(
                     ui,
-                    re_ui::list_item2::LabelContent::new(viz_name.as_str())
+                    re_ui::list_item::LabelContent::new(viz_name.as_str())
                         .min_desired_width(150.0)
                         .with_buttons(|re_ui, ui| {
                             let response = re_ui.small_icon_button(ui, &re_ui::icons::CLOSE);
