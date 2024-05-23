@@ -72,6 +72,23 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
+static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ::re_types_core::ArchetypeFieldInfo {
+                display_name: "Corner",
+                documentation:
+                    "To what corner the legend is aligned.\n\nDefaults to the right bottom corner.",
+                component_name: "rerun.blueprint.components.Corner2D".into(),
+            },
+            ::re_types_core::ArchetypeFieldInfo {
+                display_name: "Visible",
+                documentation: "Whether the legend is shown at all.\n\nTrue by default.",
+                component_name: "rerun.blueprint.components.Visible".into(),
+            },
+        ]
+    });
+
 impl PlotLegend {
     /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 3usize;
@@ -86,6 +103,11 @@ impl ::re_types_core::Archetype for PlotLegend {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.PlotLegend".into()
+    }
+
+    #[inline]
+    fn display_name() -> &'static str {
+        "Plot legend"
     }
 
     #[inline]
@@ -112,6 +134,11 @@ impl ::re_types_core::Archetype for PlotLegend {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
+        Some(FIELD_INFOS.as_slice().into())
     }
 
     #[inline]

@@ -1,11 +1,11 @@
 use re_data_store::LatestAtQuery;
 use re_entity_db::{
     external::re_query::{LatestAtResults, PromiseResult, ToArchetype},
-    EntityDb, EntityTree,
+    EntityDb,
 };
 use re_log_types::EntityPath;
 use re_types::Archetype;
-use re_viewer_context::{SpaceViewId, ViewerContext};
+use re_viewer_context::{external::re_entity_db::EntityTree, SpaceViewId, ViewerContext};
 
 pub fn entity_path_for_view_property<T: Archetype>(
     space_view_id: SpaceViewId,

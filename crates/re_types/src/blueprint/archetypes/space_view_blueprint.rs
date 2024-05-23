@@ -110,6 +110,11 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Space view blueprint"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SpaceViewBlueprintIndicator = SpaceViewBlueprintIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

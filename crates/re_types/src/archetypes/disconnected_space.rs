@@ -117,6 +117,11 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Disconnected space"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: DisconnectedSpaceIndicator = DisconnectedSpaceIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

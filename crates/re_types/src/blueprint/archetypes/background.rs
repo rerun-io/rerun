@@ -82,6 +82,11 @@ impl ::re_types_core::Archetype for Background {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Background"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: BackgroundIndicator = BackgroundIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

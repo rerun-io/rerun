@@ -131,6 +131,11 @@ impl ::re_types_core::Archetype for TextLog {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Text log"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TextLogIndicator = TextLogIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

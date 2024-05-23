@@ -20,7 +20,7 @@ use re_viewer_context::{
     SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
 };
 
-use crate::{query_view_property, SpaceViewBlueprint};
+use crate::SpaceViewBlueprint;
 
 pub struct EntityOverrideContext<'a> {
     pub legacy_space_view_properties: EntityProperties,
@@ -108,8 +108,9 @@ impl SpaceViewContents {
         space_view_class_identifier: SpaceViewClassIdentifier,
         space_env: &EntityPathSubs,
     ) -> Self {
-        let (contents, blueprint_entity_path) =
-            query_view_property::<blueprint_archetypes::SpaceViewContents>(id, blueprint_db, query);
+        let (contents, blueprint_entity_path) = crate::query_view_property::<
+            blueprint_archetypes::SpaceViewContents,
+        >(id, blueprint_db, query);
 
         let blueprint_archetypes::SpaceViewContents { query } = match contents {
             PromiseResult::Pending => {
