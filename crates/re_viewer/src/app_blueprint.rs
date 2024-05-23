@@ -1,6 +1,6 @@
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
+use re_log_types::{DataRow, EntityPath, RowId};
 use re_types::blueprint::components::PanelExpanded;
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
@@ -88,8 +88,8 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
         (TIME_PANEL_PATH, false),
     ] {
         let entity_path = EntityPath::from(panel_name);
-        // TODO(jleibs): Seq instead of timeless?
-        let timepoint = TimePoint::default();
+
+        let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
         let component = PanelExpanded(is_expanded.into());
 
