@@ -1,5 +1,4 @@
 mod container;
-mod data_query;
 mod space_view;
 mod space_view_contents;
 mod tree_actions;
@@ -7,7 +6,6 @@ mod view_properties; // TODO(andreas): better name before `sub_archetype` sticks
 mod viewport_blueprint;
 
 pub use container::ContainerBlueprint;
-pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
 pub use space_view::SpaceViewBlueprint;
 pub use space_view_contents::SpaceViewContents;
 pub use tree_actions::TreeAction;

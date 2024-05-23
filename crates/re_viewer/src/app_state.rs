@@ -12,7 +12,7 @@ use re_viewer_context::{
     StoreHub, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportState};
-use re_viewport_blueprint::{DataQuery as _, PropertyResolver as _, ViewportBlueprint};
+use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};

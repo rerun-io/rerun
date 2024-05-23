@@ -20,9 +20,17 @@ use re_viewer_context::{
     SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
 };
 
-use crate::{
-    query_view_property, DataQuery, EntityOverrideContext, PropertyResolver, SpaceViewBlueprint,
-};
+use crate::{query_view_property, SpaceViewBlueprint};
+
+pub struct EntityOverrideContext<'a> {
+    pub legacy_space_view_properties: EntityProperties,
+
+    /// Provides auto properties for each entity.
+    pub legacy_auto_properties: &'a EntityPropertyMap,
+
+    /// Query range that data results should fall back to if they don't specify their own.
+    pub default_query_range: QueryRange,
+}
 
 /// An implementation of [`DataQuery`] that is built from a [`blueprint_archetypes::SpaceViewContents`].
 ///
@@ -233,15 +241,13 @@ impl SpaceViewContents {
         new_entity_path_filter.remove_rule_for(ent_path);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
-}
 
-impl DataQuery for SpaceViewContents {
     /// Build up the initial [`DataQueryResult`] for this [`SpaceViewContents`]
     ///
     /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
     /// be added by separately calling [`PropertyResolver::update_overrides`] on
     /// the result.
-    fn execute_query(
+    pub fn execute_query(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
@@ -601,11 +607,9 @@ impl DataQueryPropertyResolver<'_> {
             }
         }
     }
-}
 
-impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
-    fn update_overrides(
+    pub fn update_overrides(
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
