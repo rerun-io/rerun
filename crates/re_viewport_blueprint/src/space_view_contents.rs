@@ -32,9 +32,9 @@ pub struct EntityOverrideContext<'a> {
     pub default_query_range: QueryRange,
 }
 
-/// An implementation of [`DataQuery`] that is built from a [`blueprint_archetypes::SpaceViewContents`].
+/// Data to be added to a space view, built from a [`blueprint_archetypes::SpaceViewContents`].
 ///
-/// During execution it will walk an [`EntityTree`] and return a [`DataResultTree`]
+/// During execution, it will walk an [`EntityTree`] and return a [`DataResultTree`]
 /// containing any entities that match a [`EntityPathFilter`].
 ///
 /// Note: [`SpaceViewContents`] doesn't implement Clone because it depends on its parent's [`SpaceViewId`]
@@ -245,7 +245,7 @@ impl SpaceViewContents {
     /// Build up the initial [`DataQueryResult`] for this [`SpaceViewContents`]
     ///
     /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
-    /// be added by separately calling [`PropertyResolver::update_overrides`] on
+    /// be added by separately calling `DataQueryPropertyResolver::update_overrides` on
     /// the result.
     pub fn execute_query(
         &self,

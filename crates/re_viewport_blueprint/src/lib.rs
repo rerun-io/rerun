@@ -1,3 +1,7 @@
+//! Rerun Viewport Blueprint
+//!
+//! This crate provides blueprint (i.e. description) for how to render the viewport.
+
 mod container;
 mod space_view;
 mod space_view_contents;
