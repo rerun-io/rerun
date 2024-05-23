@@ -99,7 +99,7 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_top_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
+        // don't toggle if it is overridden
         if self.overrides.top.is_some() {
             return;
         }
@@ -112,7 +112,7 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_blueprint_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
+        // don't toggle if it is overridden
         if self.overrides.blueprint.is_some() {
             return;
         }
@@ -127,7 +127,7 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_selection_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
+        // don't toggle if it is overridden
         if self.overrides.selection.is_some() {
             return;
         }
@@ -142,7 +142,7 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_time_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
+        // don't toggle if it is overridden
         if self.overrides.time.is_some() {
             return;
         }
