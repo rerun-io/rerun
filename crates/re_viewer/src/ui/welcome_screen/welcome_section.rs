@@ -65,7 +65,5 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
                 new_tab: true,
             });
         }
-
-        ui.add_space(83.0);
     });
 }
