@@ -665,7 +665,7 @@ pub fn view_3d(
     // Commit ui induced lines.
     view_builder.queue_draw(line_builder.into_draw_data()?);
 
-    let background = re_space_view::view_property::<Background>(ctx, query.space_view_id)
+    let background = re_viewport_blueprint::view_property::<Background>(ctx, query.space_view_id)
         .unwrap_or(Background::DEFAULT_3D);
     let (background_drawable, clear_color) = crate::configure_background(
         ctx,

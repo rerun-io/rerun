@@ -4644,19 +4644,14 @@ name = "re_space_view"
 version = "0.17.0-alpha.2"
 dependencies = [
  "egui",
- "itertools 0.12.0",
- "nohash-hasher",
  "re_data_store",
  "re_entity_db",
- "re_log",
  "re_log_types",
- "re_query",
  "re_tracing",
- "re_types",
  "re_types_core",
+ "re_ui",
  "re_viewer_context",
- "slotmap",
- "smallvec",
+ "re_viewport_blueprint",
 ]
 
 [[package]]
@@ -4724,6 +4719,7 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
+ "re_viewport_blueprint",
  "serde",
  "smallvec",
  "web-time",
@@ -4777,7 +4773,6 @@ version = "0.17.0-alpha.2"
 dependencies = [
  "egui",
  "egui_extras",
- "itertools 0.12.0",
  "re_data_store",
  "re_data_ui",
  "re_entity_db",
@@ -4810,6 +4805,7 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]
@@ -4840,6 +4836,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport",
+ "re_viewport_blueprint",
  "serde",
  "vec1",
 ]
@@ -4998,7 +4995,6 @@ dependencies = [
  "eframe",
  "egui",
  "egui-wgpu",
- "egui_extras",
  "egui_plot",
  "egui_tiles",
  "ehttp",
@@ -5041,6 +5037,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport",
+ "re_viewport_blueprint",
  "re_ws_comms",
  "rfd",
  "ron",
@@ -5110,7 +5107,6 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "rayon",
- "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_log",
@@ -5121,11 +5117,33 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_blueprint",
- "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "re_viewport_blueprint",
  "smallvec",
  "static_assertions",
+]
+
+[[package]]
+name = "re_viewport_blueprint"
+version = "0.17.0-alpha.2"
+dependencies = [
+ "ahash",
+ "egui",
+ "egui_tiles",
+ "itertools 0.12.0",
+ "nohash-hasher",
+ "re_data_store",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_types",
+ "re_types_blueprint",
+ "re_types_core",
+ "re_viewer_context",
+ "slotmap",
+ "smallvec",
 ]
 
 [[package]]
