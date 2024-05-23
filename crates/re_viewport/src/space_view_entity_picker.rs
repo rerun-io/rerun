@@ -4,8 +4,7 @@ use nohash_hasher::IntMap;
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
-use re_space_view::determine_visualizable_entities;
-use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
+use re_viewer_context::{DataQueryResult, SpaceViewClassExt as _, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
 
 /// Window for adding/removing entities from a space view.
@@ -318,12 +317,11 @@ fn create_entity_add_info(
 
     // TODO(andreas): This should be state that is already available because it's part of the space view's state.
     let class = space_view.class(ctx.space_view_class_registry);
-    let visualizable_entities = determine_visualizable_entities(
+    let visualizable_entities = class.determine_visualizable_entities(
         ctx.applicable_entities_per_visualizer,
         ctx.recording(),
         &ctx.space_view_class_registry
             .new_visualizer_collection(*space_view.class_identifier()),
-        class,
         &space_view.space_origin,
     );
 

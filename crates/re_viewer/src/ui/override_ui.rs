@@ -5,11 +5,10 @@ use itertools::Itertools;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataRow, RowId, StoreKind};
-use re_space_view::determine_visualizable_entities;
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataResult, OverridePath, SystemCommand, SystemCommandSender as _, UiLayout,
-    ViewSystemIdentifier, ViewerContext,
+    DataResult, OverridePath, SpaceViewClassExt as _, SystemCommand, SystemCommandSender as _,
+    UiLayout, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -385,14 +384,15 @@ pub fn add_new_visualizer(
         .space_view_class_registry
         .applicable_entities_for_visualizer_systems(entity_db.store_id());
 
-    let visualizable_entities = determine_visualizable_entities(
-        &applicable_entities_per_visualizer,
-        entity_db,
-        &ctx.space_view_class_registry
-            .new_visualizer_collection(*space_view.class_identifier()),
-        space_view.class(ctx.space_view_class_registry),
-        &space_view.space_origin,
-    );
+    let visualizable_entities = space_view
+        .class(ctx.space_view_class_registry)
+        .determine_visualizable_entities(
+            &applicable_entities_per_visualizer,
+            entity_db,
+            &ctx.space_view_class_registry
+                .new_visualizer_collection(*space_view.class_identifier()),
+            &space_view.space_origin,
+        );
 
     let visualizer_options = visualizable_entities
         .iter()

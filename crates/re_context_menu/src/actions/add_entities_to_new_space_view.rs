@@ -3,12 +3,11 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
-use re_space_view::determine_visualizable_entities;
 use re_types::SpaceViewClassIdentifier;
-use re_viewer_context::{Item, RecommendedSpaceView};
+use re_viewer_context::{Item, RecommendedSpaceView, SpaceViewClassExt as _};
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-use crate::context_menu::{ContextMenuAction, ContextMenuContext};
+use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Create a new space view containing the selected entities.
 ///
@@ -103,11 +102,10 @@ fn recommended_space_views_for_selection(
             continue;
         };
 
-        let visualizable_entities = determine_visualizable_entities(
+        let visualizable_entities = entry.class.determine_visualizable_entities(
             &applicable_entities_per_visualizer,
             recording,
             &space_view_class_registry.new_visualizer_collection(entry.identifier),
-            &*entry.class,
             &suggested_root,
         );
 

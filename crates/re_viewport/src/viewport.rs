@@ -6,6 +6,7 @@ use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 use once_cell::sync::Lazy;
 
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_entity_db::EntityPropertyMap;
 use re_renderer::ScreenshotProcessor;
 use re_types::SpaceViewClassIdentifier;
@@ -16,11 +17,11 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::{TreeAction, ViewportBlueprint};
 
-use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
-    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, context_menu_ui_for_item,
-    icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
-    system_execution::execute_systems_for_all_space_views, SelectionUpdateBehavior,
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, icon_for_container_kind,
+    screenshot::handle_pending_space_view_screenshots,
+    space_view_entity_picker::SpaceViewEntityPicker,
+    system_execution::execute_systems_for_all_space_views,
 };
 
 // State for each `SpaceView` including both the auto properties and

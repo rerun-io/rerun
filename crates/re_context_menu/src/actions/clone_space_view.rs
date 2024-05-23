@@ -1,6 +1,6 @@
 use re_viewer_context::{Item, SpaceViewId};
 
-use crate::context_menu::{ContextMenuAction, ContextMenuContext};
+use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Clone a single space view
 pub(crate) struct CloneSpaceViewAction;

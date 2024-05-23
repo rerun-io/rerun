@@ -3,7 +3,7 @@ use egui_tiles::ContainerKind;
 use re_ui::icons;
 use re_viewer_context::{ContainerId, Item};
 
-use crate::context_menu::{ContextMenuAction, ContextMenuContext};
+use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Add a container of a specific type
 pub(crate) struct AddContainerAction(pub ContainerKind);

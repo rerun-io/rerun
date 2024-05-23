@@ -16,6 +16,7 @@ mod time_selection_ui;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_data_ui::DataUi as _;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
@@ -29,7 +30,6 @@ use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
 };
-use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_viewport_blueprint::ViewportBlueprint;
 
 use time_axis::TimelineAxis;
