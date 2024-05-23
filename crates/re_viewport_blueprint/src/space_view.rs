@@ -450,7 +450,6 @@ impl SpaceViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use crate::data_query::{DataQuery, PropertyResolver};
     use re_entity_db::{EntityDb, EntityProperties, EntityPropertiesComponent};
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
