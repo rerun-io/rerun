@@ -47,20 +47,31 @@ pub fn view_property_ui<A: Archetype>(
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item::PropertyContent::new(display_name).value_fn(|_, ui, _| {
-                        ctx.component_ui_registry.edit_ui(
-                            ctx,
-                            ui,
-                            re_viewer_context::UiLayout::List,
-                            blueprint_query,
-                            blueprint_db,
-                            &blueprint_path,
-                            &blueprint_path,
-                            component_results.get_or_empty(*component_name),
-                            component_name,
-                            &0.into(),
-                        );
-                    }),
+                    list_item::PropertyContent::new(display_name)
+                        .action_button_with_enabled(
+                            &re_ui::icons::RESET,
+                            component_results.contains_non_empty(*component_name),
+                            || {
+                                ctx.save_empty_blueprint_component_name(
+                                    &blueprint_path,
+                                    *component_name,
+                                );
+                            },
+                        )
+                        .value_fn(|_, ui, _| {
+                            ctx.component_ui_registry.edit_ui(
+                                ctx,
+                                ui,
+                                re_viewer_context::UiLayout::List,
+                                blueprint_query,
+                                blueprint_db,
+                                &blueprint_path,
+                                &blueprint_path,
+                                component_results.get_or_empty(*component_name),
+                                component_name,
+                                &0.into(),
+                            );
+                        }),
                 );
 
             if let Some(tooltip) = field_info.map(|info| info.documentation) {
