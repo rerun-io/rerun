@@ -151,6 +151,11 @@ impl ::re_types_core::Archetype for LineStrips3D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Line strips 3D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: LineStrips3DIndicator = LineStrips3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

@@ -182,6 +182,11 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Affix fuzzer 1"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: AffixFuzzer1Indicator = AffixFuzzer1Indicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)
