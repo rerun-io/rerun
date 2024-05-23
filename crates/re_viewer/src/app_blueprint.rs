@@ -98,9 +98,10 @@ impl<'a> AppBlueprint<'a> {
 }
 
 pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
+    // Most things are hidden in the welcome screen:
     for (panel_name, value) in [
         (TOP_PANEL_PATH, PanelState::Expanded),
-        (BLUEPRINT_PANEL_PATH, PanelState::Expanded),
+        (BLUEPRINT_PANEL_PATH, PanelState::Hidden),
         (SELECTION_PANEL_PATH, PanelState::Hidden),
         (TIME_PANEL_PATH, PanelState::Hidden),
     ] {
