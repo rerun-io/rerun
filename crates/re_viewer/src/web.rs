@@ -80,12 +80,12 @@ impl WebHandle {
         };
 
         let panel = Panel::from_str(panel)
-            .map_err(|e| js_sys::TypeError::new(&format!("invalid panel: {e}")))?;
+            .map_err(|err| js_sys::TypeError::new(&format!("invalid panel: {err}")))?;
 
         let state = match state {
             Some(state) => Some(
                 PanelState::from_str(&state)
-                    .map_err(|e| js_sys::TypeError::new(&format!("invalid state: {e}")))?
+                    .map_err(|err| js_sys::TypeError::new(&format!("invalid state: {err}")))?
                     .into(),
             ),
             None => None,
@@ -310,7 +310,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
     }
 }
 
-// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is...
+// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
 #[derive(Clone, Deserialize)]
 #[repr(transparent)]
 struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
