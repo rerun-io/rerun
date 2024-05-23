@@ -12,7 +12,7 @@ use re_viewer_context::{
     TensorStats,
 };
 
-use crate::space_view_class::{selected_tensor_slice, PerTensorState, SliceSelection};
+use crate::space_view_class::{selected_tensor_slice, SliceSelection, ViewTensorState};
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorUploadError {
@@ -31,24 +31,22 @@ pub fn colormapped_texture(
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    state: &PerTensorState,
+    state: &ViewTensorState,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
 
     let range = tensor_data_range_heuristic(tensor_stats, tensor.dtype())
         .map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
     let texture =
-        upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, state.slice())?;
-
-    let color_mapping = state.color_mapping();
+        upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, &state.slice)?;
 
     Ok(ColormappedTexture {
         texture,
         range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
-        gamma: color_mapping.gamma,
-        color_mapper: re_renderer::renderer::ColorMapper::Function(color_mapping.map),
+        gamma: state.color_mapping.gamma,
+        color_mapper: re_renderer::renderer::ColorMapper::Function(state.color_mapping.map),
         shader_decoding: match tensor.buffer {
             TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
             TensorBuffer::Yuy2(_) => Some(ShaderDecoding::Yuy2),
