@@ -22,8 +22,9 @@ use re_viewer_context::{
 };
 use re_viewport::{
     contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
-    SelectionUpdateBehavior, Viewport, ViewportBlueprint,
+    SelectionUpdateBehavior, Viewport,
 };
+use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ui::override_ui::override_visualizer_ui;
 use crate::{app_state::default_selection_panel_width, ui::override_ui::override_ui};

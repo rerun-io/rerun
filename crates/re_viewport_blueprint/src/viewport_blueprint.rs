@@ -7,6 +7,7 @@ use nohash_hasher::IntSet;
 use re_types::SpaceViewClassIdentifier;
 use smallvec::SmallVec;
 
+use crate::SpaceViewBlueprint;
 use re_data_store::LatestAtQuery;
 use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::EntityPath;
@@ -17,9 +18,8 @@ use re_types_blueprint::blueprint::components::{
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
 };
-use re_viewport_blueprint::SpaceViewBlueprint;
 
-use crate::{container::ContainerBlueprint, viewport::TreeAction, VIEWPORT_PATH};
+use crate::{container::ContainerBlueprint, TreeAction, VIEWPORT_PATH};
 
 // ----------------------------------------------------------------------------
 
@@ -201,7 +201,7 @@ impl ViewportBlueprint {
         self.space_views.get_mut(space_view_id)
     }
 
-    pub(crate) fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
+    pub fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
         self.mark_user_interaction(ctx);
 
         // Remove the space view from the store
