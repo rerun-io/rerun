@@ -80,12 +80,7 @@ fn ui_from_scene(
 
         let mut pan_delta_in_ui = response.drag_delta();
         if response.hovered() {
-            // NOTE: we use `raw_scroll` instead of `smooth_scroll_delta` to avoid the
-            // added latency of smoothing, which is really annoying on Mac trackpads.
-            // The smoothing is only useful for users with discreet scroll wheels,
-            // and they are likely to pan with dragging instead.
-            // TODO(egui#4401): https://github.com/emilk/egui/issues/4401
-            pan_delta_in_ui += response.ctx.input(|i| i.raw_scroll_delta);
+            pan_delta_in_ui += response.ctx.input(|i| i.smooth_scroll_delta);
         }
         if pan_delta_in_ui != Vec2::ZERO {
             *visual_bounds =
