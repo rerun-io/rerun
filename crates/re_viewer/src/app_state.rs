@@ -14,8 +14,8 @@ use re_viewport::{Viewport, ViewportState};
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::app_blueprint::AppBlueprint;
 use crate::ui::recordings_panel_ui;
-use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -408,7 +408,7 @@ impl AppState {
                     }
 
                     if !show_welcome {
-                        blueprint_panel_ui(blueprint_tree, &ctx, &viewport_blueprint, ui);
+                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
                     }
                 });
             },

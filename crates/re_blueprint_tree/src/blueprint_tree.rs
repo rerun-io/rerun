@@ -10,6 +10,7 @@ use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item, ReUi};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultTree,
+    SystemCommandSender,
 };
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
@@ -46,6 +47,7 @@ impl<'a> DataResultNodeOrPath<'a> {
     }
 }
 
+/// Holds the state of the blueprint tree UI.
 #[derive(Default)]
 pub struct BlueprintTree {
     /// The item that should be focused on in the blueprint tree.
@@ -53,7 +55,7 @@ pub struct BlueprintTree {
     /// Set at each frame by [`Viewport::tree_ui`]. This is similar to
     /// [`ViewerContext::focused_item`] but account for how specifically the blueprint tree should
     /// handle the focused item.
-    pub(crate) blueprint_tree_scroll_to_item: Option<Item>,
+    blueprint_tree_scroll_to_item: Option<Item>,
 
     /// Current candidate parent container for the ongoing drop. Should be drawn with special
     /// highlight.
@@ -68,8 +70,32 @@ pub struct BlueprintTree {
 }
 
 impl BlueprintTree {
+    /// Show the Blueprint section of the left panel based on the current [`ViewportBlueprint`]
+    pub fn show(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        blueprint: &ViewportBlueprint,
+        ui: &mut egui::Ui,
+    ) {
+        ctx.re_ui.panel_content(ui, |_, ui| {
+            ctx.re_ui.panel_title_bar_with_buttons(
+                ui,
+                "Blueprint",
+                Some("The blueprint is where you can configure the Rerun Viewer"),
+                |ui| {
+                    self.add_new_spaceview_button_ui(ctx, blueprint, ui);
+                    reset_blueprint_button_ui(ctx, ui);
+                },
+            );
+        });
+
+        // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
+        // inset. Instead, it calls panel_content itself inside the ScrollArea.
+        self.tree_ui(ctx, blueprint, ui);
+    }
+
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(
+    fn tree_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         blueprint: &ViewportBlueprint,
@@ -603,7 +629,7 @@ impl BlueprintTree {
 
     /// Add a button to trigger the addition of a new space view or container.
     #[allow(clippy::unused_self)]
-    pub fn add_new_spaceview_button_ui(
+    fn add_new_spaceview_button_ui(
         &self,
         ctx: &ViewerContext<'_>,
         blueprint: &ViewportBlueprint,
@@ -846,12 +872,55 @@ impl BlueprintTree {
     ///
     /// When a drag is in progress, the candidate parent container for the dragged item should be highlighted. Note that
     /// this can happen when hovering said container, its direct children, or even the item just after it.
-    pub fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
+    fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
         self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
     }
 }
 
 // ----------------------------------------------------------------------------
+
+fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    let default_blueprint_id = ctx
+        .store_context
+        .hub
+        .default_blueprint_id_for_app(&ctx.store_context.app_id);
+
+    let default_blueprint = default_blueprint_id.and_then(|id| ctx.store_context.bundle.get(id));
+
+    let mut disabled_reason = None;
+
+    if let Some(default_blueprint) = default_blueprint {
+        let active_is_clone_of_default =
+            Some(default_blueprint.store_id()) == ctx.store_context.blueprint.cloned_from();
+        let last_modified_at_the_same_time =
+            default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
+        if active_is_clone_of_default && last_modified_at_the_same_time {
+            disabled_reason = Some("No modifications has been made");
+        }
+    }
+
+    let enabled = disabled_reason.is_none();
+    let response = ui.add_enabled(
+        enabled,
+        ctx.re_ui.small_icon_button_widget(ui, &re_ui::icons::RESET),
+    );
+
+    let response = if let Some(disabled_reason) = disabled_reason {
+        response.on_disabled_hover_text(disabled_reason)
+    } else {
+        let hover_text = if default_blueprint_id.is_some() {
+            "Reset to the default blueprint for this app"
+        } else {
+            "Re-populate viewport with automatically chosen space views"
+        };
+        response.on_hover_text(hover_text)
+    };
+
+    if response.clicked() {
+        ctx.command_sender
+            .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
+    }
+}
 
 /// Expand all required items and compute which item we should scroll to.
 fn handle_focused_item(
