@@ -73,7 +73,7 @@ pub fn view_property_ui<A: Archetype>(
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
-            A::name().full_name(),
+            ui.make_persistent_id(A::name().full_name()),
             true,
             list_item::LabelContent::new(A::display_name()),
             sub_prop_ui,

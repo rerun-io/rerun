@@ -146,17 +146,18 @@ impl<'a> ListItem<'a> {
 
     /// Draw the item as a non-leaf node from a hierarchical list.
     ///
+    /// The `id` should be globally unique!
+    /// You can use `ui.make_persistent_id(…)` for that.
+    ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_hierarchical_with_children<R>(
         mut self,
         ui: &mut Ui,
-        id: impl Into<egui::Id>,
+        id: egui::Id,
         default_open: bool,
         content: impl ListItemContent + 'a,
         add_childrens: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
-        let id = id.into();
-
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             id,
@@ -270,48 +271,48 @@ impl<'a> ListItem<'a> {
 
         let mut collapse_response = None;
 
+        let visuals = ui.style().interact_selectable(&style_response, selected);
+
+        let background_frame = ui.painter().add(egui::Shape::Noop);
+
+        // Draw collapsing triangle
+        if let Some(openness) = collapse_openness {
+            let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
+                rect.min.x,
+                rect.center().y - 0.5 * ReUi::collapsing_triangle_area().y,
+            ));
+            let triangle_rect =
+                egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_area());
+            let triangle_response = ui.interact(
+                triangle_rect.expand(3.0), // make it easier to click
+                id.unwrap_or(ui.id()).with("collapsing_triangle"),
+                egui::Sense::click(),
+            );
+            ReUi::paint_collapsing_triangle(
+                ui,
+                openness,
+                triangle_rect.center(),
+                ui.style().interact(&triangle_response),
+            );
+            collapse_response = Some(triangle_response);
+        }
+
+        // Draw content
+        let mut content_rect = rect;
+        if collapse_openness.is_some() {
+            content_rect.min.x += extra_indent + collapse_extra;
+        }
+
+        let content_ctx = ContentContext {
+            rect: content_rect,
+            bg_rect,
+            response: &style_response,
+            list_item: &self,
+            layout_info,
+        };
+        content.ui(re_ui, ui, &content_ctx);
+
         if ui.is_rect_visible(bg_rect) {
-            let visuals = ui.style().interact_selectable(&style_response, selected);
-
-            let background_frame = ui.painter().add(egui::Shape::Noop);
-
-            // Draw collapsing triangle
-            if let Some(openness) = collapse_openness {
-                let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
-                    rect.min.x,
-                    rect.center().y - 0.5 * ReUi::collapsing_triangle_area().y,
-                ));
-                let triangle_rect =
-                    egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_area());
-                let triangle_response = ui.interact(
-                    triangle_rect.expand(3.0), // make it easier to click
-                    id.unwrap_or(ui.id()).with("collapsing_triangle"),
-                    egui::Sense::click(),
-                );
-                ReUi::paint_collapsing_triangle(
-                    ui,
-                    openness,
-                    triangle_rect.center(),
-                    ui.style().interact(&triangle_response),
-                );
-                collapse_response = Some(triangle_response);
-            }
-
-            // Draw content
-            let mut content_rect = rect;
-            if collapse_openness.is_some() {
-                content_rect.min.x += extra_indent + collapse_extra;
-            }
-
-            let content_ctx = ContentContext {
-                rect: content_rect,
-                bg_rect,
-                response: &style_response,
-                list_item: &self,
-                layout_info,
-            };
-            content.ui(re_ui, ui, &content_ctx);
-
             // Ensure the background highlight is drawn over round pixel coordinates. Otherwise,
             // there could be artifact between consecutive highlighted items when drawn on
             // fractional pixels.

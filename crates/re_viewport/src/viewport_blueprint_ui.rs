@@ -338,6 +338,10 @@ impl Viewport<'_, '_> {
                 remove_response | vis_response
             });
 
+        // Globally unique id - should only be one of these in view at one time.
+        // We do this so that we can support "collapse/expand all" command.
+        let id = egui::Id::new(CollapseScope::BlueprintTree.container(*container_id));
+
         let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
@@ -345,17 +349,11 @@ impl Viewport<'_, '_> {
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
-            .show_hierarchical_with_children(
-                ui,
-                CollapseScope::BlueprintTree.container(*container_id),
-                default_open,
-                item_content,
-                |_, ui| {
-                    for child in &container_blueprint.contents {
-                        self.contents_ui(ctx, ui, child, container_visible);
-                    }
-                },
-            );
+            .show_hierarchical_with_children(ui, id, default_open, item_content, |_, ui| {
+                for child in &container_blueprint.contents {
+                    self.contents_ui(ctx, ui, child, container_visible);
+                }
+            });
 
         context_menu_ui_for_item(
             ctx,
@@ -424,6 +422,11 @@ impl Viewport<'_, '_> {
 
                 response | vis_response
             });
+
+        // Globally unique id - should only be one of these in view at one time.
+        // We do this so that we can support "collapse/expand all" command.
+        let id = egui::Id::new(CollapseScope::BlueprintTree.space_view(*space_view_id));
+
         let list_item::ShowCollapsingResponse {
             item_response: mut response,
             body_response,
@@ -431,65 +434,56 @@ impl Viewport<'_, '_> {
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .force_hovered(is_item_hovered)
-            .show_hierarchical_with_children(
-                ui,
-                CollapseScope::BlueprintTree.space_view(*space_view_id),
-                default_open,
-                item_content,
-                |_, ui| {
-                    // Always show the origin hierarchy first.
-                    self.space_view_entity_hierarchy_ui(
-                        ctx,
-                        ui,
-                        query_result,
-                        &DataResultNodeOrPath::from_path_lookup(
-                            result_tree,
-                            &space_view.space_origin,
-                        ),
-                        space_view,
-                        space_view_visible,
-                        false,
-                    );
+            .show_hierarchical_with_children(ui, id, default_open, item_content, |_, ui| {
+                // Always show the origin hierarchy first.
+                self.space_view_entity_hierarchy_ui(
+                    ctx,
+                    ui,
+                    query_result,
+                    &DataResultNodeOrPath::from_path_lookup(result_tree, &space_view.space_origin),
+                    space_view,
+                    space_view_visible,
+                    false,
+                );
 
-                    // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                    // The latter is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
-                    let mut projections = Vec::new();
-                    result_tree.visit(&mut |node| {
-                        if node
-                            .data_result
-                            .entity_path
-                            .starts_with(&space_view.space_origin)
-                        {
-                            false // If it's under the origin, we're not interested, stop recursing.
-                        } else if node.data_result.tree_prefix_only {
-                            true // Keep recursing until we find a projection.
-                        } else {
-                            projections.push(node);
-                            false // We found a projection, stop recursing as everything below is now included in the projections.
-                        }
-                    });
-                    if !projections.is_empty() {
-                        list_item::ListItem::new(ctx.re_ui)
-                            .interactive(false)
-                            .show_flat(
-                                ui,
-                                list_item::LabelContent::new("Projections:").italics(true),
-                            );
-
-                        for projection in projections {
-                            self.space_view_entity_hierarchy_ui(
-                                ctx,
-                                ui,
-                                query_result,
-                                &DataResultNodeOrPath::DataResultNode(projection),
-                                space_view,
-                                space_view_visible,
-                                true,
-                            );
-                        }
+                // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
+                // The latter is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                let mut projections = Vec::new();
+                result_tree.visit(&mut |node| {
+                    if node
+                        .data_result
+                        .entity_path
+                        .starts_with(&space_view.space_origin)
+                    {
+                        false // If it's under the origin, we're not interested, stop recursing.
+                    } else if node.data_result.tree_prefix_only {
+                        true // Keep recursing until we find a projection.
+                    } else {
+                        projections.push(node);
+                        false // We found a projection, stop recursing as everything below is now included in the projections.
                     }
-                },
-            );
+                });
+                if !projections.is_empty() {
+                    list_item::ListItem::new(ctx.re_ui)
+                        .interactive(false)
+                        .show_flat(
+                            ui,
+                            list_item::LabelContent::new("Projections:").italics(true),
+                        );
+
+                    for projection in projections {
+                        self.space_view_entity_hierarchy_ui(
+                            ctx,
+                            ui,
+                            query_result,
+                            &DataResultNodeOrPath::DataResultNode(projection),
+                            space_view,
+                            space_view_visible,
+                            true,
+                        );
+                    }
+                }
+            });
 
         response = response.on_hover_text("Space view");
 
@@ -634,39 +628,36 @@ impl Viewport<'_, '_> {
             let default_open = entity_path.starts_with(&space_view.space_origin)
                 && Self::default_open_for_data_result(node);
 
-            list_item
-                .show_hierarchical_with_children(
-                    ui,
-                    CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
-                    default_open,
-                    item_content,
-                    |_, ui| {
-                        for child in node.children.iter().sorted_by_key(|c| {
-                            query_result
-                                .tree
-                                .lookup_result(**c)
-                                .map_or(&space_view.space_origin, |c| &c.entity_path)
-                        }) {
-                            let Some(child_node) = query_result.tree.lookup_node(*child) else {
-                                debug_assert!(
-                                    false,
-                                    "DataResultNode {node:?} has an invalid child"
-                                );
-                                continue;
-                            };
+            // Globally unique id - should only be one of these in view at one time.
+            // We do this so that we can support "collapse/expand all" command.
+            let id = egui::Id::new(
+                CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
+            );
 
-                            self.space_view_entity_hierarchy_ui(
-                                ctx,
-                                ui,
-                                query_result,
-                                &DataResultNodeOrPath::DataResultNode(child_node),
-                                space_view,
-                                space_view_visible,
-                                projection_mode,
-                            );
-                        }
-                    },
-                )
+            list_item
+                .show_hierarchical_with_children(ui, id, default_open, item_content, |_, ui| {
+                    for child in node.children.iter().sorted_by_key(|c| {
+                        query_result
+                            .tree
+                            .lookup_result(**c)
+                            .map_or(&space_view.space_origin, |c| &c.entity_path)
+                    }) {
+                        let Some(child_node) = query_result.tree.lookup_node(*child) else {
+                            debug_assert!(false, "DataResultNode {node:?} has an invalid child");
+                            continue;
+                        };
+
+                        self.space_view_entity_hierarchy_ui(
+                            ctx,
+                            ui,
+                            query_result,
+                            &DataResultNodeOrPath::DataResultNode(child_node),
+                            space_view,
+                            space_view_visible,
+                            projection_mode,
+                        );
+                    }
+                })
                 .item_response
         } else {
             list_item.show_hierarchical(ui, item_content)
