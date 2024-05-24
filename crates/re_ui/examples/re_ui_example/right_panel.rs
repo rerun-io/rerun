@@ -131,7 +131,7 @@ impl RightPanel {
 
         re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "label content features",
+            ui.make_persistent_id("label content features"),
             true,
             list_item::LabelContent::new("LabelContent features:"),
             |re_ui, ui| {
@@ -203,7 +203,7 @@ impl RightPanel {
 
         re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "property content features",
+            ui.make_persistent_id("property content features"),
             true,
             list_item::PropertyContent::new("PropertyContent features:")
                 .value_text("bunch of properties"),
@@ -258,7 +258,7 @@ impl RightPanel {
 
         re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "property content right button reserve",
+            ui.make_persistent_id("property content right button reserve"),
             true,
             list_item::PropertyContent::new("PropertyContent action button:")
                 .value_text("demo of right gutter"),
@@ -301,7 +301,7 @@ impl RightPanel {
 
         re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "other features",
+            ui.make_persistent_id("other features"),
             true,
             list_item::LabelContent::new("Other contents:"),
             |re_ui, ui| {
