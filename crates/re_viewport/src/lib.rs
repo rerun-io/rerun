@@ -7,13 +7,11 @@
 
 mod auto_layout;
 mod screenshot;
-mod space_view_entity_picker;
-pub mod space_view_heuristics;
 mod space_view_highlights;
 mod system_execution;
 mod viewport;
 
-pub use self::viewport::{Viewport, ViewportState};
+pub use self::viewport::Viewport;
 
 pub mod external {
     pub use re_space_view;

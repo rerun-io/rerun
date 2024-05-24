@@ -25,10 +25,7 @@ mod viewer_analytics;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-pub(crate) use {
-    app_state::AppState,
-    ui::{memory_panel, selection_panel},
-};
+pub(crate) use {app_state::AppState, ui::memory_panel};
 
 pub use app::{App, StartupOptions};
 

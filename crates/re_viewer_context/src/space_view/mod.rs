@@ -13,6 +13,7 @@ mod spawn_heuristics;
 mod system_execution_output;
 mod view_context_system;
 mod view_query;
+mod view_states;
 mod visualizer_entity_subscriber;
 mod visualizer_system;
 
@@ -32,6 +33,7 @@ pub use view_query::{
     DataResult, OverridePath, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet,
     ViewQuery,
 };
+pub use view_states::{PerViewState, ViewStates};
 pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
 pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, VisualizerSystem};
 
