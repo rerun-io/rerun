@@ -276,7 +276,7 @@ impl HierarchicalDragAndDrop {
         item_id: ItemId,
         children: &Vec<ItemId>,
     ) {
-        // Globally unique id - should ponly be one of these in view at one time.
+        // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
         let id = egui::Id::new(item_id);
 

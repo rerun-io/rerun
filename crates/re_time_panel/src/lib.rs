@@ -605,7 +605,7 @@ impl TimePanel {
                 .set_open(ui.ctx(), true);
         }
 
-        // Globally unique id - should ponly be one of these in view at one time.
+        // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
         let id = egui::Id::new(CollapseScope::StreamsTree.entity(tree.path.clone()));
 

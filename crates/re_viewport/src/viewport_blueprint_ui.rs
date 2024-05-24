@@ -338,7 +338,7 @@ impl Viewport<'_, '_> {
                 remove_response | vis_response
             });
 
-        // Globally unique id - should ponly be one of these in view at one time.
+        // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
         let id = egui::Id::new(CollapseScope::BlueprintTree.container(*container_id));
 
@@ -423,7 +423,7 @@ impl Viewport<'_, '_> {
                 response | vis_response
             });
 
-        // Globally unique id - should ponly be one of these in view at one time.
+        // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
         let id = egui::Id::new(CollapseScope::BlueprintTree.space_view(*space_view_id));
 
@@ -628,7 +628,7 @@ impl Viewport<'_, '_> {
             let default_open = entity_path.starts_with(&space_view.space_origin)
                 && Self::default_open_for_data_result(node);
 
-            // Globally unique id - should ponly be one of these in view at one time.
+            // Globally unique id - should only be one of these in view at one time.
             // We do this so that we can support "collapse/expand all" command.
             let id = egui::Id::new(
                 CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
