@@ -288,7 +288,12 @@ impl<'a> ListItem<'a> {
                     id.unwrap_or(ui.id()).with("collapsing_triangle"),
                     egui::Sense::click(),
                 );
-                ReUi::paint_collapsing_triangle(ui, openness, triangle_rect.center(), &visuals);
+                ReUi::paint_collapsing_triangle(
+                    ui,
+                    openness,
+                    triangle_rect.center(),
+                    ui.style().interact(&triangle_response),
+                );
                 collapse_response = Some(triangle_response);
             }
 
