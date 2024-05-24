@@ -2,7 +2,7 @@ use re_blueprint_tree::BlueprintTree;
 use re_viewer_context::{SystemCommandSender as _, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
-/// Show the Blueprint section of the left panel based on the current [`Viewport`]
+/// Show the Blueprint section of the left panel based on the current [`ViewportBlueprint`]
 pub fn blueprint_panel_ui(
     blueprint_tree: &mut BlueprintTree,
     ctx: &ViewerContext<'_>,
