@@ -55,13 +55,15 @@ pub struct BlueprintTree {
     /// handle the focused item.
     pub(crate) blueprint_tree_scroll_to_item: Option<Item>,
 
-    /// Current candidate parent container for the ongoing drop.
+    /// Current candidate parent container for the ongoing drop. Should be drawn with special
+    /// highlight.
     ///
-    /// See [`ViewportState::is_candidate_drop_parent_container`] for details.
+    /// See [`Self::is_candidate_drop_parent_container`] for details.
     candidate_drop_parent_container_id: Option<ContainerId>,
 
-    /// Candidate parent container for the next frame.
-    //TODO: elaborate
+    /// Candidate parent container to be drawn on next frame.
+    ///
+    /// We double-buffer this value to deal with ordering constraints.
     next_candidate_drop_parent_container_id: Option<ContainerId>,
 }
 
@@ -75,7 +77,7 @@ impl BlueprintTree {
     ) {
         re_tracing::profile_function!();
 
-        // TODO: elaborate
+        // The candidate drop parent container is double-buffered, so here we have the buffer swap.
         self.candidate_drop_parent_container_id = self.next_candidate_drop_parent_container_id;
         self.next_candidate_drop_parent_container_id = None;
 
