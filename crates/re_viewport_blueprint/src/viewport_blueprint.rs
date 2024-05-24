@@ -673,14 +673,6 @@ impl ViewportBlueprint {
         self.send_tree_action(TreeAction::MakeAllChildrenSameSize(*container_id));
     }
 
-    /// Set the container that is currently identified as the drop target of an ongoing drag.
-    ///
-    /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
-    /// frame, so this command must be re-sent every frame as long as a drop target is identified.
-    pub fn set_drop_target(&self, container_id: &ContainerId) {
-        self.send_tree_action(TreeAction::SetDropTarget(*container_id));
-    }
-
     /// Check the visibility of the provided content.
     ///
     /// This function may be called from UI code.

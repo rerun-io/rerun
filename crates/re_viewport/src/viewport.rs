@@ -12,13 +12,13 @@ use re_renderer::ScreenshotProcessor;
 use re_types::SpaceViewClassIdentifier;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassRegistry, SpaceViewId,
-    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item,
+    SpaceViewClassRegistry, SpaceViewId, SpaceViewState, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::{TreeAction, ViewportBlueprint};
 
 use crate::{
-    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, icon_for_container_kind,
     screenshot::handle_pending_space_view_screenshots,
     space_view_entity_picker::SpaceViewEntityPicker,
     system_execution::execute_systems_for_all_space_views,
@@ -39,22 +39,7 @@ pub struct ViewportState {
     /// State for the "Add entity" modal.
     space_view_entity_modal: SpaceViewEntityPicker,
 
-    /// State for the "Add space view or container" modal.
-    add_space_view_container_modal: AddSpaceViewOrContainerModal,
-
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
-
-    /// Current candidate parent container for the ongoing drop.
-    ///
-    /// See [`ViewportState::is_candidate_drop_parent_container`] for details.
-    candidate_drop_parent_container_id: Option<ContainerId>,
-
-    /// The item that should be focused on in the blueprint tree.
-    ///
-    /// Set at each frame by [`Viewport::tree_ui`]. This is similar to
-    /// [`ViewerContext::focused_item`] but account for how specifically the blueprint tree should
-    /// handle the focused item.
-    pub(crate) blueprint_tree_scroll_to_item: Option<Item>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
@@ -80,14 +65,6 @@ impl ViewportState {
         self.space_view_states
             .get(&space_view_id)
             .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
-    }
-
-    /// Is the provided container the current candidate parent container for the ongoing drag?
-    ///
-    /// When a drag is in progress, the candidate parent container for the dragged item should be highlighted. Note that
-    /// this can happen when hovering said container, its direct children, or even the item just after it.
-    pub fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
-        self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
     }
 }
 
@@ -172,19 +149,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
         self.state.space_view_entity_modal.open(space_view_id);
     }
 
-    pub fn show_add_space_view_or_container_modal(&mut self, target_container: ContainerId) {
-        self.state
-            .add_space_view_container_modal
-            .open(target_container);
-    }
-
     pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
         // run modals (these are noop if the modals are not active)
         self.state
             .space_view_entity_modal
-            .ui(ui.ctx(), ctx, self.blueprint);
-        self.state
-            .add_space_view_container_modal
             .ui(ui.ctx(), ctx, self.blueprint);
 
         let Viewport {
@@ -301,9 +269,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
         // At the end of the Tree-UI, we can safely apply deferred actions.
 
         let mut reset = false;
-
-        // always reset the drop target
-        self.state.candidate_drop_parent_container_id = None;
 
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
@@ -485,9 +450,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     }
 
                     self.tree_edited = true;
-                }
-                TreeAction::SetDropTarget(container_id) => {
-                    self.state.candidate_drop_parent_container_id = Some(container_id);
                 }
             }
         }

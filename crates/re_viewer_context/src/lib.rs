@@ -87,3 +87,24 @@ pub enum NeedsRepaint {
     Yes,
     No,
 }
+
+// ---
+
+/// Determines the icon to use for a given container kind.
+#[inline]
+pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_ui::Icon {
+    match kind {
+        egui_tiles::ContainerKind::Tabs => &re_ui::icons::CONTAINER_TABS,
+        egui_tiles::ContainerKind::Horizontal => &re_ui::icons::CONTAINER_HORIZONTAL,
+        egui_tiles::ContainerKind::Vertical => &re_ui::icons::CONTAINER_VERTICAL,
+        egui_tiles::ContainerKind::Grid => &re_ui::icons::CONTAINER_GRID,
+    }
+}
+
+/// The style to use for displaying this space view name in the UI.
+pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
+    match name {
+        ContentsName::Named(_) => re_ui::LabelStyle::Normal,
+        ContentsName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
+    }
+}

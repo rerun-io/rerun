@@ -39,10 +39,4 @@ pub enum TreeAction {
         target_container: ContainerId,
         target_position_in_container: usize,
     },
-
-    /// Set the container that is currently identified as the drop target of an ongoing drag.
-    ///
-    /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
-    /// frame, so this command must be re-sent every frame as long as a drop target is identified.
-    SetDropTarget(ContainerId),
 }

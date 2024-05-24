@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/1200w.png">
+  <img src="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/1200w.png">
 </picture>
 
 
@@ -127,6 +127,7 @@ Update instructions:
 
 | Crate                       | Description                                                                            |
 |-----------------------------|----------------------------------------------------------------------------------------|
+| re_blueprint_tree           | The UI for the blueprint tree in the left panel.                                       |
 | re_viewer                   | The Rerun Viewer                                                                       |
 | re_viewport                 | The central viewport panel of the Rerun viewer.                                        |
 | re_time_panel               | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time. |
