@@ -47,4 +47,3 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 rayon.workspace = true
-smallvec.workspace = true
