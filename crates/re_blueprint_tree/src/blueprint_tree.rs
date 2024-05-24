@@ -52,7 +52,7 @@ impl<'a> DataResultNodeOrPath<'a> {
 pub struct BlueprintTree {
     /// The item that should be focused on in the blueprint tree.
     ///
-    /// Set at each frame by [`Viewport::tree_ui`]. This is similar to
+    /// Set at each frame by [`Self::tree_ui`]. This is similar to
     /// [`ViewerContext::focused_item`] but account for how specifically the blueprint tree should
     /// handle the focused item.
     blueprint_tree_scroll_to_item: Option<Item>,
