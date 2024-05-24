@@ -19,7 +19,7 @@ pub struct PerViewState {
 }
 
 // ----------------------------------------------------------------------------
-/// State for the [`SpaceViews`] that persists across frames but otherwise
+/// State for the `SpaceView`s that persists across frames but otherwise
 /// is not saved.
 #[derive(Default)]
 pub struct ViewStates {
