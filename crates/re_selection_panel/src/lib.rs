@@ -1,3 +1,5 @@
+//! The UI for the selection panel.
+
 mod override_ui;
 mod query_range_ui;
 mod selection_history_ui;
