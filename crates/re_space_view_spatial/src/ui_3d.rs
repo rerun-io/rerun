@@ -441,6 +441,10 @@ pub fn view_3d(
         draw_data,
     } = system_output;
 
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+    };
+
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
     // TODO(#5607): what should happen if the promise is still pending?
@@ -467,7 +471,7 @@ pub fn view_3d(
     let eye = view_eye.to_eye();
 
     // Various ui interactions draw additional lines.
-    let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+    let mut line_builder = LineDrawableBuilder::new(render_ctx);
     line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
     // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
     line_builder.reserve_strips(32)?;
@@ -519,7 +523,7 @@ pub fn view_3d(
             .then(|| outline_config(ui.ctx())),
     };
 
-    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
@@ -610,7 +614,7 @@ pub fn view_3d(
     // Screenshot context menu.
     if let Some(mode) = screenshot_context_menu(ctx, &response) {
         view_builder
-            .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
+            .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
             .ok();
     }
 
@@ -668,7 +672,7 @@ pub fn view_3d(
     let background = re_viewport_blueprint::view_property::<Background>(ctx, query.space_view_id)
         .unwrap_or(Background::DEFAULT_3D);
     let (background_drawable, clear_color) = crate::configure_background(
-        ctx,
+        render_ctx,
         background.kind,
         background.color.unwrap_or(Background::DEFAULT_COLOR_3D),
     );

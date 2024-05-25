@@ -59,7 +59,7 @@ pub struct ViewerContext<'a> {
     pub re_ui: &'a re_ui::ReUi,
 
     /// The global `re_renderer` context, holds on to all GPU resources.
-    pub render_ctx: &'a re_renderer::RenderContext,
+    pub render_ctx: Option<&'a re_renderer::RenderContext>,
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
@@ -149,4 +149,62 @@ impl<'a> ViewerContext<'a> {
 pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: RwLock<TimeControl>,
+}
+
+#[cfg(test)]
+mod text {
+    use re_log_types::{StoreId, StoreKind};
+
+    use super::*;
+    use crate::command_channel;
+
+    /// This test is meant to ensure that a `ViewerContext` is "easy" to crate, e.g. for test
+    /// harnesses.
+    #[test]
+    fn test_viewer_context_default() {
+        egui::__run_test_ctx(|ctx| {
+            let re_ui = re_ui::ReUi::load_and_apply(ctx);
+            let blueprint_query = LatestAtQuery::latest(re_log_types::Timeline::new(
+                "timeline",
+                re_log_types::TimeType::Time,
+            ));
+            let (command_sender, _) = command_channel();
+            let component_ui_registry = ComponentUiRegistry::new(Box::new(
+                |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _component, _instance| {},
+            ));
+
+            let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
+            let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
+            let store_context = StoreContext {
+                app_id: "rerun_test".into(),
+                blueprint: &blueprint_store,
+                default_blueprint: None,
+                recording: &recording_store,
+                bundle: &Default::default(),
+                hub: &Default::default(),
+            };
+
+            #[allow(clippy::unnecessary_operation)]
+            {
+                ViewerContext {
+                    app_options: &Default::default(),
+                    cache: &Default::default(),
+                    component_ui_registry: &component_ui_registry,
+                    space_view_class_registry: &Default::default(),
+                    store_context: &store_context,
+                    applicable_entities_per_visualizer: &Default::default(),
+                    indicated_entities_per_visualizer: &Default::default(),
+                    query_results: &Default::default(),
+                    rec_cfg: &Default::default(),
+                    blueprint_cfg: &Default::default(),
+                    selection_state: &Default::default(),
+                    blueprint_query: &blueprint_query,
+                    re_ui: &re_ui,
+                    render_ctx: None,
+                    command_sender: &command_sender,
+                    focused_item: &None,
+                };
+            }
+        });
+    }
 }

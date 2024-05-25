@@ -251,7 +251,7 @@ impl AppState {
             selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
-            render_ctx,
+            render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
         };
@@ -314,7 +314,7 @@ impl AppState {
             selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
-            render_ctx,
+            render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
         };
