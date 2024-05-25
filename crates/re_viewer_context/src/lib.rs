@@ -20,6 +20,7 @@ mod space_view;
 mod store_context;
 pub mod store_hub;
 mod tensor;
+pub mod test_context;
 mod time_control;
 mod typed_entity_collections;
 mod utils;

@@ -191,7 +191,9 @@ impl AppState {
 
                 viewport.is_item_valid(store_context, item)
             },
-            re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
+            Some(re_viewer_context::Item::StoreId(
+                store_context.recording.store_id().clone(),
+            )),
         );
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
