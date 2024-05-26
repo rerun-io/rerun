@@ -280,7 +280,7 @@ impl BlueprintTree {
         } = list_item::ListItem::new(ctx.re_ui)
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
-            .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
+            .drop_target_style(self.is_candidate_drop_parent_container(container_id))
             .show_hierarchical_with_children(ui, id, default_open, item_content, |_, ui| {
                 for child in &container_blueprint.contents {
                     self.contents_ui(ctx, blueprint, ui, child, container_visible);
