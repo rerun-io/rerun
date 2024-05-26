@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "The central viewport panel of the Rerun viewer."
+description = "The data model describing the layout of the viewport."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

@@ -88,12 +88,13 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/b431e1271e48eaba8db3a38fef18f27227db9b2d/1200w.png">
+  <img src="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/1681e343ee14bb8a72c32e818447cdf853683d64/1200w.png">
 </picture>
+
 
 <!-- !!! IMPORTANT!!!
 
@@ -128,12 +129,7 @@ Update instructions:
 |-----------------------------|----------------------------------------------------------------------------------------|
 | re_viewer                   | The Rerun Viewer                                                                       |
 | re_viewport                 | The central viewport panel of the Rerun viewer.                                        |
-| re_viewport_blueprint       | The data model description of the viewport panel.                                      |
 | re_time_panel               | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time. |
-| re_data_ui                  | Provides ui elements for Rerun component data for the Rerun Viewer.                    |
-| re_viewer_context           | Rerun Viewer state that is shared with the viewer's code components.                   |
-| re_ui                       | Rerun GUI theme and helpers, built around egui                                         |
-| re_renderer                 | A wgpu-based renderer for all your visualization needs.                                |
 | re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport. |
 | re_space_view_bar_chart     | A Space View that shows a single bar chart.                                            |
 | re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                     |
@@ -142,6 +138,18 @@ Update instructions:
 | re_space_view_text_document | A simple Space View that shows a single text box.                                      |
 | re_space_view_text_log      | A Space View that shows text entries in a table and scrolls with the active time.      |
 | re_space_view_time_series   | A Space View that shows plots over Rerun timelines.                                    |
+
+
+##### UI support crates
+
+| Crate                 | Description                                                          |
+|-----------------------|----------------------------------------------------------------------|
+| re_context_menu       | Support crate for context menu and actions.                          |
+| re_data_ui            | Provides ui elements for Rerun component data for the Rerun Viewer.  |
+| re_renderer           | A wgpu-based renderer for all your visualization needs.              |
+| re_ui                 | Rerun GUI theme and helpers, built around egui                       |
+| re_viewer_context     | Rerun Viewer state that is shared with the viewer's code components. |
+| re_viewport_blueprint | The data model description of the viewport panel.                    |
 
 
 ### Application-level store

@@ -4,12 +4,11 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
-use re_space_view::determine_visualizable_entities;
 use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
-    StoreHub, SystemCommandSender as _, ViewerContext,
+    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
+    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportState};
 use re_viewport_blueprint::ViewportBlueprint;
@@ -208,14 +207,15 @@ impl AppState {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = determine_visualizable_entities(
-                        &applicable_entities_per_visualizer,
-                        recording,
-                        &space_view_class_registry
-                            .new_visualizer_collection(*space_view.class_identifier()),
-                        space_view.class(space_view_class_registry),
-                        &space_view.space_origin,
-                    );
+                    let visualizable_entities = space_view
+                        .class(space_view_class_registry)
+                        .determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            recording,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            &space_view.space_origin,
+                        );
 
                     (
                         space_view.id,
@@ -262,14 +262,15 @@ impl AppState {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = determine_visualizable_entities(
-                        &applicable_entities_per_visualizer,
-                        recording,
-                        &space_view_class_registry
-                            .new_visualizer_collection(*space_view.class_identifier()),
-                        space_view.class(space_view_class_registry),
-                        &space_view.space_origin,
-                    );
+                    let visualizable_entities = space_view
+                        .class(space_view_class_registry)
+                        .determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            recording,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            &space_view.space_origin,
+                        );
 
                     let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,

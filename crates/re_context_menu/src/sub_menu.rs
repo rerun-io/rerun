@@ -1,6 +1,6 @@
 use egui::{Response, Ui};
 
-use crate::context_menu::{ContextMenuAction, ContextMenuContext};
+use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Group items into a sub-menu
 pub(super) struct SubMenu {

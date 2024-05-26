@@ -3,6 +3,7 @@ use itertools::Itertools;
 use re_data_ui::item_ui::guess_instance_path_icon;
 use smallvec::SmallVec;
 
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
@@ -13,8 +14,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-use crate::context_menu::context_menu_ui_for_item;
-use crate::{SelectionUpdateBehavior, Viewport};
+use crate::Viewport;
 
 /// The style to use for displaying this space view name in the UI.
 pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {

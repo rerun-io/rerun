@@ -7,12 +7,10 @@ pub mod controls;
 mod heuristics;
 mod screenshot;
 mod view_property_ui;
-mod visualizable;
 
 pub use heuristics::suggest_space_view_for_each_entity;
 pub use screenshot::ScreenshotMode;
 pub use view_property_ui::view_property_ui;
-pub use visualizable::determine_visualizable_entities;
 
 pub mod external {
     pub use re_entity_db::external::*;

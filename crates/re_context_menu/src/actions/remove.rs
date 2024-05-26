@@ -1,7 +1,7 @@
 use re_entity_db::InstancePath;
 use re_viewer_context::{ContainerId, Contents, Item, SpaceViewId};
 
-use crate::context_menu::{ContextMenuAction, ContextMenuContext};
+use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Remove a container, space view, or data result.
 pub(crate) struct RemoveAction;
