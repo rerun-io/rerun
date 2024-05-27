@@ -6,9 +6,11 @@
 
 mod chunk;
 mod shuffle;
+mod transport;
 mod util;
 
 pub use self::chunk::{Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline};
+pub use self::transport::TransportChunk;
 pub use self::util::arrays_to_list_array;
 
 pub mod external {

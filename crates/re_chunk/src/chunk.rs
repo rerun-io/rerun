@@ -35,7 +35,7 @@ pub type ChunkId = re_tuid::Tuid;
 /// Its time columns might or might not be ascendingly sorted, depending on how the data was logged.
 ///
 /// This is the in-memory representation of a chunk, optimized for efficient manipulation of the
-/// data within.
+/// data within. For transport, see [`crate::TransportChunk`] instead.
 #[derive(Debug, Clone)]
 pub struct Chunk {
     pub(crate) id: ChunkId,
@@ -337,7 +337,16 @@ impl Chunk {
     }
 }
 
-// TODO(cmc): display impl
+impl std::fmt::Display for Chunk {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let chunk = self.to_transport().map_err(|err| {
+            re_log::error_once!("couldn't display Chunk: {err}");
+            std::fmt::Error
+        })?;
+        chunk.fmt(f)
+    }
+}
 
 // TODO(cmc): sizebytes impl + sizebytes caching + sizebytes in transport metadata
 
