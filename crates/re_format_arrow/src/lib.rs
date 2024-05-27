@@ -1,8 +1,5 @@
 //! Formatting for tables of Arrow arrays
 
-// TODO(#3408): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 use std::fmt::Formatter;
 
 use arrow2::{
@@ -241,7 +238,10 @@ where
             .iter()
             .map(|disp| {
                 let mut string = String::new();
-                (disp)(&mut string, row).unwrap();
+                if (disp)(&mut string, row).is_err() {
+                    // Seems to be okay to silently ignore errors here, but reset the string just in case
+                    string.clear();
+                }
                 let chars: Vec<_> = string.chars().collect();
                 if chars.len() > WIDTH_UPPER_BOUNDARY as usize {
                     Cell::new(

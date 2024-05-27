@@ -177,7 +177,9 @@ impl SpaceViewClass for TextDocumentSpaceView {
                         } else {
                             // TODO(jleibs): better handling for multiple results
                             ui.label(format!(
-                                "Can only show one text document at a time; was given {}.",
+                                "Can only show one text document at a time; was given {}. Update \
+                                the query so that it returns a single text document and create \
+                                additional views for the others.",
                                 text_document.text_entries.len()
                             ));
                         }

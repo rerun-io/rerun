@@ -3,7 +3,7 @@ use re_ui::Icon;
 use re_viewer_context::{ContainerId, Item, RecommendedSpaceView};
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-use crate::context_menu::{ContextMenuAction, ContextMenuContext};
+use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Add a space view of the specific class
 pub(crate) struct AddSpaceViewAction {

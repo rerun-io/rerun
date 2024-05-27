@@ -1,4 +1,5 @@
 use egui::RichText;
+
 use re_ui::UICommand;
 use re_viewer_context::{Item, ItemCollection, SelectionHistory};
 use re_viewport_blueprint::ViewportBlueprint;
@@ -143,7 +144,9 @@ impl SelectionHistoryUi {
                     }
                 }
                 if sel.iter_items().count() == 1 {
-                    item_kind_ui(ui, sel.iter_items().next().unwrap());
+                    if let Some(item) = sel.iter_items().next() {
+                        item_kind_ui(ui, item);
+                    }
                 }
             });
         }

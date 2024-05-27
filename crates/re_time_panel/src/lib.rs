@@ -16,6 +16,7 @@ mod time_selection_ui;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_data_ui::DataUi as _;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
@@ -29,7 +30,6 @@ use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
 };
-use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_viewport_blueprint::ViewportBlueprint;
 
 use time_axis::TimelineAxis;
@@ -147,6 +147,10 @@ impl TimePanel {
         ui: &mut egui::Ui,
         state: PanelState,
     ) {
+        if state == PanelState::Hidden {
+            return;
+        }
+
         // Naturally, many parts of the time panel need the time control.
         // Copy it once, read/edit, and then write back at the end if there was a change.
         let time_ctrl_before = rec_cfg.time_ctrl.read().clone();
@@ -264,7 +268,9 @@ impl TimePanel {
     ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        if ui.max_rect().width() < 600.0 {
+        let has_any_data_on_timeline = entity_db.has_any_data_on_timeline(time_ctrl.timeline());
+
+        if ui.max_rect().width() < 600.0 && has_any_data_on_timeline {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
@@ -273,7 +279,7 @@ impl TimePanel {
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
 
-                    if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+                    if has_any_data_on_timeline {
                         self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                         self.time_control_ui.fps_ui(time_ctrl, ui);
                     }
@@ -296,7 +302,7 @@ impl TimePanel {
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
 
-            if entity_db.has_any_data_on_timeline(time_ctrl.timeline()) {
+            if has_any_data_on_timeline {
                 self.time_control_ui.playback_speed_ui(time_ctrl, ui);
                 self.time_control_ui.fps_ui(time_ctrl, ui);
             }
@@ -605,6 +611,10 @@ impl TimePanel {
                 .set_open(ui.ctx(), true);
         }
 
+        // Globally unique id - should only be one of these in view at one time.
+        // We do this so that we can support "collapse/expand all" command.
+        let id = egui::Id::new(CollapseScope::StreamsTree.entity(tree.path.clone()));
+
         let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
@@ -613,7 +623,7 @@ impl TimePanel {
             .force_hovered(is_item_hovered)
             .show_hierarchical_with_children(
                 ui,
-                CollapseScope::StreamsTree.entity(tree.path.clone()),
+                id,
                 default_open,
                 list_item::LabelContent::new(text)
                     .with_icon(guess_instance_path_icon(

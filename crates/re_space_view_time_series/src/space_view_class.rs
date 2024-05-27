@@ -724,9 +724,9 @@ fn axis_ui(
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
-            "time_series_selection_ui_y_axis",
+            ui.make_persistent_id("time_series_selection_ui_y_axis"),
             true,
-            list_item::LabelContent::new("Y Axis"),
+            list_item::LabelContent::new("Y axis"),
             sub_prop_ui,
         );
 }

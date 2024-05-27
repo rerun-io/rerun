@@ -103,7 +103,7 @@ This has the same effect as not setting the value in the blueprint at all.")
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
-            A::name().full_name(),
+            ui.make_persistent_id(A::name().full_name()),
             true,
             list_item::LabelContent::new(A::display_name()),
             sub_prop_ui,

@@ -1,3 +1,5 @@
+use anyhow::Result;
+use re_log::ResultExt;
 use std::ops::RangeInclusive;
 use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 
@@ -77,25 +79,26 @@ impl Time {
         parsed_format: &Vec<FormatItem<'_>>,
         time_zone_for_timestamps: TimeZone,
     ) -> String {
-        match time_zone_for_timestamps {
-            TimeZone::Local => {
-                if let Ok(local_offset) = UtcOffset::current_local_offset() {
-                    // Return in the local timezone.
-                    let local_datetime = datetime.to_offset(local_offset);
-                    local_datetime.format(&parsed_format).unwrap()
-                } else {
-                    // Fallback to UTC.
-                    // Skipping `err` description from logging because as of writing it doesn't add much, see
-                    // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
-                    re_log::warn_once!("Failed to access local timezone offset to UTC.");
-                    format!("{}Z", datetime.format(&parsed_format).unwrap())
+        let r = (|| -> Result<String, time::error::Format> {
+            match time_zone_for_timestamps {
+                TimeZone::Local => {
+                    if let Ok(local_offset) = UtcOffset::current_local_offset() {
+                        // Return in the local timezone.
+                        let local_datetime = datetime.to_offset(local_offset);
+                        local_datetime.format(&parsed_format)
+                    } else {
+                        // Fallback to UTC.
+                        // Skipping `err` description from logging because as of writing it doesn't add much, see
+                        // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
+                        re_log::warn_once!("Failed to access local timezone offset to UTC.");
+                        Ok(format!("{}Z", datetime.format(&parsed_format)?))
+                    }
                 }
+                TimeZone::Utc => Ok(format!("{}Z", datetime.format(&parsed_format)?)),
+                TimeZone::UnixEpoch => datetime.format(&parsed_format),
             }
-            TimeZone::Utc => {
-                format!("{}Z", datetime.format(&parsed_format).unwrap())
-            }
-            TimeZone::UnixEpoch => datetime.format(&parsed_format).unwrap(),
-        }
+        })();
+        r.ok_or_log_error().unwrap_or_default()
     }
 
     /// Human-readable formatting
@@ -120,6 +123,7 @@ impl Time {
 
             let date_is_today = datetime.date() == OffsetDateTime::now_utc().date();
             let date_format = format!("[year]-[month]-[day] {time_format}");
+            #[allow(clippy::unwrap_used)] // date_format is okay!
             let parsed_format = if date_is_today {
                 time::format_description::parse(&time_format).unwrap()
             } else {
@@ -167,6 +171,7 @@ impl Time {
                         TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
                     }
                 };
+                #[allow(clippy::unwrap_used)] // time_format is okay!
                 let parsed_format = time::format_description::parse(time_format).unwrap();
 
                 return Self::time_string(datetime, &parsed_format, time_zone_for_timestamps);
@@ -202,10 +207,14 @@ impl Time {
         time_format: &str,
         time_zone_for_timestamps: TimeZone,
     ) -> Option<String> {
-        self.to_datetime().map(|datetime| {
-            let parsed_format = time::format_description::parse(time_format).unwrap();
-            Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
-        })
+        let datetime = self.to_datetime()?;
+        let parsed_format = time::format_description::parse(time_format).ok()?;
+
+        Some(Self::time_string(
+            datetime,
+            &parsed_format,
+            time_zone_for_timestamps,
+        ))
     }
 
     #[inline]

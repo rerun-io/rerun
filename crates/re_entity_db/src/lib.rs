@@ -4,9 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-// TODO(#3408): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 pub mod entity_db;
 pub mod entity_properties;
 pub mod entity_tree;
