@@ -344,7 +344,7 @@ impl AppState {
             ctx.recording(),
             ctx.rec_cfg,
             ui,
-            app_blueprint.time_panel_state,
+            app_blueprint.time_panel_state(),
         );
 
         //
@@ -356,7 +356,7 @@ impl AppState {
             &viewport_blueprint,
             view_states,
             ui,
-            app_blueprint.selection_panel_state.is_expanded(),
+            app_blueprint.selection_panel_state().is_expanded(),
         );
 
         //
@@ -384,7 +384,7 @@ impl AppState {
 
         left_panel.show_animated_inside(
             ui,
-            app_blueprint.blueprint_panel_state.is_expanded(),
+            app_blueprint.blueprint_panel_state().is_expanded(),
             |ui: &mut egui::Ui| {
                 //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
                 let max_rect = ui.max_rect();

@@ -62,7 +62,7 @@ pub fn top_panel(
     let panel = egui::TopBottomPanel::top("top_bar")
         .frame(top_panel_frame)
         .exact_height(top_bar_style.height);
-    let is_expanded = app_blueprint.top_panel_state.is_expanded();
+    let is_expanded = app_blueprint.top_panel_state().is_expanded();
 
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
@@ -241,12 +241,13 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+    // selection panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::RIGHT_PANEL_TOGGLE,
-            &mut app_blueprint.selection_panel_state.is_expanded(),
+            &mut app_blueprint.selection_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle Selection View{}",
@@ -257,12 +258,13 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
         app_blueprint.toggle_selection_panel(&app.command_sender);
     }
 
+    // time panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-            &mut app_blueprint.time_panel_state.is_expanded(),
+            &mut app_blueprint.time_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle Timeline View{}",
@@ -273,12 +275,13 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
         app_blueprint.toggle_time_panel(&app.command_sender);
     }
 
+    // blueprint panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::LEFT_PANEL_TOGGLE,
-            &mut app_blueprint.blueprint_panel_state.is_expanded(),
+            &mut app_blueprint.blueprint_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle blueprint view{}",

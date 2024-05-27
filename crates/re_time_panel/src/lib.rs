@@ -147,7 +147,7 @@ impl TimePanel {
         ui: &mut egui::Ui,
         state: PanelState,
     ) {
-        if state == PanelState::Hidden {
+        if state.is_hidden() {
             return;
         }
 

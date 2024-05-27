@@ -631,6 +631,8 @@ fn run_impl(
                 None
             },
             force_wgpu_backend: None,
+
+            panel_state_overrides: Default::default(),
         }
     };
 
