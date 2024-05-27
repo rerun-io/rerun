@@ -1,6 +1,7 @@
 use egui::{NumExt as _, Ui};
 use egui_tiles::ContainerKind;
 
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::{
     image_meaning_for_entity, item_ui,
     item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
@@ -17,14 +18,12 @@ use re_types::{
 };
 use re_ui::{icons, list_item, ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
-    HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiLayout, ViewerContext,
+    contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, HoverHighlight, Item, SpaceViewClass, SpaceViewId,
+    UiLayout, ViewerContext,
 };
-use re_viewport::{
-    contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
-    SelectionUpdateBehavior, Viewport,
-};
-use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport::Viewport;
+use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
 use crate::ui::override_ui::override_visualizer_ui;
 use crate::{app_state::default_selection_panel_width, ui::override_ui::override_ui};
@@ -124,7 +123,7 @@ impl SelectionPanel {
             UiLayout::SelectionPanelFull
         };
         for (i, item) in selection.iter_items().enumerate() {
-            ui.push_id(i, |ui| {
+            ui.push_id(item, |ui| {
                 what_is_selected_ui(ui, ctx, viewport.blueprint, item);
 
                 match item {
@@ -196,7 +195,7 @@ impl SelectionPanel {
 fn container_children(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut Viewport<'_, '_>,
+    viewport: &Viewport<'_, '_>,
     container_id: &ContainerId,
 ) {
     let Some(container) = viewport.blueprint.container(container_id) else {
@@ -208,7 +207,7 @@ fn container_children(
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if ctx.re_ui.small_icon_button(ui, &icons::ADD).clicked() {
-                viewport.show_add_space_view_or_container_modal(*container_id);
+                show_add_space_view_or_container_modal(*container_id);
             }
         });
     });
@@ -364,7 +363,7 @@ fn what_is_selected_ui(
                     ctx.re_ui,
                     ui,
                     container_name.as_ref(),
-                    Some(re_viewport::icon_for_container_kind(
+                    Some(re_viewer_context::icon_for_container_kind(
                         &container_blueprint.container_kind,
                     )),
                     Some(contents_name_style(&container_name)),

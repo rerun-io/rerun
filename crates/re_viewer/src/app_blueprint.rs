@@ -4,10 +4,10 @@ use re_log_types::{DataRow, EntityPath, RowId};
 use re_types::blueprint::components::PanelState;
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
-pub const TOP_PANEL_PATH: &str = "top_panel";
-pub const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
-pub const SELECTION_PANEL_PATH: &str = "selection_panel";
-pub const TIME_PANEL_PATH: &str = "time_panel";
+const TOP_PANEL_PATH: &str = "top_panel";
+const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
+const SELECTION_PANEL_PATH: &str = "selection_panel";
+const TIME_PANEL_PATH: &str = "time_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
@@ -168,6 +168,7 @@ pub struct PanelStateOverrides {
 }
 
 pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
+    // Most things are hidden in the welcome screen:
     for (panel_name, value) in [
         (TOP_PANEL_PATH, PanelState::Expanded),
         (BLUEPRINT_PANEL_PATH, PanelState::Hidden),

@@ -231,6 +231,8 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
+        // NOTE: see function description why it's okay here
+        #[allow(clippy::unwrap_used)]
         Self::try_from_native(values).unwrap()
     }
 
@@ -246,6 +248,8 @@ impl DataCell {
     where
         C: Component + Clone + 'a,
     {
+        // NOTE: see function description why it's okay here
+        #[allow(clippy::unwrap_used)]
         Self::try_from_native_sparse(values).unwrap()
     }
 
@@ -295,6 +299,8 @@ impl DataCell {
     /// See [`Self::try_from_arrow`] for the fallible alternative.
     #[inline]
     pub fn from_arrow(name: ComponentName, values: Box<dyn arrow2::array::Array>) -> Self {
+        // NOTE: see function description why it's okay here
+        #[allow(clippy::unwrap_used)]
         Self::try_from_arrow(name, values).unwrap()
     }
 
@@ -333,6 +339,8 @@ impl DataCell {
     /// See [`Self::try_from_arrow_empty`] for a fallible alternative.
     #[inline]
     pub fn from_arrow_empty(name: ComponentName, datatype: arrow2::datatypes::DataType) -> Self {
+        // NOTE: see function description why it's okay here
+        #[allow(clippy::unwrap_used)]
         Self::try_from_arrow_empty(name, datatype).unwrap()
     }
 
@@ -381,7 +389,7 @@ impl DataCell {
 
         let datatype = ListArray::<i32>::default_datatype(datatype);
         let offsets = Offsets::try_from_lengths(std::iter::once(self.num_instances() as usize))
-            .unwrap()
+            .unwrap_or_default()
             .into();
         let validity = None;
 
@@ -436,6 +444,8 @@ impl DataCell {
     /// See [`Self::try_to_native`] for a fallible alternative.
     #[inline]
     pub fn to_native<'a, C: Component + 'a>(&'a self) -> Vec<C> {
+        // NOTE: see function description why it's okay here
+        #[allow(clippy::unwrap_used)]
         self.try_to_native().unwrap()
     }
 
@@ -456,6 +466,8 @@ impl DataCell {
     /// See [`Self::try_to_native_opt`] for a fallible alternative.
     #[inline]
     pub fn to_native_opt<'a, C: Component + 'a>(&'a self) -> Vec<Option<C>> {
+        // NOTE: see function description why it's okay here
+        #[allow(clippy::unwrap_used)]
         self.try_to_native_opt().unwrap()
     }
 }
@@ -510,6 +522,7 @@ impl DataCell {
 
         fn is_sorted_and_unique_primitive<T: NativeType + PartialOrd>(arr: &dyn Array) -> bool {
             // NOTE: unwrap cannot fail, checked by caller just below
+            #[allow(clippy::unwrap_used)]
             let values = arr.as_any().downcast_ref::<PrimitiveArray<T>>().unwrap();
             values.values().windows(2).all(|v| v[0] < v[1])
         }

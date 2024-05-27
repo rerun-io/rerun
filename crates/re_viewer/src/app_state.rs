@@ -4,18 +4,18 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
-use re_space_view::determine_visualizable_entities;
 use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
-    StoreHub, SystemCommandSender as _, ViewerContext,
+    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
+    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportState};
+use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::app_blueprint::AppBlueprint;
 use crate::ui::recordings_panel_ui;
-use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -36,6 +36,8 @@ pub struct AppState {
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
     blueprint_panel: re_time_panel::TimePanel,
+    #[serde(skip)]
+    blueprint_tree: re_blueprint_tree::BlueprintTree,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -66,6 +68,7 @@ impl Default for AppState {
             selection_panel: Default::default(),
             time_panel: Default::default(),
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             viewport_state: Default::default(),
             selection_state: Default::default(),
@@ -138,6 +141,7 @@ impl AppState {
             selection_panel,
             time_panel,
             blueprint_panel,
+            blueprint_tree,
             welcome_screen,
             viewport_state,
             selection_state,
@@ -208,14 +212,15 @@ impl AppState {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = determine_visualizable_entities(
-                        &applicable_entities_per_visualizer,
-                        recording,
-                        &space_view_class_registry
-                            .new_visualizer_collection(*space_view.class_identifier()),
-                        space_view.class(space_view_class_registry),
-                        &space_view.space_origin,
-                    );
+                    let visualizable_entities = space_view
+                        .class(space_view_class_registry)
+                        .determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            recording,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            &space_view.space_origin,
+                        );
 
                     (
                         space_view.id,
@@ -262,14 +267,15 @@ impl AppState {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = determine_visualizable_entities(
-                        &applicable_entities_per_visualizer,
-                        recording,
-                        &space_view_class_registry
-                            .new_visualizer_collection(*space_view.class_identifier()),
-                        space_view.class(space_view_class_registry),
-                        &space_view.space_origin,
-                    );
+                    let visualizable_entities = space_view
+                        .class(space_view_class_registry)
+                        .determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            recording,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            &space_view.space_origin,
+                        );
 
                     let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,
@@ -402,7 +408,7 @@ impl AppState {
                     }
 
                     if !show_welcome {
-                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
                     }
                 });
             },
@@ -426,6 +432,12 @@ impl AppState {
                     viewport.viewport_ui(ui, &ctx);
                 }
             });
+
+        //
+        // Other UI things
+        //
+
+        add_space_view_or_container_modal_ui(&ctx, &viewport_blueprint, ui);
 
         // Process deferred layout operations and apply updates back to blueprint
         viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
