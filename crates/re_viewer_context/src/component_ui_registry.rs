@@ -61,7 +61,7 @@ type ComponentEditCallback = Box<
             &EntityDb,
             &EntityPath,
             &EntityPath,
-            Option<&LatestAtComponentResults>,
+            &LatestAtComponentResults,
             &Instance,
         ) + Send
         + Sync,
@@ -163,13 +163,13 @@ impl ComponentUiRegistry {
         db: &EntityDb,
         entity_path: &EntityPath,
         override_path: &EntityPath,
-        component: Option<&LatestAtComponentResults>,
-        component_name: ComponentName,
+        component: &LatestAtComponentResults,
+        component_name: &ComponentName,
         instance: &Instance,
     ) {
         re_tracing::profile_function!(component_name.full_name());
 
-        if let Some((_, edit_callback)) = self.component_editors.get(&component_name) {
+        if let Some((_, edit_callback)) = self.component_editors.get(component_name) {
             (*edit_callback)(
                 ctx,
                 ui,
@@ -183,7 +183,6 @@ impl ComponentUiRegistry {
             );
         } else {
             // Even if we can't edit the component, it's still helpful to show what the value is.
-            let empty = LatestAtComponentResults::empty();
             self.ui(
                 ctx,
                 ui,
@@ -191,7 +190,7 @@ impl ComponentUiRegistry {
                 query,
                 db,
                 entity_path,
-                component.unwrap_or(&empty),
+                component,
                 instance,
             );
         }

@@ -13,12 +13,12 @@ pub fn edit_visible(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: Option<&LatestAtComponentResults>,
+    component: &LatestAtComponentResults,
     instance: &Instance,
 ) {
     let visible = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .and_then(|c| c.instance::<Visible>(db.resolver(), instance.get() as _))
+        .instance::<Visible>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_visible(ctx, query, db, entity_path));
     let mut edit_visible = visible;
 
