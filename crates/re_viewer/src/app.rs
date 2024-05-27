@@ -161,7 +161,7 @@ pub struct App {
     /// All known space view types.
     space_view_class_registry: SpaceViewClassRegistry,
 
-    panel_state_overrides_active: bool,
+    pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 }
 
