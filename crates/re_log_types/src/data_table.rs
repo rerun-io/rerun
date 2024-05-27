@@ -496,7 +496,7 @@ use arrow2::{
     types::NativeType,
 };
 
-pub const METADATA_KIND: &str = "rerun.field.kind";
+pub const METADATA_KIND: &str = "rerun.kind";
 pub const METADATA_KIND_DATA: &str = "data";
 pub const METADATA_KIND_CONTROL: &str = "control";
 pub const METADATA_KIND_TIME: &str = "time";
