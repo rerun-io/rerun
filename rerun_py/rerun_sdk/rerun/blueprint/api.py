@@ -357,7 +357,7 @@ class SelectionPanel(Panel):
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
-            Collapsed and hidden both fully hide the top panel.
+            Collapsed and hidden both fully hide the selection panel.
 
         """
         super().__init__(blueprint_path="selection_panel", expanded=expanded, state=state)
