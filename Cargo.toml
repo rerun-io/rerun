@@ -209,8 +209,8 @@ similar-asserts = "1.4.2"
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 static_assertions = "1.1"
-strum = { version = "0.25", features = ["derive"] }
-strum_macros = "0.25"
+strum = { version = "0.26", features = ["derive"] }
+strum_macros = "0.26"
 sublime_fuzzy = "0.7"
 syn = "2.0"
 sysinfo = { version = "0.30.1", default-features = false }

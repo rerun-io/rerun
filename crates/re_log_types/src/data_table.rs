@@ -1054,10 +1054,10 @@ impl std::fmt::Display for DataTable {
             re_log::error_once!("couldn't display data table: {err}");
             std::fmt::Error
         })?;
-        writeln!(f, "DataTable({}):", self.table_id)?;
-        re_format_arrow::format_table(
-            columns.columns(),
-            schema.fields.iter().map(|field| field.name.as_str()),
+        re_format_arrow::format_dataframe(
+            schema.metadata.clone(),
+            schema.fields.clone(),
+            columns.columns().iter().map(|x| x.as_ref()),
         )
         .fmt(f)
     }
