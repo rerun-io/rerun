@@ -1308,11 +1308,7 @@ pub fn drop_down_menu(
         .show_ui(ui, |ui| {
             ui.set_min_width(min_width);
 
-            let background_x_range = ui
-                .spacing()
-                .menu_margin
-                .expand_rect(ui.max_rect())
-                .x_range();
+            let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
 
             list_item::list_item_scope(ui, "inner_scope", |ui| {
                 full_span::full_span_scope(ui, background_x_range, |ui| {
