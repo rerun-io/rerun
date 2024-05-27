@@ -149,6 +149,48 @@ impl LatestAtComponentResults {
         }
     }
 
+    /// Returns the component data of the specified instance if there's any ready data for this index.
+    ///
+    /// Returns None both for pending promises and if the index is out of bounds.
+    /// Logs an error only in case of deserialization failure.
+    #[inline]
+    pub fn try_instance<C: Component>(
+        &self,
+        resolver: &PromiseResolver,
+        index: usize,
+    ) -> Option<C> {
+        let component_name = C::name();
+        match self.to_dense::<C>(resolver).flatten() {
+            PromiseResult::Pending => {
+                None
+            }
+
+            PromiseResult::Ready(data) => {
+                // TODO(#5259): Figure out if/how we'd like to integrate clamping semantics into the
+                // selection panel.
+                //
+                // For now, we simply always clamp, which is the closest to the legacy behavior that the UI
+                // expects.
+                let index = usize::min(index, data.len().saturating_sub(1));
+
+                if data.len() > index {
+                    Some(data[index].clone())
+                } else {
+                    None
+                }
+            }
+
+            PromiseResult::Error(err) => {
+                re_log::warn_once!(
+
+                    "Couldn't deserialize {component_name}: {}",
+                    re_error::format_ref(&*err),
+                );
+                None
+            }
+        }
+    }
+
     /// Returns the component data of the specified instance.
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized, or

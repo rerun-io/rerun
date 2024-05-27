@@ -18,7 +18,7 @@ pub fn edit_corner2d(
 ) {
     let corner = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Corner2D>(db.resolver(), instance.get() as _)
+        .try_instance::<Corner2D>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_corner2d(ctx, query, db, entity_path));
     let mut edit_corner = corner;
 
