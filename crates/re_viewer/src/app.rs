@@ -71,7 +71,6 @@ pub struct StartupOptions {
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
 
-    #[cfg(target_arch = "wasm32")]
     pub panel_state_overrides: PanelStateOverrides,
 }
 
@@ -96,7 +95,6 @@ impl Default for StartupOptions {
             expect_data_soon: None,
             force_wgpu_backend: None,
 
-            #[cfg(target_arch = "wasm32")]
             panel_state_overrides: Default::default(),
         }
     }
@@ -239,10 +237,7 @@ impl App {
 
         analytics.on_viewer_started(build_info);
 
-        #[cfg(target_arch = "wasm32")]
         let panel_state_overrides = startup_options.panel_state_overrides;
-        #[cfg(not(target_arch = "wasm32"))]
-        let panel_state_overrides = Default::default();
 
         Self {
             build_info,
