@@ -1,12 +1,11 @@
 use std::ops::ControlFlow;
 
-use eframe::emath::NumExt;
-use egui::{Key, Ui};
+use egui::{Key, NumExt as _, Ui};
 
 use re_log_types::EntityPath;
 use re_ui::{list_item, ReUi, SyntaxHighlighting};
 use re_viewer_context::ViewerContext;
-use re_viewport_blueprint::SpaceViewBlueprint;
+use re_viewport_blueprint::{default_created_space_views, SpaceViewBlueprint};
 
 /// State of the space origin widget.
 #[derive(Default, Clone)]
@@ -92,13 +91,12 @@ fn space_view_space_origin_widget_editing_ui(
 
     // All suggestions for this class of space views.
     // TODO(#4895): we should have/use a much simpler heuristic API to get a list of compatible entity sub-tree
-    let space_view_suggestions =
-        re_viewport::space_view_heuristics::default_created_space_views(ctx)
-            .into_iter()
-            .filter(|this_space_view| {
-                this_space_view.class_identifier() == space_view.class_identifier()
-            })
-            .collect::<Vec<_>>();
+    let space_view_suggestions = default_created_space_views(ctx)
+        .into_iter()
+        .filter(|this_space_view| {
+            this_space_view.class_identifier() == space_view.class_identifier()
+        })
+        .collect::<Vec<_>>();
 
     // Filtered suggestions based on the current text edit content.
     let filtered_space_view_suggestions = space_view_suggestions

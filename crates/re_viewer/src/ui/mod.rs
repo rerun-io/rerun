@@ -1,15 +1,10 @@
 mod mobile_warning_ui;
-mod override_ui;
 mod recordings_panel;
 mod rerun_menu;
-mod selection_history_ui;
 mod top_panel;
 mod welcome_screen;
 
 pub(crate) mod memory_panel;
-pub(crate) mod query_range_ui;
-pub(crate) mod selection_panel;
-pub(crate) mod space_view_space_origin_ui;
 
 pub use recordings_panel::recordings_panel_ui;
 // ----

@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/1b123b5323a7d1366bdbd6c2fd5a788f46d20caf/1200w.png">
+  <img src="https://static.rerun.io/crates/6fa2652f031b744bb2f6ba3f09e2383378e9a372/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/6fa2652f031b744bb2f6ba3f09e2383378e9a372/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/6fa2652f031b744bb2f6ba3f09e2383378e9a372/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/6fa2652f031b744bb2f6ba3f09e2383378e9a372/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/6fa2652f031b744bb2f6ba3f09e2383378e9a372/1200w.png">
 </picture>
 
 
@@ -131,6 +131,7 @@ Update instructions:
 | re_viewer                   | The Rerun Viewer                                                                       |
 | re_viewport                 | The central viewport panel of the Rerun viewer.                                        |
 | re_time_panel               | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time. |
+| re_selection_panel          | The UI for the selection panel.                                                        |
 | re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport. |
 | re_space_view_bar_chart     | A Space View that shows a single bar chart.                                            |
 | re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                     |
