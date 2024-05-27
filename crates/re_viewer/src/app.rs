@@ -161,6 +161,7 @@ pub struct App {
     /// All known space view types.
     space_view_class_registry: SpaceViewClassRegistry,
 
+    panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 }
 
@@ -279,6 +280,7 @@ impl App {
 
             analytics,
 
+            panel_state_overrides_active: true,
             panel_state_overrides,
         }
     }
@@ -592,6 +594,9 @@ impl App {
 
             UICommand::ToggleMemoryPanel => {
                 self.memory_panel_open ^= true;
+            }
+            UICommand::TogglePanelStateOverrides => {
+                self.panel_state_overrides_active ^= true;
             }
             UICommand::ToggleTopPanel => {
                 app_blueprint.toggle_top_panel(&self.command_sender);
@@ -1522,7 +1527,8 @@ impl eframe::App for App {
             store_context.as_ref(),
             &self.state.blueprint_query_for_viewer(),
             egui_ctx,
-            self.panel_state_overrides,
+            self.panel_state_overrides_active
+                .then_some(self.panel_state_overrides),
         );
 
         self.ui(

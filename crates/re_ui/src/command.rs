@@ -32,6 +32,7 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
 
+    TogglePanelStateOverrides,
     ToggleMemoryPanel,
     ToggleTopPanel,
     ToggleBlueprintPanel,
@@ -144,6 +145,8 @@ impl UICommand {
                 "Toggle memory panel",
                 "View and track current RAM usage inside Rerun Viewer",
             ),
+
+            Self::TogglePanelStateOverrides => ("Toggle panel state overrides", "Toggle panel state between app blueprint and overrides"),
             Self::ToggleTopPanel => ("Toggle top panel", "Toggle the top panel"),
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
@@ -283,6 +286,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => Some(ctrl_shift(Key::P)),
             Self::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
+            Self::TogglePanelStateOverrides => None,
             Self::ToggleTopPanel => None,
             Self::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
