@@ -51,7 +51,7 @@ pub use selection_state::{
 };
 pub use space_view::{
     DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
-    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass,
+    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt,
     SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
     SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics,
     SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,

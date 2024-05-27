@@ -1,6 +1,7 @@
 use egui::{NumExt as _, Ui};
 use egui_tiles::ContainerKind;
 
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::{
     image_meaning_for_entity, item_ui,
     item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
@@ -20,10 +21,7 @@ use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
     HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiLayout, ViewerContext,
 };
-use re_viewport::{
-    contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
-    SelectionUpdateBehavior, Viewport,
-};
+use re_viewport::{contents_name_style, icon_for_container_kind, Viewport};
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ui::override_ui::override_visualizer_ui;
@@ -124,7 +122,7 @@ impl SelectionPanel {
             UiLayout::SelectionPanelFull
         };
         for (i, item) in selection.iter_items().enumerate() {
-            ui.push_id(i, |ui| {
+            ui.push_id(item, |ui| {
                 what_is_selected_ui(ui, ctx, viewport.blueprint, item);
 
                 match item {

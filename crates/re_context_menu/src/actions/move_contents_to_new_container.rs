@@ -3,7 +3,7 @@ use egui_tiles::ContainerKind;
 use re_ui::icons;
 use re_viewer_context::Item;
 
-use crate::context_menu::{ContextMenuAction, ContextMenuContext};
+use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Move the selected contents to a newly created container of the given kind
 pub(crate) struct MoveContentsToNewContainerAction(pub ContainerKind);

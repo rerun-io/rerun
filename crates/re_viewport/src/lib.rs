@@ -7,7 +7,6 @@
 
 mod add_space_view_or_container_modal;
 mod auto_layout;
-mod context_menu;
 mod screenshot;
 mod space_view_entity_picker;
 pub mod space_view_heuristics;
@@ -16,7 +15,6 @@ mod system_execution;
 mod viewport;
 mod viewport_blueprint_ui;
 
-pub use self::context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 pub use self::viewport::{Viewport, ViewportState};
 pub use self::viewport_blueprint_ui::contents_name_style;
 

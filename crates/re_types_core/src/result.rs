@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Deref};
+use std::{any, fmt::Display, ops::Deref};
 
 use crate::ComponentName;
 
@@ -208,6 +208,9 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
+    #[error("Downcast to {to} failed")]
+    DowncastError { to: String, backtrace: _Backtrace },
+
     #[error("serde-based deserialization (`attr.rust.serde_type`) failed: {reason}")]
     SerdeFailure {
         reason: String,
@@ -319,6 +322,14 @@ impl DeserializationError {
     }
 
     #[inline]
+    pub fn downcast_error<ToType>() -> Self {
+        Self::DowncastError {
+            to: any::type_name::<ToType>().to_owned(),
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
     pub fn serde_failure(reason: impl AsRef<str>) -> Self {
         Self::SerdeFailure {
             reason: reason.as_ref().into(),
@@ -345,6 +356,7 @@ impl DeserializationError {
             | Self::DatatypeMismatch { backtrace, .. }
             | Self::OffsetOutOfBounds { backtrace, .. }
             | Self::OffsetSliceOutOfBounds { backtrace, .. }
+            | Self::DowncastError { backtrace, .. }
             | Self::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
             Self::DataCellError(_) | Self::ValidationError(_) => None,
         }
