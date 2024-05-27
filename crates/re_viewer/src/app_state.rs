@@ -8,9 +8,10 @@ use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
-    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewerContext,
+    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewStates,
+    ViewerContext,
 };
-use re_viewport::{Viewport, ViewportState};
+use re_viewport::Viewport;
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -33,7 +34,7 @@ pub struct AppState {
     recording_configs: HashMap<StoreId, RecordingConfig>,
     blueprint_cfg: RecordingConfig,
 
-    selection_panel: crate::selection_panel::SelectionPanel,
+    selection_panel: re_selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
     blueprint_panel: re_time_panel::TimePanel,
     #[serde(skip)]
@@ -42,10 +43,12 @@ pub struct AppState {
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
 
-    // TODO(jleibs): This is sort of a weird place to put this but makes more
-    // sense than the blueprint
+    /// Storage for the state of each `SpaceView`
+    ///
+    /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
+    /// such as [`Viewport`] and [`re_selection_panel::SelectionPanel`].
     #[serde(skip)]
-    viewport_state: ViewportState,
+    view_states: ViewStates,
 
     /// Selection & hovering state.
     pub selection_state: ApplicationSelectionState,
@@ -70,7 +73,7 @@ impl Default for AppState {
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
-            viewport_state: Default::default(),
+            view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
         }
@@ -143,7 +146,7 @@ impl AppState {
             blueprint_panel,
             blueprint_tree,
             welcome_screen,
-            viewport_state,
+            view_states,
             selection_state,
             focused_item,
         } = self;
@@ -160,7 +163,6 @@ impl AppState {
         );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
-            viewport_state,
             space_view_class_registry,
             receiver,
             sender,
@@ -257,7 +259,7 @@ impl AppState {
         // First update the viewport and thus all active space views.
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
-        viewport.on_frame_start(&ctx);
+        viewport.on_frame_start(&ctx, view_states);
 
         {
             re_tracing::profile_scope!("updated_query_results");
@@ -289,7 +291,7 @@ impl AppState {
                         &blueprint_query,
                         rec_cfg.time_ctrl.read().timeline(),
                         space_view_class_registry,
-                        viewport.state.legacy_auto_properties(space_view.id),
+                        view_states.legacy_auto_properties(space_view.id),
                         query_result,
                     );
                 }
@@ -351,6 +353,8 @@ impl AppState {
 
         selection_panel.show_panel(
             &ctx,
+            &viewport_blueprint,
+            view_states,
             ui,
             &mut viewport,
             app_blueprint.selection_panel_state().is_expanded(),
@@ -429,7 +433,7 @@ impl AppState {
                 if show_welcome {
                     welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_state);
                 } else {
-                    viewport.viewport_ui(ui, &ctx);
+                    viewport.viewport_ui(ui, &ctx, view_states);
                 }
             });
 
@@ -591,8 +595,4 @@ fn check_for_clicked_hyperlinks(
 
 pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {
     (0.35 * screen_width).min(200.0).round()
-}
-
-pub fn default_selection_panel_width(screen_width: f32) -> f32 {
-    (0.45 * screen_width).min(300.0).round()
 }
