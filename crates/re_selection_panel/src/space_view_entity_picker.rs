@@ -11,7 +11,7 @@ use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
 ///
 /// Delegates to [`re_ui::modal::ModalHandler`]
 #[derive(Default)]
-pub struct SpaceViewEntityPicker {
+pub(crate) struct SpaceViewEntityPicker {
     space_view_id: Option<SpaceViewId>,
     modal_handler: re_ui::modal::ModalHandler,
 }
@@ -156,6 +156,7 @@ fn add_entities_line_ui(
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
 
+        #[allow(clippy::unwrap_used)]
         let add_info = entities_add_info.get(entity_path).unwrap();
 
         let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);

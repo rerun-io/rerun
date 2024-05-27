@@ -4151,6 +4151,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_blueprint_tree"
+version = "0.17.0-alpha.2"
+dependencies = [
+ "egui",
+ "itertools 0.12.0",
+ "re_context_menu",
+ "re_data_ui",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_types",
+ "re_ui",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "smallvec",
+]
+
+[[package]]
 name = "re_build_info"
 version = "0.17.0-alpha.2"
 dependencies = [
@@ -4650,6 +4669,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_selection_panel"
+version = "0.17.0-alpha.2"
+dependencies = [
+ "egui",
+ "egui_tiles",
+ "itertools 0.12.0",
+ "nohash-hasher",
+ "once_cell",
+ "re_context_menu",
+ "re_data_store",
+ "re_data_ui",
+ "re_entity_db",
+ "re_log",
+ "re_log_types",
+ "re_renderer",
+ "re_space_view_spatial",
+ "re_space_view_time_series",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "serde",
+ "static_assertions",
+]
+
+[[package]]
 name = "re_smart_channel"
 version = "0.17.0-alpha.2"
 dependencies = [
@@ -5017,17 +5064,15 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_plot",
- "egui_tiles",
  "ehttp",
  "image",
  "itertools 0.12.0",
  "js-sys",
- "once_cell",
  "poll-promise",
  "re_analytics",
+ "re_blueprint_tree",
  "re_build_info",
  "re_build_tools",
- "re_context_menu",
  "re_data_loader",
  "re_data_source",
  "re_data_store",
@@ -5042,6 +5087,7 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_sdk_comms",
+ "re_selection_panel",
  "re_smart_channel",
  "re_space_view_bar_chart",
  "re_space_view_dataframe",
@@ -5064,7 +5110,6 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
- "static_assertions",
  "thiserror",
  "time",
  "wasm-bindgen",
@@ -5126,10 +5171,8 @@ dependencies = [
  "image",
  "itertools 0.12.0",
  "nohash-hasher",
- "once_cell",
  "rayon",
  "re_context_menu",
- "re_data_ui",
  "re_entity_db",
  "re_log",
  "re_log_types",
@@ -5141,7 +5184,6 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "re_viewport_blueprint",
- "smallvec",
 ]
 
 [[package]]
@@ -5153,6 +5195,8 @@ dependencies = [
  "egui_tiles",
  "itertools 0.12.0",
  "nohash-hasher",
+ "once_cell",
+ "parking_lot",
  "re_data_store",
  "re_entity_db",
  "re_log",
@@ -5161,6 +5205,7 @@ dependencies = [
  "re_types",
  "re_types_blueprint",
  "re_types_core",
+ "re_ui",
  "re_viewer_context",
  "slotmap",
  "smallvec",
