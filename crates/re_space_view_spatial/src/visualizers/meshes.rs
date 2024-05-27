@@ -262,3 +262,5 @@ impl VisualizerSystem for Mesh3DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Mesh3DVisualizer => []);

@@ -9,6 +9,7 @@ mod blueprint_id;
 mod caches;
 mod collapsed_id;
 mod command_sender;
+mod component_fallback_provider;
 mod component_ui_registry;
 mod contents;
 mod item;
@@ -40,6 +41,10 @@ pub use caches::{Cache, Caches};
 pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+};
+pub use component_fallback_provider::{
+    ComponentFallbackProvider, ComponentFallbackResult, FallbackProviderContext,
+    TypedComponentFallbackProvider,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};

@@ -301,3 +301,5 @@ impl VisualizerSystem for Points2DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => []);

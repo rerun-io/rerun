@@ -917,3 +917,5 @@ impl ImageVisualizer {
         Ok(())
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => []);

@@ -204,3 +204,5 @@ impl VisualizerSystem for Asset3DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Asset3DVisualizer => []);

@@ -51,6 +51,8 @@ impl VisualizerSystem for TensorSystem {
     }
 }
 
+re_viewer_context::impl_component_fallback_provider!(TensorSystem => []);
+
 impl TensorSystem {
     fn load_tensor_entity(
         &mut self,

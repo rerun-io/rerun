@@ -126,6 +126,8 @@ impl VisualizerSystem for TextLogSystem {
     }
 }
 
+re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);
+
 // TODO(#5607): what should happen if the promise is still pending?
 #[inline]
 fn check_range<'a, C: Component>(results: &'a RangeData<'a, C>) -> re_query::Result<()> {

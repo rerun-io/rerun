@@ -254,3 +254,5 @@ impl VisualizerSystem for CamerasVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => []);

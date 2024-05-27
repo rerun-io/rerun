@@ -84,3 +84,5 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => []);

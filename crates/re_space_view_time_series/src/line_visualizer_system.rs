@@ -7,8 +7,9 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    AnnotationMap, DefaultColor, FallbackProviderContext, IdentifiedViewSystem,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewerContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::overrides::initial_override_color;
@@ -69,24 +70,21 @@ impl VisualizerSystem for SeriesLineSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+}
 
-    fn initial_override_value(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
-        entity_path: &re_log_types::EntityPath,
-        component: &re_types::ComponentName,
-    ) -> Option<re_log_types::DataCell> {
-        if *component == Color::name() {
-            Some([initial_override_color(entity_path)].into())
-        } else if *component == StrokeWidth::name() {
-            Some([StrokeWidth(DEFAULT_STROKE_WIDTH)].into())
-        } else {
-            None
-        }
+impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
+    fn fallback_value(&self, ctx: &FallbackProviderContext<'_>) -> Color {
+        initial_override_color(ctx.entity_path)
     }
 }
+
+impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
+    fn fallback_value(&self, _ctx: &FallbackProviderContext<'_>) -> StrokeWidth {
+        StrokeWidth(DEFAULT_STROKE_WIDTH)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth]);
 
 impl SeriesLineSystem {
     fn load_scalars(

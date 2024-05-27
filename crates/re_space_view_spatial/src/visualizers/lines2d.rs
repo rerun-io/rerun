@@ -286,3 +286,5 @@ impl VisualizerSystem for Lines2DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Lines2DVisualizer => []);

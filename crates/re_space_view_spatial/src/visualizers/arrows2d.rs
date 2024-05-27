@@ -300,3 +300,5 @@ impl VisualizerSystem for Arrows2DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Arrows2DVisualizer => []);

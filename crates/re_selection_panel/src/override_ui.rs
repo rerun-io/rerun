@@ -4,11 +4,12 @@ use itertools::Itertools;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{DataRow, RowId, StoreKind};
+use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataResult, OverridePath, SpaceViewClassExt as _, SystemCommand, SystemCommandSender as _,
-    UiLayout, ViewSystemIdentifier, ViewerContext,
+    ComponentFallbackResult, DataResult, FallbackProviderContext, OverridePath,
+    SpaceViewClassExt as _, SystemCommand, SystemCommandSender as _, UiLayout,
+    ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -229,13 +230,21 @@ pub fn add_new_override(
                             .and_then(|result| result.2[0].clone())
                             .or_else(|| {
                                 view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
-                                    sys.initial_override_value(
-                                        ctx,
-                                        query,
-                                        db.store(),
-                                        &data_result.entity_path,
-                                        component,
-                                    )
+                                    if let ComponentFallbackResult::Value(value) = sys
+                                        .fallback_value(
+                                            &FallbackProviderContext {
+                                                ctx,
+                                                entity_path: &data_result.entity_path,
+                                                archetype_name: None,
+                                                query,
+                                            },
+                                            *component,
+                                        )
+                                    {
+                                        Some(DataCell::from_arrow(*component, value))
+                                    } else {
+                                        None
+                                    }
                                 })
                             })
                             .or_else(|| {

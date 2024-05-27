@@ -292,3 +292,5 @@ impl VisualizerSystem for Points3DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Points3DVisualizer => []);

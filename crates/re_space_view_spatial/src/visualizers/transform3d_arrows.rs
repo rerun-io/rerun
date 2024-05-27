@@ -162,3 +162,5 @@ pub fn add_axis_arrows(
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
 }
+
+re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer => []);

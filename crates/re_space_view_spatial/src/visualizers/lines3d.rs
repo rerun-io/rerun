@@ -295,3 +295,5 @@ impl VisualizerSystem for Lines3DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Lines3DVisualizer => []);

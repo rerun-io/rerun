@@ -306,3 +306,5 @@ impl VisualizerSystem for Boxes2DVisualizer {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => []);

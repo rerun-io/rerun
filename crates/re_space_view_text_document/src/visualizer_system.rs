@@ -72,3 +72,5 @@ impl VisualizerSystem for TextDocumentSystem {
         self
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(TextDocumentSystem => []);

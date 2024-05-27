@@ -4,8 +4,8 @@ use re_viewer::external::{
     re_query, re_renderer,
     re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
-        IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-        ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+        self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+        ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
     },
 };
 
@@ -110,3 +110,6 @@ impl VisualizerSystem for InstanceColorSystem {
         self
     }
 }
+
+// TODO: document the role of this
+re_viewer_context::impl_component_fallback_provider!(InstanceColorSystem => []);
