@@ -161,9 +161,7 @@ impl LatestAtComponentResults {
     ) -> Option<C> {
         let component_name = C::name();
         match self.to_dense::<C>(resolver).flatten() {
-            PromiseResult::Pending => {
-                None
-            }
+            PromiseResult::Pending => None,
 
             PromiseResult::Ready(data) => {
                 // TODO(#5259): Figure out if/how we'd like to integrate clamping semantics into the
@@ -182,7 +180,6 @@ impl LatestAtComponentResults {
 
             PromiseResult::Error(err) => {
                 re_log::warn_once!(
-
                     "Couldn't deserialize {component_name}: {}",
                     re_error::format_ref(&*err),
                 );
