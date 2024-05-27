@@ -356,7 +356,6 @@ impl AppState {
             &viewport_blueprint,
             view_states,
             ui,
-            &mut viewport,
             app_blueprint.selection_panel_state().is_expanded(),
         );
 
