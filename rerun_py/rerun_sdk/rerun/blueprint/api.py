@@ -337,7 +337,7 @@ class BlueprintPanel(Panel):
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
-            Collapsed and hidden both fully hide the top panel.
+            Collapsed and hidden both fully hide the blueprint panel.
 
         """
         super().__init__(blueprint_path="blueprint_panel", expanded=expanded, state=state)
