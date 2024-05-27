@@ -43,7 +43,7 @@ pub fn view_property_ui<A: Archetype>(
             let display_name =
                 field_info.map_or_else(|| component_name.short_name(), |info| info.display_name);
 
-            let list_item_response = list_item::ListItem::new(re_ui)
+            let mut list_item_response = list_item::ListItem::new(re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
@@ -67,12 +67,9 @@ pub fn view_property_ui<A: Archetype>(
                         }),
                 );
 
-            let list_item_response =
-                if let Some(tooltip) = field_info.map(|info| info.documentation) {
-                    list_item_response.on_hover_text(tooltip)
-                } else {
-                    list_item_response
-                };
+            if let Some(tooltip) = field_info.map(|info| info.documentation) {
+                list_item_response = list_item_response.on_hover_text(tooltip);
+            }
 
             list_item_response.context_menu(|ui| {
                 if ui.button("Reset to default blueprint.")
