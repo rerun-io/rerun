@@ -11,10 +11,11 @@ use re_viewer_context::{
     SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportState};
+use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::app_blueprint::AppBlueprint;
 use crate::ui::recordings_panel_ui;
-use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -35,6 +36,8 @@ pub struct AppState {
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
     blueprint_panel: re_time_panel::TimePanel,
+    #[serde(skip)]
+    blueprint_tree: re_blueprint_tree::BlueprintTree,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -65,6 +68,7 @@ impl Default for AppState {
             selection_panel: Default::default(),
             time_panel: Default::default(),
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             viewport_state: Default::default(),
             selection_state: Default::default(),
@@ -137,6 +141,7 @@ impl AppState {
             selection_panel,
             time_panel,
             blueprint_panel,
+            blueprint_tree,
             welcome_screen,
             viewport_state,
             selection_state,
@@ -403,7 +408,7 @@ impl AppState {
                     }
 
                     if !show_welcome {
-                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
                     }
                 });
             },
@@ -427,6 +432,12 @@ impl AppState {
                     viewport.viewport_ui(ui, &ctx);
                 }
             });
+
+        //
+        // Other UI things
+        //
+
+        add_space_view_or_container_modal_ui(&ctx, &viewport_blueprint, ui);
 
         // Process deferred layout operations and apply updates back to blueprint
         viewport.update_and_sync_tile_tree_to_blueprint(&ctx);

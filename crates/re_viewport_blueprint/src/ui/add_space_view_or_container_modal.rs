@@ -1,12 +1,11 @@
 //! Modal for adding a new space view of container to an existing target container.
 
+use crate::{SpaceViewBlueprint, ViewportBlueprint};
 use re_ui::ReUi;
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, RecommendedSpaceView, ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedSpaceView,
+    ViewerContext,
 };
-use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
-
-use crate::icon_for_container_kind;
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {

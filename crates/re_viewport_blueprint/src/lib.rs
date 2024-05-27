@@ -6,6 +6,7 @@ mod container;
 mod space_view;
 mod space_view_contents;
 mod tree_actions;
+pub mod ui;
 mod view_properties;
 mod viewport_blueprint;
 
