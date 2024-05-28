@@ -236,19 +236,18 @@ checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
 
 [[package]]
 name = "arboard"
-version = "3.3.1"
+version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1faa3c733d9a3dd6fbaf85da5d162a2e03b2e0033a90dceb0e2a90fdd1e5380a"
+checksum = "9fb4009533e8ff8f1450a5bcbc30f4242a1d34442221f72314bea1f5dc9c7f89"
 dependencies = [
  "clipboard-win",
  "core-graphics",
- "image 0.24.6",
+ "image",
  "log",
- "objc",
- "objc-foundation",
- "objc_id",
+ "objc2 0.5.2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "parking_lot",
- "thiserror",
  "windows-sys 0.48.0",
  "x11rb",
 ]
@@ -1071,9 +1070,9 @@ checksum = "aaa6b4b263a5d737e9bf6b7c09b72c41a5480aec4d7219af827f6564e950b6a5"
 
 [[package]]
 name = "clipboard-win"
-version = "5.1.0"
+version = "5.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ec832972fefb8cf9313b45a0d1945e29c9c251f1d4c6eafc5fe2124c02d2e81"
+checksum = "79f4473f5144e20d9aceaf2972478f06ddf687831eafeeb434fbaf0acc4144ad"
 dependencies = [
  "error-code",
 ]
@@ -1096,12 +1095,6 @@ dependencies = [
  "termcolor",
  "unicode-width",
 ]
-
-[[package]]
-name = "color_quant"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "colorchoice"
@@ -1512,7 +1505,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.1",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -1567,7 +1560,7 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_glow",
- "image 0.25.1",
+ "image",
  "js-sys",
  "log",
  "objc2 0.5.2",
@@ -1675,7 +1668,7 @@ dependencies = [
  "egui",
  "ehttp",
  "enum-map",
- "image 0.25.1",
+ "image",
  "log",
  "mime_guess2",
  "puffin",
@@ -2287,7 +2280,7 @@ dependencies = [
  "base64 0.13.1",
  "byteorder",
  "gltf-json",
- "image 0.25.1",
+ "image",
  "lazy_static",
  "serde_json",
  "urlencoding",
@@ -2426,7 +2419,7 @@ dependencies = [
  "bitflags 2.5.0",
  "com",
  "libc",
- "libloading 0.8.1",
+ "libloading 0.7.4",
  "thiserror",
  "widestring",
  "winapi",
@@ -2547,21 +2540,6 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.24.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "527909aa81e20ac3a44803521443a765550f09b5130c2c2fa1ea59c2f8f50a3a"
-dependencies = [
- "bytemuck",
- "byteorder",
- "color_quant",
- "num-rational",
- "num-traits",
- "png",
- "tiff",
-]
-
-[[package]]
-name = "image"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd54d660e773627692c524beaad361aca785a4f9f5730ce91f42aabe5bce3d11"
@@ -2570,6 +2548,7 @@ dependencies = [
  "byteorder",
  "num-traits",
  "png",
+ "tiff",
  "zune-core",
  "zune-jpeg",
 ]
@@ -3292,17 +3271,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
 dependencies = [
  "autocfg",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
-dependencies = [
- "autocfg",
- "num-integer",
  "num-traits",
 ]
 
@@ -4322,7 +4290,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "ahash",
  "anyhow",
- "image 0.25.1",
+ "image",
  "once_cell",
  "parking_lot",
  "rayon",
@@ -4396,7 +4364,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_plot",
- "image 0.25.1",
+ "image",
  "itertools 0.13.0",
  "re_data_store",
  "re_entity_db",
@@ -4698,7 +4666,7 @@ dependencies = [
  "bytemuck",
  "console_error_panic_hook",
  "glam",
- "image 0.25.1",
+ "image",
  "itertools 0.13.0",
  "macaw",
  "pollster",
@@ -5038,7 +5006,7 @@ dependencies = [
  "emath",
  "glam",
  "half 2.3.1",
- "image 0.25.1",
+ "image",
  "infer",
  "itertools 0.13.0",
  "linked-hash-map",
@@ -5157,7 +5125,7 @@ dependencies = [
  "egui-wgpu",
  "egui_plot",
  "ehttp",
- "image 0.25.1",
+ "image",
  "itertools 0.13.0",
  "js-sys",
  "poll-promise",
@@ -5264,7 +5232,7 @@ dependencies = [
  "egui",
  "egui_tiles",
  "glam",
- "image 0.25.1",
+ "image",
  "itertools 0.13.0",
  "nohash-hasher",
  "rayon",
@@ -5626,7 +5594,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "image 0.25.1",
+ "image",
  "re_log",
  "rerun",
 ]
@@ -5648,7 +5616,7 @@ dependencies = [
  "anyhow",
  "clap",
  "half 2.3.1",
- "image 0.25.1",
+ "image",
  "ndarray",
  "re_log",
  "rerun",
@@ -5710,7 +5678,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "image 0.25.1",
+ "image",
  "re_log",
  "rerun",
 ]
@@ -6402,7 +6370,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "image 0.25.1",
+ "image",
  "re_log",
  "rerun",
 ]
@@ -6440,9 +6408,9 @@ dependencies = [
 
 [[package]]
 name = "tiff"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7449334f9ff2baf290d55d73983a7d6fa15e01198faef72af07e2a8db851e471"
+checksum = "ba1310fcea54c6a9a4fd1aad794ecc02c31682f6bfbecdf460bf19533eed1e3e"
 dependencies = [
  "flate2",
  "jpeg-decoder",
@@ -7273,7 +7241,7 @@ dependencies = [
  "js-sys",
  "khronos-egl",
  "libc",
- "libloading 0.8.1",
+ "libloading 0.7.4",
  "log",
  "metal",
  "naga",
