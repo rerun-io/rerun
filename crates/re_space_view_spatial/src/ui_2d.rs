@@ -193,10 +193,6 @@ pub fn view_2d(
         return Ok(());
     }
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
-    };
-
     // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
 
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
@@ -250,8 +246,6 @@ pub fn view_2d(
         return Ok(());
     };
 
-    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
-
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
         collect_ui_labels(&parts),
@@ -261,6 +255,12 @@ pub fn view_2d(
         &query.highlights,
         SpatialSpaceViewKind::TwoD,
     );
+
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+    };
+
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
     if ui.ctx().dragged_id().is_none() {
         response = picking(

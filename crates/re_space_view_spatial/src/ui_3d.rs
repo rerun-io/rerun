@@ -441,10 +441,6 @@ pub fn view_3d(
         draw_data,
     } = system_output;
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
-    };
-
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
     // TODO(#5607): what should happen if the promise is still pending?
@@ -469,30 +465,6 @@ pub fn view_3d(
         scene_view_coordinates,
     );
     let eye = view_eye.to_eye();
-
-    // Various ui interactions draw additional lines.
-    let mut line_builder = LineDrawableBuilder::new(render_ctx);
-    line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
-    // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
-    line_builder.reserve_strips(32)?;
-    line_builder.reserve_vertices(64)?;
-
-    // Origin gizmo if requested.
-    // TODO(andreas): Move this to the transform3d_arrow scene part.
-    //              As of #2522 state is now longer accessible there, move the property to a context?
-    if state.state_3d.show_axes {
-        let axis_length = 1.0; // The axes are also a measuring stick
-        crate::visualizers::add_axis_arrows(
-            &mut line_builder,
-            macaw::Affine3A::IDENTITY,
-            None,
-            axis_length,
-            re_renderer::OutlineMaskPreference::NONE,
-        );
-
-        // If we are showing the axes for the space, then add the space origin to the bounding box.
-        state.bounding_boxes.current.extend(glam::Vec3::ZERO);
-    }
 
     // Determine view port resolution and position.
     let resolution_in_pixel =
@@ -522,6 +494,34 @@ pub fn view_3d(
             .any_outlines()
             .then(|| outline_config(ui.ctx())),
     };
+
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+    };
+
+    // Various ui interactions draw additional lines.
+    let mut line_builder = LineDrawableBuilder::new(render_ctx);
+    line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
+    line_builder.reserve_strips(32)?;
+    line_builder.reserve_vertices(64)?;
+
+    // Origin gizmo if requested.
+    // TODO(andreas): Move this to the transform3d_arrow scene part.
+    //              As of #2522 state is now longer accessible there, move the property to a context?
+    if state.state_3d.show_axes {
+        let axis_length = 1.0; // The axes are also a measuring stick
+        crate::visualizers::add_axis_arrows(
+            &mut line_builder,
+            macaw::Affine3A::IDENTITY,
+            None,
+            axis_length,
+            re_renderer::OutlineMaskPreference::NONE,
+        );
+
+        // If we are showing the axes for the space, then add the space origin to the bounding box.
+        state.bounding_boxes.current.extend(glam::Vec3::ZERO);
+    }
 
     let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 

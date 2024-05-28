@@ -703,10 +703,6 @@ fn image_hover_ui(
         );
     }
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return;
-    };
-
     if let Some([h, w, ..]) = tensor.image_height_width_channels() {
         ui.separator();
         ui.horizontal(|ui| {
@@ -733,18 +729,20 @@ fn image_hover_ui(
                     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
                         c.entry(tensor_data_row_id, &decoded_tensor)
                     });
-                    show_zoomed_image_region(
-                        render_ctx,
-                        ui,
-                        tensor_data_row_id,
-                        &decoded_tensor,
-                        &tensor_stats,
-                        &annotations,
-                        meaning,
-                        meter,
-                        &tensor_name,
-                        [coords[0] as _, coords[1] as _],
-                    );
+                    if let Some(render_ctx) = ctx.render_ctx {
+                        show_zoomed_image_region(
+                            render_ctx,
+                            ui,
+                            tensor_data_row_id,
+                            &decoded_tensor,
+                            &tensor_stats,
+                            &annotations,
+                            meaning,
+                            meter,
+                            &tensor_name,
+                            [coords[0] as _, coords[1] as _],
+                        );
+                    }
                 }
                 Err(err) => re_log::warn_once!(
                     "Encountered problem decoding tensor at path {tensor_name}: {err}"
