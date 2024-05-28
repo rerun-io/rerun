@@ -95,6 +95,8 @@ mod test {
     use crate::Item;
     use re_entity_db::InstancePath;
 
+    /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
+    /// from `TestContext::run`.
     #[test]
     fn test_edit_selection() {
         let mut test_context = TestContext::default();
