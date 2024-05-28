@@ -153,7 +153,7 @@ impl MemoryPanel {
         re_memory::accounting_allocator::set_tracking_callstacks(is_tracking_callstacks);
 
         if let Some(tracking_stats) = re_memory::accounting_allocator::tracking_stats() {
-            ui.style_mut().wrap = Some(false);
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             Self::tracking_stats(ui, tracking_stats);
         } else if !cfg!(target_arch = "wasm32") {
             ui.label(format!(

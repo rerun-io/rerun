@@ -34,7 +34,7 @@ impl CommandPalette {
             .fixed_size([width, max_height])
             .pivot(egui::Align2::CENTER_TOP)
             .resizable(false)
-            .scroll2(false)
+            .scroll(false)
             .title_bar(false)
             .show(egui_ctx, |ui| {
                 // We need an extra egui frame here because we set clip_rect_margin to zero.
@@ -136,7 +136,7 @@ impl CommandPalette {
             // TODO(emilk): shorten long text using '…'
             let galley = text.into_galley(
                 ui,
-                Some(false),
+                Some(egui::TextWrapMode::Extend),
                 f32::INFINITY,
                 egui::FontSelection::default(),
             );

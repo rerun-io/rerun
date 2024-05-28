@@ -468,7 +468,7 @@ impl TextureSettings {
             egui::ComboBox::from_id_source("texture_scaling")
                 .selected_text(scaling.to_string())
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     ui.set_min_width(64.0);
 
                     let mut selectable_value =
@@ -495,7 +495,7 @@ impl TextureSettings {
         egui::ComboBox::from_id_source("texture_filter")
             .selected_text(tf_to_string(options.magnification))
             .show_ui(ui, |ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.set_min_width(64.0);
 
                 let mut selectable_value = |ui: &mut egui::Ui, e| {

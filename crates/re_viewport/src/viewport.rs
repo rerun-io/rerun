@@ -882,7 +882,7 @@ impl TabWidget {
         };
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
-        let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
+        let galley = text.into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, font_id);
 
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(

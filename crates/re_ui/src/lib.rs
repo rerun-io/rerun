@@ -66,10 +66,9 @@ pub enum LabelStyle {
 
 // ----------------------------------------------------------------------------
 
-use egui::emath::{Rangef, Rot2};
 use egui::{
-    epaint::util::FloatOrd, pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape,
-    Ui, Vec2, Widget,
+    emath::{Float, Rangef, Rot2},
+    pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Ui, Vec2, Widget,
 };
 
 #[derive(Debug, Clone)]
@@ -684,10 +683,9 @@ impl ReUi {
         let indent = 18.0;
         let text_pos = available.min + egui::vec2(indent, 0.0);
         let wrap_width = available.right() - text_pos.x;
-        let wrap = Some(false);
         let galley = egui::WidgetText::from(label).into_galley(
             ui,
-            wrap,
+            Some(egui::TextWrapMode::Extend),
             wrap_width,
             egui::TextStyle::Button,
         );

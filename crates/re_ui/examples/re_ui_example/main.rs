@@ -249,7 +249,7 @@ impl eframe::App for ExampleApp {
             });
             self.re_ui
                 .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                    ui.style_mut().wrap = Some(false);
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     ui.label("Some blueprint stuff here, that might be wide.");
                     self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
 

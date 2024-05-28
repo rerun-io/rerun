@@ -553,7 +553,7 @@ impl ExampleDescLayout {
             ..Default::default()
         }
         .show(ui, |ui| {
-            ui.add(egui::Label::new(title).truncate(true));
+            ui.add(egui::Label::new(title).truncate());
         });
     }
 
@@ -581,7 +581,7 @@ impl ExampleDescLayout {
                             1.0,
                             egui::Color32::WHITE.gamma_multiply(0.086),
                         ))
-                        .wrap(false),
+                        .wrap_mode(egui::TextWrapMode::Extend),
                     );
                 }
             });

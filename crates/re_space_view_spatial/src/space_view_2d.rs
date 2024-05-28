@@ -296,7 +296,7 @@ fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mu
                 .grid_left_hand_label(ui, "Visible bounds")
                 .on_hover_text(tooltip);
             ui.vertical(|ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                 if let Some(bounds2d) = bounds2d_opt {
                     let rect = egui::Rect::from(*bounds2d);
