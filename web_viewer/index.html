@@ -380,6 +380,8 @@
         if (window.location !== window.parent.location) {
           window.parent.postMessage("READY", "*");
         }
+
+        window._handle = handle;
       }
 
       function on_wasm_error(error) {

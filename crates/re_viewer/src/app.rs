@@ -4,7 +4,6 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_types::blueprint::components::PanelState;
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
@@ -14,6 +13,7 @@ use re_viewer_context::{
     SystemCommandSender,
 };
 
+use crate::app_blueprint::PanelStateOverrides;
 use crate::{
     app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
     AppState,
@@ -70,6 +70,8 @@ pub struct StartupOptions {
 
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
+
+    pub panel_state_overrides: PanelStateOverrides,
 }
 
 impl Default for StartupOptions {
@@ -92,6 +94,8 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+
+            panel_state_overrides: Default::default(),
         }
     }
 }
@@ -156,6 +160,9 @@ pub struct App {
 
     /// All known space view types.
     space_view_class_registry: SpaceViewClassRegistry,
+
+    pub(crate) panel_state_overrides_active: bool,
+    pub(crate) panel_state_overrides: PanelStateOverrides,
 }
 
 impl App {
@@ -231,6 +238,8 @@ impl App {
 
         analytics.on_viewer_started(build_info);
 
+        let panel_state_overrides = startup_options.panel_state_overrides;
+
         Self {
             build_info,
             startup_options,
@@ -270,6 +279,9 @@ impl App {
             space_view_class_registry,
 
             analytics,
+
+            panel_state_overrides_active: true,
+            panel_state_overrides,
         }
     }
 
@@ -583,6 +595,12 @@ impl App {
             UICommand::ToggleMemoryPanel => {
                 self.memory_panel_open ^= true;
             }
+            UICommand::TogglePanelStateOverrides => {
+                self.panel_state_overrides_active ^= true;
+            }
+            UICommand::ToggleTopPanel => {
+                app_blueprint.toggle_top_panel(&self.command_sender);
+            }
             UICommand::ToggleBlueprintPanel => {
                 app_blueprint.toggle_blueprint_panel(&self.command_sender);
             }
@@ -606,6 +624,7 @@ impl App {
                 let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
             }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
                 let mut zoom_factor = egui_ctx.zoom_factor();
@@ -884,16 +903,14 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                if app_blueprint.top_panel_state != PanelState::Hidden {
-                    crate::ui::top_panel(
-                        frame,
-                        self,
-                        app_blueprint,
-                        store_context,
-                        gpu_resource_stats,
-                        ui,
-                    );
-                }
+                crate::ui::top_panel(
+                    frame,
+                    self,
+                    app_blueprint,
+                    store_context,
+                    gpu_resource_stats,
+                    ui,
+                );
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
@@ -1510,6 +1527,8 @@ impl eframe::App for App {
             store_context.as_ref(),
             &self.state.blueprint_query_for_viewer(),
             egui_ctx,
+            self.panel_state_overrides_active
+                .then_some(self.panel_state_overrides),
         );
 
         self.ui(

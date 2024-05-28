@@ -317,6 +317,8 @@ class TopPanel(Panel):
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
+            Collapsed and hidden both fully hide the top panel.
+
         """
         super().__init__(blueprint_path="top_panel", expanded=expanded, state=state)
 
@@ -334,6 +336,8 @@ class BlueprintPanel(Panel):
             Deprecated. Use `state` instead.
         state:
             Whether the panel is expanded, collapsed, or hidden.
+
+            Collapsed and hidden both fully hide the blueprint panel.
 
         """
         super().__init__(blueprint_path="blueprint_panel", expanded=expanded, state=state)
@@ -353,6 +357,8 @@ class SelectionPanel(Panel):
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
+            Collapsed and hidden both fully hide the selection panel.
+
         """
         super().__init__(blueprint_path="selection_panel", expanded=expanded, state=state)
 
@@ -371,6 +377,9 @@ class TimePanel(Panel):
         state:
             Whether the panel is expanded, collapsed, or hidden.
 
+            Expanded fully shows the panel, collapsed shows a simplified panel,
+            hidden fully hides the panel.
+
         """
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
 
@@ -383,7 +392,7 @@ These types all implement a `to_container()` method that wraps them in the neces
 helper classes.
 """
 
-BlueprintPart = Union[ContainerLike, BlueprintPanel, SelectionPanel, TimePanel]
+BlueprintPart = Union[ContainerLike, TopPanel, BlueprintPanel, SelectionPanel, TimePanel]
 """
 The types that make up a blueprint.
 """
@@ -430,7 +439,9 @@ class Blueprint:
             Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
             If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
         collapse_panels:
-            Whether to collapse the panels in the viewer. Defaults to `False`.
+            Whether to collapse panels in the viewer. Defaults to `False`.
+
+            This fully hides the blueprint/selection panels, and shows the simplified time panel.
 
         """
         from .containers import Tabs
@@ -442,6 +453,10 @@ class Blueprint:
         for part in parts:
             if isinstance(part, (Container, SpaceView)):
                 contents.append(part)
+            elif isinstance(part, TopPanel):
+                if hasattr(self, "top_panel"):
+                    raise ValueError("Only one top panel can be provided")
+                self.top_panel = part
             elif isinstance(part, BlueprintPanel):
                 if hasattr(self, "blueprint_panel"):
                     raise ValueError("Only one blueprint panel can be provided")
@@ -491,6 +506,9 @@ class Blueprint:
         )
 
         stream.log("viewport", viewport_arch)  # type: ignore[attr-defined]
+
+        if hasattr(self, "top_panel"):
+            self.top_panel._log_to_stream(stream)
 
         if hasattr(self, "blueprint_panel"):
             self.blueprint_panel._log_to_stream(stream)
