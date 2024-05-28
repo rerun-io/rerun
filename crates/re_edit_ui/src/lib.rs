@@ -467,7 +467,7 @@ fn register_editor<'a, C>(
 /// Registers all editors of this crate in the component UI registry.
 ///
 /// ⚠️ This is supposed to be the only export of this crate.
-/// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by [`re_viewer`] itself.
+/// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Color>(registry, default_color, edit_color_ui);
     register_editor::<Corner2D>(
