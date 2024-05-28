@@ -11,6 +11,7 @@ type PropertyValueFn<'a> = dyn FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetV
 
 struct PropertyActionButton<'a> {
     icon: &'static crate::icons::Icon,
+    enabled: bool,
     on_click: Box<dyn FnOnce() + 'a>,
 }
 
@@ -93,8 +94,22 @@ impl<'a> PropertyContent<'a> {
     // TODO(#6191): accept multiple calls for this function for multiple actions.
     #[inline]
     pub fn action_button(
+        self,
+        icon: &'static crate::icons::Icon,
+        on_click: impl FnOnce() + 'a,
+    ) -> Self {
+        self.action_button_with_enabled(icon, true, on_click)
+    }
+
+    /// Right aligned action button.
+    ///
+    /// Note: for aesthetics, space is always reserved for the action button.
+    // TODO(#6191): accept multiple calls for this function for multiple actions.
+    #[inline]
+    pub fn action_button_with_enabled(
         mut self,
         icon: &'static crate::icons::Icon,
+        enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
         // TODO(#6191): support multiple action buttons
@@ -104,6 +119,7 @@ impl<'a> PropertyContent<'a> {
         );
         self.action_buttons = Some(PropertyActionButton {
             icon,
+            enabled,
             on_click: Box::new(on_click),
         });
         self
@@ -349,10 +365,13 @@ impl ListItemContent for PropertyContent<'_> {
                 action_button_rect,
                 egui::Layout::right_to_left(egui::Align::Center),
             );
-            let button_response = re_ui.small_icon_button(&mut child_ui, action_button.icon);
-            if button_response.clicked() {
-                (action_button.on_click)();
-            }
+
+            child_ui.add_enabled_ui(action_button.enabled, |ui| {
+                let button_response = re_ui.small_icon_button(ui, action_button.icon);
+                if button_response.clicked() {
+                    (action_button.on_click)();
+                }
+            });
         }
     }
 

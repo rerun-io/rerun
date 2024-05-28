@@ -20,6 +20,8 @@ mod space_view;
 mod store_context;
 pub mod store_hub;
 mod tensor;
+//TODO(ab): this should be behind #[cfg(test)], but then ` cargo clippy --all-targets` fails
+pub mod test_context;
 mod time_control;
 mod typed_entity_collections;
 mod utils;

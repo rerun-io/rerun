@@ -159,7 +159,9 @@ impl SpaceViewClass for TensorSpaceView {
                 }
 
                 state.texture_settings.ui(ctx.re_ui, ui);
-                state.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
+                if let Some(render_ctx) = ctx.render_ctx {
+                    state.color_mapping.ui(render_ctx, ctx.re_ui, ui);
+                }
             });
 
         if let Some((_, tensor)) = &state.tensor {
@@ -316,11 +318,15 @@ fn paint_tensor_slice(
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     re_tracing::profile_function!();
 
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(anyhow::Error::msg("No render context available."));
+    };
+
     let tensor_stats = ctx
         .cache
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-        ctx.render_ctx,
+        render_ctx,
         tensor_data_row_id,
         tensor,
         &tensor_stats,
@@ -349,7 +355,7 @@ fn paint_tensor_slice(
 
     let debug_name = "tensor_slice";
     gpu_bridge::render_image(
-        ctx.render_ctx,
+        render_ctx,
         &painter,
         image_rect,
         colormapped_texture,
@@ -388,7 +394,7 @@ impl ColorMapping {
         let Self { map, gamma } = self;
 
         re_ui.grid_left_hand_label(ui, "Color map");
-        colormap_dropdown_button_ui(render_ctx, re_ui, ui, map);
+        colormap_dropdown_button_ui(Some(render_ctx), re_ui, ui, map);
         ui.end_row();
 
         re_ui.grid_left_hand_label(ui, "Brightness");

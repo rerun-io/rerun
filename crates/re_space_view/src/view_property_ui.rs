@@ -43,29 +43,56 @@ pub fn view_property_ui<A: Archetype>(
             let display_name =
                 field_info.map_or_else(|| component_name.short_name(), |info| info.display_name);
 
-            let list_item_response = list_item::ListItem::new(re_ui)
+            let mut list_item_response = list_item::ListItem::new(re_ui)
                 .interactive(false)
                 .show_flat(
                     ui,
-                    list_item::PropertyContent::new(display_name).value_fn(|_, ui, _| {
-                        ctx.component_ui_registry.edit_ui(
-                            ctx,
-                            ui,
-                            re_viewer_context::UiLayout::List,
-                            blueprint_query,
-                            blueprint_db,
-                            &blueprint_path,
-                            &blueprint_path,
-                            component_results.get_or_empty(*component_name),
-                            component_name,
-                            &0.into(),
-                        );
-                    }),
+                    list_item::PropertyContent::new(display_name)
+                        .action_button(&re_ui::icons::RESET, || {
+                            ctx.reset_blueprint_component_by_name(&blueprint_path, *component_name);
+                        })
+                        .value_fn(|_, ui, _| {
+                            ctx.component_ui_registry.edit_ui(
+                                ctx,
+                                ui,
+                                re_viewer_context::UiLayout::List,
+                                blueprint_query,
+                                blueprint_db,
+                                &blueprint_path,
+                                &blueprint_path,
+                                component_results.get_or_empty(*component_name),
+                                component_name,
+                                &0.into(),
+                            );
+                        }),
                 );
 
             if let Some(tooltip) = field_info.map(|info| info.documentation) {
-                list_item_response.on_hover_text(tooltip);
+                list_item_response = list_item_response.on_hover_text(tooltip);
             }
+
+            list_item_response.context_menu(|ui| {
+                if ui.button("Reset to default blueprint.")
+                     .on_hover_text("Resets this property to the value in the default blueprint.\n
+If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty.")
+                     .clicked() {
+                    ctx.reset_blueprint_component_by_name(&blueprint_path, *component_name);
+                    ui.close_menu();
+                }
+                ui.add_enabled_ui(component_results.contains_non_empty(*component_name), |ui| {
+                    if ui.button("Reset to empty.")
+                        .on_hover_text("Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
+This has the same effect as not setting the value in the blueprint at all.")
+                        .on_disabled_hover_text("The property is already unset.")
+                        .clicked() {
+                        ctx.save_empty_blueprint_component_by_name(&blueprint_path, *component_name);
+                        ui.close_menu();
+                    }
+                });
+
+                // TODO(andreas): The next logical thing here is now to save it to the default blueprint!
+                // This should be fairly straight forward except that we need to make sure that a default blueprint exists in the first place.
+            });
         }
     };
 

@@ -246,8 +246,6 @@ pub fn view_2d(
         return Ok(());
     };
 
-    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
-
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
         collect_ui_labels(&parts),
@@ -257,6 +255,12 @@ pub fn view_2d(
         &query.highlights,
         SpatialSpaceViewKind::TwoD,
     );
+
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+    };
+
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
     if ui.ctx().dragged_id().is_none() {
         response = picking(
@@ -283,7 +287,7 @@ pub fn view_2d(
     let background = re_viewport_blueprint::view_property::<Background>(ctx, query.space_view_id)
         .unwrap_or(Background::DEFAULT_2D);
     let (background_drawable, clear_color) = crate::configure_background(
-        ctx,
+        render_ctx,
         background.kind,
         background.color.unwrap_or(Background::DEFAULT_COLOR_2D),
     );
@@ -295,7 +299,7 @@ pub fn view_2d(
 
     if let Some(mode) = screenshot_context_menu(ctx, &response) {
         view_builder
-            .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
+            .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
             .ok();
     }
 

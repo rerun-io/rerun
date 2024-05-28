@@ -23,6 +23,7 @@ mod ui_2d;
 mod ui_3d;
 mod visualizers;
 
+use re_renderer::RenderContext;
 use re_types::blueprint::components::BackgroundKind;
 use re_types::components::{Resolution, TensorData};
 
@@ -78,7 +79,7 @@ fn query_pinhole(
 }
 
 pub(crate) fn configure_background(
-    ctx: &re_viewer_context::ViewerContext<'_>,
+    render_ctx: &RenderContext,
     kind: BackgroundKind,
     color: re_types::components::Color,
 ) -> (Option<re_renderer::QueueableDrawData>, re_renderer::Rgba) {
@@ -88,7 +89,7 @@ pub(crate) fn configure_background(
         BackgroundKind::GradientDark => (
             Some(
                 renderer::GenericSkyboxDrawData::new(
-                    ctx.render_ctx,
+                    render_ctx,
                     renderer::GenericSkyboxType::GradientDark,
                 )
                 .into(),
@@ -99,7 +100,7 @@ pub(crate) fn configure_background(
         BackgroundKind::GradientBright => (
             Some(
                 renderer::GenericSkyboxDrawData::new(
-                    ctx.render_ctx,
+                    render_ctx,
                     renderer::GenericSkyboxType::GradientBright,
                 )
                 .into(),

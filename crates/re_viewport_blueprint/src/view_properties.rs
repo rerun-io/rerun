@@ -70,19 +70,6 @@ where
     (arch.ok().flatten().unwrap_or_default(), path)
 }
 
-/// Read a single component of a blueprint archetype in a space view.
-pub fn get_blueprint_component<A: re_types::Archetype, C: re_types::Component>(
-    ctx: &ViewerContext<'_>,
-    space_view_id: SpaceViewId,
-) -> Option<C> {
-    let blueprint_db = ctx.store_context.blueprint;
-    let query = ctx.blueprint_query;
-    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
-    blueprint_db
-        .latest_at_component::<C>(&path, query)
-        .map(|x| x.value)
-}
-
 /// Edit a single component of a blueprint archetype in a space view.
 ///
 /// Set to `None` to reset the value to the value in the default blueprint, if any,
@@ -106,17 +93,7 @@ pub fn edit_blueprint_component<A: re_types::Archetype, C: re_types::Component +
             ctx.save_blueprint_component(&active_path, &edited);
         } else {
             // Reset to the value in the default blueprint, if any.
-            let default_value = ctx
-                .store_context
-                .default_blueprint
-                .and_then(|default_blueprint| {
-                    let default_path =
-                        entity_path_for_view_property::<A>(space_view_id, default_blueprint.tree());
-                    default_blueprint
-                        .latest_at_component::<C>(&default_path, ctx.blueprint_query)
-                        .map(|x| x.value)
-                });
-            ctx.save_blueprint_component(&active_path, &default_value);
+            ctx.reset_blueprint_component_by_name(&active_path, C::name());
         }
     }
 

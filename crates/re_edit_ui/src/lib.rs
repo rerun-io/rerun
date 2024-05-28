@@ -1,3 +1,8 @@
+//! This crate implements various component editors.
+//!
+//! The only entry point is [`register_editors`], which registers all editors in the component UI registry.
+//! This should be called by `re_viewer` on startup.
+
 // TODO(jleibs): Turn these methods into a trait.
 
 mod corner2d;
@@ -32,7 +37,7 @@ fn edit_color_ui(
 ) {
     let current_color = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Color>(db.resolver(), instance.get() as _)
+        .try_instance::<Color>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_color(ctx, query, db, entity_path));
 
     let current_color = current_color.into();
@@ -75,7 +80,7 @@ fn edit_text_ui(
 ) {
     let current_text = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Text>(db.resolver(), instance.get() as _)
+        .try_instance::<Text>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_text(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
@@ -115,7 +120,7 @@ fn edit_name_ui(
 ) {
     let current_text = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Name>(db.resolver(), instance.get() as _)
+        .try_instance::<Name>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_name(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
@@ -156,7 +161,7 @@ fn edit_scatter_ui(
 ) {
     let current_scatter = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<ScalarScattering>(db.resolver(), instance.get() as _)
+        .try_instance::<ScalarScattering>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_scatter(ctx, query, db, entity_path));
 
     let current_scatter = current_scatter.0;
@@ -205,7 +210,7 @@ fn edit_radius_ui(
 ) {
     let current_radius = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Radius>(db.resolver(), instance.get() as _)
+        .try_instance::<Radius>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_radius(ctx, query, db, entity_path));
 
     let current_radius = current_radius.0;
@@ -252,7 +257,7 @@ fn edit_marker_shape_ui(
 ) {
     let current_marker = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<MarkerShape>(db.resolver(), instance.get() as _)
+        .try_instance::<MarkerShape>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_marker_shape(ctx, query, db, entity_path));
 
     let mut edit_marker = current_marker;
@@ -353,7 +358,7 @@ fn edit_stroke_width_ui(
 ) {
     let current_stroke_width = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<StrokeWidth>(db.resolver(), instance.get() as _)
+        .try_instance::<StrokeWidth>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_stroke_width(ctx, query, db, entity_path));
 
     let current_stroke_width = current_stroke_width.0;
@@ -400,7 +405,7 @@ fn edit_marker_size_ui(
 ) {
     let current_marker_size = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<MarkerSize>(db.resolver(), instance.get() as _)
+        .try_instance::<MarkerSize>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_marker_size(ctx, query, db, entity_path));
 
     let current_marker_size = current_marker_size.0;
@@ -460,6 +465,10 @@ fn register_editor<'a, C>(
     );
 }
 
+/// Registers all editors of this crate in the component UI registry.
+///
+/// ⚠️ This is supposed to be the only export of this crate.
+/// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Color>(registry, default_color, edit_color_ui);
     register_editor::<Corner2D>(
