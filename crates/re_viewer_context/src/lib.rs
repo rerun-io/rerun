@@ -43,7 +43,7 @@ pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
 pub use component_fallback_provider::{
-    ComponentFallbackProvider, ComponentFallbackResult, FallbackProviderContext,
+    ComponentFallbackProvider, ComponentFallbackResult, QueryContext,
     TypedComponentFallbackProvider,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiLayout};

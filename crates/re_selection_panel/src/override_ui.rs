@@ -232,9 +232,9 @@ pub fn add_new_override(
                                 view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
                                     if let ComponentFallbackResult::Value(value) = sys
                                         .fallback_value(
-                                            &FallbackProviderContext {
-                                                ctx,
-                                                entity_path: &data_result.entity_path,
+                                            &QueryContext {
+                                                viewer_ctx: ctx,
+                                                target_entity_path: &data_result.entity_path,
                                                 archetype_name: None,
                                                 query,
                                             },
