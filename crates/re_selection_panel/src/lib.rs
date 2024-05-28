@@ -16,6 +16,9 @@ mod test {
     use re_viewer_context::{blueprint_timeline, Item, SpaceViewId};
     use re_viewport_blueprint::ViewportBlueprint;
 
+    /// This test mainly serve to demonstrate that non-trivial UI code can be executed with a "fake"
+    /// [`ViewerContext`].
+    // TODO(#6450): check that no warning/error is logged
     #[test]
     fn test_selection_panel() {
         re_log::setup_logging();
