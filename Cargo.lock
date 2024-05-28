@@ -1737,9 +1737,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.12.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dca9240753cf90908d7e4aac30f630662b02aebaa1b58a3cadabdb23385b58b"
+checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 
 [[package]]
 name = "emath"
@@ -2568,6 +2568,8 @@ dependencies = [
  "byteorder",
  "num-traits",
  "png",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2716,15 +2718,6 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
@@ -2835,9 +2828,9 @@ checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
 name = "libc"
-version = "0.2.155"
+version = "0.2.154"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
+checksum = "ae743338b92ff9146ce83992f766a31066a91a8c84a45e0e9f21e7cf6de6d346"
 
 [[package]]
 name = "libloading"
@@ -3937,7 +3930,7 @@ checksum = "c55e02e35260070b6f716a2423c2ff1c3bb1642ddca6f99e1f26d06268a0e2d2"
 dependencies = [
  "bytes",
  "heck 0.4.1",
- "itertools 0.11.0",
+ "itertools 0.10.5",
  "log",
  "multimap",
  "once_cell",
@@ -3958,7 +3951,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
 dependencies = [
  "anyhow",
- "itertools 0.11.0",
+ "itertools 0.10.5",
  "proc-macro2",
  "quote",
  "syn 2.0.48",
@@ -4327,7 +4320,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "ahash",
  "anyhow",
- "image 0.24.6",
+ "image 0.25.1",
  "once_cell",
  "parking_lot",
  "rayon",
@@ -4401,7 +4394,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_plot",
- "image 0.24.6",
+ "image 0.25.1",
  "itertools 0.13.0",
  "re_data_store",
  "re_entity_db",
@@ -4703,7 +4696,7 @@ dependencies = [
  "bytemuck",
  "console_error_panic_hook",
  "glam",
- "image 0.24.6",
+ "image 0.25.1",
  "itertools 0.13.0",
  "macaw",
  "pollster",
@@ -5043,7 +5036,7 @@ dependencies = [
  "emath",
  "glam",
  "half 2.3.1",
- "image 0.24.6",
+ "image 0.25.1",
  "infer",
  "itertools 0.13.0",
  "linked-hash-map",
@@ -5065,8 +5058,6 @@ dependencies = [
  "smallvec",
  "thiserror",
  "uuid",
- "zune-core",
- "zune-jpeg",
 ]
 
 [[package]]
@@ -5164,7 +5155,7 @@ dependencies = [
  "egui-wgpu",
  "egui_plot",
  "ehttp",
- "image 0.24.6",
+ "image 0.25.1",
  "itertools 0.13.0",
  "js-sys",
  "poll-promise",
@@ -5271,7 +5262,7 @@ dependencies = [
  "egui",
  "egui_tiles",
  "glam",
- "image 0.24.6",
+ "image 0.25.1",
  "itertools 0.13.0",
  "nohash-hasher",
  "rayon",
@@ -5633,7 +5624,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "image 0.24.6",
+ "image 0.25.1",
  "re_log",
  "rerun",
 ]
@@ -5655,7 +5646,7 @@ dependencies = [
  "anyhow",
  "clap",
  "half 2.3.1",
- "image 0.24.6",
+ "image 0.25.1",
  "ndarray",
  "re_log",
  "rerun",
@@ -5717,7 +5708,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "image 0.24.6",
+ "image 0.25.1",
  "re_log",
  "rerun",
 ]
@@ -6409,7 +6400,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
  "clap",
- "image 0.24.6",
+ "image 0.25.1",
  "re_log",
  "rerun",
 ]
