@@ -32,7 +32,7 @@ pub struct WebHandle {
 
 #[wasm_bindgen]
 impl WebHandle {
-    #[allow(clippy::new_without_default)]
+    #[allow(clippy::new_without_default, clippy::use_self)] // Can't use `Self` here because of `#[wasm_bindgen]`.
     #[wasm_bindgen(constructor)]
     pub fn new(app_options: JsValue) -> Result<WebHandle, JsValue> {
         re_log::setup_logging();
@@ -281,11 +281,10 @@ enum PanelState {
 
 impl From<PanelState> for re_types::blueprint::components::PanelState {
     fn from(value: PanelState) -> Self {
-        use re_types::blueprint::components::PanelState as Out;
         match value {
-            PanelState::Hidden => Out::Hidden,
-            PanelState::Collapsed => Out::Collapsed,
-            PanelState::Expanded => Out::Expanded,
+            PanelState::Hidden => Self::Hidden,
+            PanelState::Collapsed => Self::Collapsed,
+            PanelState::Expanded => Self::Expanded,
         }
     }
 }
