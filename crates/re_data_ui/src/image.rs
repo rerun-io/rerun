@@ -6,7 +6,6 @@ use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{ClassId, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
-use re_ui::ReUi;
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
@@ -148,7 +147,6 @@ pub fn tensor_ui(
 
                             match show_image_preview(
                                 ctx.render_ctx,
-                                ctx.re_ui,
                                 ui,
                                 texture.clone(),
                                 &debug_name,
@@ -159,7 +157,6 @@ pub fn tensor_ui(
                                     let preview_size = Vec2::splat(400.0);
                                     show_image_preview(
                                         ctx.render_ctx,
-                                        ctx.re_ui,
                                         ui,
                                         texture.clone(),
                                         &debug_name,
@@ -220,7 +217,6 @@ pub fn tensor_ui(
                         .min(egui::vec2(150.0, 300.0));
                     let response = match show_image_preview(
                         ctx.render_ctx,
-                        ctx.re_ui,
                         ui,
                         texture.clone(),
                         &debug_name,
@@ -289,7 +285,6 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
 /// Returns error if the image could not be rendered.
 fn show_image_preview(
     render_ctx: &re_renderer::RenderContext,
-    re_ui: &ReUi,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,
     debug_name: &str,
