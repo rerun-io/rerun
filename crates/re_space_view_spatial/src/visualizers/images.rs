@@ -560,12 +560,14 @@ impl ImageVisualizer {
         let tensor_stats = ctx
             .cache
             .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
-        let depth_texture = re_viewer_context::gpu_bridge::depth_tensor_to_gpu(
+        let depth_texture = re_viewer_context::gpu_bridge::tensor_to_gpu(
             ctx.render_ctx,
             &debug_name,
             tensor_data_row_id,
             tensor,
+            TensorDataMeaning::Depth,
             &tensor_stats,
+            &ent_context.annotations,
         )?;
 
         let depth_from_world_scale = *properties.depth_from_world_scale;
