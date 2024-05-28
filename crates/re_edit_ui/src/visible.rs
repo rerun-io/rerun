@@ -18,7 +18,7 @@ pub fn edit_visible(
 ) {
     let visible = component
         // TODO(#5607): what should happen if the promise is still pending?
-        .instance::<Visible>(db.resolver(), instance.get() as _)
+        .try_instance::<Visible>(db.resolver(), instance.get() as _)
         .unwrap_or_else(|| default_visible(ctx, query, db, entity_path));
     let mut edit_visible = visible;
 
