@@ -32,6 +32,7 @@ use crate::StoreContext;
 ///
 /// The default blueprint is usually the blueprint set by the SDK.
 /// This lets users reset the active blueprint to the one sent by the SDK.
+#[derive(Default)]
 pub struct StoreHub {
     /// How we load and save blueprints.
     persistence: BlueprintPersistence,
@@ -61,6 +62,7 @@ pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()
 pub type BlueprintValidator = dyn Fn(&EntityDb) -> bool + Send + Sync;
 
 /// How to save and load blueprints
+#[derive(Default)]
 pub struct BlueprintPersistence {
     pub loader: Option<Box<BlueprintLoader>>,
     pub saver: Option<Box<BlueprintSaver>>,

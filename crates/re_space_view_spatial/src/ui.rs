@@ -435,6 +435,10 @@ pub fn picking(
         return Ok(response);
     };
 
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+    };
+
     let picking_context = PickingContext::new(
         pointer_pos_ui,
         space_from_ui,
@@ -453,7 +457,7 @@ pub fn picking(
         .at_most(128.0) as u32;
 
     let _ = view_builder.schedule_picking_rect(
-        ctx.render_ctx,
+        render_ctx,
         re_renderer::RectInt::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
@@ -467,7 +471,7 @@ pub fn picking(
     let images = visualizers.get::<ImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
-        ctx.render_ctx,
+        render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
         &images.images,
@@ -725,18 +729,20 @@ fn image_hover_ui(
                     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
                         c.entry(tensor_data_row_id, &decoded_tensor)
                     });
-                    show_zoomed_image_region(
-                        ctx.render_ctx,
-                        ui,
-                        tensor_data_row_id,
-                        &decoded_tensor,
-                        &tensor_stats,
-                        &annotations,
-                        meaning,
-                        meter,
-                        &tensor_name,
-                        [coords[0] as _, coords[1] as _],
-                    );
+                    if let Some(render_ctx) = ctx.render_ctx {
+                        show_zoomed_image_region(
+                            render_ctx,
+                            ui,
+                            tensor_data_row_id,
+                            &decoded_tensor,
+                            &tensor_stats,
+                            &annotations,
+                            meaning,
+                            meter,
+                            &tensor_name,
+                            [coords[0] as _, coords[1] as _],
+                        );
+                    }
                 }
                 Err(err) => re_log::warn_once!(
                     "Encountered problem decoding tensor at path {tensor_name}: {err}"

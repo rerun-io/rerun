@@ -191,7 +191,9 @@ impl AppState {
 
                 viewport.is_item_valid(store_context, item)
             },
-            re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
+            Some(re_viewer_context::Item::StoreId(
+                store_context.recording.store_id().clone(),
+            )),
         );
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
@@ -251,7 +253,7 @@ impl AppState {
             selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
-            render_ctx,
+            render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
         };
@@ -314,7 +316,7 @@ impl AppState {
             selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
-            render_ctx,
+            render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
         };

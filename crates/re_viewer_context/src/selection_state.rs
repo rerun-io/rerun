@@ -230,7 +230,7 @@ impl ApplicationSelectionState {
     pub fn on_frame_start(
         &mut self,
         item_retain_condition: impl Fn(&Item) -> bool,
-        fallback_selection: Item,
+        fallback_selection: Option<Item>,
     ) {
         // Use a different name so we don't get a collision in puffin.
         re_tracing::profile_scope!("SelectionState::on_frame_start");
@@ -243,7 +243,9 @@ impl ApplicationSelectionState {
         let selection_this_frame = self.selection_this_frame.get_mut();
         selection_this_frame.retain(|item, _| item_retain_condition(item));
         if selection_this_frame.is_empty() {
-            *selection_this_frame = ItemCollection::from(fallback_selection);
+            if let Some(fallback_selection) = fallback_selection {
+                *selection_this_frame = ItemCollection::from(fallback_selection);
+            }
         }
 
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!
