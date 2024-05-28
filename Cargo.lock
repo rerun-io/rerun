@@ -1517,7 +1517,7 @@ dependencies = [
 name = "dna"
 version = "0.17.0-alpha.3"
 dependencies = [
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "rand",
  "rerun",
 ]
@@ -1737,9 +1737,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.9.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
+checksum = "3dca9240753cf90908d7e4aac30f630662b02aebaa1b58a3cadabdb23385b58b"
 
 [[package]]
 name = "emath"
@@ -2716,9 +2716,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.12.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
 dependencies = [
  "either",
 ]
@@ -3937,7 +3937,7 @@ checksum = "c55e02e35260070b6f716a2423c2ff1c3bb1642ddca6f99e1f26d06268a0e2d2"
 dependencies = [
  "bytes",
  "heck 0.4.1",
- "itertools 0.10.5",
+ "itertools 0.11.0",
  "log",
  "multimap",
  "once_cell",
@@ -3958,7 +3958,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.11.0",
  "proc-macro2",
  "quote",
  "syn 2.0.48",
@@ -4254,7 +4254,7 @@ name = "re_blueprint_tree"
 version = "0.17.0-alpha.3"
 dependencies = [
  "egui",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "re_context_menu",
  "re_data_ui",
  "re_entity_db",
@@ -4294,7 +4294,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "egui",
  "egui_tiles",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
  "re_entity_db",
@@ -4314,7 +4314,7 @@ name = "re_crash_handler"
 version = "0.17.0-alpha.3"
 dependencies = [
  "backtrace",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "libc",
  "parking_lot",
  "re_analytics",
@@ -4348,7 +4348,7 @@ name = "re_data_source"
 version = "0.17.0-alpha.3"
 dependencies = [
  "anyhow",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "rayon",
  "re_build_tools",
  "re_data_loader",
@@ -4370,7 +4370,7 @@ dependencies = [
  "document-features",
  "indent",
  "insta",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",
  "once_cell",
@@ -4402,7 +4402,7 @@ dependencies = [
  "egui_extras",
  "egui_plot",
  "image 0.24.6",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "re_data_store",
  "re_entity_db",
  "re_error",
@@ -4430,7 +4430,7 @@ dependencies = [
  "cargo_metadata 0.18.1",
  "glob",
  "indicatif",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "rayon",
  "re_build_tools",
  "re_format",
@@ -4456,7 +4456,7 @@ dependencies = [
  "document-features",
  "emath",
  "getrandom",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",
  "parking_lot",
@@ -4566,7 +4566,7 @@ dependencies = [
  "document-features",
  "fixed",
  "half 2.3.1",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "mimalloc",
  "natord",
  "nohash-hasher",
@@ -4600,7 +4600,7 @@ dependencies = [
  "ahash",
  "backtrace",
  "emath",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "memory-stats",
  "nohash-hasher",
  "once_cell",
@@ -4624,7 +4624,7 @@ dependencies = [
  "criterion",
  "indent",
  "indexmap 2.1.0",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",
  "parking_lot",
@@ -4666,7 +4666,7 @@ dependencies = [
  "glam",
  "gltf",
  "half 2.3.1",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "macaw",
  "never",
  "notify",
@@ -4704,7 +4704,7 @@ dependencies = [
  "console_error_panic_hook",
  "glam",
  "image 0.24.6",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "macaw",
  "pollster",
  "rand",
@@ -4726,7 +4726,7 @@ dependencies = [
  "anyhow",
  "crossbeam",
  "document-features",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "libc",
  "ndarray",
  "ndarray-rand",
@@ -4773,7 +4773,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "egui",
  "egui_tiles",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
  "re_context_menu",
@@ -4867,7 +4867,7 @@ dependencies = [
  "criterion",
  "egui",
  "glam",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "macaw",
  "mimalloc",
  "nohash-hasher",
@@ -4959,7 +4959,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "egui",
  "egui_plot",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "rayon",
  "re_data_store",
  "re_format",
@@ -4992,7 +4992,7 @@ name = "re_time_panel"
 version = "0.17.0-alpha.3"
 dependencies = [
  "egui",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "re_context_menu",
  "re_data_store",
  "re_data_ui",
@@ -5045,7 +5045,7 @@ dependencies = [
  "half 2.3.1",
  "image 0.24.6",
  "infer",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "linked-hash-map",
  "mime_guess2",
  "mint",
@@ -5092,7 +5092,7 @@ dependencies = [
  "convert_case",
  "flatbuffers",
  "indent",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "prettyplease",
  "proc-macro2",
  "quote",
@@ -5117,7 +5117,7 @@ dependencies = [
  "backtrace",
  "criterion",
  "document-features",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "once_cell",
  "re_arrow2",
  "re_error",
@@ -5165,7 +5165,7 @@ dependencies = [
  "egui_plot",
  "ehttp",
  "image 0.24.6",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "js-sys",
  "poll-promise",
  "re_analytics",
@@ -5237,7 +5237,7 @@ dependencies = [
  "glam",
  "half 2.3.1",
  "indexmap 2.1.0",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "macaw",
  "ndarray",
  "nohash-hasher",
@@ -5272,7 +5272,7 @@ dependencies = [
  "egui_tiles",
  "glam",
  "image 0.24.6",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "nohash-hasher",
  "rayon",
  "re_context_menu",
@@ -5296,7 +5296,7 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",
  "parking_lot",
@@ -5420,7 +5420,7 @@ dependencies = [
  "clap",
  "document-features",
  "env_logger",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "log",
  "puffin",
  "rayon",
@@ -5486,7 +5486,7 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "crossbeam",
  "document-features",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "mimalloc",
  "once_cell",
  "parking_lot",
@@ -6215,7 +6215,7 @@ dependencies = [
 name = "snippets"
 version = "0.17.0-alpha.3"
 dependencies = [
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "ndarray",
  "rand",
  "re_build_tools",
@@ -6386,7 +6386,7 @@ dependencies = [
  "anyhow",
  "clap",
  "glam",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "ndarray",
  "ndarray-rand",
  "rand",

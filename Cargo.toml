@@ -149,7 +149,7 @@ indexmap = "2.1" # Version chosen to align with other dependencies
 indicatif = "0.17.7" # Progress bar
 infer = "0.15" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
-itertools = "0.12" # updating itertools is blocked on the next egui_tiles update
+itertools = "0.13"
 js-sys = "0.3"
 libc = "0.2"
 linked-hash-map = { version = "0.5", default-features = false }
