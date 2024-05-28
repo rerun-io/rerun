@@ -3,7 +3,9 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 ## [0.16.1](https://github.com/rerun-io/rerun/compare/0.16.0...0.16.1) - Bug fix - UNRELEASED
-TBC
+- Fix not being able to set time series' Y axis ranges from the UI [#6384](https://github.com/rerun-io/rerun/pull/6384)
+- Don't log warnings when unknown clients connect over TCP [#6368](https://github.com/rerun-io/rerun/pull/6368)
+
 
 ## [0.16.0](https://github.com/rerun-io/rerun/compare/0.15.1...0.16.0) - First configurable views - 2024-05-16
 
