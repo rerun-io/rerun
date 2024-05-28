@@ -1645,13 +1645,23 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "013480797931a2649e03069613ed35514569372d6f79df70fc3653ae18a75c6c"
+version = "0.16.1"
+source = "git+https://github.com/rerun-io/egui_commonmark?rev=1c08d5ea58d60c6a61487b5eecefdfdb35c47036#1c08d5ea58d60c6a61487b5eecefdfdb35c47036"
+dependencies = [
+ "egui",
+ "egui_commonmark_backend",
+ "egui_extras",
+ "pulldown-cmark 0.11.0",
+]
+
+[[package]]
+name = "egui_commonmark_backend"
+version = "0.16.1"
+source = "git+https://github.com/rerun-io/egui_commonmark?rev=1c08d5ea58d60c6a61487b5eecefdfdb35c47036#1c08d5ea58d60c6a61487b5eecefdfdb35c47036"
 dependencies = [
  "egui",
  "egui_extras",
- "pulldown-cmark 0.10.0",
+ "pulldown-cmark 0.11.0",
 ]
 
 [[package]]
@@ -1700,12 +1710,11 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e2c0ff99daddcbdc54b141dbb7be3b014463da48a03ebc801bf63e500b23d75"
+source = "git+https://github.com/rerun-io/egui_tiles?rev=7a9ef17dd873efc2c803a0a91a64246ab1a2fa83#7a9ef17dd873efc2c803a0a91a64246ab1a2fa83"
 dependencies = [
  "ahash",
  "egui",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "log",
  "serde",
 ]
@@ -2710,6 +2719,15 @@ name = "itertools"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -3963,9 +3981,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dce76ce678ffc8e5675b22aa1405de0b7037e2fdf8913fea40d1926c6fe1e6e7"
+checksum = "8746739f11d39ce5ad5c2520a9b75285310dbfe78c541ccf832d38615765aec0"
 dependencies = [
  "bitflags 2.4.1",
  "memchr",
