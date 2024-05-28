@@ -158,7 +158,7 @@ pub fn override_ui(
                     re_ui::list_item::PropertyContent::new(component_name.short_name())
                         .min_desired_width(150.0)
                         .action_button(&re_ui::icons::CLOSE, || {
-                            ctx.save_empty_blueprint_component_name(
+                            ctx.save_empty_blueprint_component_by_name(
                                 &overrides.individual_override_path,
                                 *component_name,
                             );
