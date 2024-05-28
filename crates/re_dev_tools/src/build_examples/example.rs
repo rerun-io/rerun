@@ -9,6 +9,7 @@ use std::str::FromStr;
 use anyhow::Context;
 
 pub struct Example {
+    /// Name of the folder it's stored in.
     pub name: String,
     pub title: String,
     pub dir: PathBuf,
