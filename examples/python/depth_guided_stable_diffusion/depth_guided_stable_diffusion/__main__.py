@@ -172,8 +172,8 @@ expense of slower inference. This parameter will be modulated by `strength`.
                     name="Output & Iteration",
                 ),
             ),
-            rrb.SelectionPanel(expanded=False),
-            rrb.TimePanel(expanded=False),
+            rrb.SelectionPanel(state="collapsed"),
+            rrb.TimePanel(state="collapsed"),
         ),
     )
 

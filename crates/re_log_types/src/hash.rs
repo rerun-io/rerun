@@ -19,7 +19,7 @@ impl re_types_core::SizeBytes for Hash64 {
 }
 
 impl Hash64 {
-    pub const ZERO: Hash64 = Hash64(0);
+    pub const ZERO: Self = Self(0);
 
     pub fn hash(value: impl std::hash::Hash + Copy) -> Self {
         Self(hash(value))
@@ -66,7 +66,7 @@ impl std::fmt::Debug for Hash64 {
 pub struct Hash128([u64; 2]);
 
 impl Hash128 {
-    pub const ZERO: Hash128 = Hash128([0; 2]);
+    pub const ZERO: Self = Self([0; 2]);
 
     pub fn hash(value: impl std::hash::Hash + Copy) -> Self {
         Self(double_hash(value))

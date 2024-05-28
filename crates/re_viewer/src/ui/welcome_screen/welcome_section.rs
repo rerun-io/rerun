@@ -1,7 +1,7 @@
 use egui::Ui;
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
-pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize Multimodal Data";
+pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize multimodal data";
 pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
     "Log data with the Rerun SDK in C++, Python, or Rust",
     "Visualize and explore live or recorded data",
@@ -65,7 +65,5 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
                 new_tab: true,
             });
         }
-
-        ui.add_space(83.0);
     });
 }

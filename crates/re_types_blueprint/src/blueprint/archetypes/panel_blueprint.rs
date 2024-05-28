@@ -25,19 +25,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Shared state for the 3 collapsible panels.
 #[derive(Clone, Debug, Default)]
 pub struct PanelBlueprint {
-    /// Whether or not the panel is expanded.
-    pub expanded: Option<crate::blueprint::components::PanelExpanded>,
+    pub state: Option<crate::blueprint::components::PanelState>,
 }
 
 impl ::re_types_core::SizeBytes for PanelBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.expanded.heap_size_bytes()
+        self.state.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::blueprint::components::PanelExpanded>>::is_pod()
+        <Option<crate::blueprint::components::PanelState>>::is_pod()
     }
 }
 
@@ -48,13 +47,13 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.PanelBlueprintIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.PanelExpanded".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.PanelState".into()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.PanelBlueprintIndicator".into(),
-            "rerun.blueprint.components.PanelExpanded".into(),
+            "rerun.blueprint.components.PanelState".into(),
         ]
     });
 
@@ -72,6 +71,11 @@ impl ::re_types_core::Archetype for PanelBlueprint {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
         "rerun.blueprint.archetypes.PanelBlueprint".into()
+    }
+
+    #[inline]
+    fn display_name() -> &'static str {
+        "Panel blueprint"
     }
 
     #[inline]
@@ -110,17 +114,17 @@ impl ::re_types_core::Archetype for PanelBlueprint {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let expanded =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.PanelExpanded") {
-                <crate::blueprint::components::PanelExpanded>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.PanelBlueprint#expanded")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        Ok(Self { expanded })
+        let state = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.PanelState")
+        {
+            <crate::blueprint::components::PanelState>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.PanelBlueprint#state")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        Ok(Self { state })
     }
 }
 
@@ -130,7 +134,7 @@ impl ::re_types_core::AsComponents for PanelBlueprint {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.expanded
+            self.state
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -144,16 +148,15 @@ impl PanelBlueprint {
     /// Create a new `PanelBlueprint`.
     #[inline]
     pub fn new() -> Self {
-        Self { expanded: None }
+        Self { state: None }
     }
 
-    /// Whether or not the panel is expanded.
     #[inline]
-    pub fn with_expanded(
+    pub fn with_state(
         mut self,
-        expanded: impl Into<crate::blueprint::components::PanelExpanded>,
+        state: impl Into<crate::blueprint::components::PanelState>,
     ) -> Self {
-        self.expanded = Some(expanded.into());
+        self.state = Some(state.into());
         self
     }
 }

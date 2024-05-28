@@ -167,13 +167,7 @@ impl ::re_types_core::Loggable for MarkerShape {
                 std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
                     .take(1 + num_variants)
                     .collect();
-            UnionArray::new(
-                <crate::components::MarkerShape>::arrow_datatype(),
-                types,
-                fields,
-                None,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
         })
     }
 
@@ -201,16 +195,16 @@ impl ::re_types_core::Loggable for MarkerShape {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(MarkerShape::Circle)),
-                    2 => Ok(Some(MarkerShape::Diamond)),
-                    3 => Ok(Some(MarkerShape::Square)),
-                    4 => Ok(Some(MarkerShape::Cross)),
-                    5 => Ok(Some(MarkerShape::Plus)),
-                    6 => Ok(Some(MarkerShape::Up)),
-                    7 => Ok(Some(MarkerShape::Down)),
-                    8 => Ok(Some(MarkerShape::Left)),
-                    9 => Ok(Some(MarkerShape::Right)),
-                    10 => Ok(Some(MarkerShape::Asterisk)),
+                    1 => Ok(Some(Self::Circle)),
+                    2 => Ok(Some(Self::Diamond)),
+                    3 => Ok(Some(Self::Square)),
+                    4 => Ok(Some(Self::Cross)),
+                    5 => Ok(Some(Self::Plus)),
+                    6 => Ok(Some(Self::Up)),
+                    7 => Ok(Some(Self::Down)),
+                    8 => Ok(Some(Self::Left)),
+                    9 => Ok(Some(Self::Right)),
+                    10 => Ok(Some(Self::Asterisk)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

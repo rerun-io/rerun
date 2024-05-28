@@ -87,6 +87,11 @@ impl ::re_types_core::Archetype for ScalarAxis {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Scalar axis"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ScalarAxisIndicator = ScalarAxisIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

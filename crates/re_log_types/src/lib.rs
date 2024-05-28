@@ -17,9 +17,6 @@
 //! e.g. the entity `foo/bar/baz` is has the transform that is the product of
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
-// TODO(#3408): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 pub mod arrow_msg;
 pub mod example_components;
 pub mod hash;
@@ -307,13 +304,13 @@ impl LogMsg {
 
     pub fn set_store_id(&mut self, new_store_id: StoreId) {
         match self {
-            LogMsg::SetStoreInfo(store_info) => {
+            Self::SetStoreInfo(store_info) => {
                 store_info.info.store_id = new_store_id;
             }
-            LogMsg::ArrowMsg(store_id, _) => {
+            Self::ArrowMsg(store_id, _) => {
                 *store_id = new_store_id;
             }
-            LogMsg::BlueprintActivationCommand(cmd) => {
+            Self::BlueprintActivationCommand(cmd) => {
                 cmd.blueprint_id = new_store_id;
             }
         }
@@ -371,7 +368,7 @@ pub struct StoreInfo {
     ///
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
-    #[serde(skip)]
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub store_version: Option<CrateVersion>,
 }
 

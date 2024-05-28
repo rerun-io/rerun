@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Literal, Sequence, Union
 
 import pyarrow as pa
 
@@ -33,7 +33,9 @@ class Corner2D(Enum):
     """Right bottom corner."""
 
 
-Corner2DLike = Union[Corner2D, str]
+Corner2DLike = Union[
+    Corner2D, Literal["lefttop"] | Literal["righttop"] | Literal["leftbottom"] | Literal["rightbottom"]
+]
 Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
 

@@ -4,16 +4,16 @@ use super::DrawOrder;
 // constants directly in there.
 impl DrawOrder {
     /// Draw order used for images if no draw order was specified.
-    pub const DEFAULT_IMAGE: DrawOrder = DrawOrder(-10.0);
+    pub const DEFAULT_IMAGE: Self = Self(-10.0);
 
     /// Draw order used for 2D boxes if no draw order was specified.
-    pub const DEFAULT_BOX2D: DrawOrder = DrawOrder(10.0);
+    pub const DEFAULT_BOX2D: Self = Self(10.0);
 
     /// Draw order used for 2D lines if no draw order was specified.
-    pub const DEFAULT_LINES2D: DrawOrder = DrawOrder(20.0);
+    pub const DEFAULT_LINES2D: Self = Self(20.0);
 
     /// Draw order used for 2D points if no draw order was specified.
-    pub const DEFAULT_POINTS2D: DrawOrder = DrawOrder(30.0);
+    pub const DEFAULT_POINTS2D: Self = Self(30.0);
 }
 
 impl std::cmp::PartialEq for DrawOrder {

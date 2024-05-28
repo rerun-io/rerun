@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../blueprint/components/panel_expanded.hpp"
+#include "../../blueprint/components/panel_state.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -18,8 +18,7 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Shared state for the 3 collapsible panels.
     struct PanelBlueprint {
-        /// Whether or not the panel is expanded.
-        std::optional<rerun::blueprint::components::PanelExpanded> expanded;
+        std::optional<rerun::blueprint::components::PanelState> state;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -32,9 +31,8 @@ namespace rerun::blueprint::archetypes {
         PanelBlueprint() = default;
         PanelBlueprint(PanelBlueprint&& other) = default;
 
-        /// Whether or not the panel is expanded.
-        PanelBlueprint with_expanded(rerun::blueprint::components::PanelExpanded _expanded) && {
-            expanded = std::move(_expanded);
+        PanelBlueprint with_state(rerun::blueprint::components::PanelState _state) && {
+            state = std::move(_state);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -49,8 +49,8 @@ impl Repl {
 
         let mut lines = stdin().lines();
         loop {
-            stdout().write_all(b"\n> ").unwrap();
-            stdout().flush().unwrap();
+            stdout().write_all(b"\n> ")?;
+            stdout().flush()?;
 
             match lines.next().transpose()? {
                 Some(line) => match self.handle_line(&client, &line)? {

@@ -153,7 +153,7 @@ impl EntityDb {
         store_info: StoreInfo,
         rows: impl IntoIterator<Item = DataRow>,
     ) -> Result<Self, Error> {
-        let mut entity_db = EntityDb::new(store_info.store_id.clone());
+        let mut entity_db = Self::new(store_info.store_id.clone());
 
         entity_db.set_store_info(SetStoreInfo {
             row_id: RowId::new(),
@@ -239,6 +239,22 @@ impl EntityDb {
                 PromiseResult::Ready(Some((results.compound_index, arch)))
             }
         }
+    }
+
+    /// Queries for the given `component_names` using latest-at semantics.
+    ///
+    /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
+    ///
+    /// This is a cached API -- data will be lazily cached upon access.
+    #[inline]
+    pub fn latest_at(
+        &self,
+        query: &re_data_store::LatestAtQuery,
+        entity_path: &EntityPath,
+        component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
+    ) -> re_query::LatestAtResults {
+        self.query_caches()
+            .latest_at(self.store(), query, entity_path, component_names)
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -334,6 +350,14 @@ impl EntityDb {
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
         &self.times_per_timeline
+    }
+
+    pub fn has_any_data_on_timeline(&self, timeline: &Timeline) -> bool {
+        if let Some(times) = self.times_per_timeline.get(timeline) {
+            !times.is_empty()
+        } else {
+            false
+        }
     }
 
     /// Histogram of all events on the timeeline, of all entities.
@@ -728,12 +752,12 @@ impl EntityDb {
     }
 
     /// Make a clone of this [`EntityDb`], assigning it a new [`StoreId`].
-    pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
+    pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
         self.store().sort_indices_if_needed();
 
-        let mut new_db = EntityDb::new(new_id.clone());
+        let mut new_db = Self::new(new_id.clone());
 
         new_db.last_modified_at = self.last_modified_at;
         new_db.latest_row_id = self.latest_row_id;

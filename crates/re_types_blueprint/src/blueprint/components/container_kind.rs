@@ -116,13 +116,7 @@ impl ::re_types_core::Loggable for ContainerKind {
                 std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
                     .take(1 + num_variants)
                     .collect();
-            UnionArray::new(
-                <crate::blueprint::components::ContainerKind>::arrow_datatype(),
-                types,
-                fields,
-                None,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, None).boxed()
         })
     }
 
@@ -150,10 +144,10 @@ impl ::re_types_core::Loggable for ContainerKind {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(ContainerKind::Tabs)),
-                    2 => Ok(Some(ContainerKind::Horizontal)),
-                    3 => Ok(Some(ContainerKind::Vertical)),
-                    4 => Ok(Some(ContainerKind::Grid)),
+                    1 => Ok(Some(Self::Tabs)),
+                    2 => Ok(Some(Self::Horizontal)),
+                    3 => Ok(Some(Self::Vertical)),
+                    4 => Ok(Some(Self::Grid)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

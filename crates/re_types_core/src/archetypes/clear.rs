@@ -128,6 +128,11 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Clear"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ClearIndicator = ClearIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

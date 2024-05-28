@@ -18,7 +18,7 @@ pub enum CollapseScope {
 }
 
 impl CollapseScope {
-    const ALL: [CollapseScope; 2] = [CollapseScope::StreamsTree, CollapseScope::BlueprintTree];
+    const ALL: [Self; 2] = [Self::StreamsTree, Self::BlueprintTree];
 
     // convenience functions
 
@@ -89,7 +89,7 @@ pub struct CollapsedId {
 
 impl From<CollapsedId> for egui::Id {
     fn from(id: CollapsedId) -> Self {
-        egui::Id::new(id)
+        Self::new(id)
     }
 }
 

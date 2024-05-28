@@ -230,7 +230,7 @@ impl RenderContext {
             Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
         ));
 
-        Ok(RenderContext {
+        Ok(Self {
             device,
             queue,
             config,

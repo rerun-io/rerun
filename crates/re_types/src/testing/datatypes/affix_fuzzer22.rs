@@ -99,7 +99,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::testing::datatypes::AffixFuzzer22>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![{
                     let (somes, fixed_sized_native): (Vec<_>, Vec<_>) = data
                         .iter()

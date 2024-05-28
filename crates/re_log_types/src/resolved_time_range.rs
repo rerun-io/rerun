@@ -187,13 +187,13 @@ impl ResolvedTimeRangeF {
 }
 
 impl From<ResolvedTimeRangeF> for RangeInclusive<TimeReal> {
-    fn from(range: ResolvedTimeRangeF) -> RangeInclusive<TimeReal> {
+    fn from(range: ResolvedTimeRangeF) -> Self {
         range.min..=range.max
     }
 }
 
 impl From<&ResolvedTimeRangeF> for RangeInclusive<TimeReal> {
-    fn from(range: &ResolvedTimeRangeF) -> RangeInclusive<TimeReal> {
+    fn from(range: &ResolvedTimeRangeF) -> Self {
         range.min..=range.max
     }
 }

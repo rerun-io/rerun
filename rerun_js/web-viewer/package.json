@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Embed the Rerun web viewer in your app",
   "licenses": [
     {
@@ -12,9 +12,10 @@
   ],
   "scripts": {
     "build:wasm": "cargo run -p re_dev_tools -- build-web-viewer --release -g --module -o rerun_js/web-viewer",
-    "build:wasm:debug": "cargo run -p re_dev_tools -- build-web-viewer --module -o rerun_js/web-viewer",
     "build:types": "tsc --noEmit && dts-buddy",
-    "build": "npm run build:wasm && npm run build:types"
+    "build": "npm run build:wasm && npm run build:types",
+    "build:wasm:debug": "cargo run -p re_dev_tools -- build-web-viewer --debug --module -o rerun_js/web-viewer",
+    "build:debug": "npm run build:wasm:debug && npm run build:types"
   },
   "repository": {
     "type": "git",

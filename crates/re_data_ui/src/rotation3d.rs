@@ -29,11 +29,11 @@ impl DataUi for datatypes::Rotation3D {
         db: &re_entity_db::EntityDb,
     ) {
         match self {
-            datatypes::Rotation3D::Quaternion(q) => {
+            Self::Quaternion(q) => {
                 // TODO(andreas): Better formatting for quaternions.
                 data_label_for_ui_layout(ui, ui_layout, format!("{q:?}"));
             }
-            datatypes::Rotation3D::AxisAngle(RotationAxisAngle { axis, angle }) => {
+            Self::AxisAngle(RotationAxisAngle { axis, angle }) => {
                 match ui_layout {
                     UiLayout::List => {
                         // TODO(#6315): should be mixed label/data formatting

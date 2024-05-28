@@ -74,8 +74,8 @@ impl StoreDiffKind {
     #[inline]
     pub fn delta(&self) -> i64 {
         match self {
-            StoreDiffKind::Addition => 1,
-            StoreDiffKind::Deletion => -1,
+            Self::Addition => 1,
+            Self::Deletion => -1,
         }
     }
 }

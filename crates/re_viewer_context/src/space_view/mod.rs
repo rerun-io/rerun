@@ -13,14 +13,15 @@ mod spawn_heuristics;
 mod system_execution_output;
 mod view_context_system;
 mod view_query;
+mod view_states;
 mod visualizer_entity_subscriber;
 mod visualizer_system;
 
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use space_view_class::{
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewState, SpaceViewStateExt,
-    VisualizableFilterContext,
+    SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewState,
+    SpaceViewStateExt, VisualizableFilterContext,
 };
 pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistrator,
@@ -32,6 +33,7 @@ pub use view_query::{
     DataResult, OverridePath, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet,
     ViewQuery,
 };
+pub use view_states::{PerViewState, ViewStates};
 pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
 pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, VisualizerSystem};
 
@@ -65,12 +67,12 @@ pub enum SpaceViewSystemExecutionError {
 
 impl From<re_renderer::renderer::LineDrawDataError> for SpaceViewSystemExecutionError {
     fn from(val: re_renderer::renderer::LineDrawDataError) -> Self {
-        SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(val))
+        Self::DrawDataCreationError(Box::new(val))
     }
 }
 
 impl From<re_renderer::renderer::PointCloudDrawDataError> for SpaceViewSystemExecutionError {
     fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
-        SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(val))
+        Self::DrawDataCreationError(Box::new(val))
     }
 }

@@ -96,7 +96,7 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![{
                     let (somes, value): (Vec<_>, Vec<_>) = data
                         .iter()

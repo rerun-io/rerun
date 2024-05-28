@@ -191,7 +191,7 @@ impl std::ops::SubAssign for TimeReal {
 
 impl std::iter::Sum for TimeReal {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        let mut sum = TimeReal::from(0);
+        let mut sum = Self::from(0);
         for item in iter {
             sum += item;
         }
@@ -202,20 +202,20 @@ impl std::iter::Sum for TimeReal {
 // ---------------
 
 impl std::ops::Add<TimeInt> for TimeReal {
-    type Output = TimeReal;
+    type Output = Self;
 
     #[inline]
     fn add(self, rhs: TimeInt) -> Self::Output {
-        self + TimeReal::from(rhs)
+        self + Self::from(rhs)
     }
 }
 
 impl std::ops::Sub<TimeInt> for TimeReal {
-    type Output = TimeReal;
+    type Output = Self;
 
     #[inline]
     fn sub(self, rhs: TimeInt) -> Self::Output {
-        self - TimeReal::from(rhs)
+        self - Self::from(rhs)
     }
 }
 

@@ -26,9 +26,9 @@ impl crate::ToArchetype<re_types_blueprint::blueprint::archetypes::PanelBlueprin
 
         // --- Recommended/Optional ---
 
-        use re_types::blueprint::components::PanelExpanded;
-        let expanded = if let Some(expanded) = self.get(<PanelExpanded>::name()) {
-            match expanded.to_dense::<PanelExpanded>(resolver) {
+        use re_types::blueprint::components::PanelState;
+        let state = if let Some(state) = self.get(<PanelState>::name()) {
+            match state.to_dense::<PanelState>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
                 PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
                 PromiseResult::Ready(query_res) => match query_res {
@@ -42,7 +42,7 @@ impl crate::ToArchetype<re_types_blueprint::blueprint::archetypes::PanelBlueprin
 
         // ---
 
-        let arch = re_types_blueprint::blueprint::archetypes::PanelBlueprint { expanded };
+        let arch = re_types_blueprint::blueprint::archetypes::PanelBlueprint { state };
 
         PromiseResult::Ready(Ok(arch))
     }

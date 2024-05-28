@@ -120,6 +120,11 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Viewport blueprint"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ViewportBlueprintIndicator = ViewportBlueprintIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

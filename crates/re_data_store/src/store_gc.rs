@@ -60,7 +60,7 @@ pub struct GarbageCollectionOptions {
 
 impl GarbageCollectionOptions {
     pub fn gc_everything() -> Self {
-        GarbageCollectionOptions {
+        Self {
             target: GarbageCollectionTarget::Everything,
             time_budget: std::time::Duration::MAX,
             protect_latest: 0,
@@ -74,10 +74,10 @@ impl GarbageCollectionOptions {
 impl std::fmt::Display for GarbageCollectionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GarbageCollectionTarget::DropAtLeastFraction(p) => {
+            Self::DropAtLeastFraction(p) => {
                 write!(f, "DropAtLeast({:.3}%)", *p * 100.0)
             }
-            GarbageCollectionTarget::Everything => write!(f, "Everything"),
+            Self::Everything => write!(f, "Everything"),
         }
     }
 }
@@ -660,7 +660,7 @@ impl IndexedBucketInner {
     ) -> (Option<StoreDiff>, u64) {
         self.sort();
 
-        let IndexedBucketInner {
+        let Self {
             is_sorted,
             time_range,
             col_time,

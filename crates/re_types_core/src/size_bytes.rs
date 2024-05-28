@@ -266,43 +266,41 @@ impl SizeBytes for DataType {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         match self {
-            DataType::Null
-            | DataType::Binary
-            | DataType::Boolean
-            | DataType::Date32
-            | DataType::Date64
-            | DataType::Float16
-            | DataType::Float32
-            | DataType::Float64
-            | DataType::Int16
-            | DataType::Int32
-            | DataType::Int64
-            | DataType::Int8
-            | DataType::LargeBinary
-            | DataType::LargeUtf8
-            | DataType::UInt16
-            | DataType::UInt32
-            | DataType::UInt64
-            | DataType::UInt8
-            | DataType::Time32(_)
-            | DataType::Time64(_)
-            | DataType::Duration(_)
-            | DataType::Interval(_)
-            | DataType::FixedSizeBinary(_)
-            | DataType::Decimal(_, _)
-            | DataType::Decimal256(_, _)
-            | DataType::Utf8 => 0,
-            DataType::Timestamp(_, str) => str.heap_size_bytes(),
-            DataType::List(field)
-            | DataType::FixedSizeList(field, _)
-            | DataType::LargeList(field)
-            | DataType::Map(field, _) => field.total_size_bytes(), // NOTE: Boxed, it's all on the heap
-            DataType::Struct(fields) => fields.heap_size_bytes(),
-            DataType::Union(fields, indices, _) => {
-                fields.heap_size_bytes() + indices.heap_size_bytes()
-            }
-            DataType::Dictionary(_, datatype, _) => datatype.total_size_bytes(), // NOTE: Boxed, it's all on the heap
-            DataType::Extension(name, datatype, extra) => {
+            Self::Null
+            | Self::Binary
+            | Self::Boolean
+            | Self::Date32
+            | Self::Date64
+            | Self::Float16
+            | Self::Float32
+            | Self::Float64
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Int8
+            | Self::LargeBinary
+            | Self::LargeUtf8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::UInt8
+            | Self::Time32(_)
+            | Self::Time64(_)
+            | Self::Duration(_)
+            | Self::Interval(_)
+            | Self::FixedSizeBinary(_)
+            | Self::Decimal(_, _)
+            | Self::Decimal256(_, _)
+            | Self::Utf8 => 0,
+            Self::Timestamp(_, str) => str.heap_size_bytes(),
+            Self::List(field)
+            | Self::FixedSizeList(field, _)
+            | Self::LargeList(field)
+            | Self::Map(field, _) => field.total_size_bytes(), // NOTE: Boxed, it's all on the heap
+            Self::Struct(fields) => fields.heap_size_bytes(),
+            Self::Union(fields, indices, _) => fields.heap_size_bytes() + indices.heap_size_bytes(),
+            Self::Dictionary(_, datatype, _) => datatype.total_size_bytes(), // NOTE: Boxed, it's all on the heap
+            Self::Extension(name, datatype, extra) => {
                 name.heap_size_bytes()
                 + datatype.total_size_bytes() // NOTE: Boxed, it's all on the heap
                 + extra.heap_size_bytes()
@@ -314,7 +312,7 @@ impl SizeBytes for DataType {
 impl SizeBytes for Field {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        let Field {
+        let Self {
             name,
             data_type,
             is_nullable,

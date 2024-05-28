@@ -12,7 +12,6 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the scalar axis of a plot.
 table ScalarAxis (
-    "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {

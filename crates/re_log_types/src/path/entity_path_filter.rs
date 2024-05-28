@@ -103,7 +103,7 @@ impl std::ops::AddAssign for EntityPathFilter {
 impl std::iter::Sum for EntityPathFilter {
     /// The union of all rules
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        let mut sum = EntityPathFilter::default();
+        let mut sum = Self::default();
         for item in iter {
             sum += item;
         }

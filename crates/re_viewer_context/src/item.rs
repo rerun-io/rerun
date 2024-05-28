@@ -87,15 +87,15 @@ impl std::str::FromStr for Item {
                 // TODO(emilk): support selecting a specific component of a specific instance.
                 Err(re_log_types::PathParseError::UnexpectedInstance(instance))
             }
-            (Some(instance), None) => Ok(Item::InstancePath(InstancePath::instance(
+            (Some(instance), None) => Ok(Self::InstancePath(InstancePath::instance(
                 entity_path,
                 instance,
             ))),
-            (None, Some(component_name)) => Ok(Item::ComponentPath(ComponentPath {
+            (None, Some(component_name)) => Ok(Self::ComponentPath(ComponentPath {
                 entity_path,
                 component_name,
             })),
-            (None, None) => Ok(Item::InstancePath(InstancePath::entity_all(entity_path))),
+            (None, None) => Ok(Self::InstancePath(InstancePath::entity_all(entity_path))),
         }
     }
 }
@@ -103,40 +103,40 @@ impl std::str::FromStr for Item {
 impl std::fmt::Debug for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Item::AppId(app_id) => app_id.fmt(f),
-            Item::DataSource(data_source) => data_source.fmt(f),
-            Item::StoreId(store_id) => store_id.fmt(f),
-            Item::ComponentPath(s) => s.fmt(f),
-            Item::SpaceView(s) => write!(f, "{s:?}"),
-            Item::InstancePath(path) => write!(f, "{path}"),
-            Item::DataResult(space_view_id, instance_path) => {
+            Self::AppId(app_id) => app_id.fmt(f),
+            Self::DataSource(data_source) => data_source.fmt(f),
+            Self::StoreId(store_id) => store_id.fmt(f),
+            Self::ComponentPath(s) => s.fmt(f),
+            Self::SpaceView(s) => write!(f, "{s:?}"),
+            Self::InstancePath(path) => write!(f, "{path}"),
+            Self::DataResult(space_view_id, instance_path) => {
                 write!(f, "({space_view_id:?}, {instance_path}")
             }
-            Item::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
+            Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
         }
     }
 }
 
 impl Item {
-    pub fn kind(self: &Item) -> &'static str {
+    pub fn kind(&self) -> &'static str {
         match self {
-            Item::AppId(_) => "Application",
-            Item::DataSource(_) => "Data source",
-            Item::StoreId(store_id) => match store_id.kind {
+            Self::AppId(_) => "Application",
+            Self::DataSource(_) => "Data source",
+            Self::StoreId(store_id) => match store_id.kind {
                 re_log_types::StoreKind::Recording => "Recording ID",
                 re_log_types::StoreKind::Blueprint => "Blueprint ID",
             },
-            Item::InstancePath(instance_path) => {
+            Self::InstancePath(instance_path) => {
                 if instance_path.instance.is_specific() {
                     "Entity instance"
                 } else {
                     "Entity"
                 }
             }
-            Item::ComponentPath(_) => "Entity component",
-            Item::SpaceView(_) => "Space view",
-            Item::Container(_) => "Container",
-            Item::DataResult(_, instance_path) => {
+            Self::ComponentPath(_) => "Entity component",
+            Self::SpaceView(_) => "Space view",
+            Self::Container(_) => "Container",
+            Self::DataResult(_, instance_path) => {
                 if instance_path.instance.is_specific() {
                     "Data result instance"
                 } else {

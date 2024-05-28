@@ -205,7 +205,7 @@ impl LatestAtCache {
     ) -> Option<Arc<LatestAtComponentResults>> {
         re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-        let LatestAtCache {
+        let Self {
             cache_key: _,
             per_query_time,
             per_data_time,

@@ -11,7 +11,6 @@ pub mod drag_and_drop;
 pub mod full_span;
 pub mod icons;
 pub mod list_item;
-pub mod list_item2;
 pub mod modal;
 pub mod toasts;
 
@@ -21,7 +20,6 @@ pub use self::{
     design_tokens::DesignTokens,
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
-    list_item::ListItem,
     syntax_highlighting::SyntaxHighlighting,
     toggle_switch::toggle_switch,
 };
@@ -185,7 +183,7 @@ impl ReUi {
 
     /// Height of the top-most bar.
     pub fn top_bar_height() -> f32 {
-        44.0 // from figma 2022-02-03
+        28.0 // Don't waste vertical space, especially important for embedded web viewers
     }
 
     /// Height of the title row in the blueprint view and selection view,
@@ -216,8 +214,8 @@ impl ReUi {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn bottom_panel_margin(&self) -> egui::Vec2 {
-        egui::Vec2::splat(8.0)
+    pub fn bottom_panel_margin(&self) -> egui::Margin {
+        Self::top_bar_margin()
     }
 
     /// For the streams view (time panel)
@@ -230,10 +228,7 @@ impl ReUi {
 
         let mut frame = egui::Frame {
             fill: self.design_tokens.bottom_bar_color,
-            inner_margin: egui::Margin::symmetric(
-                margin.x + margin_offset,
-                margin.y + margin_offset,
-            ),
+            inner_margin: margin + margin_offset,
             outer_margin: egui::Margin {
                 left: -margin_offset,
                 right: -margin_offset,
@@ -409,8 +404,8 @@ impl ReUi {
             visuals.widgets.open.expansion = 0.0;
         }
 
-        let button_size = Vec2::splat(28.0);
-        let icon_size = ReUi::small_icon_size(); // centered inside the button
+        let button_size = Vec2::splat(22.0);
+        let icon_size = Vec2::splat(12.0); // centered inside the button
         let rounding = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
@@ -545,7 +540,9 @@ impl ReUi {
     }
 
     /// Popup similar to [`egui::popup_below_widget`] but suitable for use with
-    /// [`crate::ListItem`].
+    /// [`crate::list_item::ListItem`].
+    ///
+    /// Note that `add_contents` is called within a [`crate::list_item::list_item_scope`].
     pub fn list_item_popup<R>(
         ui: &egui::Ui,
         popup_id: egui::Id,
@@ -577,13 +574,15 @@ impl ReUi {
                         ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
                         crate::full_span::full_span_scope(ui, ui.cursor().x_range(), |ui| {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                egui::Frame {
-                                    //TODO(ab): use design token
-                                    inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                    ..Default::default()
-                                }
-                                .show(ui, |ui| ret = Some(add_contents(ui)))
+                            crate::list_item::list_item_scope(ui, popup_id, |ui| {
+                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                    egui::Frame {
+                                        //TODO(ab): use design token
+                                        inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                        ..Default::default()
+                                    }
+                                    .show(ui, |ui| ret = Some(add_contents(ui)))
+                                })
                             })
                         })
                     })
@@ -599,7 +598,7 @@ impl ReUi {
     pub fn panel_content<R>(
         &self,
         ui: &mut egui::Ui,
-        add_contents: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
+        add_contents: impl FnOnce(&Self, &mut egui::Ui) -> R,
     ) -> R {
         egui::Frame {
             inner_margin: Self::panel_margin(),
@@ -620,7 +619,7 @@ impl ReUi {
     }
 
     /// Static title bar used to separate panels into section with custom buttons when hovered.
-    ///
+    ///h
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
     /// set.
     #[allow(clippy::unused_self)]
@@ -810,7 +809,8 @@ impl ReUi {
 
         let openness = state.openness(ui.ctx());
 
-        let header_size = egui::vec2(ui.available_width(), 28.0);
+        let height = Self::list_item_height();
+        let header_size = egui::vec2(ui.available_width(), height);
 
         // Draw custom header.
         ui.allocate_ui_with_layout(
@@ -1004,14 +1004,9 @@ impl ReUi {
         ui.painter().add(shadow);
     }
 
-    /// Convenience function to create a [`ListItem`] with the given text.
-    pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
-        ListItem::new(self, text)
-    }
-
-    /// Convenience function to create a [`list_item2::ListItem`].
-    pub fn list_item2(&self) -> list_item2::ListItem<'_> {
-        list_item2::ListItem::new(self)
+    /// Convenience function to create a [`list_item::ListItem`].
+    pub fn list_item(&self) -> list_item::ListItem<'_> {
+        list_item::ListItem::new(self)
     }
 
     #[allow(clippy::unused_self)]
@@ -1039,7 +1034,7 @@ impl ReUi {
 
         let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
-        let icon_width_plus_padding = Self::small_icon_size().x + ReUi::text_to_icon_padding();
+        let icon_width_plus_padding = Self::small_icon_size().x + Self::text_to_icon_padding();
 
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
@@ -1072,7 +1067,7 @@ impl ReUi {
             let image_rect = egui::Rect::from_min_size(
                 ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x.ceil(),
-                    (rect.center().y - 0.5 * ReUi::small_icon_size().y).ceil(),
+                    (rect.center().y - 0.5 * Self::small_icon_size().y).ceil(),
                 )),
                 image_size,
             );
@@ -1083,7 +1078,7 @@ impl ReUi {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + ReUi::text_to_icon_padding();
+            text_rect.min.x = image_rect.max.x + Self::text_to_icon_padding();
             let text_pos = ui
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)
@@ -1297,7 +1292,7 @@ pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
 
 /// A drop-down menu with a list of options.
 ///
-/// Designed for use with [`list_item2`] content.
+/// Designed for use with [`list_item`] content.
 ///
 /// Use this instead of using [`egui::ComboBox`] directly.
 pub fn drop_down_menu(
@@ -1319,7 +1314,7 @@ pub fn drop_down_menu(
                 .expand_rect(ui.max_rect())
                 .x_range();
 
-            list_item2::list_item_scope(ui, "inner_scope", |ui| {
+            list_item::list_item_scope(ui, "inner_scope", |ui| {
                 full_span::full_span_scope(ui, background_x_range, |ui| {
                     content(ui);
                 });

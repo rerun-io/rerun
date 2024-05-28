@@ -216,7 +216,7 @@ impl RangeCache {
     ) -> RangeComponentResults {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
-        let RangeCache {
+        let Self {
             cache_key: _,
             per_data_time,
             pending_invalidation: _,

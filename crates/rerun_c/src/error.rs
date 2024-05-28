@@ -8,7 +8,7 @@ impl CError {
     // NOTE: You must update `rr_error.description` too if you modify this value.
     pub const MAX_MESSAGE_SIZE_BYTES: usize = 2048;
 
-    pub const OK: CError = CError {
+    pub const OK: Self = Self {
         code: CErrorCode::Ok,
         message: [0; Self::MAX_MESSAGE_SIZE_BYTES],
     };
@@ -58,21 +58,21 @@ impl CError {
     }
 
     pub fn invalid_str_argument(parameter_name: &str, utf8_error: std::str::Utf8Error) -> Self {
-        CError::new(
+        Self::new(
             CErrorCode::InvalidStringArgument,
             &format!("Argument {parameter_name:?} is not valid UTF-8: {utf8_error}",),
         )
     }
 
     pub fn invalid_recording_stream_handle() -> Self {
-        CError::new(
+        Self::new(
             CErrorCode::InvalidRecordingStreamHandle,
             "Recording stream handle does not point to an existing recording stream.",
         )
     }
 
     #[allow(unsafe_code)]
-    pub(crate) fn write_error(self, error: *mut CError) {
+    pub(crate) fn write_error(self, error: *mut Self) {
         if let Some(error) = unsafe { error.as_mut() } {
             *error = self;
         };

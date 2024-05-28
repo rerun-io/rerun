@@ -2,7 +2,7 @@ use super::Vec4D;
 
 impl Vec4D {
     /// The zero vector, i.e. the additive identity.
-    pub const ZERO: Vec4D = Vec4D([0.0; 4]);
+    pub const ZERO: Self = Self([0.0; 4]);
 
     /// Create a new vector.
     #[inline]
@@ -46,8 +46,8 @@ impl From<(f32, f32, f32, f32)> for Vec4D {
 // slices, because Rust cannot keep track of the inherent `Copy` capability of it all across all the
 // layers of `Into`/`IntoIterator`.
 
-impl<'a> From<&'a Vec4D> for Vec4D {
-    fn from(v: &'a Vec4D) -> Self {
+impl<'a> From<&'a Self> for Vec4D {
+    fn from(v: &'a Self) -> Self {
         Self(v.0)
     }
 }

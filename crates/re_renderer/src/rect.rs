@@ -55,7 +55,7 @@ pub struct RectF32 {
 
 impl RectF32 {
     /// The unit rectangle, defined as (0, 0) - (1, 1).
-    pub const UNIT: RectF32 = RectF32 {
+    pub const UNIT: Self = Self {
         min: glam::Vec2::ZERO,
         extent: glam::Vec2::ONE,
     };
@@ -71,8 +71,8 @@ impl RectF32 {
     }
 
     #[inline]
-    pub fn scale_extent(self, factor: f32) -> RectF32 {
-        RectF32 {
+    pub fn scale_extent(self, factor: f32) -> Self {
+        Self {
             min: self.min * factor,
             extent: self.extent * factor,
         }

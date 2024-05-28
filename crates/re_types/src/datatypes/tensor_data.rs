@@ -111,7 +111,7 @@ impl ::re_types_core::Loggable for TensorData {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::TensorData>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, shape): (Vec<_>, Vec<_>) = data

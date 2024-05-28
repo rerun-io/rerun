@@ -32,7 +32,9 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
 
+    TogglePanelStateOverrides,
     ToggleMemoryPanel,
+    ToggleTopPanel,
     ToggleBlueprintPanel,
     ToggleSelectionPanel,
     ToggleTimePanel,
@@ -143,6 +145,9 @@ impl UICommand {
                 "Toggle memory panel",
                 "View and track current RAM usage inside Rerun Viewer",
             ),
+
+            Self::TogglePanelStateOverrides => ("Toggle panel state overrides", "Toggle panel state between app blueprint and overrides"),
+            Self::ToggleTopPanel => ("Toggle top panel", "Toggle the top panel"),
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
@@ -165,6 +170,7 @@ impl UICommand {
                 "Toggle fullscreen",
                 "Toggle between windowed and fullscreen viewer",
             ),
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomIn => ("Zoom in", "Increases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
@@ -235,7 +241,7 @@ impl UICommand {
             Self::RestartWithWebGpu => (
                 "Restart with WebGPU",
                 "Reloads the webpage and force WebGPU for rendering. All data will be lost."
-            ),
+            )
         }
     }
 
@@ -280,6 +286,8 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => Some(ctrl_shift(Key::P)),
             Self::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
+            Self::TogglePanelStateOverrides => None,
+            Self::ToggleTopPanel => None,
             Self::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
@@ -292,6 +300,7 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => Some(key(Key::F11)),
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomIn => Some(egui::gui_zoom::kb_shortcuts::ZOOM_IN),
             #[cfg(not(target_arch = "wasm32"))]
@@ -343,7 +352,7 @@ impl UICommand {
     }
 
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
-    pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<UICommand> {
+    pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Self> {
         use strum::IntoEnumIterator as _;
 
         let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
@@ -351,7 +360,7 @@ impl UICommand {
             return None; // e.g. we're typing in a TextField
         }
 
-        let mut commands: Vec<(KeyboardShortcut, UICommand)> = Self::iter()
+        let mut commands: Vec<(KeyboardShortcut, Self)> = Self::iter()
             .filter_map(|cmd| cmd.kb_shortcut().map(|kb_shortcut| (kb_shortcut, cmd)))
             .collect();
 

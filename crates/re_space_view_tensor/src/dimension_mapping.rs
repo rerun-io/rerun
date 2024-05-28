@@ -8,7 +8,7 @@ pub struct DimensionSelector {
 
 impl DimensionSelector {
     pub fn new(dim_idx: usize) -> Self {
-        DimensionSelector {
+        Self {
             visible: true,
             dim_idx,
         }
@@ -34,9 +34,9 @@ pub struct DimensionMapping {
 }
 
 impl DimensionMapping {
-    pub fn create(shape: &[TensorDimension]) -> DimensionMapping {
+    pub fn create(shape: &[TensorDimension]) -> Self {
         match shape.len() {
-            0 => DimensionMapping {
+            0 => Self {
                 selectors: Default::default(),
                 width: None,
                 height: None,
@@ -44,7 +44,7 @@ impl DimensionMapping {
                 invert_height: false,
             },
 
-            1 => DimensionMapping {
+            1 => Self {
                 selectors: Default::default(),
                 width: Some(0),
                 height: None,
@@ -70,7 +70,7 @@ impl DimensionMapping {
                     .map(|name| name.to_lowercase().eq("up"))
                     .unwrap_or_default();
 
-                DimensionMapping {
+                Self {
                     selectors,
                     width: Some(width),
                     height: Some(height),

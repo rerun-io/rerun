@@ -56,7 +56,7 @@ see that the time range is configured as expected.
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/fixed_window_example/f76228dc2e1212c148064c2193cdf75ef14bb2b9/1200w.png">
 </picture>
 
-Alternatively, you can check out a more full-featured example with multiple plot windows [here](https://github.com/rerun-io/rerun/tree/latest/examples/python/live_scrolling_plot?speculative-link).
+Alternatively, you can check out a more full-featured example with multiple plot windows [here](https://github.com/rerun-io/rerun/tree/latest/examples/python/live_scrolling_plot).
 
 ## Additional notes
 - Any time you log data, it has two timepoints associated with it: "log_time", and "log_tick".

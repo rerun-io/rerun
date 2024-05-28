@@ -1,3 +1,5 @@
+use anyhow::Result;
+use re_log::ResultExt;
 use std::ops::RangeInclusive;
 use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 
@@ -77,25 +79,26 @@ impl Time {
         parsed_format: &Vec<FormatItem<'_>>,
         time_zone_for_timestamps: TimeZone,
     ) -> String {
-        match time_zone_for_timestamps {
-            TimeZone::Local => {
-                if let Ok(local_offset) = UtcOffset::current_local_offset() {
-                    // Return in the local timezone.
-                    let local_datetime = datetime.to_offset(local_offset);
-                    local_datetime.format(&parsed_format).unwrap()
-                } else {
-                    // Fallback to UTC.
-                    // Skipping `err` description from logging because as of writing it doesn't add much, see
-                    // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
-                    re_log::warn_once!("Failed to access local timezone offset to UTC.");
-                    format!("{}Z", datetime.format(&parsed_format).unwrap())
+        let r = (|| -> Result<String, time::error::Format> {
+            match time_zone_for_timestamps {
+                TimeZone::Local => {
+                    if let Ok(local_offset) = UtcOffset::current_local_offset() {
+                        // Return in the local timezone.
+                        let local_datetime = datetime.to_offset(local_offset);
+                        local_datetime.format(&parsed_format)
+                    } else {
+                        // Fallback to UTC.
+                        // Skipping `err` description from logging because as of writing it doesn't add much, see
+                        // https://github.com/time-rs/time/blob/v0.3.29/time/src/error/indeterminate_offset.rs
+                        re_log::warn_once!("Failed to access local timezone offset to UTC.");
+                        Ok(format!("{}Z", datetime.format(&parsed_format)?))
+                    }
                 }
+                TimeZone::Utc => Ok(format!("{}Z", datetime.format(&parsed_format)?)),
+                TimeZone::UnixEpoch => datetime.format(&parsed_format),
             }
-            TimeZone::Utc => {
-                format!("{}Z", datetime.format(&parsed_format).unwrap())
-            }
-            TimeZone::UnixEpoch => datetime.format(&parsed_format).unwrap(),
-        }
+        })();
+        r.ok_or_log_error().unwrap_or_default()
     }
 
     /// Human-readable formatting
@@ -120,6 +123,7 @@ impl Time {
 
             let date_is_today = datetime.date() == OffsetDateTime::now_utc().date();
             let date_format = format!("[year]-[month]-[day] {time_format}");
+            #[allow(clippy::unwrap_used)] // date_format is okay!
             let parsed_format = if date_is_today {
                 time::format_description::parse(&time_format).unwrap()
             } else {
@@ -167,6 +171,7 @@ impl Time {
                         TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
                     }
                 };
+                #[allow(clippy::unwrap_used)] // time_format is okay!
                 let parsed_format = time::format_description::parse(time_format).unwrap();
 
                 return Self::time_string(datetime, &parsed_format, time_zone_for_timestamps);
@@ -202,14 +207,18 @@ impl Time {
         time_format: &str,
         time_zone_for_timestamps: TimeZone,
     ) -> Option<String> {
-        self.to_datetime().map(|datetime| {
-            let parsed_format = time::format_description::parse(time_format).unwrap();
-            Self::time_string(datetime, &parsed_format, time_zone_for_timestamps)
-        })
+        let datetime = self.to_datetime()?;
+        let parsed_format = time::format_description::parse(time_format).ok()?;
+
+        Some(Self::time_string(
+            datetime,
+            &parsed_format,
+            time_zone_for_timestamps,
+        ))
     }
 
     #[inline]
-    pub fn lerp(range: RangeInclusive<Time>, t: f32) -> Time {
+    pub fn lerp(range: RangeInclusive<Self>, t: f32) -> Self {
         let (min, max) = (range.start().0, range.end().0);
         Self(min + ((max - min) as f64 * (t as f64)).round() as i64)
     }
@@ -225,17 +234,17 @@ impl std::ops::Sub for Time {
     type Output = Duration;
 
     #[inline]
-    fn sub(self, rhs: Time) -> Duration {
+    fn sub(self, rhs: Self) -> Duration {
         Duration(self.0.saturating_sub(rhs.0))
     }
 }
 
 impl std::ops::Add<Duration> for Time {
-    type Output = Time;
+    type Output = Self;
 
     #[inline]
     fn add(self, duration: Duration) -> Self::Output {
-        Time(self.0.saturating_add(duration.0))
+        Self(self.0.saturating_add(duration.0))
     }
 }
 
@@ -247,20 +256,20 @@ impl std::ops::AddAssign<Duration> for Time {
 }
 
 impl std::ops::Sub<Duration> for Time {
-    type Output = Time;
+    type Output = Self;
 
     #[inline]
     fn sub(self, duration: Duration) -> Self::Output {
-        Time(self.0.saturating_sub(duration.0))
+        Self(self.0.saturating_sub(duration.0))
     }
 }
 
 impl TryFrom<std::time::SystemTime> for Time {
     type Error = std::time::SystemTimeError;
 
-    fn try_from(time: std::time::SystemTime) -> Result<Time, Self::Error> {
+    fn try_from(time: std::time::SystemTime) -> Result<Self, Self::Error> {
         time.duration_since(std::time::SystemTime::UNIX_EPOCH)
-            .map(|duration_since_epoch| Time(duration_since_epoch.as_nanos() as _))
+            .map(|duration_since_epoch| Self(duration_since_epoch.as_nanos() as _))
     }
 }
 
@@ -270,17 +279,17 @@ impl TryFrom<std::time::SystemTime> for Time {
 impl TryFrom<web_time::SystemTime> for Time {
     type Error = web_time::SystemTimeError;
 
-    fn try_from(time: web_time::SystemTime) -> Result<Time, Self::Error> {
+    fn try_from(time: web_time::SystemTime) -> Result<Self, Self::Error> {
         time.duration_since(web_time::SystemTime::UNIX_EPOCH)
-            .map(|duration_since_epoch| Time(duration_since_epoch.as_nanos() as _))
+            .map(|duration_since_epoch| Self(duration_since_epoch.as_nanos() as _))
     }
 }
 
 impl TryFrom<time::OffsetDateTime> for Time {
     type Error = core::num::TryFromIntError;
 
-    fn try_from(datetime: time::OffsetDateTime) -> Result<Time, Self::Error> {
-        i64::try_from(datetime.unix_timestamp_nanos()).map(Time::from_ns_since_epoch)
+    fn try_from(datetime: time::OffsetDateTime) -> Result<Self, Self::Error> {
+        i64::try_from(datetime.unix_timestamp_nanos()).map(Self::from_ns_since_epoch)
     }
 }
 
@@ -424,7 +433,7 @@ mod tests {
 pub struct Duration(i64);
 
 impl Duration {
-    pub const MAX: Duration = Duration(std::i64::MAX);
+    pub const MAX: Self = Self(std::i64::MAX);
     const NANOS_PER_SEC: i64 = 1_000_000_000;
     const NANOS_PER_MILLI: i64 = 1_000_000;
     const SEC_PER_MINUTE: i64 = 60;
@@ -527,15 +536,15 @@ impl Duration {
 }
 
 impl std::ops::Neg for Duration {
-    type Output = Duration;
+    type Output = Self;
 
     #[inline]
-    fn neg(self) -> Duration {
+    fn neg(self) -> Self {
         // Handle negation without overflow:
         if self.0 == std::i64::MIN {
-            Duration(std::i64::MAX)
+            Self(std::i64::MAX)
         } else {
-            Duration(-self.0)
+            Self(-self.0)
         }
     }
 }

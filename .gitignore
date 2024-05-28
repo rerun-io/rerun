@@ -34,6 +34,7 @@ _deps
 __pycache__
 *.pyc
 *.so
+**/.pytest_cache
 
 # Pixi environment
 .pixi

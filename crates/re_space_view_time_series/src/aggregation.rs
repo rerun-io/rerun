@@ -107,7 +107,7 @@ impl MinMaxAggregator {
 
         let capacity = (points.len() as f64 / window_size as f64) as usize;
         let mut aggregated = match self {
-            MinMaxAggregator::MinMax => Vec::with_capacity(capacity * 2),
+            Self::MinMax => Vec::with_capacity(capacity * 2),
             _ => Vec::with_capacity(capacity),
         };
 
@@ -125,7 +125,7 @@ impl MinMaxAggregator {
                 let point = &points[i + j];
 
                 match self {
-                    MinMaxAggregator::MinMax | MinMaxAggregator::MinMaxAverage => {
+                    Self::MinMax | Self::MinMaxAverage => {
                         acc_min.value = f64::min(acc_min.value, point.value);
                         acc_min.attrs.marker_size =
                             f32::min(acc_min.attrs.marker_size, point.attrs.marker_size);
@@ -133,12 +133,12 @@ impl MinMaxAggregator {
                         acc_max.attrs.marker_size =
                             f32::max(acc_max.attrs.marker_size, point.attrs.marker_size);
                     }
-                    MinMaxAggregator::Min => {
+                    Self::Min => {
                         acc_min.value = f64::min(acc_min.value, point.value);
                         acc_min.attrs.marker_size =
                             f32::min(acc_min.attrs.marker_size, point.attrs.marker_size);
                     }
-                    MinMaxAggregator::Max => {
+                    Self::Max => {
                         acc_max.value = f64::max(acc_max.value, point.value);
                         acc_max.attrs.marker_size =
                             f32::max(acc_max.attrs.marker_size, point.attrs.marker_size);
@@ -149,14 +149,14 @@ impl MinMaxAggregator {
             }
 
             match self {
-                MinMaxAggregator::MinMax => {
+                Self::MinMax => {
                     aggregated.push(acc_min);
                     // Avoid pushing the same point twice.
                     if j > 1 {
                         aggregated.push(acc_max);
                     }
                 }
-                MinMaxAggregator::MinMaxAverage => {
+                Self::MinMaxAverage => {
                     // Don't average a single point with itself.
                     if j > 1 {
                         acc_min.value = (acc_min.value + acc_max.value) * 0.5;
@@ -165,10 +165,10 @@ impl MinMaxAggregator {
                     }
                     aggregated.push(acc_min);
                 }
-                MinMaxAggregator::Min => {
+                Self::Min => {
                     aggregated.push(acc_min);
                 }
-                MinMaxAggregator::Max => {
+                Self::Max => {
                     aggregated.push(acc_max);
                 }
             }

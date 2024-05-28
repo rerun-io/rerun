@@ -34,7 +34,8 @@ pub(super) const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 337.0;
 const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 20.0;
-const TITLE_TO_GRID_VSPACE: f32 = 32.0;
+const AFTER_HEADER_VSPACE: f32 = 48.0;
+const TITLE_TO_GRID_VSPACE: f32 = 24.0;
 const ROW_VSPACE: f32 = 20.0;
 const THUMBNAIL_RADIUS: f32 = 12.0;
 
@@ -60,7 +61,7 @@ struct ExampleDescLayout {
 
 impl ExampleDescLayout {
     fn new(egui_ctx: &egui::Context, desc: ExampleDesc) -> Self {
-        ExampleDescLayout {
+        Self {
             rrd_byte_size_promise: load_file_size(egui_ctx, desc.rrd_url.clone()),
             desc,
             rect: egui::Rect::NOTHING,
@@ -86,10 +87,10 @@ enum LoadError {
 impl std::fmt::Display for LoadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoadError::Deserialize(err) => {
+            Self::Deserialize(err) => {
                 write!(f, "manifest is invalid, it may be outdated: {err}")
             }
-            LoadError::Fetch(err) => f.write_str(err),
+            Self::Fetch(err) => f.write_str(err),
         }
     }
 }
@@ -251,35 +252,6 @@ impl ExampleSection {
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
-        let Some(examples) = examples.ready_mut() else {
-            // Still waiting for example to load
-
-            header_ui(ui); // Always show the header
-
-            ui.separator();
-
-            ui.spinner(); // Placeholder for the examples
-            return;
-        };
-
-        let examples = match examples {
-            Ok(examples) => examples,
-            Err(err) => {
-                // Examples failed to load.
-
-                header_ui(ui); // Always show the header
-
-                re_log::warn_once!("Failed to load examples: {err}");
-
-                return;
-            }
-        };
-
-        if examples.is_empty() {
-            ui.label("No examples found.");
-            return;
-        }
-
         // vertical spacing isn't homogeneous so it's handled manually
         let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
         let column_count = (((ui.available_width() + grid_spacing.x)
@@ -302,6 +274,31 @@ impl ExampleSection {
 
             ui.vertical(|ui| {
                 header_ui(ui);
+
+                ui.add_space(AFTER_HEADER_VSPACE);
+
+                let Some(examples) = examples.ready_mut() else {
+                    // Still waiting for example to load
+                    ui.separator();
+
+                    ui.spinner(); // Placeholder for the examples
+                    return;
+                };
+
+                let examples = match examples {
+                    Ok(examples) => examples,
+                    Err(err) => {
+                        // Examples failed to load.
+                        re_log::warn_once!("Failed to load examples: {err}");
+
+                        return;
+                    }
+                };
+
+                if examples.is_empty() {
+                    ui.label("No examples found.");
+                    return;
+                }
 
                 ui.add(egui::Label::new(
                     egui::RichText::new("View example recordings")

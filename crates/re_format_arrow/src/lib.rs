@@ -1,8 +1,5 @@
 //! Formatting for tables of Arrow arrays
 
-// TODO(#3408): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 use std::fmt::Formatter;
 
 use arrow2::{
@@ -160,33 +157,27 @@ impl std::fmt::Display for DisplayDataType {
             DataType::Utf8 => "str",
             DataType::LargeUtf8 => "large-string",
             DataType::List(ref field) => {
-                let s = format!("list[{}]", DisplayDataType(field.data_type().clone()));
+                let s = format!("list[{}]", Self(field.data_type().clone()));
                 return f.write_str(&s);
             }
             DataType::FixedSizeList(field, len) => {
-                let s = format!(
-                    "fixed-list[{}; {len}]",
-                    DisplayDataType(field.data_type().clone())
-                );
+                let s = format!("fixed-list[{}; {len}]", Self(field.data_type().clone()));
                 return f.write_str(&s);
             }
             DataType::LargeList(field) => {
-                let s = format!("large-list[{}]", DisplayDataType(field.data_type().clone()));
+                let s = format!("large-list[{}]", Self(field.data_type().clone()));
                 return f.write_str(&s);
             }
             DataType::Struct(fields) => return write!(f, "struct[{}]", fields.len()),
             DataType::Union(fields, _, _) => return write!(f, "union[{}]", fields.len()),
             DataType::Map(field, _) => {
-                return write!(f, "map[{}]", DisplayDataType(field.data_type().clone()))
+                return write!(f, "map[{}]", Self(field.data_type().clone()))
             }
             DataType::Dictionary(_, _, _) => "dict",
             DataType::Decimal(_, _) => "decimal",
             DataType::Decimal256(_, _) => "decimal256",
             DataType::Extension(name, data_type, _) => {
-                let s = format!(
-                    "extension<{name}>[{}]",
-                    DisplayDataType((**data_type).clone())
-                );
+                let s = format!("extension<{name}>[{}]", Self((**data_type).clone()));
                 return f.write_str(&s);
             }
         };
@@ -247,7 +238,10 @@ where
             .iter()
             .map(|disp| {
                 let mut string = String::new();
-                (disp)(&mut string, row).unwrap();
+                if (disp)(&mut string, row).is_err() {
+                    // Seems to be okay to silently ignore errors here, but reset the string just in case
+                    string.clear();
+                }
                 let chars: Vec<_> = string.chars().collect();
                 if chars.len() > WIDTH_UPPER_BOUNDARY as usize {
                     Cell::new(

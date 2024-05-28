@@ -26,8 +26,8 @@ impl RangeResultsExt for Results {
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
         match self {
-            Results::LatestAt(_, results) => results.get_dense(resolver),
-            Results::Range(_, results) => results.get_dense(resolver),
+            Self::LatestAt(_, results) => results.get_dense(resolver),
+            Self::Range(_, results) => results.get_dense(resolver),
         }
     }
 
@@ -36,8 +36,8 @@ impl RangeResultsExt for Results {
         resolver: &PromiseResolver,
     ) -> re_query::Result<RangeData<'a, C>> {
         match self {
-            Results::LatestAt(_, results) => results.get_or_empty_dense(resolver),
-            Results::Range(_, results) => results.get_or_empty_dense(resolver),
+            Self::LatestAt(_, results) => results.get_or_empty_dense(resolver),
+            Self::Range(_, results) => results.get_or_empty_dense(resolver),
         }
     }
 }

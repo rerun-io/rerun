@@ -62,7 +62,7 @@ impl EntityDataUi for re_types::components::TensorData {
         // TODO(#5607): what should happen if the promise is still pending?
         let tensor_data_row_id = ctx
             .recording()
-            .latest_at_component::<re_types::components::TensorData>(entity_path, query)
+            .latest_at_component::<Self>(entity_path, query)
             .map_or(RowId::ZERO, |tensor| tensor.index.1);
 
         let decoded = ctx

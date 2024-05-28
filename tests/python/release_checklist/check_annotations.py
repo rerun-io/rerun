@@ -20,6 +20,9 @@ The image should contain a red region and a green region.
 There should be 1 red rectangle and 1 green rectangle.
 
 Hover over each of the elements and confirm it shows the label as "red" or "green" as expected.
+
+*Note*: when hovering the rectangles, a tooltip pertaining to the image will _also_ appear and indicate a label of "0".
+This is expected as the image is black at this location.
 """
 
 

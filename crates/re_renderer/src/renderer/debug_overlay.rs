@@ -120,7 +120,7 @@ impl DebugOverlayDrawData {
             ),
         };
 
-        Ok(DebugOverlayDrawData {
+        Ok(Self {
             bind_group: ctx.gpu_resources.bind_groups.alloc(
                 &ctx.device,
                 &ctx.gpu_resources,
@@ -217,7 +217,7 @@ impl Renderer for DebugOverlayRenderer {
                 multisample: wgpu::MultisampleState::default(),
             },
         );
-        DebugOverlayRenderer {
+        Self {
             render_pipeline,
             bind_group_layout,
         }

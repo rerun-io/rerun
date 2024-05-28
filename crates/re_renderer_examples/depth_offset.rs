@@ -30,7 +30,7 @@ impl framework::Example for Render2D {
     }
 
     fn new(_re_ctx: &re_renderer::RenderContext) -> Self {
-        Render2D {
+        Self {
             distance_scale: 100.0,
             near_plane: 0.1,
         }

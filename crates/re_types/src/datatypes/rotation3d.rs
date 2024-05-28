@@ -103,8 +103,8 @@ impl ::re_types_core::Loggable for Rotation3D {
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
-                    Some(Rotation3D::Quaternion(_)) => 1i8,
-                    Some(Rotation3D::AxisAngle(_)) => 2i8,
+                    Some(Self::Quaternion(_)) => 1i8,
+                    Some(Self::AxisAngle(_)) => 2i8,
                 })
                 .collect();
             let fields = vec![
@@ -113,7 +113,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                     let quaternion: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
+                            Some(Self::Quaternion(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -146,7 +146,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                     let axis_angle: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
-                            Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
+                            Some(Self::AxisAngle(v)) => Some(v.clone()),
                             _ => None,
                         })
                         .collect();
@@ -170,12 +170,12 @@ impl ::re_types_core::Loggable for Rotation3D {
                             nulls_offset += 1;
                             offset
                         }
-                        Some(Rotation3D::Quaternion(_)) => {
+                        Some(Self::Quaternion(_)) => {
                             let offset = quaternion_offset;
                             quaternion_offset += 1;
                             offset
                         }
-                        Some(Rotation3D::AxisAngle(_)) => {
+                        Some(Self::AxisAngle(_)) => {
                             let offset = axis_angle_offset;
                             axis_angle_offset += 1;
                             offset
@@ -183,13 +183,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                     })
                     .collect()
             });
-            UnionArray::new(
-                <crate::datatypes::Rotation3D>::arrow_datatype(),
-                types,
-                fields,
-                offsets,
-            )
-            .boxed()
+            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
         })
     }
 
@@ -331,7 +325,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                             Ok(None)
                         } else {
                             Ok(Some(match typ {
-                                1i8 => Rotation3D::Quaternion({
+                                1i8 => Self::Quaternion({
                                     if offset as usize >= quaternion.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -346,7 +340,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                 }),
-                                2i8 => Rotation3D::AxisAngle({
+                                2i8 => Self::AxisAngle({
                                     if offset as usize >= axis_angle.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

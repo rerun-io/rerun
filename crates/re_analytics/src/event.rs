@@ -137,7 +137,7 @@ use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
 impl From<Id> for Property {
     fn from(val: Id) -> Self {
         match val {
-            Id::Official(id) => Property::String(id),
+            Id::Official(id) => Self::String(id),
             Id::Hashed(id) => id,
         }
     }

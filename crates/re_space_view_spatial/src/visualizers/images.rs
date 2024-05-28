@@ -835,7 +835,7 @@ impl ImageVisualizer {
     ) -> Result<(), SpaceViewSystemExecutionError>
     where
         F: FnMut(
-            &mut ImageVisualizer,
+            &mut Self,
             &ViewerContext<'_>,
             &mut Vec<DepthCloud>,
             &TransformContext,
@@ -847,7 +847,7 @@ impl ImageVisualizer {
     {
         let transforms = view_ctx.get::<TransformContext>()?;
 
-        super::entity_iterator::process_archetype::<ImageVisualizer, A, _>(
+        super::entity_iterator::process_archetype::<Self, A, _>(
             ctx,
             view_query,
             view_ctx,

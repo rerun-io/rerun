@@ -154,6 +154,11 @@ impl ::re_types_core::Archetype for LineStrips2D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Line strips 2D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: LineStrips2DIndicator = LineStrips2DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

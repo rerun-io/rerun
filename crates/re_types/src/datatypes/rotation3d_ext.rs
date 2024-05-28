@@ -4,7 +4,7 @@ use super::Rotation3D;
 
 impl Rotation3D {
     /// The identity rotation, representing no rotation.
-    pub const IDENTITY: Rotation3D = Rotation3D::Quaternion(Quaternion::IDENTITY);
+    pub const IDENTITY: Self = Self::Quaternion(Quaternion::IDENTITY);
 }
 
 impl From<Quaternion> for Rotation3D {
@@ -36,7 +36,7 @@ impl From<Rotation3D> for glam::Quat {
 impl From<glam::Quat> for Rotation3D {
     #[inline]
     fn from(val: glam::Quat) -> Self {
-        Rotation3D::Quaternion(val.into())
+        Self::Quaternion(val.into())
     }
 }
 
@@ -55,6 +55,6 @@ impl From<Rotation3D> for mint::Quaternion<f32> {
 impl From<mint::Quaternion<f32>> for Rotation3D {
     #[inline]
     fn from(val: mint::Quaternion<f32>) -> Self {
-        Rotation3D::Quaternion(val.into())
+        Self::Quaternion(val.into())
     }
 }

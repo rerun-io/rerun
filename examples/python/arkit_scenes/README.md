@@ -126,6 +126,6 @@ pip install -e examples/python/arkit_scenes
 
 To run this example use
 ```bash
-python -m airkit_scenes
+python -m arkit_scenes
 ```
 

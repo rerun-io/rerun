@@ -223,13 +223,12 @@ pub fn quote_arrow_deserializer(
                 let data_src_types = format_ident!("{data_src}_types");
 
                 let obj_fqname = obj.fqname.as_str();
-                let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
                     let arrow_type_index = Literal::i8_unsuffixed(typ as i8 + 1); // 0 is reserved for `_null_markers`
 
                     let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
                     quote! {
-                        #arrow_type_index => Ok(Some(#quoted_obj_name::#quoted_obj_field_type))
+                        #arrow_type_index => Ok(Some(Self::#quoted_obj_field_type))
                     }
                 });
 
@@ -320,7 +319,6 @@ pub fn quote_arrow_deserializer(
                     });
 
                 let obj_fqname = obj.fqname.as_str();
-                let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
                     let typ = typ as i8 + 1; // NOTE: +1 to account for `_null_markers` virtual arm
 
@@ -331,7 +329,7 @@ pub fn quote_arrow_deserializer(
                     if obj_field.typ == crate::Type::Unit {
                         // TODO(andreas): Should we check there's enough nulls on the null array?
                         return quote! {
-                            #typ => #quoted_obj_name::#quoted_obj_field_type
+                            #typ => Self::#quoted_obj_field_type
                         };
                     }
 
@@ -345,7 +343,7 @@ pub fn quote_arrow_deserializer(
                     };
 
                     quote! {
-                        #typ => #quoted_obj_name::#quoted_obj_field_type({
+                        #typ => Self::#quoted_obj_field_type({
                             // NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when indexing the data (as in: a 100x perf drop)!

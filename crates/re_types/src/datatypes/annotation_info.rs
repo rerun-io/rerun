@@ -95,7 +95,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                Self::arrow_datatype(),
                 vec![
                     {
                         let (somes, id): (Vec<_>, Vec<_>) = data

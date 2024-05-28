@@ -141,7 +141,7 @@ mod file_server_impl {
     // Singleton API
     impl FileServer {
         /// Returns a reference to the global `FileServer`.
-        pub fn get<T>(mut f: impl FnMut(&FileServer) -> T) -> T {
+        pub fn get<T>(mut f: impl FnMut(&Self) -> T) -> T {
             if let Some(fs) = FILE_SERVER.read().as_ref() {
                 return f(fs);
             }
@@ -160,7 +160,7 @@ mod file_server_impl {
         }
 
         /// Returns a mutable reference to the global `FileServer`.
-        pub fn get_mut<T>(mut f: impl FnMut(&mut FileServer) -> T) -> T {
+        pub fn get_mut<T>(mut f: impl FnMut(&mut Self) -> T) -> T {
             let mut global = FILE_SERVER.write();
 
             if global.is_none() {
@@ -298,11 +298,11 @@ mod file_server_impl {
     pub struct FileServer;
 
     impl FileServer {
-        pub fn get<T>(mut f: impl FnMut(&FileServer) -> T) -> T {
+        pub fn get<T>(mut f: impl FnMut(&Self) -> T) -> T {
             f(&Self)
         }
 
-        pub fn get_mut<T>(mut f: impl FnMut(&mut FileServer) -> T) -> T {
+        pub fn get_mut<T>(mut f: impl FnMut(&mut Self) -> T) -> T {
             f(&mut Self)
         }
 

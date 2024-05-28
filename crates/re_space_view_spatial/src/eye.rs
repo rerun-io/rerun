@@ -24,7 +24,7 @@ pub struct Eye {
 impl Eye {
     pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
-    pub fn from_camera(space_cameras: &SpaceCamera3D) -> Option<Eye> {
+    pub fn from_camera(space_cameras: &SpaceCamera3D) -> Option<Self> {
         let fov_y = space_cameras
             .pinhole
             .as_ref()
@@ -140,7 +140,7 @@ impl Eye {
             ))
         };
 
-        Eye {
+        Self {
             world_from_rub_view: IsoTransform::from_rotation_translation(rotation, translation),
             fov_y,
         }
@@ -208,7 +208,7 @@ impl ViewEye {
         world_from_view_rot: Quat,
         eye_up: Vec3,
     ) -> Self {
-        ViewEye {
+        Self {
             mode: EyeMode::Orbital,
             center: orbit_center,
             orbit_radius,

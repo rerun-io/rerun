@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_types_core::{Loggable, SizeBytes};
+use re_types_core::{DeserializationError, Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -18,6 +18,10 @@ impl re_types_core::Archetype for MyPoints {
 
     fn name() -> re_types_core::ArchetypeName {
         "example.MyPoints".into()
+    }
+
+    fn display_name() -> &'static str {
+        "MyPoints"
     }
 
     fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentName]> {
@@ -47,7 +51,7 @@ impl MyPoint {
     #[inline]
     pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
         it.into_iter()
-            .map(|i| MyPoint::new(i as f32, i as f32))
+            .map(|i| Self::new(i as f32, i as f32))
             .collect()
     }
 }
@@ -112,7 +116,9 @@ impl Loggable for MyPoint {
         let array = data
             .as_any()
             .downcast_ref::<arrow2::array::StructArray>()
-            .unwrap();
+            .ok_or(DeserializationError::downcast_error::<
+                arrow2::array::StructArray,
+            >())?;
 
         let x_array = array.values()[0].as_ref();
         let y_array = array.values()[1].as_ref();
@@ -120,11 +126,15 @@ impl Loggable for MyPoint {
         let xs = x_array
             .as_any()
             .downcast_ref::<arrow2::array::Float32Array>()
-            .unwrap();
+            .ok_or(DeserializationError::downcast_error::<
+                arrow2::array::Float32Array,
+            >())?;
         let ys = y_array
             .as_any()
             .downcast_ref::<arrow2::array::Float32Array>()
-            .unwrap();
+            .ok_or(DeserializationError::downcast_error::<
+                arrow2::array::Float32Array,
+            >())?;
 
         Ok(xs
             .values_iter()

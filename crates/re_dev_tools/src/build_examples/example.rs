@@ -62,7 +62,7 @@ impl Example {
             anyhow::bail!("example {name:?} has no frontmatter");
         };
         let script_path = dir.join(language.entrypoint_path(&dir, name)?);
-        Ok(Some(Example {
+        Ok(Some(Self {
             name: name.to_owned(),
             title: readme.title,
             dir,
@@ -104,20 +104,20 @@ impl Language {
     /// relative to `{workspace_root}/examples`.
     pub fn examples_dir(&self) -> &'static Path {
         match self {
-            Language::Rust => Path::new("rust"),
-            Language::Python => Path::new("python"),
-            Language::C => Path::new("c"),
-            Language::Cpp => Path::new("cpp"),
+            Self::Rust => Path::new("rust"),
+            Self::Python => Path::new("python"),
+            Self::C => Path::new("c"),
+            Self::Cpp => Path::new("cpp"),
         }
     }
 
     /// Extension without the leading dot, e.g. `rs`.
     pub fn extension(&self) -> &'static str {
         match self {
-            Language::Rust => "rs",
-            Language::Python => "py",
-            Language::C => "c",
-            Language::Cpp => "cpp",
+            Self::Rust => "rs",
+            Self::Python => "py",
+            Self::C => "c",
+            Self::Cpp => "cpp",
         }
     }
 
@@ -133,8 +133,8 @@ impl Language {
         example_name: &str,
     ) -> anyhow::Result<PathBuf> {
         match self {
-            Language::Rust => Ok(PathBuf::from("src/main.rs")),
-            Language::Python => {
+            Self::Rust => Ok(PathBuf::from("src/main.rs")),
+            Self::Python => {
                 // we must handle two cases:
                 // - single script named after the example: `example.py`
                 // - package named after the example: `example/`
@@ -151,8 +151,8 @@ impl Language {
 
                 anyhow::bail!(CouldNotFindEntryPoint(example_dir.into()))
             }
-            Language::C => Ok(PathBuf::from("main.c")),
-            Language::Cpp => Ok(PathBuf::from("main.cpp")),
+            Self::C => Ok(PathBuf::from("main.c")),
+            Self::Cpp => Ok(PathBuf::from("main.cpp")),
         }
     }
 }
@@ -164,7 +164,7 @@ pub struct ExamplesManifest {
 
 impl ExamplesManifest {
     /// Loads the `examples/manifest.toml` file.
-    pub fn load(workspace_root: impl AsRef<Path>) -> anyhow::Result<ExamplesManifest> {
+    pub fn load(workspace_root: impl AsRef<Path>) -> anyhow::Result<Self> {
         let manifest_toml = workspace_root
             .as_ref()
             .join("examples")
@@ -208,18 +208,18 @@ pub enum Channel {
 }
 
 impl Channel {
-    pub fn includes(self, other: Channel) -> bool {
+    pub fn includes(self, other: Self) -> bool {
         match self {
-            Channel::Main => matches!(other, Channel::Main),
+            Self::Main => matches!(other, Self::Main),
 
             // Include all `main` examples in `release`
-            Channel::Release => {
-                matches!(other, Channel::Main | Channel::Release)
+            Self::Release => {
+                matches!(other, Self::Main | Self::Release)
             }
 
             // Include all `main` and `release` examples in `nightly`
-            Channel::Nightly => {
-                matches!(other, Channel::Main | Channel::Release | Channel::Nightly)
+            Self::Nightly => {
+                matches!(other, Self::Main | Self::Release | Self::Nightly)
             }
         }
     }
@@ -300,9 +300,9 @@ impl Channel {
 impl Display for Channel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            Channel::Main => "main",
-            Channel::Nightly => "nightly",
-            Channel::Release => "release",
+            Self::Main => "main",
+            Self::Nightly => "nightly",
+            Self::Release => "release",
         };
         f.write_str(s)
     }
@@ -357,7 +357,7 @@ struct Frontmatter {
 }
 
 impl Frontmatter {
-    fn load(path: &Path) -> anyhow::Result<Option<(Frontmatter, String)>> {
+    fn load(path: &Path) -> anyhow::Result<Option<(Self, String)>> {
         const START: &str = "<!--[metadata]";
         const END: &str = "-->";
 
@@ -377,13 +377,11 @@ impl Frontmatter {
         };
         let end = start + end;
 
-        let frontmatter: Frontmatter =
-            toml::from_str(content[start..end].trim()).map_err(|err| {
-                anyhow::anyhow!(
-                    "Failed to parse TOML metadata of {:?}: {err}",
-                    path.parent().unwrap().file_name().unwrap()
-                )
-            })?;
+        let frontmatter: Self = toml::from_str(content[start..end].trim()).map_err(|err| {
+            #[allow(clippy::unwrap_used)]
+            let p = path.parent().unwrap().file_name().unwrap();
+            anyhow::anyhow!("Failed to parse TOML metadata of {p:?}: {err}")
+        })?;
 
         Ok(Some((
             frontmatter,

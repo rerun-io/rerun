@@ -3,6 +3,8 @@
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use ahash::HashMap;
+use serde::Deserialize;
+use std::str::FromStr as _;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
@@ -24,58 +26,90 @@ pub struct WebHandle {
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
     tx_channels: HashMap<String, re_smart_channel::Sender<re_log_types::LogMsg>>,
+
+    app_options: AppOptions,
 }
 
 #[wasm_bindgen]
 impl WebHandle {
-    #[allow(clippy::new_without_default)]
+    #[allow(clippy::new_without_default, clippy::use_self)] // Can't use `Self` here because of `#[wasm_bindgen]`.
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
+    pub fn new(app_options: JsValue) -> Result<WebHandle, JsValue> {
         re_log::setup_logging();
 
-        Self {
+        let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
+
+        Ok(Self {
             runner: eframe::WebRunner::new(),
             tx_channels: Default::default(),
-        }
+            app_options: app_options.unwrap_or_default(),
+        })
     }
 
     /// - `url` is an optional URL to either an .rrd file over http, or a Rerun WebSocket server.
     /// - `manifest_url` is an optional URL to an `examples_manifest.json` file over http.
     /// - `force_wgpu_backend` is an optional string to force a specific backend, either `webgl` or `webgpu`.
     #[wasm_bindgen]
-    pub async fn start(
-        &self,
-        canvas_id: &str,
-        url: Option<String>,
-        manifest_url: Option<String>,
-        force_wgpu_backend: Option<String>,
-        hide_welcome_screen: Option<bool>,
-    ) -> Result<(), wasm_bindgen::JsValue> {
+    pub async fn start(&self, canvas_id: String) -> Result<(), wasm_bindgen::JsValue> {
+        let app_options = self.app_options.clone();
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
             default_theme: eframe::Theme::Dark,
-            wgpu_options: crate::wgpu_options(force_wgpu_backend),
+            wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
             depth_buffer: 0,
             ..Default::default()
         };
 
         self.runner
             .start(
-                canvas_id,
+                &canvas_id,
                 web_options,
-                Box::new(move |cc| {
-                    let app = create_app(
-                        cc,
-                        &url,
-                        &manifest_url,
-                        hide_welcome_screen.unwrap_or(false),
-                    );
-                    Box::new(app)
-                }),
+                Box::new(move |cc| Box::new(create_app(cc, app_options))),
             )
             .await?;
 
         re_log::debug!("Web app started.");
+
+        Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn toggle_panel_overrides(&self) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        app.panel_state_overrides_active ^= true;
+    }
+
+    #[wasm_bindgen]
+    pub fn override_panel_state(&self, panel: &str, state: Option<String>) -> Result<(), JsValue> {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return Ok(());
+        };
+
+        let panel = Panel::from_str(panel)
+            .map_err(|err| js_sys::TypeError::new(&format!("invalid panel: {err}")))?;
+
+        let state = match state {
+            Some(state) => Some(
+                PanelState::from_str(&state)
+                    .map_err(|err| js_sys::TypeError::new(&format!("invalid state: {err}")))?
+                    .into(),
+            ),
+            None => None,
+        };
+
+        let overrides = &mut app.panel_state_overrides;
+        match panel {
+            Panel::Top => overrides.top = state,
+            Panel::Blueprint => overrides.blueprint = state,
+            Panel::Selection => overrides.selection = state,
+            Panel::Time => overrides.time = state,
+        }
+
+        // request repaint, because the overrides may cause panels to expand/collapse
+        app.re_ui.egui_ctx.request_repaint();
 
         Ok(())
     }
@@ -224,12 +258,72 @@ impl WebHandle {
     }
 }
 
-fn create_app(
-    cc: &eframe::CreationContext<'_>,
-    url: &Option<String>,
-    manifest_url: &Option<String>,
-    hide_welcome_screen: bool,
-) -> crate::App {
+// TODO(jprochazk): figure out a way to auto-generate these types on JS side
+
+// Keep in sync with the `Panel` typedef in `rerun_js/web-viewer/index.js`
+#[derive(Clone, Deserialize, strum_macros::EnumString)]
+#[strum(serialize_all = "snake_case")]
+enum Panel {
+    Top,
+    Blueprint,
+    Selection,
+    Time,
+}
+
+// Keep in sync with the `PanelState` typedef in `rerun_js/web-viewer/index.js`
+#[derive(Clone, Deserialize, strum_macros::EnumString)]
+#[strum(serialize_all = "snake_case")]
+enum PanelState {
+    Hidden,
+    Collapsed,
+    Expanded,
+}
+
+impl From<PanelState> for re_types::blueprint::components::PanelState {
+    fn from(value: PanelState) -> Self {
+        match value {
+            PanelState::Hidden => Self::Hidden,
+            PanelState::Collapsed => Self::Collapsed,
+            PanelState::Expanded => Self::Expanded,
+        }
+    }
+}
+
+// Keep in sync with the `AppOptions` typedef in `rerun_js/web-viewer/index.js`
+#[derive(Clone, Default, Deserialize)]
+pub struct AppOptions {
+    url: Option<String>,
+    manifest_url: Option<String>,
+    render_backend: Option<String>,
+    hide_welcome_screen: Option<bool>,
+    panel_state_overrides: Option<PanelStateOverrides>,
+}
+
+#[derive(Clone, Default, Deserialize)]
+pub struct PanelStateOverrides {
+    top: Option<PanelState>,
+    blueprint: Option<PanelState>,
+    selection: Option<PanelState>,
+    time: Option<PanelState>,
+}
+
+impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
+    fn from(value: PanelStateOverrides) -> Self {
+        Self {
+            top: value.top.map(|v| v.into()),
+            blueprint: value.blueprint.map(|v| v.into()),
+            selection: value.selection.map(|v| v.into()),
+            time: value.time.map(|v| v.into()),
+        }
+    }
+}
+
+// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
+#[derive(Clone, Deserialize)]
+#[repr(transparent)]
+struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
+
+fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
@@ -244,7 +338,8 @@ fn create_app(
         is_in_notebook: is_in_notebook(&cc.integration_info),
         expect_data_soon: None,
         force_wgpu_backend: None,
-        hide_welcome_screen,
+        hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
+        panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
     let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 
@@ -252,7 +347,7 @@ fn create_app(
 
     let query_map = &cc.integration_info.web_info.location.query_map;
 
-    if let Some(manifest_url) = manifest_url {
+    if let Some(manifest_url) = &app_options.manifest_url {
         app.set_examples_manifest_url(manifest_url.into());
     } else {
         for url in query_map.get("manifest_url").into_iter().flatten() {
@@ -260,7 +355,7 @@ fn create_app(
         }
     }
 
-    if let Some(url) = url {
+    if let Some(url) = &app_options.url {
         let follow_if_http = false;
         if let Some(receiver) =
             url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()

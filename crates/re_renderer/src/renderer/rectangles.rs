@@ -119,8 +119,8 @@ impl ColorMapper {
     #[inline]
     pub fn is_on(&self) -> bool {
         match self {
-            ColorMapper::OffGrayscale | ColorMapper::OffRGB => false,
-            ColorMapper::Function(_) | ColorMapper::Texture(_) => true,
+            Self::OffGrayscale | Self::OffRGB => false,
+            Self::Function(_) | Self::Texture(_) => true,
         }
     }
 }
@@ -408,7 +408,7 @@ impl RectangleDrawData {
         let rectangle_renderer = ctx.renderer::<RectangleRenderer>();
 
         if rectangles.is_empty() {
-            return Ok(RectangleDrawData {
+            return Ok(Self {
                 instances: Vec::new(),
             });
         }
@@ -487,7 +487,7 @@ impl RectangleDrawData {
             });
         }
 
-        Ok(RectangleDrawData { instances })
+        Ok(Self { instances })
     }
 }
 
@@ -638,7 +638,7 @@ impl Renderer for RectangleRenderer {
             }),
         );
 
-        RectangleRenderer {
+        Self {
             render_pipeline_color,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,

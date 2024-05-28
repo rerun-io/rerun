@@ -27,7 +27,7 @@ impl From<Scale3D> for glam::Vec3 {
     fn from(val: Scale3D) -> Self {
         match val {
             Scale3D::ThreeD(v) => v.into(),
-            Scale3D::Uniform(v) => glam::Vec3::splat(v),
+            Scale3D::Uniform(v) => Self::splat(v),
         }
     }
 }
