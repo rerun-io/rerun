@@ -114,6 +114,6 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 
    For minor release, merge the release branch to `main`.
 
-   For patch release, manually create a new PR from `main` and cherry-pick the required commits. This includes(at least
-   the `CHANLGE.log` update, plus any other change made within release branch that hasn't been cherry-picked in the
-   first place.)
+   For patch release, manually create a new PR from `main` and cherry-pick the required commits. This includes at least
+   the `CHANLGE.log` update, plus any other changes made on the release branch that hasn't been cherry-picked in the
+   first place.
