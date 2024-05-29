@@ -67,11 +67,11 @@ jobs:
 
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run rs-check --skip-check-individual-crates --skip-test
+        run: pixi run rs-check --skip individual_crates tests
 
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
-        run: pixi run rs-check --skip-check-individual-crates
+        run: pixi run rs-check --skip individual_crates
 
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
