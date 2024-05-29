@@ -172,7 +172,6 @@ fn edit_scatter_ui(
     egui::ComboBox::from_id_source("scatter")
         .selected_text(scattered_text)
         .show_ui(ui, |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             ui.selectable_value(&mut edit_scatter, false, "Line");
             ui.selectable_value(&mut edit_scatter, true, "Scattered");
         });
@@ -274,9 +273,6 @@ fn edit_marker_shape_ui(
         )
         .height(320.0)
         .show_ui(ui, |ui| {
-            // workaround to force `ui.max_rect()` to reflect the content size
-            ui.set_width(item_width);
-
             let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
 
             let list_ui = |ui: &mut egui::Ui| {

@@ -58,7 +58,7 @@ fn main() -> eframe::Result<()> {
         native_options,
         Box::new(move |cc| {
             let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
-            Box::new(ExampleApp::new(re_ui))
+            Ok(Box::new(ExampleApp::new(re_ui)))
         }),
     )
 }
