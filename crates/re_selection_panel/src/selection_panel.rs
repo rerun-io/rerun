@@ -1039,7 +1039,7 @@ fn container_kind_selection_ui(
     let min_width = 90.0;
     let selected_text = format!("{in_out_kind:?}");
 
-    re_ui::drop_down_menu(ui, "container_kind", min_width, selected_text, |ui| {
+    re_ui::drop_down_menu(ui, "container_kind", selected_text, |ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
         static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);

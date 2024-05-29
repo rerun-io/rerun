@@ -1296,7 +1296,6 @@ pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
 pub fn drop_down_menu(
     ui: &mut egui::Ui,
     id_source: impl std::hash::Hash,
-    min_width: f32,
     selected_text: String,
     content: impl FnOnce(&mut egui::Ui),
 ) {
@@ -1304,8 +1303,6 @@ pub fn drop_down_menu(
     egui::ComboBox::from_id_source(id_source)
         .selected_text(selected_text)
         .show_ui(ui, |ui| {
-            ui.set_min_width(min_width);
-
             let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
 
             list_item::list_item_scope(ui, "inner_scope", |ui| {
