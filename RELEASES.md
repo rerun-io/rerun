@@ -61,7 +61,7 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
    e.g. `release-0.15.0` instead of `release-0.15`.
 
    For minor release, the branch is typically created from `main`. For patch release, the branch is typically created
-   from the previous release's tag. 
+   from the previous release's tag.
 
    ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
 
