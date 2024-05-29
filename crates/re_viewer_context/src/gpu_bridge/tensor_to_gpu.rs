@@ -27,7 +27,7 @@ use super::{get_or_create_texture, try_get_or_create_texture};
 
 // ----------------------------------------------------------------------------
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Hash)]
 enum TextureKeyUsage {
     AnnotationContextColormap,
     TensorData(TensorDataMeaning),
@@ -38,17 +38,7 @@ enum TextureKeyUsage {
 /// Several textures may be created from the same row.
 /// This makes sure that they all get different keys!
 fn generate_texture_key(row_id: RowId, usage: TextureKeyUsage) -> u64 {
-    hash((
-        row_id,
-        match usage {
-            TextureKeyUsage::TensorData(meaning) => match meaning {
-                TensorDataMeaning::Unknown => 0x12345678,
-                TensorDataMeaning::ClassId => 0x23456789,
-                TensorDataMeaning::Depth => 0x34567890,
-            },
-            TextureKeyUsage::AnnotationContextColormap => 0x45678901,
-        },
-    ))
+    hash((row_id, usage))
 }
 
 /// Set up tensor for rendering on the GPU.
