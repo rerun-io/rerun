@@ -7,9 +7,9 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, FallbackProviderContext, IdentifiedViewSystem,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewerContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    AnnotationMap, DefaultColor, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::overrides::initial_override_color;
@@ -77,13 +77,13 @@ impl VisualizerSystem for SeriesLineSystem {
 }
 
 impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
-    fn fallback_value(&self, ctx: &FallbackProviderContext<'_>) -> Color {
-        initial_override_color(ctx.entity_path)
+    fn fallback_value(&self, ctx: &QueryContext<'_>) -> Color {
+        initial_override_color(ctx.target_entity_path)
     }
 }
 
 impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
-    fn fallback_value(&self, _ctx: &FallbackProviderContext<'_>) -> StrokeWidth {
+    fn fallback_value(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
         StrokeWidth(DEFAULT_STROKE_WIDTH)
     }
 }
