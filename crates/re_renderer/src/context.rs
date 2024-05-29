@@ -8,7 +8,7 @@ use type_map::concurrent::{self, TypeMap};
 
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    config::{DeviceTier, RenderContextConfig},
+    config::{DeviceCaps, DeviceTier, RenderContextConfig},
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -19,6 +19,42 @@ use crate::{
 
 /// Frame idx used before starting the first frame.
 const STARTUP_FRAME_IDX: u64 = u64::MAX;
+
+#[derive(thiserror::Error, Debug)]
+pub enum RenderContextError {
+    #[error(
+        "The given device doesn't support the required limits for the given hardware caps {device_caps:?}.\n\
+         Required: {required:?}\n\
+         Actual: {actual:?}"
+    )]
+    Limits {
+        device_caps: DeviceCaps,
+        required: Box<wgpu::Limits>, // boxed because of its size
+        actual: Box<wgpu::Limits>,   // boxed because of its size
+    },
+
+    #[error(
+        "The given device doesn't support the required features for the given hardware caps {device_caps:?}.\n\
+         Required: {required:?}\n\
+         Actual: {actual:?}"
+    )]
+    Features {
+        device_caps: DeviceCaps,
+        required: wgpu::Features,
+        actual: wgpu::Features,
+    },
+
+    #[error(
+        "The given device doesn't support the required downlevel capabilities for the given hardware caps {device_caps:?}.\n\
+         Required: {required:?}\n\
+         Actual: {actual:?}"
+    )]
+    DownlevelCapabilities {
+        device_caps: DeviceCaps,
+        required: wgpu::DownlevelCapabilities,
+        actual: wgpu::DownlevelCapabilities,
+    },
+}
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -120,7 +156,7 @@ impl RenderContext {
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, RenderContextError> {
         re_tracing::profile_function!();
 
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
@@ -156,44 +192,29 @@ impl RenderContext {
 
         // Validate capabilities of the device.
         if !config.device_caps.limits().check_limits(&device.limits()) {
-            return Err(format!(
-                "The given device doesn't support the required limits for the given hardware caps {:?}.
-                Required:
-                {:?}
-                Actual:
-                {:?}",
-                config.device_caps,
-                config.device_caps.limits(),
-                device.limits(),
-            ));
+            return Err(RenderContextError::Limits {
+                required: Box::new(config.device_caps.limits()),
+                device_caps: config.device_caps,
+                actual: Box::new(device.limits()),
+            });
         }
         if !device.features().contains(config.device_caps.features()) {
-            return Err(format!(
-                "The given device doesn't support the required features for the given hardware caps {:?}.
-                Required:
-                {:?}
-                Actual:
-                {:?}",
-                config.device_caps,
-                config.device_caps.features(),
-                device.features(),
-            ));
+            return Err(RenderContextError::Features {
+                required: config.device_caps.features(),
+                device_caps: config.device_caps,
+                actual: device.features(),
+            });
         }
         if !adapter
             .get_downlevel_capabilities()
             .flags
             .contains(config.device_caps.required_downlevel_capabilities().flags)
         {
-            return Err(format!(
-                "The given device doesn't support the required downlevel capabilities for the given hardware caps {:?}.
-                Required:
-                {:?}
-                Actual:
-                {:?}",
-                config.device_caps,
-                config.device_caps.required_downlevel_capabilities(),
-                adapter.get_downlevel_capabilities(),
-            ));
+            return Err(RenderContextError::DownlevelCapabilities {
+                required: config.device_caps.required_downlevel_capabilities(),
+                device_caps: config.device_caps,
+                actual: adapter.get_downlevel_capabilities(),
+            });
         }
 
         let resolver = crate::new_recommended_file_resolver();
