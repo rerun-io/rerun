@@ -85,9 +85,8 @@ impl ManifestEntry {
                 height: example.thumbnail_dimensions[1],
             },
             source_url: format!(
-                "{base_source_url}/examples/{}/{name}/{}",
+                "{base_source_url}/examples/{}/{name}",
                 example.language.examples_dir().to_string_lossy(),
-                example.script_path.to_string_lossy(),
             ),
             name,
         }

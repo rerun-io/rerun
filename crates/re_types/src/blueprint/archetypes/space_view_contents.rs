@@ -114,6 +114,11 @@ impl ::re_types_core::Archetype for SpaceViewContents {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Space view contents"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SpaceViewContentsIndicator = SpaceViewContentsIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

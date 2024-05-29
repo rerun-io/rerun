@@ -170,7 +170,7 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
                 a.doc_category().cmp(&b.doc_category())
             }
         })
-        .group_by(|o| o.doc_category())
+        .chunk_by(|o| o.doc_category())
     {
         if category.is_some() {
             any_category = true;

@@ -20,6 +20,8 @@ mod space_view;
 mod store_context;
 pub mod store_hub;
 mod tensor;
+//TODO(ab): this should be behind #[cfg(test)], but then ` cargo clippy --all-targets` fails
+pub mod test_context;
 mod time_control;
 mod typed_entity_collections;
 mod utils;
@@ -32,7 +34,7 @@ pub use annotations::{
     AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
 };
 pub use app_options::AppOptions;
-pub use blueprint_helpers::blueprint_timeline;
+pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
 pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId};
 pub use caches::{Cache, Caches};
 pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
@@ -51,13 +53,14 @@ pub use selection_state::{
 };
 pub use space_view::{
     DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
-    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics,
-    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, ViewContextCollection, ViewContextSystem, ViewQuery,
-    ViewSystemIdentifier, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
-    VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
+    PerViewState, PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass,
+    SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+    ViewContextCollection, ViewContextSystem, ViewQuery, ViewStates, ViewSystemIdentifier,
+    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 pub use store_context::StoreContext;
 pub use store_hub::StoreHub;
@@ -86,4 +89,25 @@ pub mod external {
 pub enum NeedsRepaint {
     Yes,
     No,
+}
+
+// ---
+
+/// Determines the icon to use for a given container kind.
+#[inline]
+pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_ui::Icon {
+    match kind {
+        egui_tiles::ContainerKind::Tabs => &re_ui::icons::CONTAINER_TABS,
+        egui_tiles::ContainerKind::Horizontal => &re_ui::icons::CONTAINER_HORIZONTAL,
+        egui_tiles::ContainerKind::Vertical => &re_ui::icons::CONTAINER_VERTICAL,
+        egui_tiles::ContainerKind::Grid => &re_ui::icons::CONTAINER_GRID,
+    }
+}
+
+/// The style to use for displaying this space view name in the UI.
+pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
+    match name {
+        ContentsName::Named(_) => re_ui::LabelStyle::Normal,
+        ContentsName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
+    }
 }

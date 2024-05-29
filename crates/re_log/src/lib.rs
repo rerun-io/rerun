@@ -51,8 +51,6 @@ pub mod external {
 
 /// Never log anything less serious than a `ERROR` from these crates.
 const CRATES_AT_ERROR_LEVEL: &[&str] = &[
-    // Waiting for https://github.com/etemesi254/zune-image/issues/131 to be released
-    "zune_jpeg",
     // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(not(debug_assertions))]
     "rustls",

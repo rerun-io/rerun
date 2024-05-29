@@ -17,9 +17,6 @@
 //! e.g. the entity `foo/bar/baz` is has the transform that is the product of
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
-// TODO(#3408): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 pub mod arrow_msg;
 pub mod example_components;
 pub mod hash;

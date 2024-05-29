@@ -104,6 +104,11 @@ impl ::re_types_core::Archetype for Tensor {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Tensor"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TensorIndicator = TensorIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

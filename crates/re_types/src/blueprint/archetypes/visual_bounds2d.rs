@@ -83,6 +83,11 @@ impl ::re_types_core::Archetype for VisualBounds2D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Visual bounds 2D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: VisualBounds2DIndicator = VisualBounds2DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

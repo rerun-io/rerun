@@ -25,10 +25,7 @@ mod viewer_analytics;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-pub(crate) use {
-    app_state::AppState,
-    ui::{memory_panel, selection_panel},
-};
+pub(crate) use {app_state::AppState, ui::memory_panel};
 
 pub use app::{App, StartupOptions};
 
@@ -200,8 +197,9 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
 }
 
 /// Customize eframe and egui to suit the rerun viewer.
-#[must_use]
-pub fn customize_eframe_and_setup_renderer(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
+pub fn customize_eframe_and_setup_renderer(
+    cc: &eframe::CreationContext<'_>,
+) -> Result<re_ui::ReUi, re_renderer::RenderContextError> {
     re_tracing::profile_function!();
 
     if let Some(render_state) = &cc.wgpu_render_state {
@@ -217,25 +215,12 @@ pub fn customize_eframe_and_setup_renderer(cc: &eframe::CreationContext<'_>) -> 
                 output_format_color: render_state.target_format,
                 device_caps: re_renderer::config::DeviceCaps::from_adapter(&render_state.adapter),
             },
-        );
+        )?;
 
-        match render_ctx {
-            Ok(render_ctx) => {
-                paint_callback_resources.insert(render_ctx);
-            }
-            Err(err) => {
-                re_log::error!("Failed to create render context: {err}");
-
-                #[allow(clippy::exit)]
-                {
-                    // TODO(egui#4474): return errors to eframe -> `main`
-                    std::process::exit(1);
-                }
-            }
-        };
+        paint_callback_resources.insert(render_ctx);
     }
 
-    re_ui::ReUi::load_and_apply(&cc.egui_ctx)
+    Ok(re_ui::ReUi::load_and_apply(&cc.egui_ctx))
 }
 
 // ---------------------------------------------------------------------------

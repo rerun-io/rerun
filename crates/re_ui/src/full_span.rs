@@ -1,7 +1,7 @@
 //! Support for full-span widgets.
 //!
 //! Full-span widgets are widgets which draw beyond the boundaries of `ui.max_rect()`, e.g. to
-//! provide highlighting without margin, like [`crate::list_item2`]. Typically, in the context of a
+//! provide highlighting without margin, like [`crate::list_item`]. Typically, in the context of a
 //! side panel, the full span is the entire width of the panel, excluding any margin.
 //!
 //! This module maintains a stack of full span values (effectively[`egui::Rangef`]) using nestable

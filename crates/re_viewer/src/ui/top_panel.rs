@@ -20,34 +20,33 @@ pub fn top_panel(
 
     let style_like_web = app.is_screenshotting();
     let top_bar_style = app.re_ui().top_bar_style(style_like_web);
+    let top_panel_frame = app.re_ui().top_panel_frame();
 
-    egui::TopBottomPanel::top("top_bar")
-        .frame(app.re_ui().top_panel_frame())
-        .exact_height(top_bar_style.height)
-        .show_inside(ui, |ui| {
-            // React to dragging and double-clicking the top bar:
-            #[cfg(not(target_arch = "wasm32"))]
-            if !re_ui::NATIVE_WINDOW_BAR {
-                // Interact with background first, so that buttons in the top bar gets input priority
-                // (last added widget has priority for input).
-                let title_bar_response = ui.interact(
-                    ui.max_rect(),
-                    ui.id().with("background"),
-                    egui::Sense::click(),
-                );
-                if title_bar_response.double_clicked() {
-                    let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-                    ui.ctx()
-                        .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-                } else if title_bar_response.is_pointer_button_down_on() {
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
-                }
+    let mut content = |ui: &mut egui::Ui, show_content: bool| {
+        // React to dragging and double-clicking the top bar:
+        #[cfg(not(target_arch = "wasm32"))]
+        if !re_ui::NATIVE_WINDOW_BAR {
+            // Interact with background first, so that buttons in the top bar gets input priority
+            // (last added widget has priority for input).
+            let title_bar_response = ui.interact(
+                ui.max_rect(),
+                ui.id().with("background"),
+                egui::Sense::click(),
+            );
+            if title_bar_response.double_clicked() {
+                let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+                ui.ctx()
+                    .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+            } else if title_bar_response.is_pointer_button_down_on() {
+                ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
+        }
 
-            egui::menu::bar(ui, |ui| {
-                ui.set_height(top_bar_style.height);
-                ui.add_space(top_bar_style.indent);
+        egui::menu::bar(ui, |ui| {
+            ui.set_height(top_bar_style.height);
+            ui.add_space(top_bar_style.indent);
 
+            if show_content {
                 top_bar_ui(
                     frame,
                     app,
@@ -56,8 +55,22 @@ pub fn top_panel(
                     ui,
                     gpu_resource_stats,
                 );
-            });
+            }
         });
+    };
+
+    let panel = egui::TopBottomPanel::top("top_bar")
+        .frame(top_panel_frame)
+        .exact_height(top_bar_style.height);
+    let is_expanded = app_blueprint.top_panel_state().is_expanded();
+
+    // On MacOS, we show the close/minimize/maximize buttons in the top panel.
+    // We _always_ want to show the top panel in that case, and only hide its content.
+    if !re_ui::NATIVE_WINDOW_BAR {
+        panel.show_inside(ui, |ui| content(ui, is_expanded));
+    } else {
+        panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
+    }
 }
 
 fn top_bar_ui(
@@ -128,7 +141,7 @@ fn top_bar_ui(
         // Warn if in debug build
         if cfg!(debug_assertions) && !app.is_screenshotting() {
             ui.vertical_centered(|ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
                 egui::warn_if_debug_build(ui);
             });
@@ -228,13 +241,13 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
-    let mut selection_panel_expanded = app_blueprint.selection_panel_expanded;
+    // selection panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::RIGHT_PANEL_TOGGLE,
-            &mut selection_panel_expanded,
+            &mut app_blueprint.selection_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle Selection View{}",
@@ -245,13 +258,13 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
         app_blueprint.toggle_selection_panel(&app.command_sender);
     }
 
-    let mut time_panel_expanded = app_blueprint.time_panel_expanded;
+    // time panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-            &mut time_panel_expanded,
+            &mut app_blueprint.time_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle Timeline View{}",
@@ -262,13 +275,13 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
         app_blueprint.toggle_time_panel(&app.command_sender);
     }
 
-    let mut blueprint_panel_expanded = app_blueprint.blueprint_panel_expanded;
+    // blueprint panel
     if app
         .re_ui()
         .medium_icon_toggle_button(
             ui,
             &re_ui::icons::LEFT_PANEL_TOGGLE,
-            &mut blueprint_panel_expanded,
+            &mut app_blueprint.blueprint_panel_state().is_expanded(),
         )
         .on_hover_text(format!(
             "Toggle blueprint view{}",

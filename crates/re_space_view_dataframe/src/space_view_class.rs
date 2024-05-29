@@ -186,7 +186,7 @@ impl SpaceViewClass for DataframeSpaceView {
             egui::ScrollArea::both()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                     egui::Frame {
                         inner_margin: egui::Margin::same(5.0),

@@ -160,6 +160,11 @@ impl ::re_types_core::Archetype for Points3D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Points 3D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Points3DIndicator = Points3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

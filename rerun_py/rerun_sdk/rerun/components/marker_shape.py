@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Literal, Sequence, Union
 
 import pyarrow as pa
 
@@ -51,7 +51,19 @@ class MarkerShape(Enum):
     """`*`"""
 
 
-MarkerShapeLike = Union[MarkerShape, str]
+MarkerShapeLike = Union[
+    MarkerShape,
+    Literal["circle"]
+    | Literal["diamond"]
+    | Literal["square"]
+    | Literal["cross"]
+    | Literal["plus"]
+    | Literal["up"]
+    | Literal["down"]
+    | Literal["left"]
+    | Literal["right"]
+    | Literal["asterisk"],
+]
 MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 
 

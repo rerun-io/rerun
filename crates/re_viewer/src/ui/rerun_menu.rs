@@ -26,7 +26,7 @@ impl App {
             .max_height(desired_icon_height);
 
         ui.menu_image_button(image, |ui| {
-            ui.set_min_width(240.0);
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // no wrapping: make as wide as needed
 
             ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
 
@@ -80,7 +80,7 @@ impl App {
             ui.add_space(SPACING);
 
             ui.menu_button("Options", |ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 options_menu_ui(
                     &self.command_sender,
                     &self.re_ui,
@@ -92,7 +92,7 @@ impl App {
 
             #[cfg(debug_assertions)]
             ui.menu_button("Debug", |ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 debug_menu_options_ui(
                     &self.re_ui,
                     ui,
@@ -130,7 +130,7 @@ impl App {
             datetime,
         } = *self.build_info();
 
-        ui.style_mut().wrap = Some(false);
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
         let git_hash_suffix = if git_hash.is_empty() {
             String::new()

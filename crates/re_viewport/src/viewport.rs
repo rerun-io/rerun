@@ -4,138 +4,21 @@
 
 use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
-use once_cell::sync::Lazy;
 
-use re_entity_db::EntityPropertyMap;
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
-use re_types::SpaceViewClassIdentifier;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassRegistry, SpaceViewId,
-    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item, PerViewState,
+    SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
+    ViewerContext,
 };
+use re_viewport_blueprint::{TreeAction, ViewportBlueprint};
 
-use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
-    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, context_menu_ui_for_item,
-    icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
-    system_execution::execute_systems_for_all_space_views, SelectionUpdateBehavior,
-    ViewportBlueprint,
+    screenshot::handle_pending_space_view_screenshots,
+    system_execution::execute_systems_for_all_space_views,
 };
-
-// State for each `SpaceView` including both the auto properties and
-// the internal state of the space view itself.
-pub struct PerSpaceViewState {
-    pub auto_properties: EntityPropertyMap,
-    pub space_view_state: Box<dyn SpaceViewState>,
-}
-
-// ----------------------------------------------------------------------------
-/// State for the [`Viewport`] that persists across frames but otherwise
-/// is not saved.
-#[derive(Default)]
-pub struct ViewportState {
-    /// State for the "Add entity" modal.
-    space_view_entity_modal: SpaceViewEntityPicker,
-
-    /// State for the "Add space view or container" modal.
-    add_space_view_container_modal: AddSpaceViewOrContainerModal,
-
-    space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
-
-    /// Current candidate parent container for the ongoing drop.
-    ///
-    /// See [`ViewportState::is_candidate_drop_parent_container`] for details.
-    candidate_drop_parent_container_id: Option<ContainerId>,
-
-    /// The item that should be focused on in the blueprint tree.
-    ///
-    /// Set at each frame by [`Viewport::tree_ui`]. This is similar to
-    /// [`ViewerContext::focused_item`] but account for how specifically the blueprint tree should
-    /// handle the focused item.
-    pub(crate) blueprint_tree_scroll_to_item: Option<Item>,
-}
-
-static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
-
-impl ViewportState {
-    pub fn space_view_state_mut(
-        &mut self,
-        space_view_class_registry: &SpaceViewClassRegistry,
-        space_view_id: SpaceViewId,
-        space_view_class: &SpaceViewClassIdentifier,
-    ) -> &mut PerSpaceViewState {
-        self.space_view_states
-            .entry(space_view_id)
-            .or_insert_with(|| PerSpaceViewState {
-                auto_properties: Default::default(),
-                space_view_state: space_view_class_registry
-                    .get_class_or_log_error(space_view_class)
-                    .new_state(),
-            })
-    }
-
-    pub fn legacy_auto_properties(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {
-        self.space_view_states
-            .get(&space_view_id)
-            .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
-    }
-
-    /// Is the provided container the current candidate parent container for the ongoing drag?
-    ///
-    /// When a drag is in progress, the candidate parent container for the dragged item should be highlighted. Note that
-    /// this can happen when hovering said container, its direct children, or even the item just after it.
-    pub fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
-        self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
-    }
-}
-
-/// Mutation actions to perform on the tree at the end of the frame. These messages are sent by the mutation APIs from
-/// [`crate::ViewportBlueprint`].
-#[derive(Clone, Debug)]
-pub enum TreeAction {
-    /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>),
-
-    /// Add a new container of the provided kind to the provided container (or the root if `None`).
-    AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
-
-    /// Change the kind of a container.
-    SetContainerKind(ContainerId, egui_tiles::ContainerKind),
-
-    /// Ensure the tab for the provided space view is focused (see [`egui_tiles::Tree::make_active`]).
-    FocusTab(SpaceViewId),
-
-    /// Remove a container (recursively) or a space view
-    RemoveContents(Contents),
-
-    /// Simplify the container with the provided options
-    SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
-
-    /// Make all column and row shares the same for this container
-    MakeAllChildrenSameSize(ContainerId),
-
-    /// Move some contents to a different container
-    MoveContents {
-        contents_to_move: Contents,
-        target_container: ContainerId,
-        target_position_in_container: usize,
-    },
-
-    /// Move one or more [`Contents`] to a newly created container
-    MoveContentsToNewContainer {
-        contents_to_move: Vec<Contents>,
-        new_container_kind: egui_tiles::ContainerKind,
-        target_container: ContainerId,
-        target_position_in_container: usize,
-    },
-
-    /// Set the container that is currently identified as the drop target of an ongoing drag.
-    ///
-    /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
-    /// frame, so this command must be re-sent every frame as long as a drop target is identified.
-    SetDropTarget(ContainerId),
-}
 
 fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
     egui_tiles::SimplificationOptions {
@@ -151,14 +34,10 @@ fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
 // ----------------------------------------------------------------------------
 
 /// Defines the layout of the Viewport
-pub struct Viewport<'a, 'b> {
+pub struct Viewport<'a> {
     /// The blueprint that drives this viewport. This is the source of truth from the store
     /// for this frame.
     pub blueprint: &'a ViewportBlueprint,
-
-    /// The persistent state of the viewport that is not saved to the store but otherwise
-    /// persis frame-to-frame.
-    pub state: &'b mut ViewportState,
 
     /// The [`egui_tiles::Tree`] tree that actually manages blueprint layout. This tree needs
     /// to be mutable for things like drag-and-drop and is ultimately saved back to the store.
@@ -181,10 +60,9 @@ pub struct Viewport<'a, 'b> {
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
 
-impl<'a, 'b> Viewport<'a, 'b> {
+impl<'a> Viewport<'a> {
     pub fn new(
         blueprint: &'a ViewportBlueprint,
-        state: &'b mut ViewportState,
         space_view_class_registry: &SpaceViewClassRegistry,
         tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
         tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -206,7 +84,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         Self {
             blueprint,
-            state,
             tree,
             tree_edited: edited,
             tree_action_receiver,
@@ -214,28 +91,13 @@ impl<'a, 'b> Viewport<'a, 'b> {
         }
     }
 
-    pub fn show_add_remove_entities_modal(&mut self, space_view_id: SpaceViewId) {
-        self.state.space_view_entity_modal.open(space_view_id);
-    }
-
-    pub fn show_add_space_view_or_container_modal(&mut self, target_container: ContainerId) {
-        self.state
-            .add_space_view_container_modal
-            .open(target_container);
-    }
-
-    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
-        // run modals (these are noop if the modals are not active)
-        self.state
-            .space_view_entity_modal
-            .ui(ui.ctx(), ctx, self.blueprint);
-        self.state
-            .add_space_view_container_modal
-            .ui(ui.ctx(), ctx, self.blueprint);
-
-        let Viewport {
-            blueprint, state, ..
-        } = self;
+    pub fn viewport_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &'a ViewerContext<'_>,
+        view_states: &mut ViewStates,
+    ) {
+        let Viewport { blueprint, .. } = self;
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
         if is_zero_sized_viewport {
@@ -279,7 +141,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             re_tracing::profile_scope!("tree.ui");
 
             let mut tab_viewer = TabViewer {
-                viewport_state: state,
+                view_states,
                 ctx,
                 viewport_blueprint: blueprint,
                 maximized: &mut maximized,
@@ -312,31 +174,33 @@ impl<'a, 'b> Viewport<'a, 'b> {
         self.blueprint.set_maximized(maximized, ctx);
     }
 
-    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, view_states: &mut ViewStates) {
         re_tracing::profile_function!();
 
-        for space_view in self.blueprint.space_views.values() {
-            let PerSpaceViewState {
-                auto_properties,
-                space_view_state,
-            } = self.state.space_view_state_mut(
-                ctx.space_view_class_registry,
-                space_view.id,
-                space_view.class_identifier(),
-            );
+        if let Some(render_ctx) = ctx.render_ctx {
+            for space_view in self.blueprint.space_views.values() {
+                let PerViewState {
+                    auto_properties,
+                    view_state: space_view_state,
+                } = view_states.view_state_mut(
+                    ctx.space_view_class_registry,
+                    space_view.id,
+                    space_view.class_identifier(),
+                );
 
-            #[allow(clippy::blocks_in_conditions)]
-            while ScreenshotProcessor::next_readback_result(
-                ctx.render_ctx,
-                space_view.id.gpu_readback_id(),
-                |data, extent, mode| {
-                    handle_pending_space_view_screenshots(space_view, data, extent, mode);
-                },
-            )
-            .is_some()
-            {}
+                #[allow(clippy::blocks_in_conditions)]
+                while ScreenshotProcessor::next_readback_result(
+                    render_ctx,
+                    space_view.id.gpu_readback_id(),
+                    |data, extent, mode| {
+                        handle_pending_space_view_screenshots(space_view, data, extent, mode);
+                    },
+                )
+                .is_some()
+                {}
 
-            space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
+                space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
+            }
         }
 
         self.blueprint.on_frame_start(ctx);
@@ -347,9 +211,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
         // At the end of the Tree-UI, we can safely apply deferred actions.
 
         let mut reset = false;
-
-        // always reset the drop target
-        self.state.candidate_drop_parent_container_id = None;
 
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
@@ -532,9 +393,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
                     self.tree_edited = true;
                 }
-                TreeAction::SetDropTarget(container_id) => {
-                    self.state.candidate_drop_parent_container_id = Some(container_id);
-                }
             }
         }
 
@@ -579,7 +437,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
 /// In our case, each pane is a space view,
 /// while containers are just groups of things.
 struct TabViewer<'a, 'b> {
-    viewport_state: &'a mut ViewportState,
+    view_states: &'a mut ViewStates,
     ctx: &'a ViewerContext<'b>,
     viewport_blueprint: &'a ViewportBlueprint,
     maximized: &'a mut Option<SpaceViewId>,
@@ -647,10 +505,10 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             )
         });
 
-        let PerSpaceViewState {
+        let PerViewState {
             auto_properties: _,
-            space_view_state,
-        } = self.viewport_state.space_view_state_mut(
+            view_state: space_view_state,
+        } = self.view_states.view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
             space_view_blueprint.class_identifier(),
@@ -1026,7 +884,7 @@ impl TabWidget {
         };
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
-        let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
+        let galley = text.into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, font_id);
 
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(

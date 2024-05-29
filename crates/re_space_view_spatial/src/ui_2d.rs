@@ -80,12 +80,7 @@ fn ui_from_scene(
 
         let mut pan_delta_in_ui = response.drag_delta();
         if response.hovered() {
-            // NOTE: we use `raw_scroll` instead of `smooth_scroll_delta` to avoid the
-            // added latency of smoothing, which is really annoying on Mac trackpads.
-            // The smoothing is only useful for users with discreet scroll wheels,
-            // and they are likely to pan with dragging instead.
-            // TODO(egui#4401): https://github.com/emilk/egui/issues/4401
-            pan_delta_in_ui += response.ctx.input(|i| i.raw_scroll_delta);
+            pan_delta_in_ui += response.ctx.input(|i| i.smooth_scroll_delta);
         }
         if pan_delta_in_ui != Vec2::ZERO {
             *visual_bounds =
@@ -118,7 +113,7 @@ fn ui_from_scene(
         RectTransform::from_to(letterboxed_bounds, response.rect)
     }
 
-    re_space_view::edit_blueprint_component::<
+    re_viewport_blueprint::edit_blueprint_component::<
         VisualBounds2D,
         blueprint_components::VisualBounds2D,
         RectTransform,
@@ -251,8 +246,6 @@ pub fn view_2d(
         return Ok(());
     };
 
-    let mut view_builder = ViewBuilder::new(ctx.render_ctx, target_config);
-
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
         collect_ui_labels(&parts),
@@ -262,6 +255,12 @@ pub fn view_2d(
         &query.highlights,
         SpatialSpaceViewKind::TwoD,
     );
+
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+    };
+
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
     if ui.ctx().dragged_id().is_none() {
         response = picking(
@@ -285,10 +284,10 @@ pub fn view_2d(
         view_builder.queue_draw(draw_data);
     }
 
-    let background = re_space_view::view_property::<Background>(ctx, query.space_view_id)
+    let background = re_viewport_blueprint::view_property::<Background>(ctx, query.space_view_id)
         .unwrap_or(Background::DEFAULT_2D);
     let (background_drawable, clear_color) = crate::configure_background(
-        ctx,
+        render_ctx,
         background.kind,
         background.color.unwrap_or(Background::DEFAULT_COLOR_2D),
     );
@@ -300,7 +299,7 @@ pub fn view_2d(
 
     if let Some(mode) = screenshot_context_menu(ctx, &response) {
         view_builder
-            .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
+            .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
             .ok();
     }
 

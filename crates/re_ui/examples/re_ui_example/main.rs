@@ -2,8 +2,7 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use re_ui::ListItem;
-use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
+use re_ui::{list_item, toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -59,7 +58,7 @@ fn main() -> eframe::Result<()> {
         native_options,
         Box::new(move |cc| {
             let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
-            Box::new(ExampleApp::new(re_ui))
+            Ok(Box::new(ExampleApp::new(re_ui)))
         }),
     )
 }
@@ -234,9 +233,12 @@ impl eframe::App for ExampleApp {
                 ui.ctx(),
                 || re_ui::modal::Modal::new("Modal window").full_span_content(true),
                 |_, ui, _| {
-                    for idx in 0..10 {
-                        ListItem::new(&self.re_ui, format!("Item {idx}")).show_flat(ui);
-                    }
+                    list_item::list_item_scope(ui, "modal demo", |ui| {
+                        for idx in 0..10 {
+                            list_item::ListItem::new(&self.re_ui)
+                                .show_flat(ui, list_item::LabelContent::new(format!("Item {idx}")));
+                        }
+                    });
                 },
             );
 
@@ -247,7 +249,7 @@ impl eframe::App for ExampleApp {
             });
             self.re_ui
                 .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                    ui.style_mut().wrap = Some(false);
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     ui.label("Some blueprint stuff here, that might be wide.");
                     self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
 

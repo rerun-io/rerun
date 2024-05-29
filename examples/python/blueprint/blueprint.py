@@ -31,9 +31,9 @@ def main() -> None:
                 Spatial2DView(name="Rect 0", origin="/", contents=["image", "rect/0"]),
                 Spatial2DView(name="Rect 1", origin="/", contents=["image", "rect/1"]),
             ),
-            BlueprintPanel(expanded=False),
-            SelectionPanel(expanded=False),
-            TimePanel(expanded=False),
+            BlueprintPanel(state="collapsed"),
+            SelectionPanel(state="collapsed"),
+            TimePanel(state="collapsed"),
             auto_space_views=args.auto_space_views,
         )
 

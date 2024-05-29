@@ -106,6 +106,11 @@ impl ::re_types_core::Archetype for BarChart {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Bar chart"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: BarChartIndicator = BarChartIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

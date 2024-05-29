@@ -138,9 +138,6 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
             egui::ComboBox::from_id_source("color_coordinates_mode")
                 .selected_text(state.mode.to_string())
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
-
                     for mode in &ColorCoordinatesMode::ALL {
                         ui.selectable_value(&mut state.mode, *mode, mode.to_string());
                     }

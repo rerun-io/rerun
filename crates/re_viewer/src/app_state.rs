@@ -4,16 +4,19 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
-use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
+use re_types::blueprint::components::PanelState;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
-    StoreHub, SystemCommandSender as _, ViewerContext,
+    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
+    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewStates,
+    ViewerContext,
 };
-use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
+use re_viewport::Viewport;
+use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
+use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::app_blueprint::AppBlueprint;
 use crate::ui::recordings_panel_ui;
-use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -31,17 +34,21 @@ pub struct AppState {
     recording_configs: HashMap<StoreId, RecordingConfig>,
     blueprint_cfg: RecordingConfig,
 
-    selection_panel: crate::selection_panel::SelectionPanel,
+    selection_panel: re_selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
     blueprint_panel: re_time_panel::TimePanel,
+    #[serde(skip)]
+    blueprint_tree: re_blueprint_tree::BlueprintTree,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
 
-    // TODO(jleibs): This is sort of a weird place to put this but makes more
-    // sense than the blueprint
+    /// Storage for the state of each `SpaceView`
+    ///
+    /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
+    /// such as [`Viewport`] and [`re_selection_panel::SelectionPanel`].
     #[serde(skip)]
-    viewport_state: ViewportState,
+    view_states: ViewStates,
 
     /// Selection & hovering state.
     pub selection_state: ApplicationSelectionState,
@@ -64,8 +71,9 @@ impl Default for AppState {
             selection_panel: Default::default(),
             time_panel: Default::default(),
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
-            viewport_state: Default::default(),
+            view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
         }
@@ -136,8 +144,9 @@ impl AppState {
             selection_panel,
             time_panel,
             blueprint_panel,
+            blueprint_tree,
             welcome_screen,
-            viewport_state,
+            view_states,
             selection_state,
             focused_item,
         } = self;
@@ -154,7 +163,6 @@ impl AppState {
         );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
-            viewport_state,
             space_view_class_registry,
             receiver,
             sender,
@@ -183,7 +191,9 @@ impl AppState {
 
                 viewport.is_item_valid(store_context, item)
             },
-            re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
+            Some(re_viewer_context::Item::StoreId(
+                store_context.recording.store_id().clone(),
+            )),
         );
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
@@ -206,14 +216,15 @@ impl AppState {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = determine_visualizable_entities(
-                        &applicable_entities_per_visualizer,
-                        recording,
-                        &space_view_class_registry
-                            .new_visualizer_collection(*space_view.class_identifier()),
-                        space_view.class(space_view_class_registry),
-                        &space_view.space_origin,
-                    );
+                    let visualizable_entities = space_view
+                        .class(space_view_class_registry)
+                        .determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            recording,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            &space_view.space_origin,
+                        );
 
                     (
                         space_view.id,
@@ -242,7 +253,7 @@ impl AppState {
             selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
-            render_ctx,
+            render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
         };
@@ -250,7 +261,7 @@ impl AppState {
         // First update the viewport and thus all active space views.
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
-        viewport.on_frame_start(&ctx);
+        viewport.on_frame_start(&ctx, view_states);
 
         {
             re_tracing::profile_scope!("updated_query_results");
@@ -260,14 +271,15 @@ impl AppState {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = determine_visualizable_entities(
-                        &applicable_entities_per_visualizer,
-                        recording,
-                        &space_view_class_registry
-                            .new_visualizer_collection(*space_view.class_identifier()),
-                        space_view.class(space_view_class_registry),
-                        &space_view.space_origin,
-                    );
+                    let visualizable_entities = space_view
+                        .class(space_view_class_registry)
+                        .determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            recording,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            &space_view.space_origin,
+                        );
 
                     let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,
@@ -281,7 +293,7 @@ impl AppState {
                         &blueprint_query,
                         rec_cfg.time_ctrl.read().timeline(),
                         space_view_class_registry,
-                        viewport.state.legacy_auto_properties(space_view.id),
+                        view_states.legacy_auto_properties(space_view.id),
                         query_result,
                     );
                 }
@@ -304,7 +316,7 @@ impl AppState {
             selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
-            render_ctx,
+            render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
         };
@@ -320,7 +332,7 @@ impl AppState {
                 ctx.store_context.blueprint,
                 blueprint_cfg,
                 ui,
-                true,
+                PanelState::Expanded,
             );
         }
 
@@ -334,7 +346,7 @@ impl AppState {
             ctx.recording(),
             ctx.rec_cfg,
             ui,
-            app_blueprint.time_panel_expanded,
+            app_blueprint.time_panel_state(),
         );
 
         //
@@ -343,9 +355,10 @@ impl AppState {
 
         selection_panel.show_panel(
             &ctx,
+            &viewport_blueprint,
+            view_states,
             ui,
-            &mut viewport,
-            app_blueprint.selection_panel_expanded,
+            app_blueprint.selection_panel_state().is_expanded(),
         );
 
         //
@@ -373,7 +386,7 @@ impl AppState {
 
         left_panel.show_animated_inside(
             ui,
-            app_blueprint.blueprint_panel_expanded,
+            app_blueprint.blueprint_panel_state().is_expanded(),
             |ui: &mut egui::Ui| {
                 //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
                 let max_rect = ui.max_rect();
@@ -400,7 +413,7 @@ impl AppState {
                     }
 
                     if !show_welcome {
-                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
                     }
                 });
             },
@@ -421,9 +434,15 @@ impl AppState {
                 if show_welcome {
                     welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_state);
                 } else {
-                    viewport.viewport_ui(ui, &ctx);
+                    viewport.viewport_ui(ui, &ctx, view_states);
                 }
             });
+
+        //
+        // Other UI things
+        //
+
+        add_space_view_or_container_modal_ui(&ctx, &viewport_blueprint, ui);
 
         // Process deferred layout operations and apply updates back to blueprint
         viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
@@ -577,8 +596,4 @@ fn check_for_clicked_hyperlinks(
 
 pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {
     (0.35 * screen_width).min(200.0).round()
-}
-
-pub fn default_selection_panel_width(screen_width: f32) -> f32 {
-    (0.45 * screen_width).min(300.0).round()
 }

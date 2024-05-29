@@ -4,7 +4,6 @@ use re_log_types::{external::arrow2, EntityPath, Instance};
 use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiLayout, ViewerContext};
 
-use crate::editors::register_editors;
 
 use super::EntityDataUi;
 
@@ -32,8 +31,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types_blueprint::blueprint::components::IncludedSpaceView>(&mut registry);
     add_to_registry::<re_types_blueprint::blueprint::components::SpaceViewMaximized>(&mut registry);
     add_to_registry::<re_types_blueprint::blueprint::components::VisualBounds2D>(&mut registry);
-
-    register_editors(&mut registry);
 
     registry
 }

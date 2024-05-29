@@ -16,6 +16,7 @@ mod time_selection_ui;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
+use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_data_ui::DataUi as _;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
@@ -23,12 +24,13 @@ use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal,
 };
-use re_ui::list_item::{ListItem, WidthAllocationMode};
+use re_types::blueprint::components::PanelState;
+use re_ui::list_item;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
 };
-use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior, ViewportBlueprint};
+use re_viewport_blueprint::ViewportBlueprint;
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -143,8 +145,12 @@ impl TimePanel {
         entity_db: &re_entity_db::EntityDb,
         rec_cfg: &RecordingConfig,
         ui: &mut egui::Ui,
-        time_panel_expanded: bool,
+        state: PanelState,
     ) {
+        if state.is_hidden() {
+            return;
+        }
+
         // Naturally, many parts of the time panel need the time control.
         // Copy it once, read/edit, and then write back at the end if there was a change.
         let time_ctrl_before = rec_cfg.time_ctrl.read().clone();
@@ -154,11 +160,11 @@ impl TimePanel {
         // etc.)
         let screen_header_height = ui.cursor().top();
 
-        let top_bar_height = 28.0;
+        let top_bar_height = re_ui::ReUi::top_bar_height();
         let margin = ctx.re_ui.bottom_panel_margin();
         let mut panel_frame = ctx.re_ui.bottom_panel_frame();
 
-        if time_panel_expanded {
+        if state.is_expanded() {
             // Since we use scroll bars we want to fill the whole vertical space downwards:
             panel_frame.inner_margin.bottom = 0.0;
 
@@ -188,7 +194,7 @@ impl TimePanel {
 
         egui::TopBottomPanel::show_animated_between_inside(
             ui,
-            time_panel_expanded,
+            state.is_expanded(),
             collapsed,
             expanded,
             |ui: &mut egui::Ui, expansion: f32| {
@@ -204,8 +210,8 @@ impl TimePanel {
                     ui.vertical(|ui| {
                         // Add back the margin we removed from the panel:
                         let mut top_row_frame = egui::Frame::default();
-                        top_row_frame.inner_margin.right = margin.x;
-                        top_row_frame.inner_margin.bottom = margin.y;
+                        top_row_frame.inner_margin.right = margin.right;
+                        top_row_frame.inner_margin.bottom = margin.bottom;
                         let top_row_rect = top_row_frame
                             .show(ui, |ui| {
                                 ui.horizontal(|ui| {
@@ -228,7 +234,7 @@ impl TimePanel {
 
                         // Add extra margin on the left which was intentionally missing on the controls.
                         let mut streams_frame = egui::Frame::default();
-                        streams_frame.inner_margin.left = margin.x;
+                        streams_frame.inner_margin.left = margin.left;
                         streams_frame.show(ui, |ui| {
                             self.expanded_ui(
                                 ctx,
@@ -262,7 +268,9 @@ impl TimePanel {
     ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        if ui.max_rect().width() < 600.0 {
+        let has_any_data_on_timeline = entity_db.has_any_data_on_timeline(time_ctrl.timeline());
+
+        if ui.max_rect().width() < 600.0 && has_any_data_on_timeline {
             // Responsive ui for narrow screens, e.g. mobile. Split the controls into two rows.
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
@@ -270,8 +278,11 @@ impl TimePanel {
                     let times_per_timeline = entity_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
-                    self.time_control_ui.playback_speed_ui(time_ctrl, ui);
-                    self.time_control_ui.fps_ui(time_ctrl, ui);
+
+                    if has_any_data_on_timeline {
+                        self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                        self.time_control_ui.fps_ui(time_ctrl, ui);
+                    }
                 });
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
@@ -290,8 +301,11 @@ impl TimePanel {
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
             self.time_control_ui
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
-            self.time_control_ui.playback_speed_ui(time_ctrl, ui);
-            self.time_control_ui.fps_ui(time_ctrl, ui);
+
+            if has_any_data_on_timeline {
+                self.time_control_ui.playback_speed_ui(time_ctrl, ui);
+                self.time_control_ui.fps_ui(time_ctrl, ui);
+            }
 
             collapsed_time_marker_and_time(ui, ctx, entity_db, time_ctrl);
         }
@@ -351,7 +365,7 @@ impl TimePanel {
             let size = egui::vec2(self.prev_col_width, 28.0);
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.add_space(4.0); // hack to vertically center the text
                 if self.source == TimePanelSource::Blueprint {
                     ui.strong("Blueprint Streams");
@@ -434,15 +448,17 @@ impl TimePanel {
 
         // All the entity rows and their data density graphs:
         re_ui::full_span::full_span_scope(ui, (0.0..=time_x_left).into(), |ui| {
-            self.tree_ui(
-                ctx,
-                viewport_blueprint,
-                entity_db,
-                time_ctrl,
-                &time_area_response,
-                &lower_time_area_painter,
-                ui,
-            );
+            list_item::list_item_scope(ui, "streams_tree", |ui| {
+                self.tree_ui(
+                    ctx,
+                    viewport_blueprint,
+                    entity_db,
+                    time_ctrl,
+                    &time_area_response,
+                    &lower_time_area_painter,
+                    ui,
+                );
+            });
         });
 
         {
@@ -595,21 +611,26 @@ impl TimePanel {
                 .set_open(ui.ctx(), true);
         }
 
-        let re_ui::list_item::ShowCollapsingResponse {
+        // Globally unique id - should only be one of these in view at one time.
+        // We do this so that we can support "collapse/expand all" command.
+        let id = egui::Id::new(CollapseScope::StreamsTree.entity(tree.path.clone()));
+
+        let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
-        } = ListItem::new(ctx.re_ui, text)
-            .with_icon(guess_instance_path_icon(
-                ctx,
-                &InstancePath::from(tree.path.clone()),
-            ))
-            .width_allocation_mode(WidthAllocationMode::Compact)
+        } = list_item::ListItem::new(ctx.re_ui)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
-            .show_hierarchical_with_content(
+            .show_hierarchical_with_children(
                 ui,
-                CollapseScope::StreamsTree.entity(tree.path.clone()),
+                id,
                 default_open,
+                list_item::LabelContent::new(text)
+                    .with_icon(guess_instance_path_icon(
+                        ctx,
+                        &InstancePath::from(tree.path.clone()),
+                    ))
+                    .exact_width(true),
                 |_, ui| {
                     self.show_children(
                         ctx,
@@ -739,20 +760,23 @@ impl TimePanel {
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
 
-                let response = ListItem::new(ctx.re_ui, short_component_name)
+                let response = list_item::ListItem::new(ctx.re_ui)
                     .selected(ctx.selection().contains_item(&item.to_item()))
-                    .width_allocation_mode(WidthAllocationMode::Compact)
                     .force_hovered(
                         ctx.selection_state()
                             .highlight_for_ui_element(&item.to_item())
                             == HoverHighlight::Hovered,
                     )
-                    .with_icon(if is_static {
-                        &re_ui::icons::COMPONENT_STATIC
-                    } else {
-                        &re_ui::icons::COMPONENT_TEMPORAL
-                    })
-                    .show_hierarchical(ui);
+                    .show_hierarchical(
+                        ui,
+                        list_item::LabelContent::new(short_component_name)
+                            .with_icon(if is_static {
+                                &re_ui::icons::COMPONENT_STATIC
+                            } else {
+                                &re_ui::icons::COMPONENT_TEMPORAL
+                            })
+                            .exact_width(true),
+                    );
 
                 context_menu_ui_for_item(
                     ctx,
@@ -780,25 +804,31 @@ impl TimePanel {
                             timeline.name()
                         )));
                     } else {
-                        re_ui::ListItem::new(
-                            ctx.re_ui,
-                            format!(
-                                "{} component, logged {}",
-                                if is_static { "Static" } else { "Temporal" },
-                                if total_num_messages == 1 {
-                                    "once".to_owned()
-                                } else {
-                                    format!("{} times", re_format::format_uint(total_num_messages))
-                                },
-                            ),
-                        )
-                        .with_icon(if is_static {
-                            &re_ui::icons::COMPONENT_STATIC
-                        } else {
-                            &re_ui::icons::COMPONENT_TEMPORAL
-                        })
-                        .interactive(false)
-                        .show_flat(ui);
+                        list_item::list_item_scope(ui, "hover tooltip", |ui| {
+                            list_item::ListItem::new(ctx.re_ui)
+                                .interactive(false)
+                                .show_flat(
+                                    ui,
+                                    list_item::LabelContent::new(format!(
+                                        "{} component, logged {}",
+                                        if is_static { "Static" } else { "Temporal" },
+                                        if total_num_messages == 1 {
+                                            "once".to_owned()
+                                        } else {
+                                            format!(
+                                                "{} times",
+                                                re_format::format_uint(total_num_messages)
+                                            )
+                                        },
+                                    ))
+                                    .exact_width(true)
+                                    .with_icon(if is_static {
+                                        &re_ui::icons::COMPONENT_STATIC
+                                    } else {
+                                        &re_ui::icons::COMPONENT_TEMPORAL
+                                    }),
+                                );
+                        });
 
                         // Static components are not displayed at all on the timeline, so cannot be
                         // previewed there. So we display their content in this tooltip instead.
@@ -952,7 +982,13 @@ fn collapsed_time_marker_and_time(
     entity_db: &re_entity_db::EntityDb,
     time_ctrl: &mut TimeControl,
 ) {
-    let space_needed_for_current_time = match time_ctrl.timeline().typ() {
+    let timeline = time_ctrl.timeline();
+
+    if !entity_db.has_any_data_on_timeline(timeline) {
+        return;
+    }
+
+    let space_needed_for_current_time = match timeline.typ() {
         re_data_store::TimeType::Time => 220.0,
         re_data_store::TimeType::Sequence => 100.0,
     };
@@ -980,7 +1016,7 @@ fn collapsed_time_marker_and_time(
             painter.hline(
                 time_range_rect.x_range(),
                 time_range_rect.center().y,
-                ui.visuals().widgets.inactive.fg_stroke,
+                ui.visuals().widgets.noninteractive.fg_stroke,
             );
             time_marker_ui(
                 &time_ranges_ui,

@@ -153,6 +153,11 @@ impl ::re_types_core::Archetype for Arrows2D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Arrows 2D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Arrows2DIndicator = Arrows2DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

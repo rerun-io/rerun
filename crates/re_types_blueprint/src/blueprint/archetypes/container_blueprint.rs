@@ -146,6 +146,11 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Container blueprint"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ContainerBlueprintIndicator = ContainerBlueprintIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

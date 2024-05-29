@@ -38,11 +38,13 @@ pub fn recordings_panel_ui(
         .max_height(300.)
         .show(ui, |ui| {
             ctx.re_ui.panel_content(ui, |_re_ui, ui| {
-                recording_list_ui(ctx, ui, welcome_screen_state);
+                re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
+                    recording_list_ui(ctx, ui, welcome_screen_state);
 
-                // Show currently loading things after.
-                // They will likely end up here as recordings soon.
-                loading_receivers_ui(ctx, rx, ui);
+                    // Show currently loading things after.
+                    // They will likely end up here as recordings soon.
+                    loading_receivers_ui(ctx, rx, ui);
+                });
             });
         });
 }
@@ -77,10 +79,10 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         // Note that usually there is a one-to-one mapping between a source and a recording,
         // but it is possible to send multiple recordings over the same channel.
         if !sources_with_stores.contains(&source) {
-            let response = ctx
-                .re_ui
-                .list_item(string)
-                .with_buttons(|re_ui, ui| {
+            // never more than one level deep
+            let response = ctx.re_ui.list_item().show_flat(
+                ui,
+                re_ui::list_item::LabelContent::new(string).with_buttons(|re_ui, ui| {
                     let resp = re_ui
                         .small_icon_button(ui, &re_ui::icons::REMOVE)
                         .on_hover_text("Disconnect from this source");
@@ -88,8 +90,8 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
                         rx.remove(&source);
                     }
                     resp
-                })
-                .show_flat(ui); // never more than one level deep
+                }),
+            );
             if let SmartChannelSource::TcpServer { .. } = source.as_ref() {
                 response.on_hover_text("You can connect to this viewer from a Rerun SDK");
             }
@@ -143,12 +145,12 @@ fn recording_list_ui(
     }
 
     if entity_dbs_map.is_empty() && welcome_screen_state.hide {
-        ctx.re_ui
-            .list_item("No recordings loaded")
-            .weak(true)
-            .italics(true)
-            .interactive(false)
-            .show_flat(ui);
+        ctx.re_ui.list_item().interactive(false).show_flat(
+            ui,
+            re_ui::list_item::LabelContent::new("No recordings loaded")
+                .weak(true)
+                .italics(true),
+        );
     }
 
     for (app_id, entity_dbs) in entity_dbs_map {
@@ -167,10 +169,8 @@ fn app_and_its_recordings_ui(
     let app_item = Item::AppId(app_id.clone());
     let selected = ctx.selection().contains_item(&app_item);
 
-    let app_list_item = ctx
-        .re_ui
-        .list_item(app_id.to_string())
-        .selected(selected)
+    let app_list_item = ctx.re_ui.list_item().selected(selected);
+    let app_list_item_content = re_ui::list_item::LabelContent::new(app_id.to_string())
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
             // Color icon based on whether this is the active application or not:
             let color = if &ctx.store_context.app_id == app_id {
@@ -187,23 +187,23 @@ fn app_and_its_recordings_ui(
             entity_dbs.is_empty(),
             "There shouldn't be any recording for the welcome screen, but there are!"
         );
-        app_list_item.show_hierarchical(ui)
+        app_list_item.show_hierarchical(ui, app_list_item_content)
     } else {
         // Normal application
         let id = ui.make_persistent_id(app_id);
+        let app_list_item_content = app_list_item_content.with_buttons(|re_ui, ui| {
+            // Close-button:
+            let resp = re_ui.small_icon_button(ui, &icons::REMOVE).on_hover_text(
+                "Close this application and all its recordings. This cannot be undone.",
+            );
+            if resp.clicked() {
+                ctx.command_sender
+                    .send_system(SystemCommand::CloseApp(app_id.clone()));
+            }
+            resp
+        });
         app_list_item
-            .with_buttons(|re_ui, ui| {
-                // Close-button:
-                let resp = re_ui.small_icon_button(ui, &icons::REMOVE).on_hover_text(
-                    "Close this application and all its recordings. This cannot be undone.",
-                );
-                if resp.clicked() {
-                    ctx.command_sender
-                        .send_system(SystemCommand::CloseApp(app_id.clone()));
-                }
-                resp
-            })
-            .show_hierarchical_with_content(ui, id, true, |_, ui| {
+            .show_hierarchical_with_children(ui, id, true, app_list_item_content, |_, ui| {
                 // Show all the recordings for this application:
                 if entity_dbs.is_empty() {
                     ui.weak("(no recordings)").on_hover_ui(|ui| {

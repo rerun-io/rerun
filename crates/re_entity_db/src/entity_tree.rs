@@ -362,8 +362,7 @@ impl EntityTree {
             if cell.component_name() == ClearIsRecursive::name() {
                 let is_recursive = cell
                     .try_to_native_mono::<ClearIsRecursive>()
-                    .unwrap()
-                    .map_or(false, |settings| settings.0);
+                    .map_or(false, |opt| opt.map_or(false, |settings| settings.0));
 
                 self.on_added_clear(clear_cascade, store_diff, is_recursive);
             }

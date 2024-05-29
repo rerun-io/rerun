@@ -1,6 +1,6 @@
 use crate::{drag_and_drop, hierarchical_drag_and_drop};
 use egui::Ui;
-use re_ui::{list_item2, ReUi};
+use re_ui::{list_item, ReUi};
 
 pub struct RightPanel {
     show_hierarchical_demo: bool,
@@ -47,7 +47,7 @@ impl RightPanel {
                 ui.label("Hierarchical:");
             });
 
-            list_item2::list_item_scope(ui, "drag_and_drop", |ui| {
+            list_item::list_item_scope(ui, "drag_and_drop", |ui| {
                 if self.show_hierarchical_demo {
                     self.hierarchical_drag_and_drop.ui(re_ui, ui);
                 } else {
@@ -65,7 +65,7 @@ impl RightPanel {
         re_ui.panel_content(ui, |re_ui, ui| {
             re_ui.panel_title_bar(ui, "Demo: ListItem APIs", None);
 
-            list_item2::list_item_scope(ui, "list_item_api", |ui| {
+            list_item::list_item_scope(ui, "list_item_api", |ui| {
                 self.list_item_api_demo(re_ui, ui);
             });
         });
@@ -86,7 +86,7 @@ impl RightPanel {
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 re_ui.panel_content(ui, |re_ui, ui| {
-                    list_item2::list_item_scope(ui, "scroll_area_demo", |ui| {
+                    list_item::list_item_scope(ui, "scroll_area_demo", |ui| {
                         for i in 0..10 {
                             let label = if i == 4 {
                                 "That's one heck of a loooooooong label!".to_owned()
@@ -98,11 +98,11 @@ impl RightPanel {
                             // as much as needed for the label, which in turn will trigger the
                             // scroll area.
                             if re_ui
-                                .list_item2()
+                                .list_item()
                                 .selected(Some(i) == self.selected_list_item)
                                 .show_flat(
                                     ui,
-                                    list_item2::LabelContent::new(&label).exact_width(true),
+                                    list_item::LabelContent::new(&label).exact_width(true),
                                 )
                                 .clicked()
                             {
@@ -116,38 +116,38 @@ impl RightPanel {
 
     fn list_item_api_demo(&mut self, re_ui: &ReUi, ui: &mut Ui) {
         re_ui
-            .list_item2()
-            .show_hierarchical(ui, list_item2::LabelContent::new("Default"));
+            .list_item()
+            .show_hierarchical(ui, list_item::LabelContent::new("Default"));
 
         re_ui
-            .list_item2()
+            .list_item()
             .interactive(false)
-            .show_hierarchical(ui, list_item2::LabelContent::new("Not interactive item"));
+            .show_hierarchical(ui, list_item::LabelContent::new("Not interactive item"));
 
         re_ui
-            .list_item2()
+            .list_item()
             .force_hovered(true)
-            .show_hierarchical(ui, list_item2::LabelContent::new("Perma-hovered item"));
+            .show_hierarchical(ui, list_item::LabelContent::new("Perma-hovered item"));
 
-        re_ui.list_item2().show_hierarchical_with_children(
+        re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "label content features",
+            ui.make_persistent_id("label content features"),
             true,
-            list_item2::LabelContent::new("LabelContent features:"),
+            list_item::LabelContent::new("LabelContent features:"),
             |re_ui, ui| {
                 re_ui
-                    .list_item2()
-                    .show_hierarchical(ui, list_item2::LabelContent::new("LabelContent"));
+                    .list_item()
+                    .show_hierarchical(ui, list_item::LabelContent::new("LabelContent"));
 
-                re_ui.list_item2().show_hierarchical(
+                re_ui.list_item().show_hierarchical(
                     ui,
-                    list_item2::LabelContent::new("LabelContent with icon")
+                    list_item::LabelContent::new("LabelContent with icon")
                         .with_icon(&re_ui::icons::SPACE_VIEW_TEXT),
                 );
 
-                re_ui.list_item2().show_hierarchical(
+                re_ui.list_item().show_hierarchical(
                     ui,
-                    list_item2::LabelContent::new("LabelContent with custom icon code")
+                    list_item::LabelContent::new("LabelContent with custom icon code")
                         .with_icon_fn(|_re_ui, ui, rect, visuals| {
                             ui.painter().circle(
                                 rect.center(),
@@ -159,10 +159,10 @@ impl RightPanel {
                 );
 
                 re_ui
-                    .list_item2()
+                    .list_item()
                     .show_hierarchical(
                         ui,
-                        list_item2::LabelContent::new("LabelContent with custom styling")
+                        list_item::LabelContent::new("LabelContent with custom styling")
                             .subdued(true)
                             .italics(true)
                             .with_icon(&re_ui::icons::SPACE_VIEW_2D),
@@ -170,18 +170,18 @@ impl RightPanel {
                     .on_hover_text("The styling applies to the icon.");
 
                 re_ui
-                    .list_item2()
+                    .list_item()
                     .show_hierarchical(
                         ui,
-                        list_item2::LabelContent::new("LabelContent with LabelStyle")
+                        list_item::LabelContent::new("LabelContent with LabelStyle")
                             .label_style(re_ui::LabelStyle::Unnamed)
                             .with_icon(&re_ui::icons::SPACE_VIEW_2D),
                     )
                     .on_hover_text("The LabelStyle doesn't apply to the icon.");
 
-                re_ui.list_item2().show_hierarchical(
+                re_ui.list_item().show_hierarchical(
                     ui,
-                    list_item2::LabelContent::new("LabelContent with buttons").with_buttons(
+                    list_item::LabelContent::new("LabelContent with buttons").with_buttons(
                         |re_ui, ui| {
                             re_ui.small_icon_button(ui, &re_ui::icons::ADD)
                                 | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
@@ -189,9 +189,9 @@ impl RightPanel {
                     ),
                 );
 
-                re_ui.list_item2().show_hierarchical(
+                re_ui.list_item().show_hierarchical(
                     ui,
-                    list_item2::LabelContent::new("LabelContent with buttons (always shown)")
+                    list_item::LabelContent::new("LabelContent with buttons (always shown)")
                         .with_buttons(|re_ui, ui| {
                             re_ui.small_icon_button(ui, &re_ui::icons::ADD)
                                 | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
@@ -201,41 +201,41 @@ impl RightPanel {
             },
         );
 
-        re_ui.list_item2().show_hierarchical_with_children(
+        re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "property content features",
+            ui.make_persistent_id("property content features"),
             true,
-            list_item2::PropertyContent::new("PropertyContent features:")
+            list_item::PropertyContent::new("PropertyContent features:")
                 .value_text("bunch of properties"),
             |re_ui, ui| {
                 // By using an inner scope, we allow the nested properties to not align themselves
                 // to the parent property, which in this particular case looks better.
-                list_item2::list_item_scope(ui, "inner_scope", |ui| {
-                    re_ui.list_item2().show_hierarchical(
+                list_item::list_item_scope(ui, "inner_scope", |ui| {
+                    re_ui.list_item().show_hierarchical(
                         ui,
-                        list_item2::PropertyContent::new("Bool").value_bool(self.boolean),
+                        list_item::PropertyContent::new("Bool").value_bool(self.boolean),
                     );
 
-                    re_ui.list_item2().show_hierarchical(
+                    re_ui.list_item().show_hierarchical(
                         ui,
-                        list_item2::PropertyContent::new("Bool (editable)")
+                        list_item::PropertyContent::new("Bool (editable)")
                             .value_bool_mut(&mut self.boolean),
                     );
 
-                    re_ui.list_item2().show_hierarchical(
+                    re_ui.list_item().show_hierarchical(
                         ui,
-                        list_item2::PropertyContent::new("Text").value_text(&self.text),
+                        list_item::PropertyContent::new("Text").value_text(&self.text),
                     );
 
-                    re_ui.list_item2().show_hierarchical(
+                    re_ui.list_item().show_hierarchical(
                         ui,
-                        list_item2::PropertyContent::new("Text (editable)")
+                        list_item::PropertyContent::new("Text (editable)")
                             .value_text_mut(&mut self.text),
                     );
 
-                    re_ui.list_item2().show_hierarchical(
+                    re_ui.list_item().show_hierarchical(
                         ui,
-                        list_item2::PropertyContent::new("Color")
+                        list_item::PropertyContent::new("Color")
                             .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
                             .action_button(&re_ui::icons::ADD, || {
                                 re_log::warn!("Add button clicked");
@@ -243,9 +243,9 @@ impl RightPanel {
                             .value_color(&self.color),
                     );
 
-                    re_ui.list_item2().show_hierarchical(
+                    re_ui.list_item().show_hierarchical(
                         ui,
-                        list_item2::PropertyContent::new("Color (editable)")
+                        list_item::PropertyContent::new("Color (editable)")
                             .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
                             .action_button(&re_ui::icons::ADD, || {
                                 re_log::warn!("Add button clicked");
@@ -256,20 +256,20 @@ impl RightPanel {
             },
         );
 
-        re_ui.list_item2().show_hierarchical_with_children(
+        re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "property content right button reserve",
+            ui.make_persistent_id("property content right button reserve"),
             true,
-            list_item2::PropertyContent::new("PropertyContent action button:")
+            list_item::PropertyContent::new("PropertyContent action button:")
                 .value_text("demo of right gutter"),
             |re_ui, ui| {
                 // By using an inner scope, we allow the nested properties to not align themselves
                 // to the parent property, which in this particular case looks better.
-                list_item2::list_item_scope(ui, "inner_scope", |ui| {
+                list_item::list_item_scope(ui, "inner_scope", |ui| {
                     fn demo_item(re_ui: &ReUi, ui: &mut egui::Ui) {
-                        re_ui.list_item2().show_hierarchical(
+                        re_ui.list_item().show_hierarchical(
                             ui,
-                            list_item2::PropertyContent::new("Some item:").value_fn(|_, ui, _| {
+                            list_item::PropertyContent::new("Some item:").value_fn(|_, ui, _| {
                                 ui.ctx().debug_painter().debug_rect(
                                     ui.max_rect(),
                                     egui::Color32::LIGHT_BLUE,
@@ -283,14 +283,14 @@ impl RightPanel {
                         demo_item(re_ui, ui);
                     }
 
-                    let mut content = list_item2::PropertyContent::new("Use action button");
+                    let mut content = list_item::PropertyContent::new("Use action button");
                     if self.use_action_button {
                         content = content.action_button(&re_ui::icons::ADD, || {
                             re_log::warn!("Add button clicked");
                         });
                     }
                     content = content.value_bool_mut(&mut self.use_action_button);
-                    re_ui.list_item2().show_hierarchical(ui, content);
+                    re_ui.list_item().show_hierarchical(ui, content);
 
                     for _ in 0..3 {
                         demo_item(re_ui, ui);
@@ -299,21 +299,21 @@ impl RightPanel {
             },
         );
 
-        re_ui.list_item2().show_hierarchical_with_children(
+        re_ui.list_item().show_hierarchical_with_children(
             ui,
-            "other features",
+            ui.make_persistent_id("other features"),
             true,
-            list_item2::LabelContent::new("Other contents:"),
+            list_item::LabelContent::new("Other contents:"),
             |re_ui, ui| {
-                re_ui.list_item2().show_hierarchical(
+                re_ui.list_item().show_hierarchical(
                     ui,
-                    list_item2::DebugContent::default()
+                    list_item::DebugContent::default()
                         .label("DebugContent just shows the content area"),
                 );
 
-                re_ui.list_item2().show_hierarchical(
+                re_ui.list_item().show_hierarchical(
                     ui,
-                    list_item2::CustomContent::new(|_, ui, context| {
+                    list_item::CustomContent::new(|_, ui, context| {
                         ui.ctx().debug_painter().debug_rect(
                             context.rect,
                             egui::Color32::LIGHT_RED,

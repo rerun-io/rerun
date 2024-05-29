@@ -139,6 +139,11 @@ impl ::re_types_core::Archetype for DepthImage {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Depth image"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: DepthImageIndicator = DepthImageIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

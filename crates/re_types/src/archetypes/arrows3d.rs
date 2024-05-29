@@ -166,6 +166,11 @@ impl ::re_types_core::Archetype for Arrows3D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Arrows 3D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Arrows3DIndicator = Arrows3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

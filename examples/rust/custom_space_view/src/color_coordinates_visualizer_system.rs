@@ -29,6 +29,10 @@ impl re_types::Archetype for ColorArchetype {
         "InstanceColor".into()
     }
 
+    fn display_name() -> &'static str {
+        "Instance Color"
+    }
+
     fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         vec![re_types::components::Color::name()].into()
     }
