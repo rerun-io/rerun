@@ -93,8 +93,6 @@ pub fn colormap_dropdown_button_ui(
     egui::ComboBox::from_id_source("color map select")
         .selected_text(selected_text)
         .show_ui(ui, |ui| {
-            ui.set_width(200.0);
-
             let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
 
             list_item::list_item_scope(ui, "inner_scope", |ui| {

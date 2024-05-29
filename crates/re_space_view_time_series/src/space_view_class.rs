@@ -165,9 +165,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                         egui::ComboBox::from_id_source("aggregation_mode")
                             .selected_text(agg_mode.to_string())
                             .show_ui(ui, |ui| {
-                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                                ui.set_min_width(64.0);
-
                                 for variant in TimeSeriesAggregator::variants() {
                                     ui.selectable_value(
                                         &mut agg_mode,

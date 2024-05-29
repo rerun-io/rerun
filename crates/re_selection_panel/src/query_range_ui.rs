@@ -513,8 +513,6 @@ fn visible_history_boundary_ui(
         low_bound,
     ))
     .show_ui(ui, |ui| {
-        ui.set_min_width(160.0);
-
         ui.selectable_value(
             visible_history_boundary,
             rel_time,

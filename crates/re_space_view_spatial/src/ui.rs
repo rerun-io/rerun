@@ -211,9 +211,6 @@ fn size_ui(
     egui::ComboBox::from_id_source("auto_size_mode")
         .selected_text(mode)
         .show_ui(ui, |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            ui.set_min_width(64.0);
-
             ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
                 .on_hover_text("Determine automatically");
             ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)

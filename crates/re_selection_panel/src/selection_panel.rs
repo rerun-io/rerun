@@ -964,9 +964,6 @@ fn container_top_level_properties(
                 egui::ComboBox::from_id_source("container_grid_columns")
                     .selected_text(columns_to_string(&new_columns))
                     .show_ui(ui, |ui| {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                        ui.set_min_width(64.0);
-
                         ui.selectable_value(&mut new_columns, None, columns_to_string(&None));
 
                         ui.separator();
