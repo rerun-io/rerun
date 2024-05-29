@@ -521,6 +521,20 @@ impl DataTable {
         let mut schema = Schema::default();
         let mut columns = Vec::new();
 
+        // Temporary compatibility layer with Chunks.
+        if let Some(entity_path) = self.col_entity_path.front() {
+            /// The key used to identify a Rerun [`EntityPath`] in chunk-level [`ArrowSchema`] metadata.
+            //
+            // NOTE: Temporarily copied from `re_chunk` while we're transitioning away to the new data
+            // model.
+            const CHUNK_METADATA_KEY_ENTITY_PATH: &str = "rerun.entity_path";
+
+            schema.metadata.insert(
+                CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
+                entity_path.to_string(),
+            );
+        }
+
         {
             let (control_schema, control_columns) = self.serialize_time_columns();
             schema.fields.extend(control_schema.fields);
