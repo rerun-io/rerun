@@ -12,6 +12,30 @@ slotmap::new_key_type! {
     pub struct DataResultHandle;
 }
 
+/// Context for a latest at query in a specific view.
+///
+// TODO(andreas) this is centered around latest-at queries. Does it have to be? Makes sense for UI, but that means it won't scale much into Visualizer queriers.
+pub struct QueryContext<'a> {
+    pub viewer_ctx: &'a ViewerContext<'a>,
+
+    /// Target entity path which is lacking the component and needs a fallback.
+    ///
+    /// For editing overrides/defaults, this is the path to the store entity where they override/default is used.
+    /// For view properties this is the path that stores the respective view property archetype.
+    pub target_entity_path: &'a re_log_types::EntityPath,
+
+    /// Archetype name in which context the component is needed.
+    ///
+    /// View properties always have an archetype context, but overrides/defaults may not.
+    pub archetype_name: Option<re_types::ArchetypeName>,
+
+    /// Query which didn't yield a result for the component at the target entity path.
+    // TODO(andreas): Can we make this a `ViewQuery` instead?
+    // pub query: &'a ViewQuery<'a>,
+    pub query: &'a re_data_store::LatestAtQuery,
+    // pub view_state: &'a dyn SpaceViewState, // TODO(andreas): Need this, but don't know yet how to patch through everywhere.
+}
+
 /// The result of executing a single data query
 #[derive(Default)]
 pub struct DataQueryResult {

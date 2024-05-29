@@ -274,7 +274,7 @@ impl ComponentUiRegistry {
                         );
                         empty_arrow_component_array(origin_db, component_name)
                     }
-                    ComponentFallbackResult::UnknownComponent => {
+                    ComponentFallbackResult::ComponentNotHandled => {
                         empty_arrow_component_array(origin_db, component_name)
                     }
                 }

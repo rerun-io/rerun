@@ -43,13 +43,14 @@ pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
 pub use component_fallbacks::{
-    ComponentFallbackProvider, ComponentFallbackResult, QueryContext,
-    TypedComponentFallbackProvider,
+    ComponentFallbackProvider, ComponentFallbackResult, TypedComponentFallbackProvider,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
 pub use item::Item;
-pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
+pub use query_context::{
+    DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
+};
 pub use query_range::QueryRange;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{

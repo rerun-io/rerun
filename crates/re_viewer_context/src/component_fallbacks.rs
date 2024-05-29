@@ -1,12 +1,17 @@
 use re_types::external::arrow2;
 
-use crate::ViewerContext;
+use crate::QueryContext;
 
-// TODO: Docs
+/// Result for a fallback request.
 pub enum ComponentFallbackResult {
+    /// A fallback value was successfully provided.
     Value(Box<dyn arrow2::array::Array>),
+
+    /// Arrow serialization failed.
     SerializationError(re_types::SerializationError),
-    UnknownComponent,
+
+    /// The fallback provider is not able to handle the given component.
+    ComponentNotHandled,
 }
 
 impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackResult {
@@ -18,31 +23,6 @@ impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackResult {
     }
 }
 
-/// Context for a latest at query in a specific view.
-///
-/// TODO: move elsewhere
-/// TODO: this is centered around latest-at queries. does it have to be
-pub struct QueryContext<'a> {
-    pub viewer_ctx: &'a ViewerContext<'a>,
-
-    /// Target entity path which is lacking the component and needs a fallback.
-    ///
-    /// For editing overrides/defaults, this is the path to the store entity where they override/default is used.
-    /// For view properties this is the path that stores the respective view property archetype.
-    pub target_entity_path: &'a re_log_types::EntityPath,
-
-    /// Archetype name in which context the component is needed.
-    ///
-    /// View properties always have an archetype context, but overrides/defaults may not.
-    pub archetype_name: Option<re_types::ArchetypeName>,
-
-    /// Query which didn't yield a result for the component at the target entity path.
-    // TODO(andreas): Can we make this a `ViewQuery` instead?
-    // pub query: &'a ViewQuery<'a>,
-    pub query: &'a re_data_store::LatestAtQuery,
-    // pub view_state: &'a dyn SpaceViewState, // TODO(andreas): Need this, but don't know yet how to patch through everywhere.
-}
-
 // TODO: Docs
 pub trait ComponentFallbackProvider {
     // TODO: Docs
@@ -51,7 +31,7 @@ pub trait ComponentFallbackProvider {
         _ctx: &QueryContext<'_>,
         _component: re_types::ComponentName,
     ) -> ComponentFallbackResult {
-        ComponentFallbackResult::UnknownComponent
+        ComponentFallbackResult::ComponentNotHandled
     }
 }
 
@@ -75,7 +55,7 @@ macro_rules! impl_component_fallback_provider {
                         return  $crate::TypedComponentFallbackProvider::<$component>::fallback_value(self, ctx).into();
                     }
                 )*
-                $crate::ComponentFallbackResult::UnknownComponent
+                $crate::ComponentFallbackResult::ComponentNotHandled
             }
         }
     };
