@@ -63,7 +63,7 @@ impl WebHandle {
             .start(
                 &canvas_id,
                 web_options,
-                Box::new(move |cc| Box::new(create_app(cc, app_options))),
+                Box::new(move |cc| Ok(Box::new(create_app(cc, app_options)?))),
             )
             .await?;
 
@@ -322,7 +322,10 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 #[repr(transparent)]
 struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
 
-fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crate::App {
+fn create_app(
+    cc: &eframe::CreationContext<'_>,
+    app_options: AppOptions,
+) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
@@ -340,7 +343,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
-    let re_ui = crate::customize_eframe_and_setup_renderer(cc);
+    let re_ui = crate::customize_eframe_and_setup_renderer(cc)?;
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 
@@ -367,7 +370,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
 
     install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone());
 
-    app
+    Ok(app)
 }
 
 /// Listen for `popstate` event, which comes when the user hits the back/forward buttons.
