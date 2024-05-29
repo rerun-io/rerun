@@ -113,6 +113,10 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
 
 const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);

@@ -840,6 +840,10 @@ impl VisualizerSystem for ImageVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
 
 impl ImageVisualizer {

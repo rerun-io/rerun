@@ -97,6 +97,12 @@ pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
     }
 
     fn as_any(&self) -> &dyn std::any::Any;
+
+    /// Casts to a fallback provider.
+    ///
+    /// This is the same workaround as `as_any`:
+    /// It's not possible to cast &dyn [`VisualizerSystem`] to &dyn [`ComponentFallbackProvider`] otherwise.
+    fn as_fallback_provider(&self) -> &dyn ComponentFallbackProvider;
 }
 
 pub struct VisualizerCollection {
