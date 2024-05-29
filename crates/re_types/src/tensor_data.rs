@@ -415,7 +415,7 @@ impl DecodedTensor {
 
 // Backwards comparabillity shim
 // TODO(jleibs): fully express this in terms of indicator components
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,

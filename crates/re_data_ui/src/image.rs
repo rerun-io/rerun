@@ -6,7 +6,6 @@ use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{ClassId, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
-use re_ui::ReUi;
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
@@ -150,26 +149,27 @@ pub fn tensor_ui(
                         |ui| {
                             ui.set_min_size(preview_size);
 
-                            show_image_preview(
+                            match show_image_preview(
                                 render_ctx,
-                                ctx.re_ui,
                                 ui,
                                 texture.clone(),
                                 &debug_name,
                                 preview_size,
-                            )
-                            .on_hover_ui(|ui| {
-                                // Show larger image on hover.
-                                let preview_size = Vec2::splat(400.0);
-                                show_image_preview(
-                                    render_ctx,
-                                    ctx.re_ui,
-                                    ui,
-                                    texture.clone(),
-                                    &debug_name,
-                                    preview_size,
-                                );
-                            });
+                            ) {
+                                Ok(response) => response.on_hover_ui(|ui| {
+                                    // Show larger image on hover.
+                                    let preview_size = Vec2::splat(400.0);
+                                    show_image_preview(
+                                        render_ctx,
+                                        ui,
+                                        texture.clone(),
+                                        &debug_name,
+                                        preview_size,
+                                    )
+                                    .ok();
+                                }),
+                                Err((response, err)) => response.on_hover_text(err.to_string()),
+                            }
                         },
                     );
                 }
@@ -219,14 +219,16 @@ pub fn tensor_ui(
                         .available_size()
                         .min(texture_size(texture))
                         .min(egui::vec2(150.0, 300.0));
-                    let response = show_image_preview(
+                    let response = match show_image_preview(
                         render_ctx,
-                        ctx.re_ui,
                         ui,
                         texture.clone(),
                         &debug_name,
                         preview_size,
-                    );
+                    ) {
+                        Ok(response) => response,
+                        Err((response, err)) => response.on_hover_text(err.to_string()),
+                    };
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                         let image_rect = response.rect;
@@ -283,14 +285,15 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
 ///
 /// Extremely small images will be stretched on their thin axis to make them visible.
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
+///
+/// Returns error if the image could not be rendered.
 fn show_image_preview(
     render_ctx: &re_renderer::RenderContext,
-    re_ui: &ReUi,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,
     debug_name: &str,
     desired_size: egui::Vec2,
-) -> egui::Response {
+) -> Result<egui::Response, (egui::Response, anyhow::Error)> {
     const MIN_SIZE: f32 = 2.0;
 
     let texture_size = texture_size(&colormapped_texture);
@@ -313,10 +316,17 @@ fn show_image_preview(
         egui::TextureOptions::LINEAR,
         debug_name,
     ) {
-        let label_response = ui.label(re_ui.error_text(err.to_string()));
-        response.union(label_response)
+        let color = ui.visuals().error_fg_color;
+        painter.text(
+            response.rect.left_top(),
+            egui::Align2::LEFT_TOP,
+            "🚫",
+            egui::FontId::default(),
+            color,
+        );
+        Err((response, err))
     } else {
-        response
+        Ok(response)
     }
 }
 
