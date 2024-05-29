@@ -208,13 +208,17 @@ impl VisualizerSystem for Points2DVisualizer {
         view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
+
+        let mut point_builder = PointCloudBuilder::new(render_ctx);
         point_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll
         // go with the dynamic allocation approach.
-        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 

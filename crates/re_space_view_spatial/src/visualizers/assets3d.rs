@@ -2,6 +2,7 @@ use re_entity_db::EntityPath;
 use re_log_types::{Instance, RowId, TimeInt};
 use re_query::range_zip_1x2;
 use re_renderer::renderer::MeshInstance;
+use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
     components::{Blob, MediaType, OutOfTreeTransform3D},
@@ -44,6 +45,7 @@ impl Asset3DVisualizer {
     fn process_data<'a>(
         &mut self,
         ctx: &ViewerContext<'_>,
+        render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -73,7 +75,7 @@ impl Asset3DVisualizer {
                         media_type: data.media_type.cloned(),
                     },
                     AnyMesh::Asset(&mesh),
-                    ctx.render_ctx,
+                    render_ctx,
                 )
             });
 
@@ -133,6 +135,10 @@ impl VisualizerSystem for Asset3DVisualizer {
         view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
+
         let mut instances = Vec::new();
 
         super::entity_iterator::process_archetype::<Self, Asset3D, _>(
@@ -169,12 +175,19 @@ impl VisualizerSystem for Asset3DVisualizer {
                     })
                 });
 
-                self.process_data(ctx, &mut instances, entity_path, spatial_ctx, data);
+                self.process_data(
+                    ctx,
+                    render_ctx,
+                    &mut instances,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
                 Ok(())
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.render_ctx, &instances) {
+        match re_renderer::renderer::MeshDrawData::new(render_ctx, &instances) {
             Ok(draw_data) => Ok(vec![draw_data.into()]),
             Err(err) => {
                 re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");

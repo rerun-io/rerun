@@ -80,7 +80,7 @@ impl App {
             ui.add_space(SPACING);
 
             ui.menu_button("Options", |ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 options_menu_ui(
                     &self.command_sender,
                     &self.re_ui,
@@ -92,7 +92,7 @@ impl App {
 
             #[cfg(debug_assertions)]
             ui.menu_button("Debug", |ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 debug_menu_options_ui(
                     &self.re_ui,
                     ui,
@@ -130,7 +130,7 @@ impl App {
             datetime,
         } = *self.build_info();
 
-        ui.style_mut().wrap = Some(false);
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
         let git_hash_suffix = if git_hash.is_empty() {
             String::new()

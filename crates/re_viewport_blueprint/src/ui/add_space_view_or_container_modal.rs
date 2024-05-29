@@ -185,7 +185,7 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
             ui.vertical(|ui| {
                 ui.strong(title);
                 ui.add_space(-5.0);
-                ui.add(egui::Label::new(subtitle).wrap(false));
+                ui.add(egui::Label::new(subtitle).wrap_mode(egui::TextWrapMode::Extend));
             });
 
             let right_coord = ui.cursor().max.x;

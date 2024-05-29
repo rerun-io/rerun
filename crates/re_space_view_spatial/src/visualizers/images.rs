@@ -9,7 +9,7 @@ use re_log_types::{EntityPathHash, RowId, TimeInt};
 use re_query::range_zip_1x2;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
-    Colormap,
+    Colormap, RenderContext,
 };
 use re_space_view::diff_component_filter;
 use re_types::{
@@ -57,6 +57,7 @@ pub struct ViewerImage {
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
     ctx: &ViewerContext<'_>,
+    render_ctx: &RenderContext,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
     tensor_data_row_id: RowId,
@@ -72,7 +73,7 @@ fn to_textured_rect(
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
     match gpu_bridge::tensor_to_gpu(
-        ctx.render_ctx,
+        render_ctx,
         &debug_name,
         tensor_data_row_id,
         tensor,
@@ -210,6 +211,7 @@ impl ImageVisualizer {
     fn process_image_data<'a>(
         &mut self,
         ctx: &ViewerContext<'_>,
+        render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
         entity_path: &EntityPath,
@@ -264,6 +266,7 @@ impl ImageVisualizer {
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
+                render_ctx,
                 entity_path,
                 ent_context,
                 tensor_data_row_id,
@@ -302,6 +305,7 @@ impl ImageVisualizer {
     fn process_segmentation_image_data<'a>(
         &mut self,
         ctx: &ViewerContext<'_>,
+        render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
         entity_path: &EntityPath,
@@ -354,6 +358,7 @@ impl ImageVisualizer {
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
+                render_ctx,
                 entity_path,
                 ent_context,
                 tensor_data_row_id,
@@ -392,6 +397,7 @@ impl ImageVisualizer {
     fn process_depth_image_data<'a>(
         &mut self,
         ctx: &ViewerContext<'_>,
+        render_ctx: &RenderContext,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
@@ -448,6 +454,7 @@ impl ImageVisualizer {
                     // What we want are the extrinsics of the depth camera!
                     match Self::process_entity_view_as_depth_cloud(
                         ctx,
+                        render_ctx,
                         transforms,
                         ent_context,
                         ent_props,
@@ -481,6 +488,7 @@ impl ImageVisualizer {
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
+                render_ctx,
                 entity_path,
                 ent_context,
                 tensor_data_row_id,
@@ -518,6 +526,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
         ctx: &ViewerContext<'_>,
+        render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
@@ -561,7 +570,7 @@ impl ImageVisualizer {
             .cache
             .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
         let depth_texture = re_viewer_context::gpu_bridge::tensor_to_gpu(
-            ctx.render_ctx,
+            render_ctx,
             &debug_name,
             tensor_data_row_id,
             tensor,
@@ -704,6 +713,10 @@ impl VisualizerSystem for ImageVisualizer {
         view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
+
         let mut depth_clouds = Vec::new();
 
         self.process_image_archetype::<Image, _>(
@@ -721,6 +734,7 @@ impl VisualizerSystem for ImageVisualizer {
              data| {
                 visualizer.process_image_data(
                     ctx,
+                    render_ctx,
                     transforms,
                     entity_props,
                     entity_path,
@@ -745,6 +759,7 @@ impl VisualizerSystem for ImageVisualizer {
              data| {
                 visualizer.process_segmentation_image_data(
                     ctx,
+                    render_ctx,
                     transforms,
                     entity_props,
                     entity_path,
@@ -769,6 +784,7 @@ impl VisualizerSystem for ImageVisualizer {
              data| {
                 visualizer.process_depth_image_data(
                     ctx,
+                    render_ctx,
                     depth_clouds,
                     transforms,
                     entity_props,
@@ -784,7 +800,7 @@ impl VisualizerSystem for ImageVisualizer {
         let mut draw_data_list = Vec::new();
 
         match re_renderer::renderer::DepthCloudDrawData::new(
-            ctx.render_ctx,
+            render_ctx,
             &DepthClouds {
                 clouds: depth_clouds,
                 radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -805,7 +821,7 @@ impl VisualizerSystem for ImageVisualizer {
             .iter()
             .map(|image| image.textured_rect.clone())
             .collect_vec();
-        match re_renderer::renderer::RectangleDrawData::new(ctx.render_ctx, &rectangles) {
+        match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
             Ok(draw_data) => {
                 draw_data_list.push(draw_data.into());
             }

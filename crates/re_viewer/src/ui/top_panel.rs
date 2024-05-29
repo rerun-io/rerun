@@ -141,7 +141,7 @@ fn top_bar_ui(
         // Warn if in debug build
         if cfg!(debug_assertions) && !app.is_screenshotting() {
             ui.vertical_centered(|ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
                 egui::warn_if_debug_build(ui);
             });

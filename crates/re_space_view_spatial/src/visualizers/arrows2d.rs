@@ -212,7 +212,11 @@ impl VisualizerSystem for Arrows2DVisualizer {
         view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
+
+        let mut line_builder = LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         super::entity_iterator::process_archetype::<Self, Arrows2D, _>(

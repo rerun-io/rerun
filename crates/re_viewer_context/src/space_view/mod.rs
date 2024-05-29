@@ -61,6 +61,9 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error("Failed to downcast space view's to the {0}.")]
     StateCastError(&'static str),
+
+    #[error("No render context error.")]
+    NoRenderContextError,
 }
 
 // Convenience conversions for some re_renderer error types since these are so frequent.

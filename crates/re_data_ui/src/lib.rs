@@ -17,7 +17,6 @@ mod component_path;
 mod component_ui_registry;
 mod data;
 mod data_source;
-mod editors;
 mod entity_db;
 mod entity_path;
 mod image;
@@ -221,9 +220,9 @@ pub fn label_for_ui_layout(
     let mut label = egui::Label::new(text);
 
     match ui_layout {
-        UiLayout::List => label = label.truncate(true),
+        UiLayout::List => label = label.truncate(),
         UiLayout::Tooltip | UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
-            label = label.wrap(true);
+            label = label.wrap();
         }
     }
 

@@ -177,28 +177,30 @@ impl<'a> Viewport<'a> {
     pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, view_states: &mut ViewStates) {
         re_tracing::profile_function!();
 
-        for space_view in self.blueprint.space_views.values() {
-            let PerViewState {
-                auto_properties,
-                view_state: space_view_state,
-            } = view_states.view_state_mut(
-                ctx.space_view_class_registry,
-                space_view.id,
-                space_view.class_identifier(),
-            );
+        if let Some(render_ctx) = ctx.render_ctx {
+            for space_view in self.blueprint.space_views.values() {
+                let PerViewState {
+                    auto_properties,
+                    view_state: space_view_state,
+                } = view_states.view_state_mut(
+                    ctx.space_view_class_registry,
+                    space_view.id,
+                    space_view.class_identifier(),
+                );
 
-            #[allow(clippy::blocks_in_conditions)]
-            while ScreenshotProcessor::next_readback_result(
-                ctx.render_ctx,
-                space_view.id.gpu_readback_id(),
-                |data, extent, mode| {
-                    handle_pending_space_view_screenshots(space_view, data, extent, mode);
-                },
-            )
-            .is_some()
-            {}
+                #[allow(clippy::blocks_in_conditions)]
+                while ScreenshotProcessor::next_readback_result(
+                    render_ctx,
+                    space_view.id.gpu_readback_id(),
+                    |data, extent, mode| {
+                        handle_pending_space_view_screenshots(space_view, data, extent, mode);
+                    },
+                )
+                .is_some()
+                {}
 
-            space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
+                space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
+            }
         }
 
         self.blueprint.on_frame_start(ctx);
@@ -882,7 +884,7 @@ impl TabWidget {
         };
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
-        let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
+        let galley = text.into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, font_id);
 
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(

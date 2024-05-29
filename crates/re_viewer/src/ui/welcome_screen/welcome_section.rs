@@ -24,7 +24,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
                     .line_height(Some(line_height))
                     .text_style(style),
             )
-            .wrap(true),
+            .wrap(),
         );
 
         ui.add_space(18.0);
@@ -40,7 +40,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
                             .color(ui.visuals().widgets.active.text_color())
                             .text_style(re_ui::ReUi::welcome_screen_body()),
                     )
-                    .wrap(true),
+                    .wrap(),
                 );
             });
             ui.add_space(4.0);
