@@ -73,7 +73,7 @@ impl DataUi for InstancePath {
 
         let interactive = ui_layout != UiLayout::Tooltip;
 
-        re_ui::list_item2::list_item_scope(ui, "component list", |ui| {
+        re_ui::list_item::list_item_scope(ui, "component list", |ui| {
             for component_name in components {
                 if !show_indicator_comps && component_name.is_indicator_component() {
                     continue;
@@ -88,7 +88,7 @@ impl DataUi for InstancePath {
                 };
                 let item = Item::ComponentPath(component_path);
 
-                let mut list_item = ctx.re_ui.list_item2().interactive(interactive);
+                let mut list_item = ctx.re_ui.list_item().interactive(interactive);
 
                 if interactive {
                     let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
@@ -99,7 +99,7 @@ impl DataUi for InstancePath {
                 let response = if component_name.is_indicator_component() {
                     list_item.show_flat(
                         ui,
-                        re_ui::list_item2::LabelContent::new(component_name.short_name())
+                        re_ui::list_item::LabelContent::new(component_name.short_name())
                             .with_icon(icon),
                     )
                 } else {
@@ -114,7 +114,7 @@ impl DataUi for InstancePath {
                     };
 
                     let mut content =
-                        re_ui::list_item2::PropertyContent::new(component_name.short_name())
+                        re_ui::list_item::PropertyContent::new(component_name.short_name())
                             .with_icon(icon)
                             .value_fn(|_, ui, _| {
                                 if instance.is_all() {

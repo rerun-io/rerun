@@ -73,9 +73,9 @@ impl UiLayout {
         let mut label = egui::Label::new(text);
 
         match self {
-            Self::List => label = label.truncate(true),
+            Self::List => label = label.truncate(),
             Self::Tooltip | Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => {
-                label = label.wrap(true);
+                label = label.wrap();
             }
         }
 
