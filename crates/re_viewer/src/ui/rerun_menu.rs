@@ -26,7 +26,7 @@ impl App {
             .max_height(desired_icon_height);
 
         ui.menu_image_button(image, |ui| {
-            ui.set_min_width(240.0);
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // no wrapping: make as wide as needed
 
             ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
 
