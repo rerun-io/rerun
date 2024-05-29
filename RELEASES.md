@@ -60,13 +60,19 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
    Note that `release-0.x` is _invalid_. Always specify the `y`, even if it is `0`,
    e.g. `release-0.15.0` instead of `release-0.15`.
 
-![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
+   For minor release, the branch is typically created from `main`. For patch release, the branch is typically created
+   from the previous release's tag. 
 
-Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
+   ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
+
+   Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
 
 3. ### If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
 
-  When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
+   When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
+
+   :warning: Any commits between the last release's tag and the `docs-latest` branch should also be cherry-picked.
+   Otherwise, these changes will be lost when `docs-latest` is updated.
 
 4. ### Update [`CHANGELOG.md`](/CHANGELOG.md).
 
@@ -102,5 +108,12 @@ Note: you do not need to create a PR for this branch -- the release workflow wil
    The PR description will contain next steps.
 
    Note: there are two separate workflows running -- the one building the release artifacts, and the one running the PR checks.
-   You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml) in order to get a link
-   to the artifacts.
+   You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml) in order to get a link to the artifacts.
+
+7. ### Merge changes to `main`
+
+   For minor release, merge the release branch to `main`.
+
+   For patch release, manually create a new PR from `main` and cherry-pick the required commits. This includes(at least
+   the `CHANLGE.log` update, plus any other change made within release branch that hasn't been cherry-picked in the
+   first place.)
