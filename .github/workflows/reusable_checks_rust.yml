@@ -67,7 +67,7 @@ jobs:
 
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run rs-check --skip-check-individual-crates --skip-wasm-checks --skip-test
+        run: pixi run rs-check --skip-check-individual-crates --skip-test
 
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
