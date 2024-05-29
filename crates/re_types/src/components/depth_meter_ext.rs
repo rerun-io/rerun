@@ -5,3 +5,9 @@ impl std::fmt::Display for DepthMeter {
         write!(f, "{:.prec$}", self.0, prec = crate::DISPLAY_PRECISION)
     }
 }
+
+impl Default for DepthMeter {
+    fn default() -> Self {
+        Self(1.0) // 1 unit == 1 meter.
+    }
+}

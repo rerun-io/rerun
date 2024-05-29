@@ -23,11 +23,12 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The kind of a blueprint container (tabs, grid, …).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum ContainerKind {
     Tabs = 1,
     Horizontal = 2,
     Vertical = 3,
+    #[default]
     Grid = 4,
 }
 

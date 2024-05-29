@@ -14,7 +14,7 @@ struct ClearIsRecursive (
   "attr.arrow.transparent",
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",
-  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.derive": "Copy, PartialEq, Eq, Default",
   "attr.rust.override_crate": "re_types_core",
   "attr.rust.tuple_struct"
 ) {

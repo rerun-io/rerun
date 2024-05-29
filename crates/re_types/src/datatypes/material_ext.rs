@@ -11,3 +11,13 @@ impl Material {
         }
     }
 }
+
+#[allow(clippy::derivable_impls)] // Soon no longer be derivable, also wanted to comment on choices here.
+impl Default for Material {
+    fn default() -> Self {
+        Self {
+            // TODO(andreas): Would be nicer to not make this optional and just use white as default factor.
+            albedo_factor: None,
+        }
+    }
+}

@@ -58,3 +58,9 @@ impl From<mint::Quaternion<f32>> for Rotation3D {
         Self::Quaternion(val.into())
     }
 }
+
+impl Default for Rotation3D {
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}

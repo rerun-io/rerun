@@ -46,3 +46,9 @@ impl std::borrow::Borrow<str> for TextLogLevel {
         self.as_str()
     }
 }
+
+impl Default for TextLogLevel {
+    fn default() -> Self {
+        Self::INFO.to_owned().into()
+    }
+}

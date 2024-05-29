@@ -5,3 +5,9 @@ impl std::fmt::Display for Scalar {
         self.0.fmt(f)
     }
 }
+
+impl Default for Scalar {
+    fn default() -> Self {
+        Self(0.0)
+    }
+}

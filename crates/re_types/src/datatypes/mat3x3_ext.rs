@@ -125,3 +125,9 @@ impl From<mint::ColumnMatrix3<f32>> for Mat3x3 {
         std::convert::From::<[[f32; 3]; 3]>::from([v.x.into(), v.y.into(), v.z.into()])
     }
 }
+
+impl Default for Mat3x3 {
+    fn default() -> Self {
+        Self::IDENTITY
+    }
+}

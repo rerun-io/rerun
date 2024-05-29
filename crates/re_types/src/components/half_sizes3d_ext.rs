@@ -63,3 +63,9 @@ impl From<HalfSizes3D> for mint::Vector3<f32> {
         }
     }
 }
+
+impl Default for HalfSizes3D {
+    fn default() -> Self {
+        Self(Vec3D::ONE)
+    }
+}

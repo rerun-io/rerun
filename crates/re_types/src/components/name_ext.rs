@@ -1,3 +1,4 @@
+
 use super::Name;
 
 // TODO(#4536): These should come for free
@@ -27,5 +28,11 @@ impl std::borrow::Borrow<str> for Name {
     #[inline]
     fn borrow(&self) -> &str {
         self.as_str()
+    }
+}
+
+impl Default for Name {
+    fn default() -> Self {
+        Self("<name>".into())
     }
 }

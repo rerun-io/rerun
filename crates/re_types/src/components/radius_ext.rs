@@ -13,3 +13,9 @@ impl std::fmt::Display for Radius {
         write!(f, "{:.prec$}", self.0, prec = crate::DISPLAY_PRECISION)
     }
 }
+
+impl Default for Radius {
+    fn default() -> Self {
+        Self::ONE
+    }
+}

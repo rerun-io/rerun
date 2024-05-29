@@ -259,6 +259,13 @@ impl std::str::FromStr for ViewCoordinates {
     }
 }
 
+impl Default for ViewCoordinates {
+    #[inline]
+    fn default() -> Self {
+        Self::RFU
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 macro_rules! define_coordinates {
