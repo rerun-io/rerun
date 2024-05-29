@@ -173,7 +173,11 @@ impl SpaceViewClass for TextDocumentSpaceView {
                                 text = text.monospace();
                             }
 
-                            ui.add(Label::new(text).wrap(state.word_wrap));
+                            ui.add(Label::new(text).wrap_mode(if state.word_wrap {
+                                egui::TextWrapMode::Wrap
+                            } else {
+                                egui::TextWrapMode::Extend
+                            }));
                         } else {
                             // TODO(jleibs): better handling for multiple results
                             ui.label(format!(

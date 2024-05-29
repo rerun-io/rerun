@@ -133,7 +133,7 @@ fn default_toast_contents(ui: &mut egui::Ui, toast: &Toast) -> egui::Response {
         .inner_margin(10.0)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.style_mut().wrap = Some(true);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                 ui.set_max_width(400.0);
                 ui.spacing_mut().item_spacing = egui::Vec2::splat(5.0);
 

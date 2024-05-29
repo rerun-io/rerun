@@ -13,7 +13,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
                     .line_height(Some(36.0))
                     .text_style(re_ui::ReUi::welcome_screen_h2()),
             )
-            .wrap(true),
+            .wrap(),
         );
 
         ui.add_space(10.0);
@@ -29,7 +29,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
                             .color(ui.visuals().weak_text_color())
                             .text_style(re_ui::ReUi::welcome_screen_body()),
                     )
-                    .wrap(true),
+                    .wrap(),
                 );
             });
             ui.add_space(4.0);

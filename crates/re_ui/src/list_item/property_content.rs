@@ -175,7 +175,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_text(self, text: impl Into<egui::WidgetText> + 'a) -> Self {
         self.value_fn(move |_, ui, _| {
-            ui.add(egui::Label::new(text.into()).truncate(true));
+            ui.add(egui::Label::new(text.into()).truncate());
         })
     }
 

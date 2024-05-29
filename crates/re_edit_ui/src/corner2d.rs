@@ -25,7 +25,7 @@ pub fn edit_corner2d(
     egui::ComboBox::from_id_source("corner2d")
         .selected_text(format!("{corner}"))
         .show_ui(ui, |ui| {
-            ui.style_mut().wrap = Some(false);
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             ui.set_min_width(64.0);
 
             ui.selectable_value(

@@ -101,7 +101,7 @@ impl SpatialSpaceViewState {
             .grid_left_hand_label(ui, "Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
-            ui.style_mut().wrap = Some(false);
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             let BoundingBox { min, max } = self.bounding_boxes.current;
             ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
             ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
@@ -211,7 +211,7 @@ fn size_ui(
     egui::ComboBox::from_id_source("auto_size_mode")
         .selected_text(mode)
         .show_ui(ui, |ui| {
-            ui.style_mut().wrap = Some(false);
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             ui.set_min_width(64.0);
 
             ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
@@ -392,7 +392,7 @@ pub fn screenshot_context_menu(
         if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = None;
             _response.context_menu(|ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 if ui.button("Save screenshot to disk").clicked() {
                     take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
                     ui.close_menu();

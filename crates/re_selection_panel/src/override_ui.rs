@@ -193,7 +193,7 @@ pub fn add_new_override(
         let menu = ui
             .menu_button("Add", |ui| {
                 opened = true;
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.
@@ -410,7 +410,7 @@ pub fn add_new_visualizer(
     ui.add_enabled_ui(enabled, |ui| {
         let menu = ui
             .menu_button("Add", |ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 opened = true;
 
                 if visualizer_options.is_empty() {

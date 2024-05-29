@@ -95,11 +95,7 @@ pub fn colormap_dropdown_button_ui(
         .show_ui(ui, |ui| {
             ui.set_width(200.0);
 
-            let background_x_range = ui
-                .spacing()
-                .menu_margin
-                .expand_rect(ui.max_rect())
-                .x_range();
+            let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
 
             list_item::list_item_scope(ui, "inner_scope", |ui| {
                 full_span::full_span_scope(ui, background_x_range, content_ui);
