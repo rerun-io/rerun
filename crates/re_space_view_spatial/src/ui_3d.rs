@@ -21,7 +21,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    scene_bounding_boxes::{self, SceneBoundingBoxes},
+    scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,

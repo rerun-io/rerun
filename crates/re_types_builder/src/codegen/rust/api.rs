@@ -69,6 +69,7 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
+        generate_component_defaults(reporter, objects, &mut files_to_write);
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
         generate_to_archetype_impls(reporter, objects, &mut files_to_write);
 
@@ -107,7 +108,7 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
+            let mut code = generate_object_file(reporter, objects, arrow_registry, obj, &filepath);
 
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
@@ -142,6 +143,7 @@ fn generate_object_file(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
+    target_file: &Utf8Path,
 ) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
@@ -175,8 +177,6 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::ComponentName;\n");
     code.push_str("use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};\n");
 
-    let mut acc = TokenStream::new();
-
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
     // random spacing into doc comments that look like code!
@@ -187,12 +187,23 @@ fn generate_object_file(
         crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
+    append_tokens(reporter, code, quoted_obj, target_file)
+}
+
+fn append_tokens(
+    reporter: &Reporter,
+    mut code: String,
+    quoted_obj: TokenStream,
+    target_file: &Utf8Path,
+) -> String {
+    let mut acc = TokenStream::new();
+
     let mut tokens = quoted_obj.into_iter();
     while let Some(token) = tokens.next() {
         match &token {
             // If this is a doc-comment block, be smart about it.
             proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                code.push_indented(0, string_from_quoted(&acc), 1);
+                code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
                 acc = TokenStream::new();
 
                 acc.extend([token, tokens.next().unwrap()]);
@@ -205,7 +216,7 @@ fn generate_object_file(
         }
     }
 
-    code.push_indented(0, string_from_quoted(&acc), 1);
+    code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
 
     replace_doc_attrb_with_doc_comment(&code)
 }
@@ -234,7 +245,7 @@ fn generate_mod_file(
         }
     }
 
-    code += "\n\n";
+    code.push_str("\n\n");
 
     // Non-deprecated first.
     for obj in objects
@@ -261,6 +272,47 @@ fn generate_mod_file(
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
 
+    files_to_write.insert(path, code);
+}
+
+fn generate_component_defaults(
+    reporter: &Reporter,
+    objects: &Objects,
+    files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+) {
+    let quoted_fallbacks = objects
+        .ordered_objects(Some(ObjectKind::Component))
+        .into_iter()
+        .filter(|component| !component.is_testing())
+        .map(|component| {
+            let type_name = format_ident!("{}", component.name);
+            quote! {
+                (<super::#type_name as Loggable>::name(), super::#type_name::default().to_arrow()?)
+            }
+        })
+        .collect_vec();
+
+    let docs = quote_doc_line("Calls `default` for each component type in this module and serializes it to arrow. This is useful as a base fallback value when displaying ui.");
+    let tokens = quote! {
+        use ::re_types_core::{external::arrow2, ComponentName, SerializationError};
+
+        #docs
+        #[allow(dead_code)] // TODO(andreas): Temporary, working on the user.
+        pub fn list_default_components() -> Result<impl Iterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>, SerializationError> {
+            use ::re_types_core::{Loggable, LoggableBatch as _};
+
+            re_tracing::profile_function!();
+            Ok([
+                #(#quoted_fallbacks,)*
+            ].into_iter())
+        }
+    };
+
+    // Put into its own subfolder since codegen is set up in a way that it thinks that everything
+    // inside the folder is either generated or an extension to the generated code.
+    // This way we don't have to build an exception just for this file.
+    let path = Utf8PathBuf::from("crates/re_viewer/src/generated/component_defaults.rs");
+    let code = append_tokens(reporter, String::new(), tokens, &path);
     files_to_write.insert(path, code);
 }
 
