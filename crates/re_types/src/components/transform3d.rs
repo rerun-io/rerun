@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An affine transform between two 3D spaces, represented in a given direction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Transform3D(
     /// Representation of the transform.
     pub crate::datatypes::Transform3D,

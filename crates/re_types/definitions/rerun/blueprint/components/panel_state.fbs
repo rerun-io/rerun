@@ -23,5 +23,5 @@ enum PanelState: byte (
   Collapsed,
 
   /// Fully expanded.
-  Expanded,
+  Expanded (default),
 }

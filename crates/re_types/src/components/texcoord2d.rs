@@ -38,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// This is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,
 /// which places the origin at the bottom-left.
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Texcoord2D(pub crate::datatypes::Vec2D);
 

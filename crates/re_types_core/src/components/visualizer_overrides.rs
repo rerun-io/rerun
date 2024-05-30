@@ -23,7 +23,7 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Component**: The name of a visualizer.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
 pub struct VisualizerOverrides(pub Vec<crate::ArrowString>);
 

@@ -899,14 +899,15 @@ fn default_eye(
     scene_view_coordinates: Option<ViewCoordinates>,
 ) -> ViewEye {
     // Defaults to RFU.
+    let scene_view_coordinates = scene_view_coordinates.unwrap_or_default();
     let scene_right = scene_view_coordinates
-        .and_then(|vc| vc.right())
+        .right()
         .unwrap_or(SignedAxis3::POSITIVE_X);
     let scene_forward = scene_view_coordinates
-        .and_then(|vc| vc.right())
+        .forward()
         .unwrap_or(SignedAxis3::POSITIVE_Y);
     let scene_up = scene_view_coordinates
-        .and_then(|vc| vc.up())
+        .up()
         .unwrap_or(SignedAxis3::POSITIVE_Z);
 
     let mut center = bounding_box.center();

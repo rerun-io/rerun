@@ -17,3 +17,11 @@ impl From<super::TriangleIndices> for mint::Vector3<u32> {
         }
     }
 }
+
+impl Default for super::TriangleIndices {
+    #[inline]
+    fn default() -> Self {
+        // First 3 vertices. Much better than [0, 0, 0].
+        [0, 1, 2].into()
+    }
+}
