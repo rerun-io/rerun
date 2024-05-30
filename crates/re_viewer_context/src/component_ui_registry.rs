@@ -243,8 +243,18 @@ impl ComponentUiRegistry {
             let component_query_result = match component_query_result.resolved(origin_db.resolver())
             {
                 re_query::PromiseResult::Pending => {
-                    ui.label("Loading component data...");
-                    return;
+                    // This can currently  also happen when there's no data at all.
+                    if component_query_result.num_instances() == 0 {
+                        None
+                    } else {
+                        // This should be possible right now and is an error.
+                        //ui.label("Loading data...");
+                        ctx.viewer_ctx.re_ui.error_label_and_log_once(
+                            ui,
+                            format!("Promise for {component_name} is still pending."),
+                        );
+                        return;
+                    }
                 }
                 re_query::PromiseResult::Ready(cell) => {
                     let index = instance.get();
@@ -255,10 +265,10 @@ impl ComponentUiRegistry {
                     }
                 }
                 re_query::PromiseResult::Error(err) => {
-                    let error_text = re_error::format_ref(err.as_ref());
-                    re_log::error_once!("Couldn't get {component_name}: {error_text}");
-                    ui.label(ctx.viewer_ctx.re_ui.error_text("Error"))
-                        .on_hover_text(error_text);
+                    ctx.viewer_ctx.re_ui.error_label_and_log_once(
+                        ui,
+                        format!("Couldn't get {component_name}: {err}"),
+                    );
                     return;
                 }
             };
@@ -269,10 +279,10 @@ impl ComponentUiRegistry {
                 match fallback_provider.fallback_for(ctx, component_name) {
                     Ok(fallback) => fallback,
                     Err(ComponentFallbackError::MissingBaseFallback) => {
-                        let error = format!("No fallback value available for {component_name}.");
-                        re_log::error_once!("{error}");
-                        ui.label(ctx.viewer_ctx.re_ui.error_text("<empty>"))
-                            .on_hover_text(error);
+                        ctx.viewer_ctx.re_ui.error_label_and_log_once(
+                            ui,
+                            format!("No fallback value available for {component_name}."),
+                        );
                         return;
                     }
                 }
