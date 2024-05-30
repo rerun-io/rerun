@@ -18,8 +18,8 @@ pub fn run_native_app(
         window_title,
         native_options,
         Box::new(move |cc| {
-            let re_ui = crate::customize_eframe_and_setup_renderer(cc);
-            app_creator(cc, re_ui)
+            let re_ui = crate::customize_eframe_and_setup_renderer(cc)?;
+            Ok(app_creator(cc, re_ui))
         }),
     )
 }

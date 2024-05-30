@@ -11,7 +11,7 @@ use re_viewer_context::{
 };
 
 use crate::space_view_highlights::highlights_for_space_view;
-use re_space_view::SpaceViewBlueprint;
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 pub fn create_and_run_space_view_systems(
     ctx: &ViewerContext<'_>,

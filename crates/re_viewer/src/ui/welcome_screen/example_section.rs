@@ -34,7 +34,8 @@ pub(super) const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 337.0;
 const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 20.0;
-const TITLE_TO_GRID_VSPACE: f32 = 32.0;
+const AFTER_HEADER_VSPACE: f32 = 48.0;
+const TITLE_TO_GRID_VSPACE: f32 = 24.0;
 const ROW_VSPACE: f32 = 20.0;
 const THUMBNAIL_RADIUS: f32 = 12.0;
 
@@ -273,6 +274,8 @@ impl ExampleSection {
 
             ui.vertical(|ui| {
                 header_ui(ui);
+
+                ui.add_space(AFTER_HEADER_VSPACE);
 
                 let Some(examples) = examples.ready_mut() else {
                     // Still waiting for example to load
@@ -550,7 +553,7 @@ impl ExampleDescLayout {
             ..Default::default()
         }
         .show(ui, |ui| {
-            ui.add(egui::Label::new(title).truncate(true));
+            ui.add(egui::Label::new(title).truncate());
         });
     }
 
@@ -578,7 +581,7 @@ impl ExampleDescLayout {
                             1.0,
                             egui::Color32::WHITE.gamma_multiply(0.086),
                         ))
-                        .wrap(false),
+                        .wrap_mode(egui::TextWrapMode::Extend),
                     );
                 }
             });

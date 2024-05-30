@@ -187,6 +187,11 @@ impl ::re_types_core::Archetype for Pinhole {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Pinhole"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: PinholeIndicator = PinholeIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

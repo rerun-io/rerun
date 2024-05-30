@@ -125,6 +125,11 @@ impl ::re_types_core::Archetype for AnnotationContext {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Annotation context"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: AnnotationContextIndicator = AnnotationContextIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

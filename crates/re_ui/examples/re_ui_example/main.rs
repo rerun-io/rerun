@@ -58,7 +58,7 @@ fn main() -> eframe::Result<()> {
         native_options,
         Box::new(move |cc| {
             let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
-            Box::new(ExampleApp::new(re_ui))
+            Ok(Box::new(ExampleApp::new(re_ui)))
         }),
     )
 }
@@ -249,7 +249,7 @@ impl eframe::App for ExampleApp {
             });
             self.re_ui
                 .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                    ui.style_mut().wrap = Some(false);
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     ui.label("Some blueprint stuff here, that might be wide.");
                     self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
 

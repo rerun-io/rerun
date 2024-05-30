@@ -4,17 +4,17 @@ use re_log_types::{DataRow, EntityPath, RowId};
 use re_types::blueprint::components::PanelState;
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
-pub const TOP_PANEL_PATH: &str = "top_panel";
-pub const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
-pub const SELECTION_PANEL_PATH: &str = "selection_panel";
-pub const TIME_PANEL_PATH: &str = "time_panel";
+const TOP_PANEL_PATH: &str = "top_panel";
+const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
+const SELECTION_PANEL_PATH: &str = "selection_panel";
+const TIME_PANEL_PATH: &str = "time_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
     store_ctx: Option<&'a StoreContext<'a>>,
     is_narrow_screen: bool,
     panel_states: PanelStates,
-    overrides: PanelStateOverrides,
+    overrides: Option<PanelStateOverrides>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -30,7 +30,7 @@ impl<'a> AppBlueprint<'a> {
         store_ctx: Option<&'a StoreContext<'_>>,
         query: &LatestAtQuery,
         egui_ctx: &egui::Context,
-        overrides: PanelStateOverrides,
+        overrides: Option<PanelStateOverrides>,
     ) -> Self {
         let blueprint_db = store_ctx.map(|ctx| ctx.blueprint);
         let screen_size = egui_ctx.screen_rect().size();
@@ -79,28 +79,32 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn top_panel_state(&self) -> PanelState {
-        self.overrides.top.unwrap_or(self.panel_states.top)
+        self.overrides
+            .and_then(|o| o.top)
+            .unwrap_or(self.panel_states.top)
     }
 
     pub fn blueprint_panel_state(&self) -> PanelState {
         self.overrides
-            .blueprint
+            .and_then(|o| o.blueprint)
             .unwrap_or(self.panel_states.blueprint)
     }
 
     pub fn selection_panel_state(&self) -> PanelState {
         self.overrides
-            .selection
+            .and_then(|o| o.selection)
             .unwrap_or(self.panel_states.selection)
     }
 
     pub fn time_panel_state(&self) -> PanelState {
-        self.overrides.time.unwrap_or(self.panel_states.time)
+        self.overrides
+            .and_then(|o| o.time)
+            .unwrap_or(self.panel_states.time)
     }
 
     pub fn toggle_top_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
-        if self.overrides.top.is_some() {
+        // don't toggle if it is overridden
+        if self.overrides.is_some_and(|o| o.top.is_some()) {
             return;
         }
 
@@ -112,8 +116,8 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_blueprint_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
-        if self.overrides.blueprint.is_some() {
+        // don't toggle if it is overridden
+        if self.overrides.is_some_and(|o| o.blueprint.is_some()) {
             return;
         }
 
@@ -127,8 +131,8 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_selection_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
-        if self.overrides.selection.is_some() {
+        // don't toggle if it is overridden
+        if self.overrides.is_some_and(|o| o.selection.is_some()) {
             return;
         }
 
@@ -142,8 +146,8 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_time_panel(&self, command_sender: &CommandSender) {
-        // don't toggle if it is overriden
-        if self.overrides.time.is_some() {
+        // don't toggle if it is overridden
+        if self.overrides.is_some_and(|o| o.time.is_some()) {
             return;
         }
 
@@ -164,6 +168,7 @@ pub struct PanelStateOverrides {
 }
 
 pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
+    // Most things are hidden in the welcome screen:
     for (panel_name, value) in [
         (TOP_PANEL_PATH, PanelState::Expanded),
         (BLUEPRINT_PANEL_PATH, PanelState::Hidden),

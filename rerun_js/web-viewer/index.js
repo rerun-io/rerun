@@ -222,6 +222,8 @@ export class WebViewer {
   }
 
   /**
+   * Force a panel to a specific state.
+   *
    * @param {Panel} panel
    * @param {PanelState} state
    */
@@ -232,6 +234,18 @@ export class WebViewer {
       );
     }
     this.#handle.override_panel_state(panel, state);
+  }
+
+  /**
+   * Toggle panel overrides set via `override_panel_state`.
+   */
+  toggle_panel_overrides() {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to toggle panel overrides in a stopped web viewer`,
+      );
+    }
+    this.#handle.toggle_panel_overrides();
   }
 
   toggle_fullscreen() {

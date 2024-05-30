@@ -61,7 +61,7 @@ fn colormap_preview_ui(
 }
 
 pub fn colormap_dropdown_button_ui(
-    render_ctx: &re_renderer::RenderContext,
+    render_ctx: Option<&re_renderer::RenderContext>,
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     map: &mut re_renderer::Colormap,
@@ -69,16 +69,20 @@ pub fn colormap_dropdown_button_ui(
     let selected_text = map.to_string();
     let content_ui = |ui: &mut egui::Ui| {
         for option in re_renderer::Colormap::ALL {
-            let response = list_item::ListItem::new(re_ui)
-                .selected(&option == map)
-                .show_flat(
+            let list_item = list_item::ListItem::new(re_ui).selected(&option == map);
+
+            let response = if let Some(render_ctx) = render_ctx {
+                list_item.show_flat(
                     ui,
                     list_item::PropertyContent::new(option.to_string()).value_fn(|_, ui, _| {
                         if let Err(err) = colormap_preview_ui(render_ctx, ui, option) {
                             re_log::error_once!("Failed to paint colormap preview: {err}");
                         }
                     }),
-                );
+                )
+            } else {
+                list_item.show_flat(ui, list_item::LabelContent::new(option.to_string()))
+            };
 
             if response.clicked() {
                 *map = option;
@@ -89,13 +93,7 @@ pub fn colormap_dropdown_button_ui(
     egui::ComboBox::from_id_source("color map select")
         .selected_text(selected_text)
         .show_ui(ui, |ui| {
-            ui.set_width(200.0);
-
-            let background_x_range = ui
-                .spacing()
-                .menu_margin
-                .expand_rect(ui.max_rect())
-                .x_range();
+            let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
 
             list_item::list_item_scope(ui, "inner_scope", |ui| {
                 full_span::full_span_scope(ui, background_x_range, content_ui);

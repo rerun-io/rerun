@@ -118,6 +118,11 @@ impl ::re_types_core::Archetype for Transform3D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Transform 3D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Transform3DIndicator = Transform3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

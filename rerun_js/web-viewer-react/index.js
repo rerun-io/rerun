@@ -42,7 +42,9 @@ export default class WebViewer extends React.Component {
 
   componentDidMount() {
     const current = /** @type {HTMLDivElement} */ (this.#parent.current);
-    this.#handle.start(this.#recordings, current, this.#hide_welcome_screen);
+    this.#handle.start(this.#recordings, current, {
+      hide_welcome_screen: this.#hide_welcome_screen,
+    });
   }
 
   componentDidUpdate(/** @type {Props} */ prevProps) {

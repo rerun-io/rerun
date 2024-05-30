@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::SpaceViewId;
 
-use re_space_view::SpaceViewBlueprint;
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {

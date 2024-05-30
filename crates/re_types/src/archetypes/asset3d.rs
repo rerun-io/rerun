@@ -135,6 +135,11 @@ impl ::re_types_core::Archetype for Asset3D {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Asset 3D"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Asset3DIndicator = Asset3DIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

@@ -49,6 +49,7 @@ skip = [
   { name = "ahash" },             # Popular crate + fast release schedule = lots of crates still using old versions
   { name = "async-fs" },          # Old version via accesskit
   { name = "base64" },            # Too popular
+  { name = "block2" },            # Old version via winit 0.29 -> icrate 0.0.4
   { name = "cargo_metadata" },    # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "cfg_aliases" },       # Tiny macro-only crate. Winit and other use older version than us.
   { name = "hashbrown" },         # Old version used by polar-rs

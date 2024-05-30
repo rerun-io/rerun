@@ -173,6 +173,7 @@ pub struct App {
     /// All known space view types.
     space_view_class_registry: SpaceViewClassRegistry,
 
+    pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 }
 
@@ -240,7 +241,8 @@ impl App {
 
         let (command_sender, command_receiver) = command_channel();
 
-        let component_ui_registry = re_data_ui::create_component_ui_registry();
+        let mut component_ui_registry = re_data_ui::create_component_ui_registry();
+        re_edit_ui::register_editors(&mut component_ui_registry);
 
         // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
         let long_time_ago = web_time::Instant::now()
@@ -249,10 +251,7 @@ impl App {
 
         analytics.on_viewer_started(build_info);
 
-        #[cfg(target_arch = "wasm32")]
         let panel_state_overrides = startup_options.panel_state_overrides;
-        #[cfg(not(target_arch = "wasm32"))]
-        let panel_state_overrides = Default::default();
 
         Self {
             build_info,
@@ -294,6 +293,7 @@ impl App {
 
             analytics,
 
+            panel_state_overrides_active: true,
             panel_state_overrides,
         }
     }
@@ -607,6 +607,9 @@ impl App {
 
             UICommand::ToggleMemoryPanel => {
                 self.memory_panel_open ^= true;
+            }
+            UICommand::TogglePanelStateOverrides => {
+                self.panel_state_overrides_active ^= true;
             }
             UICommand::ToggleTopPanel => {
                 app_blueprint.toggle_top_panel(&self.command_sender);
@@ -1544,7 +1547,8 @@ impl eframe::App for App {
             store_context.as_ref(),
             &self.state.blueprint_query_for_viewer(),
             egui_ctx,
-            self.panel_state_overrides,
+            self.panel_state_overrides_active
+                .then_some(self.panel_state_overrides),
         );
 
         self.ui(

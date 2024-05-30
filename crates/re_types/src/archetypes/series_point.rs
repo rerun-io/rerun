@@ -156,6 +156,11 @@ impl ::re_types_core::Archetype for SeriesPoint {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Series point"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SeriesPointIndicator = SeriesPointIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

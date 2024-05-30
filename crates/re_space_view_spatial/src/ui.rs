@@ -101,7 +101,7 @@ impl SpatialSpaceViewState {
             .grid_left_hand_label(ui, "Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
-            ui.style_mut().wrap = Some(false);
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             let BoundingBox { min, max } = self.bounding_boxes.current;
             ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
             ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
@@ -211,9 +211,6 @@ fn size_ui(
     egui::ComboBox::from_id_source("auto_size_mode")
         .selected_text(mode)
         .show_ui(ui, |ui| {
-            ui.style_mut().wrap = Some(false);
-            ui.set_min_width(64.0);
-
             ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
                 .on_hover_text("Determine automatically");
             ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)
@@ -392,7 +389,7 @@ pub fn screenshot_context_menu(
         if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = None;
             _response.context_menu(|ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 if ui.button("Save screenshot to disk").clicked() {
                     take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
                     ui.close_menu();
@@ -435,6 +432,10 @@ pub fn picking(
         return Ok(response);
     };
 
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+    };
+
     let picking_context = PickingContext::new(
         pointer_pos_ui,
         space_from_ui,
@@ -453,7 +454,7 @@ pub fn picking(
         .at_most(128.0) as u32;
 
     let _ = view_builder.schedule_picking_rect(
-        ctx.render_ctx,
+        render_ctx,
         re_renderer::RectInt::from_middle_and_extent(
             picking_context.pointer_in_pixel.as_ivec2(),
             glam::uvec2(picking_rect_size, picking_rect_size),
@@ -467,7 +468,7 @@ pub fn picking(
     let images = visualizers.get::<ImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
-        ctx.render_ctx,
+        render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
         &images.images,
@@ -725,18 +726,20 @@ fn image_hover_ui(
                     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
                         c.entry(tensor_data_row_id, &decoded_tensor)
                     });
-                    show_zoomed_image_region(
-                        ctx.render_ctx,
-                        ui,
-                        tensor_data_row_id,
-                        &decoded_tensor,
-                        &tensor_stats,
-                        &annotations,
-                        meaning,
-                        meter,
-                        &tensor_name,
-                        [coords[0] as _, coords[1] as _],
-                    );
+                    if let Some(render_ctx) = ctx.render_ctx {
+                        show_zoomed_image_region(
+                            render_ctx,
+                            ui,
+                            tensor_data_row_id,
+                            &decoded_tensor,
+                            &tensor_stats,
+                            &annotations,
+                            meaning,
+                            meter,
+                            &tensor_name,
+                            [coords[0] as _, coords[1] as _],
+                        );
+                    }
                 }
                 Err(err) => re_log::warn_once!(
                     "Encountered problem decoding tensor at path {tensor_name}: {err}"
@@ -782,7 +785,7 @@ pub fn background_ui(
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
     let (archetype, blueprint_path) =
-        re_space_view::query_view_property(space_view_id, blueprint_db, blueprint_query);
+        re_viewport_blueprint::query_view_property(space_view_id, blueprint_db, blueprint_query);
 
     let Background { color, mut kind } = archetype.ok().flatten().unwrap_or(default_background);
 

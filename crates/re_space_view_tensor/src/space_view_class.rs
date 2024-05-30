@@ -32,10 +32,20 @@ type ViewType = re_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
-    /// Selects in [`Self::state_tensors`].
-    pub selected_tensor: Option<EntityPath>,
+    /// What slice are we viewing?
+    ///
+    /// This get automatically reset if/when the current tensor shape changes.
+    pub(crate) slice: SliceSelection,
 
-    pub state_tensors: ahash::HashMap<EntityPath, PerTensorState>,
+    /// How we map values to colors.
+    pub(crate) color_mapping: ColorMapping,
+
+    /// Scaling, filtering, aspect ratio, etc for the rendered texture.
+    texture_settings: TextureSettings,
+
+    /// Last viewed tensor, copied each frame.
+    /// Used for the selection view.
+    tensor: Option<(RowId, DecodedTensor)>,
 }
 
 impl SpaceViewState for ViewTensorState {
@@ -56,88 +66,6 @@ pub struct SliceSelection {
 
     /// Selected value of every dimension (iff they are in [`DimensionMapping::selectors`]).
     pub selector_values: BTreeMap<usize, u64>,
-}
-
-pub struct PerTensorState {
-    /// What slice are we vieiwing?
-    slice: SliceSelection,
-
-    /// How we map values to colors.
-    color_mapping: ColorMapping,
-
-    /// Scaling, filtering, aspect ratio, etc for the rendered texture.
-    texture_settings: TextureSettings,
-
-    /// Last viewed tensor, copied each frame.
-    /// Used for the selection view.
-    tensor: Option<(RowId, DecodedTensor)>,
-}
-
-impl PerTensorState {
-    pub fn create(tensor_data_row_id: RowId, tensor: &DecodedTensor) -> Self {
-        Self {
-            slice: SliceSelection {
-                dim_mapping: DimensionMapping::create(tensor.shape()),
-                selector_values: Default::default(),
-            },
-            color_mapping: ColorMapping::default(),
-            texture_settings: TextureSettings::default(),
-            tensor: Some((tensor_data_row_id, tensor.clone())),
-        }
-    }
-
-    pub fn slice(&self) -> &SliceSelection {
-        &self.slice
-    }
-
-    pub fn color_mapping(&self) -> &ColorMapping {
-        &self.color_mapping
-    }
-
-    pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        let Some((tensor_data_row_id, tensor)) = &self.tensor else {
-            ui.label("No Tensor shown in this Space View.");
-            return;
-        };
-
-        let tensor_stats = ctx
-            .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
-        ctx.re_ui
-            .selection_grid(ui, "tensor_selection_ui")
-            .show(ui, |ui| {
-                // We are in a bare Tensor view -- meaning / meter is unknown.
-                let meaning = TensorDataMeaning::Unknown;
-                let meter = None;
-                tensor_summary_ui_grid_contents(
-                    ctx.re_ui,
-                    ui,
-                    tensor,
-                    tensor,
-                    meaning,
-                    meter,
-                    &tensor_stats,
-                );
-                self.texture_settings.ui(ctx.re_ui, ui);
-                self.color_mapping.ui(ctx.render_ctx, ctx.re_ui, ui);
-            });
-
-        ui.separator();
-        ui.strong("Dimension Mapping");
-        dimension_mapping_ui(ctx.re_ui, ui, &mut self.slice.dim_mapping, tensor.shape());
-        let default_mapping = DimensionMapping::create(tensor.shape());
-        if ui
-            .add_enabled(
-                self.slice.dim_mapping != default_mapping,
-                egui::Button::new("Reset mapping"),
-            )
-            .on_disabled_hover_text("The default is already set up")
-            .on_hover_text("Reset dimension mapping to the default")
-            .clicked()
-        {
-            self.slice.dim_mapping = DimensionMapping::create(tensor.shape());
-        }
-    }
 }
 
 impl SpaceViewClass for TensorSpaceView {
@@ -207,11 +135,53 @@ impl SpaceViewClass for TensorSpaceView {
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
-        if let Some(selected_tensor) = &state.selected_tensor {
-            if let Some(state_tensor) = state.state_tensors.get_mut(selected_tensor) {
-                state_tensor.ui(ctx, ui);
+
+        ctx.re_ui
+            .selection_grid(ui, "tensor_selection_ui")
+            .show(ui, |ui| {
+                if let Some((tensor_data_row_id, tensor)) = &state.tensor {
+                    let tensor_stats = ctx
+                        .cache
+                        .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
+
+                    // We are in a bare Tensor view -- meaning / meter is unknown.
+                    let meaning = TensorDataMeaning::Unknown;
+                    let meter = None;
+                    tensor_summary_ui_grid_contents(
+                        ctx.re_ui,
+                        ui,
+                        tensor,
+                        tensor,
+                        meaning,
+                        meter,
+                        &tensor_stats,
+                    );
+                }
+
+                state.texture_settings.ui(ctx.re_ui, ui);
+                if let Some(render_ctx) = ctx.render_ctx {
+                    state.color_mapping.ui(render_ctx, ctx.re_ui, ui);
+                }
+            });
+
+        if let Some((_, tensor)) = &state.tensor {
+            ui.separator();
+            ui.strong("Dimension Mapping");
+            dimension_mapping_ui(ctx.re_ui, ui, &mut state.slice.dim_mapping, tensor.shape());
+            let default_mapping = DimensionMapping::create(tensor.shape());
+            if ui
+                .add_enabled(
+                    state.slice.dim_mapping != default_mapping,
+                    egui::Button::new("Reset mapping"),
+                )
+                .on_disabled_hover_text("The default is already set up")
+                .on_hover_text("Reset dimension mapping to the default")
+                .clicked()
+            {
+                state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
             }
         }
+
         Ok(())
     }
 
@@ -238,40 +208,26 @@ impl SpaceViewClass for TensorSpaceView {
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
-        if tensors.is_empty() {
-            ui.centered_and_justified(|ui| ui.label("(empty)"));
-            state.selected_tensor = None;
+        if tensors.len() > 1 {
+            state.tensor = None;
+
+            egui::Frame {
+                inner_margin: re_ui::ReUi::view_padding().into(),
+                ..egui::Frame::default()
+            }
+            .show(ui, |ui| {
+                ui.label(format!(
+                    "Can only show one tensor at a time; was given {}. Update the query so that it \
+                    returns a single tensor entity and create additional views for the others.",
+                    tensors.len()
+                ));
+            });
+        } else if let Some((tensor_data_row_id, tensor)) = tensors.first() {
+            state.tensor = Some((*tensor_data_row_id, tensor.clone()));
+            view_tensor(ctx, ui, state, *tensor_data_row_id, tensor);
         } else {
-            if let Some(selected_tensor) = &state.selected_tensor {
-                if !tensors.contains_key(selected_tensor) {
-                    state.selected_tensor = None;
-                }
-            }
-            if state.selected_tensor.is_none() {
-                state.selected_tensor = Some(tensors.iter().next().unwrap().0.clone());
-            }
-
-            if tensors.len() > 1 {
-                // Show radio buttons for the different tensors we have in this view - better than nothing!
-                ui.horizontal(|ui| {
-                    for instance_path in tensors.keys() {
-                        let is_selected = state.selected_tensor.as_ref() == Some(instance_path);
-                        if ui.radio(is_selected, instance_path.to_string()).clicked() {
-                            state.selected_tensor = Some(instance_path.clone());
-                        }
-                    }
-                });
-            }
-
-            if let Some(selected_tensor) = &state.selected_tensor {
-                if let Some((tensor_data_row_id, tensor)) = tensors.get(selected_tensor) {
-                    let state_tensor = state
-                        .state_tensors
-                        .entry(selected_tensor.clone())
-                        .or_insert_with(|| PerTensorState::create(*tensor_data_row_id, tensor));
-                    view_tensor(ctx, ui, state_tensor, *tensor_data_row_id, tensor);
-                }
-            }
+            state.tensor = None;
+            ui.centered_and_justified(|ui| ui.label("(empty)"));
         }
 
         Ok(())
@@ -281,13 +237,11 @@ impl SpaceViewClass for TensorSpaceView {
 fn view_tensor(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut PerTensorState,
+    state: &mut ViewTensorState,
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
 ) {
     re_tracing::profile_function!();
-
-    state.tensor = Some((tensor_data_row_id, tensor.clone()));
 
     if !state.slice.dim_mapping.is_valid(tensor.num_dim()) {
         state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
@@ -339,7 +293,7 @@ fn view_tensor(
 fn tensor_slice_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &PerTensorState,
+    state: &ViewTensorState,
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     dimension_labels: [(String, bool); 2],
@@ -358,17 +312,21 @@ fn tensor_slice_ui(
 fn paint_tensor_slice(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &PerTensorState,
+    state: &ViewTensorState,
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     re_tracing::profile_function!();
 
+    let Some(render_ctx) = ctx.render_ctx else {
+        return Err(anyhow::Error::msg("No render context available."));
+    };
+
     let tensor_stats = ctx
         .cache
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-        ctx.render_ctx,
+        render_ctx,
         tensor_data_row_id,
         tensor,
         &tensor_stats,
@@ -397,7 +355,7 @@ fn paint_tensor_slice(
 
     let debug_name = "tensor_slice";
     gpu_bridge::render_image(
-        ctx.render_ctx,
+        render_ctx,
         &painter,
         image_rect,
         colormapped_texture,
@@ -436,7 +394,7 @@ impl ColorMapping {
         let Self { map, gamma } = self;
 
         re_ui.grid_left_hand_label(ui, "Color map");
-        colormap_dropdown_button_ui(render_ctx, re_ui, ui, map);
+        colormap_dropdown_button_ui(Some(render_ctx), re_ui, ui, map);
         ui.end_row();
 
         re_ui.grid_left_hand_label(ui, "Brightness");
@@ -516,9 +474,6 @@ impl TextureSettings {
             egui::ComboBox::from_id_source("texture_scaling")
                 .selected_text(scaling.to_string())
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
-
                     let mut selectable_value =
                         |ui: &mut egui::Ui, e| ui.selectable_value(scaling, e, e.to_string());
                     selectable_value(ui, TextureScaling::Original);
@@ -543,9 +498,6 @@ impl TextureSettings {
         egui::ComboBox::from_id_source("texture_filter")
             .selected_text(tf_to_string(options.magnification))
             .show_ui(ui, |ui| {
-                ui.style_mut().wrap = Some(false);
-                ui.set_min_width(64.0);
-
                 let mut selectable_value = |ui: &mut egui::Ui, e| {
                     ui.selectable_value(&mut options.magnification, e, tf_to_string(e))
                 };
@@ -750,7 +702,7 @@ fn paint_axis_names(
     }
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut PerTensorState, tensor: &TensorData) {
+fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &TensorData) {
     for selector in &state.slice.dim_mapping.selectors {
         if !selector.visible {
             continue;

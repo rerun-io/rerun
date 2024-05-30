@@ -32,7 +32,7 @@ pub struct WebHandle {
 
 #[wasm_bindgen]
 impl WebHandle {
-    #[allow(clippy::new_without_default)]
+    #[allow(clippy::new_without_default, clippy::use_self)] // Can't use `Self` here because of `#[wasm_bindgen]`.
     #[wasm_bindgen(constructor)]
     pub fn new(app_options: JsValue) -> Result<WebHandle, JsValue> {
         re_log::setup_logging();
@@ -57,14 +57,13 @@ impl WebHandle {
             default_theme: eframe::Theme::Dark,
             wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
             depth_buffer: 0,
-            ..Default::default()
         };
 
         self.runner
             .start(
                 &canvas_id,
                 web_options,
-                Box::new(move |cc| Box::new(create_app(cc, app_options))),
+                Box::new(move |cc| Ok(Box::new(create_app(cc, app_options)?))),
             )
             .await?;
 
@@ -74,18 +73,27 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
+    pub fn toggle_panel_overrides(&self) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        app.panel_state_overrides_active ^= true;
+    }
+
+    #[wasm_bindgen]
     pub fn override_panel_state(&self, panel: &str, state: Option<String>) -> Result<(), JsValue> {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return Ok(());
         };
 
         let panel = Panel::from_str(panel)
-            .map_err(|e| js_sys::TypeError::new(&format!("invalid panel: {e}")))?;
+            .map_err(|err| js_sys::TypeError::new(&format!("invalid panel: {err}")))?;
 
         let state = match state {
             Some(state) => Some(
                 PanelState::from_str(&state)
-                    .map_err(|e| js_sys::TypeError::new(&format!("invalid state: {e}")))?
+                    .map_err(|err| js_sys::TypeError::new(&format!("invalid state: {err}")))?
                     .into(),
             ),
             None => None,
@@ -272,11 +280,10 @@ enum PanelState {
 
 impl From<PanelState> for re_types::blueprint::components::PanelState {
     fn from(value: PanelState) -> Self {
-        use re_types::blueprint::components::PanelState as Out;
         match value {
-            PanelState::Hidden => Out::Hidden,
-            PanelState::Collapsed => Out::Collapsed,
-            PanelState::Expanded => Out::Expanded,
+            PanelState::Hidden => Self::Hidden,
+            PanelState::Collapsed => Self::Collapsed,
+            PanelState::Expanded => Self::Expanded,
         }
     }
 }
@@ -311,12 +318,15 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
     }
 }
 
-// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is...
+// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
 #[derive(Clone, Deserialize)]
 #[repr(transparent)]
 struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
 
-fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crate::App {
+fn create_app(
+    cc: &eframe::CreationContext<'_>,
+    app_options: AppOptions,
+) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
@@ -335,7 +345,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
         on_toggle_fullscreen: app_options.on_toggle_fullscreen.map(|v| v.0).clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
-    let re_ui = crate::customize_eframe_and_setup_renderer(cc);
+    let re_ui = crate::customize_eframe_and_setup_renderer(cc)?;
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 
@@ -362,7 +372,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
 
     install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone());
 
-    app
+    Ok(app)
 }
 
 /// Listen for `popstate` event, which comes when the user hits the back/forward buttons.

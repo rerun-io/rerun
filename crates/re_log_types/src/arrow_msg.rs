@@ -187,6 +187,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                             chunks.len()
                         )));
                     }
+                    #[allow(clippy::unwrap_used)] // is_empty check above
                     let chunk = chunks.into_iter().next().unwrap();
 
                     Ok(ArrowMsg {

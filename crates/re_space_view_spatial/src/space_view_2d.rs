@@ -284,7 +284,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
     let tooltip = "The area guaranteed to be visible.\n\
                    Depending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.";
-    re_space_view::edit_blueprint_component::<
+    re_viewport_blueprint::edit_blueprint_component::<
         VisualBounds2D,
         blueprint_components::VisualBounds2D,
         (),
@@ -296,7 +296,7 @@ fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mu
                 .grid_left_hand_label(ui, "Visible bounds")
                 .on_hover_text(tooltip);
             ui.vertical(|ui| {
-                ui.style_mut().wrap = Some(false);
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                 if let Some(bounds2d) = bounds2d_opt {
                     let rect = egui::Rect::from(*bounds2d);

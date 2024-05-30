@@ -5,7 +5,7 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
-use re_space_view::{controls, query_view_property_or_default, view_property_ui};
+use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::PlotLegend;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::list_item;
@@ -19,6 +19,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
     ViewerContext, VisualizableEntities,
 };
+use re_viewport_blueprint::query_view_property_or_default;
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
@@ -164,9 +165,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                         egui::ComboBox::from_id_source("aggregation_mode")
                             .selected_text(agg_mode.to_string())
                             .show_ui(ui, |ui| {
-                                ui.style_mut().wrap = Some(false);
-                                ui.set_min_width(64.0);
-
                                 for variant in TimeSeriesAggregator::variants() {
                                     ui.selectable_value(
                                         &mut agg_mode,
@@ -723,9 +721,9 @@ fn axis_ui(
         .interactive(false)
         .show_hierarchical_with_children(
             ui,
-            "time_series_selection_ui_y_axis",
+            ui.make_persistent_id("time_series_selection_ui_y_axis"),
             true,
-            list_item::LabelContent::new("Y Axis"),
+            list_item::LabelContent::new("Y axis"),
             sub_prop_ui,
         );
 }

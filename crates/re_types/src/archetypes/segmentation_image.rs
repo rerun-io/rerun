@@ -131,6 +131,11 @@ impl ::re_types_core::Archetype for SegmentationImage {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Segmentation image"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SegmentationImageIndicator = SegmentationImageIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)

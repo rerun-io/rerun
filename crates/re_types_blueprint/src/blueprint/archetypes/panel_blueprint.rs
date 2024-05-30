@@ -74,6 +74,11 @@ impl ::re_types_core::Archetype for PanelBlueprint {
     }
 
     #[inline]
+    fn display_name() -> &'static str {
+        "Panel blueprint"
+    }
+
+    #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: PanelBlueprintIndicator = PanelBlueprintIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)
