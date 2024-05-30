@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Visual bounds in 2D space used for `Spatial2DView`.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct VisualBounds2D(
     /// X and y ranges that should be visible.
