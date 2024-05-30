@@ -5,12 +5,13 @@
 
 mod datatype_editors;
 mod marker_shape;
+mod range1d;
 mod response_utils;
 
 use datatype_editors::edit_enum;
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, Visible},
-    components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text},
+    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
+    components::{Color, MarkerSize, Name, Radius, Range1D, StrokeWidth, Text},
 };
 use re_viewer_context::ViewerContext;
 
@@ -37,15 +38,18 @@ fn edit_color_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Color)
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(edit_color_ui);
+
+    registry.add_editor(range1d::edit_range1d);
     registry.add_editor(marker_shape::edit_marker_shape_ui);
 
-    registry.add_editor::<Visible>(datatype_editors::edit_bool);
+    registry.add_editor::<LockRangeDuringZoom>(datatype_editors::edit_bool);
+    registry.add_editor::<Visible>(datatype_editors::edit_bool_raw);
 
-    registry.add_editor::<Text>(datatype_editors::edit_singleline_string);
     registry.add_editor::<Name>(datatype_editors::edit_singleline_string);
+    registry.add_editor::<Text>(datatype_editors::edit_singleline_string);
 
-    registry.add_editor::<Radius>(datatype_editors::edit_f32_zero_to_inf);
     registry.add_editor::<MarkerSize>(datatype_editors::edit_f32_zero_to_inf);
+    registry.add_editor::<Radius>(datatype_editors::edit_f32_zero_to_inf);
     registry.add_editor::<StrokeWidth>(datatype_editors::edit_f32_zero_to_inf);
 
     registry.add_editor(|_ctx, ui, value| edit_enum(ui, "corner2d", value, &Corner2D::ALL));
