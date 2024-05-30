@@ -33,16 +33,16 @@ function randomId() {
  * @typedef {"hidden" | "collapsed" | "expanded"} PanelState
  * @typedef {"webgpu" | "webgl"} Backend
  * @typedef {{
- *   canvas: {
- *     position: string;
- *     width: string; height: string;
- *     top: string; left: string;
- *     bottom: string; right: string;
- *   };
+ *   width: string; height: string;
+ *   top: string; left: string;
+ *   bottom: string; right: string;
+ * }} CanvasRect
+ * @typedef {{
+ *   canvas: CanvasRect & { position: string; transition: string; };
  *   document: { overflow: string };
  * }} CanvasStyle
- * @typedef {{ on: false; saved_style: null }} FullscreenOff
- * @typedef {{ on: true; saved_style: CanvasStyle }} FullscreenOn
+ * @typedef {{ on: false; saved_style: null; saved_rect: null }} FullscreenOff
+ * @typedef {{ on: true; saved_style: CanvasStyle; saved_rect: DOMRect }} FullscreenOn
  * @typedef {(FullscreenOff | FullscreenOn)} FullscreenState
  */
 
@@ -72,6 +72,7 @@ export class WebViewer {
   #fullscreen_state = {
     on: false,
     saved_style: null,
+    saved_rect: null,
   };
 
   #allow_fullscreen = false;
@@ -274,23 +275,37 @@ export class WebViewer {
 
   #minimize = (
     /** @type {HTMLCanvasElement} */ canvas,
-    /** @type {FullscreenOn} */ { saved_style },
+    /** @type {FullscreenOn} */ { saved_style, saved_rect },
   ) => {
     this.#fullscreen_state = {
       on: false,
       saved_style: null,
+      saved_rect: null,
     };
 
     if (this.#fullscreen_state.on) return;
 
-    for (const key in saved_style.canvas) {
-      // @ts-expect-error
-      canvas.style[key] = saved_style.canvas[key];
-    }
-    for (const key in saved_style.document) {
-      // @ts-expect-error
-      document.body.style[key] = saved_style.document[key];
-    }
+    canvas.style.width = saved_rect.width + "px";
+    canvas.style.height = saved_rect.height + "px";
+    canvas.style.top = saved_rect.top + "px";
+    canvas.style.left = saved_rect.left + "px";
+    canvas.style.bottom = saved_rect.bottom + "px";
+    canvas.style.right = saved_rect.right + "px";
+
+    setTimeout(
+      () =>
+        requestAnimationFrame(() => {
+          for (const key in saved_style.canvas) {
+            // @ts-expect-error
+            canvas.style[key] = saved_style.canvas[key];
+          }
+          for (const key in saved_style.document) {
+            // @ts-expect-error
+            document.body.style[key] = saved_style.document[key];
+          }
+        }),
+      100,
+    );
 
     _minimize_current_fullscreen_viewer = null;
   };
@@ -310,9 +325,11 @@ export class WebViewer {
         left: style.left,
         bottom: style.bottom,
         right: style.right,
+        transition: style.transition,
       },
       document: { overflow: document.body.style.overflow },
     };
+    const saved_rect = canvas.getBoundingClientRect();
 
     style.width = `100%`;
     style.height = `100%`;
@@ -320,11 +337,15 @@ export class WebViewer {
     style.left = `0px`;
     style.bottom = `0px`;
     style.right = `0px`;
+    style.transition = ["width", "height", "top", "left", "bottom", "right"]
+      .map((p) => `${p} 0.1s linear`)
+      .join(", ");
     document.body.style.overflow = "hidden";
 
     this.#fullscreen_state = {
       on: true,
       saved_style,
+      saved_rect,
     };
 
     _minimize_current_fullscreen_viewer = () => this.toggle_fullscreen();
