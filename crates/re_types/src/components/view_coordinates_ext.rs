@@ -262,6 +262,7 @@ impl std::str::FromStr for ViewCoordinates {
 impl Default for ViewCoordinates {
     #[inline]
     fn default() -> Self {
+        // TODO(#2663): This is a good usecase for world coordinates, but not so much for camera coordinates.
         Self::RFU
     }
 }

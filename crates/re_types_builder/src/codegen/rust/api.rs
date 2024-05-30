@@ -275,6 +275,7 @@ fn generate_mod_file(
     files_to_write.insert(path, code);
 }
 
+/// Generate module with a function that lists all components with their serialized default values.
 fn generate_component_defaults(
     reporter: &Reporter,
     objects: &Objects,
