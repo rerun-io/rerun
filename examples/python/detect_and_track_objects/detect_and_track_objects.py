@@ -212,8 +212,11 @@ class Tracker:
                     class_ids=self.tracked.class_id,
                 ),
             )
+            # logging.info(f"Still tracking object with id {self.tracking_id} - tracked box {self.tracked.bbox_xywh}")
         else:
-            rr.log(f"image/tracked/{self.tracking_id}", rr.Clear(recursive=False))  # TODO(#3381)
+            rr.log(f"image/tracked/{self.tracking_id}", rr.Clear(recursive=False))
+            # logging.info(f"Stop tracking object with id {self.tracking_id}")
+
 
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
@@ -227,7 +230,7 @@ class Tracker:
         self.num_recent_undetected_frames += 1
 
         if self.num_recent_undetected_frames >= Tracker.MAX_TIMES_UNDETECTED:
-            logging.info(
+            logging.warning(
                 "Dropping tracker with id #%d after not being detected %d times",
                 self.tracking_id,
                 self.num_recent_undetected_frames,
@@ -332,7 +335,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     class_descriptions = [
         rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
-    rr.log("/", rr.AnnotationContext(class_descriptions), static=True)
+    rr.log("/", rr.AnnotationContext(class_descriptions), timeless=True)
 
     detector = Detector(coco_categories=coco_categories)
 
@@ -354,7 +357,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
             break
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rr.log("image", rr.Image(rgb).compress(jpeg_quality=85))
+        rr.log("image", rr.Image(rgb).compress(jpeg_quality=75))
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)
@@ -406,7 +409,7 @@ def main() -> None:
         "--video",
         type=str,
         default="horses",
-        choices=["horses, driving", "boats"],
+        choices=["horses", "driving", "boats"],
         help="The example video to run on.",
     )
     parser.add_argument("--dataset-dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
@@ -423,11 +426,11 @@ def main() -> None:
 
     setup_logging()
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 
     video_path: str = args.video_path
     if not video_path:
-        video_path = get_downloaded_path(args.dataset_dir, args.video)
+        video_path = get_downloaded_path(args.dataset_dir, "boats")
 
     track_objects(video_path, max_frame_count=args.max_frame)
 
