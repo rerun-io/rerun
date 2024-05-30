@@ -10,6 +10,7 @@ import numpy as np
 # =====================================
 # API RE-EXPORTS
 # Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
+# Background: https://github.com/microsoft/pyright/blob/main/docs/typed-libraries.md#library-interface
 #
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
