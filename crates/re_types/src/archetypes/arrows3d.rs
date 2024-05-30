@@ -121,18 +121,18 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Arrows3DIndicator".into(),
             "rerun.components.Position3D".into(),
+            "rerun.components.Arrows3DIndicator".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ClassId".into(),
-            "rerun.components.Color".into(),
             "rerun.components.Radius".into(),
+            "rerun.components.Color".into(),
             "rerun.components.Text".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 
@@ -140,12 +140,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Vector3D".into(),
-            "rerun.components.Arrows3DIndicator".into(),
             "rerun.components.Position3D".into(),
-            "rerun.components.ClassId".into(),
-            "rerun.components.Color".into(),
+            "rerun.components.Arrows3DIndicator".into(),
             "rerun.components.Radius".into(),
+            "rerun.components.Color".into(),
             "rerun.components.Text".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -1210,7 +1210,8 @@ fn quote_trait_impls_from_obj(
             ) -> (usize, TokenStream) {
                 let components = iter_archetype_components(obj, attr)
                     .chain(extras)
-                    .collect::<BTreeSet<_>>();
+                    // Do *not* sort again, we want to preserve the order given by the datatype definition
+                    .collect::<Vec<_>>();
 
                 let num_components = components.len();
                 let quoted_components = quote!(#(#components.into(),)*);
