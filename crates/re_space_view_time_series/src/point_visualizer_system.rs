@@ -12,7 +12,7 @@ use re_viewer_context::{
     VisualizerSystem,
 };
 
-use crate::overrides::initial_override_color;
+use crate::overrides::fallback_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
@@ -81,7 +81,7 @@ impl VisualizerSystem for SeriesPointSystem {
 
 impl TypedComponentFallbackProvider<Color> for SeriesPointSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        initial_override_color(ctx.target_entity_path)
+        fallback_color(ctx.target_entity_path)
     }
 }
 

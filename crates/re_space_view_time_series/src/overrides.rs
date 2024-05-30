@@ -2,7 +2,7 @@ use re_log_types::EntityPath;
 use re_types::components::Color;
 use re_viewer_context::{DefaultColor, ResolvedAnnotationInfo};
 
-pub fn initial_override_color(entity_path: &EntityPath) -> Color {
+pub fn fallback_color(entity_path: &EntityPath) -> Color {
     let default_color = DefaultColor::EntityPath(entity_path);
 
     let annotation_info = ResolvedAnnotationInfo::default();
