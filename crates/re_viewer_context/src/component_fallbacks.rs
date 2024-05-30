@@ -70,7 +70,7 @@ pub trait ComponentFallbackProvider {
                 // but arrow serialization should never fail.
                 // Giving out _both_ the error and the fallback value gets messy,
                 // so given that this should be a rare bug, we log it and return the fallback value as success.
-                re_log::error_once!("Arrow serialization failed trying to provide a fallback for {:?}. Using base fallback instead: {}", component, err);
+                re_log::error_once!("Arrow serialization failed trying to provide a fallback for {component}. Using base fallback instead: {err}");
             }
             ComponentFallbackProviderResult::ComponentNotHandled => {}
         }

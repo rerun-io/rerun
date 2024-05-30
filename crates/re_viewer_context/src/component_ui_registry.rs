@@ -123,7 +123,7 @@ impl ComponentUiRegistry {
     /// * Try not to assume context of the component beyond its inherent semantics
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     //
-    // TODO(andreas): Implement handling for ui elements that are expandable (e.g. 2d bounds is too complex for a single line).
+    // TODO(andreas): Implement handling for ui elements that are expandable (e.g. 2D bounds is too complex for a single line).
     pub fn add_editor<C: re_types::Component>(
         &mut self,
         editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
@@ -292,8 +292,8 @@ fn component_value_or_fallback(
 ) -> Result<Box<dyn arrow2::array::Array>, String> {
     match component_query_result.resolved(resolver) {
         re_query::PromiseResult::Pending => {
-            // This can currently  also happen when there's no data at all.
             if component_query_result.num_instances() == 0 {
+                // This can currently also happen when there's no data at all.
                 None
             } else {
                 // This should be possible right now and is an error.
