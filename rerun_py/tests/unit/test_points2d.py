@@ -28,11 +28,7 @@ from .common_arrays import (
     labels_expected,
     radii_arrays,
     radii_expected,
-)
-from .common_arrays import (
     vec2ds_arrays as positions_arrays,
-)
-from .common_arrays import (
     vec2ds_expected as positions_expected,
 )
 

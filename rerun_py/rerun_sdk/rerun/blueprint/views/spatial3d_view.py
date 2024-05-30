@@ -11,8 +11,7 @@ __all__ = ["Spatial3DView"]
 from ... import datatypes
 from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
-from .. import archetypes as blueprint_archetypes
-from .. import components as blueprint_components
+from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 

@@ -19,17 +19,9 @@ from .common_arrays import (
     radii_arrays,
     radii_expected,
     rotations_arrays,
-)
-from .common_arrays import (
     vec3ds_arrays as centers_arrays,
-)
-from .common_arrays import (
     vec3ds_arrays as half_sizes_arrays,
-)
-from .common_arrays import (
     vec3ds_expected as centers_expected,
-)
-from .common_arrays import (
     vec3ds_expected as half_sizes_expected,
 )
 
