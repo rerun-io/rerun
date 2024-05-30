@@ -143,6 +143,7 @@ pub struct EntityProperties {
     pub time_series_aggregator: EditableAutoValue<TimeSeriesAggregator>, // TODO(andreas): Should be a component probably on SeriesLine, but today it would become a view property.
 }
 
+#[cfg(feature = "serde")]
 impl Default for EntityProperties {
     fn default() -> Self {
         Self {
