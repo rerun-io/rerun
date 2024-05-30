@@ -4,7 +4,10 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
 use re_log::ResultExt;
 use re_log_types::Instance;
-use re_types::{external::arrow2, ComponentName};
+use re_types::{
+    external::arrow2::{self},
+    ComponentName,
+};
 
 use crate::{ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewerContext};
 
@@ -94,10 +97,8 @@ impl ComponentUiRegistry {
 
     /// Registers how to edit a given component in the ui.
     ///
-    /// Requires two callbacks: one to provide an initial default value, and one to show the editor
-    /// UI and save the updated value.
-    ///
     /// If the component was already registered, the new callback replaces the old one.
+    /// Prefer [`ComponentUiRegistry::add_editor`] whenever possible
     pub fn add_untyped_editor(
         &mut self,
         name: ComponentName,
@@ -121,8 +122,8 @@ impl ComponentUiRegistry {
     /// * Don't show a tooltip, this is solved at a higher level.
     /// * Try not to assume context of the component beyond its inherent semantics
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
-    ///
-    /// TODO(andreas): Implement handling for ui elements that are expandable (e.g. 2d bounds is too complex for a single line).
+    //
+    // TODO(andreas): Implement handling for ui elements that are expandable (e.g. 2d bounds is too complex for a single line).
     pub fn add_editor<C: re_types::Component>(
         &mut self,
         editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
@@ -130,46 +131,47 @@ impl ComponentUiRegistry {
             + Sync
             + 'static,
     ) {
+        fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
+            let component_name = C::name();
+            let deserialized = C::from_arrow(value);
+            match deserialized {
+                Ok(values) => {
+                    if values.len() > 1 {
+                        // Whatever we did prior to calling this should have taken care if it!
+                        re_log::error_once!(
+                            "Can only edit a single value at a time, got {} values for editing {component_name}",
+                            values.len(),
+                        );
+                    }
+                    if let Some(v) = values.into_iter().next() {
+                        Some(v)
+                    } else {
+                        re_log::warn_once!(
+                            "Editor ui for {component_name} needs a start value to operate on."
+                        );
+                        None
+                    }
+                }
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to deserialize component of type {component_name}: {err}",
+                    );
+                    None
+                }
+            }
+        }
+
         let untyped_callback: UntypedComponentEditCallback =
             Box::new(move |ui, ui_layout, value| {
-                let deserialized = C::from_arrow(value);
-                let mut deserialized_value = match deserialized {
-                    Ok(values) => {
-                        if values.len() > 1 {
-                            // Whatever we did prior to calling this should have taken care if it!
-                            re_log::error_once!(
-                            "Can only edit a single value at a time, got {} values for editing {}",
-                            values.len(),
-                            C::name()
-                        );
-                        }
-                        if let Some(v) = values.into_iter().next() {
-                            v
-                        } else {
-                            re_log::warn_once!(
-                                "Editor ui for {} needs a start value to operate on.",
-                                C::name()
-                            );
-                            return None;
-                        }
-                    }
-                    Err(err) => {
-                        re_log::error_once!(
-                            "Failed to deserialize component of type {}: {:?}",
-                            C::name(),
-                            err
-                        );
-                        return None;
-                    }
-                };
-
-                editor_callback(ui, ui_layout, &mut deserialized_value)
-                    .changed()
-                    .then(|| {
-                        use re_types::LoggableBatch;
-                        deserialized_value.to_arrow().ok_or_log_error_once()
-                    })
-                    .flatten()
+                try_deserialize(value).and_then(|mut deserialized_value| {
+                    editor_callback(ui, ui_layout, &mut deserialized_value)
+                        .changed()
+                        .then(|| {
+                            use re_types::LoggableBatch;
+                            deserialized_value.to_arrow().ok_or_log_error_once()
+                        })
+                        .flatten()
+                })
             });
 
         self.add_untyped_editor(C::name(), untyped_callback);
