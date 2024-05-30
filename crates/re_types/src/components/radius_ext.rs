@@ -15,6 +15,7 @@ impl std::fmt::Display for Radius {
 }
 
 impl Default for Radius {
+    #[inline]
     fn default() -> Self {
         Self::ONE
     }

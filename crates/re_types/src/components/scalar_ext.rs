@@ -7,6 +7,7 @@ impl std::fmt::Display for Scalar {
 }
 
 impl Default for Scalar {
+    #[inline]
     fn default() -> Self {
         Self(0.0)
     }

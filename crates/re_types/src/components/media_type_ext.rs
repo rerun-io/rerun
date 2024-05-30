@@ -1,4 +1,3 @@
-
 use super::MediaType;
 
 // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can declare these
@@ -167,6 +166,7 @@ impl std::fmt::Display for MediaType {
 }
 
 impl Default for MediaType {
+    #[inline]
     fn default() -> Self {
         // https://www.rfc-editor.org/rfc/rfc2046.txt
         // "The "octet-stream" subtype is used to indicate that a body contains arbitrary binary data."

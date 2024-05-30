@@ -71,6 +71,7 @@ impl From<Color> for ecolor::Rgba {
 }
 
 impl Default for Color {
+    #[inline]
     fn default() -> Self {
         // Pretty hard to pick a good default value.
         // White is best since multiplicative it does nothing and is visible in more cases than black would be.

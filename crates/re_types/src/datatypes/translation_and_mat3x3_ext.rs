@@ -3,6 +3,7 @@ use crate::datatypes::{Mat3x3, Vec3D};
 use super::TranslationAndMat3x3;
 
 impl Default for TranslationAndMat3x3 {
+    #[inline]
     fn default() -> Self {
         Self::IDENTITY
     }

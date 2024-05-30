@@ -127,6 +127,7 @@ impl From<mint::ColumnMatrix3<f32>> for Mat3x3 {
 }
 
 impl Default for Mat3x3 {
+    #[inline]
     fn default() -> Self {
         Self::IDENTITY
     }

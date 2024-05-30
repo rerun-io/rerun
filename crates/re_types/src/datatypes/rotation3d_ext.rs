@@ -60,6 +60,7 @@ impl From<mint::Quaternion<f32>> for Rotation3D {
 }
 
 impl Default for Rotation3D {
+    #[inline]
     fn default() -> Self {
         Self::IDENTITY
     }

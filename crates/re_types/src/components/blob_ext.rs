@@ -7,6 +7,7 @@ impl From<Vec<u8>> for Blob {
 }
 
 impl Default for Blob {
+    #[inline]
     fn default() -> Self {
         Self(Vec::new().into())
     }

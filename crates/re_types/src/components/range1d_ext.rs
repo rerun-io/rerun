@@ -49,6 +49,7 @@ impl Display for Range1D {
 }
 
 impl Default for Range1D {
+    #[inline]
     fn default() -> Self {
         Self::new(0.0, 1.0)
     }

@@ -46,6 +46,7 @@ impl std::cmp::Ord for DrawOrder {
 }
 
 impl Default for DrawOrder {
+    #[inline]
     fn default() -> Self {
         // Pick zero as default which happens to be neither at the bottom nor the top.
         Self(0.0)

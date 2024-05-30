@@ -1,4 +1,3 @@
-
 use super::Name;
 
 // TODO(#4536): These should come for free
@@ -32,6 +31,7 @@ impl std::borrow::Borrow<str> for Name {
 }
 
 impl Default for Name {
+    #[inline]
     fn default() -> Self {
         Self("<name>".into())
     }
