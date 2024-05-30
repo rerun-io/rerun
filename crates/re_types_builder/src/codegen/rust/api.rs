@@ -280,24 +280,39 @@ fn generate_component_defaults(
     objects: &Objects,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
-    let quoted_fallbacks = objects
-        .ordered_objects(Some(ObjectKind::Component))
-        .into_iter()
-        .filter(|component| !component.is_testing())
-        .map(|component| {
-            let type_name = format_ident!("{}", component.name);
-            quote! {
-                (<super::#type_name as Loggable>::name(), super::#type_name::default().to_arrow()?)
-            }
-        })
-        .collect_vec();
+    let mut quoted_fallbacks = Vec::new();
+    let mut component_namespaces = HashSet::new();
+    for component in objects.ordered_objects(Some(ObjectKind::Component)) {
+        if component.is_testing() {
+            continue;
+        }
+
+        if let Some(scope) = component.scope() {
+            component_namespaces.insert(format!("{}::{scope}", component.crate_name()));
+        } else {
+            component_namespaces.insert(component.crate_name());
+        }
+
+        let type_name = format_ident!("{}", component.name);
+        quoted_fallbacks.push(quote! {
+            (<#type_name as Loggable>::name(), #type_name::default().to_arrow()?)
+        });
+    }
+
+    let mut code = String::new();
+    code.push_str("#![allow(unused_imports)]\n");
+    code.push_str("#![allow(clippy::wildcard_imports)]\n");
+    code.push_str("\n\n");
+    for namespace in component_namespaces {
+        code.push_str(&format!("use {namespace}::components::*;\n"));
+    }
 
     let docs = quote_doc_line("Calls `default` for each component type in this module and serializes it to arrow. This is useful as a base fallback value when displaying ui.");
     let tokens = quote! {
-        use ::re_types_core::{external::arrow2, ComponentName, SerializationError};
+        use re_types_core::{external::arrow2, ComponentName, SerializationError};
 
         #docs
-        #[allow(dead_code)] // TODO(andreas): Temporary, working on the user.
+        #[allow(dead_code)] // TODO(#6434): Temporary, working on the user.
         pub fn list_default_components() -> Result<impl Iterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>, SerializationError> {
             use ::re_types_core::{Loggable, LoggableBatch as _};
 
@@ -311,8 +326,8 @@ fn generate_component_defaults(
     // Put into its own subfolder since codegen is set up in a way that it thinks that everything
     // inside the folder is either generated or an extension to the generated code.
     // This way we don't have to build an exception just for this file.
-    let path = Utf8PathBuf::from("crates/re_viewer/src/generated/component_defaults.rs");
-    let code = append_tokens(reporter, String::new(), tokens, &path);
+    let path = Utf8PathBuf::from("crates/re_viewer/src/component_defaults/mod.rs");
+    let code = append_tokens(reporter, code, tokens, &path);
     files_to_write.insert(path, code);
 }
 
