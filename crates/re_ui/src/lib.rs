@@ -281,17 +281,6 @@ impl ReUi {
             .on_hover_text(error_text.into())
     }
 
-    /// Shows a small error label with the given text on hover and logs the error once to the console.
-    pub fn error_label_and_log_once(
-        &self,
-        ui: &mut egui::Ui,
-        error_text: impl Into<String>,
-    ) -> egui::Response {
-        let error_text = error_text.into();
-        re_log::error_once!("{error_text}");
-        self.error_label(ui, error_text)
-    }
-
     /// The color we use to mean "loop this selection"
     pub fn loop_selection_color() -> egui::Color32 {
         egui::Color32::from_rgb(1, 37, 105) // from figma 2023-02-09

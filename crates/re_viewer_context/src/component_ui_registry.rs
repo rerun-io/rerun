@@ -9,7 +9,7 @@ use re_types::{
     ComponentName,
 };
 
-use crate::{ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewerContext};
+use crate::{ComponentFallbackProvider, QueryContext, ViewerContext};
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -242,51 +242,19 @@ impl ComponentUiRegistry {
         let instance: Instance = 0.into();
 
         if let Some(edit_callback) = self.component_editors.get(&component_name) {
-            let component_query_result = match component_query_result.resolved(origin_db.resolver())
-            {
-                re_query::PromiseResult::Pending => {
-                    // This can currently  also happen when there's no data at all.
-                    if component_query_result.num_instances() == 0 {
-                        None
-                    } else {
-                        // This should be possible right now and is an error.
-                        //ui.label("Loading data...");
-                        ctx.viewer_ctx.re_ui.error_label_and_log_once(
-                            ui,
-                            format!("Promise for {component_name} is still pending."),
-                        );
-                        return;
-                    }
-                }
-                re_query::PromiseResult::Ready(cell) => {
-                    let index = instance.get();
-                    if cell.num_instances() > index as u32 {
-                        Some(cell.as_arrow_ref().sliced(index as usize, 1))
-                    } else {
-                        None
-                    }
-                }
-                re_query::PromiseResult::Error(err) => {
-                    ctx.viewer_ctx.re_ui.error_label_and_log_once(
-                        ui,
-                        format!("Couldn't get {component_name}: {err}"),
-                    );
+            let component_value_or_fallback = match component_value_or_fallback(
+                ctx,
+                component_query_result,
+                component_name,
+                instance,
+                origin_db.resolver(),
+                fallback_provider,
+            ) {
+                Ok(value) => value,
+                Err(error_text) => {
+                    re_log::error_once!("{error_text}");
+                    ctx.viewer_ctx.re_ui.error_label(ui, error_text);
                     return;
-                }
-            };
-
-            let component_value_or_fallback = if let Some(result) = component_query_result {
-                result
-            } else {
-                match fallback_provider.fallback_for(ctx, component_name) {
-                    Ok(fallback) => fallback,
-                    Err(ComponentFallbackError::MissingBaseFallback) => {
-                        ctx.viewer_ctx.re_ui.error_label_and_log_once(
-                            ui,
-                            format!("No fallback value available for {component_name}."),
-                        );
-                        return;
-                    }
                 }
             };
 
@@ -312,4 +280,45 @@ impl ComponentUiRegistry {
             );
         }
     }
+}
+
+fn component_value_or_fallback(
+    ctx: &QueryContext<'_>,
+    component_query_result: &LatestAtComponentResults,
+    component_name: ComponentName,
+    instance: Instance,
+    resolver: &re_query::PromiseResolver,
+    fallback_provider: &dyn ComponentFallbackProvider,
+) -> Result<Box<dyn arrow2::array::Array>, String> {
+    match component_query_result.resolved(resolver) {
+        re_query::PromiseResult::Pending => {
+            // This can currently  also happen when there's no data at all.
+            if component_query_result.num_instances() == 0 {
+                None
+            } else {
+                // This should be possible right now and is an error.
+                //ui.label("Loading data...");
+                return Err(format!("Promise for {component_name} is still pending."));
+            }
+        }
+        re_query::PromiseResult::Ready(cell) => {
+            let index = instance.get();
+            if cell.num_instances() > index as u32 {
+                Some(cell.as_arrow_ref().sliced(index as usize, 1))
+            } else {
+                None
+            }
+        }
+        re_query::PromiseResult::Error(err) => {
+            return Err(format!("Couldn't get {component_name}: {err}"));
+        }
+    }
+    .map_or_else(
+        || {
+            fallback_provider
+                .fallback_for(ctx, component_name)
+                .map_err(|_err| format!("No fallback value available for {component_name}."))
+        },
+        Ok,
+    )
 }
