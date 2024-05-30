@@ -1,6 +1,24 @@
 #!/usr/bin/env python3
 
-"""Run various rust checks for CI."""
+"""
+Run various rust checks for CI.
+
+You can run the script via pixi which will make sure that the web build is around and up-to-date:
+    pixi run rs-check
+
+Alternatively you can also run it directly via python:
+    python3 scripts/ci/rust_checks.py
+
+To run only a specific test you can use the `--only` argument:
+    pixi run rs-check --only wasm
+
+To run all tests except a few specific ones you can use the `--skip` argument:
+    pixi run rs-check --skip wasm docs
+
+To see a list of all available tests you can use the `--help` argument:
+    pixi run rs-check --help
+
+"""
 
 from __future__ import annotations
 
