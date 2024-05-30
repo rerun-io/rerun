@@ -211,22 +211,6 @@ pub trait SpaceViewClass: Send + Sync {
     ) -> Result<(), SpaceViewSystemExecutionError>;
 }
 
-// TODO:
-// /// View classes are expected to be able to provide default values for any component of their property archetypes.
-// impl ComponentFallbackProvider for dyn SpaceViewClass {
-//     fn fallback_value(
-//         &self,
-//         _ctx: &ViewerContext<'_>,
-//         _component: re_types::ComponentName,
-//         _archetype_name: Option<re_types::ArchetypeName>,
-//         _entity: &re_log_types::EntityPath,
-//         _query: &ViewQuery<'_>,
-//         _view_state: &dyn SpaceViewState,
-//     ) -> Option<Box<dyn re_types::external::arrow2::array::Array>> {
-//         None
-//     }
-// }
-
 pub trait SpaceViewClassExt<'a>: SpaceViewClass + 'a {
     /// Determines the set of visible entities for a given space view.
     // TODO(andreas): This should be part of the SpaceView's (non-blueprint) state.

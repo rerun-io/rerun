@@ -164,10 +164,8 @@ pub struct App {
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 
-    /// Lookup table for component base fallbacks.
-    ///
-    /// Base fallbacks are the default values for components that are used when no other context specific fallback is available.
-    component_base_fallbacks: re_viewer_context::ComponentBaseFallbacks,
+    /// Lookup table for component placeholder values, used whenever no fallback was provided explicitly.
+    component_placeholders: re_viewer_context::ComponentPlaceholders,
 }
 
 impl App {
@@ -302,7 +300,7 @@ impl App {
             panel_state_overrides_active: true,
             panel_state_overrides,
 
-            component_base_fallbacks,
+            component_placeholders: component_base_fallbacks,
         }
     }
 
@@ -970,7 +968,7 @@ impl App {
                                 hide: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
-                            &self.component_base_fallbacks,
+                            &self.component_placeholders,
                         );
                     }
                     render_ctx.before_submit();

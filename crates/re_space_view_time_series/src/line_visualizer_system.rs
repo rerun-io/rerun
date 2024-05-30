@@ -77,13 +77,13 @@ impl VisualizerSystem for SeriesLineSystem {
 }
 
 impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
-    fn fallback_value(&self, ctx: &QueryContext<'_>) -> Color {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         initial_override_color(ctx.target_entity_path)
     }
 }
 
 impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
-    fn fallback_value(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
         StrokeWidth(DEFAULT_STROKE_WIDTH)
     }
 }

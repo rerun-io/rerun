@@ -3,10 +3,8 @@ use re_types::{external::arrow2, ComponentName};
 
 use crate::QueryContext;
 
-/// Lookup table for component base fallbacks.
-///
-/// Base fallbacks are the default values for components that are used when no other context specific fallback is available.
-pub type ComponentBaseFallbacks = HashMap<ComponentName, Box<dyn arrow2::array::Array>>;
+/// Lookup table for component placeholder values, used whenever no fallback was provided explicitly.
+pub type ComponentPlaceholders = HashMap<ComponentName, Box<dyn arrow2::array::Array>>;
 
 /// Result for a fallback request to a provider.
 pub enum ComponentFallbackProviderResult {
@@ -15,7 +13,7 @@ pub enum ComponentFallbackProviderResult {
 
     /// The fallback provider is not able to handle the given component.
     ///
-    /// This is not treated as an error and should be handled by looking up a base fallback.
+    /// This is not treated as an error and should be handled by looking up a placeholder value.
     ComponentNotHandled,
 
     /// Arrow serialization failed.
@@ -35,17 +33,19 @@ impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackProviderResult {
 
 /// Result for a fallback request.
 pub enum ComponentFallbackError {
-    /// The fallback provider is not able to handle the given component _and_ there was no base fallback.
-    /// This should never happen, since all components should have a base fallback.
+    /// The fallback provider is not able to handle the given component _and_ there was no placeholder value.
+    /// This should never happen, since all components should have a placeholder value.
     MissingBaseFallback,
 }
 
-// TODO: Docs
+/// Provides fallback values for components, implemented typically by [`crate::SpaceViewClass`] and [`crate::VisualizerSystem`].
+///
+/// Fallbacks can be based on arbitrarily complex & context sensitive heuristics.
 pub trait ComponentFallbackProvider {
     /// Tries to provide a fallback value for a given component.
     ///
-    /// If the provider can't handle the component or simply want to use a base fallback,
-    /// it should return `ComponentFallbackProviderResult::ComponentNotHandled`.
+    /// If the provider can't handle the component or simply want to use a placeholder value,
+    /// it should return [`ComponentFallbackProviderResult::ComponentNotHandled`].
     ///
     /// Fallbacks can be based on arbitrarily complex & context sensitive heuristics.
     fn try_provide_fallback(
@@ -54,7 +54,8 @@ pub trait ComponentFallbackProvider {
         component: ComponentName,
     ) -> ComponentFallbackProviderResult;
 
-    /// Provides a fallback value for a given component, first trying the provider and then falling back to the base fallbacks.
+    /// Provides a fallback value for a given component, first trying the provider and
+    /// then falling back to the placeholder value registered in the viewer context.
     fn fallback_for(
         &self,
         ctx: &QueryContext<'_>,
@@ -74,19 +75,28 @@ pub trait ComponentFallbackProvider {
             ComponentFallbackProviderResult::ComponentNotHandled => {}
         }
 
-        match ctx.viewer_ctx.component_base_fallbacks.get(&component) {
+        match ctx.viewer_ctx.component_placeholders.get(&component) {
             Some(fallback) => Ok(fallback.clone()),
             None => Err(ComponentFallbackError::MissingBaseFallback),
         }
     }
 }
 
-// TODO: Docs
+/// Provides a fallback value for a given component with known type.
+///
+/// Use the [`crate::impl_component_fallback_provider`] macro to build a [`ComponentFallbackProvider`]
+/// out of several strongly typed [`TypedComponentFallbackProvider`]s.
 pub trait TypedComponentFallbackProvider<C: re_types::Component> {
-    fn fallback_value(&self, ctx: &QueryContext<'_>) -> C;
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> C;
 }
 
 /// Implements the [`ComponentFallbackProvider`] trait for a given type, using a number of [`TypedComponentFallbackProvider`].
+///
+/// Usage examples:
+/// ```no_run
+/// impl_component_fallback_provider!(MySystem => []);              // Empty fallback provider
+/// impl_component_fallback_provider!(MySystem => [Color, Text]);   // Fallback provider handling the Color and Text components.
+/// ```
 #[macro_export]
 macro_rules! impl_component_fallback_provider {
     ($type:ty => [$($component:ty),*]) => {
@@ -98,7 +108,7 @@ macro_rules! impl_component_fallback_provider {
             ) -> $crate::ComponentFallbackProviderResult {
                 $(
                     if component_name == <$component as re_types::Loggable>::name() {
-                        return  $crate::TypedComponentFallbackProvider::<$component>::fallback_value(self, ctx).into();
+                        return  $crate::TypedComponentFallbackProvider::<$component>::fallback_for(self, ctx).into();
                     }
                 )*
                 $crate::ComponentFallbackProviderResult::ComponentNotHandled

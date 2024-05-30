@@ -82,7 +82,7 @@ impl TestContext {
                 render_ctx: None,
                 command_sender: &command_sender,
                 focused_item: &None,
-                component_base_fallbacks: &Default::default(),
+                component_placeholders: &Default::default(),
             };
 
             func(&ctx, ui);

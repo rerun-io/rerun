@@ -5,7 +5,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
 
 use crate::{
-    component_fallbacks::ComponentBaseFallbacks, query_context::DataQueryResult, AppOptions,
+    component_fallbacks::ComponentPlaceholders, query_context::DataQueryResult, AppOptions,
     ApplicableEntities, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry,
     IndicatedEntities, ItemCollection, PerVisualizer, SpaceViewClassRegistry, SpaceViewId,
     StoreContext, SystemCommandSender as _, TimeControl,
@@ -71,12 +71,12 @@ pub struct ViewerContext<'a> {
     /// that last several frames.
     pub focused_item: &'a Option<crate::Item>,
 
-    /// Fallback values for components to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
+    /// Placeholder values for components to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
     /// is not able to provide a value.
     ///
     /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
     /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
-    pub component_base_fallbacks: &'a ComponentBaseFallbacks,
+    pub component_placeholders: &'a ComponentPlaceholders,
 }
 
 impl<'a> ViewerContext<'a> {

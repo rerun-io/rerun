@@ -80,13 +80,13 @@ impl VisualizerSystem for SeriesPointSystem {
 }
 
 impl TypedComponentFallbackProvider<Color> for SeriesPointSystem {
-    fn fallback_value(&self, ctx: &QueryContext<'_>) -> Color {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         initial_override_color(ctx.target_entity_path)
     }
 }
 
 impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
-    fn fallback_value(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
         MarkerSize(DEFAULT_MARKER_SIZE)
     }
 }

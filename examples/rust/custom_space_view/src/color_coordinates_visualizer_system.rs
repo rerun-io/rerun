@@ -115,5 +115,6 @@ impl VisualizerSystem for InstanceColorSystem {
     }
 }
 
-// TODO: document the role of this
+// Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
+// It is left empty here but could be used to provides fallback values for optional components in case they're missing.
 re_viewer_context::impl_component_fallback_provider!(InstanceColorSystem => []);

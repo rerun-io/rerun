@@ -805,7 +805,7 @@ fn round_ns_to_start_of_day(ns: i64) -> i64 {
 }
 
 impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesSpaceView {
-    fn fallback_value(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
         // TODO: a static_fallback should do here?
         Corner2D::RightBottom
     }
