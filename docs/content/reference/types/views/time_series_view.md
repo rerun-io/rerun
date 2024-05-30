@@ -11,7 +11,7 @@ A time series view for scalars over time, for use with the `Scalars` archetype.
 Configures the vertical axis of the plot.
 
 * `range`: The range of the axis.
-* `lock_range_during_zoom`: Whether to lock the range of the axis during zoom.
+* `zoom_lock`: Whether to lock the range of the axis during zoom.
 ### `plot_legend`
 Configures the legend of the plot.
 

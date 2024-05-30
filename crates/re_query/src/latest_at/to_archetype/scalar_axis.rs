@@ -36,26 +36,22 @@ impl crate::ToArchetype<re_types::blueprint::archetypes::ScalarAxis> for LatestA
         };
 
         use re_types::blueprint::components::LockRangeDuringZoom;
-        let lock_range_during_zoom =
-            if let Some(lock_range_during_zoom) = self.get(<LockRangeDuringZoom>::name()) {
-                match lock_range_during_zoom.to_dense::<LockRangeDuringZoom>(resolver) {
-                    PromiseResult::Pending => return PromiseResult::Pending,
-                    PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
-                    PromiseResult::Ready(query_res) => match query_res {
-                        Ok(data) => data.first().cloned(),
-                        Err(query_err) => return PromiseResult::Ready(Err(query_err)),
-                    },
-                }
-            } else {
-                None
-            };
+        let zoom_lock = if let Some(zoom_lock) = self.get(<LockRangeDuringZoom>::name()) {
+            match zoom_lock.to_dense::<LockRangeDuringZoom>(resolver) {
+                PromiseResult::Pending => return PromiseResult::Pending,
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
+            }
+        } else {
+            None
+        };
 
         // ---
 
-        let arch = re_types::blueprint::archetypes::ScalarAxis {
-            range,
-            lock_range_during_zoom,
-        };
+        let arch = re_types::blueprint::archetypes::ScalarAxis { range, zoom_lock };
 
         PromiseResult::Ready(Ok(arch))
     }

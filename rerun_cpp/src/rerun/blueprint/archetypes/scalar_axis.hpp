@@ -25,7 +25,7 @@ namespace rerun::blueprint::archetypes {
         std::optional<rerun::components::Range1D> range;
 
         /// Whether to lock the range of the axis during zoom.
-        std::optional<rerun::blueprint::components::LockRangeDuringZoom> lock_range_during_zoom;
+        std::optional<rerun::blueprint::components::LockRangeDuringZoom> zoom_lock;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -48,10 +48,8 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Whether to lock the range of the axis during zoom.
-        ScalarAxis with_lock_range_during_zoom(
-            rerun::blueprint::components::LockRangeDuringZoom _lock_range_during_zoom
-        ) && {
-            lock_range_during_zoom = std::move(_lock_range_during_zoom);
+        ScalarAxis with_zoom_lock(rerun::blueprint::components::LockRangeDuringZoom _zoom_lock) && {
+            zoom_lock = std::move(_zoom_lock);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

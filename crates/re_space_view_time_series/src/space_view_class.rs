@@ -6,7 +6,7 @@ use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};
-use re_types::blueprint::archetypes::PlotLegend;
+use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::Corner2D;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::list_item;
@@ -46,7 +46,7 @@ pub struct TimeSeriesSpaceViewState {
     last_y_range: Option<Range1D>,
 
     /// To track when the range lock has been enabled/disabled.
-    last_y_lock_range_during_zoom: bool,
+    zoom_lock: bool,
 }
 
 impl Default for TimeSeriesSpaceViewState {
@@ -57,7 +57,7 @@ impl Default for TimeSeriesSpaceViewState {
             saved_auto_bounds: Default::default(),
             saved_y_axis_range: [0.0, 1.0],
             last_y_range: None,
-            last_y_lock_range_during_zoom: false,
+            zoom_lock: false,
         }
     }
 }
@@ -321,7 +321,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let (
             re_types::blueprint::archetypes::ScalarAxis {
                 range: y_range,
-                lock_range_during_zoom: y_lock_range_during_zoom,
+                zoom_lock,
             },
             _,
         ) = query_view_property_or_default(query.space_view_id, blueprint_db, blueprint_query);
@@ -375,9 +375,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let y_lock_range_during_zoom = y_lock_range_during_zoom.map_or(false, |v| (*v).0);
-        let lock_y_during_zoom = y_lock_range_during_zoom
-            || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+        let zoom_lock = zoom_lock.map_or(false, |v| (*v).0);
+        let lock_y_during_zoom =
+            zoom_lock || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
         let auto_y = y_range.is_none();
 
@@ -457,9 +457,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             let range_was_edited = state.last_y_range != y_range;
             state.last_y_range = y_range;
 
-            let locked_y_range_was_enabled =
-                y_lock_range_during_zoom && !state.last_y_lock_range_during_zoom;
-            state.last_y_lock_range_during_zoom = y_lock_range_during_zoom;
+            let locked_y_range_was_enabled = zoom_lock && !state.zoom_lock;
+            state.zoom_lock = zoom_lock;
 
             is_resetting = plot_ui.response().double_clicked();
             let current_auto = plot_ui.auto_bounds();
@@ -622,7 +621,7 @@ fn axis_ui(
     let (
         re_types::blueprint::archetypes::ScalarAxis {
             range: y_range,
-            lock_range_during_zoom: y_lock_range_during_zoom,
+            zoom_lock,
         },
         blueprint_path,
     ) = query_view_property_or_default(
@@ -631,7 +630,7 @@ fn axis_ui(
         ctx.blueprint_query,
     );
 
-    let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
+    let y_lock_zoom = zoom_lock.unwrap_or(false.into());
 
     let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
         //
