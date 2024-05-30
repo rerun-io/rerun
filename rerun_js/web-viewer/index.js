@@ -12,6 +12,13 @@ async function load() {
   return WebHandle;
 }
 
+/**
+ * Used to prevent multiple viewers from being fullscreen at the same time.
+ *
+ * @type {(() => void) | null}
+ */
+let _minimize_current_fullscreen_viewer = null;
+
 /** @returns {string} */
 function randomId() {
   const bytes = new Uint8Array(16);
@@ -25,6 +32,18 @@ function randomId() {
  * @typedef {"top" | "blueprint" | "selection" | "time"} Panel
  * @typedef {"hidden" | "collapsed" | "expanded"} PanelState
  * @typedef {"webgpu" | "webgl"} Backend
+ * @typedef {{
+ *   canvas: {
+ *     position: string;
+ *     width: string; height: string;
+ *     top: string; left: string;
+ *     bottom: string; right: string;
+ *   };
+ *   document: { overflow: string };
+ * }} CanvasStyle
+ * @typedef {{ on: false; saved_style: null }} FullscreenOff
+ * @typedef {{ on: true; saved_style: CanvasStyle }} FullscreenOn
+ * @typedef {(FullscreenOff | FullscreenOn)} FullscreenState
  */
 
 /**
@@ -36,6 +55,8 @@ function randomId() {
  */
 
 export class WebViewer {
+  #id = randomId();
+
   /** @type {(import("./re_viewer.js").WebHandle) | null} */
   #handle = null;
 
@@ -45,25 +66,33 @@ export class WebViewer {
   /** @type {'ready' | 'starting' | 'stopped'} */
   #state = "stopped";
 
-  /** @type {{on: true; width: string; height: string} | {on: false}} */
-  #fullscreen_state = { on: false };
+  /**
+   * @type {FullscreenState}
+   */
+  #fullscreen_state = {
+    on: false,
+    saved_style: null,
+  };
 
   #allow_fullscreen = false;
 
   /**
    * Start the viewer.
    *
-   * @param {string | string[]} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
-   * @param {HTMLElement} [parent] The element to attach the canvas onto.
-   * @param {WebViewerOptions} [options] Whether to hide the welcome screen.
+   * @param {string | string[] | null} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param {HTMLElement | null} [parent] The element to attach the canvas onto.
+   * @param {WebViewerOptions | null} [options] Whether to hide the welcome screen.
    * @returns {Promise<void>}
    */
-  async start(rrd, parent = document.body, options = {}) {
+  async start(rrd, parent, options) {
+    parent ??= document.body;
+    options ??= {};
+
     if (this.#state !== "stopped") return;
     this.#state = "starting";
 
     this.#canvas = document.createElement("canvas");
-    this.#canvas.id = randomId();
+    this.#canvas.id = this.#id;
     parent.append(this.#canvas);
 
     /**
@@ -92,16 +121,6 @@ export class WebViewer {
     }
 
     this.#allow_fullscreen = options.allow_fullscreen || false;
-
-    if (this.#allow_fullscreen) {
-      // prepare canvas for fullscreen transition
-      const style = this.#canvas.style;
-      style.position = "relative";
-      style.top = "0px";
-      style.left = "0px";
-      style.transition =
-        "top 0.5s ease-in-out, left 0.5s ease-in-out, width 0.5s ease-in-out, height 0.5s ease-in-out";
-    }
 
     this.#state = "ready";
     if (rrd) {
@@ -172,6 +191,11 @@ export class WebViewer {
    */
   stop() {
     if (this.#state === "stopped") return;
+    if (this.#allow_fullscreen && this.#canvas) {
+      const state = this.#fullscreen_state;
+      if (state.on) this.#minimize(this.#canvas, state);
+    }
+
     this.#state = "stopped";
 
     this.#canvas?.remove();
@@ -180,7 +204,7 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
-    this.#fullscreen_state = { on: false };
+    this.#fullscreen_state.on = false;
     this.#allow_fullscreen = false;
   }
 
@@ -248,6 +272,64 @@ export class WebViewer {
     this.#handle.toggle_panel_overrides();
   }
 
+  #minimize = (
+    /** @type {HTMLCanvasElement} */ canvas,
+    /** @type {FullscreenOn} */ { saved_style },
+  ) => {
+    this.#fullscreen_state = {
+      on: false,
+      saved_style: null,
+    };
+
+    if (this.#fullscreen_state.on) return;
+
+    for (const key in saved_style.canvas) {
+      // @ts-expect-error
+      canvas.style[key] = saved_style.canvas[key];
+    }
+    for (const key in saved_style.document) {
+      // @ts-expect-error
+      document.body.style[key] = saved_style.document[key];
+    }
+
+    _minimize_current_fullscreen_viewer = null;
+  };
+
+  #maximize = (/** @type {HTMLCanvasElement} */ canvas) => {
+    _minimize_current_fullscreen_viewer?.();
+
+    const style = canvas.style;
+
+    /** @type {CanvasStyle} */
+    const saved_style = {
+      canvas: {
+        position: style.position,
+        width: style.width,
+        height: style.height,
+        top: style.top,
+        left: style.left,
+        bottom: style.bottom,
+        right: style.right,
+      },
+      document: { overflow: document.body.style.overflow },
+    };
+
+    style.width = `100%`;
+    style.height = `100%`;
+    style.top = `0px`;
+    style.left = `0px`;
+    style.bottom = `0px`;
+    style.right = `0px`;
+    document.body.style.overflow = "hidden";
+
+    this.#fullscreen_state = {
+      on: true,
+      saved_style,
+    };
+
+    _minimize_current_fullscreen_viewer = () => this.toggle_fullscreen();
+  };
+
   toggle_fullscreen() {
     if (!this.#handle || !this.#canvas) {
       throw new Error(
@@ -257,32 +339,11 @@ export class WebViewer {
 
     if (!this.#allow_fullscreen) return;
 
-    const style = this.#canvas.style;
-    if (this.#fullscreen_state.on) {
-      style.position = "relative";
-      style.width = this.#fullscreen_state.width;
-      style.height = this.#fullscreen_state.height;
-      this.#fullscreen_state = { on: false };
+    const state = this.#fullscreen_state;
+    if (state.on) {
+      this.#minimize(this.#canvas, state);
     } else {
-      const canvasRect = this.#canvas.getBoundingClientRect();
-      style.position = "fixed";
-      style.top = `${canvasRect.top - document.documentElement.scrollTop}px`;
-      style.left = `${canvasRect.left}px`;
-      style.width = `${canvasRect.width}px`;
-      style.height = `${canvasRect.height}px`;
-
-      requestAnimationFrame(() => {
-        style.top = `0px`;
-        style.left = `0px`;
-        style.width = `${window.innerWidth}px`;
-        style.height = `${window.innerHeight}px`;
-      });
-
-      this.#fullscreen_state = {
-        on: true,
-        width: style.width,
-        height: style.height,
-      };
+      this.#maximize(this.#canvas);
     }
   }
 }
