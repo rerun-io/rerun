@@ -7,8 +7,8 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    ComponentFallbackResult, DataResult, OverridePath, QueryContext, SpaceViewClassExt as _,
-    SystemCommand, SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
+    DataResult, OverridePath, QueryContext, SpaceViewClassExt as _, SystemCommand,
+    SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -199,6 +199,13 @@ pub fn add_new_override(
                 opened = true;
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
+                let query_context = QueryContext {
+                    viewer_ctx: ctx,
+                    target_entity_path: &data_result.entity_path,
+                    archetype_name: None,
+                    query,
+                };
+
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.
                 for (component, viz) in component_to_vis {
@@ -233,21 +240,9 @@ pub fn add_new_override(
                             .and_then(|result| result.2[0].clone())
                             .or_else(|| {
                                 view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
-                                    if let ComponentFallbackResult::Value(value) = sys
-                                        .fallback_value(
-                                            &QueryContext {
-                                                viewer_ctx: ctx,
-                                                target_entity_path: &data_result.entity_path,
-                                                archetype_name: None,
-                                                query,
-                                            },
-                                            *component,
-                                        )
-                                    {
-                                        Some(DataCell::from_arrow(*component, value))
-                                    } else {
-                                        None
-                                    }
+                                    sys.fallback_for(&query_context, *component)
+                                        .map(|fallback| DataCell::from_arrow(*component, fallback))
+                                        .ok()
                                 })
                             })
                         else {

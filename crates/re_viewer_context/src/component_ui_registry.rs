@@ -6,7 +6,7 @@ use re_log::ResultExt;
 use re_log_types::Instance;
 use re_types::{external::arrow2, ComponentName};
 
-use crate::{ComponentFallbackProvider, ComponentFallbackResult, QueryContext, ViewerContext};
+use crate::{ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewerContext};
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -263,22 +263,20 @@ impl ComponentUiRegistry {
                 }
             };
 
-            let component_value_or_fallback = component_query_result.unwrap_or_else(|| {
-                match fallback_provider.fallback_value(ctx, component_name) {
-                    ComponentFallbackResult::Value(value) => value,
-                    ComponentFallbackResult::SerializationError(err) => {
-                        re_log::error_once!(
-                            "Failed to deserialize component of type {}: {:?}",
-                            component_name,
-                            err
-                        );
-                        empty_arrow_component_array(origin_db, component_name)
-                    }
-                    ComponentFallbackResult::ComponentNotHandled => {
-                        empty_arrow_component_array(origin_db, component_name)
+            let component_value_or_fallback = if let Some(result) = component_query_result {
+                result
+            } else {
+                match fallback_provider.fallback_for(ctx, component_name) {
+                    Ok(fallback) => fallback,
+                    Err(ComponentFallbackError::MissingBaseFallback) => {
+                        let error = format!("No fallback value available for {component_name}.");
+                        re_log::error_once!("{error}");
+                        ui.label(ctx.viewer_ctx.re_ui.error_text("<empty>"))
+                            .on_hover_text(error);
+                        return;
                     }
                 }
-            });
+            };
 
             if let Some(updated) =
                 (*edit_callback)(ctx.viewer_ctx, ui, component_value_or_fallback.as_ref())
@@ -302,20 +300,4 @@ impl ComponentUiRegistry {
             );
         }
     }
-}
-
-fn empty_arrow_component_array(
-    origin_db: &EntityDb,
-    component_name: ComponentName,
-) -> Box<dyn arrow2::array::Array> {
-    let datatype = origin_db
-        .data_store()
-        .lookup_datatype(&component_name)
-        .cloned()
-        .unwrap_or_else(|| {
-            re_log::error!("Unknown component type {component_name}");
-            arrow2::datatypes::DataType::Null
-        });
-
-    arrow2::array::new_empty_array(datatype)
 }

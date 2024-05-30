@@ -131,6 +131,7 @@ impl AppState {
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
+        component_base_fallbacks: &re_viewer_context::ComponentBaseFallbacks,
     ) {
         re_tracing::profile_function!();
 
@@ -256,6 +257,7 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
+            component_base_fallbacks,
         };
 
         // First update the viewport and thus all active space views.
@@ -319,6 +321,7 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
+            component_base_fallbacks,
         };
 
         //
