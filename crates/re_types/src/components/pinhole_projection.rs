@@ -33,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///    0.0  1496.1  744.5
 ///    0.0     0.0    1.0
 /// ```
-#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
 
 impl ::re_types_core::SizeBytes for PinholeProjection {
