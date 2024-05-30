@@ -78,7 +78,6 @@ pub struct StartupOptions {
     pub on_toggle_fullscreen: Option<js_sys::Function>,
 
     /// Default overrides for state of top/side/bottom panels.
-    #[cfg(target_arch = "wasm32")]
     pub panel_state_overrides: PanelStateOverrides,
 }
 
@@ -106,7 +105,6 @@ impl Default for StartupOptions {
             #[cfg(target_arch = "wasm32")]
             on_toggle_fullscreen: Default::default(),
 
-            #[cfg(target_arch = "wasm32")]
             panel_state_overrides: Default::default(),
         }
     }
