@@ -213,7 +213,6 @@ impl SeriesLineSystem {
 
             let results = range_with_overrides(
                 ctx,
-                view_query,
                 annotations,
                 &query,
                 data_result,
