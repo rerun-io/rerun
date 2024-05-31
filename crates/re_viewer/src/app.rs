@@ -1335,7 +1335,6 @@ impl App {
         }
     }
 
-    #[allow(dead_code)] // only used in web
     pub(crate) fn toggle_fullscreen(&self) {
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -1353,36 +1352,19 @@ impl App {
         }
     }
 
-    #[allow(dead_code, clippy::unused_self)] // only used on web
+    #[cfg(target_arch = "wasm32")]
     pub(crate) fn is_fullscreen_allowed(&self) -> bool {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            true
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            self.startup_options.fullscreen_options.is_some()
-        }
+        self.startup_options.fullscreen_options.is_some()
     }
 
-    #[allow(dead_code)] // only used on web
+    #[cfg(target_arch = "wasm32")]
     pub(crate) fn is_fullscreen_mode(&self) -> bool {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let egui_ctx = &self.re_ui.egui_ctx;
-            return egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+        if let Some(options) = &self.startup_options.fullscreen_options {
+            // Ask JS if fullscreen is on or not.
+            return options.get_state.call().unwrap().is_truthy();
         }
 
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(options) = &self.startup_options.fullscreen_options {
-                // Ask JS if fullscreen is on or not.
-                return options.get_state.call().unwrap().is_truthy();
-            }
-
-            false
-        }
+        false
     }
 }
 
