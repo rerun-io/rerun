@@ -253,7 +253,7 @@ impl ComponentUiRegistry {
                 Ok(value) => value,
                 Err(error_text) => {
                     re_log::error_once!("{error_text}");
-                    ctx.viewer_ctx.re_ui.error_label(ui, error_text);
+                    ctx.viewer_ctx.re_ui.error_label(ui, &error_text);
                     return;
                 }
             };
