@@ -36,16 +36,9 @@ impl Chunk {
 
     /// Sort the chunk, if needed.
     ///
-    /// If `make_contiguous` is `true`, the underlying arrow data will be copied and shuffled in
-    /// memory in order to make it contiguous.
-    /// Otherwise, only the offsets will be shuffled.
-    /// For most use cases, the small gains in cache locality are not worth the much higher cost
-    /// of copying the data around.
-    //
-    // TODO(cmc): `sort_if_unsorted(false)` followed by `sort_if_unsorted(true)` will not do
-    // anything, which is really not worth the hassle right now.
+    /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     #[inline]
-    pub fn sort_if_unsorted(&mut self, make_contiguous: bool) {
+    pub fn sort_if_unsorted(&mut self) {
         if self.is_sorted() {
             return;
         }
@@ -61,7 +54,7 @@ impl Chunk {
             swaps
         };
 
-        self.shuffle_with(&swaps, make_contiguous);
+        self.shuffle_with(&swaps);
 
         re_log::trace!(
             entity_path = %self.entity_path,
@@ -77,13 +70,9 @@ impl Chunk {
 
     /// Randomly shuffles the chunk using the given `seed`.
     ///
-    /// If `make_contiguous` is `true`, the underlying arrow data will be copied and shuffled in
-    /// memory in order to make it contiguous.
-    /// Otherwise, only the offsets will be shuffled.
-    /// For most use cases, the small gains in cache locality are not worth the much higher cost
-    /// of copying the data around.
+    /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     #[inline]
-    pub fn shuffle_random(&mut self, seed: u64, make_contiguous: bool) {
+    pub fn shuffle_random(&mut self, seed: u64) {
         re_tracing::profile_function!();
 
         let now = std::time::Instant::now();
@@ -98,7 +87,7 @@ impl Chunk {
             swaps
         };
 
-        self.shuffle_with(&swaps, make_contiguous);
+        self.shuffle_with(&swaps);
 
         re_log::trace!(
             entity_path = %self.entity_path,
@@ -113,12 +102,10 @@ impl Chunk {
     /// `swaps` is a slice that maps an implicit destination index to its explicit source index.
     /// E.g. `swap[0] = 3` means that the entry at index `3` in the original chunk should be move to index `0`.
     ///
-    /// If `make_contiguous` is `true`, the underlying arrow data will be copied and shuffled in
-    /// memory in order to make it contiguous.
-    /// Otherwise, only the offsets will be shuffled.
-    /// For most use cases, the small gains in cache locality are not worth the much higher cost
-    /// of copying the data around.
-    pub(crate) fn shuffle_with(&mut self, swaps: &[usize], make_contiguous: bool) {
+    /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
+    //
+    // TODO(#3741): Provide a path that only shuffles offsets instead of the data itself, using a `ListView`.
+    pub(crate) fn shuffle_with(&mut self, swaps: &[usize]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -163,40 +150,8 @@ impl Chunk {
         // Components
         //
         // Reminder: these are all `ListArray`s.
-        if !make_contiguous {
-            re_tracing::profile_scope!("components (offsets only)");
-
-            for original in components.values_mut() {
-                #[allow(clippy::unwrap_used)] // a chunk's column is always a list array
-                let original_list = original
-                    .as_any()
-                    .downcast_ref::<ArrowListArray<i32>>()
-                    .unwrap();
-
-                let datatype = original.data_type().clone();
-                #[allow(clippy::unwrap_used)] // yep, these are in fact lengths
-                let offsets = ArrowOffsets::try_from_lengths(
-                    swaps.iter().map(|&from| original_list.value(from).len()),
-                )
-                .unwrap();
-                let validity = original_list
-                    .validity()
-                    .map(|validity| swaps.iter().map(|&from| validity.get_bit(from)).collect());
-
-                *original = ArrowListArray::<i32>::new(
-                    datatype,
-                    offsets.into(),
-                    original_list.values().clone(),
-                    validity,
-                )
-                .boxed();
-            }
-        }
-        // Alternative: dont just swap the offsets -- make the data itself contiguous.
-        // Much higher sorting costs, but potentially slightly better cache locality later.
-        else {
-            re_tracing::profile_scope!("components (offsets & data)");
-
+        re_tracing::profile_scope!("components (offsets & data)");
+        {
             for original in components.values_mut() {
                 #[allow(clippy::unwrap_used)] // a chunk's column is always a list array
                 let original_list = original
@@ -332,9 +287,7 @@ mod tests {
 
         let row_ids = vec![RowId::new(), RowId::new(), RowId::new(), RowId::new()];
 
-        let make_contiguous = [false, true];
-
-        for make_contiguous in make_contiguous {
+        {
             let chunk_sorted = Chunk::new(
                 ChunkId::new(),
                 entity_path.clone(),
@@ -351,7 +304,7 @@ mod tests {
 
             let chunk_shuffled = {
                 let mut chunk_shuffled = chunk_sorted.clone();
-                chunk_shuffled.shuffle_random(666, make_contiguous);
+                chunk_shuffled.shuffle_random(666);
                 chunk_shuffled
             };
 
@@ -363,7 +316,7 @@ mod tests {
 
             let chunk_resorted = {
                 let mut chunk_resorted = chunk_shuffled.clone();
-                chunk_resorted.sort_if_unsorted(make_contiguous);
+                chunk_resorted.sort_if_unsorted();
                 chunk_resorted
             };
 
