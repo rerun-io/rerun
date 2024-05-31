@@ -122,6 +122,8 @@ impl ComponentUiRegistry {
     /// * Don't show a tooltip, this is solved at a higher level.
     /// * Try not to assume context of the component beyond its inherent semantics
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
+    /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
+    ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
     //
     // TODO(andreas): Implement handling for ui elements that are expandable (e.g. 2D bounds is too complex for a single line).
     pub fn add_editor<C: re_types::Component>(
