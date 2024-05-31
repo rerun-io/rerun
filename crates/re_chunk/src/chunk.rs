@@ -7,7 +7,8 @@ use re_types_core::{ComponentName, SerializationError};
 
 // ---
 
-/// Errors that can occur when creating/manipulating a [`Chunk`]s.
+/// Errors that can occur when creating/manipulating a [`Chunk`]s, directly or indirectly through
+/// the use of a [`crate::ChunkBatcher`].
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
     #[error("Detected malformed Chunk: {reason}")]
