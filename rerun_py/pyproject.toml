@@ -134,6 +134,7 @@ lint.unfixable = [
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
+combine-as-imports = true  # needed so keep rerun_sdk/__init__.py clean
 
 [tool.maturin]
 # We use a python package from inside the rerun_sdk folder to avoid conflicting
