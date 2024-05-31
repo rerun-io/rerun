@@ -140,7 +140,7 @@ impl SeriesPointSystem {
                     color: fallback_color.into(),
                     marker_size: fallback_size.into(),
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
-                        marker: fallback_shape.into(),
+                        marker: fallback_shape,
                     }),
                 },
             };
