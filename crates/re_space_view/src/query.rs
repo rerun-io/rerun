@@ -7,16 +7,21 @@ use re_viewer_context::{external::nohash_hasher::IntSet, ViewerContext};
 // ---
 
 /// Wrapper that contains the results of a range query with possible overrides.
+///
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// they will be merged into the results appropriately.
 pub struct HybridResults {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: RangeResults,
 }
 
-/// Queries for the given `component_names` using range semantics.
+/// Queries for the given `component_names` using range semantics with override support.
 ///
-/// See [`RangeResults`] for more information about how to handle the results.
+/// If the `DataResult` contains a specified override from the blueprint, that values
+/// will be used instead of the range query.
 ///
-/// This is a cached API -- data will be lazily cached upon access.
+/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
+/// [`HybridResults`].
 pub fn range_with_overrides(
     ctx: &ViewerContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
