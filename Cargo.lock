@@ -4283,7 +4283,7 @@ dependencies = [
  "criterion",
  "crossbeam",
  "document-features",
- "itertools 0.12.0",
+ "itertools 0.13.0",
  "mimalloc",
  "nohash-hasher",
  "rand",
