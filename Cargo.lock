@@ -4843,10 +4843,8 @@ version = "0.17.0-alpha.3"
 dependencies = [
  "ahash",
  "egui",
- "parking_lot",
  "re_data_store",
  "re_entity_db",
- "re_log",
  "re_log_types",
  "re_query",
  "re_tracing",
