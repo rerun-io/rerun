@@ -1,5 +1,3 @@
-use egui::NumExt as _;
-
 use re_types::components::MarkerShape;
 use re_viewer_context::ViewerContext;
 
@@ -14,15 +12,8 @@ pub(crate) fn edit_marker_shape_ui(
 
     let outer_response = egui::ComboBox::from_id_source("marker_shape")
         .selected_text(marker_text)
-        .width(
-            ui.available_width()
-                .at_most(item_width + ui.spacing().menu_margin.sum().x),
-        )
         .height(320.0)
         .show_ui(ui, |ui| {
-            // workaround to force `ui.max_rect()` to reflect the content size
-            ui.set_width(item_width);
-
             let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
 
             let list_ui = |ui: &mut egui::Ui| {

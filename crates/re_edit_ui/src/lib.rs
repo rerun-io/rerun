@@ -50,7 +50,6 @@ fn edit_scatter_ui(
     let outer_response = egui::ComboBox::from_id_source("scatter")
         .selected_text(scattered_text)
         .show_ui(ui, |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             ui.selectable_value(&mut value.0, false, "Line")
                 | ui.selectable_value(&mut value.0, true, "Scattered")
         });
