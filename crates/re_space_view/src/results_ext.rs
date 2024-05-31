@@ -150,6 +150,7 @@ impl RangeResultsExt for HybridResults {
 
         if self.overrides.contains(component_name) {
             let results = self.overrides.get(C::name())?;
+            // Because this is an override we always re-index the data as static
             let data =
                 RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
 
@@ -183,6 +184,7 @@ impl RangeResultsExt for HybridResults {
 
         if self.overrides.contains(component_name) {
             let results = self.overrides.get_or_empty(C::name());
+            // Because this is an override we always re-index the data as static
             let data =
                 RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
 

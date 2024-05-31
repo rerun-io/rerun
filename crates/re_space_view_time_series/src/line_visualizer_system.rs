@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    AnnotationMap, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };
@@ -224,7 +224,12 @@ impl SeriesLineSystem {
                 ],
             );
 
-            let all_scalars = results.get_or_empty_dense::<Scalar>(resolver)?;
+            // If we have no scalars, we can't do anything.
+            let Some(all_scalars) = results.get_dense::<Scalar>(resolver) else {
+                return Ok(());
+            };
+
+            let all_scalars = all_scalars?;
 
             let all_scalars_entry_range = all_scalars.entry_range();
 

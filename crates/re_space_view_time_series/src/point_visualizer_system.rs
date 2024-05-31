@@ -1,13 +1,14 @@
 use itertools::Itertools as _;
 
 use re_query::{PromiseResult, QueryError};
+use re_space_view::range_with_overrides;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    AnnotationMap, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };
@@ -97,28 +98,37 @@ impl SeriesPointSystem {
     fn load_scalars(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
         let resolver = ctx.recording().resolver();
 
-        let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
+        let (plot_bounds, time_per_pixel) =
+            determine_plot_bounds_and_time_per_pixel(ctx, view_query);
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             let annotations = self.annotation_map.find(&data_result.entity_path);
-            let annotation_info = annotations
-                .resolved_class_description(None)
-                .annotation_info();
-            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
-            let override_color = data_result
-                .lookup_override::<Color>(ctx)
-                .map(|c| c.to_array());
-            let override_series_name = data_result.lookup_override::<Name>(ctx).map(|t| t.0);
-            let override_marker_size = data_result.lookup_override::<MarkerSize>(ctx).map(|r| r.0);
-            let override_marker_shape = data_result.lookup_override::<MarkerShape>(ctx);
+            let query_ctx = QueryContext {
+                viewer_ctx: ctx,
+                archetype_name: Some(SeriesPoint::name()),
+                query: &ctx.current_query(),
+                target_entity_path: &data_result.entity_path,
+            };
+
+            let fallback_color =
+                re_viewer_context::TypedComponentFallbackProvider::<Color>::fallback_for(
+                    self, &query_ctx,
+                );
+
+            let fallback_size =
+                re_viewer_context::TypedComponentFallbackProvider::<MarkerSize>::fallback_for(
+                    self, &query_ctx,
+                );
+
+            let fallback_shape = MarkerShape::default();
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default
             // values.
@@ -127,33 +137,37 @@ impl SeriesPointSystem {
                 value: 0.0,
                 attrs: PlotPointAttrs {
                     label: None,
-                    color: annotation_info.color(override_color, default_color),
-                    marker_size: override_marker_size.unwrap_or(DEFAULT_MARKER_SIZE),
+                    color: fallback_color.into(),
+                    marker_size: fallback_size.into(),
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
-                        marker: override_marker_shape.unwrap_or_default(),
+                        marker: fallback_shape.into(),
                     }),
                 },
             };
 
             let mut points;
+            let mut series_name = Default::default();
 
             let time_range = determine_time_range(
-                query.latest_at,
+                view_query.latest_at,
                 data_result,
                 plot_bounds,
                 ctx.app_options.experimental_plot_query_clamping,
             );
 
             {
+                use re_space_view::RangeResultsExt as _;
+
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
                 let entity_path = &data_result.entity_path;
-                let query = re_data_store::RangeQuery::new(query.timeline, time_range);
+                let query = re_data_store::RangeQuery::new(view_query.timeline, time_range);
 
-                let results = ctx.recording().query_caches().range(
-                    ctx.recording_store(),
+                let results = range_with_overrides(
+                    ctx,
+                    &annotations,
                     &query,
-                    entity_path,
+                    data_result,
                     [
                         Scalar::name(),
                         Color::name(),
@@ -162,9 +176,13 @@ impl SeriesPointSystem {
                     ],
                 );
 
-                let all_scalars = results
-                    .get_required(Scalar::name())?
-                    .to_dense::<Scalar>(resolver);
+                // If we have no scalars, we can't do anything.
+                let Some(all_scalars) = results.get_dense::<Scalar>(resolver) else {
+                    return Ok(());
+                };
+
+                let all_scalars = all_scalars?;
+
                 let all_scalars_entry_range = all_scalars.entry_range();
 
                 if !matches!(
@@ -213,135 +231,127 @@ impl SeriesPointSystem {
                 // Make it as clear as possible to the optimizer that some parameters
                 // go completely unused as soon as overrides have been defined.
 
-                // Fill in colors -- if available _and_ not overridden.
-                if override_color.is_none() {
-                    if let Some(all_colors) = results.get(Color::name()) {
-                        let all_colors = all_colors.to_dense::<Color>(resolver);
+                // Fill in colors.
+                // TODO(jleibs): Handle Err values.
+                if let Ok(all_colors) = results.get_or_empty_dense::<Color>(resolver) {
+                    if !matches!(
+                        all_colors.status(),
+                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                    ) {
+                        // TODO(#5607): what should happen if the promise is still pending?
+                    }
 
-                        if !matches!(
-                            all_colors.status(),
-                            (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                        ) {
-                            // TODO(#5607): what should happen if the promise is still pending?
-                        }
+                    let all_scalars_indexed = all_scalars
+                        .range_indices(all_scalars_entry_range.clone())
+                        .map(|index| (index, ()));
 
-                        let all_scalars_indexed = all_scalars
-                            .range_indices(all_scalars_entry_range.clone())
-                            .map(|index| (index, ()));
+                    let all_frames =
+                        re_query::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
+                            .enumerate();
 
-                        let all_frames = re_query::range_zip_1x1(
-                            all_scalars_indexed,
-                            all_colors.range_indexed(),
-                        )
-                        .enumerate();
-
-                        for (i, (_index, _scalars, colors)) in all_frames {
-                            if let Some(color) = colors.and_then(|colors| {
-                                colors.first().map(|c| {
-                                    let [r, g, b, a] = c.to_array();
-                                    if a == 255 {
-                                        // Common-case optimization
-                                        re_renderer::Color32::from_rgb(r, g, b)
-                                    } else {
-                                        re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-                                    }
-                                })
-                            }) {
-                                points[i].attrs.color = color;
-                            }
+                    for (i, (_index, _scalars, colors)) in all_frames {
+                        if let Some(color) = colors.and_then(|colors| {
+                            colors.first().map(|c| {
+                                let [r, g, b, a] = c.to_array();
+                                if a == 255 {
+                                    // Common-case optimization
+                                    re_renderer::Color32::from_rgb(r, g, b)
+                                } else {
+                                    re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                }
+                            })
+                        }) {
+                            points[i].attrs.color = color;
                         }
                     }
                 }
 
-                // Fill in marker sizes -- if available _and_ not overridden.
-                if override_marker_size.is_none() {
-                    if let Some(all_marker_sizes) = results.get(MarkerSize::name()) {
-                        let all_marker_sizes = all_marker_sizes.to_dense::<MarkerSize>(resolver);
+                // Fill in marker sizes
+                // TODO(jleibs): Handle Err values.
+                if let Ok(all_marker_sizes) = results.get_or_empty_dense::<MarkerSize>(resolver) {
+                    if !matches!(
+                        all_marker_sizes.status(),
+                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                    ) {
+                        // TODO(#5607): what should happen if the promise is still pending?
+                    }
 
-                        if !matches!(
-                            all_marker_sizes.status(),
-                            (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                        ) {
-                            // TODO(#5607): what should happen if the promise is still pending?
-                        }
+                    let all_scalars_indexed = all_scalars
+                        .range_indices(all_scalars_entry_range.clone())
+                        .map(|index| (index, ()));
 
-                        let all_scalars_indexed = all_scalars
-                            .range_indices(all_scalars_entry_range.clone())
-                            .map(|index| (index, ()));
+                    let all_frames = re_query::range_zip_1x1(
+                        all_scalars_indexed,
+                        all_marker_sizes.range_indexed(),
+                    )
+                    .enumerate();
 
-                        let all_frames = re_query::range_zip_1x1(
-                            all_scalars_indexed,
-                            all_marker_sizes.range_indexed(),
-                        )
-                        .enumerate();
-
-                        for (i, (_index, _scalars, marker_sizes)) in all_frames {
-                            if let Some(marker_size) =
-                                marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
-                            {
-                                points[i].attrs.marker_size = marker_size.0;
-                            }
+                    for (i, (_index, _scalars, marker_sizes)) in all_frames {
+                        if let Some(marker_size) =
+                            marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
+                        {
+                            points[i].attrs.marker_size = marker_size.0;
                         }
                     }
                 }
 
-                // Fill in marker shapes -- if available _and_ not overridden.
-                if override_marker_shape.is_none() {
-                    if let Some(all_marker_shapes) = results.get(MarkerShape::name()) {
-                        let all_marker_shapes = all_marker_shapes.to_dense::<MarkerShape>(resolver);
+                // Fill in marker sizes
+                // TODO(jleibs): Handle Err values.
+                if let Ok(all_marker_shapes) = results.get_or_empty_dense::<MarkerShape>(resolver) {
+                    if !matches!(
+                        all_marker_shapes.status(),
+                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                    ) {
+                        // TODO(#5607): what should happen if the promise is still pending?
+                    }
 
-                        if !matches!(
-                            all_marker_shapes.status(),
-                            (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                        ) {
-                            // TODO(#5607): what should happen if the promise is still pending?
-                        }
+                    let all_scalars_indexed = all_scalars
+                        .range_indices(all_scalars_entry_range.clone())
+                        .map(|index| (index, ()));
 
-                        let all_scalars_indexed = all_scalars
-                            .range_indices(all_scalars_entry_range.clone())
-                            .map(|index| (index, ()));
+                    let all_frames = re_query::range_zip_1x1(
+                        all_scalars_indexed,
+                        all_marker_shapes.range_indexed(),
+                    )
+                    .enumerate();
 
-                        let all_frames = re_query::range_zip_1x1(
-                            all_scalars_indexed,
-                            all_marker_shapes.range_indexed(),
-                        )
-                        .enumerate();
-
-                        for (i, (_index, _scalars, marker_shapes)) in all_frames {
-                            if let Some(marker) = marker_shapes
-                                .and_then(|marker_shapes| marker_shapes.first().copied())
-                            {
-                                points[i].attrs.kind =
-                                    PlotSeriesKind::Scatter(ScatterAttrs { marker });
-                            }
+                    for (i, (_index, _scalars, marker_shapes)) in all_frames {
+                        if let Some(marker) =
+                            marker_shapes.and_then(|marker_shapes| marker_shapes.first().copied())
+                        {
+                            points[i].attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs { marker });
                         }
                     }
                 }
+
+                // Extract the series name
+                // TODO(jleibs): Handle Err values.
+                if let Ok(all_series_name) = results.get_or_empty_dense::<Name>(resolver) {
+                    if !matches!(
+                        all_series_name.status(),
+                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                    ) {
+                        // TODO(#5607): what should happen if the promise is still pending?
+                    }
+
+                    series_name = all_series_name
+                        .range_data(all_scalars_entry_range.clone())
+                        .next()
+                        .and_then(|name| name.first())
+                        .map(|name| name.0.clone());
+                }
+
+                // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+                points_to_series(
+                    data_result,
+                    time_per_pixel,
+                    points,
+                    ctx.recording_store(),
+                    view_query,
+                    series_name,
+                    &mut self.all_series,
+                );
             }
-
-            // Check for an explicit label if any.
-            // We're using a separate latest-at query for this since the semantics for labels changing over time are a
-            // a bit unclear.
-            // Sidestepping the cache here shouldn't be a problem since we do so only once per entity.
-            let series_name = if let Some(override_name) = override_series_name {
-                Some(override_name)
-            } else {
-                // TODO(#5607): what should happen if the promise is still pending?
-                ctx.recording()
-                    .latest_at_component::<Name>(&data_result.entity_path, &ctx.current_query())
-                    .map(|name| name.value.0)
-            };
-
-            // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-            points_to_series(
-                data_result,
-                time_per_pixel,
-                points,
-                ctx.recording_store(),
-                query,
-                series_name,
-                &mut self.all_series,
-            );
         }
 
         Ok(())
