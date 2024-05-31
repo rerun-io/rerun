@@ -13,7 +13,6 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
-mod results_ext;
 mod spatial_view_visualizer;
 mod transform3d_arrows;
 
@@ -21,8 +20,6 @@ pub use cameras::CamerasVisualizer;
 pub use images::{ImageVisualizer, ViewerImage};
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
-
-pub(crate) use self::results_ext::RangeResultsExt;
 
 // ---
 

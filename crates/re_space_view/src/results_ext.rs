@@ -1,6 +1,6 @@
 use re_log_types::{RowId, TimeInt};
 use re_query::{LatestAtResults, PromiseResolver, PromiseResult, RangeData, RangeResults, Results};
-use re_types::Component;
+use re_types_core::Component;
 
 // ---
 
