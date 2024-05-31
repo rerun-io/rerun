@@ -1528,6 +1528,29 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
 
     let quoted_type = quote_field_type_from_object_field(obj_field);
 
+    let self_field_access = if obj_is_tuple_struct {
+        quote!(self.0)
+    } else {
+        quote!(self.#quoted_obj_field_name )
+    };
+    let deref_impl = quote! {
+        impl std::ops::Deref for #quoted_obj_name {
+            type Target = #quoted_type;
+
+            #[inline]
+            fn deref(&self) -> &#quoted_type {
+                &#self_field_access
+            }
+        }
+
+        impl std::ops::DerefMut for #quoted_obj_name {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut #quoted_type {
+                &mut #self_field_access
+            }
+        }
+    };
+
     if obj_field.typ.fqname().is_some() {
         if let Some(inner) = obj_field.typ.vector_inner() {
             if obj_field.is_nullable {
@@ -1566,12 +1589,6 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 quote!(Self { #quoted_obj_field_name: v.into() })
             };
 
-            let self_field_access = if obj_is_tuple_struct {
-                quote!(self.0)
-            } else {
-                quote!(self.#quoted_obj_field_name )
-            };
-
             quote! {
                 impl<T: Into<#quoted_type>> From<T> for #quoted_obj_name {
                     fn from(v: T) -> Self {
@@ -1586,21 +1603,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                     }
                 }
 
-                impl std::ops::Deref for #quoted_obj_name {
-                    type Target = #quoted_type;
-
-                    #[inline]
-                    fn deref(&self) -> &#quoted_type {
-                        &#self_field_access
-                    }
-                }
-
-                impl std::ops::DerefMut for #quoted_obj_name {
-                    #[inline]
-                    fn deref_mut(&mut self) -> &mut #quoted_type {
-                        &mut #self_field_access
-                    }
-                }
+                #deref_impl
             }
         }
     } else {
@@ -1611,6 +1614,15 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 quote!(Self { #quoted_obj_field_name }),
                 quote!(value.#quoted_obj_field_name),
             )
+        };
+
+        // Emit `Deref`/`DerefMut` only for components since datatypes may want to do custom implementations.
+        // Note that all components _should_ be implemented by components, so once we
+        // enforce that, we'd not actually hit this path.
+        let deref_impl = if obj.kind == ObjectKind::Component {
+            deref_impl
+        } else {
+            quote!()
         };
 
         quote! {
@@ -1627,6 +1639,8 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                     #quoted_read
                 }
             }
+
+            #deref_impl
         }
     }
 }

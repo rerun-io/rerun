@@ -55,6 +55,22 @@ impl From<ClearIsRecursive> for bool {
     }
 }
 
+impl std::ops::Deref for ClearIsRecursive {
+    type Target = bool;
+
+    #[inline]
+    fn deref(&self) -> &bool {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ClearIsRecursive {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut bool {
+        &mut self.0
+    }
+}
+
 crate::macros::impl_into_cow!(ClearIsRecursive);
 
 impl crate::Loggable for ClearIsRecursive {

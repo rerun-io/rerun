@@ -53,6 +53,22 @@ impl From<DepthMeter> for f32 {
     }
 }
 
+impl std::ops::Deref for DepthMeter {
+    type Target = f32;
+
+    #[inline]
+    fn deref(&self) -> &f32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for DepthMeter {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut f32 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(DepthMeter);
 
 impl ::re_types_core::Loggable for DepthMeter {
