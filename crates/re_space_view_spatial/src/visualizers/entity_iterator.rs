@@ -1,6 +1,6 @@
 use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_entity_db::{EntityDb, EntityProperties};
+use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_query::Results;
 use re_renderer::DepthOffset;
@@ -40,14 +40,16 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
 // --- Cached APIs ---
 
 pub fn query_archetype_with_history<A: Archetype>(
-    entity_db: &EntityDb,
+    ctx: &ViewerContext<'_>,
     timeline: &Timeline,
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
-    entity_path: &EntityPath,
+    data_result: &re_viewer_context::DataResult,
 ) -> Results {
+    let entity_db = ctx.recording();
     let store = entity_db.store();
     let caches = entity_db.query_caches();
+    let entity_path = &data_result.entity_path;
 
     match query_range {
         QueryRange::TimeRange(time_range) => {
@@ -135,11 +137,11 @@ where
         };
 
         let results = query_archetype_with_history::<A>(
-            ctx.recording(),
+            ctx,
             &query.timeline,
             query.latest_at,
             data_result.query_range(),
-            &data_result.entity_path,
+            data_result,
         );
 
         // NOTE: We used to compute the number of primitives across the entire scene here, but that
