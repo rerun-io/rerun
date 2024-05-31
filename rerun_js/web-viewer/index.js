@@ -30,28 +30,37 @@ function randomId() {
 
 /**
  * @typedef {"top" | "blueprint" | "selection" | "time"} Panel
+ *
  * @typedef {"hidden" | "collapsed" | "expanded"} PanelState
+ *
  * @typedef {"webgpu" | "webgl"} Backend
+ *
  * @typedef {{
  *   width: string; height: string;
  *   top: string; left: string;
  *   bottom: string; right: string;
  * }} CanvasRect
+ *
  * @typedef {{
  *   canvas: CanvasRect & { position: string; transition: string; };
  *   document: { overflow: string };
  * }} CanvasStyle
+ *
  * @typedef {{ on: false; saved_style: null; saved_rect: null }} FullscreenOff
+ *
  * @typedef {{ on: true; saved_style: CanvasStyle; saved_rect: DOMRect }} FullscreenOn
+ *
  * @typedef {(FullscreenOff | FullscreenOn)} FullscreenState
- */
-
-/**
+ *
  * @typedef WebViewerOptions
  * @property {string} [manifest_url] Use a different example manifest.
  * @property {Backend} [render_backend] Force the viewer to use a specific rendering backend.
  * @property {boolean} [hide_welcome_screen] Whether to hide the welcome screen in favor of a simpler one.
  * @property {boolean} [allow_fullscreen] Whether to allow the viewer to enter fullscreen mode.
+ *
+ * @typedef FullscreenOptions
+ * @property {() => boolean} get_state
+ * @property {() => void} on_toggle
  */
 
 export class WebViewer {
@@ -89,6 +98,8 @@ export class WebViewer {
     parent ??= document.body;
     options ??= {};
 
+    this.#allow_fullscreen = options.allow_fullscreen || false;
+
     if (this.#state !== "stopped") return;
     this.#state = "starting";
 
@@ -101,27 +112,31 @@ export class WebViewer {
      * @property {string} [url]
      * @property {string} [manifest_url]
      * @property {Backend} [render_backend]
-     * @property {Partial<{[K in Panel]: PanelState}>} [panel_state_overrides]
      * @property {boolean} [hide_welcome_screen]
-     * @property {boolean} [allow_fullscreen]
-     * @property {() => void} [on_toggle_fullscreen]
+     * @property {Partial<{[K in Panel]: PanelState}>} [panel_state_overrides]
+     * @property {FullscreenOptions} [fullscreen]
+     *
+     * @typedef {(import("./re_viewer.js").WebHandle)} _WebHandle
+     * @typedef {{ new(app_options?: AppOptions): _WebHandle }} WebHandleConstructor
      */
-    /** @typedef {(import("./re_viewer.js").WebHandle)} _WebHandle */
-    /** @typedef {{ new(app_options?: AppOptions): _WebHandle }} WebHandleConstructor */
 
     let WebHandle_class = /** @type {WebHandleConstructor} */ (await load());
     if (this.#state !== "starting") return;
 
-    let on_toggle_fullscreen = () => this.toggle_fullscreen();
-    this.#handle = new WebHandle_class({ ...options, on_toggle_fullscreen });
+    const fullscreen = this.#allow_fullscreen
+      ? {
+          get_state: () => this.#fullscreen_state.on,
+          on_toggle: () => this.toggle_fullscreen(),
+        }
+      : undefined;
+
+    this.#handle = new WebHandle_class({ ...options, fullscreen });
     await this.#handle.start(this.#canvas.id);
     if (this.#state !== "starting") return;
 
     if (this.#handle.has_panicked()) {
       throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
     }
-
-    this.#allow_fullscreen = options.allow_fullscreen || false;
 
     this.#state = "ready";
     if (rrd) {

@@ -241,6 +241,24 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let icon = if app.is_fullscreen() {
+            &re_ui::icons::MINIMIZE
+        } else {
+            &re_ui::icons::MAXIMIZE
+        };
+
+        if app
+            .re_ui()
+            .medium_icon_toggle_button(ui, icon, &mut app.is_fullscreen())
+            .on_hover_text("Toggle fullscreen")
+            .clicked()
+        {
+            app.toggle_fullscreen();
+        }
+    }
+
     // selection panel
     if app
         .re_ui()

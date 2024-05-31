@@ -296,7 +296,14 @@ pub struct AppOptions {
     render_backend: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
-    on_toggle_fullscreen: Option<Callback>,
+    fullscreen: Option<FullscreenOptions>,
+}
+
+// Keep in sync with the `FullscreenOptions` typedef in `rerun_js/web-viewer/index.js`
+#[derive(Clone, Deserialize)]
+pub struct FullscreenOptions {
+    pub get_state: Callback,
+    pub on_toggle: Callback,
 }
 
 #[derive(Clone, Default, Deserialize)]
@@ -321,7 +328,13 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 // Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
 #[derive(Clone, Deserialize)]
 #[repr(transparent)]
-struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
+pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
+
+impl Callback {
+    pub fn call(&self) -> Result<JsValue, JsValue> {
+        self.0.call0(&web_sys::window().unwrap())
+    }
+}
 
 fn create_app(
     cc: &eframe::CreationContext<'_>,
@@ -342,7 +355,7 @@ fn create_app(
         expect_data_soon: None,
         force_wgpu_backend: None,
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
-        on_toggle_fullscreen: app_options.on_toggle_fullscreen.map(|v| v.0).clone(),
+        fullscreen_options: app_options.fullscreen.clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
     let re_ui = crate::customize_eframe_and_setup_renderer(cc)?;
