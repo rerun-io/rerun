@@ -115,18 +115,18 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.Radius".into(),
             "rerun.components.Color".into(),
             "rerun.components.Points3DIndicator".into(),
-            "rerun.components.Radius".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.Text".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.KeypointId".into(),
-            "rerun.components.Text".into(),
         ]
     });
 
@@ -134,12 +134,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
+            "rerun.components.Radius".into(),
             "rerun.components.Color".into(),
             "rerun.components.Points3DIndicator".into(),
-            "rerun.components.Radius".into(),
+            "rerun.components.Text".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.KeypointId".into(),
-            "rerun.components.Text".into(),
         ]
     });
 

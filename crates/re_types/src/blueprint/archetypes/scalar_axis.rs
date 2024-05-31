@@ -56,8 +56,8 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.LockRangeDuringZoom".into(),
             "rerun.components.Range1D".into(),
+            "rerun.blueprint.components.LockRangeDuringZoom".into(),
         ]
     });
 
@@ -65,8 +65,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ScalarAxisIndicator".into(),
-            "rerun.blueprint.components.LockRangeDuringZoom".into(),
             "rerun.components.Range1D".into(),
+            "rerun.blueprint.components.LockRangeDuringZoom".into(),
         ]
     });
 

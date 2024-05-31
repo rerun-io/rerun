@@ -123,8 +123,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         [
             "rerun.components.Color".into(),
             "rerun.components.MarkerShape".into(),
-            "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
+            "rerun.components.MarkerSize".into(),
         ]
     });
 
@@ -134,8 +134,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
             "rerun.components.SeriesPointIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.MarkerShape".into(),
-            "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
+            "rerun.components.MarkerSize".into(),
         ]
     });
 

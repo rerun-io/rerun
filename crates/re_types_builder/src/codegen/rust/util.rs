@@ -1,9 +1,10 @@
 //! Implements the Rust codegen pass.
 
+use camino::Utf8Path;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{Object, ObjectKind, ATTR_RUST_TUPLE_STRUCT};
+use crate::{Object, ObjectKind, Reporter, ATTR_RUST_TUPLE_STRUCT};
 
 // ---
 
@@ -62,15 +63,27 @@ pub fn iter_archetype_components<'a>(
     })
 }
 
-pub fn string_from_quoted(acc: &TokenStream) -> String {
+pub fn string_from_quoted(
+    reporter: &Reporter,
+    acc: &TokenStream,
+    target_file: &Utf8Path,
+) -> String {
     re_tracing::profile_function!();
 
     // We format using `prettyplease` because there are situations with
     // very long lines that `cargo fmt` fails on.
     // See https://github.com/dtolnay/prettyplease for more info.
-    let string = prettyplease::unparse(
-        &syn::parse_file(&acc.to_string()).expect("Generated Rust code did not parse"),
-    );
+
+    let string = match syn::parse_file(&acc.to_string()) {
+        Ok(parsed) => prettyplease::unparse(&parsed),
+        Err(err) => {
+            reporter.error_file(
+                target_file,
+                format!("Generated Rust code did not parse: {err}"),
+            );
+            acc.to_string()
+        }
+    };
 
     // `prettyplease` formats docstrings weirdly, like so:
     //

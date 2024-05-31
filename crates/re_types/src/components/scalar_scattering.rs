@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: If true, a scalar will be shown as individual point in a scatter plot.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, Eq)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, Eq)]
 pub struct ScalarScattering(pub bool);
 
 impl ::re_types_core::SizeBytes for ScalarScattering {

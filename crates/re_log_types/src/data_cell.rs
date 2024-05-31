@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow2::datatypes::DataType;
+use arrow2::datatypes::{DataType, Field, Metadata};
 
 use re_types_core::{Component, ComponentBatch, ComponentName, DeserializationError, SizeBytes};
 
@@ -598,10 +598,14 @@ impl std::fmt::Display for DataCell {
             "DataCell({})",
             re_format::format_bytes(self.inner.size_bytes as _)
         ))?;
-        re_format_arrow::format_table(
-            // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
-            [&*self.to_arrow_monolist()],
-            [self.component_name()],
+        re_format_arrow::format_dataframe(
+            Metadata::default(),
+            [Field::new(
+                self.component_name().to_string(),
+                self.datatype().clone(),
+                false,
+            )],
+            [self.to_arrow_monolist()],
         )
         .fmt(f)
     }

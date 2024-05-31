@@ -10,15 +10,17 @@ mod error;
 mod ptr;
 mod recording_streams;
 
-use std::ffi::{c_char, c_uchar, CString};
+use std::{
+    collections::BTreeMap,
+    ffi::{c_char, c_uchar, CString},
+};
 
 use component_type_registry::COMPONENT_TYPES;
 use once_cell::sync::Lazy;
 
 use re_sdk::{
-    external::re_log_types::{self},
-    log::{DataCell, DataRow},
-    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
+    log::PendingRow, ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind,
+    TimePoint,
 };
 use recording_streams::{recording_stream, RECORDING_STREAMS};
 
@@ -195,7 +197,6 @@ pub enum CErrorCode {
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
     ArrowFfiArrayImportError,
-    ArrowDataCellError,
 
     Unknown = 0xFFFF_FFFF,
 }
@@ -301,7 +302,7 @@ fn rr_recording_stream_new_impl(
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
-        .store_source(re_log_types::StoreSource::CSdk)
+        .store_source(re_sdk::external::re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);
 
     if !(recording_id.is_null() || recording_id.is_empty()) {
@@ -644,11 +645,9 @@ fn rr_log_impl(
     let num_data_cells = num_data_cells as usize;
     re_log::debug!("rerun_log {entity_path:?}, num_data_cells: {num_data_cells}");
 
-    let mut cells = re_log_types::DataCellVec::default();
-    cells.reserve(num_data_cells);
-
     let data_cells = unsafe { std::slice::from_raw_parts_mut(data_cells, num_data_cells) };
 
+    let mut components = BTreeMap::default();
     {
         let component_type_registry = COMPONENT_TYPES.read();
 
@@ -685,31 +684,17 @@ fn rr_log_impl(
                         )
                     })?;
 
-            cells.push(
-                DataCell::try_from_arrow(component_type.name, values).map_err(|err| {
-                    CError::new(
-                        CErrorCode::ArrowDataCellError,
-                        &format!("Failed to create arrow datacell: {err}"),
-                    )
-                })?,
-            );
+            components.insert(component_type.name, values);
         }
     }
 
-    let data_row = DataRow::from_cells(
+    let row = PendingRow {
         row_id,
-        TimePoint::default(), // we use the one in the recording stream for now
-        entity_path,
-        cells,
-    )
-    .map_err(|err| {
-        CError::new(
-            CErrorCode::ArrowDataCellError,
-            &format!("Failed to create DataRow from CDataRow: {err}"),
-        )
-    })?;
+        timepoint: TimePoint::default(), // we use the one in the recording stream for now
+        components,
+    };
 
-    stream.record_row(data_row, inject_time);
+    stream.record_row(entity_path, row, inject_time);
 
     Ok(())
 }

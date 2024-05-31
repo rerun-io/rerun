@@ -103,13 +103,13 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.ActiveTab".into(),
-            "rerun.blueprint.components.ColumnShare".into(),
-            "rerun.blueprint.components.GridColumns".into(),
-            "rerun.blueprint.components.IncludedContent".into(),
-            "rerun.blueprint.components.RowShare".into(),
-            "rerun.blueprint.components.Visible".into(),
             "rerun.components.Name".into(),
+            "rerun.blueprint.components.IncludedContent".into(),
+            "rerun.blueprint.components.ColumnShare".into(),
+            "rerun.blueprint.components.RowShare".into(),
+            "rerun.blueprint.components.ActiveTab".into(),
+            "rerun.blueprint.components.Visible".into(),
+            "rerun.blueprint.components.GridColumns".into(),
         ]
     });
 
@@ -118,13 +118,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
         [
             "rerun.blueprint.components.ContainerKind".into(),
             "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
-            "rerun.blueprint.components.ActiveTab".into(),
-            "rerun.blueprint.components.ColumnShare".into(),
-            "rerun.blueprint.components.GridColumns".into(),
-            "rerun.blueprint.components.IncludedContent".into(),
-            "rerun.blueprint.components.RowShare".into(),
-            "rerun.blueprint.components.Visible".into(),
             "rerun.components.Name".into(),
+            "rerun.blueprint.components.IncludedContent".into(),
+            "rerun.blueprint.components.ColumnShare".into(),
+            "rerun.blueprint.components.RowShare".into(),
+            "rerun.blueprint.components.ActiveTab".into(),
+            "rerun.blueprint.components.Visible".into(),
+            "rerun.blueprint.components.GridColumns".into(),
         ]
     });
 

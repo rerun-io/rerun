@@ -406,7 +406,7 @@ def main() -> None:
         "--video",
         type=str,
         default="horses",
-        choices=["horses, driving", "boats"],
+        choices=["horses", "driving", "boats"],
         help="The example video to run on.",
     )
     parser.add_argument("--dataset-dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")

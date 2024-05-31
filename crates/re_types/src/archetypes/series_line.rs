@@ -113,8 +113,8 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
-            "rerun.components.Name".into(),
             "rerun.components.StrokeWidth".into(),
+            "rerun.components.Name".into(),
         ]
     });
 
@@ -123,8 +123,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         [
             "rerun.components.SeriesLineIndicator".into(),
             "rerun.components.Color".into(),
-            "rerun.components.Name".into(),
             "rerun.components.StrokeWidth".into(),
+            "rerun.components.Name".into(),
         ]
     });
 
