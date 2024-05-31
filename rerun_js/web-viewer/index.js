@@ -288,6 +288,42 @@ export class WebViewer {
     this.#handle.toggle_panel_overrides();
   }
 
+  /**
+   * Toggle fullscreen mode.
+   *
+   * This does nothing if `allow_fullscreen` was not set to `true` when starting the viewer.
+   *
+   * Fullscreen mode works by updating the underlying `<canvas>` element's `style`:
+   * - `position` to `fixed`
+   * - width/height/top/left to cover the entire viewport
+   *
+   * When fullscreen mode is toggled off, the style is restored to its previous values.
+   *
+   * When fullscreen mode is toggled on, any other instance of the viewer on the page
+   * which is already in fullscreen mode is toggled off. This means that it doesn't
+   * have to be tracked manually.
+   *
+   * This functionality can also be directly accessed in the viewer:
+   * - The maximize/minimize top panel button
+   * - The `Toggle fullscreen` UI command (accessible via the command palette, CTRL+P)
+   */
+  toggle_fullscreen() {
+    if (!this.#allow_fullscreen) return;
+
+    if (!this.#handle || !this.#canvas) {
+      throw new Error(
+        `attempted to toggle fullscreen mode in a stopped web viewer`,
+      );
+    }
+
+    const state = this.#fullscreen_state;
+    if (state.on) {
+      this.#minimize(this.#canvas, state);
+    } else {
+      this.#maximize(this.#canvas);
+    }
+  }
+
   #minimize = (
     /** @type {HTMLCanvasElement} */ canvas,
     /** @type {FullscreenOn} */ { saved_style, saved_rect },
@@ -365,23 +401,6 @@ export class WebViewer {
 
     _minimize_current_fullscreen_viewer = () => this.toggle_fullscreen();
   };
-
-  toggle_fullscreen() {
-    if (!this.#handle || !this.#canvas) {
-      throw new Error(
-        `attempted to toggle fullscreen mode in a stopped web viewer`,
-      );
-    }
-
-    if (!this.#allow_fullscreen) return;
-
-    const state = this.#fullscreen_state;
-    if (state.on) {
-      this.#minimize(this.#canvas, state);
-    } else {
-      this.#maximize(this.#canvas);
-    }
-  }
 }
 
 export class LogChannel {
