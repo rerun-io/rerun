@@ -296,8 +296,8 @@ fn component_value_or_fallback(
                 // This can currently also happen when there's no data at all.
                 None
             } else {
-                // This should be possible right now and is an error.
-                //ui.label("Loading data...");
+                // In the future, we might want to show a loading indicator here,
+                // but right now this is always an error.
                 return Err(format!("Promise for {component_name} is still pending."));
             }
         }
