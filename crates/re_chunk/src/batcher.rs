@@ -275,6 +275,19 @@ fn chunk_batcher_config() {
 /// Implements an asynchronous batcher that coalesces [`PendingRow`]s into [`Chunk`]s based upon
 /// the thresholds defined in the associated [`ChunkBatcherConfig`].
 ///
+/// ## Batching vs. splitting
+///
+/// The batching process is triggered solely by time and space thresholds -- whichever is hit first.
+/// This process will result in one big dataframe.
+///
+/// The splitting process will then run on top of that big dataframe, and split it further down
+/// into smaller [`Chunk`]s.
+/// Specifically, the dataframe will be splits into enough [`Chunk`]s so as to guarantee that:
+/// * no chunk contains data for more than one entity path
+/// * no chunk contains rows with different sets of timelines
+/// * no chunk uses more than one datatype for a given component
+/// * no chunk contains more rows than a pre-configured threshold if one or more timelines are unsorted
+///
 /// ## Multithreading and ordering
 ///
 /// [`ChunkBatcher`] can be cheaply clone and used freely across any number of threads.
