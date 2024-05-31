@@ -23,6 +23,6 @@ table ScalarAxis (
     /// If unset, the range well be automatically determined based on the queried data.
     range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 2100);
 
-    /// Whether to lock the range of the axis during zoom.
+    /// If enabled, the Y axis range will remain locked to the specified range when zooming.
     zoom_lock: rerun.blueprint.components.LockRangeDuringZoom ("attr.rerun.component_optional", nullable, order: 2200);
 }

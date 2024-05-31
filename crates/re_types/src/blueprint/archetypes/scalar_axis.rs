@@ -30,7 +30,7 @@ pub struct ScalarAxis {
     /// If unset, the range well be automatically determined based on the queried data.
     pub range: Option<crate::components::Range1D>,
 
-    /// Whether to lock the range of the axis during zoom.
+    /// If enabled, the Y axis range will remain locked to the specified range when zooming.
     pub zoom_lock: Option<crate::blueprint::components::LockRangeDuringZoom>,
 }
 
@@ -80,7 +80,7 @@ static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Zoom lock",
-            documentation: "Whether to lock the range of the axis during zoom.",
+            documentation: "If enabled, the Y axis range will remain locked to the specified range when zooming.",
             component_name: "rerun.blueprint.components.LockRangeDuringZoom".into(),
         },
     ]
@@ -210,7 +210,7 @@ impl ScalarAxis {
         self
     }
 
-    /// Whether to lock the range of the axis during zoom.
+    /// If enabled, the Y axis range will remain locked to the specified range when zooming.
     #[inline]
     pub fn with_zoom_lock(
         mut self,

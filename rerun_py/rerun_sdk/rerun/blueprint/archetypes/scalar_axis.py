@@ -32,7 +32,7 @@ class ScalarAxis(Archetype):
 
             If unset, the range well be automatically determined based on the queried data.
         zoom_lock:
-            Whether to lock the range of the axis during zoom.
+            If enabled, the Y axis range will remain locked to the specified range when zooming.
 
         """
 
@@ -72,7 +72,7 @@ class ScalarAxis(Archetype):
         default=None,
         converter=blueprint_components.LockRangeDuringZoomBatch._optional,  # type: ignore[misc]
     )
-    # Whether to lock the range of the axis during zoom.
+    # If enabled, the Y axis range will remain locked to the specified range when zooming.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
