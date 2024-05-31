@@ -52,7 +52,7 @@ fn edit_scatter_ui(
         .show_ui(ui, |ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             ui.selectable_value(&mut value.0, false, "Line")
-                .union(ui.selectable_value(&mut value.0, true, "Scattered"))
+                | ui.selectable_value(&mut value.0, true, "Scattered")
         });
 
     outer_response.inner.unwrap_or(outer_response.response)

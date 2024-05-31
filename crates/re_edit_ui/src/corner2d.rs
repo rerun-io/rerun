@@ -13,22 +13,19 @@ pub fn edit_corner2d(
                 value,
                 egui_plot::Corner::LeftTop.into(),
                 format!("{}", Corner2D::from(egui_plot::Corner::LeftTop)),
-            )
-            .union(ui.selectable_value(
+            ) | ui.selectable_value(
                 value,
                 egui_plot::Corner::RightTop.into(),
                 format!("{}", Corner2D::from(egui_plot::Corner::RightTop)),
-            ))
-            .union(ui.selectable_value(
+            ) | ui.selectable_value(
                 value,
                 egui_plot::Corner::LeftBottom.into(),
                 format!("{}", Corner2D::from(egui_plot::Corner::LeftBottom)),
-            ))
-            .union(ui.selectable_value(
+            ) | ui.selectable_value(
                 value,
                 egui_plot::Corner::RightBottom.into(),
                 format!("{}", Corner2D::from(egui_plot::Corner::RightBottom)),
-            ))
+            )
         });
 
     outer_response.inner.unwrap_or(outer_response.response)
