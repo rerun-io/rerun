@@ -34,7 +34,7 @@ The data section always shows static, raw user logged data for the currently sel
 Some objects, e.g. Space Views, may not have a data section and expose only Blueprint options.
 
 In contrast, the Blueprint section is timeline independent and exposes the
-[Blueprint settings](blueprint.md) of an Entity in the context of a given Space View.
+[Blueprint settings](blueprint.md) of an entity in the context of a given Space View.
 To learn more about the various settings check the on-hover tooltips.
 
 Click-through selections

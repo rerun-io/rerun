@@ -173,7 +173,7 @@ fn query_range_ui(
                     .on_hover_text(if is_space_view {
                         "Default query range settings for this kind of space view"
                     } else {
-                        "Query range settings inherited from parent Entity or enclosing \
+                        "Query range settings inherited from parent entity or enclosing \
                         space view"
                     });
                 re_ui
@@ -269,7 +269,7 @@ fn query_range_ui(
     let markdown = format!("# Visible time range\n
 This feature controls the time range used to display data in the space view.
 
-The settings are inherited from the parent Entity or enclosing space view if not overridden.
+The settings are inherited from the parent entity or enclosing space view if not overridden.
 
 Visible time range properties are stored separately for each _type_ of timelines. They may differ depending on \
 whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.
