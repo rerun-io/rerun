@@ -11,7 +11,7 @@ mod visible;
 // ----
 
 use egui::NumExt as _;
-use re_types::components::{Color, MarkerSize, Name, Radius, ScalarScattering, StrokeWidth, Text};
+use re_types::components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text};
 use re_viewer_context::ViewerContext;
 
 // ----
@@ -41,23 +41,6 @@ fn edit_name_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Name) -
     let response = egui::TextEdit::singleline(&mut edit_name).show(ui).response;
     *value = edit_name.into();
     response
-}
-
-fn edit_scatter_ui(
-    _ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    value: &mut ScalarScattering,
-) -> egui::Response {
-    let scattered_text = if value.0 { "Scattered" } else { "Line" };
-
-    let outer_response = egui::ComboBox::from_id_source("scatter")
-        .selected_text(scattered_text)
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut value.0, false, "Line")
-                | ui.selectable_value(&mut value.0, true, "Scattered")
-        });
-
-    outer_response.inner.unwrap_or(outer_response.response)
 }
 
 fn edit_radius_ui(
@@ -113,7 +96,6 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(edit_marker_size_ui);
     registry.add_editor(edit_name_ui);
     registry.add_editor(edit_radius_ui);
-    registry.add_editor(edit_scatter_ui);
     registry.add_editor(edit_stroke_width_ui);
     registry.add_editor(edit_text_ui);
     registry.add_editor(visible::edit_visible);
