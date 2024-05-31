@@ -63,7 +63,9 @@ impl TransportChunk {
     /// The marker used to identify whether a chunk is sorted in chunk-level [`ArrowSchema`] metadata.
     ///
     /// The associated value is irrelevant -- if this marker is present, then it is true.
-    pub const CHUNK_METADATA_MARKER_IS_SORTED: &'static str = "rerun.is_sorted";
+    ///
+    /// Chunks are ascendingly sorted by their `RowId` column.
+    pub const CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID: &'static str = "rerun.is_sorted";
 
     /// The key used to identify the kind of a Rerun column in field-level [`ArrowSchema`] metadata.
     ///
@@ -82,7 +84,12 @@ impl TransportChunk {
     /// The marker used to identify whether a column is sorted in field-level [`ArrowSchema`] metadata.
     ///
     /// The associated value is irrelevant -- if this marker is present, then it is true.
-    pub const FIELD_METADATA_MARKER_IS_SORTED: &'static str = Self::CHUNK_METADATA_MARKER_IS_SORTED;
+    ///
+    /// Chunks are ascendingly sorted by their `RowId` column but, depending on whether the data
+    /// was logged out of order or not for a given time column, that column might follow the global
+    /// `RowId` while still being unsorted relative to its own time order.
+    pub const FIELD_METADATA_MARKER_IS_SORTED_BY_TIME: &'static str =
+        Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID;
 
     /// Returns the appropriate chunk-level [`ArrowSchema`] metadata for a Rerun [`ChunkId`].
     #[inline]
@@ -113,7 +120,7 @@ impl TransportChunk {
     pub fn chunk_metadata_is_sorted() -> ArrowMetadata {
         [
             (
-                Self::CHUNK_METADATA_MARKER_IS_SORTED.to_owned(),
+                Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID.to_owned(),
                 String::new(),
             ), //
         ]
@@ -161,7 +168,7 @@ impl TransportChunk {
     pub fn field_metadata_is_sorted() -> ArrowMetadata {
         [
             (
-                Self::FIELD_METADATA_MARKER_IS_SORTED.to_owned(),
+                Self::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME.to_owned(),
                 String::new(),
             ), //
         ]
@@ -213,7 +220,7 @@ impl TransportChunk {
     pub fn is_sorted(&self) -> bool {
         self.schema
             .metadata
-            .get(Self::CHUNK_METADATA_MARKER_IS_SORTED)
+            .get(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
             .is_some()
     }
 
@@ -480,7 +487,7 @@ impl Chunk {
 
                 let is_sorted = field
                     .metadata
-                    .get(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED)
+                    .get(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME)
                     .is_some();
 
                 let time_chunk = ChunkTimeline::new(
