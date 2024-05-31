@@ -61,6 +61,13 @@ impl std::ops::Deref for SpaceViewOrigin {
     }
 }
 
+impl std::ops::DerefMut for SpaceViewOrigin {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(SpaceViewOrigin);
 
 impl ::re_types_core::Loggable for SpaceViewOrigin {

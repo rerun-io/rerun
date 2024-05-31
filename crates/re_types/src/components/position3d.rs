@@ -61,6 +61,13 @@ impl std::ops::Deref for Position3D {
     }
 }
 
+impl std::ops::DerefMut for Position3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Position3D);
 
 impl ::re_types_core::Loggable for Position3D {

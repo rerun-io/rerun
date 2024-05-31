@@ -63,6 +63,13 @@ impl std::ops::Deref for HalfSizes2D {
     }
 }
 
+impl std::ops::DerefMut for HalfSizes2D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(HalfSizes2D);
 
 impl ::re_types_core::Loggable for HalfSizes2D {

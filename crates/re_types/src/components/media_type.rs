@@ -64,6 +64,13 @@ impl std::ops::Deref for MediaType {
     }
 }
 
+impl std::ops::DerefMut for MediaType {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(MediaType);
 
 impl ::re_types_core::Loggable for MediaType {

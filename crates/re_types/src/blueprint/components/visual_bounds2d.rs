@@ -64,6 +64,13 @@ impl std::ops::Deref for VisualBounds2D {
     }
 }
 
+impl std::ops::DerefMut for VisualBounds2D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Range2D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(VisualBounds2D);
 
 impl ::re_types_core::Loggable for VisualBounds2D {

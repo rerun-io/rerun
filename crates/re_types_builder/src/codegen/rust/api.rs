@@ -1526,6 +1526,8 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     let quoted_obj_name = format_ident!("{}", obj.name);
     let quoted_obj_field_name = format_ident!("{}", obj_field.name);
 
+    let quoted_type = quote_field_type_from_object_field(obj_field);
+
     if obj_field.typ.fqname().is_some() {
         if let Some(inner) = obj_field.typ.vector_inner() {
             if obj_field.is_nullable {
@@ -1558,18 +1560,16 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 }
             }
         } else {
-            let quoted_type = quote_field_type_from_object_field(obj_field);
-
             let quoted_binding = if obj_is_tuple_struct {
                 quote!(Self(v.into()))
             } else {
                 quote!(Self { #quoted_obj_field_name: v.into() })
             };
 
-            let quoted_borrow_deref_impl = if obj_is_tuple_struct {
-                quote!(&self.0)
+            let self_field_access = if obj_is_tuple_struct {
+                quote!(self.0)
             } else {
-                quote!( &self.#quoted_obj_field_name )
+                quote!(self.#quoted_obj_field_name )
             };
 
             quote! {
@@ -1582,7 +1582,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 impl std::borrow::Borrow<#quoted_type> for #quoted_obj_name {
                     #[inline]
                     fn borrow(&self) -> &#quoted_type {
-                        #quoted_borrow_deref_impl
+                        &#self_field_access
                     }
                 }
 
@@ -1591,15 +1591,19 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
 
                     #[inline]
                     fn deref(&self) -> &#quoted_type {
-                        #quoted_borrow_deref_impl
+                        &#self_field_access
+                    }
+                }
+
+                impl std::ops::DerefMut for #quoted_obj_name {
+                    #[inline]
+                    fn deref_mut(&mut self) -> &mut #quoted_type {
+                        &mut #self_field_access
                     }
                 }
             }
         }
     } else {
-        let quoted_type = quote_field_type_from_object_field(obj_field);
-        let quoted_obj_field_name = format_ident!("{}", obj_field.name);
-
         let (quoted_binding, quoted_read) = if obj_is_tuple_struct {
             (quote!(Self(#quoted_obj_field_name)), quote!(value.0))
         } else {

@@ -65,6 +65,13 @@ impl std::ops::Deref for OutOfTreeTransform3D {
     }
 }
 
+impl std::ops::DerefMut for OutOfTreeTransform3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Transform3D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(OutOfTreeTransform3D);
 
 impl ::re_types_core::Loggable for OutOfTreeTransform3D {
