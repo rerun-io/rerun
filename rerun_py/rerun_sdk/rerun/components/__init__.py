@@ -47,13 +47,6 @@ from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
-from .scalar_scattering import (
-    ScalarScattering,
-    ScalarScatteringArrayLike,
-    ScalarScatteringBatch,
-    ScalarScatteringLike,
-    ScalarScatteringType,
-)
 from .stroke_width import StrokeWidth, StrokeWidthArrayLike, StrokeWidthBatch, StrokeWidthLike, StrokeWidthType
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
 from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
@@ -183,11 +176,6 @@ __all__ = [
     "ScalarArrayLike",
     "ScalarBatch",
     "ScalarLike",
-    "ScalarScattering",
-    "ScalarScatteringArrayLike",
-    "ScalarScatteringBatch",
-    "ScalarScatteringLike",
-    "ScalarScatteringType",
     "ScalarType",
     "StrokeWidth",
     "StrokeWidthArrayLike",
