@@ -201,10 +201,6 @@ pub fn list_default_components(
         ),
         (<Scalar as Loggable>::name(), Scalar::default().to_arrow()?),
         (
-            <ScalarScattering as Loggable>::name(),
-            ScalarScattering::default().to_arrow()?,
-        ),
-        (
             <StrokeWidth as Loggable>::name(),
             StrokeWidth::default().to_arrow()?,
         ),

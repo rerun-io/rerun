@@ -25,7 +25,6 @@ include "./components/range1d.fbs";
 include "./components/resolution.fbs";
 include "./components/rotation3d.fbs";
 include "./components/scalar.fbs";
-include "./components/scalar_scattering.fbs";
 include "./components/stroke_width.fbs";
 include "./components/tensor_data.fbs";
 include "./components/texcoord2d.fbs";
