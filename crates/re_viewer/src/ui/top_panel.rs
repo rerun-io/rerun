@@ -242,8 +242,8 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
     #[cfg(target_arch = "wasm32")]
-    {
-        let mut is_fullscreen = app.is_fullscreen();
+    if app.is_fullscreen_allowed() {
+        let mut is_fullscreen = app.is_fullscreen_mode();
         let icon = if is_fullscreen {
             &re_ui::icons::MINIMIZE
         } else {

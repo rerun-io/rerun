@@ -1353,8 +1353,21 @@ impl App {
         }
     }
 
-    #[allow(dead_code)] // only used in web
-    pub(crate) fn is_fullscreen(&self) -> bool {
+    #[allow(dead_code, clippy::unused_self)] // only used on web
+    pub(crate) fn is_fullscreen_allowed(&self) -> bool {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            true
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.startup_options.fullscreen_options.is_some()
+        }
+    }
+
+    #[allow(dead_code)] // only used on web
+    pub(crate) fn is_fullscreen_mode(&self) -> bool {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let egui_ctx = &self.re_ui.egui_ctx;
