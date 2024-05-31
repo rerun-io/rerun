@@ -15,6 +15,7 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 pub fn override_ui(
     ctx: &ViewerContext<'_>,
     space_view: &SpaceViewBlueprint,
+    view_state: &dyn re_viewer_context::SpaceViewState,
     instance_path: &InstancePath,
     ui: &mut egui::Ui,
 ) {
@@ -80,6 +81,7 @@ pub fn override_ui(
         &component_to_vis,
         &active_overrides,
         &data_result,
+        view_state,
     );
 
     let Some(overrides) = data_result.property_overrides else {
@@ -137,6 +139,7 @@ pub fn override_ui(
                             target_entity_path: entity_path_overridden,
                             archetype_name: None,
                             query: &query,
+                            view_state,
                         },
                         ui,
                         UiLayout::List,
@@ -184,6 +187,7 @@ pub fn add_new_override(
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
     active_overrides: &BTreeSet<ComponentName>,
     data_result: &DataResult,
+    view_state: &dyn re_viewer_context::SpaceViewState,
 ) {
     let remaining_components = component_to_vis
         .keys()
@@ -204,6 +208,7 @@ pub fn add_new_override(
                     target_entity_path: &data_result.entity_path,
                     archetype_name: None,
                     query,
+                    view_state,
                 };
 
                 // Present the option to add new components for each component that doesn't

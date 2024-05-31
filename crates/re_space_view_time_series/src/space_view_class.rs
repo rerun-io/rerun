@@ -187,7 +187,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                      (and readability) in such situations as it prevents overdraw.",
                 );
 
-            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self);
+            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
             axis_ui(ctx, space_view_id, ui, state);
         });
 

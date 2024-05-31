@@ -162,24 +162,34 @@ impl SelectionPanel {
                 }
 
                 // Special override section for space-view-entities
-                if let Item::DataResult(space_view_id, instance_path) = item {
-                    if let Some(space_view) = blueprint.space_views.get(space_view_id) {
+                if let Item::DataResult(view_id, instance_path) = item {
+                    if let Some(view) = blueprint.space_views.get(view_id) {
                         // TODO(jleibs): Overrides still require special handling inside the visualizers.
                         // For now, only show the override section for TimeSeries until support is implemented
                         // generically.
-                        if *space_view.class_identifier() == TimeSeriesSpaceView::identifier()
+                        if *view.class_identifier() == TimeSeriesSpaceView::identifier()
                             || ctx.app_options.experimental_visualizer_selection
                         {
                             ctx.re_ui
                                 .large_collapsing_header(ui, "Visualizers", true, |ui| {
-                                    override_visualizer_ui(ctx, space_view, instance_path, ui);
+                                    override_visualizer_ui(ctx, view, instance_path, ui);
                                 });
+
+                            let view_state = view_states
+                                .view_state_mut(
+                                    ctx.space_view_class_registry,
+                                    *view_id,
+                                    view.class_identifier(),
+                                )
+                                .view_state
+                                .as_ref();
+
                             ctx.re_ui.large_collapsing_header(
                                 ui,
                                 "Component Overrides",
                                 true,
                                 |ui| {
-                                    override_ui(ctx, space_view, instance_path, ui);
+                                    override_ui(ctx, view, view_state, instance_path, ui);
                                 },
                             );
                         }

@@ -12,6 +12,7 @@ pub fn view_property_ui<A: Archetype>(
     ui: &mut egui::Ui,
     space_view_id: SpaceViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
+    view_state: &dyn re_viewer_context::SpaceViewState,
 ) {
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
@@ -22,6 +23,7 @@ pub fn view_property_ui<A: Archetype>(
         target_entity_path: &blueprint_path,
         archetype_name: Some(A::name()),
         query: blueprint_query,
+        view_state,
     };
 
     let component_names = A::all_components();
