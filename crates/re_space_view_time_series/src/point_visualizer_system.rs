@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };
@@ -23,7 +23,6 @@ use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 /// The system for rendering [`SeriesPoint`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesPointSystem {
-    pub annotation_map: AnnotationMap,
     pub all_series: Vec<PlotSeries>,
 }
 
@@ -56,14 +55,6 @@ impl VisualizerSystem for SeriesPointSystem {
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
-
-        self.annotation_map.load(
-            ctx,
-            &query.latest_at_query(),
-            query
-                .iter_visible_data_results(ctx, Self::identifier())
-                .map(|data| &data.entity_path),
-        );
 
         match self.load_scalars(ctx, query) {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
@@ -109,8 +100,6 @@ impl SeriesPointSystem {
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
-            let annotations = self.annotation_map.find(&data_result.entity_path);
-
             let query_ctx = QueryContext {
                 viewer_ctx: ctx,
                 archetype_name: Some(SeriesPoint::name()),
@@ -165,7 +154,7 @@ impl SeriesPointSystem {
 
                 let results = range_with_overrides(
                     ctx,
-                    &annotations,
+                    None,
                     &query,
                     data_result,
                     [

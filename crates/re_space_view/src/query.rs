@@ -19,7 +19,7 @@ pub struct HybridResults {
 /// This is a cached API -- data will be lazily cached upon access.
 pub fn range_with_overrides(
     ctx: &ViewerContext<'_>,
-    _annotations: &re_viewer_context::Annotations,
+    _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,

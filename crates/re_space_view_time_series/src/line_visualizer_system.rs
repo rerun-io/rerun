@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };
@@ -22,7 +22,6 @@ use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 /// The system for rendering [`SeriesLine`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesLineSystem {
-    pub annotation_map: AnnotationMap,
     pub all_series: Vec<PlotSeries>,
 }
 
@@ -53,14 +52,6 @@ impl VisualizerSystem for SeriesLineSystem {
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
-
-        self.annotation_map.load(
-            ctx,
-            &query.latest_at_query(),
-            query
-                .iter_visible_data_results(ctx, Self::identifier())
-                .map(|data| &data.entity_path),
-        );
 
         match self.load_scalars(ctx, query) {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
@@ -111,14 +102,12 @@ impl SeriesLineSystem {
                 .collect_vec()
                 .par_iter()
                 .map(|data_result| -> Result<Vec<PlotSeries>, QueryError> {
-                    let annotations = self.annotation_map.find(&data_result.entity_path);
                     let mut series = vec![];
                     self.load_series(
                         ctx,
                         query,
                         plot_bounds,
                         time_per_pixel,
-                        &annotations,
                         data_result,
                         &mut series,
                     )?;
@@ -131,14 +120,11 @@ impl SeriesLineSystem {
         } else {
             let mut series = vec![];
             for data_result in data_results {
-                let annotations = self.annotation_map.find(&data_result.entity_path);
-
                 self.load_series(
                     ctx,
                     query,
                     plot_bounds,
                     time_per_pixel,
-                    &annotations,
                     data_result,
                     &mut series,
                 )?;
@@ -156,7 +142,6 @@ impl SeriesLineSystem {
         view_query: &ViewQuery<'_>,
         plot_bounds: Option<egui_plot::PlotBounds>,
         time_per_pixel: f64,
-        annotations: &re_viewer_context::Annotations,
         data_result: &re_viewer_context::DataResult,
         all_series: &mut Vec<PlotSeries>,
     ) -> Result<(), QueryError> {
@@ -213,7 +198,7 @@ impl SeriesLineSystem {
 
             let results = range_with_overrides(
                 ctx,
-                annotations,
+                None,
                 &query,
                 data_result,
                 [
