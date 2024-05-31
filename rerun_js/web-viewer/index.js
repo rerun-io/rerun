@@ -12,6 +12,13 @@ async function load() {
   return WebHandle;
 }
 
+/**
+ * Used to prevent multiple viewers from being fullscreen at the same time.
+ *
+ * @type {(() => void) | null}
+ */
+let _minimize_current_fullscreen_viewer = null;
+
 /** @returns {string} */
 function randomId() {
   const bytes = new Uint8Array(16);
@@ -23,18 +30,42 @@ function randomId() {
 
 /**
  * @typedef {"top" | "blueprint" | "selection" | "time"} Panel
+ *
  * @typedef {"hidden" | "collapsed" | "expanded"} PanelState
+ *
  * @typedef {"webgpu" | "webgl"} Backend
- */
-
-/**
+ *
+ * @typedef {{
+ *   width: string; height: string;
+ *   top: string; left: string;
+ *   bottom: string; right: string;
+ * }} CanvasRect
+ *
+ * @typedef {{
+ *   canvas: CanvasRect & { position: string; transition: string; };
+ *   document: { overflow: string };
+ * }} CanvasStyle
+ *
+ * @typedef {{ on: false; saved_style: null; saved_rect: null }} FullscreenOff
+ *
+ * @typedef {{ on: true; saved_style: CanvasStyle; saved_rect: DOMRect }} FullscreenOn
+ *
+ * @typedef {(FullscreenOff | FullscreenOn)} FullscreenState
+ *
  * @typedef WebViewerOptions
  * @property {string} [manifest_url] Use a different example manifest.
  * @property {Backend} [render_backend] Force the viewer to use a specific rendering backend.
  * @property {boolean} [hide_welcome_screen] Whether to hide the welcome screen in favor of a simpler one.
+ * @property {boolean} [allow_fullscreen] Whether to allow the viewer to enter fullscreen mode.
+ *
+ * @typedef FullscreenOptions
+ * @property {() => boolean} get_state
+ * @property {() => void} on_toggle
  */
 
 export class WebViewer {
+  #id = randomId();
+
   /** @type {(import("./re_viewer.js").WebHandle) | null} */
   #handle = null;
 
@@ -45,19 +76,35 @@ export class WebViewer {
   #state = "stopped";
 
   /**
+   * @type {FullscreenState}
+   */
+  #fullscreen_state = {
+    on: false,
+    saved_style: null,
+    saved_rect: null,
+  };
+
+  #allow_fullscreen = false;
+
+  /**
    * Start the viewer.
    *
-   * @param {string | string[]} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
-   * @param {HTMLElement} [parent] The element to attach the canvas onto.
-   * @param {WebViewerOptions} [options] Whether to hide the welcome screen.
+   * @param {string | string[] | null} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param {HTMLElement | null} [parent] The element to attach the canvas onto.
+   * @param {WebViewerOptions | null} [options] Whether to hide the welcome screen.
    * @returns {Promise<void>}
    */
-  async start(rrd, parent = document.body, options = {}) {
+  async start(rrd, parent, options) {
+    parent ??= document.body;
+    options ??= {};
+
+    this.#allow_fullscreen = options.allow_fullscreen || false;
+
     if (this.#state !== "stopped") return;
     this.#state = "starting";
 
     this.#canvas = document.createElement("canvas");
-    this.#canvas.id = randomId();
+    this.#canvas.id = this.#id;
     parent.append(this.#canvas);
 
     /**
@@ -65,16 +112,25 @@ export class WebViewer {
      * @property {string} [url]
      * @property {string} [manifest_url]
      * @property {Backend} [render_backend]
-     * @property {Partial<{[K in Panel]: PanelState}>} [panel_state_overrides]
      * @property {boolean} [hide_welcome_screen]
+     * @property {Partial<{[K in Panel]: PanelState}>} [panel_state_overrides]
+     * @property {FullscreenOptions} [fullscreen]
+     *
+     * @typedef {(import("./re_viewer.js").WebHandle)} _WebHandle
+     * @typedef {{ new(app_options?: AppOptions): _WebHandle }} WebHandleConstructor
      */
-    /** @typedef {(import("./re_viewer.js").WebHandle)} _WebHandle */
-    /** @typedef {{ new(app_options?: AppOptions): _WebHandle }} WebHandleConstructor */
 
     let WebHandle_class = /** @type {WebHandleConstructor} */ (await load());
     if (this.#state !== "starting") return;
 
-    this.#handle = new WebHandle_class({ ...options });
+    const fullscreen = this.#allow_fullscreen
+      ? {
+          get_state: () => this.#fullscreen_state.on,
+          on_toggle: () => this.toggle_fullscreen(),
+        }
+      : undefined;
+
+    this.#handle = new WebHandle_class({ ...options, fullscreen });
     await this.#handle.start(this.#canvas.id);
     if (this.#state !== "starting") return;
 
@@ -83,7 +139,6 @@ export class WebViewer {
     }
 
     this.#state = "ready";
-
     if (rrd) {
       this.open(rrd);
     }
@@ -152,6 +207,11 @@ export class WebViewer {
    */
   stop() {
     if (this.#state === "stopped") return;
+    if (this.#allow_fullscreen && this.#canvas) {
+      const state = this.#fullscreen_state;
+      if (state.on) this.#minimize(this.#canvas, state);
+    }
+
     this.#state = "stopped";
 
     this.#canvas?.remove();
@@ -160,6 +220,8 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
+    this.#fullscreen_state.on = false;
+    this.#allow_fullscreen = false;
   }
 
   /**
@@ -225,6 +287,120 @@ export class WebViewer {
     }
     this.#handle.toggle_panel_overrides();
   }
+
+  /**
+   * Toggle fullscreen mode.
+   *
+   * This does nothing if `allow_fullscreen` was not set to `true` when starting the viewer.
+   *
+   * Fullscreen mode works by updating the underlying `<canvas>` element's `style`:
+   * - `position` to `fixed`
+   * - width/height/top/left to cover the entire viewport
+   *
+   * When fullscreen mode is toggled off, the style is restored to its previous values.
+   *
+   * When fullscreen mode is toggled on, any other instance of the viewer on the page
+   * which is already in fullscreen mode is toggled off. This means that it doesn't
+   * have to be tracked manually.
+   *
+   * This functionality can also be directly accessed in the viewer:
+   * - The maximize/minimize top panel button
+   * - The `Toggle fullscreen` UI command (accessible via the command palette, CTRL+P)
+   */
+  toggle_fullscreen() {
+    if (!this.#allow_fullscreen) return;
+
+    if (!this.#handle || !this.#canvas) {
+      throw new Error(
+        `attempted to toggle fullscreen mode in a stopped web viewer`,
+      );
+    }
+
+    const state = this.#fullscreen_state;
+    if (state.on) {
+      this.#minimize(this.#canvas, state);
+    } else {
+      this.#maximize(this.#canvas);
+    }
+  }
+
+  #minimize = (
+    /** @type {HTMLCanvasElement} */ canvas,
+    /** @type {FullscreenOn} */ { saved_style, saved_rect },
+  ) => {
+    this.#fullscreen_state = {
+      on: false,
+      saved_style: null,
+      saved_rect: null,
+    };
+
+    if (this.#fullscreen_state.on) return;
+
+    canvas.style.width = saved_rect.width + "px";
+    canvas.style.height = saved_rect.height + "px";
+    canvas.style.top = saved_rect.top + "px";
+    canvas.style.left = saved_rect.left + "px";
+    canvas.style.bottom = saved_rect.bottom + "px";
+    canvas.style.right = saved_rect.right + "px";
+
+    setTimeout(
+      () =>
+        requestAnimationFrame(() => {
+          for (const key in saved_style.canvas) {
+            // @ts-expect-error
+            canvas.style[key] = saved_style.canvas[key];
+          }
+          for (const key in saved_style.document) {
+            // @ts-expect-error
+            document.body.style[key] = saved_style.document[key];
+          }
+        }),
+      100,
+    );
+
+    _minimize_current_fullscreen_viewer = null;
+  };
+
+  #maximize = (/** @type {HTMLCanvasElement} */ canvas) => {
+    _minimize_current_fullscreen_viewer?.();
+
+    const style = canvas.style;
+
+    /** @type {CanvasStyle} */
+    const saved_style = {
+      canvas: {
+        position: style.position,
+        width: style.width,
+        height: style.height,
+        top: style.top,
+        left: style.left,
+        bottom: style.bottom,
+        right: style.right,
+        transition: style.transition,
+      },
+      document: { overflow: document.body.style.overflow },
+    };
+    const saved_rect = canvas.getBoundingClientRect();
+
+    style.width = `100%`;
+    style.height = `100%`;
+    style.top = `0px`;
+    style.left = `0px`;
+    style.bottom = `0px`;
+    style.right = `0px`;
+    style.transition = ["width", "height", "top", "left", "bottom", "right"]
+      .map((p) => `${p} 0.1s linear`)
+      .join(", ");
+    document.body.style.overflow = "hidden";
+
+    this.#fullscreen_state = {
+      on: true,
+      saved_style,
+      saved_rect,
+    };
+
+    _minimize_current_fullscreen_viewer = () => this.toggle_fullscreen();
+  };
 }
 
 export class LogChannel {

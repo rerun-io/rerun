@@ -45,7 +45,6 @@ pub enum UICommand {
     #[cfg(debug_assertions)]
     ToggleEguiDebugPanel,
 
-    #[cfg(not(target_arch = "wasm32"))]
     ToggleFullscreen,
     #[cfg(not(target_arch = "wasm32"))]
     ZoomIn,
@@ -169,6 +168,12 @@ impl UICommand {
             Self::ToggleFullscreen => (
                 "Toggle fullscreen",
                 "Toggle between windowed and fullscreen viewer",
+            ),
+
+            #[cfg(target_arch = "wasm32")]
+            Self::ToggleFullscreen => (
+                "Toggle fullscreen",
+                "Toggle between full viewport dimensions and initial dimensions"
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -300,6 +305,8 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => Some(key(Key::F11)),
+            #[cfg(target_arch = "wasm32")]
+            Self::ToggleFullscreen => None,
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomIn => Some(egui::gui_zoom::kb_shortcuts::ZOOM_IN),
@@ -336,6 +343,9 @@ impl UICommand {
             Self::RestartWithWebGl => None,
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGpu => None,
+
+            #[cfg(target_arch = "wasm32 ")]
+            Self::ViewportMode(_) => None,
         }
     }
 

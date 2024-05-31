@@ -71,6 +71,14 @@ pub struct StartupOptions {
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
 
+    /// Fullscreen is handled by JS on web.
+    ///
+    /// This holds some callbacks which we use to communicate
+    /// about fullscreen state to JS.
+    #[cfg(target_arch = "wasm32")]
+    pub fullscreen_options: Option<crate::web::FullscreenOptions>,
+
+    /// Default overrides for state of top/side/bottom panels.
     pub panel_state_overrides: PanelStateOverrides,
 }
 
@@ -94,6 +102,9 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+
+            #[cfg(target_arch = "wasm32")]
+            fullscreen_options: Default::default(),
 
             panel_state_overrides: Default::default(),
         }
@@ -638,10 +649,8 @@ impl App {
                 self.egui_debug_panel_open ^= true;
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => {
-                let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
-                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+                self.toggle_fullscreen();
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1324,6 +1333,43 @@ impl App {
         } else {
             1.0
         }
+    }
+
+    pub(crate) fn toggle_fullscreen(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let egui_ctx = &self.re_ui.egui_ctx;
+            let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(options) = &self.startup_options.fullscreen_options {
+                // Tell JS to toggle fullscreen.
+                if let Err(err) = options.on_toggle.call() {
+                    re_log::error!("{}", crate::web_tools::string_from_js_value(err));
+                };
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn is_fullscreen_allowed(&self) -> bool {
+        self.startup_options.fullscreen_options.is_some()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn is_fullscreen_mode(&self) -> bool {
+        if let Some(options) = &self.startup_options.fullscreen_options {
+            // Ask JS if fullscreen is on or not.
+            match options.get_state.call() {
+                Ok(v) => return v.is_truthy(),
+                Err(err) => re_log::error_once!("{}", crate::web_tools::string_from_js_value(err)),
+            }
+        }
+
+        false
     }
 }
 
