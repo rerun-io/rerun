@@ -453,6 +453,14 @@ impl ChunkTimeline {
 
         #[allow(clippy::collapsible_if)] // readability
         if cfg!(debug_assertions) {
+            let is_tight_bound = times.iter().any(|&time| time == time_range.min())
+                && times.iter().any(|&time| time == time_range.max());
+            if !is_tight_bound {
+                return Err(ChunkError::Malformed {
+                    reason: "Chunk timeline's cached time range isn't a tight bound.".to_owned(),
+                });
+            }
+
             for &time in times {
                 if time < time_range.min() || time > time_range.max() {
                     return Err(ChunkError::Malformed {
