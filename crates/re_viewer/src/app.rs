@@ -1347,7 +1347,9 @@ impl App {
         {
             if let Some(options) = &self.startup_options.fullscreen_options {
                 // Tell JS to toggle fullscreen.
-                options.on_toggle.call().unwrap();
+                if let Err(err) = options.on_toggle.call() {
+                    re_log::error!("{}", crate::web_tools::string_from_js_value(err));
+                };
             }
         }
     }
@@ -1361,7 +1363,10 @@ impl App {
     pub(crate) fn is_fullscreen_mode(&self) -> bool {
         if let Some(options) = &self.startup_options.fullscreen_options {
             // Ask JS if fullscreen is on or not.
-            return options.get_state.call().unwrap().is_truthy();
+            match options.get_state.call() {
+                Ok(v) => return v.is_truthy(),
+                Err(err) => re_log::error_once!("{}", crate::web_tools::string_from_js_value(err)),
+            }
         }
 
         false
