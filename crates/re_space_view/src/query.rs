@@ -1,10 +1,16 @@
 use re_data_store::RangeQuery;
 use re_types_core::ComponentName;
 
-use re_query::RangeResults;
-use re_viewer_context::{ViewQuery, ViewerContext};
+use re_query::{LatestAtResults, RangeResults};
+use re_viewer_context::{external::nohash_hasher::IntSet, ViewQuery, ViewerContext};
 
 // ---
+
+/// Wrapper that contains the results of a range query with possible overrides.
+pub struct HybridResults {
+    overrides: LatestAtResults,
+    results: RangeResults,
+}
 
 /// Queries for the given `component_names` using range semantics.
 ///
@@ -18,15 +24,57 @@ pub fn range_with_overrides(
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-) -> RangeResults {
+) -> HybridResults {
     re_tracing::profile_function!(data_result.entity_path.to_string());
+
+    let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
+
+    // First see if any components have overrides.
+    let mut overrides = LatestAtResults::default();
+
+    if let Some(prop_overrides) = &data_result.property_overrides {
+        // TODO(jleibs): partitioning overrides by path
+        for component_name in &component_set {
+            if let Some(override_value) = prop_overrides
+                .resolved_component_overrides
+                .get(component_name)
+            {
+                match override_value.store_kind {
+                    re_log_types::StoreKind::Recording => {
+                        todo!("Implement recording query");
+                    }
+                    re_log_types::StoreKind::Blueprint => {
+                        let component_override_result =
+                            ctx.store_context.blueprint.query_caches().latest_at(
+                                ctx.store_context.blueprint.store(),
+                                ctx.blueprint_query,
+                                &override_value.path,
+                                [*component_name],
+                            );
+
+                        // If we successfully find a non-empty override, add it to our results and remove
+                        // it from the component_set that will feed the data query.
+                        if component_override_result.contains_non_empty(*component_name) {
+                            if let Some(value) =
+                                component_override_result.components.get(component_name)
+                            {
+                                overrides.add(*component_name, value.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    component_set.retain(|component| !overrides.components.contains_key(component));
 
     let results = ctx.recording().query_caches().range(
         ctx.recording_store(),
         range_query,
         &data_result.entity_path,
-        component_names,
+        component_set,
     );
 
-    results
+    HybridResults { overrides, results }
 }

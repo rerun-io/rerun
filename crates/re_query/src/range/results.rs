@@ -33,7 +33,7 @@ pub struct RangeResults {
 
 impl RangeResults {
     #[inline]
-    pub(crate) fn new(query: RangeQuery) -> Self {
+    pub fn new(query: RangeQuery) -> Self {
         Self {
             query,
             components: Default::default(),
