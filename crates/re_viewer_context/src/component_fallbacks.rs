@@ -34,7 +34,10 @@ impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackProviderResult {
 /// Result for a fallback request.
 pub enum ComponentFallbackError {
     /// The fallback provider is not able to handle the given component _and_ there was no placeholder value.
-    /// This should never happen, since all components should have a placeholder value.
+    ///
+    /// This should never happen, since all components should have a placeholder value
+    /// registered in [`crate::ViewerContext::component_placeholders`].
+    /// Meaning, that this is an unknown component or something went wrong with the placeholder registration.
     MissingBaseFallback,
 }
 
