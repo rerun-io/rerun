@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
 use re_query::{PromiseResult, QueryError};
+use re_space_view::range_with_overrides;
 use re_types::archetypes;
 use re_types::{
     archetypes::SeriesLine,
@@ -148,7 +149,7 @@ impl SeriesLineSystem {
 
 fn load_series(
     ctx: &ViewerContext<'_>,
-    query: &ViewQuery<'_>,
+    view_query: &ViewQuery<'_>,
     plot_bounds: Option<egui_plot::PlotBounds>,
     time_per_pixel: f64,
     annotations: &re_viewer_context::Annotations,
@@ -185,7 +186,7 @@ fn load_series(
     let mut points;
 
     let time_range = determine_time_range(
-        query.latest_at,
+        view_query.latest_at,
         data_result,
         plot_bounds,
         ctx.app_options.experimental_plot_query_clamping,
@@ -194,12 +195,14 @@ fn load_series(
         re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
         let entity_path = &data_result.entity_path;
-        let query = re_data_store::RangeQuery::new(query.timeline, time_range);
+        let query = re_data_store::RangeQuery::new(view_query.timeline, time_range);
 
-        let results = ctx.recording().query_caches().range(
-            ctx.recording_store(),
+        let results = range_with_overrides(
+            ctx,
+            view_query,
+            annotations,
             &query,
-            entity_path,
+            data_result,
             [Scalar::name(), Color::name(), StrokeWidth::name()],
         );
 
@@ -342,7 +345,7 @@ fn load_series(
         time_per_pixel,
         points,
         ctx.recording_store(),
-        query,
+        view_query,
         series_name,
         all_series,
     );
