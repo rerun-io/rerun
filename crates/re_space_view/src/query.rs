@@ -8,8 +8,8 @@ use re_viewer_context::{external::nohash_hasher::IntSet, ViewQuery, ViewerContex
 
 /// Wrapper that contains the results of a range query with possible overrides.
 pub struct HybridResults {
-    overrides: LatestAtResults,
-    results: RangeResults,
+    pub(crate) overrides: LatestAtResults,
+    pub(crate) results: RangeResults,
 }
 
 /// Queries for the given `component_names` using range semantics.
@@ -52,14 +52,18 @@ pub fn range_with_overrides(
                                 [*component_name],
                             );
 
-                        // If we successfully find a non-empty override, add it to our results and remove
-                        // it from the component_set that will feed the data query.
-                        if component_override_result.contains_non_empty(*component_name) {
-                            if let Some(value) =
-                                component_override_result.components.get(component_name)
-                            {
-                                overrides.add(*component_name, value.clone());
-                            }
+                        // If we successfully find a non-empty override, add it to our results.
+
+                        // TODO(jleibs): it seems like value could still be null/empty if the override
+                        // has been cleared. It seems like something is preventing that from happening
+                        // but I don't fully understand what.
+                        //
+                        // This is extra tricky since the promise hasn't been resolved yet so we can't
+                        // actually look at the data.
+                        if let Some(value) =
+                            component_override_result.components.get(component_name)
+                        {
+                            overrides.add(*component_name, value.clone());
                         }
                     }
                 }
@@ -67,6 +71,7 @@ pub fn range_with_overrides(
         }
     }
 
+    // No need to query for components that have overrides.
     component_set.retain(|component| !overrides.components.contains_key(component));
 
     let results = ctx.recording().query_caches().range(

@@ -2,6 +2,8 @@ use re_log_types::{RowId, TimeInt};
 use re_query::{LatestAtResults, PromiseResolver, PromiseResult, RangeData, RangeResults, Results};
 use re_types_core::Component;
 
+use crate::query::HybridResults;
+
 // ---
 
 /// Extension traits to abstract query result handling for all spatial space views.
@@ -135,5 +137,69 @@ impl RangeResultsExt for LatestAtResults {
         }
 
         Ok(data)
+    }
+}
+
+impl RangeResultsExt for HybridResults {
+    #[inline]
+    fn get_dense<'a, C: Component>(
+        &'a self,
+        resolver: &PromiseResolver,
+    ) -> Option<re_query::Result<RangeData<'a, C>>> {
+        let component_name = C::name();
+
+        if self.overrides.contains(component_name) {
+            let results = self.overrides.get(C::name())?;
+            let data =
+                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+
+            // TODO(#5607): what should happen if the promise is still pending?
+            let (front_status, back_status) = data.status();
+            match front_status {
+                PromiseResult::Error(err) => {
+                    return Some(Err(re_query::QueryError::Other(err.into())))
+                }
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+            match back_status {
+                PromiseResult::Error(err) => {
+                    return Some(Err(re_query::QueryError::Other(err.into())))
+                }
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+
+            Some(Ok(data))
+        } else {
+            self.results.get_dense(resolver)
+        }
+    }
+
+    #[inline]
+    fn get_or_empty_dense<'a, C: Component>(
+        &'a self,
+        resolver: &PromiseResolver,
+    ) -> re_query::Result<RangeData<'a, C>> {
+        let component_name = C::name();
+
+        if self.overrides.contains(component_name) {
+            let results = self.overrides.get_or_empty(C::name());
+            let data =
+                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+
+            // TODO(#5607): what should happen if the promise is still pending?
+            let (front_status, back_status) = data.status();
+            match front_status {
+                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+            match back_status {
+                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+
+            Ok(data)
+        } else {
+            self.results.get_or_empty_dense(resolver)
+        }
     }
 }
