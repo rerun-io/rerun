@@ -7,9 +7,11 @@ mod corner2d;
 mod datatype_editors;
 mod marker_shape;
 mod response_utils;
-mod visible;
 
-use re_types::components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text};
+use re_types::{
+    blueprint::components::Visible,
+    components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text},
+};
 use re_viewer_context::ViewerContext;
 
 // ----
@@ -38,7 +40,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(corner2d::edit_corner2d);
     registry.add_editor(marker_shape::edit_marker_shape_ui);
 
-    registry.add_editor(visible::edit_visible);
+    registry.add_editor::<Visible>(datatype_editors::edit_bool);
 
     registry.add_editor::<Text>(datatype_editors::edit_singleline_string);
     registry.add_editor::<Name>(datatype_editors::edit_singleline_string);

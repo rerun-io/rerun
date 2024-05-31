@@ -1,12 +1,10 @@
-use std::ops::DerefMut;
-
 use egui::NumExt as _;
 
 /// Generic editor for a f32 value from zero to infinity.
 pub fn edit_f32_zero_to_inf(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    value: &mut impl DerefMut<Target = f32>,
+    value: &mut impl std::ops::DerefMut<Target = f32>,
 ) -> egui::Response {
     edit_f32_zero_to_inf_impl(ui, value)
 }
