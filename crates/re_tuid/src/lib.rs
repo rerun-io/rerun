@@ -107,6 +107,14 @@ impl Tuid {
     }
 
     #[inline]
+    pub fn from_u128(id: u128) -> Self {
+        Self {
+            time_ns: (id >> 64) as u64,
+            inc: (id & (!0 >> 64)) as u64,
+        }
+    }
+
+    #[inline]
     pub fn as_u128(&self) -> u128 {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
@@ -225,4 +233,8 @@ fn test_tuid() {
     assert!(is_sorted(&ids));
     assert_eq!(ids.iter().copied().collect::<HashSet::<Tuid>>().len(), num);
     assert_eq!(ids.iter().copied().collect::<BTreeSet::<Tuid>>().len(), num);
+
+    for id in ids {
+        assert_eq!(id, Tuid::from_u128(id.as_u128()));
+    }
 }

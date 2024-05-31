@@ -297,7 +297,7 @@ mod tests {
                 components.clone().into_iter().collect(),
             )?;
 
-            // eprintln!("{chunk_sorted}");
+            eprintln!("{chunk_sorted}");
 
             assert!(chunk_sorted.is_sorted());
             assert!(chunk_sorted.is_sorted_uncached());
@@ -308,7 +308,7 @@ mod tests {
                 chunk_shuffled
             };
 
-            // eprintln!("{chunk_shuffled}");
+            eprintln!("{chunk_shuffled}");
 
             assert!(!chunk_shuffled.is_sorted());
             assert!(!chunk_shuffled.is_sorted_uncached());
@@ -320,7 +320,7 @@ mod tests {
                 chunk_resorted
             };
 
-            // eprintln!("{chunk_resorted}");
+            eprintln!("{chunk_resorted}");
 
             assert!(chunk_resorted.is_sorted());
             assert!(chunk_resorted.is_sorted_uncached());
