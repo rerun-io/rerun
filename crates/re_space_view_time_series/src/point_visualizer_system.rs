@@ -7,11 +7,12 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    AnnotationMap, DefaultColor, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
-use crate::overrides::initial_override_color;
+use crate::overrides::fallback_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
@@ -73,23 +74,24 @@ impl VisualizerSystem for SeriesPointSystem {
         self
     }
 
-    fn initial_override_value(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
-        entity_path: &re_log_types::EntityPath,
-        component: &re_types::ComponentName,
-    ) -> Option<re_log_types::DataCell> {
-        if *component == Color::name() {
-            Some([initial_override_color(entity_path)].into())
-        } else if *component == MarkerSize::name() {
-            Some([MarkerSize(DEFAULT_MARKER_SIZE)].into())
-        } else {
-            None
-        }
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
     }
 }
+
+impl TypedComponentFallbackProvider<Color> for SeriesPointSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        fallback_color(ctx.target_entity_path)
+    }
+}
+
+impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
+        MarkerSize(DEFAULT_MARKER_SIZE)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize]);
 
 impl SeriesPointSystem {
     fn load_scalars(

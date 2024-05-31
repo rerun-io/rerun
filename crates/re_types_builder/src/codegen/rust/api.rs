@@ -313,7 +313,6 @@ fn generate_component_defaults(
         use re_types_core::{external::arrow2, ComponentName, SerializationError};
 
         #docs
-        #[allow(dead_code)] // TODO(#6434): Temporary, working on the user.
         pub fn list_default_components() -> Result<impl Iterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>, SerializationError> {
             use ::re_types_core::{Loggable, LoggableBatch as _};
 

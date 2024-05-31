@@ -83,4 +83,10 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => []);

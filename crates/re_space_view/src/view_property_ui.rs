@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use re_types_core::Archetype;
 use re_ui::list_item;
-use re_viewer_context::{SpaceViewId, ViewerContext};
+use re_viewer_context::{ComponentFallbackProvider, QueryContext, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::entity_path_for_view_property;
 
 /// Display the UI for editing all components of a blueprint archetype.
@@ -9,12 +9,20 @@ use re_viewport_blueprint::entity_path_for_view_property;
 /// Note that this will show default values for components that are null.
 pub fn view_property_ui<A: Archetype>(
     ctx: &ViewerContext<'_>,
-    space_view_id: SpaceViewId,
     ui: &mut egui::Ui,
+    space_view_id: SpaceViewId,
+    fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
     let blueprint_path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
+
+    let query_ctx = QueryContext {
+        viewer_ctx: ctx,
+        target_entity_path: &blueprint_path,
+        archetype_name: Some(A::name()),
+        query: blueprint_query,
+    };
 
     let component_names = A::all_components();
     let component_results = blueprint_db.latest_at(
@@ -53,16 +61,15 @@ pub fn view_property_ui<A: Archetype>(
                         })
                         .value_fn(|_, ui, _| {
                             ctx.component_ui_registry.edit_ui(
-                                ctx,
+                                &query_ctx,
                                 ui,
                                 re_viewer_context::UiLayout::List,
-                                blueprint_query,
                                 blueprint_db,
                                 &blueprint_path,
                                 &blueprint_path,
+                                *component_name,
                                 component_results.get_or_empty(*component_name),
-                                component_name,
-                                &0.into(),
+                                fallback_provider,
                             );
                         }),
                 );

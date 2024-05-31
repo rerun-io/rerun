@@ -1,6 +1,6 @@
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the space view
@@ -29,5 +29,19 @@ impl VisualizerSystem for EmptySystem {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
+}
+
+impl ComponentFallbackProvider for EmptySystem {
+    fn try_provide_fallback(
+        &self,
+        _ctx: &re_viewer_context::QueryContext<'_>,
+        _component: re_types_core::ComponentName,
+    ) -> re_viewer_context::ComponentFallbackProviderResult {
+        re_viewer_context::ComponentFallbackProviderResult::ComponentNotHandled
     }
 }

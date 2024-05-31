@@ -275,6 +275,18 @@ impl ReUi {
             .color(style.visuals.error_fg_color)
     }
 
+    /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
+    pub fn error_label(&self, ui: &mut egui::Ui, error_text: &str) -> egui::Response {
+        let label = egui::Label::new(self.error_text("Error"))
+            .selectable(false)
+            .sense(egui::Sense::click());
+        let response = ui.add(label);
+        if response.clicked() {
+            ui.ctx().copy_text(error_text.to_owned());
+        }
+        response.on_hover_text(error_text)
+    }
+
     /// The color we use to mean "loop this selection"
     pub fn loop_selection_color() -> egui::Color32 {
         egui::Color32::from_rgb(1, 37, 105) // from figma 2023-02-09

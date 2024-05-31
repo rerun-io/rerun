@@ -4,11 +4,11 @@ use itertools::Itertools;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{DataRow, RowId, StoreKind};
+use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataResult, OverridePath, SpaceViewClassExt as _, SystemCommand, SystemCommandSender as _,
-    UiLayout, ViewSystemIdentifier, ViewerContext,
+    DataResult, OverridePath, QueryContext, SpaceViewClassExt as _, SystemCommand,
+    SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -20,7 +20,7 @@ pub fn override_ui(
 ) {
     let InstancePath {
         entity_path,
-        instance,
+        instance: _, // Override ui only works on the first instance of an entity.
     } = instance_path;
 
     // Because of how overrides are implemented the overridden-data must be an entity
@@ -52,7 +52,7 @@ pub fn override_ui(
     let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
 
     // Accumulate the components across all visualizers and track which visualizer
-    // each component came from so we can use it for defaults later.
+    // each component came from so we can use it for fallbacks later.
     //
     // If two visualizers have the same component, the first one wins.
     // TODO(jleibs): We can do something fancier in the future such as presenting both
@@ -86,11 +86,10 @@ pub fn override_ui(
         return;
     };
 
-    let components = overrides
+    let sorted_overrides = overrides
         .resolved_component_overrides
         .into_iter()
-        .sorted_by_key(|(c, _)| *c)
-        .filter(|(c, _)| component_to_vis.contains_key(c));
+        .sorted_by_key(|(c, _)| *c);
 
     re_ui::list_item::list_item_scope(ui, "overrides", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -100,48 +99,53 @@ pub fn override_ui(
                 ref store_kind,
                 path: ref entity_path_overridden,
             },
-        ) in components
+        ) in sorted_overrides
         {
+            let Some(visualizer_identifier) = component_to_vis.get(component_name) else {
+                continue;
+            };
+            let Ok(visualizer) = view_systems.get_by_identifier(*visualizer_identifier) else {
+                re_log::warn!(
+                    "Failed to resolve visualizer identifier {visualizer_identifier}, to a visualizer implementation"
+                );
+                continue;
+            };
+
             let value_fn = |ui: &mut egui::Ui| {
-                let component_data = match store_kind {
+                let (origin_db, query) = match store_kind {
                     StoreKind::Blueprint => {
-                        let store = ctx.store_context.blueprint.store();
-                        let query = ctx.blueprint_query;
-                        ctx.store_context
-                            .blueprint
-                            .query_caches()
-                            .latest_at(store, query, entity_path_overridden, [*component_name])
-                            .components
-                            .get(component_name)
-                            .cloned() /* arc */
+                        (ctx.store_context.blueprint, ctx.blueprint_query.clone())
                     }
-                    StoreKind::Recording => {
-                        ctx.recording()
-                            .query_caches()
-                            .latest_at(
-                                ctx.recording_store(),
-                                &query,
-                                entity_path_overridden,
-                                [*component_name],
-                            )
-                            .components
-                            .get(component_name)
-                            .cloned() /* arc */
-                    }
+                    StoreKind::Recording => (ctx.recording(), ctx.current_query()),
                 };
+                let component_data = origin_db
+                    .query_caches()
+                    .latest_at(
+                        origin_db.store(),
+                        &query,
+                        entity_path_overridden,
+                        [*component_name],
+                    )
+                    .components
+                    .get(component_name)
+                    .cloned(); /* arc */
 
                 if let Some(results) = component_data {
                     ctx.component_ui_registry.edit_ui(
-                        ctx,
+                        &QueryContext {
+                            viewer_ctx: ctx,
+                            target_entity_path: entity_path_overridden,
+                            archetype_name: None,
+                            query: &query,
+                        },
                         ui,
                         UiLayout::List,
-                        &query,
-                        ctx.recording(),
+                        origin_db,
+                        &instance_path.entity_path,
                         entity_path_overridden,
-                        &overrides.individual_override_path,
+                        *component_name,
                         &results,
-                        component_name,
-                        instance,
+                        visualizer.as_fallback_provider(),
                     );
                 } else {
                     // TODO(jleibs): Is it possible to set an override to empty and not confuse
@@ -195,6 +199,13 @@ pub fn add_new_override(
                 opened = true;
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
+                let query_context = QueryContext {
+                    viewer_ctx: ctx,
+                    target_entity_path: &data_result.entity_path,
+                    archetype_name: None,
+                    query,
+                };
+
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.
                 for (component, viz) in component_to_vis {
@@ -229,23 +240,10 @@ pub fn add_new_override(
                             .and_then(|result| result.2[0].clone())
                             .or_else(|| {
                                 view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
-                                    sys.initial_override_value(
-                                        ctx,
-                                        query,
-                                        db.store(),
-                                        &data_result.entity_path,
-                                        component,
-                                    )
+                                    sys.fallback_for(&query_context, *component)
+                                        .map(|fallback| DataCell::from_arrow(*component, fallback))
+                                        .ok()
                                 })
-                            })
-                            .or_else(|| {
-                                ctx.component_ui_registry.default_value(
-                                    ctx,
-                                    query,
-                                    db,
-                                    &data_result.entity_path,
-                                    component,
-                                )
                             })
                         else {
                             re_log::warn!("Could not identify an initial value for: {}", component);
