@@ -124,7 +124,13 @@ impl VisualizerSystem for TextLogSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);
 
 // TODO(#5607): what should happen if the promise is still pending?
 #[inline]

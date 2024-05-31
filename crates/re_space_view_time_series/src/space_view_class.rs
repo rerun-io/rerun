@@ -7,6 +7,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::PlotLegend;
+use re_types::blueprint::components::Corner2D;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::list_item;
 use re_viewer_context::external::re_entity_db::{
@@ -16,8 +17,8 @@ use re_viewer_context::{
     IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange, RecommendedSpaceView,
     SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
-    ViewerContext, VisualizableEntities,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
+    ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::query_view_property_or_default;
 
@@ -186,7 +187,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                      (and readability) in such situations as it prevents overdraw.",
                 );
 
-            view_property_ui::<PlotLegend>(ctx, space_view_id, ui);
+            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self);
             axis_ui(ctx, space_view_id, ui, state);
         });
 
@@ -802,3 +803,13 @@ fn round_ns_to_start_of_day(ns: i64) -> i64 {
     let ns_per_day = 24 * 60 * 60 * 1_000_000_000;
     (ns + ns_per_day / 2) / ns_per_day * ns_per_day
 }
+
+impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesSpaceView {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
+        // Explicitly pick RightCorner2D::RightBottom, we don't want to make this dependent on the (arbitrary)
+        // default of Corner2D
+        Corner2D::RightBottom
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(TimeSeriesSpaceView => [Corner2D]);

@@ -3,9 +3,10 @@ use ahash::HashMap;
 use re_types::{Archetype, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
+    ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewSystemIdentifier,
+    ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    VisualizerAdditionalApplicabilityFilter,
 };
 
 pub struct VisualizerQueryInfo {
@@ -47,7 +48,10 @@ impl VisualizerQueryInfo {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait VisualizerSystem: Send + Sync + 'static {
+///
+/// All visualizers are expected to be able to provide a fallback value for any component they're using
+/// via the [`ComponentFallbackProvider`] trait.
+pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Information about which components are queried by the visualizer.
@@ -94,18 +98,11 @@ pub trait VisualizerSystem: Send + Sync + 'static {
 
     fn as_any(&self) -> &dyn std::any::Any;
 
-    /// Returns an initial value to use when creating an override for a component for this
-    /// visualizer. This is used as a fallback if the component doesn't already have data.
-    fn initial_override_value(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
-        _entity_path: &re_log_types::EntityPath,
-        _component: &re_types::ComponentName,
-    ) -> Option<re_log_types::DataCell> {
-        None
-    }
+    /// Casts to a fallback provider.
+    ///
+    /// This is the same workaround as `as_any`:
+    /// It's not possible to cast &dyn [`VisualizerSystem`] to &dyn [`ComponentFallbackProvider`] otherwise.
+    fn as_fallback_provider(&self) -> &dyn ComponentFallbackProvider;
 }
 
 pub struct VisualizerCollection {

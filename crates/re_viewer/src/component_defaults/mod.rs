@@ -9,8 +9,6 @@ use re_types_core::components::*;
 use re_types_core::{external::arrow2, ComponentName, SerializationError};
 
 /// Calls `default` for each component type in this module and serializes it to arrow. This is useful as a base fallback value when displaying ui.
-#[allow(dead_code)]
-
 pub fn list_default_components(
 ) -> Result<impl Iterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>, SerializationError>
 {
