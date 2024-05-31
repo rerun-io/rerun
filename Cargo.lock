@@ -4274,6 +4274,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_chunk"
+version = "0.17.0-alpha.3"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "criterion",
+ "crossbeam",
+ "document-features",
+ "itertools 0.13.0",
+ "mimalloc",
+ "nohash-hasher",
+ "rand",
+ "re_arrow2",
+ "re_build_info",
+ "re_format",
+ "re_format_arrow",
+ "re_log",
+ "re_log_types",
+ "re_string_interner",
+ "re_tracing",
+ "re_tuid",
+ "re_types_core",
+ "similar-asserts",
+ "smallvec",
+ "static_assertions",
+ "thiserror",
+]
+
+[[package]]
 name = "re_context_menu"
 version = "0.17.0-alpha.3"
 dependencies = [

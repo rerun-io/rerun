@@ -168,12 +168,13 @@ Update instructions:
 
 ### Low-level store
 
-| Crate           | Description                                                                 |
-|-----------------|-----------------------------------------------------------------------------|
-| re_data_store   | An in-memory time series database for Rerun log data, based on Apache Arrow |
-| re_log_types    | The basic building blocks of the Rerun data types and tables.               |
-| re_types_core   | The core traits and types that power Rerun's data model.                    |
-| re_format_arrow | Formatting of Apache Arrow tables                                           |
+| Crate           | Description                                                                                   |
+|-----------------|-----------------------------------------------------------------------------------------------|
+| re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
+| re_data_store   | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
+| re_log_types    | The basic building blocks of the Rerun data types and tables.                                 |
+| re_types_core   | The core traits and types that power Rerun's data model.                                      |
+| re_format_arrow | Formatting of Apache Arrow tables.                                                            |
 
 
 ### Data flow
