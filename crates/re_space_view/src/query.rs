@@ -1,17 +1,38 @@
 use nohash_hasher::IntSet;
-use re_data_store::RangeQuery;
-use re_types_core::ComponentName;
 
+use re_data_store::{LatestAtQuery, RangeQuery};
 use re_query::{LatestAtResults, RangeResults};
+use re_types_core::ComponentName;
 use re_viewer_context::ViewerContext;
 
 // ---
+
+#[derive(Debug)]
+pub enum HybridResults {
+    LatestAt(LatestAtQuery, LatestAtResults),
+    Range(RangeQuery, HybridRangeResults),
+}
+
+impl From<(LatestAtQuery, LatestAtResults)> for HybridResults {
+    #[inline]
+    fn from((query, results): (LatestAtQuery, LatestAtResults)) -> Self {
+        Self::LatestAt(query, results)
+    }
+}
+
+impl From<(RangeQuery, HybridRangeResults)> for HybridResults {
+    #[inline]
+    fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
+        Self::Range(query, results)
+    }
+}
 
 /// Wrapper that contains the results of a range query with possible overrides.
 ///
 /// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
 /// they will be merged into the results appropriately.
-pub struct HybridResults {
+#[derive(Debug)]
+pub struct HybridRangeResults {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: RangeResults,
 }
@@ -29,7 +50,7 @@ pub fn range_with_overrides(
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-) -> HybridResults {
+) -> HybridRangeResults {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
@@ -91,5 +112,5 @@ pub fn range_with_overrides(
         component_set,
     );
 
-    HybridResults { overrides, results }
+    HybridRangeResults { overrides, results }
 }

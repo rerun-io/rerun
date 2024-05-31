@@ -2,7 +2,7 @@ use re_log_types::{RowId, TimeInt};
 use re_query::{LatestAtResults, PromiseResolver, PromiseResult, RangeData, RangeResults, Results};
 use re_types_core::Component;
 
-use crate::query::HybridResults;
+use crate::{query::HybridRangeResults, HybridResults};
 
 // ---
 
@@ -140,7 +140,7 @@ impl RangeResultsExt for LatestAtResults {
     }
 }
 
-impl RangeResultsExt for HybridResults {
+impl RangeResultsExt for HybridRangeResults {
     #[inline]
     fn get_dense<'a, C: Component>(
         &'a self,
@@ -202,6 +202,28 @@ impl RangeResultsExt for HybridResults {
             Ok(data)
         } else {
             self.results.get_or_empty_dense(resolver)
+        }
+    }
+}
+
+impl RangeResultsExt for HybridResults {
+    fn get_dense<'a, C: Component>(
+        &'a self,
+        resolver: &PromiseResolver,
+    ) -> Option<re_query::Result<RangeData<'a, C>>> {
+        match self {
+            Self::LatestAt(_, results) => results.get_dense(resolver),
+            Self::Range(_, results) => results.get_dense(resolver),
+        }
+    }
+
+    fn get_or_empty_dense<'a, C: Component>(
+        &'a self,
+        resolver: &PromiseResolver,
+    ) -> re_query::Result<RangeData<'a, C>> {
+        match self {
+            Self::LatestAt(_, results) => results.get_or_empty_dense(resolver),
+            Self::Range(_, results) => results.get_or_empty_dense(resolver),
         }
     }
 }
