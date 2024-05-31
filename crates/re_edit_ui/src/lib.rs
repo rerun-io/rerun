@@ -6,13 +6,13 @@
 mod corner2d;
 mod marker_shape;
 mod response_utils;
+mod singleline_string;
 mod visible;
-
-// ----
 
 use egui::NumExt as _;
 use re_types::components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text};
 use re_viewer_context::ViewerContext;
+use singleline_string::edit_singleline_string;
 
 // ----
 
@@ -26,20 +26,6 @@ fn edit_color_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Color)
         egui::color_picker::Alpha::Opaque,
     );
     *value = edit_color.into();
-    response
-}
-
-fn edit_text_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Text) -> egui::Response {
-    let mut edit_text = value.to_string();
-    let response = egui::TextEdit::singleline(&mut edit_text).show(ui).response;
-    *value = edit_text.into();
-    response
-}
-
-fn edit_name_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Name) -> egui::Response {
-    let mut edit_name = value.to_string();
-    let response = egui::TextEdit::singleline(&mut edit_name).show(ui).response;
-    *value = edit_name.into();
     response
 }
 
@@ -94,9 +80,10 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(corner2d::edit_corner2d);
     registry.add_editor(marker_shape::edit_marker_shape_ui);
     registry.add_editor(edit_marker_size_ui);
-    registry.add_editor(edit_name_ui);
     registry.add_editor(edit_radius_ui);
     registry.add_editor(edit_stroke_width_ui);
-    registry.add_editor(edit_text_ui);
     registry.add_editor(visible::edit_visible);
+
+    registry.add_editor::<Text>(edit_singleline_string);
+    registry.add_editor::<Name>(edit_singleline_string);
 }
