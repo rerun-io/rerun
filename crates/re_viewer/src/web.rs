@@ -302,7 +302,10 @@ pub struct AppOptions {
 // Keep in sync with the `FullscreenOptions` typedef in `rerun_js/web-viewer/index.js`
 #[derive(Clone, Deserialize)]
 pub struct FullscreenOptions {
+    /// This returns the current fullscreen state, which is a boolean representing on/off.
     pub get_state: Callback,
+
+    /// This calls the JS version of "toggle fullscreen".
     pub on_toggle: Callback,
 }
 

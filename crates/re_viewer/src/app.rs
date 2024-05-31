@@ -73,7 +73,8 @@ pub struct StartupOptions {
 
     /// Fullscreen is handled by JS on web.
     ///
-    /// This gets called when the `ToggleFullscreen` UI command is triggered.
+    /// This holds some callbacks which we use to communicate
+    /// about fullscreen state to JS.
     #[cfg(target_arch = "wasm32")]
     pub fullscreen_options: Option<crate::web::FullscreenOptions>,
 
@@ -1327,6 +1328,7 @@ impl App {
         #[cfg(target_arch = "wasm32")]
         {
             if let Some(options) = &self.startup_options.fullscreen_options {
+                // Tell JS to toggle fullscreen.
                 options.on_toggle.call().unwrap();
             }
         }
@@ -1340,14 +1342,14 @@ impl App {
             return egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
         }
 
-        // The fullscreen state for web lives in JS land.
         #[cfg(target_arch = "wasm32")]
         {
-            self.startup_options
-                .fullscreen_options
-                .as_ref()
-                .map(|o| o.get_state.call().unwrap().is_truthy())
-                .unwrap_or(false)
+            if let Some(options) = &self.startup_options.fullscreen_options {
+                // Ask JS if fullscreen is on or not.
+                return options.get_state.call().unwrap().is_truthy();
+            }
+
+            false
         }
     }
 }
