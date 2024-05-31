@@ -38,7 +38,7 @@ pub(crate) fn edit_marker_shape_ui(
                     }
 
                     combined_response = Some(match combined_response {
-                        Some(combined_response) => combined_response.union(response),
+                        Some(combined_response) => combined_response | response,
                         None => response,
                     });
                 }
