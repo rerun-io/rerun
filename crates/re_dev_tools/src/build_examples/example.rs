@@ -17,7 +17,6 @@ pub struct Example {
     pub tags: Vec<String>,
     pub thumbnail_url: String,
     pub thumbnail_dimensions: [u64; 2],
-    pub script_path: PathBuf,
     pub script_args: Vec<String>,
     pub readme_body: String,
     pub language: Language,
@@ -62,7 +61,6 @@ impl Example {
         else {
             anyhow::bail!("example {name:?} has no frontmatter");
         };
-        let script_path = dir.join(language.entrypoint_path(&dir, name)?);
         Ok(Some(Self {
             name: name.to_owned(),
             title: readme.title,
@@ -71,23 +69,10 @@ impl Example {
             tags: readme.tags,
             thumbnail_url: readme.thumbnail,
             thumbnail_dimensions: readme.thumbnail_dimensions,
-            script_path,
             script_args: readme.build_args,
             readme_body: body,
             language,
         }))
-    }
-}
-
-#[derive(Debug)]
-pub struct CouldNotFindEntryPoint(pub PathBuf);
-
-impl std::error::Error for CouldNotFindEntryPoint {}
-
-impl Display for CouldNotFindEntryPoint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("could not find entrypoint for example: ")?;
-        self.0.display().fmt(f)
     }
 }
 
@@ -119,41 +104,6 @@ impl Language {
             Self::Python => "py",
             Self::C => "c",
             Self::Cpp => "cpp",
-        }
-    }
-
-    /// Path of the file which contains the entrypoint,
-    /// relative to `{workspace_root}/examples/{example_name}`.
-    ///
-    /// For example:
-    /// - `main.py` for Python
-    /// - `src/main.rs` for Rust
-    pub fn entrypoint_path(
-        &self,
-        example_dir: &Path,
-        example_name: &str,
-    ) -> anyhow::Result<PathBuf> {
-        match self {
-            Self::Rust => Ok(PathBuf::from("src/main.rs")),
-            Self::Python => {
-                // we must handle two cases:
-                // - single script named after the example: `example.py`
-                // - package named after the example: `example/`
-
-                let mut script_path = PathBuf::from(example_name);
-                if example_dir.join(&script_path).exists() {
-                    return Ok(script_path);
-                }
-
-                script_path.set_extension("py");
-                if example_dir.join(&script_path).exists() {
-                    return Ok(script_path);
-                }
-
-                anyhow::bail!(CouldNotFindEntryPoint(example_dir.into()))
-            }
-            Self::C => Ok(PathBuf::from("main.c")),
-            Self::Cpp => Ok(PathBuf::from("main.cpp")),
         }
     }
 }
@@ -272,7 +222,6 @@ impl Channel {
 
                 eprintln!("{name:?}: added");
                 let dir = folder.path();
-                let script_path = dir.join(language.entrypoint_path(&dir, &name)?);
                 examples.push(Example {
                     name,
                     title: readme.title,
@@ -281,7 +230,6 @@ impl Channel {
                     tags: readme.tags,
                     thumbnail_url: readme.thumbnail,
                     thumbnail_dimensions: readme.thumbnail_dimensions,
-                    script_path,
                     script_args: readme.build_args,
                     readme_body: body,
                     language: Language::Python,
