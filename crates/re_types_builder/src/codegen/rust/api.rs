@@ -596,7 +596,7 @@ fn quote_union(
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let quoted_fields = fields.iter().map(|obj_field| {
-        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+        let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
 
         let quoted_doc = quote_field_docs(reporter, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj_field);
@@ -625,7 +625,7 @@ fn quote_union(
         quote!()
     } else {
         let quoted_matches = fields.iter().map(|obj_field| {
-            let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+            let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
 
             if obj_field.typ == Type::Unit {
                 quote!(Self::#name => 0)
@@ -1087,7 +1087,7 @@ fn quote_trait_impls_from_obj(
         fqname, name, kind, ..
     } = obj;
 
-    let display_name = crate::to_human_case(name);
+    let display_name = re_case::to_human_case(name);
     let name = format_ident!("{name}");
 
     match kind {
@@ -1351,7 +1351,7 @@ fn quote_trait_impls_from_obj(
                 .is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
             {
                 let field_infos = obj.fields.iter().map(|field| {
-                    let display_name = crate::to_human_case(&field.name);
+                    let display_name = re_case::to_human_case(&field.name);
                     let documentation = field
                         .docs
                         .lines_with_tag_matching(|tag| tag.is_empty())

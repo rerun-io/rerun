@@ -4274,6 +4274,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_case"
+version = "0.17.0-alpha.3"
+dependencies = [
+ "convert_case",
+]
+
+[[package]]
 name = "re_chunk"
 version = "0.17.0-alpha.3"
 dependencies = [
@@ -5118,7 +5125,6 @@ dependencies = [
  "anyhow",
  "camino",
  "clang-format",
- "convert_case",
  "flatbuffers",
  "indent",
  "itertools 0.13.0",
@@ -5128,6 +5134,7 @@ dependencies = [
  "rayon",
  "re_arrow2",
  "re_build_tools",
+ "re_case",
  "re_error",
  "re_log",
  "re_tracing",

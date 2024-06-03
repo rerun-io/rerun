@@ -565,7 +565,7 @@ fn write_archetype_fields(
         {
             page.push_str(&format!(
                 "* [{view_name}](../views/{}.md)",
-                crate::to_snake_case(view_name)
+                re_case::to_snake_case(view_name)
             ));
             if let Some(explanation) = explanation {
                 page.push_str(&format!(" ({explanation})"));

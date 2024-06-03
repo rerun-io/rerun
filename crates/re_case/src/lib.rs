@@ -1,4 +1,4 @@
-// ---
+//! Case conversions, the way Rerun likes them.
 
 /// Converts a snake or pascal case input into a snake case output.
 ///
