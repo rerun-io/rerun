@@ -546,7 +546,7 @@ impl Object {
 
     /// The `snake_case` name of the object, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
-        crate::to_snake_case(&self.name)
+        re_case::to_snake_case(&self.name)
     }
 
     /// Returns true if this object is part of testing and not to be used in the production SDK.
@@ -807,12 +807,12 @@ impl ObjectField {
 
     /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
-        crate::to_snake_case(&self.name)
+        re_case::to_snake_case(&self.name)
     }
 
     /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.
     pub fn pascal_case_name(&self) -> String {
-        crate::to_pascal_case(&self.name)
+        re_case::to_pascal_case(&self.name)
     }
 
     /// Returns true if this object is part of testing and not to be used in the production SDK.
