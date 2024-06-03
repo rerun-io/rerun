@@ -1616,9 +1616,9 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
             )
         };
 
-        // Emit `Deref`/`DerefMut` only for components since datatypes may want to do custom implementations.
-        // Note that all components _should_ be implemented by components, so once we
-        // enforce that, we'd not actually hit this path.
+        // If the field is not a custom datatype, emit `Deref`/`DerefMut` only for components.
+        // (in the long run all components are implemented with custom data types, making it so that we don't hit this path anymore)
+        // For ObjectKind::Datatype we sometimes have custom implementations for `Deref`, e.g. `Utf8String` derefs to `&str` instead of `ArrowString`.
         let deref_impl = if obj.kind == ObjectKind::Component {
             deref_impl
         } else {
