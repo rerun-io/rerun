@@ -206,6 +206,30 @@ impl ComponentName {
         }
         None
     }
+
+    /// Web URL to the Rerun documentation for this component.
+    pub fn doc_url(&self) -> Option<String> {
+        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype() {
+            // Link indicator components to their archetype.
+            // This code should be correct as long as this url passes our link checker:
+            // https://rerun.io/docs/reference/types/archetypes/line_strips3d
+
+            let archetype_name_snake_case = re_case::to_snake_case(&archetype_name_pascal_case);
+            let base_url = "https://rerun.io/docs/reference/types/archetypes";
+            Some(format!("{base_url}/{archetype_name_snake_case}"))
+        } else if let Some(component_name_pascal_case) =
+            self.full_name().strip_prefix("rerun.components.")
+        {
+            // This code should be correct as long as this url passes our link checker:
+            // https://rerun.io/docs/reference/types/components/half_sizes2d
+
+            let component_name_snake_case = re_case::to_snake_case(component_name_pascal_case);
+            let base_url = "https://rerun.io/docs/reference/types/components";
+            Some(format!("{base_url}/{component_name_snake_case}"))
+        } else {
+            None // A user component
+        }
+    }
 }
 
 // ---

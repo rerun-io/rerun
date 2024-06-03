@@ -76,3 +76,24 @@ pub trait ListItemContent {
         DesiredWidth::AtLeast(0.0)
     }
 }
+
+/// Helper for adding a list-item hyperlink.
+pub fn hyperlink_to_ui(
+    re_ui: &crate::ReUi,
+    ui: &mut egui::Ui,
+    text: impl Into<egui::WidgetText>,
+    url: impl ToString,
+) -> egui::Response {
+    let response = ListItem::new(re_ui)
+        .show_flat(
+            ui,
+            LabelContent::new(text)
+                .with_icon(&crate::icons::EXTERNAL_LINK)
+                .exact_width(true),
+        )
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+    if response.clicked() {
+        ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+    }
+    response
+}
