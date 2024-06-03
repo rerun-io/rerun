@@ -118,7 +118,9 @@ pub struct RangeComponentResults {
 impl RangeComponentResults {
     /// Clones the results while making sure to stamp them with the [`ResolvedTimeRange`] of the associated query.
     #[inline]
-    pub(crate) fn clone_at(&self, time_range: ResolvedTimeRange) -> Self {
+    // TODO
+    // pub(crate) fn clone_at(&self, time_range: ResolvedTimeRange) -> Self {
+    pub fn clone_at(&self, time_range: ResolvedTimeRange) -> Self {
         Self {
             time_range,
             inner: self.inner.clone(),

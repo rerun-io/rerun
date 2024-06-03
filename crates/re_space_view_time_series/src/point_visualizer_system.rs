@@ -184,11 +184,39 @@ impl SeriesPointSystem {
                     // TODO(#5607): what should happen if the promise is still pending?
                 }
 
+                // TODO: but then the optional components use the wrong indices...
+
+                let mut all_scalars_with_clears = all_scalars
+                    .range_indexed()
+                    .map(|(index, scalars)| {
+                        (
+                            *index,
+                            scalars.first().map_or(0.0, |s| s.0),
+                            scalars.is_empty(),
+                        )
+                    })
+                    .chain(
+                        crate::util::collect_clears(ctx, &data_result.entity_path, &query)
+                            .into_iter()
+                            .map(|index| (index, 0.0, true)),
+                    )
+                    .collect_vec();
+                all_scalars_with_clears.sort_by_key(|(index, _, _)| *index);
+
                 // Allocate all points.
-                points = all_scalars
-                    .range_indices(all_scalars_entry_range.clone())
-                    .map(|(data_time, _)| PlotPoint {
+                points = all_scalars_with_clears
+                    .into_iter()
+                    .map(|((data_time, _), scalar, cleared)| PlotPoint {
                         time: data_time.as_i64(),
+                        value: scalar,
+                        attrs: PlotPointAttrs {
+                            kind: if cleared {
+                                PlotSeriesKind::Clear
+                            } else {
+                                default_point.attrs.kind
+                            },
+                            ..default_point.attrs.clone()
+                        },
                         ..default_point.clone()
                     })
                     .collect_vec();
@@ -204,21 +232,24 @@ impl SeriesPointSystem {
                     }
                 }
 
-                // Fill in values.
-                for (i, scalars) in all_scalars
-                    .range_data(all_scalars_entry_range.clone())
-                    .enumerate()
-                {
-                    if scalars.len() > 1 {
-                        re_log::warn_once!(
-                            "found a scalar batch in {entity_path:?} -- those have no effect"
-                        );
-                    } else if scalars.is_empty() {
-                        points[i].attrs.kind = PlotSeriesKind::Clear;
-                    } else {
-                        points[i].value = scalars.first().map_or(0.0, |s| s.0);
-                    }
-                }
+                // TODO: this shit does not fire.
+                // let all_clears = crate::util::collect_clears(ctx, &data_result.entity_path, &query);
+
+                // // Fill in values.
+                // for (i, scalars) in all_scalars
+                //     .range_data(all_scalars_entry_range.clone())
+                //     .enumerate()
+                // {
+                //     if scalars.len() > 1 {
+                //         re_log::warn_once!(
+                //             "found a scalar batch in {entity_path:?} -- those have no effect"
+                //         );
+                //     } else if scalars.is_empty() || cleared.is_some() {
+                //         points[i].attrs.kind = PlotSeriesKind::Clear;
+                //     } else {
+                //         points[i].value = scalars.first().map_or(0.0, |s| s.0);
+                //     }
+                // }
 
                 // Make it as clear as possible to the optimizer that some parameters
                 // go completely unused as soon as overrides have been defined.

@@ -1,4 +1,5 @@
 use itertools::Itertools as _;
+
 use re_query::{PromiseResult, QueryError};
 use re_space_view::range_with_overrides;
 use re_types::archetypes;
@@ -251,16 +252,20 @@ impl SeriesLineSystem {
                 }
             }
 
+            let all_clears = crate::util::collect_clears(ctx, &data_result.entity_path, &query);
+
             // Fill in values.
-            for (i, scalars) in all_scalars
-                .range_data(all_scalars_entry_range.clone())
-                .enumerate()
+            for (i, (_, scalars, cleared)) in re_query::range_zip_1x1(
+                all_scalars.range_indexed(),
+                all_clears.iter().map(|index| (index, ())),
+            )
+            .enumerate()
             {
                 if scalars.len() > 1 {
                     re_log::warn_once!(
                         "found a scalar batch in {entity_path:?} -- those have no effect"
                     );
-                } else if scalars.is_empty() {
+                } else if scalars.is_empty() || cleared.is_some() {
                     points[i].attrs.kind = PlotSeriesKind::Clear;
                 } else {
                     points[i].value = scalars.first().map_or(0.0, |s| s.0);

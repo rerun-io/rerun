@@ -1,11 +1,93 @@
-use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types::datatypes::{TimeRange, TimeRangeBoundary, Utf8};
+use std::collections::BTreeSet;
+
+use re_data_store::RangeQuery;
+use re_log_types::{EntityPath, ResolvedTimeRange, RowId, TimeInt};
+use re_types::{
+    components::ClearIsRecursive,
+    datatypes::{TimeRange, TimeRangeBoundary, Utf8},
+    Loggable as _,
+};
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
     PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
+
+/// Gather all `Clear` instances that might be relevant for the specified `entity_path`.
+///
+/// Can be used to adhoc-ly post-filter range data using a `range_zip`.
+//
+// TODO: explanation + link to issue
+pub fn collect_clears(
+    ctx: &ViewerContext<'_>,
+    entity_path: &EntityPath,
+    query: &RangeQuery,
+) -> Vec<(TimeInt, RowId)> {
+    re_tracing::profile_function!();
+
+    let mut all_clears = Vec::new();
+
+    {
+        re_tracing::profile_scope!("self");
+
+        let clears = ctx.recording().query_caches().range(
+            ctx.recording_store(),
+            query,
+            entity_path,
+            [ClearIsRecursive::name()],
+        );
+
+        all_clears.extend(
+            clears
+                .get_or_empty(ClearIsRecursive::name())
+                .clone_at(query.range())
+                .to_dense::<ClearIsRecursive>(ctx.recording().resolver())
+                .range_indexed()
+                // NOTE: both recursive and non-recursive apply.
+                .map(|(&(data_time, row_id), _)| (data_time, row_id)),
+        );
+    }
+
+    {
+        re_tracing::profile_scope!("recursive");
+
+        let mut clear_entity_path = entity_path.clone();
+        loop {
+            let clears = ctx.recording().query_caches().range(
+                ctx.recording_store(),
+                query,
+                &clear_entity_path,
+                [ClearIsRecursive::name()],
+            );
+
+            all_clears.extend(
+                clears
+                    .get_or_empty(ClearIsRecursive::name())
+                    .clone_at(query.range())
+                    .to_dense::<ClearIsRecursive>(ctx.recording().resolver())
+                    .range_indexed()
+                    .filter_map(|(&(data_time, row_id), clears)| {
+                        // NOTE: only recursive ones apply.
+                        clears
+                            .first()
+                            .map_or(false, |clear| clear.0)
+                            .then_some((data_time, row_id))
+                    }),
+            );
+
+            let Some(parent_entity_path) = clear_entity_path.parent() else {
+                break;
+            };
+
+            clear_entity_path = parent_entity_path;
+        }
+    }
+
+    all_clears.sort();
+
+    all_clears
+}
 
 /// Find the plot bounds and the per-ui-point delta from egui.
 pub fn determine_plot_bounds_and_time_per_pixel(
