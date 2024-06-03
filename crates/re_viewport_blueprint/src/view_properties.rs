@@ -136,10 +136,11 @@ impl<'a> ViewProperty<'a> {
         view_state: &'a dyn re_viewer_context::SpaceViewState,
     ) -> Result<Box<dyn arrow2::array::Array>, ComponentFallbackError> {
         if let Some(value) = self.component_raw(component_name) {
-            Ok(value)
-        } else {
-            fallback_provider.fallback_for(&self.query_context(view_state), component_name)
+            if value.len() > 0 {
+                return Ok(value);
+            }
         }
+        fallback_provider.fallback_for(&self.query_context(view_state), component_name)
     }
 
     /// Save change to a blueprint component.
