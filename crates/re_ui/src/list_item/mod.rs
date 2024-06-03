@@ -87,9 +87,7 @@ pub fn hyperlink_to_ui(
     let response = ListItem::new(re_ui)
         .show_flat(
             ui,
-            LabelContent::new(text)
-                .with_icon(&crate::icons::EXTERNAL_LINK)
-                .exact_width(true),
+            LabelContent::new(text).with_icon(&crate::icons::EXTERNAL_LINK),
         )
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.clicked() {

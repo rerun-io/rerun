@@ -421,8 +421,7 @@ pub fn component_path_button_to(
                     } else {
                         "Temporal component"
                     })
-                    .with_icon(icon)
-                    .exact_width(true),
+                    .with_icon(icon),
                 );
 
             let component_name = component_path.component_name;

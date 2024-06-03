@@ -220,14 +220,15 @@ impl<'a> ListItem<'a> {
         };
 
         let desired_width = match content.desired_width(re_ui, ui) {
-            // // content will use all available width
-            // None => ui.available_width().at_least(extra_indent + collapse_extra),
-            // // content will use the required width
-            // Some(desired_width) => extra_indent + collapse_extra + desired_width,
             DesiredWidth::Exact(width) => extra_indent + collapse_extra + width,
-            DesiredWidth::AtLeast(width) => ui
-                .available_width()
-                .at_least(extra_indent + collapse_extra + width),
+            DesiredWidth::AtLeast(width) => {
+                let total_width = extra_indent + collapse_extra + width;
+                if ui.is_sizing_pass() {
+                    total_width
+                } else {
+                    ui.available_width().at_least(total_width)
+                }
+            }
         };
 
         let desired_size = egui::vec2(desired_width, height);
