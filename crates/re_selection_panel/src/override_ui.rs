@@ -48,7 +48,7 @@ pub fn override_ui(
 
     let view_systems = ctx
         .space_view_class_registry
-        .new_visualizer_collection(*space_view.class_identifier());
+        .new_visualizer_collection(space_view.class_identifier());
 
     let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
 
@@ -393,7 +393,7 @@ pub fn add_new_visualizer(
             &applicable_entities_per_visualizer,
             entity_db,
             &ctx.space_view_class_registry
-                .new_visualizer_collection(*space_view.class_identifier()),
+                .new_visualizer_collection(space_view.class_identifier()),
             &space_view.space_origin,
         );
 

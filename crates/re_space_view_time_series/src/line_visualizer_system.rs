@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    IdentifiedViewSystem, QueryContext, SpaceViewState, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };
@@ -49,11 +49,12 @@ impl VisualizerSystem for SeriesLineSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        view_state: &dyn SpaceViewState,
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        match self.load_scalars(ctx, query) {
+        match self.load_scalars(ctx, query, view_state) {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
             Err(err) => Err(err.into()),
         }
@@ -87,6 +88,7 @@ impl SeriesLineSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        view_state: &dyn SpaceViewState,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
@@ -110,6 +112,7 @@ impl SeriesLineSystem {
                         time_per_pixel,
                         data_result,
                         &mut series,
+                        view_state,
                     )?;
                     Ok(series)
                 })
@@ -127,6 +130,7 @@ impl SeriesLineSystem {
                     time_per_pixel,
                     data_result,
                     &mut series,
+                    view_state,
                 )?;
             }
             self.all_series = series;
@@ -144,6 +148,7 @@ impl SeriesLineSystem {
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         all_series: &mut Vec<PlotSeries>,
+        view_state: &dyn SpaceViewState,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
@@ -154,6 +159,7 @@ impl SeriesLineSystem {
             archetype_name: Some(SeriesLine::name()),
             query: &ctx.current_query(),
             target_entity_path: &data_result.entity_path,
+            view_state,
         };
 
         let fallback_color =

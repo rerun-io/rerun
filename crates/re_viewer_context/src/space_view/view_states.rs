@@ -29,20 +29,22 @@ pub struct ViewStates {
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
 
 impl ViewStates {
-    pub fn view_state_mut(
+    pub fn get(&self, space_view_id: SpaceViewId) -> Option<&PerViewState> {
+        self.states.get(&space_view_id)
+    }
+
+    pub fn get_mut(
         &mut self,
-        space_view_class_registry: &SpaceViewClassRegistry,
-        space_view_id: SpaceViewId,
-        space_view_class: &SpaceViewClassIdentifier,
+        view_class_registry: &SpaceViewClassRegistry,
+        view_id: SpaceViewId,
+        view_class: SpaceViewClassIdentifier,
     ) -> &mut PerViewState {
-        self.states
-            .entry(space_view_id)
-            .or_insert_with(|| PerViewState {
-                auto_properties: Default::default(),
-                view_state: space_view_class_registry
-                    .get_class_or_log_error(space_view_class)
-                    .new_state(),
-            })
+        self.states.entry(view_id).or_insert_with(|| PerViewState {
+            auto_properties: Default::default(),
+            view_state: view_class_registry
+                .get_class_or_log_error(view_class)
+                .new_state(),
+        })
     }
 
     pub fn legacy_auto_properties(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {

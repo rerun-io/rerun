@@ -7,7 +7,7 @@ use re_types::{
     components::{ClassId, Color, HalfSizes3D, KeypointId, Position3D, Radius, Rotation3D, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -197,6 +197,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
         &mut self,
         ctx: &ViewerContext<'_>,
         view_query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let Some(render_ctx) = ctx.render_ctx else {

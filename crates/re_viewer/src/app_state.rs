@@ -223,7 +223,7 @@ impl AppState {
                             &applicable_entities_per_visualizer,
                             recording,
                             &space_view_class_registry
-                                .new_visualizer_collection(*space_view.class_identifier()),
+                                .new_visualizer_collection(space_view.class_identifier()),
                             &space_view.space_origin,
                         );
 
@@ -279,7 +279,7 @@ impl AppState {
                             &applicable_entities_per_visualizer,
                             recording,
                             &space_view_class_registry
-                                .new_visualizer_collection(*space_view.class_identifier()),
+                                .new_visualizer_collection(space_view.class_identifier()),
                             &space_view.space_origin,
                         );
 

@@ -167,7 +167,7 @@ impl SelectionPanel {
                         // TODO(jleibs): Overrides still require special handling inside the visualizers.
                         // For now, only show the override section for TimeSeries until support is implemented
                         // generically.
-                        if *view.class_identifier() == TimeSeriesSpaceView::identifier()
+                        if view.class_identifier() == TimeSeriesSpaceView::identifier()
                             || ctx.app_options.experimental_visualizer_selection
                         {
                             ctx.re_ui
@@ -176,7 +176,7 @@ impl SelectionPanel {
                                 });
 
                             let view_state = view_states
-                                .view_state_mut(
+                                .get_mut(
                                     ctx.space_view_class_registry,
                                     *view_id,
                                     view.class_identifier(),
@@ -281,12 +281,12 @@ impl SelectionPanel {
         ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
         if let Some(space_view) = blueprint.space_view(&space_view_id) {
-            let class_identifier = *space_view.class_identifier();
+            let class_identifier = space_view.class_identifier();
 
-            let space_view_state = view_states.view_state_mut(
+            let space_view_state = view_states.get_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
-                &class_identifier,
+                class_identifier,
             );
 
             query_range_ui_space_view(ctx, ui, space_view);
