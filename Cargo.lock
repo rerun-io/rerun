@@ -5156,6 +5156,7 @@ dependencies = [
  "itertools 0.13.0",
  "once_cell",
  "re_arrow2",
+ "re_case",
  "re_error",
  "re_string_interner",
  "re_tracing",
