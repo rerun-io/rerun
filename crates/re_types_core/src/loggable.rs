@@ -208,7 +208,6 @@ impl ComponentName {
     }
 
     /// Web URL to the Rerun documentation for this component.
-    #[inline]
     pub fn doc_url(&self) -> Option<String> {
         if let Some(archetype_name_pascal_case) = self.indicator_component_archetype() {
             // Link indicator components to their archetype.
