@@ -6,13 +6,32 @@ use itertools::Itertools;
 use parking_lot::RwLock;
 
 use re_data_store::{DataStore, LatestAtQuery, TimeInt};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, RowId};
+use re_types::components::ClearIsRecursive;
+use re_types::Loggable;
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
 use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults, Promise};
 
 // ---
+
+/// Compute the ordering of two data indices, making sure to deal with `STATIC` data appropriately.
+//
+// TODO(cmc): Maybe at some point we'll want to introduce a dedicated `DataIndex` type with
+// proper ordering operators etc.
+// It's harder than it sounds though -- depending on the context, you don't necessarily want index
+// ordering to behave the same way.
+fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Ordering {
+    match (lhs, rhs) {
+        ((TimeInt::STATIC, lhs_row_id), (TimeInt::STATIC, rhs_row_id)) => {
+            lhs_row_id.cmp(&rhs_row_id)
+        }
+        ((_, _), (TimeInt::STATIC, _)) => std::cmp::Ordering::Less,
+        ((TimeInt::STATIC, _), (_, _)) => std::cmp::Ordering::Greater,
+        _ => lhs.cmp(&rhs),
+    }
+}
 
 impl Caches {
     /// Queries for the given `component_names` using latest-at semantics.
@@ -30,6 +49,73 @@ impl Caches {
         re_tracing::profile_function!(entity_path.to_string());
 
         let mut results = LatestAtResults::default();
+
+        // Query-time clears
+        // -----------------
+        //
+        // We need to find, at query time, whether there exist a `Clear` component that should
+        // shadow part or all of the results that we are about to return.
+        //
+        // This is a two-step process.
+        //
+        // First, we need to find all `Clear` components that could potentially affect the returned
+        // results, i.e. any `Clear` component on the entity itself, or any recursive `Clear`
+        // component on any of its recursive parents.
+        //
+        // Then, we need to compare the index of each component result with the index of the most
+        // recent relevant `Clear` component that was found: if there exists a `Clear` component with
+        // both a _data time_ lesser or equal to the _query time_ and an index greater or equal
+        // than the indexed of the returned data, then we know for sure that the `Clear` shadows
+        // the data.
+        let mut max_clear_index = (TimeInt::MIN, RowId::ZERO);
+        {
+            re_tracing::profile_scope!("clears");
+
+            let mut clear_entity_path = entity_path.clone();
+            loop {
+                let key = CacheKey::new(
+                    clear_entity_path.clone(),
+                    query.timeline(),
+                    ClearIsRecursive::name(),
+                );
+
+                let cache = Arc::clone(
+                    self.latest_at_per_cache_key
+                        .write()
+                        .entry(key.clone())
+                        .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
+                );
+
+                let mut cache = cache.write();
+                cache.handle_pending_invalidation();
+                if let Some(cached) =
+                    cache.latest_at(store, query, &clear_entity_path, ClearIsRecursive::name())
+                {
+                    // When checking the entity itself, any kind of `Clear` component
+                    // (i.e. recursive or not) will do.
+                    //
+                    // For (recursive) parents, we need to deserialize the data to make sure the
+                    // recursive flag is set.
+                    #[allow(clippy::collapsible_if)] // readability
+                    if clear_entity_path == *entity_path
+                        || cached.mono::<ClearIsRecursive>(&crate::PromiseResolver {})
+                            == Some(ClearIsRecursive(true))
+                    {
+                        if compare_indices(*cached.index(), max_clear_index)
+                            == std::cmp::Ordering::Greater
+                        {
+                            max_clear_index = *cached.index();
+                        }
+                    }
+                }
+
+                let Some(parent_entity_path) = clear_entity_path.parent() else {
+                    break;
+                };
+
+                clear_entity_path = parent_entity_path;
+            }
+        }
 
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
@@ -50,7 +136,15 @@ impl Caches {
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
             if let Some(cached) = cache.latest_at(store, query, entity_path, component_name) {
-                results.add(component_name, cached);
+                // 1. A `Clear` component doesn't shadow its own self.
+                // 2. If a `Clear` component was found with an index greater than or equal to the
+                //    component data, then we know for sure that it should shadow it.
+                if component_name == ClearIsRecursive::name()
+                    || compare_indices(*cached.index(), max_clear_index)
+                        == std::cmp::Ordering::Greater
+                {
+                    results.add(component_name, cached);
+                }
             }
         }
 
