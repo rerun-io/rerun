@@ -11,7 +11,7 @@ mod response_utils;
 use datatype_editors::edit_enum;
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
-    components::{Color, MarkerSize, Name, Radius, Range1D, StrokeWidth, Text},
+    components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text},
 };
 use re_viewer_context::ViewerContext;
 
