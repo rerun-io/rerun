@@ -198,25 +198,6 @@ fn entity_path_for_view_property_from_archetype_name(
 }
 
 // TODO(andreas): Replace all usages with `ViewProperty`.
-/// Return the archetype value for the given space view, or `None` if it doesn't exist.
-pub fn view_property<A: re_types::Archetype>(
-    ctx: &re_viewer_context::ViewerContext<'_>,
-    space_view_id: re_viewer_context::SpaceViewId,
-) -> Option<A>
-where
-    LatestAtResults: ToArchetype<A>,
-{
-    let blueprint_db = ctx.blueprint_db();
-    let blueprint_query = ctx.blueprint_query;
-    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
-    blueprint_db
-        .latest_at_archetype(&path, blueprint_query)
-        .ok()
-        .flatten()
-        .map(|(_index, value)| value)
-}
-
-// TODO(andreas): Replace all usages with `ViewProperty`.
 pub fn query_view_property_or_default<A: Archetype + Default>(
     space_view_id: SpaceViewId,
     blueprint_db: &EntityDb,
