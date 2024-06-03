@@ -15,13 +15,13 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 
 fn run_space_view_systems(
     ctx: &ViewerContext<'_>,
-    space_view_class: SpaceViewClassIdentifier,
+    _space_view_class: SpaceViewClassIdentifier,
     query: &ViewQuery<'_>,
     view_state: &dyn SpaceViewState,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
 ) -> Vec<re_renderer::QueueableDrawData> {
-    re_tracing::profile_function!(space_view_class.as_str());
+    re_tracing::profile_function!(_space_view_class.as_str());
 
     {
         re_tracing::profile_wait!("ViewContextSystem::execute");
