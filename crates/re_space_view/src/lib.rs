@@ -5,10 +5,14 @@
 pub mod controls;
 
 mod heuristics;
+mod query;
+mod results_ext;
 mod screenshot;
 mod view_property_ui;
 
 pub use heuristics::suggest_space_view_for_each_entity;
+pub use query::{range_with_overrides, HybridResults};
+pub use results_ext::RangeResultsExt;
 pub use screenshot::ScreenshotMode;
 pub use view_property_ui::view_property_ui;
 
