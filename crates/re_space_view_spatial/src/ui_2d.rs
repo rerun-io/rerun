@@ -12,6 +12,7 @@ use re_viewer_context::{
     gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
     SystemExecutionOutput, ViewQuery, ViewerContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use super::{
     eye::Eye,
@@ -22,6 +23,7 @@ use crate::{
     ui::{outline_config, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::collect_ui_labels,
+    SpatialSpaceView2D,
 };
 
 // ---
@@ -174,167 +176,166 @@ fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<Rect> {
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
-pub fn view_2d(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &mut SpatialSpaceViewState,
-    query: &ViewQuery<'_>,
-    system_output: re_viewer_context::SystemExecutionOutput,
-) -> Result<(), SpaceViewSystemExecutionError> {
-    re_tracing::profile_function!();
+impl SpatialSpaceView2D {
+    pub fn view_2d(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut SpatialSpaceViewState,
+        query: &ViewQuery<'_>,
+        system_output: re_viewer_context::SystemExecutionOutput,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        re_tracing::profile_function!();
 
-    let SystemExecutionOutput {
-        view_systems: parts,
-        context_systems: view_ctx,
-        draw_data,
-    } = system_output;
+        let SystemExecutionOutput {
+            view_systems: parts,
+            context_systems: view_ctx,
+            draw_data,
+        } = system_output;
 
-    if ui.available_size().min_elem() <= 0.0 {
-        return Ok(());
-    }
-
-    // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
-
-    // Note that we can't rely on the camera being part of scene.space_cameras since that requires
-    // the camera to be added to the scene!
-    let pinhole = query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
-
-    let (mut response, painter) =
-        ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
-
-    let default_scene_rect = {
-        let default_scene_rect = pinhole
-            .as_ref()
-            .and_then(pinhole_resolution_rect)
-            .unwrap_or_else(|| {
-                // TODO(emilk): if there is a single image, use that as the default bounds
-                let scene_rect_accum = state.bounding_boxes.accumulated;
-                egui::Rect::from_min_max(
-                    scene_rect_accum.min.truncate().to_array().into(),
-                    scene_rect_accum.max.truncate().to_array().into(),
-                )
-            });
-
-        if !valid_bound(&default_scene_rect) {
-            // Nothing in scene, probably.
-            // Just return something that isn't NaN.
-            Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0))
-        } else {
-            default_scene_rect
+        if ui.available_size().min_elem() <= 0.0 {
+            return Ok(());
         }
-    };
 
-    // Convert ui coordinates to/from scene coordinates.
-    let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, default_scene_rect);
-    let scene_from_ui = ui_from_scene.inverse();
+        // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
 
-    // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.
-    let eye = Eye {
-        world_from_rub_view: IsoTransform::IDENTITY,
-        fov_y: None,
-    };
+        // Note that we can't rely on the camera being part of scene.space_cameras since that requires
+        // the camera to be added to the scene!
+        let pinhole = query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
 
-    let scene_bounds = *scene_from_ui.to();
-    let Ok(target_config) = setup_target_config(
-        &painter,
-        scene_bounds,
-        &query.space_origin.to_string(),
-        state.auto_size_config(),
-        query.highlights.any_outlines(),
-        pinhole,
-    ) else {
-        return Ok(());
-    };
+        let (mut response, painter) =
+            ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
-    // Create labels now since their shapes participate are added to scene.ui for picking.
-    let (label_shapes, ui_rects) = create_labels(
-        collect_ui_labels(&parts),
-        ui_from_scene,
-        &eye,
-        ui,
-        &query.highlights,
-        SpatialSpaceViewKind::TwoD,
-    );
+        let default_scene_rect = {
+            let default_scene_rect = pinhole
+                .as_ref()
+                .and_then(pinhole_resolution_rect)
+                .unwrap_or_else(|| {
+                    // TODO(emilk): if there is a single image, use that as the default bounds
+                    let scene_rect_accum = state.bounding_boxes.accumulated;
+                    egui::Rect::from_min_max(
+                        scene_rect_accum.min.truncate().to_array().into(),
+                        scene_rect_accum.max.truncate().to_array().into(),
+                    )
+                });
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
-    };
+            if !valid_bound(&default_scene_rect) {
+                // Nothing in scene, probably.
+                // Just return something that isn't NaN.
+                Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0))
+            } else {
+                default_scene_rect
+            }
+        };
 
-    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+        // Convert ui coordinates to/from scene coordinates.
+        let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, default_scene_rect);
+        let scene_from_ui = ui_from_scene.inverse();
 
-    if ui.ctx().dragged_id().is_none() {
-        response = picking(
-            ctx,
-            response,
-            scene_from_ui,
-            painter.clip_rect(),
+        // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.
+        let eye = Eye {
+            world_from_rub_view: IsoTransform::IDENTITY,
+            fov_y: None,
+        };
+
+        let scene_bounds = *scene_from_ui.to();
+        let Ok(target_config) = setup_target_config(
+            &painter,
+            scene_bounds,
+            &query.space_origin.to_string(),
+            state.auto_size_config(),
+            query.highlights.any_outlines(),
+            pinhole,
+        ) else {
+            return Ok(());
+        };
+
+        // Create labels now since their shapes participate are added to scene.ui for picking.
+        let (label_shapes, ui_rects) = create_labels(
+            collect_ui_labels(&parts),
+            ui_from_scene,
+            &eye,
             ui,
-            eye,
-            &mut view_builder,
-            state,
-            &view_ctx,
-            &parts,
-            &ui_rects,
-            query,
+            &query.highlights,
             SpatialSpaceViewKind::TwoD,
-        )?;
-    }
+        );
 
-    for draw_data in draw_data {
-        view_builder.queue_draw(draw_data);
-    }
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
 
-    let background = re_viewport_blueprint::view_property::<Background>(ctx, query.space_view_id)
-        .unwrap_or(Background::DEFAULT_2D);
-    let (background_drawable, clear_color) = crate::configure_background(
-        render_ctx,
-        background.kind,
-        background.color.unwrap_or(Background::DEFAULT_COLOR_2D),
-    );
-    if let Some(background_drawable) = background_drawable {
-        view_builder.queue_draw(background_drawable);
-    }
+        let mut view_builder = ViewBuilder::new(render_ctx, target_config);
 
-    // ------------------------------------------------------------------------
+        if ui.ctx().dragged_id().is_none() {
+            response = picking(
+                ctx,
+                response,
+                scene_from_ui,
+                painter.clip_rect(),
+                ui,
+                eye,
+                &mut view_builder,
+                state,
+                &view_ctx,
+                &parts,
+                &ui_rects,
+                query,
+                SpatialSpaceViewKind::TwoD,
+            )?;
+        }
 
-    if let Some(mode) = screenshot_context_menu(ctx, &response) {
-        view_builder
-            .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
-            .ok();
-    }
+        for draw_data in draw_data {
+            view_builder.queue_draw(draw_data);
+        }
 
-    // Draw a re_renderer driven view.
-    // Camera & projection are configured to ingest space coordinates directly.
-    painter.add(gpu_bridge::new_renderer_callback(
-        view_builder,
-        painter.clip_rect(),
-        clear_color,
-    ));
+        let background = ViewProperty::from_archetype::<Background>(ctx, query.space_view_id);
+        let (background_drawable, clear_color) =
+            crate::configure_background(&background, render_ctx, self, state)?;
+        if let Some(background_drawable) = background_drawable {
+            view_builder.queue_draw(background_drawable);
+        }
 
-    // Make sure to _first_ draw the selected, and *then* the hovered context on top!
-    for selected_context in ctx.selection_state().selection_space_contexts() {
-        painter.extend(show_projections_from_3d_space(
-            ui,
-            query.space_origin,
-            &ui_from_scene,
-            selected_context,
-            ui.style().visuals.selection.bg_fill,
+        // ------------------------------------------------------------------------
+
+        if let Some(mode) = screenshot_context_menu(ctx, &response) {
+            view_builder
+                .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
+                .ok();
+        }
+
+        // Draw a re_renderer driven view.
+        // Camera & projection are configured to ingest space coordinates directly.
+        painter.add(gpu_bridge::new_renderer_callback(
+            view_builder,
+            painter.clip_rect(),
+            clear_color,
         ));
-    }
-    if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
-        painter.extend(show_projections_from_3d_space(
-            ui,
-            query.space_origin,
-            &ui_from_scene,
-            hovered_context,
-            egui::Color32::WHITE,
-        ));
-    }
 
-    // Add egui driven labels on top of re_renderer content.
-    painter.extend(label_shapes);
+        // Make sure to _first_ draw the selected, and *then* the hovered context on top!
+        for selected_context in ctx.selection_state().selection_space_contexts() {
+            painter.extend(show_projections_from_3d_space(
+                ui,
+                query.space_origin,
+                &ui_from_scene,
+                selected_context,
+                ui.style().visuals.selection.bg_fill,
+            ));
+        }
+        if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+            painter.extend(show_projections_from_3d_space(
+                ui,
+                query.space_origin,
+                &ui_from_scene,
+                hovered_context,
+                egui::Color32::WHITE,
+            ));
+        }
 
-    Ok(())
+        // Add egui driven labels on top of re_renderer content.
+        painter.extend(label_shapes);
+
+        Ok(())
+    }
 }
 
 fn setup_target_config(

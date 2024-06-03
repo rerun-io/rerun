@@ -17,13 +17,11 @@ table Background (
 ) {
     // --- Required ---
 
-    /// The type of the background. Defaults to BackgroundKind.GradientDark.
+    /// The type of the background.
     kind: rerun.blueprint.components.BackgroundKind ("attr.rerun.component_required", order: 1000);
 
     // --- Optional ---
 
-    /// Color used for BackgroundKind.SolidColor.
-    ///
-    /// Defaults to White.
+    /// Color used for the `SolidColor` background type.
     color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
 }

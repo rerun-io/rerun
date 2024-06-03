@@ -25,12 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the background of a view.
 #[derive(Clone, Debug, Copy)]
 pub struct Background {
-    /// The type of the background. Defaults to BackgroundKind.GradientDark.
+    /// The type of the background.
     pub kind: crate::blueprint::components::BackgroundKind,
 
-    /// Color used for BackgroundKind.SolidColor.
-    ///
-    /// Defaults to White.
+    /// Color used for the `SolidColor` background type.
     pub color: Option<crate::components::Color>,
 }
 
@@ -70,13 +68,12 @@ static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 
         [
             ::re_types_core::ArchetypeFieldInfo {
                 display_name: "Kind",
-                documentation:
-                    "The type of the background. Defaults to BackgroundKind.GradientDark.",
+                documentation: "The type of the background.",
                 component_name: "rerun.blueprint.components.BackgroundKind".into(),
             },
             ::re_types_core::ArchetypeFieldInfo {
                 display_name: "Color",
-                documentation: "Color used for BackgroundKind.SolidColor.\n\nDefaults to White.",
+                documentation: "Color used for the `SolidColor` background type.",
                 component_name: "rerun.components.Color".into(),
             },
         ]
@@ -197,9 +194,7 @@ impl Background {
         }
     }
 
-    /// Color used for BackgroundKind.SolidColor.
-    ///
-    /// Defaults to White.
+    /// Color used for the `SolidColor` background type.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

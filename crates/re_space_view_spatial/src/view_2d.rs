@@ -4,10 +4,13 @@ use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
 use re_format::format_f32;
 use re_log_types::EntityPath;
+use re_space_view::view_property_ui;
 use re_types::{
     archetypes::{DepthImage, Image},
-    blueprint::archetypes::{Background, VisualBounds2D},
-    blueprint::components as blueprint_components,
+    blueprint::{
+        archetypes::{Background, VisualBounds2D},
+        components::{self as blueprint_components},
+    },
     Archetype, ComponentName, SpaceViewClassIdentifier,
 };
 use re_viewer_context::{
@@ -240,21 +243,25 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
+        // TODO(andreas): list_item'ify the rest
         ctx.re_ui
             .selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
                 state.default_sizes_ui(ctx, ui);
 
-                crate::ui::background_ui(ctx, ui, space_view_id, Background::DEFAULT_2D);
-
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
 
-                visual_bounds_ui(ctx, space_view_id, ui);
+                visual_bounds_ui(ctx, view_id, ui);
             });
+
+        re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
+            view_property_ui::<Background>(ctx, ui, view_id, self, state);
+        });
+
         Ok(())
     }
 
@@ -277,7 +284,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        crate::ui_2d::view_2d(ctx, ui, state, query, system_output)
+        self.view_2d(ctx, ui, state, query, system_output)
     }
 }
 
