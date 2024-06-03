@@ -63,6 +63,13 @@ impl std::ops::Deref for VisibleTimeRange {
     }
 }
 
+impl std::ops::DerefMut for VisibleTimeRange {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::VisibleTimeRange {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(VisibleTimeRange);
 
 impl ::re_types_core::Loggable for VisibleTimeRange {

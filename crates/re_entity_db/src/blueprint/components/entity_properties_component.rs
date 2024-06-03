@@ -40,6 +40,22 @@ impl From<EntityPropertiesComponent> for crate::EntityProperties {
     }
 }
 
+impl std::ops::Deref for EntityPropertiesComponent {
+    type Target = crate::EntityProperties;
+
+    #[inline]
+    fn deref(&self) -> &crate::EntityProperties {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for EntityPropertiesComponent {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::EntityProperties {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(EntityPropertiesComponent);
 
 impl ::re_types_core::Loggable for EntityPropertiesComponent {

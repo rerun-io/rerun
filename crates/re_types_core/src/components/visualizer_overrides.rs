@@ -53,6 +53,22 @@ impl From<VisualizerOverrides> for Vec<crate::ArrowString> {
     }
 }
 
+impl std::ops::Deref for VisualizerOverrides {
+    type Target = Vec<crate::ArrowString>;
+
+    #[inline]
+    fn deref(&self) -> &Vec<crate::ArrowString> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for VisualizerOverrides {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Vec<crate::ArrowString> {
+        &mut self.0
+    }
+}
+
 crate::macros::impl_into_cow!(VisualizerOverrides);
 
 impl crate::Loggable for VisualizerOverrides {

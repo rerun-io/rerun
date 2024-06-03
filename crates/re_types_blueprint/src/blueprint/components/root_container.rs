@@ -64,6 +64,13 @@ impl std::ops::Deref for RootContainer {
     }
 }
 
+impl std::ops::DerefMut for RootContainer {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Uuid {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(RootContainer);
 
 impl ::re_types_core::Loggable for RootContainer {

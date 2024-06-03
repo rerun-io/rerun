@@ -63,6 +63,13 @@ impl std::ops::Deref for Rotation3D {
     }
 }
 
+impl std::ops::DerefMut for Rotation3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Rotation3D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Rotation3D);
 
 impl ::re_types_core::Loggable for Rotation3D {

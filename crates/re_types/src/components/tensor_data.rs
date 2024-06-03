@@ -73,6 +73,13 @@ impl std::ops::Deref for TensorData {
     }
 }
 
+impl std::ops::DerefMut for TensorData {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorData {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
 impl ::re_types_core::Loggable for TensorData {

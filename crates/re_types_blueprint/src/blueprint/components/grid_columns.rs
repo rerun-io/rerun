@@ -55,6 +55,22 @@ impl From<GridColumns> for u32 {
     }
 }
 
+impl std::ops::Deref for GridColumns {
+    type Target = u32;
+
+    #[inline]
+    fn deref(&self) -> &u32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for GridColumns {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut u32 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(GridColumns);
 
 impl ::re_types_core::Loggable for GridColumns {

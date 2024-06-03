@@ -63,6 +63,13 @@ impl std::ops::Deref for Transform3D {
     }
 }
 
+impl std::ops::DerefMut for Transform3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Transform3D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Transform3D);
 
 impl ::re_types_core::Loggable for Transform3D {

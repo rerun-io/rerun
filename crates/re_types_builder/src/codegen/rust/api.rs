@@ -1526,6 +1526,31 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     let quoted_obj_name = format_ident!("{}", obj.name);
     let quoted_obj_field_name = format_ident!("{}", obj_field.name);
 
+    let quoted_type = quote_field_type_from_object_field(obj_field);
+
+    let self_field_access = if obj_is_tuple_struct {
+        quote!(self.0)
+    } else {
+        quote!(self.#quoted_obj_field_name )
+    };
+    let deref_impl = quote! {
+        impl std::ops::Deref for #quoted_obj_name {
+            type Target = #quoted_type;
+
+            #[inline]
+            fn deref(&self) -> &#quoted_type {
+                &#self_field_access
+            }
+        }
+
+        impl std::ops::DerefMut for #quoted_obj_name {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut #quoted_type {
+                &mut #self_field_access
+            }
+        }
+    };
+
     if obj_field.typ.fqname().is_some() {
         if let Some(inner) = obj_field.typ.vector_inner() {
             if obj_field.is_nullable {
@@ -1558,18 +1583,10 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 }
             }
         } else {
-            let quoted_type = quote_field_type_from_object_field(obj_field);
-
             let quoted_binding = if obj_is_tuple_struct {
                 quote!(Self(v.into()))
             } else {
                 quote!(Self { #quoted_obj_field_name: v.into() })
-            };
-
-            let quoted_borrow_deref_impl = if obj_is_tuple_struct {
-                quote!(&self.0)
-            } else {
-                quote!( &self.#quoted_obj_field_name )
             };
 
             quote! {
@@ -1582,24 +1599,14 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 impl std::borrow::Borrow<#quoted_type> for #quoted_obj_name {
                     #[inline]
                     fn borrow(&self) -> &#quoted_type {
-                        #quoted_borrow_deref_impl
+                        &#self_field_access
                     }
                 }
 
-                impl std::ops::Deref for #quoted_obj_name {
-                    type Target = #quoted_type;
-
-                    #[inline]
-                    fn deref(&self) -> &#quoted_type {
-                        #quoted_borrow_deref_impl
-                    }
-                }
+                #deref_impl
             }
         }
     } else {
-        let quoted_type = quote_field_type_from_object_field(obj_field);
-        let quoted_obj_field_name = format_ident!("{}", obj_field.name);
-
         let (quoted_binding, quoted_read) = if obj_is_tuple_struct {
             (quote!(Self(#quoted_obj_field_name)), quote!(value.0))
         } else {
@@ -1607,6 +1614,15 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 quote!(Self { #quoted_obj_field_name }),
                 quote!(value.#quoted_obj_field_name),
             )
+        };
+
+        // If the field is not a custom datatype, emit `Deref`/`DerefMut` only for components.
+        // (in the long run all components are implemented with custom data types, making it so that we don't hit this path anymore)
+        // For ObjectKind::Datatype we sometimes have custom implementations for `Deref`, e.g. `Utf8String` derefs to `&str` instead of `ArrowString`.
+        let deref_impl = if obj.kind == ObjectKind::Component {
+            deref_impl
+        } else {
+            quote!()
         };
 
         quote! {
@@ -1623,6 +1639,8 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                     #quoted_read
                 }
             }
+
+            #deref_impl
         }
     }
 }

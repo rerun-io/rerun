@@ -78,6 +78,13 @@ impl std::ops::Deref for KeypointId {
     }
 }
 
+impl std::ops::DerefMut for KeypointId {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::KeypointId {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(KeypointId);
 
 impl ::re_types_core::Loggable for KeypointId {

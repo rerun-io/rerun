@@ -61,6 +61,13 @@ impl std::ops::Deref for Position2D {
     }
 }
 
+impl std::ops::DerefMut for Position2D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Position2D);
 
 impl ::re_types_core::Loggable for Position2D {

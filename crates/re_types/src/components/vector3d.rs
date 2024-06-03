@@ -61,6 +61,13 @@ impl std::ops::Deref for Vector3D {
     }
 }
 
+impl std::ops::DerefMut for Vector3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Vector3D);
 
 impl ::re_types_core::Loggable for Vector3D {

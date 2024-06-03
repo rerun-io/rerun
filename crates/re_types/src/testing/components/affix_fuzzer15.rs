@@ -59,6 +59,13 @@ impl std::ops::Deref for AffixFuzzer15 {
     }
 }
 
+impl std::ops::DerefMut for AffixFuzzer15 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::AffixFuzzer3> {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer15);
 
 impl ::re_types_core::Loggable for AffixFuzzer15 {
