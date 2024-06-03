@@ -3,13 +3,13 @@
 //! The only entry point is [`register_editors`], which registers all editors in the component UI registry.
 //! This should be called by `re_viewer` on startup.
 
-mod corner2d;
 mod datatype_editors;
 mod marker_shape;
 mod response_utils;
 
+use datatype_editors::edit_enum;
 use re_types::{
-    blueprint::components::Visible,
+    blueprint::components::{BackgroundKind, Corner2D, Visible},
     components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text},
 };
 use re_viewer_context::ViewerContext;
@@ -37,7 +37,6 @@ fn edit_color_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Color)
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(edit_color_ui);
-    registry.add_editor(corner2d::edit_corner2d);
     registry.add_editor(marker_shape::edit_marker_shape_ui);
 
     registry.add_editor::<Visible>(datatype_editors::edit_bool);
@@ -48,4 +47,8 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor::<Radius>(datatype_editors::edit_f32_zero_to_inf);
     registry.add_editor::<MarkerSize>(datatype_editors::edit_f32_zero_to_inf);
     registry.add_editor::<StrokeWidth>(datatype_editors::edit_f32_zero_to_inf);
+
+    registry.add_editor(|_ctx, ui, value| edit_enum(ui, "corner2d", value, &Corner2D::ALL));
+    registry
+        .add_editor(|_ctx, ui, value| edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL));
 }
