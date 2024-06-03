@@ -18,7 +18,7 @@ pub struct LabelContent<'a> {
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
     always_show_buttons: bool,
 
-    min_desired_width: f32,
+    min_desired_width: Option<f32>,
     exact_width: bool,
 }
 
@@ -33,7 +33,7 @@ impl<'a> LabelContent<'a> {
             icon_fn: None,
             buttons_fn: None,
             always_show_buttons: false,
-            min_desired_width: 0.0,
+            min_desired_width: None,
             exact_width: false,
         }
     }
@@ -97,7 +97,7 @@ impl<'a> LabelContent<'a> {
     /// This defaults to zero.
     #[inline]
     pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
-        self.min_desired_width = min_desired_width;
+        self.min_desired_width = Some(min_desired_width);
         self
     }
 
@@ -256,7 +256,7 @@ impl ListItemContent for LabelContent<'_> {
     }
 
     fn desired_width(&self, _re_ui: &ReUi, ui: &Ui) -> DesiredWidth {
-        if self.exact_width {
+        let measured_width = {
             //TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
             let mut text = self.text.clone();
             if self.italics || self.label_style == LabelStyle::Unnamed {
@@ -276,9 +276,20 @@ impl ListItemContent for LabelContent<'_> {
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being
             // truncated even though we allocated enough space.
-            DesiredWidth::Exact(desired_width.ceil().at_least(self.min_desired_width))
+            desired_width.ceil()
+        };
+
+        // TODO(emilk): use the egui `UiStack` to check if we're somewhere resizable,
+        // and only then turn on text truncation.
+        // For instance: in a tooltip we must not truncate the text, because
+        // the user can't resize the tooltip to read the full text.
+        // But if we're in a panel, the user can resize the panel to read the full text.
+        let min_desired_width = self.min_desired_width.unwrap_or(measured_width);
+
+        if self.exact_width {
+            DesiredWidth::Exact(measured_width.at_least(min_desired_width))
         } else {
-            DesiredWidth::AtLeast(self.min_desired_width)
+            DesiredWidth::AtLeast(min_desired_width)
         }
     }
 }
