@@ -41,6 +41,10 @@ pub enum ComponentFallbackError {
     /// Meaning, that this is an unknown component or something went wrong with the placeholder registration.
     #[error("Missing placeholder for component. Was the component's default registered with the viewer?")]
     MissingPlaceholderValue,
+
+    /// Not directly returned by the fallback provider, but useful when serializing a fallback value.
+    #[error("Fallback value turned up to be empty when we expected a value.")]
+    UnexpectedEmptyFallback,
 }
 
 /// Provides fallback values for components, implemented typically by [`crate::SpaceViewClass`] and [`crate::VisualizerSystem`].

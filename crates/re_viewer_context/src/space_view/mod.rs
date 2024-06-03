@@ -64,6 +64,9 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error("No render context error.")]
     NoRenderContextError,
+
+    #[error(transparent)]
+    ComponentFallbackError(#[from] crate::ComponentFallbackError),
 }
 
 // Convenience conversions for some re_renderer error types since these are so frequent.
