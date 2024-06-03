@@ -5353,6 +5353,7 @@ dependencies = [
  "re_viewer_context",
  "slotmap",
  "smallvec",
+ "thiserror",
 ]
 
 [[package]]
