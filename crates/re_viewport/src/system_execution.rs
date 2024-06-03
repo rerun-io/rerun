@@ -126,7 +126,7 @@ pub fn execute_systems_for_all_views<'a>(
     view_states: &ViewStates,
 ) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
-        return HashMap::default();
+        return Default::default();
     };
 
     re_tracing::profile_wait!("execute_systems");
