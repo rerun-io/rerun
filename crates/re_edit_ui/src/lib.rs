@@ -6,6 +6,7 @@
 mod datatype_editors;
 mod marker_shape;
 mod response_utils;
+mod visual_bounds_2d;
 
 use datatype_editors::edit_enum;
 use re_types::{
@@ -38,6 +39,7 @@ fn edit_color_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Color)
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(edit_color_ui);
     registry.add_editor(marker_shape::edit_marker_shape_ui);
+    registry.add_editor(visual_bounds_2d::edit_visual_bounds_2d);
 
     registry.add_editor::<Visible>(datatype_editors::edit_bool);
 

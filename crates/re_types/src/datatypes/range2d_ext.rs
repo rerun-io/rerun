@@ -1,4 +1,12 @@
-use super::Range2D;
+use super::{Range1D, Range2D};
+
+impl Range2D {
+    /// Range that expands from negative infinity to positive infinity on both axis.
+    pub const INFINITY: Self = Self {
+        x_range: Range1D::INFINITY,
+        y_range: Range1D::INFINITY,
+    };
+}
 
 impl From<emath::Rect> for Range2D {
     #[inline]
