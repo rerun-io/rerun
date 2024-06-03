@@ -411,29 +411,32 @@ pub fn component_path_button_to(
     let response = response.on_hover_ui(|ui| {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // Make tooltip as wide as needed
 
-        // wrap lone item
+        let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
+
         list_item::list_item_scope(ui, "component_path_tooltip", |ui| {
-            list_item::ListItem::new(ctx.re_ui)
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::LabelContent::new(if is_static {
-                        "Static component"
-                    } else {
-                        "Temporal component"
-                    })
-                    .with_icon(icon)
-                    .exact_width(true),
-                );
+            re_ui::full_span::full_span_scope(ui, background_x_range, |ui| {
+                list_item::ListItem::new(ctx.re_ui)
+                    .interactive(false)
+                    .show_flat(
+                        ui,
+                        list_item::LabelContent::new(if is_static {
+                            "Static component"
+                        } else {
+                            "Temporal component"
+                        })
+                        .with_icon(icon)
+                        .exact_width(true),
+                    );
+
+                let component_name = component_path.component_name;
+
+                ui.label(format!("Full name: {}", component_name.full_name()));
+
+                if let Some(url) = component_name.doc_url() {
+                    list_item::hyperlink_to_ui(ctx.re_ui, ui, "Documentation", url);
+                }
+            });
         });
-
-        let component_name = component_path.component_name;
-
-        ui.label(format!("Full name: {}", component_name.full_name()));
-
-        if let Some(url) = component_name.doc_url() {
-            ui.hyperlink_to("Documentation", url);
-        }
     });
 
     cursor_interact_with_selectable(ctx, response, item)
