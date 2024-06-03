@@ -36,8 +36,8 @@ use re_viewer_context::{
     VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
 };
 
-use crate::space_view_2d::VisualizableFilterContext2D;
-use crate::space_view_3d::VisualizableFilterContext3D;
+use crate::view_2d::VisualizableFilterContext2D;
+use crate::view_3d::VisualizableFilterContext3D;
 
 use super::contexts::SpatialSceneEntityContext;
 

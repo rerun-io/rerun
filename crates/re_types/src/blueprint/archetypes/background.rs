@@ -25,12 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the background of a view.
 #[derive(Clone, Debug, Copy)]
 pub struct Background {
-    /// The type of the background. Defaults to BackgroundKind.GradientDark.
+    /// The type of the background.
     pub kind: crate::blueprint::components::BackgroundKind,
 
-    /// Color used for BackgroundKind.SolidColor.
-    ///
-    /// Defaults to White.
+    /// Color used for the `SolidColor` background type.
     pub color: Option<crate::components::Color>,
 }
 
@@ -62,6 +60,22 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
             "rerun.blueprint.components.BackgroundKind".into(),
             "rerun.blueprint.components.BackgroundIndicator".into(),
             "rerun.components.Color".into(),
+        ]
+    });
+
+static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ::re_types_core::ArchetypeFieldInfo {
+                display_name: "Kind",
+                documentation: "The type of the background.",
+                component_name: "rerun.blueprint.components.BackgroundKind".into(),
+            },
+            ::re_types_core::ArchetypeFieldInfo {
+                display_name: "Color",
+                documentation: "Color used for the `SolidColor` background type.",
+                component_name: "rerun.components.Color".into(),
+            },
         ]
     });
 
@@ -110,6 +124,11 @@ impl ::re_types_core::Archetype for Background {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
+        Some(FIELD_INFOS.as_slice().into())
     }
 
     #[inline]
@@ -175,9 +194,7 @@ impl Background {
         }
     }
 
-    /// Color used for BackgroundKind.SolidColor.
-    ///
-    /// Defaults to White.
+    /// Color used for the `SolidColor` background type.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

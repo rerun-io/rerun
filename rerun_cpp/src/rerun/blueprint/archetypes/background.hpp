@@ -19,12 +19,10 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the background of a view.
     struct Background {
-        /// The type of the background. Defaults to BackgroundKind.GradientDark.
+        /// The type of the background.
         rerun::blueprint::components::BackgroundKind kind;
 
-        /// Color used for BackgroundKind.SolidColor.
-        ///
-        /// Defaults to White.
+        /// Color used for the `SolidColor` background type.
         std::optional<rerun::components::Color> color;
 
       public:
@@ -41,9 +39,7 @@ namespace rerun::blueprint::archetypes {
         explicit Background(rerun::blueprint::components::BackgroundKind _kind)
             : kind(std::move(_kind)) {}
 
-        /// Color used for BackgroundKind.SolidColor.
-        ///
-        /// Defaults to White.
+        /// Color used for the `SolidColor` background type.
         Background with_color(rerun::components::Color _color) && {
             color = std::move(_color);
             // See: https://github.com/rerun-io/rerun/issues/4027

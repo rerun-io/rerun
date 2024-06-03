@@ -3,7 +3,11 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::EntityPath;
-use re_types::{components::ViewCoordinates, Loggable, SpaceViewClassIdentifier};
+use re_space_view::view_property_ui;
+use re_types::{
+    blueprint::archetypes::Background, components::ViewCoordinates, Loggable,
+    SpaceViewClassIdentifier,
+};
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
@@ -297,7 +301,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
@@ -308,6 +312,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
             .map(|c| c.value);
 
+        // TODO(andreas): list_item'ify the rest
         ctx.re_ui
             .selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
@@ -364,15 +369,12 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 });
                 ui.end_row();
 
-                crate::ui::background_ui(
-                    ctx,
-                    ui,
-                    space_view_id,
-                    re_types::blueprint::archetypes::Background::DEFAULT_3D,
-                );
-
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
             });
+
+        re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
+            view_property_ui::<Background>(ctx, ui, view_id, self, state);
+        });
 
         Ok(())
     }
@@ -397,6 +399,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        crate::ui_3d::view_3d(ctx, ui, state, query, system_output)
+        self.view_3d(ctx, ui, state, query, system_output)
     }
 }

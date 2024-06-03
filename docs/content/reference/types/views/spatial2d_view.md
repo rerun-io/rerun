@@ -10,8 +10,8 @@ For viewing spatial 2D data.
 ### `background`
 Configuration for the background of the view.
 
-* `kind`: The type of the background. Defaults to BackgroundKind.GradientDark.
-* `color`: Color used for BackgroundKind.SolidColor.
+* `kind`: The type of the background.
+* `color`: Color used for the `SolidColor` background type.
 ### `visual_bounds`
 The visible parts of the scene, in the coordinate space of the scene.
 
