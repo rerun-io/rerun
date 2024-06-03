@@ -64,6 +64,7 @@ impl VisualizerSystem for InstanceColorSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        _view_state: &dyn re_viewer_context::SpaceViewState,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         // For each entity in the space view that should be displayed with the `InstanceColorSystem`…

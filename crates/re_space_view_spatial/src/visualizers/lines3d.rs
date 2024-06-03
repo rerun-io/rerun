@@ -7,7 +7,7 @@ use re_types::{
     components::{ClassId, Color, KeypointId, LineStrip3D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -204,6 +204,7 @@ impl VisualizerSystem for Lines3DVisualizer {
         &mut self,
         ctx: &ViewerContext<'_>,
         view_query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let Some(render_ctx) = ctx.render_ctx else {

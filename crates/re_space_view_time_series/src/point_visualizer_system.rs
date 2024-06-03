@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    IdentifiedViewSystem, QueryContext, SpaceViewState, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };
@@ -52,11 +52,12 @@ impl VisualizerSystem for SeriesPointSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        view_state: &dyn SpaceViewState,
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        match self.load_scalars(ctx, query) {
+        match self.load_scalars(ctx, query, view_state) {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
             Err(err) => Err(err.into()),
         }
@@ -90,6 +91,7 @@ impl SeriesPointSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         view_query: &ViewQuery<'_>,
+        view_state: &dyn SpaceViewState,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
@@ -105,6 +107,7 @@ impl SeriesPointSystem {
                 archetype_name: Some(SeriesPoint::name()),
                 query: &ctx.current_query(),
                 target_entity_path: &data_result.entity_path,
+                view_state,
             };
 
             let fallback_color =

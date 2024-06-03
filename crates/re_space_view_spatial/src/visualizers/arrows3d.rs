@@ -7,7 +7,7 @@ use re_types::{
     components::{ClassId, Color, KeypointId, Position3D, Radius, Text, Vector3D},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -213,6 +213,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
         &mut self,
         ctx: &ViewerContext<'_>,
         view_query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let Some(render_ctx) = ctx.render_ctx else {

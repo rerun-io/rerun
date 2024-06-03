@@ -39,7 +39,7 @@ pub fn query_range_ui_space_view(
     ui: &mut Ui,
     space_view: &SpaceViewBlueprint,
 ) {
-    if !space_view_with_visible_history(*space_view.class_identifier()) {
+    if !space_view_with_visible_history(space_view.class_identifier()) {
         return;
     }
 

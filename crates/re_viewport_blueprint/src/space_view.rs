@@ -315,15 +315,15 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn class_identifier(&self) -> &SpaceViewClassIdentifier {
-        &self.class_identifier
+    pub fn class_identifier(&self) -> SpaceViewClassIdentifier {
+        self.class_identifier
     }
 
     pub fn class<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a dyn SpaceViewClass {
-        space_view_class_registry.get_class_or_log_error(&self.class_identifier)
+        space_view_class_registry.get_class_or_log_error(self.class_identifier)
     }
 
     pub fn on_frame_start(
@@ -440,7 +440,7 @@ impl SpaceViewBlueprint {
         time_range.map_or_else(
             || {
                 let space_view_class =
-                    space_view_class_registry.get_class_or_log_error(&self.class_identifier);
+                    space_view_class_registry.get_class_or_log_error(self.class_identifier);
                 space_view_class.default_query_range()
             },
             |time_range| QueryRange::TimeRange(time_range.clone()),

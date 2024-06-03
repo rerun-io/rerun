@@ -3,7 +3,7 @@ use ahash::HashMap;
 use re_types::{Archetype, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem,
+    ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewSystemIdentifier,
     ViewerContext, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter,
@@ -84,6 +84,7 @@ pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>;
 

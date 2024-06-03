@@ -255,7 +255,7 @@ impl<'a> SpaceViewClassExt<'a> for dyn SpaceViewClass + 'a {}
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
 /// (on mouse release, the camera would be committed to the blueprint).
-pub trait SpaceViewState: std::any::Any {
+pub trait SpaceViewState: std::any::Any + Sync + Send {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 

@@ -7,9 +7,9 @@ use re_types::{
     components::{Transform3D, ViewCoordinates},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewState,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -204,6 +204,7 @@ impl VisualizerSystem for CamerasVisualizer {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let Some(render_ctx) = ctx.render_ctx else {
