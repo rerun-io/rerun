@@ -89,6 +89,21 @@ impl LatestAtResults {
             &EMPTY
         }
     }
+
+    /// Utility for retrieving a single instance of a component.
+    pub fn get_instance<T: re_types::Component>(
+        &self,
+        resolver: &PromiseResolver,
+        index: usize,
+    ) -> Option<T> {
+        self.get(T::name())
+            .and_then(|r| r.try_instance::<T>(resolver, index))
+    }
+
+    /// Utility for retrieving a specific component.
+    pub fn get_slice<T: re_types::Component>(&self, resolver: &PromiseResolver) -> Option<&[T]> {
+        self.get(T::name()).and_then(|r| r.dense::<T>(resolver))
+    }
 }
 
 impl LatestAtResults {
