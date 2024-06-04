@@ -24,5 +24,5 @@ pub fn edit_range1d(
             .speed(speed),
     );
 
-    response_min.union(response_max)
+    response_min | response_max
 }
