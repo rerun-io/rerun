@@ -4,7 +4,6 @@ use re_log_types::{external::arrow2, EntityPath, Instance};
 use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiLayout, ViewerContext};
 
-
 use super::EntityDataUi;
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
