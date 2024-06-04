@@ -542,7 +542,7 @@ fn show_row_ids_tooltip(
             ui.label(format!("{num_events} events"));
         }
 
-        let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
+        let query = re_data_store2::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
 
         let ui_layout = UiLayout::Tooltip;
 

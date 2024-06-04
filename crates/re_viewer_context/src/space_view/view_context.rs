@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use re_data_store::LatestAtQuery;
-use re_log_types::{DataCell, EntityPath, TimePoint};
+use re_data_store2::LatestAtQuery;
+use re_log_types::{EntityPath, TimePoint};
 use re_types::{AsComponents, ComponentBatch, ComponentName};
 
 use crate::{DataQueryResult, DataResult, QueryContext, SpaceViewId};
@@ -46,7 +46,7 @@ impl<'a> ViewContext<'a> {
 
     /// The data store of the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_data_store::DataStore {
+    pub fn recording_store(&self) -> &re_data_store2::DataStore2 {
         self.viewer_ctx.recording_store()
     }
 
@@ -81,7 +81,7 @@ impl<'a> ViewContext<'a> {
 
     /// The current time query, based on the current time control.
     #[inline]
-    pub fn current_query(&self) -> re_data_store::LatestAtQuery {
+    pub fn current_query(&self) -> LatestAtQuery {
         self.viewer_ctx.current_query()
     }
 
@@ -101,7 +101,11 @@ impl<'a> ViewContext<'a> {
     }
 
     #[inline]
-    pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
+    pub fn save_blueprint_archetype(
+        &self,
+        entity_path: &EntityPath,
+        components: &dyn AsComponents,
+    ) {
         self.viewer_ctx
             .save_blueprint_archetype(entity_path, components);
     }
@@ -116,11 +120,12 @@ impl<'a> ViewContext<'a> {
             .save_blueprint_component(entity_path, components);
     }
 
-    #[inline]
-    pub fn save_blueprint_data_cell(&self, entity_path: &EntityPath, data_cell: DataCell) {
-        self.viewer_ctx
-            .save_blueprint_data_cell(entity_path, data_cell);
-    }
+    // TODO
+    // #[inline]
+    // pub fn save_blueprint_data_cell(&self, entity_path: &EntityPath, data_cell: DataCell) {
+    //     self.viewer_ctx
+    //         .save_blueprint_data_cell(entity_path, data_cell);
+    // }
 
     #[inline]
     pub fn save_empty_blueprint_component<C>(&self, entity_path: &EntityPath)

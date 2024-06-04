@@ -19,9 +19,6 @@ use crate::{
 
 #[derive(thiserror::Error, Debug)]
 pub enum WriteError {
-    #[error("The incoming data was inconsistent: {0}")]
-    DataRead(#[from] re_log_types::DataReadError),
-
     #[error("Error with one or more the underlying data cells")]
     DataCell(#[from] DataCellError),
 

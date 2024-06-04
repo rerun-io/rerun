@@ -1,4 +1,4 @@
-use re_data_store::LatestAtQuery;
+use re_data_store2::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtMonoResult, EntityPath};
 use re_log_types::RowId;
 use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};

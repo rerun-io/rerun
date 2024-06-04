@@ -4,7 +4,7 @@
 #![cfg(test)]
 
 use itertools::Itertools;
-use re_data_store::{
+use re_data_store2::{
     test_row,
     test_util::{insert_table_with_retries, sanity_unwrap},
     DataStore, DataStoreStats, GarbageCollectionOptions, ResolvedTimeRange, TimeInt, Timeline,

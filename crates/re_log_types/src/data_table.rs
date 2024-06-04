@@ -175,6 +175,11 @@ impl TableId {
     pub fn incremented_by(&self, n: u64) -> Self {
         Self(self.0.incremented_by(n))
     }
+
+    #[inline]
+    pub fn from_u128(uid: u128) -> Self {
+        Self(re_tuid::Tuid::from_u128(uid))
+    }
 }
 
 impl SizeBytes for TableId {
@@ -623,7 +628,15 @@ impl DataTable {
         schema.fields.push(entity_path_field);
         columns.push(entity_path_column);
 
-        schema.metadata = [(TableId::name().to_string(), table_id.to_string())].into();
+        // TODO
+        /// The key used to identify a Rerun [`ChunkId`] in chunk-level [`ArrowSchema`] metadata.
+        pub const CHUNK_METADATA_KEY_ID: &'static str = "rerun.id";
+
+        schema.metadata = [
+            (CHUNK_METADATA_KEY_ID.to_owned(), table_id.to_string()),
+            (TableId::name().to_string(), table_id.to_string()),
+        ]
+        .into();
 
         Ok((schema, columns))
     }

@@ -7,8 +7,7 @@ use nohash_hasher::IntSet;
 use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use smallvec::SmallVec;
 
-use crate::SpaceViewBlueprint;
-use re_data_store::LatestAtQuery;
+use re_data_store2::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
@@ -19,7 +18,7 @@ use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::ContainerBlueprint, TreeAction, VIEWPORT_PATH};
+use crate::{container::ContainerBlueprint, SpaceViewBlueprint, TreeAction, VIEWPORT_PATH};
 
 // ----------------------------------------------------------------------------
 

@@ -35,7 +35,7 @@ use super::DataUi;
 /// Show an entity path and make it selectable.
 pub fn entity_path_button(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
@@ -55,7 +55,7 @@ pub fn entity_path_button(
 /// Show the different parts of an entity path and make them selectable.
 pub fn entity_path_parts_buttons(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
@@ -93,7 +93,7 @@ pub fn entity_path_parts_buttons(
 /// Show an entity path and make it selectable.
 pub fn entity_path_button_to(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
@@ -114,7 +114,7 @@ pub fn entity_path_button_to(
 /// Show an instance id and make it selectable.
 pub fn instance_path_button(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
@@ -136,7 +136,7 @@ pub fn instance_path_button(
 /// The choice of icon is based on whether the instance is "empty" as in hasn't any logged component
 /// _on the current timeline_.
 pub fn instance_path_icon(
-    timeline: &re_data_store::Timeline,
+    timeline: &re_data_store2::Timeline,
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
@@ -166,7 +166,7 @@ pub fn instance_path_icon(
 pub fn guess_query_and_db_for_selected_entity<'a>(
     ctx: &'a ViewerContext<'_>,
     entity_path: &EntityPath,
-) -> (re_data_store::LatestAtQuery, &'a re_entity_db::EntityDb) {
+) -> (re_data_store2::LatestAtQuery, &'a re_entity_db::EntityDb) {
     if ctx.app_options.inspect_blueprint_timeline
         && ctx.store_context.blueprint.is_logged_entity(entity_path)
     {
@@ -193,7 +193,7 @@ pub fn guess_instance_path_icon(
 /// Show an instance id and make it selectable.
 pub fn instance_path_button_to(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
@@ -207,7 +207,7 @@ pub fn instance_path_button_to(
 #[allow(clippy::too_many_arguments)]
 fn instance_path_button_to_ex(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
@@ -242,7 +242,7 @@ fn instance_path_button_to_ex(
 /// Show the different parts of an instance path and make them selectable.
 pub fn instance_path_parts_buttons(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
@@ -435,7 +435,7 @@ pub fn component_path_button_to(
 
 pub fn data_blueprint_button_to(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
@@ -530,7 +530,7 @@ pub fn cursor_interact_with_selectable(
 pub fn instance_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
 ) {
@@ -565,7 +565,7 @@ pub fn instance_hover_card_ui(
 pub fn entity_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
 ) {

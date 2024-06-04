@@ -31,7 +31,7 @@ pub struct QueryContext<'a> {
     pub archetype_name: Option<re_types::ArchetypeName>,
 
     /// Query which didn't yield a result for the component at the target entity path.
-    pub query: &'a re_data_store::LatestAtQuery,
+    pub query: &'a re_data_store2::LatestAtQuery,
 
     /// The view state of the view in which the query is executed.
     pub view_state: &'a dyn SpaceViewState,

@@ -7,7 +7,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 
 use itertools::Itertools;
-use re_data_store::{
+use re_data_store2::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{

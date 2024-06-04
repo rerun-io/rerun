@@ -58,7 +58,7 @@ fn memory_use<R>(run: impl Fn() -> R) -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_data_store::{DataStore, DataStoreConfig};
+use re_data_store2::{DataStore, DataStoreConfig};
 use re_log_types::{DataRow, RowId, TimePoint, TimeType, Timeline};
 use re_types::components::Scalar;
 

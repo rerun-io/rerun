@@ -14,6 +14,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO: chunk store
+
 mod arrow_util;
 mod store;
 mod store_arrow;

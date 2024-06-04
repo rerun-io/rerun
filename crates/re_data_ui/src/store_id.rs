@@ -6,7 +6,7 @@ impl crate::DataUi for re_log_types::StoreId {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_data_store2::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         if let Some(entity_db) = ctx.store_context.bundle.get(self) {

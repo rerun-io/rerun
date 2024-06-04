@@ -1,5 +1,5 @@
 use egui::{Ui, Vec2};
-use re_data_store::LatestAtQuery;
+use re_data_store2::LatestAtQuery;
 use re_entity_db::EntityDb;
 
 use re_format::format_f32;
@@ -18,7 +18,7 @@ impl DataUi for [u8; 4] {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let [r, g, b, a] = self;
@@ -39,7 +39,7 @@ impl DataUi for Color {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let [r, g, b, a] = self.to_array();
@@ -60,7 +60,7 @@ impl DataUi for ViewCoordinates {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {
@@ -84,7 +84,7 @@ impl DataUi for re_types::datatypes::Mat3x3 {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
@@ -112,7 +112,7 @@ impl DataUi for re_types::datatypes::Vec2D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -125,7 +125,7 @@ impl DataUi for re_types::datatypes::Vec3D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -138,7 +138,7 @@ impl DataUi for re_types::datatypes::Vec4D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -151,7 +151,7 @@ impl DataUi for re_types::datatypes::UVec2D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -164,7 +164,7 @@ impl DataUi for re_types::datatypes::UVec3D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -177,7 +177,7 @@ impl DataUi for re_types::datatypes::UVec4D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -216,7 +216,7 @@ impl DataUi for LineStrip2D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {
@@ -264,7 +264,7 @@ impl DataUi for LineStrip3D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {

@@ -29,7 +29,6 @@ pub use self::{
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
 };
 
-use re_log_types::DataTableError;
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
 #[cfg(feature = "serde")]
@@ -38,7 +37,7 @@ pub use blueprint::components::EntityPropertiesComponent;
 pub use editable_auto_value::EditableAutoValue;
 
 pub mod external {
-    pub use re_data_store;
+    pub use re_data_store2;
     pub use re_query;
 }
 
@@ -50,17 +49,11 @@ pub mod external {
 /// or how the logging SDK is being used (PEBKAC).
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("The incoming data was inconsistent: {0}")]
-    DataRead(#[from] re_log_types::DataReadError),
-
-    #[error("Error with one the underlying data table: {0}")]
-    DataTable(#[from] DataTableError),
+    #[error(transparent)]
+    Write(#[from] re_data_store2::WriteError),
 
     #[error(transparent)]
-    Write(#[from] re_data_store::WriteError),
-
-    #[error(transparent)]
-    DataRow(#[from] re_log_types::DataRowError),
+    Chunk(#[from] re_chunk::ChunkError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

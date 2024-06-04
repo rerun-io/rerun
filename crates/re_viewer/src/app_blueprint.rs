@@ -1,7 +1,10 @@
-use re_data_store::LatestAtQuery;
+use std::sync::Arc;
+
+use re_chunk::Chunk;
+use re_data_store2::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{DataRow, EntityPath, RowId};
-use re_types::blueprint::components::PanelState;
+use re_log_types::{EntityPath, RowId};
+use re_types::{blueprint::components::PanelState, ComponentBatch};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
 const TOP_PANEL_PATH: &str = "top_panel";
@@ -191,10 +194,14 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
 
         let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
-        let row =
-            DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, [value]).unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+        let chunk = Chunk::builder(entity_path)
+            .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+            .build()
+            .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
-        welcome_screen_blueprint.add_data_row(row).unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+        welcome_screen_blueprint
+            .add_chunk(&Arc::new(chunk))
+            .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
     }
 }
 
@@ -212,12 +219,14 @@ impl<'a> AppBlueprint<'a> {
 
             let timepoint = store_ctx.blueprint_timepoint_for_writes();
 
-            let row =
-                DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, [value]).unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+            let chunk = Chunk::builder(entity_path)
+                .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+                .build()
+                .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 store_ctx.blueprint.store_id().clone(),
-                vec![row],
+                vec![chunk],
             ));
         }
     }

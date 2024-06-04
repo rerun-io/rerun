@@ -5,16 +5,16 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
+use arrow2::array::Array as ArrowArray;
 use nohash_hasher::IntMap;
-
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use re_data_store::RangeQuery;
+
+use re_data_store2::RangeQuery;
 use re_log_types::{ResolvedTimeRange, RowId, TimeInt};
 use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
 
 use crate::{
-    ErasedFlatVecDeque, FlatVecDeque, LatestAtComponentResults, Promise, PromiseResolver,
-    PromiseResult,
+    ErasedFlatVecDeque, FlatVecDeque, LatestAtComponentResults, PromiseResolver, PromiseResult,
 };
 
 // ---
@@ -236,7 +236,7 @@ impl<'a, C: Component> RangeData<'a, C> {
     ) -> Self {
         let LatestAtComponentResults {
             index,
-            promise: _,
+            value: _,
             cached_dense,
         } = results;
 
@@ -364,6 +364,9 @@ impl RangeComponentResults {
         // It's tracing the deserialization of an entire range query at once -- it's fine.
         re_tracing::profile_function!();
 
+        // TODO: explain that we don't actually resolve anything and just pretend.
+        _ = resolver;
+
         // --- Step 1: try and upsert pending data (write lock) ---
 
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
@@ -419,28 +422,16 @@ impl RangeComponentResults {
                 // available up to that point in time.
                 //
                 // Reminder: promises are sorted in ascending index order.
-                while let Some(((data_time, row_id), promise)) = results.promises_front.pop() {
-                    let data = match resolver.resolve(&promise) {
-                        PromiseResult::Pending => {
-                            results.front_status = (data_time, PromiseResult::Pending);
-                            break;
-                        }
-                        PromiseResult::Error(err) => {
-                            results.front_status = (data_time, PromiseResult::Error(err));
-                            break;
-                        }
-                        PromiseResult::Ready(cell) => {
-                            results.front_status = (data_time, PromiseResult::Ready(()));
-                            match cell
-                                .try_to_native::<C>()
-                                .map_err(|err| DeserializationError::DataCellError(err.to_string()))
-                            {
-                                Ok(data) => data,
-                                Err(err) => {
-                                    re_log::error!(%err, component=%C::name(), "data deserialization failed -- skipping");
-                                    continue;
-                                }
-                            }
+                while let Some(((data_time, row_id), array)) = results.promises_front.pop() {
+                    results.front_status = (data_time, PromiseResult::Ready(()));
+
+                    let data = match C::from_arrow(array.as_ref())
+                        .map_err(|err| DeserializationError::DataCellError(err.to_string()))
+                    {
+                        Ok(data) => data,
+                        Err(err) => {
+                            re_log::error!(%err, component=%C::name(), "data deserialization failed -- skipping");
+                            continue;
                         }
                     };
 
@@ -487,28 +478,14 @@ impl RangeComponentResults {
                 // Pop the promises from the end so that if we encounter one that has yet to be
                 // resolved, we can stop right there and know we have a contiguous range of data
                 // available up to that point in time.
-                while let Some(((data_time, index), promise)) = results.promises_back.pop() {
-                    let data = match resolver.resolve(&promise) {
-                        PromiseResult::Pending => {
-                            results.back_status = (data_time, PromiseResult::Pending);
-                            break;
-                        }
-                        PromiseResult::Error(err) => {
-                            results.back_status = (data_time, PromiseResult::Error(err));
-                            break;
-                        }
-                        PromiseResult::Ready(cell) => {
-                            results.front_status = (data_time, PromiseResult::Ready(()));
-                            match cell
-                                .try_to_native::<C>()
-                                .map_err(|err| DeserializationError::DataCellError(err.to_string()))
-                            {
-                                Ok(data) => data,
-                                Err(err) => {
-                                    re_log::error!(%err, "data deserialization failed -- skipping");
-                                    continue;
-                                }
-                            }
+                while let Some(((data_time, index), array)) = results.promises_back.pop() {
+                    let data = match C::from_arrow(array.as_ref())
+                        .map_err(|err| DeserializationError::DataCellError(err.to_string()))
+                    {
+                        Ok(data) => data,
+                        Err(err) => {
+                            re_log::error!(%err, component=%C::name(), "data deserialization failed -- skipping");
+                            continue;
                         }
                     };
 
@@ -632,13 +609,13 @@ pub struct RangeComponentResultsInner {
     /// front-side of the ringbuffer (i.e. further back in time).
     ///
     /// Always sorted in ascending index order ([`TimeInt`] + [`RowId`] pair).
-    pub(crate) promises_front: Vec<((TimeInt, RowId), Promise)>,
+    pub(crate) promises_front: Vec<((TimeInt, RowId), Box<dyn ArrowArray>)>,
 
     /// All the pending promises that must resolved in order to fill the missing data on the
     /// back-side of the ringbuffer (i.e. the most recent data).
     ///
     /// Always sorted in ascending index order ([`TimeInt`] + [`RowId`] pair).
-    pub(crate) promises_back: Vec<((TimeInt, RowId), Promise)>,
+    pub(crate) promises_back: Vec<((TimeInt, RowId), Box<dyn ArrowArray>)>,
 
     /// Keeps track of the status of the data on the front-side of the cache.
     pub(crate) front_status: (TimeInt, PromiseResult<()>),

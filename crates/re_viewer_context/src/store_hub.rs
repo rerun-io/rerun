@@ -3,8 +3,7 @@ use ahash::{HashMap, HashMapExt};
 use anyhow::Context as _;
 use itertools::Itertools as _;
 
-use re_data_store::StoreGeneration;
-use re_data_store::{DataStoreConfig, DataStoreStats};
+use re_data_store2::{DataStoreConfig2, DataStoreStats2, StoreGeneration2};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query::CachesStats;
@@ -43,11 +42,11 @@ pub struct StoreHub {
     active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_bundle: StoreBundle,
 
-    /// The [`StoreGeneration`] from when the [`EntityDb`] was last saved
-    blueprint_last_save: HashMap<StoreId, StoreGeneration>,
+    /// The [`StoreGeneration2`] from when the [`EntityDb`] was last saved
+    blueprint_last_save: HashMap<StoreId, StoreGeneration2>,
 
-    /// The [`StoreGeneration`] from when the [`EntityDb`] was last garbage collected
-    blueprint_last_gc: HashMap<StoreId, StoreGeneration>,
+    /// The [`StoreGeneration2`] from when the [`EntityDb`] was last garbage collected
+    blueprint_last_gc: HashMap<StoreId, StoreGeneration2>,
 }
 
 /// Load a blueprint from persisted storage, e.g. disk.
@@ -72,12 +71,13 @@ pub struct BlueprintPersistence {
 /// Convenient information used for `MemoryPanel`
 #[derive(Default)]
 pub struct StoreHubStats {
-    pub blueprint_stats: DataStoreStats,
-    pub blueprint_config: DataStoreConfig,
+    pub blueprint_stats: DataStoreStats2,
+    pub blueprint_cached_stats: CachesStats,
+    pub blueprint_config: DataStoreConfig2,
 
-    pub recording_stats: DataStoreStats,
+    pub recording_stats2: DataStoreStats2,
     pub recording_cached_stats: CachesStats,
-    pub recording_config: DataStoreConfig,
+    pub recording_config2: DataStoreConfig2,
 }
 
 impl StoreHub {
@@ -561,11 +561,16 @@ impl StoreHub {
             return; // unreachable
         };
 
-        let store_size_before =
-            entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
+        // let store_size_before =
+        //     entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
+        // entity_db.purge_fraction_of_ram(fraction_to_purge);
+        // let store_size_after =
+        //     entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
+
+        // TODO
+        let store_size_before = 0;
         entity_db.purge_fraction_of_ram(fraction_to_purge);
-        let store_size_after =
-            entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
+        let store_size_after = 0;
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {
@@ -734,7 +739,11 @@ impl StoreHub {
             .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
 
         let blueprint_stats = blueprint
-            .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
+            .map(|entity_db| entity_db.store().stats())
+            .unwrap_or_default();
+
+        let blueprint_cached_stats = blueprint
+            .map(|entity_db| entity_db.query_caches().stats())
             .unwrap_or_default();
 
         let blueprint_config = blueprint
@@ -746,24 +755,26 @@ impl StoreHub {
             .as_ref()
             .and_then(|rec_id| self.store_bundle.get(rec_id));
 
-        let recording_stats = recording
-            .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
+        let recording_stats2 = recording
+            .map(|entity_db| entity_db.store().stats())
             .unwrap_or_default();
 
         let recording_cached_stats = recording
             .map(|entity_db| entity_db.query_caches().stats())
             .unwrap_or_default();
 
-        let recording_config = recording
+        let recording_config2 = recording
             .map(|entity_db| entity_db.store().config().clone())
             .unwrap_or_default();
 
         StoreHubStats {
             blueprint_stats,
+            blueprint_cached_stats,
             blueprint_config,
-            recording_stats,
+
+            recording_stats2,
             recording_cached_stats,
-            recording_config,
+            recording_config2,
         }
     }
 }

@@ -148,7 +148,7 @@ fn component_ui(
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
-    let query = re_data_store::LatestAtQuery::latest(timeline);
+    let query = re_data_store2::LatestAtQuery::latest(timeline);
 
     let results = entity_db.query_caches().latest_at(
         entity_db.store(),

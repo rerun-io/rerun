@@ -7,10 +7,11 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use re_chunk::{Chunk, TransportChunk};
 use re_log_types::{
     entity_path,
     example_components::{MyColor, MyPoint},
-    DataRow, DataTable, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt, TimeType, Timeline,
+    LogMsg, RowId, StoreId, StoreKind, TimeInt, TimeType, Timeline,
 };
 
 use criterion::{criterion_group, criterion_main, Criterion};
@@ -54,19 +55,23 @@ fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
     messages
 }
 
-fn generate_messages(store_id: &StoreId, tables: &[DataTable]) -> Vec<LogMsg> {
-    tables
+fn generate_messages(store_id: &StoreId, chunks: &[Chunk]) -> Vec<LogMsg> {
+    chunks
         .iter()
-        .map(|table| LogMsg::ArrowMsg(store_id.clone(), table.to_arrow_msg().unwrap()))
+        .map(|chunk| LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg().unwrap()))
         .collect()
 }
 
-fn decode_tables(messages: &[LogMsg]) -> Vec<DataTable> {
+fn decode_chunks(messages: &[LogMsg]) -> Vec<Chunk> {
     messages
         .iter()
         .map(|log_msg| {
             if let LogMsg::ArrowMsg(_, arrow_msg) = log_msg {
-                DataTable::from_arrow_msg(arrow_msg).unwrap()
+                Chunk::from_transport(&TransportChunk {
+                    schema: arrow_msg.schema.clone(),
+                    data: arrow_msg.chunk.clone(),
+                })
+                .unwrap()
             } else {
                 unreachable!()
             }
@@ -75,19 +80,20 @@ fn decode_tables(messages: &[LogMsg]) -> Vec<DataTable> {
 }
 
 fn mono_points_arrow(c: &mut Criterion) {
-    fn generate_tables() -> Vec<DataTable> {
+    fn generate_chunks() -> Vec<Chunk> {
         (0..NUM_POINTS)
             .map(|i| {
-                DataTable::from_rows(
-                    TableId::ZERO,
-                    [DataRow::from_cells2(
+                Chunk::builder(entity_path!("points", i.to_string()))
+                    .with_component_batches(
                         RowId::ZERO,
-                        entity_path!("points", i.to_string()),
                         [build_frame_nr(TimeInt::ZERO)],
-                        (MyPoint::from_iter(0..1), MyColor::from_iter(0..1)),
+                        [
+                            &MyPoint::from_iter(0..1) as _,
+                            &MyColor::from_iter(0..1) as _,
+                        ],
                     )
-                    .unwrap()],
-                )
+                    .build()
+                    .unwrap()
             })
             .collect()
     }
@@ -97,18 +103,18 @@ fn mono_points_arrow(c: &mut Criterion) {
         let mut group = c.benchmark_group("mono_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
-            b.iter(generate_tables);
+            b.iter(generate_chunks);
         });
-        let tables = generate_tables();
+        let chunks = generate_chunks();
         group.bench_function("generate_messages", |b| {
-            b.iter(|| generate_messages(&store_id, &tables));
+            b.iter(|| generate_messages(&store_id, &chunks));
         });
-        let messages = generate_messages(&store_id, &tables);
+        let messages = generate_messages(&store_id, &chunks);
         group.bench_function("encode_log_msg", |b| {
             b.iter(|| encode_log_msgs(&messages));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &generate_tables())));
+            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &generate_chunks())));
         });
 
         let encoded = encode_log_msgs(&messages);
@@ -121,31 +127,31 @@ fn mono_points_arrow(c: &mut Criterion) {
         });
         group.bench_function("decode_message_bundles", |b| {
             b.iter(|| {
-                let tables = decode_tables(&messages);
-                assert_eq!(tables.len(), messages.len());
-                tables
+                let chunks = decode_chunks(&messages);
+                assert_eq!(chunks.len(), messages.len());
+                chunks
             });
         });
         group.bench_function("decode_total", |b| {
-            b.iter(|| decode_tables(&decode_log_msgs(&encoded)));
+            b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
         });
     }
 }
 
 fn mono_points_arrow_batched(c: &mut Criterion) {
-    fn generate_table() -> DataTable {
-        DataTable::from_rows(
-            TableId::ZERO,
-            (0..NUM_POINTS).map(|i| {
-                DataRow::from_cells2(
-                    RowId::ZERO,
-                    entity_path!("points", i.to_string()),
-                    [build_frame_nr(TimeInt::ZERO)],
-                    (MyPoint::from_iter(0..1), MyColor::from_iter(0..1)),
-                )
-                .unwrap()
-            }),
-        )
+    fn generate_chunk() -> Chunk {
+        let mut builder = Chunk::builder("points".into());
+        for _ in 0..NUM_POINTS {
+            builder = builder.with_component_batches(
+                RowId::ZERO,
+                [build_frame_nr(TimeInt::ZERO)],
+                [
+                    &MyPoint::from_iter(0..1) as _,
+                    &MyColor::from_iter(0..1) as _,
+                ],
+            );
+        }
+        builder.build().unwrap()
     }
 
     {
@@ -153,18 +159,18 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
         let mut group = c.benchmark_group("mono_points_arrow_batched");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
-            b.iter(generate_table);
+            b.iter(generate_chunk);
         });
-        let tables = [generate_table()];
+        let chunks = [generate_chunk()];
         group.bench_function("generate_messages", |b| {
-            b.iter(|| generate_messages(&store_id, &tables));
+            b.iter(|| generate_messages(&store_id, &chunks));
         });
-        let messages = generate_messages(&store_id, &tables);
+        let messages = generate_messages(&store_id, &chunks);
         group.bench_function("encode_log_msg", |b| {
             b.iter(|| encode_log_msgs(&messages));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &[generate_table()])));
+            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &[generate_chunk()])));
         });
 
         let encoded = encode_log_msgs(&messages);
@@ -177,32 +183,30 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
         });
         group.bench_function("decode_message_bundles", |b| {
             b.iter(|| {
-                let bundles = decode_tables(&messages);
+                let bundles = decode_chunks(&messages);
                 assert_eq!(bundles.len(), messages.len());
                 bundles
             });
         });
         group.bench_function("decode_total", |b| {
-            b.iter(|| decode_tables(&decode_log_msgs(&encoded)));
+            b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
         });
     }
 }
 
 fn batch_points_arrow(c: &mut Criterion) {
-    fn generate_tables() -> Vec<DataTable> {
-        vec![DataTable::from_rows(
-            TableId::ZERO,
-            [DataRow::from_cells2(
+    fn generate_chunks() -> Vec<Chunk> {
+        vec![Chunk::builder(entity_path!("points"))
+            .with_component_batches(
                 RowId::ZERO,
-                entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
-                (
-                    MyPoint::from_iter(0..NUM_POINTS as u32),
-                    MyColor::from_iter(0..NUM_POINTS as u32),
-                ),
+                [
+                    &MyPoint::from_iter(0..NUM_POINTS as u32) as _,
+                    &MyColor::from_iter(0..NUM_POINTS as u32) as _,
+                ],
             )
-            .unwrap()],
-        )]
+            .build()
+            .unwrap()]
     }
 
     {
@@ -210,18 +214,18 @@ fn batch_points_arrow(c: &mut Criterion) {
         let mut group = c.benchmark_group("batch_points_arrow");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         group.bench_function("generate_message_bundles", |b| {
-            b.iter(generate_tables);
+            b.iter(generate_chunks);
         });
-        let tables = generate_tables();
+        let chunks = generate_chunks();
         group.bench_function("generate_messages", |b| {
-            b.iter(|| generate_messages(&store_id, &tables));
+            b.iter(|| generate_messages(&store_id, &chunks));
         });
-        let messages = generate_messages(&store_id, &tables);
+        let messages = generate_messages(&store_id, &chunks);
         group.bench_function("encode_log_msg", |b| {
             b.iter(|| encode_log_msgs(&messages));
         });
         group.bench_function("encode_total", |b| {
-            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &generate_tables())));
+            b.iter(|| encode_log_msgs(&generate_messages(&store_id, &generate_chunks())));
         });
 
         let encoded = encode_log_msgs(&messages);
@@ -234,13 +238,13 @@ fn batch_points_arrow(c: &mut Criterion) {
         });
         group.bench_function("decode_message_bundles", |b| {
             b.iter(|| {
-                let tables = decode_tables(&messages);
-                assert_eq!(tables.len(), messages.len());
-                tables
+                let chunks = decode_chunks(&messages);
+                assert_eq!(chunks.len(), messages.len());
+                chunks
             });
         });
         group.bench_function("decode_total", |b| {
-            b.iter(|| decode_tables(&decode_log_msgs(&encoded)));
+            b.iter(|| decode_chunks(&decode_log_msgs(&encoded)));
         });
     }
 }

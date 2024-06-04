@@ -7,7 +7,7 @@
 
 use rand::Rng;
 
-use re_data_store::{
+use re_data_store2::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };

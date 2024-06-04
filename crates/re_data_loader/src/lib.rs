@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 
-use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
+use re_chunk::{Chunk, ChunkResult};
+use re_log_types::{ArrowMsg, EntityPath, LogMsg, TimePoint};
 
 // ----------------------------------------------------------------------------
 
@@ -283,7 +284,7 @@ pub enum DataLoaderError {
     IO(#[from] std::io::Error),
 
     #[error(transparent)]
-    Arrow(#[from] re_log_types::DataCellError),
+    Arrow(#[from] re_chunk::ChunkError),
 
     #[error(transparent)]
     Decode(#[from] re_log_encoding::decoder::DecodeError),
@@ -317,15 +318,15 @@ impl DataLoaderError {
 /// most convenient for them, whether it is raw components, arrow chunks or even
 /// full-on [`LogMsg`]s.
 pub enum LoadedData {
-    DataRow(DataRow),
+    Chunk(Chunk),
     ArrowMsg(ArrowMsg),
     LogMsg(LogMsg),
 }
 
-impl From<DataRow> for LoadedData {
+impl From<Chunk> for LoadedData {
     #[inline]
-    fn from(value: DataRow) -> Self {
-        Self::DataRow(value)
+    fn from(value: Chunk) -> Self {
+        Self::Chunk(value)
     }
 }
 
@@ -345,17 +346,20 @@ impl From<LogMsg> for LoadedData {
 
 impl LoadedData {
     /// Pack the data into a [`LogMsg`].
-    pub fn into_log_msg(
-        self,
-        store_id: &re_log_types::StoreId,
-    ) -> Result<LogMsg, re_log_types::DataTableError> {
+    pub fn into_log_msg(self, store_id: &re_log_types::StoreId) -> ChunkResult<LogMsg> {
         match self {
-            Self::DataRow(row) => {
-                let mut table =
-                    re_log_types::DataTable::from_rows(re_log_types::TableId::new(), [row]);
-                table.compute_all_size_bytes();
-
-                Ok(LogMsg::ArrowMsg(store_id.clone(), table.to_arrow_msg()?))
+            Self::Chunk(chunk) => {
+                let transport = chunk.to_transport()?;
+                Ok(LogMsg::ArrowMsg(
+                    store_id.clone(),
+                    ArrowMsg {
+                        table_id: chunk.id(),
+                        timepoint_max: chunk.timepoint_max(),
+                        schema: transport.schema.clone(),
+                        chunk: transport.data.clone(),
+                        on_release: None,
+                    },
+                ))
             }
 
             Self::ArrowMsg(msg) => Ok(LogMsg::ArrowMsg(store_id.clone(), msg)),

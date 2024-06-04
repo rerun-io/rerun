@@ -12,7 +12,7 @@ impl DataUi for components::Rotation3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_data_store2::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         self.0.data_ui(ctx, ui, ui_layout, query, db);
@@ -25,7 +25,7 @@ impl DataUi for datatypes::Rotation3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_data_store2::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         match self {

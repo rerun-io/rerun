@@ -1,12 +1,19 @@
 use arrow2::{
-    array::{Array as ArrowArray, ListArray as ArrowListArray},
+    array::{
+        Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+        StructArray,
+    },
     offset::Offsets as ArrowOffsets,
 };
 use itertools::Itertools as _;
+use re_log_types::Timeline;
 
 use crate::{Chunk, ChunkTimeline};
 
 // ---
+
+// TODO: timeline sort & expose swaps
+// TODO: hunt for now-useless downcasts
 
 impl Chunk {
     /// Is the chunk currently ascendingly sorted by [`re_log_types::RowId`]?
@@ -29,9 +36,9 @@ impl Chunk {
     pub fn is_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
 
-        self.row_ids
-            .windows(2)
-            .all(|row_ids| row_ids[0] <= row_ids[1])
+        self.row_ids()
+            .tuple_windows::<(_, _)>()
+            .all(|row_ids| row_ids.0 <= row_ids.1)
     }
 
     /// Sort the chunk, if needed.
@@ -49,8 +56,9 @@ impl Chunk {
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let mut swaps = (0..self.row_ids.len()).collect::<Vec<_>>();
-            swaps.sort_by_key(|&i| self.row_ids[i]);
+            let row_ids = self.row_ids().collect_vec();
+            let mut swaps = (0..row_ids.len()).collect::<Vec<_>>();
+            swaps.sort_by_key(|&i| row_ids[i]);
             swaps
         };
 
@@ -66,6 +74,44 @@ impl Chunk {
         #[cfg(debug_assertions)]
         #[allow(clippy::unwrap_used)] // dev only
         self.sanity_check().unwrap();
+    }
+
+    // TODO: doc
+    // TODO: can we use compute kernels instead of going through native types?
+    pub fn sorted_by_timeline_if_unsorted(&self, timeline: &Timeline) -> Self {
+        re_tracing::profile_function!();
+
+        let mut chunk = self.clone();
+
+        let Some(time_chunk) = chunk.timelines.get(timeline) else {
+            return chunk;
+        };
+
+        let now = std::time::Instant::now();
+
+        let swaps = {
+            re_tracing::profile_scope!("swaps");
+            let row_ids = chunk.row_ids().collect_vec();
+            let times = time_chunk.times().to_vec();
+            let mut swaps = (0..times.len()).collect::<Vec<_>>();
+            swaps.sort_by_key(|&i| (row_ids[i], times[i]));
+            swaps
+        };
+
+        chunk.shuffle_with(&swaps);
+
+        re_log::trace!(
+            entity_path = %chunk.entity_path,
+            num_rows = chunk.row_ids.len(),
+            elapsed = ?now.elapsed(),
+            "chunk sorted",
+        );
+
+        #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)] // dev only
+        chunk.sanity_check().unwrap();
+
+        chunk
     }
 
     /// Randomly shuffles the chunk using the given `seed`.
@@ -108,24 +154,39 @@ impl Chunk {
     pub(crate) fn shuffle_with(&mut self, swaps: &[usize]) {
         re_tracing::profile_function!();
 
-        let Self {
-            id: _,
-            entity_path: _,
-            is_sorted: _,
-            row_ids,
-            timelines,
-            components,
-        } = self;
-
         // Row IDs
         {
             re_tracing::profile_scope!("row ids");
 
-            let original = row_ids.clone();
+            let (times, counters) = self.row_ids_raw();
+            let (times, counters) = (times.values(), counters.values());
+
+            let mut sorted_times = times.to_vec();
+            let mut sorted_counters = counters.to_vec();
             for (to, from) in swaps.iter().copied().enumerate() {
-                row_ids[to] = original[from];
+                sorted_times[to] = times[from];
+                sorted_counters[to] = counters[from];
             }
+
+            let times = ArrowPrimitiveArray::<u64>::from_vec(sorted_times).boxed();
+            let counters = ArrowPrimitiveArray::<u64>::from_vec(sorted_counters).boxed();
+
+            self.row_ids = StructArray::new(
+                self.row_ids.data_type().clone(),
+                vec![times, counters],
+                None,
+            );
         }
+
+        let Self {
+            id: _,
+            entity_path: _,
+            heap_size_bytes: _,
+            is_sorted: _,
+            row_ids: _,
+            timelines,
+            components,
+        } = self;
 
         // Timelines
         {
@@ -133,17 +194,19 @@ impl Chunk {
 
             for info in timelines.values_mut() {
                 let ChunkTimeline {
+                    timeline,
                     times,
                     is_sorted,
                     time_range: _,
                 } = info;
 
-                let original = times.clone();
+                let mut sorted = times.values().to_vec();
                 for (to, from) in swaps.iter().copied().enumerate() {
-                    times[to] = original[from];
+                    sorted[to] = times.values()[from];
                 }
 
-                *is_sorted = times.windows(2).all(|times| times[0] <= times[1]);
+                *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
+                *times = ArrowPrimitiveArray::<i64>::from_vec(sorted).to(timeline.datatype());
             }
         }
 
@@ -153,16 +216,10 @@ impl Chunk {
         re_tracing::profile_scope!("components (offsets & data)");
         {
             for original in components.values_mut() {
-                #[allow(clippy::unwrap_used)] // a chunk's column is always a list array
-                let original_list = original
-                    .as_any()
-                    .downcast_ref::<ArrowListArray<i32>>()
-                    .unwrap();
-
                 let sorted_arrays = swaps
                     .iter()
                     .copied()
-                    .map(|from| original_list.value(from))
+                    .map(|from| original.value(from))
                     .collect_vec();
                 let sorted_arrays = sorted_arrays
                     .iter()
@@ -176,12 +233,11 @@ impl Chunk {
                         .unwrap();
                 #[allow(clippy::unwrap_used)] // these are slices of the same outer array
                 let values = arrow2::compute::concatenate::concatenate(&sorted_arrays).unwrap();
-                let validity = original_list
+                let validity = original
                     .validity()
                     .map(|validity| swaps.iter().map(|&from| validity.get_bit(from)).collect());
 
-                *original =
-                    ArrowListArray::<i32>::new(datatype, offsets.into(), values, validity).boxed();
+                *original = ArrowListArray::<i32>::new(datatype, offsets.into(), values, validity);
             }
         }
 
@@ -209,7 +265,7 @@ impl ChunkTimeline {
     #[inline]
     pub fn is_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
-        self.times.windows(2).all(|times| times[0] <= times[1])
+        self.times().windows(2).all(|times| times[0] <= times[1])
     }
 }
 
@@ -217,20 +273,22 @@ impl ChunkTimeline {
 mod tests {
     use re_log_types::{
         example_components::{MyColor, MyPoint},
-        EntityPath, RowId, TimeInt, Timeline,
+        EntityPath, RowId, Timeline,
     };
     use re_types_core::Loggable as _;
 
-    use crate::{arrays_to_list_array, ChunkId};
+    use crate::ChunkId;
 
     use super::*;
 
     #[test]
     fn sort() -> anyhow::Result<()> {
+        // TODO: use new chunk builders -- wtf is this
+
         let entity_path: EntityPath = "a/b/c".into();
 
         let timeline1 = Timeline::new_temporal("log_time");
-        let timeline2 = Timeline::new_temporal("frame_nr");
+        let timeline2 = Timeline::new_sequence("frame_nr");
 
         let points1 = MyPoint::to_arrow([
             MyPoint::new(1.0, 2.0),
@@ -258,41 +316,51 @@ mod tests {
                 timeline1,
                 ChunkTimeline::new(
                     Some(true),
-                    [1000, 1001, 1002, 1003].map(TimeInt::new_temporal).to_vec(),
-                )
-                .unwrap(),
+                    timeline1,
+                    ArrowPrimitiveArray::<i64>::from_vec(vec![1000, 1001, 1002, 1003]),
+                ),
             ),
             (
                 timeline2,
                 ChunkTimeline::new(
                     Some(true),
-                    [42, 43, 44, 45].map(TimeInt::new_temporal).to_vec(),
-                )
-                .unwrap(),
+                    timeline2,
+                    ArrowPrimitiveArray::<i64>::from_vec(vec![42, 43, 44, 45]),
+                ),
             ),
         ];
 
         let components = [
             (
                 MyPoint::name(),
-                arrays_to_list_array(&[Some(&*points1), points2, Some(&*points3), Some(&*points4)])
-                    .unwrap(),
+                crate::util::arrays_to_list_array_opt(&[
+                    Some(&*points1),
+                    points2,
+                    Some(&*points3),
+                    Some(&*points4),
+                ])
+                .unwrap(),
             ),
             (
                 MyPoint::name(),
-                arrays_to_list_array(&[Some(&*colors1), Some(&*colors2), colors3, Some(&*colors4)])
-                    .unwrap(),
+                crate::util::arrays_to_list_array_opt(&[
+                    Some(&*colors1),
+                    Some(&*colors2),
+                    colors3,
+                    Some(&*colors4),
+                ])
+                .unwrap(),
             ),
         ];
 
         let row_ids = vec![RowId::new(), RowId::new(), RowId::new(), RowId::new()];
 
         {
-            let chunk_sorted = Chunk::new(
+            let chunk_sorted = Chunk::from_native_row_ids(
                 ChunkId::new(),
                 entity_path.clone(),
                 Some(true),
-                row_ids.clone(),
+                &row_ids,
                 timelines.clone().into_iter().collect(),
                 components.clone().into_iter().collect(),
             )?;
@@ -329,4 +397,6 @@ mod tests {
 
         Ok(())
     }
+
+    // TODO: sort_by_time
 }

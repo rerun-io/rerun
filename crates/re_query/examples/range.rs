@@ -1,7 +1,11 @@
+use std::sync::Arc;
+
 use itertools::Itertools;
-use re_data_store::{DataStore, RangeQuery};
+use re_data_store2::external::re_chunk::Chunk;
+use re_data_store2::{DataStore2, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_log_types::{build_frame_nr, DataRow, ResolvedTimeRange, RowId, TimeType, Timeline};
+use re_log_types::{build_frame_nr, ResolvedTimeRange, RowId, TimeType, Timeline};
+use re_types::ComponentBatch;
 use re_types_core::{Archetype as _, Loggable as _};
 
 use re_query::{
@@ -13,7 +17,7 @@ use re_query::{
 
 fn main() -> anyhow::Result<()> {
     let store = store()?;
-    eprintln!("store:\n{}", store.to_data_table()?);
+    eprintln!("store:\n{store}");
 
     let resolver = PromiseResolver::default();
 
@@ -106,8 +110,8 @@ fn main() -> anyhow::Result<()> {
 
 // ---
 
-fn store() -> anyhow::Result<DataStore> {
-    let mut store = DataStore::new(
+fn store() -> anyhow::Result<DataStore2> {
+    let mut store = DataStore2::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
@@ -117,33 +121,40 @@ fn store() -> anyhow::Result<DataStore> {
     {
         let timepoint = [build_frame_nr(123)];
 
-        let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, points)?;
-        store.insert_row(&row)?;
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(
+                RowId::new(),
+                timepoint,
+                [
+                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)] as &dyn ComponentBatch, //
+                    &[MyColor::from_rgb(255, 0, 0)],
+                    &[MyLabel("a".into()), MyLabel("b".into())],
+                ],
+            )
+            .build()?;
 
-        let colors = vec![MyColor::from_rgb(255, 0, 0)];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, colors)?;
-        store.insert_row(&row)?;
-
-        let labels = vec![MyLabel("a".into()), MyLabel("b".into())];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, labels)?;
-        store.insert_row(&row)?;
+        store.insert_chunk(&Arc::new(chunk))?;
     }
 
     {
-        let timepoint = [build_frame_nr(456)];
+        let timepoint = [build_frame_nr(423)];
 
-        let colors = vec![MyColor::from_rgb(255, 0, 0), MyColor::from_rgb(0, 0, 255)];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, colors)?;
-        store.insert_row(&row)?;
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(
+                RowId::new(),
+                timepoint,
+                [
+                    &[
+                        MyPoint::new(10.0, 20.0),
+                        MyPoint::new(30.0, 40.0),
+                        MyPoint::new(50.0, 60.0),
+                    ] as &dyn ComponentBatch, //
+                    &[MyColor::from_rgb(255, 0, 0), MyColor::from_rgb(0, 0, 255)],
+                ],
+            )
+            .build()?;
 
-        let points = vec![
-            MyPoint::new(10.0, 20.0),
-            MyPoint::new(30.0, 40.0),
-            MyPoint::new(50.0, 60.0),
-        ];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, points)?;
-        store.insert_row(&row)?;
+        store.insert_chunk(&Arc::new(chunk))?;
     }
 
     Ok(store)

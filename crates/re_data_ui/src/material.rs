@@ -9,7 +9,7 @@ impl DataUi for Material {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_data_store2::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         let show_optional_albedo_factor = |ui: &mut egui::Ui| {

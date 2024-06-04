@@ -44,7 +44,7 @@ pub trait StoreSubscriber: std::any::Any + Send + Sync {
     ///
     /// ```ignore
     /// fn on_events(&mut self, events: &[StoreEvent]) {
-    ///     use re_data_store::StoreDiffKind;
+    ///     use re_data_store2::StoreDiffKind;
     ///     for event in events {
     ///         match event.kind {
     ///             StoreDiffKind::Addition => println!("Row added: {}", event.row_id),

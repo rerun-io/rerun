@@ -1,4 +1,5 @@
-use re_log_types::{DataRow, EntityPath, RowId, TimeInt, TimePoint};
+use re_chunk::Chunk;
+use re_log_types::{EntityPath, RowId, TimeInt, TimePoint};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -132,7 +133,7 @@ fn load_image(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = DataRow>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [
@@ -141,7 +142,9 @@ fn load_image(
                 contents,
                 image::ImageFormat::from_path(filepath).ok(),
             )?;
-            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
+            Chunk::builder(entity_path)
+                .with_archetype(RowId::new(), timepoint, &arch)
+                .build()?
         },
         //
     ];
@@ -154,7 +157,7 @@ fn load_mesh(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = DataRow>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [
@@ -163,7 +166,9 @@ fn load_mesh(
                 contents,
                 re_types::components::MediaType::guess_from_path(filepath),
             );
-            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
+            Chunk::builder(entity_path)
+                .with_archetype(RowId::new(), timepoint, &arch)
+                .build()?
         },
         //
     ];
@@ -175,14 +180,16 @@ fn load_point_cloud(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: &[u8],
-) -> Result<impl ExactSizeIterator<Item = DataRow>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [
         {
             // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
             let points3d = re_types::archetypes::Points3D::from_file_contents(contents)?;
-            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &points3d)?
+            Chunk::builder(entity_path)
+                .with_archetype(RowId::new(), timepoint, &points3d)
+                .build()?
         },
         //
     ];
@@ -195,7 +202,7 @@ fn load_text_document(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = DataRow>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [
@@ -204,7 +211,9 @@ fn load_text_document(
                 contents,
                 re_types::components::MediaType::guess_from_path(filepath),
             )?;
-            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
+            Chunk::builder(entity_path)
+                .with_archetype(RowId::new(), timepoint, &arch)
+                .build()?
         },
         //
     ];

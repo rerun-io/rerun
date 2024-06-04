@@ -40,9 +40,10 @@ analytics = ["dep:re_analytics"]
 # Internal:
 re_build_info.workspace = true
 re_blueprint_tree.workspace = true
+re_chunk.workspace = true
 re_data_loader.workspace = true
 re_data_source.workspace = true
-re_data_store.workspace = true
+re_data_store2.workspace = true
 re_data_ui.workspace = true
 re_edit_ui.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }

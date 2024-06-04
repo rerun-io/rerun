@@ -150,7 +150,7 @@ impl Item {
 /// If the given item refers to the first element of an instance with a single element, resolve to a unindexed entity path.
 pub fn resolve_mono_instance_path_item(
     entity_db: &EntityDb,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     item: &Item,
 ) -> Item {
     // Resolve to entity path if there's only a single instance.
@@ -174,14 +174,14 @@ pub fn resolve_mono_instance_path_item(
 /// If the given path refers to the first element of an instance with a single element, resolve to a unindexed entity path.
 pub fn resolve_mono_instance_path(
     entity_db: &EntityDb,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_data_store2::LatestAtQuery,
     instance: &re_entity_db::InstancePath,
 ) -> re_entity_db::InstancePath {
     re_tracing::profile_function!();
 
     if instance.instance.get() == 0 {
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
-        let Some(components) = entity_db
+        let Some(component_names) = entity_db
             .store()
             .all_components(&query.timeline(), &instance.entity_path)
         else {
@@ -189,17 +189,18 @@ pub fn resolve_mono_instance_path(
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
         };
 
-        for component in components {
+        for component_name in component_names {
             let results = entity_db.query_caches().latest_at(
                 entity_db.store(),
                 query,
                 &instance.entity_path,
-                [component],
+                [component_name],
             );
-            if let Some(results) = results.get(component) {
-                if let re_query::PromiseResult::Ready(cell) = results.resolved(entity_db.resolver())
+            if let Some(results) = results.get(component_name) {
+                if let re_query::PromiseResult::Ready(array) =
+                    results.resolved(entity_db.resolver())
                 {
-                    if cell.num_instances() > 1 {
+                    if array.len() > 1 {
                         return instance.clone();
                     }
                 }

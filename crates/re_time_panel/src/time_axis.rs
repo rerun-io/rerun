@@ -152,7 +152,7 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<Resolv
 #[cfg(test)]
 mod tests {
     use super::*;
-    use re_data_store::ResolvedTimeRange;
+    use re_data_store2::ResolvedTimeRange;
 
     fn ranges(times: &[i64]) -> vec1::Vec1<ResolvedTimeRange> {
         let mut time_histogram = TimeHistogram::default();

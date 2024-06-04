@@ -7,7 +7,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use arrow2::array::{Array as _, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use re_data_store::{
+use re_data_store2::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
     RangeQuery, ResolvedTimeRange, TimeInt,
 };

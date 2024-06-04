@@ -69,9 +69,9 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     ScreenshotWholeApp,
     #[cfg(not(target_arch = "wasm32"))]
-    PrintDataStore,
+    PrintDataStore2,
     #[cfg(not(target_arch = "wasm32"))]
-    PrintBlueprintStore,
+    PrintBlueprintStore2,
     #[cfg(not(target_arch = "wasm32"))]
     ClearPrimaryCache,
     #[cfg(not(target_arch = "wasm32"))]
@@ -210,13 +210,13 @@ impl UICommand {
                 "Copy screenshot of the whole app to clipboard",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDataStore => (
-                "Print datastore",
+            Self::PrintDataStore2 => (
+                "Print datastore2",
                 "Prints the entire data store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintBlueprintStore => (
-                "Print blueprint store",
+            Self::PrintBlueprintStore2 => (
+                "Print blueprint store2",
                 "Prints the entire blueprint store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
             #[cfg(not(target_arch = "wasm32"))]
@@ -328,9 +328,9 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => None,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDataStore => None,
+            Self::PrintDataStore2 => None,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintBlueprintStore => None,
+            Self::PrintBlueprintStore2 => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::ClearPrimaryCache => None,
             #[cfg(not(target_arch = "wasm32"))]

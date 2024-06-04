@@ -9,7 +9,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_data_store2::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui.label(self.to_string());

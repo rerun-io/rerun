@@ -7,7 +7,7 @@
 
 use itertools::Itertools;
 use rand::Rng;
-use re_data_store::{
+use re_data_store2::{
     test_row,
     test_util::{insert_table_with_retries, sanity_unwrap},
     DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget,
@@ -726,6 +726,8 @@ fn protected_gc_impl(store: &mut DataStore) {
         ],
     );
 }
+
+// TODO: that one should be irrelevant now
 
 #[test]
 fn protected_gc_clear() {

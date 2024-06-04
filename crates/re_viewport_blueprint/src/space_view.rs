@@ -6,10 +6,10 @@ use parking_lot::Mutex;
 use re_entity_db::EntityProperties;
 use re_types::SpaceViewClassIdentifier;
 
-use crate::{SpaceViewContents, ViewProperty};
-use re_data_store::LatestAtQuery;
+use re_chunk::Chunk;
+use re_data_store2::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
-use re_log_types::{DataRow, EntityPathSubs, RowId, Timeline};
+use re_log_types::{EntityPathSubs, RowId, Timeline};
 use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
@@ -25,6 +25,8 @@ use re_viewer_context::{
     SystemCommandSender as _, SystemExecutionOutput, ViewContext, ViewQuery, ViewStates,
     ViewerContext, VisualizerCollection,
 };
+
+use crate::{SpaceViewContents, ViewProperty};
 
 /// A view of a space.
 ///
@@ -55,7 +57,7 @@ pub struct SpaceViewBlueprint {
     pub defaults_path: EntityPath,
 
     /// Pending blueprint writes for nested components from duplicate.
-    pending_writes: Vec<DataRow>,
+    pending_writes: Vec<Chunk>,
 }
 
 impl SpaceViewBlueprint {
@@ -216,10 +218,11 @@ impl SpaceViewBlueprint {
         let mut deltas = pending_writes.clone();
 
         // Add all the additional components from the archetype
-        if let Ok(row) =
-            DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
+        if let Ok(chunk) = Chunk::builder(id.as_entity_path())
+            .with_archetype(RowId::new(), timepoint.clone(), &arch)
+            .build()
         {
-            deltas.push(row);
+            deltas.push(chunk);
         }
 
         contents.save_to_blueprint_store(ctx);
@@ -252,29 +255,35 @@ impl SpaceViewBlueprint {
                     .cloned()
                     .collect();
 
-                if let Ok(row) = DataRow::from_cells(
-                    RowId::new(),
-                    store_context.blueprint_timepoint_for_writes(),
-                    sub_path,
-                    info.components
-                        .keys()
-                        // It's important that we don't include the SpaceViewBlueprint's components
-                        // since those will be updated separately and may contain different data.
-                        .filter(|component| {
-                            *path != current_path
-                                || !blueprint_archetypes::SpaceViewBlueprint::all_components()
-                                    .contains(component)
-                        })
-                        .filter_map(|component| {
-                            blueprint
-                                .store()
-                                .latest_at(query, path, *component, &[*component])
-                                .and_then(|(_, _, cells)| cells[0].clone())
-                        }),
-                ) {
-                    if row.num_cells() > 0 {
-                        pending_writes.push(row);
-                    }
+                let chunk = Chunk::builder(sub_path)
+                    .with_row(
+                        RowId::new(),
+                        store_context.blueprint_timepoint_for_writes(),
+                        info.components
+                            .keys()
+                            // It's important that we don't include the SpaceViewBlueprint's components
+                            // since those will be updated separately and may contain different data.
+                            .filter(|component| {
+                                *path != current_path
+                                    || !blueprint_archetypes::SpaceViewBlueprint::all_components()
+                                        .contains(component)
+                            })
+                            .filter_map(|&component_name| {
+                                let results = blueprint.query_caches().latest_at(
+                                    blueprint.store(),
+                                    query,
+                                    path,
+                                    [component_name],
+                                );
+                                let results = results.get(component_name)?;
+                                let array = results.raw(blueprint.resolver(), component_name);
+                                array.map(|array| (component_name, array))
+                            }),
+                    )
+                    .build();
+
+                if let Ok(chunk) = chunk {
+                    pending_writes.push(chunk);
                 }
             });
         }
@@ -533,7 +542,7 @@ mod tests {
     use re_entity_db::{EntityDb, EntityProperties, EntityPropertiesComponent};
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
-        DataCell, DataRow, RowId, StoreId, StoreKind, TimePoint,
+        RowId, StoreId, StoreKind, TimePoint,
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
@@ -548,15 +557,12 @@ mod tests {
 
     fn save_override(props: EntityProperties, path: &EntityPath, store: &mut EntityDb) {
         let component = EntityPropertiesComponent(props);
-        let row = DataRow::from_cells1_sized(
-            RowId::new(),
-            path.clone(),
-            TimePoint::default(),
-            DataCell::from([component]),
-        )
-        .unwrap();
+        let chunk = Chunk::builder(path.clone())
+            .with_component_batch(RowId::new(), TimePoint::default(), &[component] as _)
+            .build()
+            .unwrap();
 
-        store.add_data_row(row).unwrap();
+        store.add_chunk(&Arc::new(chunk)).unwrap();
     }
 
     #[test]
@@ -566,14 +572,13 @@ mod tests {
 
         let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
 
-        for path in [
-            "parent".into(),
-            "parent/skip/child1".into(),
-            "parent/skip/child2".into(),
-        ] {
-            let row =
-                DataRow::from_archetype(RowId::new(), TimePoint::default(), path, &points).unwrap();
-            test_ctx.recording_store.add_data_row(row).ok();
+        for path in ["parent", "parent/skip/child1", "parent/skip/child2"] {
+            let chunk = Chunk::builder(path.into())
+                .with_archetype(RowId::new(), TimePoint::default(), &points as _)
+                .build()
+                .unwrap();
+
+            test_ctx.recording_store.add_chunk(&Arc::new(chunk)).ok();
         }
 
         let recommended = RecommendedSpaceView::new(
@@ -744,14 +749,19 @@ mod tests {
                     .map(Into::into)
                     .collect();
             for entity_path in &entity_paths {
-                let row = DataRow::from_component_batches(
-                    RowId::new(),
-                    TimePoint::default(),
-                    entity_path.clone(),
-                    [&[MyPoint::new(1.0, 2.0)] as _],
-                )
-                .unwrap();
-                test_ctx.recording_store.add_data_row(row).unwrap();
+                let chunk = Chunk::builder(entity_path.clone())
+                    .with_component_batches(
+                        RowId::new(),
+                        TimePoint::default(),
+                        [&[MyPoint::new(1.0, 2.0)] as _],
+                    )
+                    .build()
+                    .unwrap();
+
+                test_ctx
+                    .recording_store
+                    .add_chunk(&Arc::new(chunk))
+                    .unwrap();
             }
 
             // All of them are visualizable with some arbitrary visualizer.
@@ -953,14 +963,15 @@ mod tests {
             test_ctx.blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
 
             let mut add_to_blueprint = |path: &EntityPath, batch: &dyn ComponentBatch| {
-                let row = DataRow::from_component_batches(
-                    RowId::new(),
-                    TimePoint::default(),
-                    path.clone(),
-                    std::iter::once(batch),
-                )
-                .unwrap();
-                test_ctx.blueprint_store.add_data_row(row).unwrap();
+                let chunk = Chunk::builder(path.clone())
+                    .with_component_batch(RowId::new(), TimePoint::default(), batch as _)
+                    .build()
+                    .unwrap();
+
+                test_ctx
+                    .blueprint_store
+                    .add_chunk(&Arc::new(chunk))
+                    .unwrap();
             };
 
             // log individual and override components as instructed.

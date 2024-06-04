@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use parking_lot::RwLock;
 
-use re_data_store::LatestAtQuery;
+use re_data_store2::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
 
 use crate::{
@@ -86,16 +86,17 @@ impl<'a> ViewerContext<'a> {
         self.store_context.recording
     }
 
-    /// The data store of the active recording.
-    #[inline]
-    pub fn recording_store(&self) -> &re_data_store::DataStore {
-        self.store_context.recording.store()
-    }
-
     /// The active blueprint.
     #[inline]
     pub fn blueprint_db(&self) -> &re_entity_db::EntityDb {
         self.store_context.blueprint
+    }
+
+    // TODO
+    /// The data store of the active recording.
+    #[inline]
+    pub fn recording_store(&self) -> &re_data_store2::DataStore2 {
+        self.store_context.recording.store()
     }
 
     /// The `StoreId` of the active recording.
@@ -119,7 +120,7 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// The current time query, based on the current time control.
-    pub fn current_query(&self) -> re_data_store::LatestAtQuery {
+    pub fn current_query(&self) -> re_data_store2::LatestAtQuery {
         self.rec_cfg.time_ctrl.read().current_query()
     }
 

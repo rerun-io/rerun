@@ -43,6 +43,7 @@ stream_from_http = [
 
 # Rerun:
 re_build_info.workspace = true
+re_chunk.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true
 re_smart_channel.workspace = true

@@ -28,7 +28,8 @@ serde = ["dep:serde", "dep:rmp-serde", "re_log_types/serde"]
 
 [dependencies]
 re_build_info.workspace = true
-re_data_store.workspace = true
+re_chunk.workspace = true
+re_data_store2.workspace = true
 re_format.workspace = true
 re_int_histogram.workspace = true
 re_log.workspace = true

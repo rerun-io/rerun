@@ -12,100 +12,8 @@ use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable};
 
 // --- Queries ---
 
-/// A query at a given time, for a given timeline.
-///
-/// Get the latest version of the data available at this time.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct LatestAtQuery {
-    timeline: Timeline,
-    at: TimeInt,
-}
-
-impl std::fmt::Debug for LatestAtQuery {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "<latest at {} on {:?}>",
-            self.timeline.typ().format_utc(self.at),
-            self.timeline.name(),
-        ))
-    }
-}
-
-impl LatestAtQuery {
-    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
-    #[inline]
-    pub fn new(timeline: Timeline, at: impl TryInto<TimeInt>) -> Self {
-        let at = at.try_into().unwrap_or(TimeInt::MIN);
-        Self { timeline, at }
-    }
-
-    #[inline]
-    pub const fn latest(timeline: Timeline) -> Self {
-        Self {
-            timeline,
-            at: TimeInt::MAX,
-        }
-    }
-
-    #[inline]
-    pub fn timeline(&self) -> Timeline {
-        self.timeline
-    }
-
-    #[inline]
-    pub fn at(&self) -> TimeInt {
-        self.at
-    }
-}
-
-/// A query over a time range, for a given timeline.
-///
-/// Get all the data within this time interval, plus the latest one before the start of the
-/// interval.
-///
-/// Motivation: all data is considered alive until the next logging to the same component path.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct RangeQuery {
-    pub timeline: Timeline,
-    pub range: ResolvedTimeRange,
-}
-
-impl std::fmt::Debug for RangeQuery {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?}",
-            self.timeline.typ().format_utc(self.range.min()),
-            self.timeline.typ().format_utc(self.range.max()),
-            self.timeline.name(),
-        ))
-    }
-}
-
-impl RangeQuery {
-    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
-    #[inline]
-    pub const fn new(timeline: Timeline, range: ResolvedTimeRange) -> Self {
-        Self { timeline, range }
-    }
-
-    #[inline]
-    pub const fn everything(timeline: Timeline) -> Self {
-        Self {
-            timeline,
-            range: ResolvedTimeRange::EVERYTHING,
-        }
-    }
-
-    #[inline]
-    pub fn timeline(&self) -> Timeline {
-        self.timeline
-    }
-
-    #[inline]
-    pub fn range(&self) -> ResolvedTimeRange {
-        self.range
-    }
-}
+// TODO
+pub use re_chunk::{LatestAtQuery, RangeQuery};
 
 // --- Data store ---
 
@@ -235,8 +143,8 @@ impl DataStore {
         // Grab the temporal results.
         let (mut data_time, mut max_row_id, mut results) = self
             .tables
-            .get(&(entity_path_hash, query.timeline))
-            .and_then(|table| table.latest_at(query.at, primary, &component_names_opt))
+            .get(&(entity_path_hash, query.timeline()))
+            .and_then(|table| table.latest_at(query.at(), primary, &component_names_opt))
             .map_or_else(
                 || (TimeInt::STATIC, RowId::ZERO, [(); N].map(|_| None)),
                 |(data_time, row_id, cells)| (data_time, row_id, cells),

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{StoreEvent, StoreSubscriber};
+use re_data_store2::{StoreEvent2, StoreSubscriber2};
 use re_log_types::{TimeInt, Timeline};
 
 // ---
@@ -33,7 +33,7 @@ impl Default for TimesPerTimeline {
     }
 }
 
-impl StoreSubscriber for TimesPerTimeline {
+impl StoreSubscriber2 for TimesPerTimeline {
     #[inline]
     fn name(&self) -> String {
         "rerun.store_subscriber.TimesPerTimeline".into()
@@ -50,42 +50,50 @@ impl StoreSubscriber for TimesPerTimeline {
     }
 
     #[inline]
-    fn on_events(&mut self, events: &[StoreEvent]) {
+    fn on_events(&mut self, events: &[StoreEvent2]) {
         re_tracing::profile_function!(format!("num_events={}", events.len()));
 
         for event in events {
-            for &(timeline, time) in &event.times {
+            for (&timeline, time_chunk) in event.chunk.timelines() {
                 let per_time = self.0.entry(timeline).or_default();
-                let count = per_time.entry(time).or_default();
 
-                let delta = event.delta();
+                for time in time_chunk
+                    .times()
+                    .iter()
+                    .copied()
+                    .map(TimeInt::new_temporal)
+                {
+                    let count = per_time.entry(time).or_default();
 
-                if delta < 0 {
-                    *count = count.checked_sub(delta.unsigned_abs()).unwrap_or_else(|| {
-                        re_log::debug!(
-                            store_id = %event.store_id,
-                            entity_path = %event.diff.entity_path,
-                            current = count,
-                            removed = delta.unsigned_abs(),
-                            "book keeping underflowed"
-                        );
-                        u64::MIN
-                    });
-                } else {
-                    *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
-                        re_log::debug!(
-                            store_id = %event.store_id,
-                            entity_path = %event.diff.entity_path,
-                            current = count,
-                            removed = delta.unsigned_abs(),
-                            "book keeping overflowed"
-                        );
-                        u64::MAX
-                    });
-                }
+                    let delta = event.delta();
 
-                if *count == 0 {
-                    per_time.remove(&time);
+                    if delta < 0 {
+                        *count = count.checked_sub(delta.unsigned_abs()).unwrap_or_else(|| {
+                            re_log::debug!(
+                                store_id = %event.store_id,
+                                entity_path = %event.chunk.entity_path(),
+                                current = count,
+                                removed = delta.unsigned_abs(),
+                                "book keeping underflowed"
+                            );
+                            u64::MIN
+                        });
+                    } else {
+                        *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
+                            re_log::debug!(
+                                store_id = %event.store_id,
+                                entity_path = %event.chunk.entity_path(),
+                                current = count,
+                                removed = delta.unsigned_abs(),
+                                "book keeping overflowed"
+                            );
+                            u64::MAX
+                        });
+                    }
+
+                    if *count == 0 {
+                        per_time.remove(&time);
+                    }
                 }
             }
         }

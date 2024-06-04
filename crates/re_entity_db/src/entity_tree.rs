@@ -4,7 +4,7 @@ use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_data_store::{StoreDiff, StoreDiffKind, StoreEvent, StoreSubscriber};
+use re_data_store2::{StoreDiff2, StoreDiffKind2, StoreEvent2, StoreSubscriber2};
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathHash, EntityPathPart, RowId, TimeInt, Timeline,
 };
@@ -12,7 +12,7 @@ use re_types_core::ComponentName;
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
-use re_data_store::DataStore;
+use re_data_store2::DataStore2;
 
 use crate::TimeHistogramPerTimeline;
 
@@ -37,7 +37,7 @@ pub struct EntityTree {
 
 // NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
 // to implement it on their own and B) don't try to register it.
-impl StoreSubscriber for EntityTree {
+impl StoreSubscriber2 for EntityTree {
     fn name(&self) -> String {
         "rerun.store_subscribers.EntityTree".into()
     }
@@ -51,7 +51,7 @@ impl StoreSubscriber for EntityTree {
     }
 
     #[allow(clippy::unimplemented)]
-    fn on_events(&mut self, _events: &[StoreEvent]) {
+    fn on_events(&mut self, _events: &[StoreEvent2]) {
         unimplemented!(
             r"EntityTree view is maintained manually, see `EntityTree::on_store_{{additions|deletions}}`"
         );
@@ -89,38 +89,44 @@ pub struct SubtreeInfo {
 
 impl SubtreeInfo {
     /// Assumes the event has been filtered to be part of this subtree.
-    fn on_event(&mut self, event: &StoreEvent) {
+    fn on_event(&mut self, event: &StoreEvent2) {
         use re_types_core::SizeBytes as _;
 
         match event.kind {
-            StoreDiffKind::Addition => {
-                self.time_histogram
-                    .add(&event.times, event.num_components() as _);
+            StoreDiffKind2::Addition => {
+                let times = event
+                    .chunk
+                    .timelines()
+                    .iter()
+                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times()))
+                    .collect_vec();
+                self.time_histogram.add(&times, event.num_components() as _);
 
-                for cell in event.cells.values() {
-                    self.data_bytes += cell.total_size_bytes();
-                }
+                self.data_bytes += event.chunk.total_size_bytes();
             }
-            StoreDiffKind::Deletion => {
+            StoreDiffKind2::Deletion => {
+                let times = event
+                    .chunk
+                    .timelines()
+                    .iter()
+                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times()))
+                    .collect_vec();
                 self.time_histogram
-                    .remove(&event.timepoint(), event.num_components() as _);
+                    .remove(&times, event.num_components() as _);
 
-                for cell in event.cells.values() {
-                    let removed_bytes = cell.total_size_bytes();
-                    self.data_bytes =
-                        self.data_bytes
-                            .checked_sub(removed_bytes)
-                            .unwrap_or_else(|| {
-                                re_log::debug!(
-                                    store_id = %event.store_id,
-                                    entity_path = %event.diff.entity_path,
-                                    current = self.data_bytes,
-                                    removed = removed_bytes,
-                                    "book keeping underflowed"
-                                );
-                                u64::MIN
-                            });
-                }
+                let removed_bytes = event.chunk.total_size_bytes();
+                self.data_bytes
+                    .checked_sub(removed_bytes)
+                    .unwrap_or_else(|| {
+                        re_log::debug!(
+                            store_id = %event.store_id,
+                            entity_path = %event.chunk.entity_path(),
+                            current = self.data_bytes,
+                            removed = removed_bytes,
+                            "book keeping underflowed"
+                        );
+                        u64::MIN
+                    });
             }
         }
     }
@@ -149,26 +155,40 @@ pub struct CompactedStoreEvents {
 }
 
 impl CompactedStoreEvents {
-    pub fn new(store_events: &[&StoreEvent]) -> Self {
+    pub fn new(store_events: &[&StoreEvent2]) -> Self {
         let mut this = Self {
-            row_ids: store_events.iter().map(|event| event.row_id).collect(),
+            row_ids: store_events
+                .iter()
+                .flat_map(|event| event.chunk.row_ids())
+                .collect(),
             temporal: Default::default(),
             timeless: Default::default(),
         };
 
         for event in store_events {
             if event.is_static() {
-                let per_component = this.timeless.entry(event.entity_path.hash()).or_default();
-                for component_name in event.cells.keys() {
-                    *per_component.entry(*component_name).or_default() +=
+                let per_component = this
+                    .timeless
+                    .entry(event.chunk.entity_path().hash())
+                    .or_default();
+                for component_name in event.chunk.component_names() {
+                    *per_component.entry(component_name).or_default() +=
                         event.delta().unsigned_abs();
                 }
             } else {
-                for &(timeline, time) in &event.times {
-                    let per_timeline = this.temporal.entry(event.entity_path.hash()).or_default();
-                    let per_component = per_timeline.entry(timeline).or_default();
-                    for component_name in event.cells.keys() {
-                        per_component.entry(*component_name).or_default().push(time);
+                for (&timeline, time_chunk) in event.chunk.timelines() {
+                    let per_timeline = this
+                        .temporal
+                        .entry(event.chunk.entity_path().hash())
+                        .or_default();
+                    for &time in time_chunk.times() {
+                        let per_component = per_timeline.entry(timeline).or_default();
+                        for component_name in event.chunk.component_names() {
+                            per_component
+                                .entry(component_name)
+                                .or_default()
+                                .push(TimeInt::new_temporal(time));
+                        }
                     }
                 }
             }
@@ -220,18 +240,18 @@ impl EntityTree {
     /// Updates the [`EntityTree`] by applying a batch of [`StoreEvent`]s.
     ///
     /// Only reacts to additions (`event.kind == StoreDiffKind::Addition`).
-    pub fn on_store_additions(&mut self, events: &[StoreEvent]) {
+    pub fn on_store_additions(&mut self, events: &[StoreEvent2]) {
         re_tracing::profile_function!();
 
-        for event in events.iter().filter(|e| e.kind == StoreDiffKind::Addition) {
+        for event in events.iter().filter(|e| e.kind == StoreDiffKind2::Addition) {
             self.on_store_addition(event);
         }
     }
 
-    fn on_store_addition(&mut self, event: &StoreEvent) {
+    fn on_store_addition(&mut self, event: &StoreEvent2) {
         re_tracing::profile_function!();
 
-        let entity_path = &event.diff.entity_path;
+        let entity_path = event.chunk.entity_path();
 
         // Book-keeping for each level in the hierarchy:
         let mut tree = self;
@@ -250,24 +270,32 @@ impl EntityTree {
     }
 
     /// Handles the addition of new data into the tree.
-    fn on_added_data(&mut self, store_diff: &StoreDiff) {
-        for component_name in store_diff.cells.keys() {
+    fn on_added_data(&mut self, store_diff: &StoreDiff2) {
+        for component_name in store_diff.chunk.component_names() {
             let component_path =
-                ComponentPath::new(store_diff.entity_path.clone(), *component_name);
+                ComponentPath::new(store_diff.chunk.entity_path().clone(), component_name);
 
             let per_component = self
                 .entity
                 .components
                 .entry(component_path.component_name)
                 .or_default();
-            per_component.add(&store_diff.times, 1);
+            per_component.add(
+                &store_diff
+                    .chunk
+                    .timelines()
+                    .iter()
+                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times()))
+                    .collect_vec(),
+                1,
+            );
         }
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`StoreEvent`]s.
     ///
     /// Only reacts to deletions (`event.kind == StoreDiffKind::Deletion`).
-    pub fn on_store_deletions(&mut self, store_events: &[&StoreEvent]) {
+    pub fn on_store_deletions(&mut self, store_events: &[&StoreEvent2]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -280,18 +308,29 @@ impl EntityTree {
         // Only keep events relevant to this branch of the tree.
         let subtree_events = store_events
             .iter()
-            .filter(|e| e.entity_path.starts_with(path))
+            .filter(|e| e.diff.chunk.entity_path().starts_with(path))
             .copied() // NOTE: not actually copying, just removing the superfluous ref layer
             .collect_vec();
 
         {
             re_tracing::profile_scope!("entity");
-            for event in subtree_events.iter().filter(|e| &e.entity_path == path) {
-                for component_name in event.cells.keys() {
-                    if let Some(histo) = entity.components.get_mut(component_name) {
-                        histo.remove(&event.timepoint(), 1);
+            for event in subtree_events
+                .iter()
+                .filter(|e| e.chunk.entity_path() == path)
+            {
+                for component_name in event.chunk.component_names() {
+                    if let Some(histo) = entity.components.get_mut(&component_name) {
+                        histo.remove(
+                            &event
+                                .chunk
+                                .timelines()
+                                .iter()
+                                .map(|(timeline, time_chunk)| (*timeline, time_chunk.times()))
+                                .collect_vec(),
+                            1,
+                        );
                         if histo.is_empty() {
-                            entity.components.remove(component_name);
+                            entity.components.remove(&component_name);
                         }
                     }
                 }

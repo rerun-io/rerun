@@ -2,7 +2,7 @@ use egui::ahash::{HashMap, HashSet};
 
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
-use re_data_store::TimeType;
+use re_data_store2::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};

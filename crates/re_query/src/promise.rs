@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use re_log_types::DataCell;
+use arrow2::array::Array as ArrowArray;
+
+// TODO: just remove this already
 
 // ---
 
@@ -32,7 +34,7 @@ impl PromiseId {
 
 // ---
 
-/// A [`Promise`] turns a source [`DataCell`] into a new [`DataCell`] with the helper of a
+/// A [`Promise`] turns a source arrow array into a new arrow array with the help of a
 /// [`PromiseResolver`].
 ///
 /// Each promise is uniquely identified via a [`PromiseId`].
@@ -41,7 +43,7 @@ impl PromiseId {
 #[derive(Debug, Clone)]
 pub struct Promise {
     id: PromiseId,
-    source: DataCell,
+    source: Box<dyn ArrowArray>,
 }
 
 static_assertions::assert_eq_size!(Promise, Option<Promise>);
@@ -56,7 +58,7 @@ impl re_types_core::SizeBytes for Promise {
 
 impl Promise {
     #[inline]
-    pub fn new(source: DataCell) -> Self {
+    pub fn new(source: Box<dyn ArrowArray>) -> Self {
         Self {
             id: PromiseId::new(),
             source,
@@ -80,7 +82,7 @@ impl PromiseResolver {
     /// idempotent (the [`PromiseResolver`] keeps track of the state of all [`Promise`]s, both
     /// pending and already resolved).
     #[inline]
-    pub fn resolve(&self, promise: &Promise) -> PromiseResult<DataCell> {
+    pub fn resolve(&self, promise: &Promise) -> PromiseResult<Box<dyn ArrowArray>> {
         // NOTE: we're pretending there's gonna be some kind of interior mutability when
         // everything's said and done.
         _ = self;

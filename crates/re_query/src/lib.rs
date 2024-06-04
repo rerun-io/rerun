@@ -22,7 +22,7 @@ pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
 pub use self::range::{RangeComponentResults, RangeData, RangeResults};
 pub use self::range_zip::*;
 
-pub(crate) use self::latest_at::LatestAtCache;
+pub(crate) use self::latest_at::{latest_at, LatestAtCache};
 pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};
 
 pub mod external {
@@ -60,9 +60,6 @@ pub enum QueryError {
         requested: re_types_core::ComponentName,
     },
 
-    #[error("Error with one or more the underlying data cells: {0}")]
-    DataCell(#[from] re_log_types::DataCellError),
-
     #[error("Error deserializing: {0}")]
     DeserializationError(#[from] re_types_core::DeserializationError),
 
@@ -83,7 +80,7 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 
 // ---
 
-use re_data_store::{LatestAtQuery, RangeQuery};
+use re_data_store2::{LatestAtQuery, RangeQuery};
 
 #[derive(Debug)]
 pub enum Results {

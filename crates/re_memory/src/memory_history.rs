@@ -23,7 +23,7 @@ pub struct MemoryHistory {
     pub counted_gpu: History<i64>,
 
     /// Bytes used by the datastore according to its own accounting.
-    pub counted_store: History<i64>,
+    pub counted_store2: History<i64>,
 
     /// Bytes used by the primary caches according to their own accounting.
     pub counted_primary_caches: History<i64>,
@@ -40,7 +40,7 @@ impl Default for MemoryHistory {
             resident: History::new(0..max_elems, max_seconds),
             counted: History::new(0..max_elems, max_seconds),
             counted_gpu: History::new(0..max_elems, max_seconds),
-            counted_store: History::new(0..max_elems, max_seconds),
+            counted_store2: History::new(0..max_elems, max_seconds),
             counted_primary_caches: History::new(0..max_elems, max_seconds),
             counted_blueprint: History::new(0..max_elems, max_seconds),
         }
@@ -53,14 +53,14 @@ impl MemoryHistory {
             resident,
             counted,
             counted_gpu,
-            counted_store,
+            counted_store2,
             counted_primary_caches,
             counted_blueprint,
         } = self;
         resident.is_empty()
             && counted.is_empty()
             && counted_gpu.is_empty()
-            && counted_store.is_empty()
+            && counted_store2.is_empty()
             && counted_primary_caches.is_empty()
             && counted_blueprint.is_empty()
     }
@@ -69,7 +69,7 @@ impl MemoryHistory {
     pub fn capture(
         &mut self,
         updated_counted_gpu: Option<i64>,
-        updated_counted_store: Option<i64>,
+        updated_counted_store2: Option<i64>,
         updated_counted_primary_caches: Option<i64>,
         updated_counted_blueprint: Option<i64>,
     ) {
@@ -80,7 +80,7 @@ impl MemoryHistory {
             resident,
             counted,
             counted_gpu,
-            counted_store,
+            counted_store2,
             counted_primary_caches,
             counted_blueprint,
         } = self;
@@ -94,8 +94,8 @@ impl MemoryHistory {
         if let Some(updated_counted_gpu) = updated_counted_gpu {
             counted_gpu.add(now, updated_counted_gpu);
         }
-        if let Some(updated_counted_store) = updated_counted_store {
-            counted_store.add(now, updated_counted_store);
+        if let Some(updated_counted_store2) = updated_counted_store2 {
+            counted_store2.add(now, updated_counted_store2);
         }
         if let Some(updated_counted_primary_caches) = updated_counted_primary_caches {
             counted_primary_caches.add(now, updated_counted_primary_caches);

@@ -137,8 +137,8 @@ pub use run::{run, CallSource};
 pub use sdk::*;
 
 /// Everything needed to build custom `StoreSubscriber`s.
-pub use re_entity_db::external::re_data_store::{
-    DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreSubscriber,
+pub use re_entity_db::external::re_data_store2::{
+    DataStore2, StoreDiff2, StoreDiffKind2, StoreEvent2, StoreGeneration2, StoreSubscriber2,
 };
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name

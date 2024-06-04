@@ -1,5 +1,6 @@
 use itertools::Itertools;
-use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
+
+use re_data_store2::{DataStoreChunkStats2, DataStoreConfig2, DataStoreStats2};
 use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_query::{CachedComponentStats, CachesStats};
@@ -30,9 +31,15 @@ impl MemoryPanel {
                 (gpu_resource_stats.total_buffer_size_in_bytes
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
-            store_stats.map(|stats| stats.recording_stats.total.num_bytes as _),
+            store_stats.map(|stats| {
+                (stats.recording_stats2.static_chunks.total_size_bytes
+                    + stats.recording_stats2.temporal_chunks.total_size_bytes) as _
+            }),
             store_stats.map(|stats| stats.recording_cached_stats.total_size_bytes() as _),
-            store_stats.map(|stats| stats.blueprint_stats.total.num_bytes as _),
+            store_stats.map(|stats| {
+                (stats.blueprint_stats.static_chunks.total_size_bytes
+                    + stats.blueprint_stats.temporal_chunks.total_size_bytes) as _
+            }),
         );
     }
 
@@ -89,11 +96,11 @@ impl MemoryPanel {
 
         if let Some(store_stats) = store_stats {
             ui.separator();
-            ui.collapsing("Datastore Resources", |ui| {
-                Self::store_stats(
+            ui.collapsing("Datastore2 Resources", |ui| {
+                Self::store_stats2(
                     ui,
-                    &store_stats.recording_config,
-                    &store_stats.recording_stats,
+                    &store_stats.recording_config2,
+                    &store_stats.recording_stats2,
                 );
             });
 
@@ -104,7 +111,7 @@ impl MemoryPanel {
 
             ui.separator();
             ui.collapsing("Blueprint Resources", |ui| {
-                Self::store_stats(
+                Self::store_stats2(
                     ui,
                     &store_stats.blueprint_config,
                     &store_stats.blueprint_stats,
@@ -206,88 +213,62 @@ impl MemoryPanel {
             });
     }
 
-    fn store_stats(
+    fn store_stats2(
         ui: &mut egui::Ui,
-        store_config: &DataStoreConfig,
-        store_stats: &DataStoreStats,
+        store_config: &DataStoreConfig2,
+        store_stats: &DataStoreStats2,
     ) {
-        egui::Grid::new("store config grid")
+        _ = store_config; // TODO
+
+        egui::Grid::new("store stats grid 2")
             .num_columns(3)
             .show(ui, |ui| {
-                ui.label(egui::RichText::new("Limits").italics());
-                ui.label("Row limit");
-                ui.end_row();
-
-                let label_rows = |ui: &mut egui::Ui, num_rows| {
-                    if num_rows == u64::MAX {
-                        ui.label("+∞")
-                    } else {
-                        ui.label(re_format::format_uint(num_rows))
-                    }
-                };
-
-                ui.label("Timeless:");
-                label_rows(ui, u64::MAX);
-                ui.end_row();
-
-                ui.label("Temporal:");
-                label_rows(ui, store_config.indexed_bucket_num_rows);
-                ui.end_row();
-            });
-
-        ui.separator();
-
-        egui::Grid::new("store stats grid")
-            .num_columns(3)
-            .show(ui, |ui| {
-                let DataStoreStats {
-                    type_registry,
-                    metadata_registry,
-                    static_tables,
-                    temporal,
-                    temporal_buckets,
+                let DataStoreStats2 {
+                    static_chunks,
+                    temporal_chunks,
                     total,
                 } = *store_stats;
 
                 ui.label(egui::RichText::new("Stats").italics());
-                ui.label("Buckets");
-                ui.label("Rows");
-                ui.label("Size");
+                ui.label("Chunks");
+                ui.label("Rows (total)");
+                ui.label("Size (total)");
                 ui.end_row();
 
-                fn label_row_stats(ui: &mut egui::Ui, row_stats: DataStoreRowStats) {
-                    let DataStoreRowStats {
-                        num_rows,
-                        num_bytes,
-                    } = row_stats;
+                fn label_chunk_stats(ui: &mut egui::Ui, stats: DataStoreChunkStats2) {
+                    let DataStoreChunkStats2 {
+                        num_chunks,
 
-                    ui.label(re_format::format_uint(num_rows));
-                    ui.label(re_format::format_bytes(num_bytes as _));
+                        min_size_bytes: _,
+                        max_size_bytes: _,
+                        total_size_bytes,
+
+                        min_num_rows: _,
+                        max_num_rows: _,
+                        total_num_rows,
+
+                        min_num_components: _,
+                        max_num_components: _,
+
+                        min_num_timelines: _,
+                        max_num_timelines: _,
+                    } = stats;
+
+                    ui.label(re_format::format_uint(num_chunks));
+                    ui.label(re_format::format_uint(total_num_rows));
+                    ui.label(re_format::format_bytes(total_size_bytes as _));
                 }
 
-                ui.label("Type registry:");
-                ui.label("");
-                label_row_stats(ui, type_registry);
-                ui.end_row();
-
-                ui.label("Metadata registry:");
-                ui.label("");
-                label_row_stats(ui, metadata_registry);
-                ui.end_row();
-
                 ui.label("Static:");
-                ui.label("");
-                label_row_stats(ui, static_tables);
+                label_chunk_stats(ui, static_chunks);
                 ui.end_row();
 
                 ui.label("Temporal:");
-                ui.label(re_format::format_uint(temporal_buckets));
-                label_row_stats(ui, temporal);
+                label_chunk_stats(ui, temporal_chunks);
                 ui.end_row();
 
-                ui.label("Total");
-                ui.label(re_format::format_uint(temporal_buckets));
-                label_row_stats(ui, total);
+                ui.label("Total:");
+                label_chunk_stats(ui, total);
                 ui.end_row();
             });
     }
@@ -502,7 +483,7 @@ impl MemoryPanel {
                     resident,
                     counted,
                     counted_gpu,
-                    counted_store,
+                    counted_store2,
                     counted_primary_caches,
                     counted_blueprint,
                 } = &self.history;
@@ -510,7 +491,7 @@ impl MemoryPanel {
                 plot_ui.line(to_line(resident).name("Resident").width(1.5));
                 plot_ui.line(to_line(counted).name("Counted").width(1.5));
                 plot_ui.line(to_line(counted_gpu).name("Counted GPU").width(1.5));
-                plot_ui.line(to_line(counted_store).name("Counted store").width(1.5));
+                plot_ui.line(to_line(counted_store2).name("Counted store 2").width(1.5));
                 plot_ui.line(
                     to_line(counted_primary_caches)
                         .name("Counted primary caches")

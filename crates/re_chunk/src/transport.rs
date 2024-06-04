@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use arrow2::{
-    array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray},
+    array::{
+        Array as ArrowArray, ListArray, PrimitiveArray as ArrowPrimitiveArray,
+        StructArray as ArrowStructArray,
+    },
     chunk::Chunk as ArrowChunk,
     datatypes::{
         DataType as ArrowDatatype, Field as ArrowField, Metadata as ArrowMetadata,
@@ -9,8 +12,8 @@ use arrow2::{
     },
 };
 
-use re_log_types::{EntityPath, RowId, TimeInt, Timeline};
-use re_types_core::Loggable as _;
+use re_log_types::{EntityPath, RowId, Timeline};
+use re_types_core::{Loggable as _, SizeBytes};
 
 use crate::{Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline};
 
@@ -53,12 +56,17 @@ impl std::fmt::Display for TransportChunk {
     }
 }
 
+// TODO: open an issue to get metadata in a separate thing
 impl TransportChunk {
     /// The key used to identify a Rerun [`ChunkId`] in chunk-level [`ArrowSchema`] metadata.
     pub const CHUNK_METADATA_KEY_ID: &'static str = "rerun.id";
 
     /// The key used to identify a Rerun [`EntityPath`] in chunk-level [`ArrowSchema`] metadata.
     pub const CHUNK_METADATA_KEY_ENTITY_PATH: &'static str = "rerun.entity_path";
+
+    /// The key used to identify the size in bytes of the data, once loaded in memory, in chunk-level
+    /// [`ArrowSchema`] metadata.
+    pub const CHUNK_METADATA_KEY_HEAP_SIZE_BYTES: &'static str = "rerun.heap_size_bytes";
 
     /// The marker used to identify whether a chunk is sorted in chunk-level [`ArrowSchema`] metadata.
     ///
@@ -98,6 +106,18 @@ impl TransportChunk {
             (
                 Self::CHUNK_METADATA_KEY_ID.to_owned(),
                 format!("{:X}", id.as_u128()),
+            ), //
+        ]
+        .into()
+    }
+
+    /// Returns the appropriate chunk-level [`ArrowSchema`] metadata for the in-memory size in bytes.
+    #[inline]
+    pub fn chunk_metadata_heap_size_bytes(heap_size_bytes: u64) -> ArrowMetadata {
+        [
+            (
+                Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES.to_owned(),
+                heap_size_bytes.to_string(),
             ), //
         ]
         .into()
@@ -179,19 +199,32 @@ impl TransportChunk {
 impl TransportChunk {
     #[inline]
     pub fn id(&self) -> ChunkResult<ChunkId> {
-        match self.schema.metadata.get(Self::CHUNK_METADATA_KEY_ID) {
-            Some(id) => {
+        if let Some(id) = self.schema.metadata.get(Self::CHUNK_METADATA_KEY_ID) {
+            let id = u128::from_str_radix(id, 16).map_err(|err| ChunkError::Malformed {
+                reason: format!("cannot deserialize chunk id: {err}"),
+            })?;
+            Ok(ChunkId::from_u128(id))
+        } else {
+            // TODO: note that this is a BW-compat hack and that it can be removed for 0.18
+            if let Some(id) = self
+                .schema
+                .metadata
+                // .get(re_log_types::TableId::name().as_str())
+                .get("rerun.controls.TableId")
+            {
                 let id = u128::from_str_radix(id, 16).map_err(|err| ChunkError::Malformed {
                     reason: format!("cannot deserialize chunk id: {err}"),
                 })?;
-                Ok(ChunkId::from_u128(id))
+                return Ok(ChunkId::from_u128(id));
             }
-            None => Err(crate::ChunkError::Malformed {
+
+            Err(crate::ChunkError::Malformed {
                 reason: format!(
                     "chunk id missing from metadata ({:?})",
                     self.schema.metadata
                 ),
-            }),
+            })
+            //
         }
     }
 
@@ -210,6 +243,14 @@ impl TransportChunk {
                 ),
             }),
         }
+    }
+
+    #[inline]
+    pub fn heap_size_bytes(&self) -> Option<u64> {
+        self.schema
+            .metadata
+            .get(Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES)
+            .and_then(|s| s.parse::<u64>().ok())
     }
 
     /// Looks in the chunk metadata for the `IS_SORTED` marker.
@@ -308,6 +349,7 @@ impl Chunk {
         let Self {
             id,
             entity_path,
+            heap_size_bytes: _, // use the method instead because of lazy initialization
             is_sorted,
             row_ids,
             timelines,
@@ -329,6 +371,12 @@ impl Chunk {
                 .metadata
                 .extend(TransportChunk::chunk_metadata_entity_path(entity_path));
 
+            schema
+                .metadata
+                .extend(TransportChunk::chunk_metadata_heap_size_bytes(
+                    self.heap_size_bytes(),
+                ));
+
             if *is_sorted {
                 schema
                     .metadata
@@ -340,7 +388,6 @@ impl Chunk {
         {
             re_tracing::profile_scope!("row ids");
 
-            let row_ids = RowId::to_arrow(row_ids)?;
             schema.fields.push(
                 ArrowField::new(
                     RowId::name().to_string(),
@@ -349,7 +396,7 @@ impl Chunk {
                 )
                 .with_metadata(TransportChunk::field_metadata_control_column()),
             );
-            columns.push(row_ids);
+            columns.push(row_ids.clone().boxed());
         }
 
         // Timelines
@@ -358,20 +405,11 @@ impl Chunk {
 
             for (timeline, info) in timelines {
                 let ChunkTimeline {
+                    timeline: _,
                     times,
                     is_sorted,
                     time_range: _,
                 } = info;
-
-                let times = {
-                    let values = times.iter().map(|time| time.as_i64()).collect();
-                    ArrowPrimitiveArray::new(
-                        arrow2::types::PrimitiveType::Int64.into(),
-                        values,
-                        None,
-                    )
-                    .to(timeline.datatype())
-                };
 
                 let field = ArrowField::new(
                     timeline.name().to_string(),
@@ -387,7 +425,7 @@ impl Chunk {
                 });
 
                 schema.fields.push(field);
-                columns.push(Box::new(times));
+                columns.push(times.clone().boxed() /* cheap */);
             }
         }
 
@@ -400,7 +438,7 @@ impl Chunk {
                     ArrowField::new(component_name.to_string(), data.data_type().clone(), true)
                         .with_metadata(TransportChunk::field_metadata_data_column()),
                 );
-                columns.push(data.clone() /* refcounted (dyn Clone) */);
+                columns.push(data.clone().boxed());
             }
         }
 
@@ -410,34 +448,46 @@ impl Chunk {
         })
     }
 
-    pub fn from_transport(chunk: &TransportChunk) -> ChunkResult<Self> {
+    pub fn from_transport(transport: &TransportChunk) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
-            chunk.num_columns(),
-            chunk.num_rows()
+            transport.num_columns(),
+            transport.num_rows()
         ));
 
         // Metadata
         let (id, entity_path, is_sorted) = {
             re_tracing::profile_scope!("metadata");
-            (chunk.id()?, chunk.entity_path()?, chunk.is_sorted())
+            (
+                transport.id()?,
+                transport.entity_path()?,
+                transport.is_sorted(),
+            )
         };
 
         // Row IDs
         let row_ids = {
             re_tracing::profile_scope!("row ids");
 
-            let Some(column) = chunk.controls().find_map(|(field, column)| {
+            let Some(row_ids) = transport.controls().find_map(|(field, column)| {
                 (field.name == RowId::name().as_str()).then_some(column)
             }) else {
                 return Err(ChunkError::Malformed {
-                    reason: format!("missing row_id column ({:?})", chunk.schema),
+                    reason: format!("missing row_id column ({:?})", transport.schema),
                 });
             };
 
-            RowId::from_arrow(&**column).map_err(|err| ChunkError::Malformed {
-                reason: format!("row_id column is not deserializable: {err}"),
-            })?
+            row_ids
+                .as_any()
+                .downcast_ref::<ArrowStructArray>()
+                .ok_or_else(|| ChunkError::Malformed {
+                    reason: format!(
+                        "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
+                        RowId::arrow_datatype(),
+                        *row_ids.data_type(),
+                    ),
+                })?
+                .clone()
         };
 
         // Timelines
@@ -446,7 +496,7 @@ impl Chunk {
 
             let mut timelines = BTreeMap::default();
 
-            for (field, column) in chunk.timelines() {
+            for (field, column) in transport.timelines() {
                 // See also [`Timeline::datatype`]
                 let timeline = match column.data_type().to_logical_type() {
                     ArrowDatatype::Int64 => Timeline::new_sequence(field.name.as_str()),
@@ -492,22 +542,16 @@ impl Chunk {
 
                 let time_chunk = ChunkTimeline::new(
                     is_sorted.then_some(true),
-                    times
-                        .values_iter()
-                        .copied()
-                        .map(TimeInt::new_temporal)
-                        .collect(),
+                    timeline,
+                    times.clone(), /* cheap */
                 );
-
-                if let Some(time_chunk) = time_chunk {
-                    if timelines.insert(timeline, time_chunk).is_some() {
-                        return Err(ChunkError::Malformed {
-                            reason: format!(
-                                "time column '{}' was specified more than once",
-                                field.name,
-                            ),
-                        });
-                    }
+                if timelines.insert(timeline, time_chunk).is_some() {
+                    return Err(ChunkError::Malformed {
+                        reason: format!(
+                            "time column '{}' was specified more than once",
+                            field.name,
+                        ),
+                    });
                 }
             }
 
@@ -518,16 +562,16 @@ impl Chunk {
         let components = {
             let mut components = BTreeMap::default();
 
-            for (field, column) in chunk.components() {
-                if !matches!(column.data_type(), ArrowDatatype::List(_)) {
-                    return Err(ChunkError::Malformed {
+            for (field, column) in transport.components() {
+                let column = column
+                    .as_any()
+                    .downcast_ref::<ListArray<i32>>()
+                    .ok_or_else(|| ChunkError::Malformed {
                         reason: format!(
-                            "component column '{}' is not deserializable ({:?})",
-                            field.name,
-                            column.data_type()
+                            "The outer array in a chunked component batch must be a sparse list, got {:?}",
+                            column.data_type(),
                         ),
-                    });
-                }
+                    })?;
 
                 if components
                     .insert(
@@ -548,14 +592,53 @@ impl Chunk {
             components
         };
 
-        Self::new(
+        let mut res = Self::new(
             id,
             entity_path,
             is_sorted.then_some(true),
             row_ids,
             timelines,
             components,
-        )
+        )?;
+
+        if let Some(heap_size_bytes) = transport.heap_size_bytes() {
+            res.heap_size_bytes = heap_size_bytes.into();
+        }
+
+        Ok(res)
+    }
+}
+
+// TODO: still some manual ArrowMsg roaming around
+impl Chunk {
+    #[inline]
+    pub fn from_arrow_msg(msg: &re_log_types::ArrowMsg) -> ChunkResult<Self> {
+        let re_log_types::ArrowMsg {
+            table_id: _,
+            timepoint_max: _,
+            schema,
+            chunk,
+            on_release: _,
+        } = msg;
+
+        Self::from_transport(&TransportChunk {
+            schema: schema.clone(),
+            data: chunk.clone(),
+        })
+    }
+
+    #[inline]
+    pub fn to_arrow_msg(&self) -> ChunkResult<re_log_types::ArrowMsg> {
+        self.sanity_check()?;
+
+        let transport = self.to_transport()?;
+        Ok(re_log_types::ArrowMsg {
+            table_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
+            timepoint_max: self.timepoint_max(),
+            schema: transport.schema,
+            chunk: transport.data,
+            on_release: None,
+        })
     }
 }
 
@@ -563,10 +646,8 @@ impl Chunk {
 mod tests {
     use re_log_types::{
         example_components::{MyColor, MyPoint},
-        TimeInt, Timeline,
+        Timeline,
     };
-
-    use crate::arrays_to_list_array;
 
     use super::*;
 
@@ -579,9 +660,9 @@ mod tests {
             timeline1,
             ChunkTimeline::new(
                 Some(true),
-                [42, 43, 44, 45].map(TimeInt::new_temporal).to_vec(),
-            )
-            .unwrap(),
+                timeline1,
+                ArrowPrimitiveArray::<i64>::from_vec(vec![42, 43, 44, 45]),
+            ),
         ))
         .collect();
 
@@ -607,7 +688,7 @@ mod tests {
 
         let components = [
             (MyPoint::name(), {
-                let list_array = arrays_to_list_array(&[
+                let list_array = crate::util::arrays_to_list_array_opt(&[
                     Some(&*points1),
                     points2,
                     Some(&*points3),
@@ -618,9 +699,13 @@ mod tests {
                 list_array
             }),
             (MyPoint::name(), {
-                let list_array =
-                    arrays_to_list_array(&[Some(&*colors1), Some(&*colors2), colors3, colors4])
-                        .unwrap();
+                let list_array = crate::util::arrays_to_list_array_opt(&[
+                    Some(&*colors1),
+                    Some(&*colors2),
+                    colors3,
+                    colors4,
+                ])
+                .unwrap();
                 assert_eq!(4, list_array.len());
                 list_array
             }),
@@ -629,11 +714,11 @@ mod tests {
         let row_ids = vec![RowId::new(), RowId::new(), RowId::new(), RowId::new()];
 
         for timelines in [timelines1, timelines2] {
-            let chunk_original = Chunk::new(
+            let chunk_original = Chunk::from_native_row_ids(
                 ChunkId::new(),
                 entity_path.clone(),
                 None,
-                row_ids.clone(),
+                &row_ids,
                 timelines.clone(),
                 components.clone().into_iter().collect(),
             )?;
@@ -650,6 +735,10 @@ mod tests {
                 assert_eq!(
                     chunk_in_transport.entity_path()?,
                     *chunk_after.entity_path()
+                );
+                assert_eq!(
+                    chunk_in_transport.heap_size_bytes(),
+                    Some(chunk_after.heap_size_bytes()),
                 );
                 assert_eq!(
                     chunk_in_transport.num_columns(),
@@ -684,9 +773,9 @@ mod tests {
                     chunk_after.num_components()
                 );
 
-                // eprintln!("{chunk_before}");
+                eprintln!("{chunk_before}");
                 eprintln!("{chunk_in_transport}");
-                // eprintln!("{chunk_after}");
+                eprintln!("{chunk_after}");
 
                 assert_eq!(chunk_before, chunk_after);
 

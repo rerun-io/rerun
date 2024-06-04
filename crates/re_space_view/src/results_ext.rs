@@ -1,4 +1,4 @@
-use re_data_store::{LatestAtQuery, RangeQuery};
+use re_data_store2::{LatestAtQuery, RangeQuery};
 use re_log_types::{external::arrow2, RowId, TimeInt};
 use re_query::{
     LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult, RangeData,

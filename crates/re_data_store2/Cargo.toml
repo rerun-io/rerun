@@ -1,0 +1,63 @@
+[package]
+name = "re_data_store2"
+authors.workspace = true
+description = "A storage engine for Rerun's Chunks"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+## Enables `parking_lot`'s deadlock detection background thread.
+deadlock_detection = ["parking_lot/deadlock_detection"]
+
+
+[dependencies]
+# Rerun dependencies:
+re_chunk.workspace = true
+re_format.workspace = true
+re_format_arrow.workspace = true
+re_log = { workspace = true, features = ["setup"] }
+re_log_types.workspace = true
+re_tracing.workspace = true
+re_types_core.workspace = true
+
+# External dependencies:
+ahash.workspace = true
+arrow2 = { workspace = true, features = ["compute_concatenate"] }
+document-features.workspace = true
+indent.workspace = true
+itertools = { workspace = true }
+nohash-hasher.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+smallvec.workspace = true
+thiserror.workspace = true
+web-time.workspace = true
+
+
+[dev-dependencies]
+re_format.workspace = true
+re_types = { workspace = true, features = ["testing"] }
+
+anyhow.workspace = true
+criterion.workspace = true
+insta.workspace = true
+mimalloc.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
+similar-asserts.workspace = true
+tinyvec.workspace = true

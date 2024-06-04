@@ -5,7 +5,7 @@ use nohash_hasher::IntMap;
 use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 
-use re_data_store::LatestAtQuery;
+use re_data_store2::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::StoreKind;
 use re_types::ComponentName;

@@ -34,7 +34,7 @@ pub mod external {
     pub use re_data_ui;
     pub use {eframe, egui};
     pub use {
-        re_data_store, re_data_store::external::*, re_entity_db, re_log, re_log_types, re_memory,
+        re_data_store2, re_data_store2::external::*, re_entity_db, re_log, re_log_types, re_memory,
         re_query, re_renderer, re_types, re_ui, re_viewer_context, re_viewer_context::external::*,
         re_viewport, re_viewport::external::*,
     };

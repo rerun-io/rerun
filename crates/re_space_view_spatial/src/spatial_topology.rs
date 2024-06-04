@@ -2,7 +2,9 @@ use once_cell::sync::OnceCell;
 
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{StoreSubscriber, StoreSubscriberHandle};
+use re_data_store2::{
+    DataStore2, StoreDiffKind2, StoreEvent2, StoreSubscriber2, StoreSubscriberHandle2,
+};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection, ViewCoordinates},
@@ -124,31 +126,33 @@ impl SpatialTopologyStoreSubscriber {
     /// Accesses the global store subscriber.
     ///
     /// Lazily registers the subscriber if it hasn't been registered yet.
-    pub fn subscription_handle() -> StoreSubscriberHandle {
-        static SUBSCRIPTION: OnceCell<re_data_store::StoreSubscriberHandle> = OnceCell::new();
-        *SUBSCRIPTION
-            .get_or_init(|| re_data_store::DataStore::register_subscriber(Box::<Self>::default()))
+    pub fn subscription_handle() -> StoreSubscriberHandle2 {
+        static SUBSCRIPTION: OnceCell<StoreSubscriberHandle2> = OnceCell::new();
+        *SUBSCRIPTION.get_or_init(|| DataStore2::register_subscriber(Box::<Self>::default()))
     }
 }
 
-impl StoreSubscriber for SpatialTopologyStoreSubscriber {
+impl StoreSubscriber2 for SpatialTopologyStoreSubscriber {
+    #[inline]
     fn name(&self) -> String {
         "SpatialTopologyStoreSubscriber".to_owned()
     }
 
+    #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 
+    #[inline]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 
-    fn on_events(&mut self, events: &[re_data_store::StoreEvent]) {
+    fn on_events(&mut self, events: &[StoreEvent2]) {
         re_tracing::profile_function!();
 
         for event in events {
-            if event.diff.kind != re_data_store::StoreDiffKind::Addition {
+            if event.diff.kind != StoreDiffKind2::Addition {
                 // Topology is only additive, don't care about removals.
                 continue;
             }
@@ -158,7 +162,10 @@ impl StoreSubscriber for SpatialTopologyStoreSubscriber {
             self.topologies
                 .entry(event.store_id.clone())
                 .or_default()
-                .on_store_diff(&event.diff.entity_path, event.diff.cells.keys());
+                .on_store_diff(
+                    event.diff.chunk.entity_path(),
+                    event.diff.chunk.component_names(),
+                );
         }
     }
 }
@@ -206,7 +213,7 @@ impl Default for SpatialTopology {
 impl SpatialTopology {
     /// Accesses the spatial topology for a given store.
     pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&Self) -> T) -> Option<T> {
-        re_data_store::DataStore::with_subscriber_once(
+        DataStore2::with_subscriber_once(
             SpatialTopologyStoreSubscriber::subscription_handle(),
             move |topology_subscriber: &SpatialTopologyStoreSubscriber| {
                 topology_subscriber.topologies.get(store_id).map(f)
@@ -261,10 +268,10 @@ impl SpatialTopology {
         self.subspaces.get(&origin)
     }
 
-    fn on_store_diff<'a>(
+    fn on_store_diff(
         &mut self,
         entity_path: &EntityPath,
-        added_components: impl Iterator<Item = &'a re_types::ComponentName>,
+        added_components: impl Iterator<Item = re_types::ComponentName>,
     ) {
         re_tracing::profile_function!();
 
@@ -272,11 +279,11 @@ impl SpatialTopology {
         let mut new_heuristic_hints = HeuristicHints::empty();
 
         for added_component in added_components {
-            if added_component == &DisconnectedSpace::name() {
+            if added_component == DisconnectedSpace::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Disconnected);
-            } else if added_component == &PinholeProjection::name() {
+            } else if added_component == PinholeProjection::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
-            } else if added_component == &ViewCoordinates::name() {
+            } else if added_component == ViewCoordinates::name() {
                 new_heuristic_hints.insert(HeuristicHints::ViewCoordinates3d);
             };
         }
@@ -675,7 +682,7 @@ mod tests {
     }
 
     fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentName]) {
-        topo.on_store_diff(&path.into(), components.iter());
+        topo.on_store_diff(&path.into(), components.iter().copied());
     }
 
     fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {

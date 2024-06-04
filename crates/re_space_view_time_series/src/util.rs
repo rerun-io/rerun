@@ -79,7 +79,7 @@ pub fn points_to_series(
     data_result: &re_viewer_context::DataResult,
     time_per_pixel: f64,
     points: Vec<PlotPoint>,
-    store: &re_data_store::DataStore,
+    store: &re_data_store2::DataStore2,
     query: &ViewQuery<'_>,
     series_name: Option<Utf8>,
     all_series: &mut Vec<PlotSeries>,

@@ -5,14 +5,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-use arrow2::array::Array as ArrowArray;
+use arrow2::array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray};
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
-use re_log_types::{EntityPath, RowId, TimePoint, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, RowId, TimeInt, TimePoint, Timeline};
 use re_types_core::{ComponentName, SizeBytes as _};
 
-use crate::{arrays_to_list_array, chunk::ChunkResult, Chunk, ChunkId, ChunkTimeline};
+use crate::{chunk::ChunkResult, Chunk, ChunkId, ChunkTimeline};
 
 // ---
 
@@ -551,6 +551,9 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
         re_format::format_bytes(config.flush_num_bytes as _),
     );
 
+    // TODO: the tick needs resetting if something else trigerred it in the mean time.
+    let mut skip_next_tick = false;
+
     use crossbeam::select;
     loop {
         select! {
@@ -573,12 +576,15 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
                         if acc.pending_rows.len() as u64 >= config.flush_num_rows {
                             do_flush_all(acc, &tx_chunk, "rows", config.max_chunk_rows_if_unsorted);
+                            skip_next_tick = true;
                         } else if acc.pending_num_bytes >= config.flush_num_bytes {
                             do_flush_all(acc, &tx_chunk, "bytes", config.max_chunk_rows_if_unsorted);
+                            skip_next_tick = true;
                         }
                     },
 
                     Command::Flush(oneshot) => {
+                        skip_next_tick = true;
                         for acc in accs.values_mut() {
                             do_flush_all(acc, &tx_chunk, "manual", config.max_chunk_rows_if_unsorted);
                         }
@@ -590,9 +596,13 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
             },
 
             recv(rx_tick) -> _ => {
-                // TODO(cmc): It would probably be better to have a ticker per entity path. Maybe. At some point.
-                for acc in accs.values_mut() {
-                    do_flush_all(acc, &tx_chunk, "tick", config.max_chunk_rows_if_unsorted);
+                if skip_next_tick {
+                    skip_next_tick = false;
+                } else {
+                    // TODO(cmc): It would probably be better to have a ticker per entity path. Maybe. At some point.
+                    for acc in accs.values_mut() {
+                        do_flush_all(acc, &tx_chunk, "tick", config.max_chunk_rows_if_unsorted);
+                    }
                 }
             },
         };
@@ -677,23 +687,26 @@ impl PendingRow {
 
         let timelines = timepoint
             .into_iter()
-            .filter_map(|(timeline, time)| {
-                ChunkTimeline::new(Some(true), vec![time]).map(|time_chunk| (timeline, time_chunk))
+            .map(|(timeline, time)| {
+                let times = ArrowPrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
+                let time_chunk = ChunkTimeline::new(Some(true), timeline, times);
+                (timeline, time_chunk)
             })
             .collect();
 
         let components = components
             .into_iter()
             .filter_map(|(component_name, array)| {
-                arrays_to_list_array(&[Some(&*array as _)]).map(|array| (component_name, array))
+                crate::util::arrays_to_list_array_opt(&[Some(&*array as _)])
+                    .map(|array| (component_name, array))
             })
             .collect();
 
-        Chunk::new(
+        Chunk::from_native_row_ids(
             ChunkId::new(),
             entity_path,
             Some(true),
-            vec![row_id],
+            &[row_id],
             timelines,
             components,
         )
@@ -771,7 +784,7 @@ impl PendingRow {
                 re_tracing::profile_scope!("iterate per datatype set");
 
                 let mut row_ids: Vec<RowId> = Vec::with_capacity(rows.len());
-                let mut timelines: BTreeMap<Timeline, ChunkTimeline> = BTreeMap::default();
+                let mut timelines: BTreeMap<Timeline, PendingChunkTimeline> = BTreeMap::default();
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
@@ -797,22 +810,27 @@ impl PendingRow {
                     // the pre-configured `max_chunk_rows_if_unsorted` threshold, then split _even_
                     // further!
                     for (&timeline, _) in row_timepoint {
-                        let time_chunk = timelines.entry(timeline).or_default();
+                        let time_chunk = timelines
+                            .entry(timeline)
+                            .or_insert_with(|| PendingChunkTimeline::new(timeline));
 
                         if !row_ids.is_empty() // just being extra cautious
                             && row_ids.len() as u64 >= max_chunk_rows_if_unsorted
-                            && !time_chunk.is_sorted()
+                            && !time_chunk.is_sorted
                         {
-                            chunks.push(Chunk::new(
+                            chunks.push(Chunk::from_native_row_ids(
                                 ChunkId::new(),
                                 entity_path.clone(),
                                 Some(true),
-                                std::mem::take(&mut row_ids),
-                                std::mem::take(&mut timelines),
+                                &std::mem::take(&mut row_ids),
+                                std::mem::take(&mut timelines)
+                                    .into_iter()
+                                    .map(|(timeline, time_chunk)| (timeline, time_chunk.finish()))
+                                    .collect(),
                                 std::mem::take(&mut components)
                                     .into_iter()
                                     .filter_map(|(component_name, arrays)| {
-                                        arrays_to_list_array(&arrays)
+                                        crate::util::arrays_to_list_array_opt(&arrays)
                                             .map(|list_array| (component_name, list_array))
                                     })
                                     .collect(),
@@ -825,7 +843,9 @@ impl PendingRow {
                     row_ids.push(*row_id);
 
                     for (&timeline, &time) in row_timepoint {
-                        let time_chunk = timelines.entry(timeline).or_default();
+                        let time_chunk = timelines
+                            .entry(timeline)
+                            .or_insert_with(|| PendingChunkTimeline::new(timeline));
                         time_chunk.push(time);
                     }
 
@@ -840,16 +860,19 @@ impl PendingRow {
                     }
                 }
 
-                chunks.push(Chunk::new(
+                chunks.push(Chunk::from_native_row_ids(
                     ChunkId::new(),
                     entity_path.clone(),
                     Some(true),
-                    row_ids,
-                    timelines,
+                    &std::mem::take(&mut row_ids),
+                    timelines
+                        .into_iter()
+                        .map(|(timeline, time_chunk)| (timeline, time_chunk.finish()))
+                        .collect(),
                     components
                         .into_iter()
                         .filter_map(|(component_name, arrays)| {
-                            arrays_to_list_array(&arrays)
+                            crate::util::arrays_to_list_array_opt(&arrays)
                                 .map(|list_array| (component_name, list_array))
                         })
                         .collect(),
@@ -858,6 +881,56 @@ impl PendingRow {
                 chunks
             })
         })
+    }
+}
+
+// TODO
+struct PendingChunkTimeline {
+    timeline: Timeline,
+    times: Vec<i64>,
+    is_sorted: bool,
+    time_range: ResolvedTimeRange,
+}
+
+impl PendingChunkTimeline {
+    fn new(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            times: Default::default(),
+            is_sorted: true,
+            time_range: ResolvedTimeRange::EMPTY,
+        }
+    }
+
+    /// Push a single time value at the end of this chunk.
+    fn push(&mut self, time: TimeInt) {
+        let Self {
+            timeline: _,
+            times,
+            is_sorted,
+            time_range,
+        } = self;
+
+        *is_sorted &= times.last().copied().unwrap_or(TimeInt::MIN.as_i64()) <= time.as_i64();
+        time_range.set_min(TimeInt::min(time_range.min(), time));
+        time_range.set_max(TimeInt::max(time_range.max(), time));
+        times.push(time.as_i64());
+    }
+
+    fn finish(self) -> ChunkTimeline {
+        let Self {
+            timeline,
+            times,
+            is_sorted,
+            time_range,
+        } = self;
+
+        ChunkTimeline {
+            timeline,
+            times: ArrowPrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
+            is_sorted,
+            time_range,
+        }
     }
 }
 
@@ -870,12 +943,8 @@ impl PendingRow {
 #[cfg(test)]
 mod tests {
     use crossbeam::channel::TryRecvError;
-    use itertools::Itertools as _;
 
-    use re_log_types::{
-        example_components::{MyPoint, MyPoint64},
-        TimeInt,
-    };
+    use re_log_types::example_components::{MyPoint, MyPoint64};
     use re_types_core::Loggable as _;
 
     use super::*;
@@ -937,22 +1006,92 @@ mod tests {
                 timeline1,
                 ChunkTimeline::new(
                     Some(true),
-                    [42, 43, 44]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .collect_vec(),
-                )
-                .unwrap(),
+                    timeline1,
+                    ArrowPrimitiveArray::from_vec(vec![42, 43, 44]),
+                ),
             )];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                    .unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
+                expected_timelines.into_iter().collect(),
+                expected_components.into_iter().collect(),
+            )?;
+
+            eprintln!("Expected:\n{expected_chunk}");
+            eprintln!("Got:\n{}", chunks[0]);
+            assert_eq!(expected_chunk, chunks[0]);
+        }
+
+        Ok(())
+    }
+
+    /// A bunch of rows that don't fit any of the split conditions should end up together.
+    #[test]
+    fn simple_static() -> anyhow::Result<()> {
+        let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER)?;
+
+        let timeless = TimePoint::default();
+
+        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+
+        let components1 = [(MyPoint::name(), points1.clone())];
+        let components2 = [(MyPoint::name(), points2.clone())];
+        let components3 = [(MyPoint::name(), points3.clone())];
+
+        let row1 = PendingRow::new(timeless.clone(), components1.into());
+        let row2 = PendingRow::new(timeless.clone(), components2.into());
+        let row3 = PendingRow::new(timeless.clone(), components3.into());
+
+        let entity_path1: EntityPath = "a/b/c".into();
+        batcher.push_row(entity_path1.clone(), row1.clone());
+        batcher.push_row(entity_path1.clone(), row2.clone());
+        batcher.push_row(entity_path1.clone(), row3.clone());
+
+        let chunks_rx = batcher.chunks();
+        drop(batcher); // flush and close
+
+        let mut chunks = Vec::new();
+        loop {
+            let chunk = match chunks_rx.try_recv() {
+                Ok(chunk) => chunk,
+                Err(TryRecvError::Empty) => panic!("expected chunk, got none"),
+                Err(TryRecvError::Disconnected) => break,
+            };
+            chunks.push(chunk);
+        }
+
+        chunks.sort_by_key(|chunk| chunk.row_id_range().0);
+
+        // Make the programmer's life easier if this test fails.
+        eprintln!("Chunks:");
+        for chunk in &chunks {
+            eprintln!("{chunk}");
+        }
+
+        assert_eq!(1, chunks.len());
+
+        {
+            let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
+            let expected_timelines = [];
+            let expected_components = [(
+                MyPoint::name(),
+                crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                    .unwrap(),
+            )];
+            let expected_chunk = Chunk::from_native_row_ids(
+                chunks[0].id,
+                entity_path1.clone(),
+                None,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1023,22 +1162,19 @@ mod tests {
                 timeline1,
                 ChunkTimeline::new(
                     Some(true),
-                    [42, 44]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .collect_vec(),
-                )
-                .unwrap(),
+                    timeline1,
+                    ArrowPrimitiveArray::from_vec(vec![42, 44]),
+                ),
             )];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points1, &*points3].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1054,19 +1190,19 @@ mod tests {
                 timeline1,
                 ChunkTimeline::new(
                     Some(true),
-                    std::iter::once(43).map(TimeInt::new_temporal).collect_vec(),
-                )
-                .unwrap(),
+                    timeline1,
+                    ArrowPrimitiveArray::from_vec(vec![43]),
+                ),
             )];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points2].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
                 entity_path2.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1141,19 +1277,19 @@ mod tests {
                 timeline1,
                 ChunkTimeline::new(
                     Some(true),
-                    std::iter::once(42).map(TimeInt::new_temporal).collect_vec(),
-                )
-                .unwrap(),
+                    timeline1,
+                    ArrowPrimitiveArray::from_vec(vec![42]),
+                ),
             )];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points1].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1170,34 +1306,28 @@ mod tests {
                     timeline1,
                     ChunkTimeline::new(
                         Some(true),
-                        [43, 44]
-                            .into_iter()
-                            .map(TimeInt::new_temporal)
-                            .collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline1,
+                        ArrowPrimitiveArray::from_vec(vec![43, 44]),
+                    ),
                 ),
                 (
                     timeline2,
                     ChunkTimeline::new(
                         Some(true),
-                        [1000, 1001]
-                            .into_iter()
-                            .map(TimeInt::new_temporal)
-                            .collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline2,
+                        ArrowPrimitiveArray::from_vec(vec![1000, 1001]),
+                    ),
                 ),
             ];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points2, &*points3].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1268,22 +1398,19 @@ mod tests {
                 timeline1,
                 ChunkTimeline::new(
                     Some(true),
-                    [42, 44]
-                        .into_iter()
-                        .map(TimeInt::new_temporal)
-                        .collect_vec(),
-                )
-                .unwrap(),
+                    timeline1,
+                    ArrowPrimitiveArray::from_vec(vec![42, 44]),
+                ),
             )];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points1, &*points3].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1299,19 +1426,19 @@ mod tests {
                 timeline1,
                 ChunkTimeline::new(
                     Some(true),
-                    std::iter::once(43).map(TimeInt::new_temporal).collect_vec(),
-                )
-                .unwrap(),
+                    timeline1,
+                    ArrowPrimitiveArray::from_vec(vec![43]),
+                ),
             )];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points2].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1401,35 +1528,31 @@ mod tests {
                     timeline1,
                     ChunkTimeline::new(
                         Some(false),
-                        [45, 42, 43, 44]
-                            .into_iter()
-                            .map(TimeInt::new_temporal)
-                            .collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline1,
+                        ArrowPrimitiveArray::from_vec(vec![45, 42, 43, 44]),
+                    ),
                 ),
                 (
                     timeline2,
                     ChunkTimeline::new(
                         Some(false),
-                        [1003, 1000, 1001, 1002]
-                            .into_iter()
-                            .map(TimeInt::new_temporal)
-                            .collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline2,
+                        ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001, 1002]),
+                    ),
                 ),
             ];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points1, &*points2, &*points3, &*points4].map(Some))
-                    .unwrap(),
+                crate::util::arrays_to_list_array_opt(
+                    &[&*points1, &*points2, &*points3, &*points4].map(Some),
+                )
+                .unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1519,34 +1642,29 @@ mod tests {
                     timeline1,
                     ChunkTimeline::new(
                         Some(false),
-                        [45, 42, 43]
-                            .into_iter()
-                            .map(TimeInt::new_temporal)
-                            .collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline1,
+                        ArrowPrimitiveArray::from_vec(vec![45, 42, 43]),
+                    ),
                 ),
                 (
                     timeline2,
                     ChunkTimeline::new(
                         Some(false),
-                        [1003, 1000, 1001]
-                            .into_iter()
-                            .map(TimeInt::new_temporal)
-                            .collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline2,
+                        ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001]),
+                    ),
                 ),
             ];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some))
+                    .unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[0].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;
@@ -1563,30 +1681,28 @@ mod tests {
                     timeline1,
                     ChunkTimeline::new(
                         Some(true),
-                        std::iter::once(44).map(TimeInt::new_temporal).collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline1,
+                        ArrowPrimitiveArray::from_vec(vec![44]),
+                    ),
                 ),
                 (
                     timeline2,
                     ChunkTimeline::new(
                         Some(true),
-                        std::iter::once(1002)
-                            .map(TimeInt::new_temporal)
-                            .collect_vec(),
-                    )
-                    .unwrap(),
+                        timeline2,
+                        ArrowPrimitiveArray::from_vec(vec![1002]),
+                    ),
                 ),
             ];
             let expected_components = [(
                 MyPoint::name(),
-                arrays_to_list_array(&[&*points4].map(Some)).unwrap(),
+                crate::util::arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
             )];
-            let expected_chunk = Chunk::new(
+            let expected_chunk = Chunk::from_native_row_ids(
                 chunks[1].id,
                 entity_path1.clone(),
                 None,
-                expected_row_ids,
+                &expected_row_ids,
                 expected_timelines.into_iter().collect(),
                 expected_components.into_iter().collect(),
             )?;

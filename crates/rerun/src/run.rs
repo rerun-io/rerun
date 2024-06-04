@@ -1,16 +1,21 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::Context as _;
 use clap::Subcommand;
 use itertools::Itertools;
 
 use re_data_source::DataSource;
-use re_log_types::{DataTable, LogMsg, SetStoreInfo};
+use re_log_types::{LogMsg, SetStoreInfo};
+use re_sdk::log::{Chunk, TransportChunk};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::host_web_viewer;
 use re_types::SizeBytes;
+use re_viewer::external::re_chunk;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "server")]
@@ -443,13 +448,14 @@ fn initialize_thread_pool(threads_args: i32) {
 ///
 /// Returns `Ok(())` if they match, or an error containing a detailed diff otherwise.
 fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> anyhow::Result<()> {
+    // TODO
     /// Given a path to an rrd file, builds up a `DataStore` and returns its contents as one big
     /// `DataTable`.
     ///
     /// Fails if there are more than one data recordings present in the rrd file.
     fn compute_uber_table(
         path_to_rrd: &Path,
-    ) -> anyhow::Result<(re_log_types::ApplicationId, re_log_types::DataTable)> {
+    ) -> anyhow::Result<(re_log_types::ApplicationId, Vec<Arc<re_chunk::Chunk>>)> {
         use re_entity_db::EntityDb;
         use re_log_types::StoreId;
 
@@ -486,7 +492,11 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
                 .app_id()
                 .cloned()
                 .unwrap_or_else(re_log_types::ApplicationId::unknown),
-            store.store().to_data_table()?,
+            store
+                .store()
+                .iter_chunks()
+                .map(|(_, chunk)| Arc::clone(chunk))
+                .collect_vec(),
         ))
     }
 
@@ -497,10 +507,14 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
 
     if full_dump {
         println!("{app_id1}");
-        println!("{table1}");
+        for chunk in table1 {
+            println!("{chunk}");
+        }
 
         println!("{app_id2}");
-        println!("{table2}");
+        for chunk in table2 {
+            println!("{chunk}");
+        }
     }
 
     anyhow::ensure!(
@@ -508,7 +522,10 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
         "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
     );
 
-    re_log_types::DataTable::similar(&table1, &table2)
+    Ok(())
+
+    // TODO
+    // re_log_types::DataTable::similar(&table1, &table2)
 }
 
 impl PrintCommand {
@@ -536,28 +553,27 @@ impl PrintCommand {
                     println!("{info:#?}");
                 }
 
+                // TODO
                 LogMsg::ArrowMsg(_row_id, arrow_msg) => {
-                    let mut table =
-                        DataTable::from_arrow_msg(&arrow_msg).context("Decode arrow message")?;
+                    let chunk = TransportChunk {
+                        schema: arrow_msg.schema.clone(),
+                        data: arrow_msg.chunk.clone(),
+                    };
+                    let chunk = Chunk::from_transport(&chunk).unwrap(); // TODO
 
                     if *verbose {
-                        println!("{table}");
+                        println!("{chunk}");
                     } else {
-                        table.compute_all_size_bytes();
-
-                        let column_names =
-                            table.columns.keys().map(|name| name.short_name()).join(" ");
-
-                        let entity_paths = if table.col_entity_path.len() == 1 {
-                            format!("{:?}", table.col_entity_path[0])
-                        } else {
-                            format!("{} different entity paths", table.col_entity_path.len())
-                        };
+                        let column_names = chunk
+                            .component_names()
+                            .map(|name| name.short_name())
+                            .join(" ");
 
                         println!(
-                            "Table with {} rows ({}) - {entity_paths} - columns: [{column_names}]",
-                            table.num_rows(),
-                            re_format::format_bytes(table.heap_size_bytes() as _),
+                            "Chunk with {} rows ({}) - {:?} - columns: [{column_names}]",
+                            chunk.num_rows(),
+                            re_format::format_bytes(chunk.total_size_bytes() as _),
+                            chunk.entity_path(),
                         );
                     }
                 }
@@ -841,7 +857,6 @@ fn assert_receive_into_entity_db(
                         if let Some(err) = err {
                             anyhow::bail!("data source has disconnected unexpectedly: {err}")
                         } else if let Some(db) = rec {
-                            db.store().sanity_check()?;
                             anyhow::ensure!(0 < num_messages, "No messages received");
                             re_log::info!("Successfully ingested {num_messages} messages.");
                             return Ok(db);

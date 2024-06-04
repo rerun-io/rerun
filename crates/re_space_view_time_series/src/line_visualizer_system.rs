@@ -190,7 +190,7 @@ impl SeriesLineSystem {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
-            let query = re_data_store::RangeQuery::new(view_query.timeline, time_range);
+            let query = re_data_store2::RangeQuery::new(view_query.timeline, time_range);
 
             let results = range_with_blueprint_resolved_data(
                 ctx,

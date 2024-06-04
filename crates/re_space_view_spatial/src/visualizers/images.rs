@@ -4,6 +4,7 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
+use re_data_store2::StoreEvent2;
 use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId, TimeInt};
 use re_query::range_zip_1x2;
@@ -642,7 +643,8 @@ impl IdentifiedViewSystem for ImageVisualizer {
 struct ImageVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
+    // TODO: all that `update_applicability` stuff seems to be problematic with regards to chunks.
+    fn update_applicability(&mut self, event: &StoreEvent2) -> bool {
         diff_component_filter(event, |tensor: &re_types::components::TensorData| {
             tensor.is_shaped_like_an_image()
         })

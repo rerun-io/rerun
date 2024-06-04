@@ -19,8 +19,9 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_chunk.workspace = true
 re_data_source.workspace = true
-re_data_store.workspace = true
+re_data_store2.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
 re_error.workspace = true
 re_log_types.workspace = true
