@@ -8,6 +8,7 @@ use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimeZone, TimelineNa
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
+    blueprint::components::VisibleTimeRange,
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
     Archetype, SpaceViewClassIdentifier,
 };
@@ -87,16 +88,20 @@ fn visible_time_range_ui(
     time_range_override_path: &EntityPath,
     is_space_view: bool,
 ) {
-    let visible_time_ranges = ctx
-        .store_context
-        .blueprint
-        .latest_at_archetype::<re_types::blueprint::archetypes::VisibleTimeRanges>(
-            time_range_override_path,
-            ctx.blueprint_query,
-        )
-        .ok()
-        .flatten()
-        .map_or(Default::default(), |(_, arch)| arch);
+    use re_types::Loggable as _;
+
+    let results = ctx.blueprint_db().latest_at(
+        ctx.blueprint_query,
+        time_range_override_path,
+        std::iter::once(VisibleTimeRange::name()),
+    );
+    let ranges: &[VisibleTimeRange] = results
+        .get(VisibleTimeRange::name())
+        .and_then(|results| results.dense(ctx.blueprint_db().resolver()))
+        .unwrap_or_default();
+    let visible_time_ranges = re_types::blueprint::archetypes::VisibleTimeRanges {
+        ranges: ranges.to_vec(),
+    };
 
     let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();
     let mut has_individual_range = visible_time_ranges
