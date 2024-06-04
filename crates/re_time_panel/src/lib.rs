@@ -446,6 +446,7 @@ impl TimePanel {
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
+        //TODO(ab): using clip rect here should be replaced by a better mechanism based on `UiStack`
         let old_clip_rect = ui.clip_rect();
         ui.set_clip_rect(egui::Rect::from_x_y_ranges(
             0.0..=time_x_left,
