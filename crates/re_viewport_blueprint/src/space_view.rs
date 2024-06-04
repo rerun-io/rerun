@@ -131,7 +131,9 @@ impl SpaceViewBlueprint {
         let Some(class_identifier) =
             results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)
         else {
-            re_log::error!("View blueprint is lacking the required class identifier component.");
+            re_log::error!(
+                "View blueprint at {id:?} is lacking the required `SpaceViewClass` component."
+            );
             return None;
         };
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
