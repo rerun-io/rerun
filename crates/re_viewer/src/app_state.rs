@@ -402,23 +402,21 @@ impl AppState {
                 );
                 ui.set_clip_rect(max_rect);
 
-                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-                    // ListItem don't need vertical spacing so we disable it, but restore it
-                    // before drawing the blueprint panel.
-                    ui.spacing_mut().item_spacing.y = 0.0;
+                // ListItem don't need vertical spacing so we disable it, but restore it
+                // before drawing the blueprint panel.
+                ui.spacing_mut().item_spacing.y = 0.0;
 
-                    let pre_cursor = ui.cursor();
-                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                    let any_recording_shows = pre_cursor == ui.cursor();
+                let pre_cursor = ui.cursor();
+                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                let any_recording_shows = pre_cursor == ui.cursor();
 
-                    if any_recording_shows {
-                        ui.add_space(4.0);
-                    }
+                if any_recording_shows {
+                    ui.add_space(4.0);
+                }
 
-                    if !show_welcome {
-                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
-                    }
-                });
+                if !show_welcome {
+                    blueprint_tree.show(&ctx, &viewport_blueprint, ui);
+                }
             },
         );
 
