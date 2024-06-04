@@ -3,8 +3,8 @@ use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{
-    external::{re_data_store::LatestAtQuery, re_query::PromiseResult},
-    EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
+    external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
+    EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
@@ -20,7 +20,7 @@ use re_viewer_context::{
     SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
 };
 
-use crate::SpaceViewBlueprint;
+use crate::{SpaceViewBlueprint, ViewProperty};
 
 pub struct EntityOverrideContext<'a> {
     pub legacy_space_view_properties: EntityProperties,
@@ -46,14 +46,13 @@ pub struct EntityOverrideContext<'a> {
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 
-    pub space_view_class_identifier: SpaceViewClassIdentifier,
+    pub view_class_identifier: SpaceViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
 }
 
 impl SpaceViewContents {
     pub fn is_equivalent(&self, other: &Self) -> bool {
-        self.space_view_class_identifier
-            .eq(&other.space_view_class_identifier)
+        self.view_class_identifier.eq(&other.view_class_identifier)
             && self.entity_path_filter.eq(&other.entity_path_filter)
     }
 
@@ -67,7 +66,7 @@ impl SpaceViewContents {
     /// in a case where the other query would not be fully covered.
     pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
         // A query can't fully contain another if their space-view classes don't match
-        if self.space_view_class_identifier != other.space_view_class_identifier {
+        if self.view_class_identifier != other.view_class_identifier {
             return false;
         }
 
@@ -84,7 +83,7 @@ impl SpaceViewContents {
     /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
         id: SpaceViewId,
-        space_view_class_identifier: SpaceViewClassIdentifier,
+        view_class_identifier: SpaceViewClassIdentifier,
         entity_path_filter: EntityPathFilter,
     ) -> Self {
         // Don't use `entity_path_for_space_view_sub_archetype` here because this will do a search in the future,
@@ -95,55 +94,47 @@ impl SpaceViewContents {
 
         Self {
             blueprint_entity_path,
-            space_view_class_identifier,
+            view_class_identifier,
             entity_path_filter,
         }
     }
 
     /// Attempt to load a [`SpaceViewContents`] from the blueprint store.
     pub fn from_db_or_default(
-        id: SpaceViewId,
+        view_id: SpaceViewId,
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
-        space_view_class_identifier: SpaceViewClassIdentifier,
+        view_class_identifier: SpaceViewClassIdentifier,
         space_env: &EntityPathSubs,
     ) -> Self {
-        let (contents, blueprint_entity_path) = crate::query_view_property::<
-            blueprint_archetypes::SpaceViewContents,
-        >(id, blueprint_db, query);
+        let property = ViewProperty::from_archetype_no_ctx::<blueprint_archetypes::SpaceViewContents>(
+            blueprint_db,
+            query,
+            view_id,
+        );
+        let expressions = match property.component_array::<QueryExpression>() {
+            Some(Ok(expressions)) => expressions,
 
-        let blueprint_archetypes::SpaceViewContents { query } = match contents {
-            PromiseResult::Pending => {
-                // TODO(#5607): what should happen if the promise is still pending?
-                Default::default()
-            }
-            PromiseResult::Ready(Some(arch)) => arch,
-            PromiseResult::Ready(None) => {
-                re_log::warn_once!(
-                    "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: not found",
-                    id,
-                    blueprint_entity_path,
-                );
-                Default::default()
-            }
-            PromiseResult::Error(err) => {
+            Some(Err(err)) => {
                 re_log::warn_once!(
                     "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
-                    id,
-                    blueprint_entity_path,
+                    view_id,
+                    property.blueprint_store_path,
                     err
                 );
                 Default::default()
             }
-        };
 
-        let query = query.iter().map(|qe| qe.0.as_str());
+            // Simply nothing available in the store, this can happen on reset.
+            None => Default::default(),
+        };
+        let query = expressions.iter().map(|qe| qe.0.as_str());
 
         let entity_path_filter = EntityPathFilter::from_query_expressions(query, space_env);
 
         Self {
-            blueprint_entity_path,
-            space_view_class_identifier,
+            blueprint_entity_path: property.blueprint_store_path,
+            view_class_identifier,
             entity_path_filter,
         }
     }

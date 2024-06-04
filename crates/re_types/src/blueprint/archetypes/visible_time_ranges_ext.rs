@@ -4,7 +4,7 @@ use super::VisibleTimeRanges;
 
 impl VisibleTimeRanges {
     /// Retrieves the time range for a given timeline.
-    pub fn range_for_timeline(&self, timeline_name: &str) -> Option<&'_ TimeRange> {
+    pub fn range_for_timeline(&self, timeline_name: &str) -> Option<&TimeRange> {
         self.ranges
             .iter()
             .find(|range| range.timeline.as_str() == timeline_name)

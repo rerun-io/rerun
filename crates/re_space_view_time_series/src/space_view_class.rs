@@ -301,12 +301,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
         let plot_legend = ViewProperty::from_archetype::<PlotLegend>(ctx, query.space_view_id);
-        let legend_visible = plot_legend.component_or_fallback::<Visible>(self, state)?;
-        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(self, state)?;
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
 
         let scalar_axis = ViewProperty::from_archetype::<ScalarAxis>(ctx, query.space_view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(self, state)?;
-        let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(self, state)?;
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_zoom_lock =
+            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
         let y_zoom_lock = y_zoom_lock.0 .0;
 
         let (current_time, time_type, timeline) = {
@@ -508,9 +509,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
-            scalar_axis.reset_blueprint_component::<Range1D>();
+            scalar_axis.reset_blueprint_component::<Range1D>(ctx);
         } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(&new_y_range);
+            scalar_axis.save_blueprint_component(ctx, &new_y_range);
         }
 
         // Decide if the time cursor should be displayed, and if so where:
