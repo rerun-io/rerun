@@ -678,7 +678,7 @@ impl SpatialSpaceView3D {
 
         let background = ViewProperty::from_archetype::<Background>(ctx, query.space_view_id);
         let (background_drawable, clear_color) =
-            crate::configure_background(&background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }

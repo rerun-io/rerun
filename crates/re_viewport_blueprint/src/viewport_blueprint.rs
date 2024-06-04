@@ -4,11 +4,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
+use re_data_store::LatestAtQuery;
 use re_types::SpaceViewClassIdentifier;
 use smallvec::SmallVec;
 
 use crate::SpaceViewBlueprint;
-use re_data_store::LatestAtQuery;
 use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::EntityPath;
 use re_types::blueprint::components::ViewerRecommendationHash;

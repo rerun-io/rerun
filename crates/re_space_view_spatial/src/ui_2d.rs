@@ -43,7 +43,7 @@ fn ui_from_scene(
 ) -> RectTransform {
     let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(ctx, view_id);
     let bounds: blueprint_components::VisualBounds2D = bounds_property
-        .component_or_fallback(view_class, view_state)
+        .component_or_fallback(ctx, view_class, view_state)
         .ok_or_log_error()
         .unwrap_or_default();
     let mut bounds_rect: egui::Rect = bounds.into();
@@ -106,9 +106,9 @@ fn ui_from_scene(
     // Update blueprint if changed
     let updated_bounds: blueprint_components::VisualBounds2D = bounds_rect.into();
     if response.double_clicked() {
-        bounds_property.reset_blueprint_component::<blueprint_components::VisualBounds2D>();
+        bounds_property.reset_blueprint_component::<blueprint_components::VisualBounds2D>(ctx);
     } else if bounds != updated_bounds {
-        bounds_property.save_blueprint_component(&updated_bounds);
+        bounds_property.save_blueprint_component(ctx, &updated_bounds);
     }
 
     RectTransform::from_to(letterboxed_bounds, response.rect)
@@ -231,7 +231,7 @@ impl SpatialSpaceView2D {
 
         let background = ViewProperty::from_archetype::<Background>(ctx, query.space_view_id);
         let (background_drawable, clear_color) =
-            crate::configure_background(&background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
