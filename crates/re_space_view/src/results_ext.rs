@@ -1,13 +1,100 @@
+use re_data_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{RowId, TimeInt};
-use re_query::{LatestAtResults, PromiseResolver, PromiseResult, RangeData, RangeResults, Results};
-use re_types_core::Component;
-
-use crate::{
-    query::{HybridLatestAtResults, HybridRangeResults},
-    HybridResults,
+use re_query::{
+    LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult, RangeData,
+    RangeResults, Results,
 };
+use re_types_core::{Component, ComponentName};
 
 // ---
+
+/// Wrapper that contains the results of a latest-at query with possible overrides.
+///
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// they will be merged into the results appropriately.
+#[derive(Debug)]
+pub struct HybridLatestAtResults {
+    pub(crate) overrides: LatestAtResults,
+    pub(crate) results: LatestAtResults,
+}
+
+/// Wrapper that contains the results of a range query with possible overrides.
+///
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// they will be merged into the results appropriately.
+#[derive(Debug)]
+pub struct HybridRangeResults {
+    pub(crate) overrides: LatestAtResults,
+    pub(crate) results: RangeResults,
+}
+
+impl HybridLatestAtResults {
+    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    #[inline]
+    pub fn get(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> Option<&LatestAtComponentResults> {
+        let component_name = component_name.into();
+        if self.overrides.contains(component_name) {
+            self.overrides.get(component_name)
+        } else {
+            self.results.get(component_name)
+        }
+    }
+
+    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    ///
+    /// Returns an error if the component is not present.
+    #[inline]
+    pub fn get_required(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> re_query::Result<&LatestAtComponentResults> {
+        let component_name = component_name.into();
+        if self.overrides.contains(component_name) {
+            self.overrides.get_required(component_name)
+        } else {
+            self.results.get_required(component_name)
+        }
+    }
+
+    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    ///
+    /// Returns empty results if the component is not present.
+    #[inline]
+    pub fn get_or_empty(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> &LatestAtComponentResults {
+        let component_name = component_name.into();
+        if self.overrides.contains(component_name) {
+            self.overrides.get_or_empty(component_name)
+        } else {
+            self.results.get_or_empty(component_name)
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum HybridResults {
+    LatestAt(LatestAtQuery, HybridLatestAtResults),
+    Range(RangeQuery, HybridRangeResults),
+}
+
+impl From<(LatestAtQuery, HybridLatestAtResults)> for HybridResults {
+    #[inline]
+    fn from((query, results): (LatestAtQuery, HybridLatestAtResults)) -> Self {
+        Self::LatestAt(query, results)
+    }
+}
+
+impl From<(RangeQuery, HybridRangeResults)> for HybridResults {
+    #[inline]
+    fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
+        Self::Range(query, results)
+    }
+}
 
 /// Extension traits to abstract query result handling for all spatial space views.
 ///
