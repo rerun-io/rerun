@@ -5271,6 +5271,7 @@ dependencies = [
  "anyhow",
  "arboard",
  "bit-vec",
+ "bitflags 2.5.0",
  "bytemuck",
  "egui",
  "egui-wgpu",

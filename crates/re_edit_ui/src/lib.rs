@@ -37,20 +37,25 @@ fn edit_color_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Color)
 /// ⚠️ This is supposed to be the only export of this crate.
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
-    registry.add_editor(edit_color_ui);
-    registry.add_editor(marker_shape::edit_marker_shape_ui);
-    registry.add_editor(visual_bounds_2d::edit_visual_bounds_2d);
+    registry.add_singleline_editor_ui(edit_color_ui);
+    registry.add_singleline_editor_ui(marker_shape::edit_marker_shape_ui);
 
-    registry.add_editor::<Visible>(datatype_editors::edit_bool);
+    registry.add_singleline_editor_ui::<Visible>(datatype_editors::edit_bool);
 
-    registry.add_editor::<Text>(datatype_editors::edit_singleline_string);
-    registry.add_editor::<Name>(datatype_editors::edit_singleline_string);
+    registry.add_singleline_editor_ui::<Text>(datatype_editors::edit_singleline_string);
+    registry.add_singleline_editor_ui::<Name>(datatype_editors::edit_singleline_string);
 
-    registry.add_editor::<Radius>(datatype_editors::edit_f32_zero_to_inf);
-    registry.add_editor::<MarkerSize>(datatype_editors::edit_f32_zero_to_inf);
-    registry.add_editor::<StrokeWidth>(datatype_editors::edit_f32_zero_to_inf);
+    registry.add_singleline_editor_ui::<Radius>(datatype_editors::edit_f32_zero_to_inf);
+    registry.add_singleline_editor_ui::<MarkerSize>(datatype_editors::edit_f32_zero_to_inf);
+    registry.add_singleline_editor_ui::<StrokeWidth>(datatype_editors::edit_f32_zero_to_inf);
 
-    registry.add_editor(|_ctx, ui, value| edit_enum(ui, "corner2d", value, &Corner2D::ALL));
-    registry
-        .add_editor(|_ctx, ui, value| edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL));
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum(ui, "corner2d", value, &Corner2D::ALL)
+    });
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL)
+    });
+
+    registry.add_multiline_editor_ui(visual_bounds_2d::multiline_edit_visual_bounds_2d);
+    registry.add_singleline_editor_ui(visual_bounds_2d::singleline_edit_visual_bounds_2d);
 }

@@ -29,8 +29,12 @@ impl std::fmt::Display for Range2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[{}, {}]×[{}, {}]",
-            self.x_range.0[0], self.x_range.0[1], self.y_range.0[0], self.y_range.0[1],
+            "[{:.prec$}, {:.prec$}]×[{:.prec$}, {:.prec$}]",
+            self.x_range.0[0],
+            self.x_range.0[1],
+            self.y_range.0[0],
+            self.y_range.0[1],
+            prec = crate::DISPLAY_PRECISION,
         )
     }
 }

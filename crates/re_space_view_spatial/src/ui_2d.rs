@@ -2,6 +2,7 @@ use egui::{emath::RectTransform, pos2, vec2, Align2, Color32, Pos2, Rect, Shape,
 use macaw::IsoTransform;
 
 use re_entity_db::EntityPath;
+use re_log::ResultExt as _;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{
@@ -43,7 +44,8 @@ fn ui_from_scene(
     let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(ctx, view_id);
     let bounds: blueprint_components::VisualBounds2D = bounds_property
         .component_or_fallback(view_class, view_state)
-        .unwrap_or_default(); // TODO: error?
+        .ok_or_log_error()
+        .unwrap_or_default();
     let mut bounds_rect: egui::Rect = bounds.into();
 
     // --------------------------------------------------------------------------

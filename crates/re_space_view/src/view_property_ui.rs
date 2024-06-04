@@ -1,8 +1,33 @@
+use std::borrow::Cow;
+
 use ahash::HashMap;
-use re_types_core::Archetype;
+use re_types_core::{Archetype, ArchetypeFieldInfo, ComponentName};
 use re_ui::list_item;
-use re_viewer_context::{ComponentFallbackProvider, QueryContext, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    ComponentFallbackProvider, ComponentUiTypes, QueryContext, SpaceViewId, SpaceViewState,
+    ViewerContext,
+};
 use re_viewport_blueprint::entity_path_for_view_property;
+
+// Utility struct to make argument passing less excessive.
+// TODO(andreas): This could be actually useful to be a public struct on the archetype.
+struct ArchetypeInfo {
+    name: re_types_core::ArchetypeName,
+    display_name: &'static str,
+    component_names: Cow<'static, [ComponentName]>,
+    field_infos: Option<Cow<'static, [ArchetypeFieldInfo]>>,
+}
+
+impl ArchetypeInfo {
+    fn new<A: Archetype>() -> Self {
+        Self {
+            name: A::name(),
+            display_name: A::display_name(),
+            component_names: A::all_components(),
+            field_infos: A::field_infos(),
+        }
+    }
+}
 
 /// Display the UI for editing all components of a blueprint archetype.
 ///
@@ -10,30 +35,46 @@ use re_viewport_blueprint::entity_path_for_view_property;
 pub fn view_property_ui<A: Archetype>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view_id: SpaceViewId,
+    view_id: SpaceViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn re_viewer_context::SpaceViewState,
+    view_state: &dyn SpaceViewState,
 ) {
-    let blueprint_db = ctx.store_context.blueprint;
-    let blueprint_query = ctx.blueprint_query;
-    let blueprint_path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
+    view_property_ui_impl(
+        ctx,
+        ui,
+        view_id,
+        ArchetypeInfo::new::<A>(),
+        view_state,
+        fallback_provider,
+    );
+}
 
+fn view_property_ui_impl(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    view_id: SpaceViewId,
+    archetype: ArchetypeInfo,
+    view_state: &dyn SpaceViewState,
+    fallback_provider: &dyn ComponentFallbackProvider,
+) {
+    let blueprint_path =
+        entity_path_for_view_property(view_id, ctx.blueprint_db().tree(), archetype.name);
     let query_ctx = QueryContext {
         viewer_ctx: ctx,
         target_entity_path: &blueprint_path,
-        archetype_name: Some(A::name()),
-        query: blueprint_query,
+        archetype_name: Some(archetype.name),
+        query: ctx.blueprint_query,
         view_state,
     };
 
-    let component_names = A::all_components();
-    let component_results = blueprint_db.latest_at(
-        blueprint_query,
+    let component_results = ctx.blueprint_db().latest_at(
+        ctx.blueprint_query,
         &blueprint_path,
-        component_names.iter().copied(),
+        archetype.component_names.iter().copied(),
     );
 
-    let field_info_per_component: HashMap<_, _> = A::field_infos()
+    let field_info_per_component: HashMap<_, _> = archetype
+        .field_infos
         .map(|field_infos| {
             field_infos
                 .iter()
@@ -43,75 +84,183 @@ pub fn view_property_ui<A: Archetype>(
         })
         .unwrap_or_default();
 
-    let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
-        for component_name in component_names.as_ref() {
-            if component_name.is_indicator_component() {
-                continue;
-            }
+    let non_indicator_components = archetype
+        .component_names
+        .as_ref()
+        .iter()
+        .filter(|component_name| !component_name.is_indicator_component())
+        .collect::<Vec<_>>();
 
-            let field_info = field_info_per_component.get(component_name);
-            let display_name =
-                field_info.map_or_else(|| component_name.short_name(), |info| info.display_name);
+    // If the property archetype only has a single component, don't show an additional hierarchy level!
+    if non_indicator_components.len() == 1 {
+        let component_name = *non_indicator_components[0];
+        let field_info = field_info_per_component.get(&component_name);
 
-            let mut list_item_response = list_item::ListItem::new(re_ui)
-                .interactive(false)
-                .show_flat(
+        view_property_component_ui(
+            &query_ctx,
+            ui,
+            component_name,
+            archetype.display_name,
+            field_info,
+            &blueprint_path,
+            component_results.get_or_empty(component_name),
+            fallback_provider,
+        );
+    } else {
+        let sub_prop_ui = |_: &re_ui::ReUi, ui: &mut egui::Ui| {
+            for component_name in non_indicator_components {
+                let field_info = field_info_per_component.get(component_name);
+                let display_name = field_info
+                    .map_or_else(|| component_name.short_name(), |info| info.display_name);
+
+                view_property_component_ui(
+                    &query_ctx,
                     ui,
-                    list_item::PropertyContent::new(display_name)
-                        .action_button(&re_ui::icons::RESET, || {
-                            ctx.reset_blueprint_component_by_name(&blueprint_path, *component_name);
-                        })
-                        .value_fn(|_, ui, _| {
-                            ctx.component_ui_registry.edit_ui(
-                                &query_ctx,
-                                ui,
-                                re_viewer_context::UiLayout::List,
-                                blueprint_db,
-                                &blueprint_path,
-                                &blueprint_path,
-                                *component_name,
-                                component_results.get_or_empty(*component_name),
-                                fallback_provider,
-                            );
-                        }),
+                    *component_name,
+                    display_name,
+                    field_info,
+                    &blueprint_path,
+                    component_results.get_or_empty(*component_name),
+                    fallback_provider,
                 );
-
-            if let Some(tooltip) = field_info.map(|info| info.documentation) {
-                list_item_response = list_item_response.on_hover_text(tooltip);
             }
+        };
 
-            list_item_response.context_menu(|ui| {
-                if ui.button("Reset to default blueprint.")
-                     .on_hover_text("Resets this property to the value in the default blueprint.\n
-If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty.")
-                     .clicked() {
-                    ctx.reset_blueprint_component_by_name(&blueprint_path, *component_name);
-                    ui.close_menu();
-                }
-                ui.add_enabled_ui(component_results.contains_non_empty(*component_name), |ui| {
-                    if ui.button("Reset to empty.")
-                        .on_hover_text("Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
-This has the same effect as not setting the value in the blueprint at all.")
-                        .on_disabled_hover_text("The property is already unset.")
-                        .clicked() {
-                        ctx.save_empty_blueprint_component_by_name(&blueprint_path, *component_name);
-                        ui.close_menu();
-                    }
-                });
+        list_item::ListItem::new(ctx.re_ui)
+            .interactive(false)
+            .show_hierarchical_with_children(
+                ui,
+                ui.make_persistent_id(archetype.name.full_name()),
+                true,
+                list_item::LabelContent::new(archetype.display_name),
+                sub_prop_ui,
+            );
+    }
+}
 
-                // TODO(andreas): The next logical thing here is now to save it to the default blueprint!
-                // This should be fairly straight forward except that we need to make sure that a default blueprint exists in the first place.
-            });
-        }
+/// Draw view property ui for a single component of a view property archetype.
+#[allow(clippy::too_many_arguments)]
+fn view_property_component_ui(
+    ctx: &QueryContext<'_>,
+    ui: &mut egui::Ui,
+    component_name: ComponentName,
+    root_item_display_name: &str,
+    field_info: Option<&ArchetypeFieldInfo>,
+    blueprint_path: &re_log_types::EntityPath,
+    component_results: &re_query::LatestAtComponentResults,
+    fallback_provider: &dyn ComponentFallbackProvider,
+) {
+    let singleline_list_item_content = singleline_list_item_content(
+        ctx,
+        root_item_display_name,
+        blueprint_path,
+        component_name,
+        component_results,
+        fallback_provider,
+    );
+
+    let ui_types = ctx
+        .viewer_ctx
+        .component_ui_registry
+        .registered_ui_types(component_name);
+
+    let mut list_item_response = if ui_types.contains(ComponentUiTypes::MultiLineEditor) {
+        let default_open = false;
+        let id = egui::Id::new((blueprint_path.hash(), component_name));
+        list_item::ListItem::new(ctx.viewer_ctx.re_ui)
+            .interactive(false)
+            .show_hierarchical_with_children(
+                ui,
+                id,
+                default_open,
+                singleline_list_item_content,
+                |_, ui| {
+                    ctx.viewer_ctx.component_ui_registry.multiline_edit_ui(
+                        ctx,
+                        ui,
+                        ctx.viewer_ctx.blueprint_db(),
+                        blueprint_path,
+                        component_name,
+                        component_results,
+                        fallback_provider,
+                    );
+                },
+            )
+            .item_response
+    } else {
+        list_item::ListItem::new(ctx.viewer_ctx.re_ui)
+            .interactive(false)
+            .show_flat(ui, singleline_list_item_content)
     };
 
-    list_item::ListItem::new(ctx.re_ui)
-        .interactive(false)
-        .show_hierarchical_with_children(
-            ui,
-            ui.make_persistent_id(A::name().full_name()),
-            true,
-            list_item::LabelContent::new(A::display_name()),
-            sub_prop_ui,
-        );
+    if let Some(tooltip) = field_info.map(|info| info.documentation) {
+        list_item_response = list_item_response.on_hover_text(tooltip);
+    }
+
+    view_property_context_menu(
+        ctx.viewer_ctx,
+        &list_item_response,
+        blueprint_path,
+        component_name,
+        component_results,
+    );
+}
+
+fn view_property_context_menu(
+    ctx: &ViewerContext<'_>,
+    list_item_response: &egui::Response,
+    blueprint_path: &re_log_types::EntityPath,
+    component_name: ComponentName,
+    component_results: &re_query::LatestAtComponentResults,
+) {
+    list_item_response.context_menu(|ui| {
+        if ui.button("Reset to default blueprint.")
+        .on_hover_text("Resets this property to the value in the default blueprint.\n
+        If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty.")
+        .clicked() {
+            ctx.reset_blueprint_component_by_name(blueprint_path, component_name);
+            ui.close_menu();
+        }
+
+        let blueprint_db = ctx.blueprint_db();
+        ui.add_enabled_ui(!component_results.is_empty(blueprint_db.resolver()), |ui| {
+            if ui.button("Reset to empty.")
+                .on_hover_text("Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
+This has the same effect as not setting the value in the blueprint at all.")
+                .on_disabled_hover_text("The property is already unset.")
+                .clicked() {
+                ctx.save_empty_blueprint_component_by_name(blueprint_path, component_name);
+                ui.close_menu();
+            }
+        });
+
+        // TODO(andreas): The next logical thing here is now to save it to the default blueprint!
+        // This should be fairly straight forward except that we need to make sure that a default blueprint exists in the first place.
+    });
+}
+
+fn singleline_list_item_content<'a>(
+    ctx: &'a QueryContext<'_>,
+    display_name: &str,
+    blueprint_path: &'a re_log_types::EntityPath,
+    component_name: ComponentName,
+    component_results: &'a re_query::LatestAtComponentResults,
+    fallback_provider: &'a dyn ComponentFallbackProvider,
+) -> list_item::PropertyContent<'a> {
+    list_item::PropertyContent::new(display_name)
+        .action_button(&re_ui::icons::RESET, move || {
+            ctx.viewer_ctx
+                .reset_blueprint_component_by_name(blueprint_path, component_name);
+        })
+        .value_fn(move |_, ui, _| {
+            ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
+                ctx,
+                ui,
+                ctx.viewer_ctx.blueprint_db(),
+                blueprint_path,
+                component_name,
+                component_results,
+                fallback_provider,
+            );
+        })
 }

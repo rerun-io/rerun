@@ -20,7 +20,7 @@ pub fn query_view_property<A: Archetype>(
 where
     LatestAtResults: ToArchetype<A>,
 {
-    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
+    let path = entity_path_for_view_property(space_view_id, blueprint_db.tree(), A::name());
     (
         blueprint_db
             .latest_at_archetype(&path, query)
@@ -72,11 +72,8 @@ impl<'a> ViewProperty<'a> {
     ) -> Self {
         let blueprint_db = viewer_ctx.blueprint_db();
 
-        let blueprint_store_path = entity_path_for_view_property_from_archetype_name(
-            space_view_id,
-            blueprint_db.tree(),
-            archetype_name,
-        );
+        let blueprint_store_path =
+            entity_path_for_view_property(space_view_id, blueprint_db.tree(), archetype_name);
 
         let query_results = blueprint_db.latest_at(
             viewer_ctx.blueprint_query,
@@ -169,19 +166,7 @@ impl<'a> ViewProperty<'a> {
     }
 }
 
-// TODO(andreas): Replace all usages with `ViewProperty`.
-pub fn entity_path_for_view_property<T: Archetype>(
-    space_view_id: SpaceViewId,
-    _blueprint_entity_tree: &EntityTree,
-) -> EntityPath {
-    entity_path_for_view_property_from_archetype_name(
-        space_view_id,
-        _blueprint_entity_tree,
-        T::name(),
-    )
-}
-
-fn entity_path_for_view_property_from_archetype_name(
+pub fn entity_path_for_view_property(
     space_view_id: SpaceViewId,
     _blueprint_entity_tree: &EntityTree,
     archetype_name: ArchetypeName,

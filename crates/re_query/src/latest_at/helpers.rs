@@ -60,6 +60,14 @@ impl LatestAtComponentResults {
         }
     }
 
+    /// Returns true if the component is missing, an empty array or still pending.
+    pub fn is_empty(&self, resolver: &PromiseResolver) -> bool {
+        match self.resolved(resolver) {
+            PromiseResult::Ready(cell) => cell.is_empty(),
+            PromiseResult::Error(_) | PromiseResult::Pending => true,
+        }
+    }
+
     /// Returns the component data of the single instance.
     ///
     /// This assumes that the row we get from the store contains at most one instance for this
