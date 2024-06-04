@@ -1,33 +1,11 @@
-use std::borrow::Cow;
-
 use ahash::HashMap;
-use re_types_core::{Archetype, ArchetypeFieldInfo, ComponentName};
+use re_types_core::{Archetype, ArchetypeFieldInfo, ArchetypeInfo, ComponentName};
 use re_ui::list_item;
 use re_viewer_context::{
     ComponentFallbackProvider, ComponentUiTypes, QueryContext, SpaceViewId, SpaceViewState,
     ViewerContext,
 };
 use re_viewport_blueprint::entity_path_for_view_property;
-
-// Utility struct to make argument passing less excessive.
-// TODO(andreas): This could be actually useful to be a public struct on the archetype.
-struct ArchetypeInfo {
-    name: re_types_core::ArchetypeName,
-    display_name: &'static str,
-    component_names: Cow<'static, [ComponentName]>,
-    field_infos: Option<Cow<'static, [ArchetypeFieldInfo]>>,
-}
-
-impl ArchetypeInfo {
-    fn new<A: Archetype>() -> Self {
-        Self {
-            name: A::name(),
-            display_name: A::display_name(),
-            component_names: A::all_components(),
-            field_infos: A::field_infos(),
-        }
-    }
-}
 
 /// Display the UI for editing all components of a blueprint archetype.
 ///
@@ -39,14 +17,7 @@ pub fn view_property_ui<A: Archetype>(
     fallback_provider: &dyn ComponentFallbackProvider,
     view_state: &dyn SpaceViewState,
 ) {
-    view_property_ui_impl(
-        ctx,
-        ui,
-        view_id,
-        ArchetypeInfo::new::<A>(),
-        view_state,
-        fallback_provider,
-    );
+    view_property_ui_impl(ctx, ui, view_id, A::info(), view_state, fallback_provider);
 }
 
 fn view_property_ui_impl(
