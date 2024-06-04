@@ -39,9 +39,11 @@
     }
   },
   "files": [
+    "index.ts",
     "index.d.ts",
     "index.d.ts.map",
     "index.js",
+    "index.js.map",
     "package.json",
     "re_viewer_bg.js",
     "re_viewer_bg.wasm",
