@@ -8,11 +8,11 @@ use smallvec::SmallVec;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::StoreKind;
-use re_types::ComponentName;
+use re_types::{Archetype, ArchetypeName, ComponentName};
 
 use crate::{
-    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier,
-    ViewerContext,
+    ComponentFallbackProvider, DataResultTree, QueryContext, QueryRange, SpaceViewHighlights,
+    SpaceViewId, ViewSystemIdentifier, ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
@@ -395,6 +395,33 @@ impl DataResult {
         self.property_overrides
             .as_ref()
             .map_or(&DEFAULT_RANGE, |p| &p.query_range)
+    }
+
+    /// Get the typed fallback for a specific component.
+    pub fn typed_fallback_for<C: re_types::Component + Default>(
+        &self,
+        ctx: &ViewerContext<'_>,
+        fallback_provider: &dyn ComponentFallbackProvider,
+        archetype_name: Option<ArchetypeName>,
+        view_state: &dyn crate::SpaceViewState,
+    ) -> Option<C> {
+        let query_context = QueryContext {
+            viewer_ctx: ctx,
+            target_entity_path: &self.entity_path,
+            archetype_name,
+            query: &ctx.current_query(),
+            view_state,
+        };
+
+        C::from_arrow(
+            fallback_provider
+                .fallback_for(&query_context, C::name())
+                .ok()?
+                .as_ref(),
+        )
+        .ok()?
+        .into_iter()
+        .next()
     }
 }
 

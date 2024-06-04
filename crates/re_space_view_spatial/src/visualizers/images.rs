@@ -28,7 +28,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
-    query_pinhole,
+    query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView2D, SpatialSpaceView3D,
@@ -539,7 +539,7 @@ impl ImageVisualizer {
         re_tracing::profile_function!();
 
         let Some(intrinsics) =
-            query_pinhole(ctx.recording(), &ctx.current_query(), parent_pinhole_path)
+            query_pinhole_legacy(ctx.recording(), &ctx.current_query(), parent_pinhole_path)
         else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };

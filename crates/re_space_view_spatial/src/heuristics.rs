@@ -14,7 +14,7 @@ use re_types::{
 use re_viewer_context::{IdentifiedViewSystem, PerSystemEntities, ViewerContext};
 
 use crate::{
-    query_pinhole,
+    query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         CamerasVisualizer, ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer,
@@ -163,13 +163,13 @@ fn update_transform3d_lines_heuristics(
             ent_path: &'a EntityPath,
             ctx: &'a ViewerContext<'_>,
         ) -> Option<&'a EntityPath> {
-            if query_pinhole(ctx.recording(), &ctx.current_query(), ent_path).is_some() {
+            if query_pinhole_legacy(ctx.recording(), &ctx.current_query(), ent_path).is_some() {
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
                 if let Some(child_tree) = ctx.recording().tree().subtree(ent_path) {
                     for child in child_tree.children.values() {
-                        if query_pinhole(ctx.recording(), &ctx.current_query(), &child.path)
+                        if query_pinhole_legacy(ctx.recording(), &ctx.current_query(), &child.path)
                             .is_some()
                         {
                             return Some(&child.path);
