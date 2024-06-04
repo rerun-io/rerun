@@ -73,6 +73,7 @@ class Pinhole(PinholeExt, Archetype):
             image_from_camera=None,  # type: ignore[arg-type]
             resolution=None,  # type: ignore[arg-type]
             camera_xyz=None,  # type: ignore[arg-type]
+            image_plane_distance=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -138,6 +139,17 @@ class Pinhole(PinholeExt, Archetype):
     #
     # The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
     # but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    image_plane_distance: components.ImagePlaneDistanceBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ImagePlaneDistanceBatch._optional,  # type: ignore[misc]
+    )
+    # The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+    #
+    # This is only used for visualization purposes, and does not affect the projection itself.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

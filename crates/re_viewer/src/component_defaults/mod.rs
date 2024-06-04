@@ -142,6 +142,10 @@ pub fn list_default_components(
             HalfSizes3D::default().to_arrow()?,
         ),
         (
+            <ImagePlaneDistance as Loggable>::name(),
+            ImagePlaneDistance::default().to_arrow()?,
+        ),
+        (
             <KeypointId as Loggable>::name(),
             KeypointId::default().to_arrow()?,
         ),
