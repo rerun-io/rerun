@@ -269,25 +269,23 @@ impl eframe::App for ExampleApp {
                 ..Default::default()
             })
             .show_animated(egui_ctx, self.show_left_panel, |ui| {
-                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-                    egui::TopBottomPanel::top("left_panel_top_bar")
-                        .exact_height(re_ui::ReUi::title_bar_height())
-                        .frame(egui::Frame {
-                            inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
-                            ..Default::default()
-                        })
-                        .show_inside(ui, left_panel_top_section_ui);
+                egui::TopBottomPanel::top("left_panel_top_bar")
+                    .exact_height(re_ui::ReUi::title_bar_height())
+                    .frame(egui::Frame {
+                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
+                        ..Default::default()
+                    })
+                    .show_inside(ui, left_panel_top_section_ui);
 
-                    egui::ScrollArea::both()
-                        .auto_shrink([false; 2])
-                        .show(ui, |ui| {
-                            egui::Frame {
-                                inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
-                                ..Default::default()
-                            }
-                            .show(ui, left_panel_bottom_section_ui);
-                        });
-                });
+                egui::ScrollArea::both()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        egui::Frame {
+                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                            ..Default::default()
+                        }
+                        .show(ui, left_panel_bottom_section_ui);
+                    });
             });
 
         // RIGHT PANEL
@@ -311,11 +309,8 @@ impl eframe::App for ExampleApp {
             .frame(panel_frame)
             .min_width(0.0)
             .show_animated(egui_ctx, self.show_right_panel, |ui| {
-                // define the hover/selection background highlight range for all nested `ListItem`s
-                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-                    ui.spacing_mut().item_spacing.y = 0.0;
-                    self.right_panel.ui(&self.re_ui, ui);
-                });
+                ui.spacing_mut().item_spacing.y = 0.0;
+                self.right_panel.ui(&self.re_ui, ui);
             });
 
         egui::CentralPanel::default()
