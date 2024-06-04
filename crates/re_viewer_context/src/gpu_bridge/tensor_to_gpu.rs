@@ -7,7 +7,7 @@ use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use egui::util::hash;
 use wgpu::TextureFormat;
 
-use re_log_types::RowId;
+use re_chunk::RowId;
 use re_renderer::{
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},

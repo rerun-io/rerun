@@ -1,15 +1,17 @@
 use std::collections::BTreeSet;
 use std::{collections::BTreeMap, sync::Arc};
 
+use arrow2::array::Array as ArrowArray;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use parking_lot::RwLock;
 
-use re_data_store::{DataStore, LatestAtQuery, TimeInt};
-use re_log_types::{EntityPath, RowId};
+use re_chunk::RowId;
+use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
+use re_log_types::EntityPath;
 use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _, SizeBytes};
 
-use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults, Promise};
+use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults};
 
 // ---
 
@@ -38,7 +40,7 @@ impl Caches {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn latest_at(
         &self,
-        store: &DataStore,
+        store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
@@ -285,11 +287,43 @@ impl SizeBytes for LatestAtCache {
     }
 }
 
+/// Implements the complete end-to-end latest-at logic:
+/// * Find all applicable `Chunk`s
+/// * Apply a latest-at filter to all of them
+/// * Keep the one row with the most recent `RowId`
+pub fn latest_at(
+    store: &ChunkStore,
+    query: &LatestAtQuery,
+    entity_path: &EntityPath,
+    component_name: ComponentName,
+) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
+    store
+        .latest_at(query, entity_path, component_name)
+        .into_iter()
+        .map(|chunk| chunk.latest_at(query, component_name))
+        // NOTE: At this point, the chunk is either empty or has a single row -- the `RowId` we use
+        // is irrelevant.
+        .filter_map(|chunk| {
+            chunk
+                .row_id_range()
+                .map(|(_, row_id_max)| (row_id_max, chunk))
+        })
+        .max_by_key(|(row_id_max, _)| *row_id_max)
+        .and_then(|(_, chunk)| {
+            chunk
+                .iter_rows(&query.timeline(), &component_name)
+                .next()
+                .and_then(|(data_time, row_id, array)| {
+                    array.map(|array| (data_time, row_id, array))
+                })
+        })
+}
+
 impl LatestAtCache {
     /// Queries cached latest-at data for a single component.
     pub fn latest_at(
         &mut self,
-        store: &DataStore,
+        store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -312,19 +346,22 @@ impl LatestAtCache {
             std::collections::btree_map::Entry::Vacant(entry) => entry,
         };
 
-        let result = store.latest_at(query, entity_path, component_name, &[component_name]);
+        if let Some((data_time, row_id, array)) =
+            latest_at(store, query, entity_path, component_name)
+        {
+            let result_data_time = data_time;
+            let result_row_id = row_id;
+            let result_component_batch = array;
 
-        // NOTE: cannot `result.and_then(...)` or borrowck gets lost.
-        if let Some((data_time, row_id, mut cells)) = result {
             // Fast path: we've run the query and realized that we already have the data for the resulting
             // _data_ time, so let's use that to avoid join & deserialization costs.
-            if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
+            if let Some(data_time_bucket_at_data_time) = per_data_time.get(&result_data_time) {
                 query_time_bucket_at_query_time.insert(Arc::clone(data_time_bucket_at_data_time));
 
                 // We now know for a fact that a query at that data time would yield the same
                 // results: copy the bucket accordingly so that the next cache hit for that query
                 // time ends up taking the fastest path.
-                let query_time_bucket_at_data_time = per_query_time.entry(data_time);
+                let query_time_bucket_at_data_time = per_query_time.entry(result_data_time);
                 query_time_bucket_at_data_time
                     .and_modify(|v| *v = Arc::clone(data_time_bucket_at_data_time))
                     .or_insert(Arc::clone(data_time_bucket_at_data_time));
@@ -332,17 +369,9 @@ impl LatestAtCache {
                 return Some(Arc::clone(data_time_bucket_at_data_time));
             }
 
-            // Soundness:
-            // * `cells[0]` is guaranteed to exist since we passed in `&[component_name]`
-            // * `cells[0]` is guaranteed to be non-null, otherwise this whole result would be null
-            let Some(cell) = cells[0].take() else {
-                debug_assert!(cells[0].is_some(), "unreachable: `cells[0]` is missing");
-                return None;
-            };
-
             let bucket = Arc::new(LatestAtComponentResults {
-                index: (data_time, row_id),
-                promise: Some(Promise::new(cell)),
+                index: (result_data_time, result_row_id),
+                value: Some((component_name, result_component_batch)),
                 cached_dense: Default::default(),
             });
 
@@ -351,7 +380,7 @@ impl LatestAtCache {
                 let query_time_bucket_at_query_time =
                     query_time_bucket_at_query_time.insert(Arc::clone(&bucket));
 
-                let data_time_bucket_at_data_time = per_data_time.entry(data_time);
+                let data_time_bucket_at_data_time = per_data_time.entry(result_data_time);
                 data_time_bucket_at_data_time
                     .and_modify(|v| *v = Arc::clone(query_time_bucket_at_query_time))
                     .or_insert(Arc::clone(query_time_bucket_at_query_time));

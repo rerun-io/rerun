@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::LatestAtQuery;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
 use re_log::ResultExt;
 use re_log_types::Instance;
@@ -553,10 +553,7 @@ impl ComponentUiRegistry {
 
         if let Some(edit_callback) = editors.get(&component_name) {
             if let Some(updated) = (*edit_callback)(ctx, ui, raw_current_value) {
-                ctx.save_blueprint_data_cell(
-                    blueprint_write_path,
-                    re_log_types::DataCell::from_arrow(component_name, updated),
-                );
+                ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
             }
             true
         } else {
@@ -584,10 +581,10 @@ fn component_value_or_fallback(
                 return Err(format!("Promise for {component_name} is still pending."));
             }
         }
-        re_query::PromiseResult::Ready(cell) => {
+        re_query::PromiseResult::Ready(array) => {
             let index = instance.get();
-            if cell.num_instances() > index as u32 {
-                Some(cell.as_arrow_ref().sliced(index as usize, 1))
+            if array.len() as u64 > index {
+                Some(array.sliced(index as usize, 1))
             } else {
                 None
             }
