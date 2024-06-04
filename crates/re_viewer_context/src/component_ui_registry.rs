@@ -181,7 +181,7 @@ impl ComponentUiRegistry {
     /// This can be relevant for transitioning from a fallback or default value to a custom value even if they are equal.
     ///
     /// Design principles for writing editors:
-    /// * This is the value function for a [`re_ui::list_item::ListItem`], behave accordingly!
+    /// * This is the value column function for a [`re_ui::list_item::PropertyContent`], behave accordingly!
     /// * Don't show a tooltip, this is solved at a higher level.
     /// * Try not to assume context of the component beyond its inherent semantics
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
