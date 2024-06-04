@@ -13,7 +13,7 @@ pub fn multiline_edit_visual_bounds2d(
 
     let response_x = re_ui::list_item::ListItem::new(ctx.re_ui)
         .interactive(false)
-        .show_hierarchical(
+        .show_flat(
             ui,
             re_ui::list_item::PropertyContent::new("x").value_fn(|_, ui, _| {
                 let [x_range_start, x_range_end] = &mut value.x_range.0;
@@ -49,7 +49,7 @@ pub fn multiline_edit_visual_bounds2d(
 
     let response_y = re_ui::list_item::ListItem::new(ctx.re_ui)
         .interactive(false)
-        .show_hierarchical(
+        .show_flat(
             ui,
             re_ui::list_item::PropertyContent::new("y").value_fn(|_, ui, _| {
                 let [y_range_start, y_range_end] = &mut value.y_range.0;
