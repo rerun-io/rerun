@@ -1,41 +1,13 @@
 use nohash_hasher::IntSet;
 
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_query::{LatestAtResults, RangeResults};
+use re_query::LatestAtResults;
 use re_types_core::ComponentName;
 use re_viewer_context::ViewerContext;
 
+use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
+
 // ---
-
-#[derive(Debug)]
-pub enum HybridResults {
-    LatestAt(LatestAtQuery, HybridLatestAtResults),
-    Range(RangeQuery, HybridRangeResults),
-}
-
-impl From<(LatestAtQuery, HybridLatestAtResults)> for HybridResults {
-    #[inline]
-    fn from((query, results): (LatestAtQuery, HybridLatestAtResults)) -> Self {
-        Self::LatestAt(query, results)
-    }
-}
-
-impl From<(RangeQuery, HybridRangeResults)> for HybridResults {
-    #[inline]
-    fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
-        Self::Range(query, results)
-    }
-}
-
-/// Wrapper that contains the results of a range query with possible overrides.
-///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
-/// they will be merged into the results appropriately.
-#[derive(Debug)]
-pub struct HybridRangeResults {
-    pub(crate) overrides: LatestAtResults,
-    pub(crate) results: RangeResults,
-}
 
 /// Queries for the given `component_names` using range semantics with override support.
 ///
@@ -68,16 +40,6 @@ pub fn range_with_overrides(
     );
 
     HybridRangeResults { overrides, results }
-}
-
-/// Wrapper that contains the results of a latest-at query with possible overrides.
-///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
-/// they will be merged into the results appropriately.
-#[derive(Debug)]
-pub struct HybridLatestAtResults {
-    pub(crate) overrides: LatestAtResults,
-    pub(crate) results: LatestAtResults,
 }
 
 /// Queries for the given `component_names` using latest-at semantics with override support.
