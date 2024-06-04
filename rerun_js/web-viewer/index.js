@@ -382,6 +382,7 @@ export class WebViewer {
     };
     const saved_rect = canvas.getBoundingClientRect();
 
+    style.position = "fixed";
     style.width = `100%`;
     style.height = `100%`;
     style.top = `0px`;
