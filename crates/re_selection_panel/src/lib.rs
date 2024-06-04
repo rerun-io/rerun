@@ -13,7 +13,7 @@ pub use selection_panel::SelectionPanel;
 #[cfg(test)]
 mod test {
     use super::*;
-    use re_data_store::LatestAtQuery;
+    use re_chunk_store::LatestAtQuery;
     use re_viewer_context::{blueprint_timeline, Item, SpaceViewId};
     use re_viewport_blueprint::ViewportBlueprint;
 

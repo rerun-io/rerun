@@ -69,7 +69,7 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     ScreenshotWholeApp,
     #[cfg(not(target_arch = "wasm32"))]
-    PrintDataStore,
+    PrintChunkStore,
     #[cfg(not(target_arch = "wasm32"))]
     PrintBlueprintStore,
     #[cfg(not(target_arch = "wasm32"))]
@@ -210,9 +210,9 @@ impl UICommand {
                 "Copy screenshot of the whole app to clipboard",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDataStore => (
+            Self::PrintChunkStore => (
                 "Print datastore",
-                "Prints the entire data store to the console and clipboard. WARNING: this may be A LOT of text.",
+                "Prints the entire chunk store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintBlueprintStore => (
@@ -328,7 +328,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => None,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDataStore => None,
+            Self::PrintChunkStore => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintBlueprintStore => None,
             #[cfg(not(target_arch = "wasm32"))]

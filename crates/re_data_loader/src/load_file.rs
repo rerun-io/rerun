@@ -106,7 +106,7 @@ pub(crate) fn prepare_store_info(
 
     (!is_rrd).then(|| {
         LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: re_log_types::RowId::new(),
+            row_id: *re_chunk::RowId::new(),
             info: re_log_types::StoreInfo {
                 application_id: app_id.clone(),
                 store_id: store_id.clone(),

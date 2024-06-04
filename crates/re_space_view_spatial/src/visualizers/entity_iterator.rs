@@ -1,5 +1,5 @@
 use itertools::Either;
-use re_data_store::{LatestAtQuery, RangeQuery};
+use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_renderer::DepthOffset;
 use re_space_view::{

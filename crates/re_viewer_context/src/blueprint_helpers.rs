@@ -1,4 +1,6 @@
-use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
+use re_chunk::{ArrowArray, RowId};
+use re_chunk_store::external::re_chunk::Chunk;
+use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_types::{AsComponents, ComponentBatch, ComponentName};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
@@ -31,80 +33,80 @@ impl StoreContext<'_> {
 }
 
 impl ViewerContext<'_> {
-    pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
-        let timepoint = self.store_context.blueprint_timepoint_for_writes();
-
-        let data_row =
-            match DataRow::from_archetype(RowId::new(), timepoint.clone(), entity_path, components)
-            {
-                Ok(data_cell) => data_cell,
-                Err(err) => {
-                    re_log::error_once!(
-                        "Failed to create DataRow for blueprint components: {}",
-                        err
-                    );
-                    return;
-                }
-            };
-
-        self.command_sender
-            .send_system(SystemCommand::UpdateBlueprint(
-                self.store_context.blueprint.store_id().clone(),
-                vec![data_row],
-            ));
-    }
-
-    /// Helper to save a component batch to the blueprint store.
-    pub fn save_blueprint_component(
+    pub fn save_blueprint_archetype(
         &self,
         entity_path: &EntityPath,
-        components: &dyn ComponentBatch,
+        components: &dyn AsComponents,
     ) {
-        let data_cell = match DataCell::from_component_batch(components) {
-            Ok(data_cell) => data_cell,
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
+
+        let chunk = match Chunk::builder(entity_path.clone())
+            .with_archetype(RowId::new(), timepoint.clone(), components)
+            .build()
+        {
+            Ok(chunk) => chunk,
             Err(err) => {
-                re_log::error_once!(
-                    "Failed to create DataCell for blueprint components: {}",
-                    err
-                );
+                re_log::error_once!("Failed to create Chunk for blueprint components: {}", err);
                 return;
             }
         };
 
-        self.save_blueprint_data_cell(entity_path, data_cell);
+        self.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                self.store_context.blueprint.store_id().clone(),
+                vec![chunk],
+            ));
     }
 
-    /// Helper to save a data cell to the blueprint store.
-    pub fn save_blueprint_data_cell(&self, entity_path: &EntityPath, mut data_cell: DataCell) {
-        data_cell.compute_size_bytes();
-
+    pub fn save_blueprint_component(
+        &self,
+        entity_path: &EntityPath,
+        component_batch: &dyn ComponentBatch,
+    ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
-        re_log::trace!(
-            "Writing {} components of type {:?} to {:?}",
-            data_cell.num_instances(),
-            data_cell.component_name(),
-            entity_path
-        );
-
-        let data_row_result = DataRow::from_cells(
-            RowId::new(),
-            timepoint.clone(),
-            entity_path.clone(),
-            [data_cell],
-        );
-
-        match data_row_result {
-            Ok(row) => self
-                .command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    self.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                )),
+        let chunk = match Chunk::builder(entity_path.clone())
+            .with_component_batches(RowId::new(), timepoint.clone(), [component_batch])
+            .build()
+        {
+            Ok(chunk) => chunk,
             Err(err) => {
-                re_log::error_once!("Failed to create DataRow for blueprint components: {}", err);
+                re_log::error_once!("Failed to create Chunk for blueprint components: {}", err);
+                return;
             }
-        }
+        };
+
+        self.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                self.store_context.blueprint.store_id().clone(),
+                vec![chunk],
+            ));
+    }
+
+    pub fn save_blueprint_array(
+        &self,
+        entity_path: &EntityPath,
+        component_name: ComponentName,
+        array: Box<dyn ArrowArray>,
+    ) {
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
+
+        let chunk = match Chunk::builder(entity_path.clone())
+            .with_row(RowId::new(), timepoint.clone(), [(component_name, array)])
+            .build()
+        {
+            Ok(chunk) => chunk,
+            Err(err) => {
+                re_log::error_once!("Failed to create Chunk for blueprint components: {}", err);
+                return;
+            }
+        };
+
+        self.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                self.store_context.blueprint.store_id().clone(),
+                vec![chunk],
+            ));
     }
 
     /// Helper to save a component to the blueprint store.
@@ -132,10 +134,7 @@ impl ViewerContext<'_> {
                     default_value.raw(default_blueprint.resolver(), component_name)
                 })
         }) {
-            self.save_blueprint_data_cell(
-                entity_path,
-                DataCell::from_arrow(component_name, default_value),
-            );
+            self.save_blueprint_array(entity_path, component_name, default_value);
         } else {
             self.save_empty_blueprint_component_by_name(entity_path, component_name);
         }
@@ -149,15 +148,16 @@ impl ViewerContext<'_> {
     ) {
         let blueprint = &self.store_context.blueprint;
 
-        // Don't do anything if the component does not exist (if we don't the datatype lookup may fail).
-        if !blueprint
+        let Some(datatype) = blueprint
             .latest_at(self.blueprint_query, entity_path, [component_name])
-            .contains(component_name)
-        {
-            return;
-        }
-
-        let Some(datatype) = blueprint.store().lookup_datatype(&component_name) else {
+            .get(component_name)
+            .and_then(|result| {
+                result
+                    .resolved(blueprint.resolver())
+                    .map(|array| array.data_type().clone())
+                    .ok()
+            })
+        else {
             re_log::error!(
                 "Tried to clear a component with unknown type: {}",
                 component_name
@@ -166,17 +166,26 @@ impl ViewerContext<'_> {
         };
 
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
-        let cell = DataCell::from_arrow_empty(component_name, datatype.clone());
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_row(
+                RowId::new(),
+                timepoint,
+                [(
+                    component_name,
+                    re_chunk::external::arrow2::array::new_empty_array(datatype),
+                )],
+            )
+            .build();
 
-        match DataRow::from_cells1(RowId::new(), entity_path.clone(), timepoint.clone(), cell) {
-            Ok(row) => self
+        match chunk {
+            Ok(chunk) => self
                 .command_sender
                 .send_system(SystemCommand::UpdateBlueprint(
                     blueprint.store_id().clone(),
-                    vec![row],
+                    vec![chunk],
                 )),
             Err(err) => {
-                re_log::error_once!("Failed to create DataRow for blueprint component: {}", err);
+                re_log::error_once!("Failed to create Chunk for blueprint component: {}", err);
             }
         }
     }

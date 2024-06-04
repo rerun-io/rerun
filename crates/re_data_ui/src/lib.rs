@@ -2,9 +2,7 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
-use itertools::Itertools;
-
-use re_log_types::{DataCell, EntityPath, TimePoint};
+use re_log_types::{EntityPath, TimePoint};
 use re_types::ComponentName;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -53,13 +51,13 @@ pub fn component_list_for_ui<'a>(
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {
-    /// If you need to lookup something in the data store, use the given query to do so.
+    /// If you need to lookup something in the chunk store, use the given query to do so.
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
 }
@@ -68,14 +66,14 @@ pub trait DataUi {
 ///
 /// This is given the context of the entity it is part of so it can do queries.
 pub trait EntityDataUi {
-    /// If you need to lookup something in the data store, use the given query to do so.
+    /// If you need to lookup something in the chunk store, use the given query to do so.
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
 }
@@ -90,7 +88,7 @@ where
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
@@ -109,7 +107,7 @@ impl DataUi for TimePoint {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui.vertical(|ui| {
@@ -125,50 +123,11 @@ impl DataUi for TimePoint {
     }
 }
 
-impl DataUi for [DataCell] {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
-        let mut sorted = self.to_vec();
-        sorted.sort_by_key(|cb| cb.component_name());
-
-        match ui_layout {
-            UiLayout::List => {
-                ui.label(sorted.iter().map(format_cell).join(", "));
-            }
-
-            UiLayout::SelectionPanelFull
-            | UiLayout::SelectionPanelLimitHeight
-            | UiLayout::Tooltip => {
-                ui.vertical(|ui| {
-                    for component_bundle in &sorted {
-                        ui.label(format_cell(component_bundle));
-                    }
-                });
-            }
-        }
-    }
-}
-
-fn format_cell(cell: &DataCell) -> String {
-    // TODO(emilk): if there's only once instance, and the byte size is small, then deserialize and show the value.
-    format!(
-        "{}x {}",
-        cell.num_instances(),
-        cell.component_name().short_name()
-    )
-}
-
 // ---------------------------------------------------------------------------
 
 pub fn annotations(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_entity_db::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();

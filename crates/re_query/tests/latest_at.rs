@@ -1,22 +1,27 @@
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
 
-use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
+use std::sync::Arc;
+
+use re_chunk::RowId;
+use re_chunk_store::{
+    external::re_chunk::Chunk, ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery,
+};
 use re_log_types::{
     build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
-    DataRow, EntityPath, RowId, TimeInt, TimePoint,
+    EntityPath, TimeInt, TimePoint,
 };
 use re_query::Caches;
 use re_query::PromiseResolver;
-use re_types::Archetype as _;
+use re_types::{Archetype as _, ComponentBatch};
 use re_types_core::Loggable as _;
 
 // ---
 
 #[test]
 fn simple_query() {
-    let mut store = DataStore::new(
+    let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
@@ -25,20 +30,21 @@ fn simple_query() {
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
 
-    let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let row =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, points.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row);
+    let row_id1 = RowId::new();
+    let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let row_id2 = RowId::new();
+    let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batch(row_id1, timepoint, &points1)
+        .with_component_batch(row_id2, timepoint, &colors2)
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let row =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, colors.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row);
-
-    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
-    let expected_compound_index = (TimeInt::new_temporal(123), row.row_id());
-    let expected_points = &points;
-    let expected_colors = &colors;
+    let query = re_chunk_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(123), row_id2);
+    let expected_points = &points1;
+    let expected_colors = &colors2;
     query_and_compare(
         &caches,
         &store,
@@ -52,7 +58,7 @@ fn simple_query() {
 
 #[test]
 fn static_query() {
-    let mut store = DataStore::new(
+    let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
@@ -61,23 +67,28 @@ fn static_query() {
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
 
+    let row_id1 = RowId::new();
     let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let row1 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, points.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row1);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id1, timepoint, [&points as &dyn ComponentBatch])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
+    let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let row2 = DataRow::from_cells1_sized(
-        RowId::new(),
-        entity_path,
-        TimePoint::default(),
-        colors.clone(),
-    )
-    .unwrap();
-    insert_and_react(&mut store, &mut caches, &row2);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(
+            row_id2,
+            TimePoint::default(),
+            [&colors as &dyn ComponentBatch],
+        )
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
-    let expected_compound_index = (TimeInt::new_temporal(123), row1.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(123), row_id1);
     let expected_points = &points;
     let expected_colors = &colors;
     query_and_compare(
@@ -108,33 +119,29 @@ fn invalidation() {
             .copied()
             .unwrap_or(TimeInt::STATIC);
 
-        let mut store = DataStore::new(
+        let mut store = ChunkStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             Default::default(),
         );
         let mut caches = Caches::new(&store);
 
+        let row_id1 = RowId::new();
         let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-        let row1 = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            present_data_timepoint.clone(),
-            points.clone(),
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row1);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(row_id1, present_data_timepoint.clone(), [&points as _])
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
+        let row_id2 = RowId::new();
         let colors = vec![MyColor::from_rgb(1, 2, 3)];
-        let row2 = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            present_data_timepoint.clone(),
-            colors.clone(),
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row2);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(row_id2, present_data_timepoint.clone(), [&colors as _])
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-        let expected_compound_index = (present_timestamp, row2.row_id());
+        let expected_compound_index = (present_timestamp, row_id2);
         let expected_points = &points;
         let expected_colors = &colors;
         query_and_compare(
@@ -150,17 +157,15 @@ fn invalidation() {
         // --- Modify present ---
 
         // Modify the PoV component
+        let row_id3 = RowId::new();
         let points = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
-        let row3 = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            present_data_timepoint.clone(),
-            points.clone(),
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row3);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(row_id3, present_data_timepoint.clone(), [&points as _])
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-        let expected_compound_index = (present_timestamp, row3.row_id());
+        let expected_compound_index = (present_timestamp, row_id3);
         let expected_points = &points;
         let expected_colors = &colors;
         query_and_compare(
@@ -174,17 +179,15 @@ fn invalidation() {
         );
 
         // Modify the optional component
+        let row_id4 = RowId::new();
         let colors = vec![MyColor::from_rgb(4, 5, 6), MyColor::from_rgb(7, 8, 9)];
-        let row4 = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            present_data_timepoint.clone(),
-            colors.clone(),
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row4);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(row_id4, present_data_timepoint.clone(), [&colors as _])
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-        let expected_compound_index = (present_timestamp, row4.row_id());
+        let expected_compound_index = (present_timestamp, row_id4);
         let expected_points = &points;
         let expected_colors = &colors;
         query_and_compare(
@@ -200,17 +203,15 @@ fn invalidation() {
         // --- Modify past ---
 
         // Modify the PoV component
+        let row_id5 = RowId::new();
         let points_past = vec![MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)];
-        let row5 = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            past_data_timepoint.clone(),
-            points_past.clone(),
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row5);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(row_id5, past_data_timepoint.clone(), [&points_past as _])
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-        let expected_compound_index = (present_timestamp, row4.row_id());
+        let expected_compound_index = (present_timestamp, row_id4);
         let expected_points = if past_timestamp.is_static() {
             &points_past
         } else {
@@ -228,20 +229,18 @@ fn invalidation() {
         );
 
         // Modify the optional component
+        let row_id6 = RowId::new();
         let colors_past = vec![MyColor::from_rgb(10, 11, 12), MyColor::from_rgb(13, 14, 15)];
-        let row6 = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            past_data_timepoint,
-            colors_past.clone(),
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row6);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(row_id6, past_data_timepoint.clone(), [&colors_past as _])
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
         let (expected_compound_index, expected_colors) = if past_timestamp.is_static() {
-            ((past_timestamp, row6.row_id()), &colors_past)
+            ((past_timestamp, row_id6), &colors_past)
         } else {
-            ((present_timestamp, row4.row_id()), &colors)
+            ((present_timestamp, row_id4), &colors)
         };
         query_and_compare(
             &caches,
@@ -256,20 +255,22 @@ fn invalidation() {
         // --- Modify future ---
 
         // Modify the PoV component
+        let row_id7 = RowId::new();
         let points_future = vec![MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)];
-        let row7 = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            future_data_timepoint.clone(),
-            points_future.clone(),
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row7);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(
+                row_id7,
+                future_data_timepoint.clone(),
+                [&points_future as _],
+            )
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
         let (expected_compound_index, expected_points) = if past_timestamp.is_static() {
-            ((past_timestamp, row6.row_id()), &points_past)
+            ((past_timestamp, row_id6), &points_past)
         } else {
-            ((present_timestamp, row4.row_id()), &points)
+            ((present_timestamp, row_id4), &points)
         };
         query_and_compare(
             &caches,
@@ -282,20 +283,22 @@ fn invalidation() {
         );
 
         // Modify the optional component
+        let row_id8 = RowId::new();
         let colors_future = vec![MyColor::from_rgb(16, 17, 18)];
-        let row = DataRow::from_cells1_sized(
-            RowId::new(),
-            entity_path,
-            future_data_timepoint,
-            colors_future,
-        )
-        .unwrap();
-        insert_and_react(&mut store, &mut caches, &row);
+        let chunk = Chunk::builder(entity_path.into())
+            .with_component_batches(
+                row_id8,
+                future_data_timepoint.clone(),
+                [&colors_future as _],
+            )
+            .build()
+            .unwrap();
+        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
         let (expected_compound_index, expected_colors) = if past_timestamp.is_static() {
-            ((past_timestamp, row6.row_id()), &colors_past)
+            ((past_timestamp, row_id6), &colors_past)
         } else {
-            ((present_timestamp, row4.row_id()), &colors)
+            ((present_timestamp, row_id4), &colors)
         };
         query_and_compare(
             &caches,
@@ -355,7 +358,7 @@ fn invalidation() {
 // ```
 #[test]
 fn invalidation_of_future_optionals() {
-    let mut store = DataStore::new(
+    let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
@@ -369,13 +372,16 @@ fn invalidation_of_future_optionals() {
 
     let query_time = [build_frame_nr(9999)];
 
+    let row_id1 = RowId::new();
     let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let row1 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, static_, points.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row1);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id1, static_, [&points as _])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
-    let expected_compound_index = (TimeInt::STATIC, row1.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let expected_compound_index = (TimeInt::STATIC, row_id1);
     let expected_points = &points;
     let expected_colors = &[];
     query_and_compare(
@@ -388,13 +394,16 @@ fn invalidation_of_future_optionals() {
         expected_colors,
     );
 
+    let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let row2 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, frame2, colors.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row2);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id2, frame2, [&colors as _])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
-    let expected_compound_index = (TimeInt::new_temporal(2), row2.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(2), row_id2);
     let expected_points = &points;
     let expected_colors = &colors;
     query_and_compare(
@@ -407,13 +416,16 @@ fn invalidation_of_future_optionals() {
         expected_colors,
     );
 
+    let row_id3 = RowId::new();
     let colors = vec![MyColor::from_rgb(0, 0, 255)];
-    let row3 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, frame3, colors.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row3);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id3, frame3, [&colors as _])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
-    let expected_compound_index = (TimeInt::new_temporal(3), row3.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(3), row_id3);
     let expected_points = &points;
     let expected_colors = &colors;
     query_and_compare(
@@ -426,13 +438,16 @@ fn invalidation_of_future_optionals() {
         expected_colors,
     );
 
+    let row_id4 = RowId::new();
     let colors = vec![MyColor::from_rgb(0, 255, 0)];
-    let row4 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, frame3, colors.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row4);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id4, frame3, [&colors as _])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
-    let expected_compound_index = (TimeInt::new_temporal(3), row4.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(3), row_id4);
     let expected_points = &points;
     let expected_colors = &colors;
     query_and_compare(
@@ -448,7 +463,7 @@ fn invalidation_of_future_optionals() {
 
 #[test]
 fn static_invalidation() {
-    let mut store = DataStore::new(
+    let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
@@ -460,14 +475,16 @@ fn static_invalidation() {
 
     let query_time = [build_frame_nr(9999)];
 
+    let row_id1 = RowId::new();
     let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let row1 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, timeless.clone(), points.clone())
-            .unwrap();
-    insert_and_react(&mut store, &mut caches, &row1);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id1, timeless.clone(), [&points as _])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
-    let expected_compound_index = (TimeInt::STATIC, row1.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let expected_compound_index = (TimeInt::STATIC, row_id1);
     let expected_points = &points;
     let expected_colors = &[];
     query_and_compare(
@@ -480,14 +497,16 @@ fn static_invalidation() {
         expected_colors,
     );
 
+    let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let row2 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, timeless.clone(), colors.clone())
-            .unwrap();
-    insert_and_react(&mut store, &mut caches, &row2);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id2, timeless.clone(), [&colors as _])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
-    let expected_compound_index = (TimeInt::STATIC, row2.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let expected_compound_index = (TimeInt::STATIC, row_id2);
     let expected_points = &points;
     let expected_colors = &colors;
     query_and_compare(
@@ -500,13 +519,16 @@ fn static_invalidation() {
         expected_colors,
     );
 
+    let row_id3 = RowId::new();
     let colors = vec![MyColor::from_rgb(0, 0, 255)];
-    let row3 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, timeless, colors.clone()).unwrap();
-    insert_and_react(&mut store, &mut caches, &row3);
+    let chunk = Chunk::builder(entity_path.into())
+        .with_component_batches(row_id3, timeless.clone(), [&colors as _])
+        .build()
+        .unwrap();
+    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
 
-    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
-    let expected_compound_index = (TimeInt::STATIC, row3.row_id());
+    let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    let expected_compound_index = (TimeInt::STATIC, row_id3);
     let expected_points = &points;
     let expected_colors = &colors;
     query_and_compare(
@@ -522,13 +544,13 @@ fn static_invalidation() {
 
 // ---
 
-fn insert_and_react(store: &mut DataStore, caches: &mut Caches, row: &DataRow) {
-    caches.on_events(&[store.insert_row(row).unwrap()]);
+fn insert_and_react(store: &mut ChunkStore, caches: &mut Caches, chunk: &Arc<Chunk>) {
+    caches.on_events(&[store.insert_chunk(chunk).unwrap().unwrap()]);
 }
 
 fn query_and_compare(
     caches: &Caches,
-    store: &DataStore,
+    store: &ChunkStore,
     query: &LatestAtQuery,
     entity_path: &EntityPath,
     expected_compound_index: (TimeInt, RowId),
@@ -559,6 +581,7 @@ fn query_and_compare(
             .flatten()
             .unwrap();
 
+        eprintln!("{store}");
         // eprintln!("{}", store.to_data_table().unwrap());
 
         similar_asserts::assert_eq!(expected_compound_index, cached.compound_index);

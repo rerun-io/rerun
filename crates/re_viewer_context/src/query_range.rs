@@ -1,4 +1,4 @@
-/// Range & type of data store query.
+/// Range & type of chunk store query.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum QueryRange {
     /// Use a time range on the currently active timeline.

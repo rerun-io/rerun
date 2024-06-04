@@ -17,7 +17,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: A path to an entity in the `DataStore`.
+    /// **Datatype**: A path to an entity in the `ChunkStore`.
     struct EntityPath {
         std::string path;
 
