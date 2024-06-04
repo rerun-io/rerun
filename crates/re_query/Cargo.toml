@@ -20,10 +20,7 @@ all-features = true
 
 
 [features]
-default = ["to_archetype"]
-
-## Implements `ToArchetype<A>` for all builtin archetypes on `LatestAtResults`.
-to_archetype = ["dep:re_types", "dep:re_types_blueprint"]
+default = []
 
 ## Enable codegen helper binaries (generates ClampedZip & RangeZip implementations).
 codegen = []
@@ -39,10 +36,6 @@ re_log_types.workspace = true
 re_tracing.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
-
-# Rerun dependencies (optional):
-re_types = { workspace = true, optional = true }
-re_types_blueprint = { workspace = true, optional = true }
 
 # External dependencies:
 ahash.workspace = true
@@ -69,12 +62,6 @@ similar-asserts.workspace = true
 
 [lib]
 bench = false
-
-
-[[example]]
-name = "latest_at_archetype"
-required-features = ["to_archetype"]
-
 
 [[bin]]
 name = "clamped_zip"

@@ -4675,8 +4675,6 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_tuid",
- "re_types",
- "re_types_blueprint",
  "re_types_core",
  "seq-macro",
  "similar-asserts",

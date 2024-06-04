@@ -91,7 +91,7 @@ impl LatestAtResults {
     }
 
     /// Utility for retrieving a single instance of a component.
-    pub fn get_instance<T: re_types::Component>(
+    pub fn get_instance<T: re_types_core::Component>(
         &self,
         resolver: &PromiseResolver,
         index: usize,
@@ -101,7 +101,10 @@ impl LatestAtResults {
     }
 
     /// Utility for retrieving a specific component.
-    pub fn get_dense<T: re_types::Component>(&self, resolver: &PromiseResolver) -> Option<&[T]> {
+    pub fn get_dense<T: re_types_core::Component>(
+        &self,
+        resolver: &PromiseResolver,
+    ) -> Option<&[T]> {
         self.get(T::name()).and_then(|r| r.dense::<T>(resolver))
     }
 }
