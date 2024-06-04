@@ -1,5 +1,5 @@
 use itertools::Either;
-use re_data_store::{LatestAtQuery, RangeQuery};
+use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{TimeInt, Timeline};
 use re_space_view::{
     latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,

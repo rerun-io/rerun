@@ -1,6 +1,7 @@
-use re_data_store::ResolvedTimeRange;
+use re_chunk_store::ResolvedTimeRange;
+use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
-use re_log_types::{RowId, TimeInt};
+use re_log_types::TimeInt;
 use re_query::{clamped_zip_1x2, range_zip_1x2};
 use re_space_view::{range_with_blueprint_resolved_data, RangeResultsExt};
 use re_types::{
@@ -16,15 +17,10 @@ use re_viewer_context::{
 #[derive(Debug, Clone)]
 pub struct Entry {
     pub row_id: RowId,
-
     pub entity_path: EntityPath,
-
     pub time: TimeInt,
-
     pub color: Option<Color>,
-
     pub body: Text,
-
     pub level: Option<TextLogLevel>,
 }
 
@@ -54,7 +50,7 @@ impl VisualizerSystem for TextLogSystem {
         re_tracing::profile_function!();
 
         let query =
-            re_data_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
+            re_chunk_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             if let Err(err) = self.process_entity(ctx, &query, data_result) {
@@ -88,7 +84,7 @@ impl TextLogSystem {
     fn process_entity(
         &mut self,
         ctx: &ViewContext<'_>,
-        query: &re_data_store::RangeQuery,
+        query: &re_chunk_store::RangeQuery,
         data_result: &re_viewer_context::DataResult,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();

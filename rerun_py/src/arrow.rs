@@ -5,8 +5,8 @@ use pyo3::{
     exceptions::PyValueError, ffi::Py_uintptr_t, types::PyDict, types::PyString, PyAny, PyResult,
 };
 
-use re_chunk::PendingRow;
-use re_log_types::{RowId, TimePoint};
+use re_chunk::{PendingRow, RowId};
+use re_log_types::TimePoint;
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///

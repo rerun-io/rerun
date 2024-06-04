@@ -7,8 +7,8 @@ use re_types::{
 
 pub fn image_meaning_for_entity(
     entity_path: &EntityPath,
-    query: &re_data_store::LatestAtQuery,
-    store: &re_data_store::DataStore,
+    query: &re_chunk_store::LatestAtQuery,
+    store: &re_chunk_store::ChunkStore,
 ) -> TensorDataMeaning {
     let timeline = &query.timeline();
     if store.entity_has_component(timeline, entity_path, &DepthImage::indicator().name()) {

@@ -10,7 +10,7 @@ impl DataUi for ComponentPath {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         let Self {

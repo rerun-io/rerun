@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
-use re_log_types::{hash::Hash64, Instance, RowId, TimeInt};
+use re_chunk_store::RowId;
+use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_query::range_zip_1x7;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;

@@ -1,9 +1,8 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
-use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_data_store::StoreSubscriber;
+use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
@@ -51,14 +50,14 @@ pub trait VisualizerAdditionalApplicabilityFilter: Send + Sync {
     /// **This implies that the filter does not _need_ to be stateful.**
     /// It is perfectly fine to return `true` only if something in the diff is regarded as applicable and false otherwise.
     /// (However, if necessary, the applicability filter *can* keep track of state.)
-    fn update_applicability(&mut self, _event: &re_data_store::StoreEvent) -> bool;
+    fn update_applicability(&mut self, _event: &ChunkStoreEvent) -> bool;
 }
 
 struct DefaultVisualizerApplicabilityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for DefaultVisualizerApplicabilityFilter {
     #[inline]
-    fn update_applicability(&mut self, _event: &re_data_store::StoreEvent) -> bool {
+    fn update_applicability(&mut self, _event: &ChunkStoreEvent) -> bool {
         true
     }
 }
@@ -126,7 +125,7 @@ impl VisualizerEntitySubscriber {
     }
 }
 
-impl StoreSubscriber for VisualizerEntitySubscriber {
+impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
     #[inline]
     fn name(&self) -> String {
         self.visualizer.as_str().to_owned()
@@ -142,13 +141,13 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
         self
     }
 
-    fn on_events(&mut self, events: &[re_data_store::StoreEvent]) {
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!(self.visualizer);
 
         // TODO(andreas): Need to react to store removals as well. As of writing doesn't exist yet.
 
         for event in events {
-            if event.diff.kind != re_data_store::StoreDiffKind::Addition {
+            if event.diff.kind != ChunkStoreDiffKind::Addition {
                 // Applicability is only additive, don't care about removals.
                 continue;
             }
@@ -158,14 +157,13 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 .entry(event.store_id.clone())
                 .or_default();
 
-            let entity_path = &event.diff.entity_path;
+            let entity_path = event.diff.chunk.entity_path();
 
             // Update indicator component tracking:
             if self.indicator_components.is_empty()
-                || self
-                    .indicator_components
-                    .iter()
-                    .any(|component_name| event.diff.cells.keys().contains(component_name))
+                || self.indicator_components.iter().any(|component_name| {
+                    event.diff.chunk.components().contains_key(component_name)
+                })
             {
                 store_mapping
                     .indicated_entities
@@ -186,8 +184,8 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 continue;
             }
 
-            for component_name in event.diff.cells.keys() {
-                if let Some(index) = self.required_components_indices.get(component_name) {
+            for component_name in event.diff.chunk.component_names() {
+                if let Some(index) = self.required_components_indices.get(&component_name) {
                     required_components_bitmap.set(*index, true);
                 }
             }

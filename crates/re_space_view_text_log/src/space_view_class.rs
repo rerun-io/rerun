@@ -264,17 +264,6 @@ impl ViewTextFilters {
 
 // ---
 
-fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some((time_point, _)) = ctx.recording_store().row_metadata(&entry.row_id) {
-        Some(time_point.clone())
-    } else {
-        if !entry.time.is_static() {
-            re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);
-        }
-        None
-    }
-}
-
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
 /// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
 /// scroll in terms of actual points.
@@ -285,12 +274,20 @@ fn table_ui(
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
 ) {
-    let timelines = state
-        .filters
-        .col_timelines
-        .iter()
-        .filter_map(|(timeline, visible)| visible.then_some(timeline))
-        .collect::<Vec<_>>();
+    let timelines = vec![*ctx.rec_cfg.time_ctrl.read().timeline()];
+
+    // TODO(cmc): This regressed because adding a metadata registry in the store is an antipattern.
+    //
+    // We'll bring back the multi-timeline display once we get rid of the native cache and start
+    // exposing chunks directly instead.
+    // Since chunks embed the data for all associated timelines, there'll be no extra work needed
+    // to get that information out.
+    // let timelines = state
+    //     .filters
+    //     .col_timelines
+    //     .iter()
+    //     .filter_map(|(timeline, visible)| visible.then_some(timeline))
+    //     .collect::<Vec<_>>();
 
     use egui_extras::Column;
 
@@ -364,18 +361,17 @@ fn table_ui(
                 let entry = &entries[row.index()];
 
                 // timeline(s)
-                let time_point = get_time_point(ctx, entry);
+                let timepoint: TimePoint = [(global_timeline, entry.time)].into();
                 for timeline in &timelines {
                     row.col(|ui| {
-                        let row_time = time_point
-                            .as_ref()
-                            .and_then(|t| t.get(timeline))
+                        let row_time = timepoint
+                            .get(timeline)
                             .copied()
                             .unwrap_or(re_log_types::TimeInt::STATIC);
                         item_ui::time_button(ctx, ui, timeline, row_time);
 
                         if let Some(global_time) = global_time {
-                            if *timeline == &global_timeline {
+                            if timeline == &global_timeline {
                                 #[allow(clippy::comparison_chain)]
                                 if global_time < row_time {
                                     // We've past the global time - it is thus above this row.

@@ -1,5 +1,7 @@
-use re_data_store::{LatestAtQuery, RangeQuery};
-use re_log_types::{external::arrow2, hash::Hash64, RowId, TimeInt};
+use re_chunk_store::RowId;
+use re_chunk_store::{LatestAtQuery, RangeQuery};
+use re_log_types::hash::Hash64;
+use re_log_types::{external::arrow2, TimeInt};
 use re_query::{
     LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult, RangeData,
     RangeResults, Results,

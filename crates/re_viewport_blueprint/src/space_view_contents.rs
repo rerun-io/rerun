@@ -3,7 +3,7 @@ use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
-use re_entity_db::{external::re_data_store::LatestAtQuery, EntityDb, EntityTree};
+use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree};
 use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
 };
@@ -135,7 +135,7 @@ impl SpaceViewContents {
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         ctx.save_blueprint_archetype(
-            self.blueprint_entity_path.clone(),
+            &self.blueprint_entity_path,
             &blueprint_archetypes::SpaceViewContents::new(
                 self.entity_path_filter.iter_expressions(),
             ),
@@ -425,20 +425,20 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(recursive_override_subtree) =
                     blueprint.tree().subtree(&recursive_override_path)
                 {
-                    for component in recursive_override_subtree.entity.components.keys() {
-                        if let Some(component_data) = blueprint
-                            .store()
-                            .latest_at(
-                                blueprint_query,
-                                &recursive_override_path,
-                                *component,
-                                &[*component],
-                            )
-                            .and_then(|(_, _, cells)| cells[0].clone())
+                    for &component_name in recursive_override_subtree.entity.components.keys() {
+                        let results = blueprint.query_caches().latest_at(
+                            blueprint.store(),
+                            blueprint_query,
+                            &recursive_override_path,
+                            [component_name],
+                        );
+                        if let Some(component_data) = results
+                            .get(component_name)
+                            .and_then(|results| results.raw(blueprint.resolver(), component_name))
                         {
                             if !component_data.is_empty() {
                                 recursive_property_overrides.to_mut().insert(
-                                    *component,
+                                    component_name,
                                     OverridePath::blueprint_path(recursive_override_path.clone()),
                                 );
                             }
@@ -452,20 +452,20 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(individual_override_subtree) =
                     blueprint.tree().subtree(&individual_override_path)
                 {
-                    for component in individual_override_subtree.entity.components.keys() {
-                        if let Some(component_data) = blueprint
-                            .store()
-                            .latest_at(
-                                blueprint_query,
-                                &individual_override_path,
-                                *component,
-                                &[*component],
-                            )
-                            .and_then(|(_, _, cells)| cells[0].clone())
+                    for &component_name in individual_override_subtree.entity.components.keys() {
+                        let results = blueprint.query_caches().latest_at(
+                            blueprint.store(),
+                            blueprint_query,
+                            &individual_override_path,
+                            [component_name],
+                        );
+                        if let Some(component_data) = results
+                            .get(component_name)
+                            .and_then(|results| results.raw(blueprint.resolver(), component_name))
                         {
                             if !component_data.is_empty() {
                                 resolved_component_overrides.insert(
-                                    *component,
+                                    component_name,
                                     OverridePath::blueprint_path(individual_override_path.clone()),
                                 );
                             }
@@ -552,8 +552,11 @@ impl DataQueryPropertyResolver<'_> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
-    use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
+    use re_log_types::{example_components::MyPoint, StoreId, TimePoint, Timeline};
     use re_viewer_context::{StoreContext, StoreHub, VisualizableEntities};
 
     use super::*;
@@ -572,15 +575,12 @@ mod tests {
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
             let row_id = RowId::new();
             let point = MyPoint::new(1.0, 2.0);
-            let row = DataRow::from_component_batches(
-                row_id,
-                timepoint.clone(),
-                entity_path.into(),
-                [&[point] as _],
-            )
-            .unwrap();
+            let chunk = Chunk::builder(entity_path.into())
+                .with_component_batch(row_id, timepoint.clone(), &[point] as _)
+                .build()
+                .unwrap();
 
-            recording.add_data_row(row).unwrap();
+            recording.add_chunk(&Arc::new(chunk)).unwrap();
         }
 
         let mut visualizable_entities_for_visualizer_systems =

@@ -1,15 +1,19 @@
 use arrow2::{
-    array::{Array as ArrowArray, ListArray as ArrowListArray},
+    array::{
+        Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+        StructArray,
+    },
     offset::Offsets as ArrowOffsets,
 };
 use itertools::Itertools as _;
+use re_log_types::Timeline;
 
 use crate::{Chunk, ChunkTimeline};
 
 // ---
 
 impl Chunk {
-    /// Is the chunk currently ascendingly sorted by [`re_log_types::RowId`]?
+    /// Is the chunk currently ascendingly sorted by [`crate::RowId`]?
     ///
     /// This is O(1) (cached).
     ///
@@ -29,9 +33,9 @@ impl Chunk {
     pub fn is_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
 
-        self.row_ids
-            .windows(2)
-            .all(|row_ids| row_ids[0] <= row_ids[1])
+        self.row_ids()
+            .tuple_windows::<(_, _)>()
+            .all(|row_ids| row_ids.0 <= row_ids.1)
     }
 
     /// Sort the chunk, if needed.
@@ -45,17 +49,20 @@ impl Chunk {
 
         re_tracing::profile_function!();
 
+        #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
 
         let swaps = {
             re_tracing::profile_scope!("swaps");
-            let mut swaps = (0..self.row_ids.len()).collect::<Vec<_>>();
-            swaps.sort_by_key(|&i| self.row_ids[i]);
+            let row_ids = self.row_ids().collect_vec();
+            let mut swaps = (0..row_ids.len()).collect::<Vec<_>>();
+            swaps.sort_by_key(|&i| row_ids[i]);
             swaps
         };
 
         self.shuffle_with(&swaps);
 
+        #[cfg(not(target_arch = "wasm32"))]
         re_log::trace!(
             entity_path = %self.entity_path,
             num_rows = self.row_ids.len(),
@@ -68,6 +75,49 @@ impl Chunk {
         self.sanity_check().unwrap();
     }
 
+    /// Returns a new [`Chunk`] that is sorted by `(<timeline>, RowId)`.
+    ///
+    /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
+    ///
+    /// This is a no-op if the underlying timeline is already sorted appropriately (happy path).
+    pub fn sorted_by_timeline_if_unsorted(&self, timeline: &Timeline) -> Self {
+        re_tracing::profile_function!();
+
+        let mut chunk = self.clone();
+
+        let Some(time_chunk) = chunk.timelines.get(timeline) else {
+            return chunk;
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let now = std::time::Instant::now();
+
+        let swaps = {
+            re_tracing::profile_scope!("swaps");
+            let row_ids = chunk.row_ids().collect_vec();
+            let times = time_chunk.times_raw().to_vec();
+            let mut swaps = (0..times.len()).collect::<Vec<_>>();
+            swaps.sort_by_key(|&i| (times[i], row_ids[i]));
+            swaps
+        };
+
+        chunk.shuffle_with(&swaps);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        re_log::trace!(
+            entity_path = %chunk.entity_path,
+            num_rows = chunk.row_ids.len(),
+            elapsed = ?now.elapsed(),
+            "chunk sorted",
+        );
+
+        #[cfg(debug_assertions)]
+        #[allow(clippy::unwrap_used)] // dev only
+        chunk.sanity_check().unwrap();
+
+        chunk
+    }
+
     /// Randomly shuffles the chunk using the given `seed`.
     ///
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
@@ -75,6 +125,7 @@ impl Chunk {
     pub fn shuffle_random(&mut self, seed: u64) {
         re_tracing::profile_function!();
 
+        #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
 
         use rand::{seq::SliceRandom as _, SeedableRng as _};
@@ -89,6 +140,7 @@ impl Chunk {
 
         self.shuffle_with(&swaps);
 
+        #[cfg(not(target_arch = "wasm32"))]
         re_log::trace!(
             entity_path = %self.entity_path,
             num_rows = self.row_ids.len(),
@@ -108,24 +160,39 @@ impl Chunk {
     pub(crate) fn shuffle_with(&mut self, swaps: &[usize]) {
         re_tracing::profile_function!();
 
-        let Self {
-            id: _,
-            entity_path: _,
-            is_sorted: _,
-            row_ids,
-            timelines,
-            components,
-        } = self;
-
         // Row IDs
         {
             re_tracing::profile_scope!("row ids");
 
-            let original = row_ids.clone();
+            let (times, counters) = self.row_ids_raw();
+            let (times, counters) = (times.values(), counters.values());
+
+            let mut sorted_times = times.to_vec();
+            let mut sorted_counters = counters.to_vec();
             for (to, from) in swaps.iter().copied().enumerate() {
-                row_ids[to] = original[from];
+                sorted_times[to] = times[from];
+                sorted_counters[to] = counters[from];
             }
+
+            let times = ArrowPrimitiveArray::<u64>::from_vec(sorted_times).boxed();
+            let counters = ArrowPrimitiveArray::<u64>::from_vec(sorted_counters).boxed();
+
+            self.row_ids = StructArray::new(
+                self.row_ids.data_type().clone(),
+                vec![times, counters],
+                None,
+            );
         }
+
+        let Self {
+            id: _,
+            entity_path: _,
+            heap_size_bytes: _,
+            is_sorted: _,
+            row_ids: _,
+            timelines,
+            components,
+        } = self;
 
         // Timelines
         {
@@ -133,17 +200,19 @@ impl Chunk {
 
             for info in timelines.values_mut() {
                 let ChunkTimeline {
+                    timeline,
                     times,
                     is_sorted,
                     time_range: _,
                 } = info;
 
-                let original = times.clone();
+                let mut sorted = times.values().to_vec();
                 for (to, from) in swaps.iter().copied().enumerate() {
-                    times[to] = original[from];
+                    sorted[to] = times.values()[from];
                 }
 
-                *is_sorted = times.windows(2).all(|times| times[0] <= times[1]);
+                *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
+                *times = ArrowPrimitiveArray::<i64>::from_vec(sorted).to(timeline.datatype());
             }
         }
 
@@ -153,16 +222,10 @@ impl Chunk {
         re_tracing::profile_scope!("components (offsets & data)");
         {
             for original in components.values_mut() {
-                #[allow(clippy::unwrap_used)] // a chunk's column is always a list array
-                let original_list = original
-                    .as_any()
-                    .downcast_ref::<ArrowListArray<i32>>()
-                    .unwrap();
-
                 let sorted_arrays = swaps
                     .iter()
                     .copied()
-                    .map(|from| original_list.value(from))
+                    .map(|from| original.value(from))
                     .collect_vec();
                 let sorted_arrays = sorted_arrays
                     .iter()
@@ -176,12 +239,11 @@ impl Chunk {
                         .unwrap();
                 #[allow(clippy::unwrap_used)] // these are slices of the same outer array
                 let values = arrow2::compute::concatenate::concatenate(&sorted_arrays).unwrap();
-                let validity = original_list
+                let validity = original
                     .validity()
                     .map(|validity| swaps.iter().map(|&from| validity.get_bit(from)).collect());
 
-                *original =
-                    ArrowListArray::<i32>::new(datatype, offsets.into(), values, validity).boxed();
+                *original = ArrowListArray::<i32>::new(datatype, offsets.into(), values, validity);
             }
         }
 
@@ -209,7 +271,9 @@ impl ChunkTimeline {
     #[inline]
     pub fn is_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
-        self.times.windows(2).all(|times| times[0] <= times[1])
+        self.times_raw()
+            .windows(2)
+            .all(|times| times[0] <= times[1])
     }
 }
 
@@ -217,11 +281,11 @@ impl ChunkTimeline {
 mod tests {
     use re_log_types::{
         example_components::{MyColor, MyPoint},
-        EntityPath, RowId, TimeInt, Timeline,
+        EntityPath, Timeline,
     };
     use re_types_core::Loggable as _;
 
-    use crate::{arrays_to_list_array, ChunkId};
+    use crate::{ChunkId, RowId};
 
     use super::*;
 
@@ -230,72 +294,62 @@ mod tests {
         let entity_path: EntityPath = "a/b/c".into();
 
         let timeline1 = Timeline::new_temporal("log_time");
-        let timeline2 = Timeline::new_temporal("frame_nr");
+        let timeline2 = Timeline::new_sequence("frame_nr");
 
-        let points1 = MyPoint::to_arrow([
+        let points1 = vec![
             MyPoint::new(1.0, 2.0),
             MyPoint::new(3.0, 4.0),
             MyPoint::new(5.0, 6.0),
-        ])?;
-        let points2 = None;
-        let points3 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0)])?;
-        let points4 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        ];
+        let points3 = vec![MyPoint::new(10.0, 20.0)];
+        let points4 = vec![MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)];
 
-        let colors1 = MyColor::to_arrow([
+        let colors1 = vec![
             MyColor::from_rgb(1, 2, 3),
             MyColor::from_rgb(4, 5, 6),
             MyColor::from_rgb(7, 8, 9),
-        ])?;
-        let colors2 = MyColor::to_arrow([MyColor::from_rgb(10, 20, 30)])?;
-        let colors3 = None;
-        let colors4 = MyColor::to_arrow([
+        ];
+        let colors2 = vec![MyColor::from_rgb(10, 20, 30)];
+        let colors4 = vec![
             MyColor::from_rgb(101, 102, 103),
             MyColor::from_rgb(104, 105, 106),
-        ])?;
-
-        let timelines = [
-            (
-                timeline1,
-                ChunkTimeline::new(
-                    Some(true),
-                    [1000, 1001, 1002, 1003].map(TimeInt::new_temporal).to_vec(),
-                )
-                .unwrap(),
-            ),
-            (
-                timeline2,
-                ChunkTimeline::new(
-                    Some(true),
-                    [42, 43, 44, 45].map(TimeInt::new_temporal).to_vec(),
-                )
-                .unwrap(),
-            ),
         ];
-
-        let components = [
-            (
-                MyPoint::name(),
-                arrays_to_list_array(&[Some(&*points1), points2, Some(&*points3), Some(&*points4)])
-                    .unwrap(),
-            ),
-            (
-                MyPoint::name(),
-                arrays_to_list_array(&[Some(&*colors1), Some(&*colors2), colors3, Some(&*colors4)])
-                    .unwrap(),
-            ),
-        ];
-
-        let row_ids = vec![RowId::new(), RowId::new(), RowId::new(), RowId::new()];
 
         {
-            let chunk_sorted = Chunk::new(
-                ChunkId::new(),
-                entity_path.clone(),
-                Some(true),
-                row_ids.clone(),
-                timelines.clone().into_iter().collect(),
-                components.clone().into_iter().collect(),
-            )?;
+            let chunk_sorted = Chunk::builder(entity_path.clone())
+                .with_sparse_component_batches(
+                    RowId::new(),
+                    [(timeline1, 1000), (timeline2, 42)],
+                    [
+                        (MyPoint::name(), Some(&points1 as _)),
+                        (MyColor::name(), Some(&colors1 as _)),
+                    ],
+                )
+                .with_sparse_component_batches(
+                    RowId::new(),
+                    [(timeline1, 1001), (timeline2, 43)],
+                    [
+                        (MyPoint::name(), None),
+                        (MyColor::name(), Some(&colors2 as _)),
+                    ],
+                )
+                .with_sparse_component_batches(
+                    RowId::new(),
+                    [(timeline1, 1002), (timeline2, 44)],
+                    [
+                        (MyPoint::name(), Some(&points3 as _)),
+                        (MyColor::name(), None),
+                    ],
+                )
+                .with_sparse_component_batches(
+                    RowId::new(),
+                    [(timeline1, 1003), (timeline2, 45)],
+                    [
+                        (MyPoint::name(), Some(&points4 as _)),
+                        (MyColor::name(), Some(&colors4 as _)),
+                    ],
+                )
+                .build()?;
 
             eprintln!("{chunk_sorted}");
 
@@ -325,6 +379,185 @@ mod tests {
             assert!(chunk_resorted.is_sorted());
             assert!(chunk_resorted.is_sorted_uncached());
             assert_eq!(chunk_sorted, chunk_resorted);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn sort_time() -> anyhow::Result<()> {
+        let entity_path: EntityPath = "a/b/c".into();
+
+        let timeline1 = Timeline::new_temporal("log_time");
+        let timeline2 = Timeline::new_sequence("frame_nr");
+
+        let chunk_id = ChunkId::new();
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+
+        let points1 = vec![
+            MyPoint::new(1.0, 2.0),
+            MyPoint::new(3.0, 4.0),
+            MyPoint::new(5.0, 6.0),
+        ];
+        let points3 = vec![MyPoint::new(10.0, 20.0)];
+        let points4 = vec![MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)];
+
+        let colors1 = vec![
+            MyColor::from_rgb(1, 2, 3),
+            MyColor::from_rgb(4, 5, 6),
+            MyColor::from_rgb(7, 8, 9),
+        ];
+        let colors2 = vec![MyColor::from_rgb(10, 20, 30)];
+        let colors4 = vec![
+            MyColor::from_rgb(101, 102, 103),
+            MyColor::from_rgb(104, 105, 106),
+        ];
+
+        {
+            let chunk_unsorted_timeline2 = Chunk::builder_with_id(chunk_id, entity_path.clone())
+                .with_sparse_component_batches(
+                    row_id1,
+                    [(timeline1, 1000), (timeline2, 45)],
+                    [
+                        (MyPoint::name(), Some(&points1 as _)),
+                        (MyColor::name(), Some(&colors1 as _)),
+                    ],
+                )
+                .with_sparse_component_batches(
+                    row_id2,
+                    [(timeline1, 1001), (timeline2, 44)],
+                    [
+                        (MyPoint::name(), None),
+                        (MyColor::name(), Some(&colors2 as _)),
+                    ],
+                )
+                .with_sparse_component_batches(
+                    row_id3,
+                    [(timeline1, 1002), (timeline2, 43)],
+                    [
+                        (MyPoint::name(), Some(&points3 as _)),
+                        (MyColor::name(), None),
+                    ],
+                )
+                .with_sparse_component_batches(
+                    row_id4,
+                    [(timeline1, 1003), (timeline2, 42)],
+                    [
+                        (MyPoint::name(), Some(&points4 as _)),
+                        (MyColor::name(), Some(&colors4 as _)),
+                    ],
+                )
+                .build()?;
+
+            eprintln!("unsorted:\n{chunk_unsorted_timeline2}");
+
+            assert!(chunk_unsorted_timeline2.is_sorted());
+            assert!(chunk_unsorted_timeline2.is_sorted_uncached());
+
+            assert!(chunk_unsorted_timeline2
+                .timelines()
+                .get(&timeline1)
+                .unwrap()
+                .is_sorted());
+            assert!(chunk_unsorted_timeline2
+                .timelines()
+                .get(&timeline1)
+                .unwrap()
+                .is_sorted_uncached());
+
+            assert!(!chunk_unsorted_timeline2
+                .timelines()
+                .get(&timeline2)
+                .unwrap()
+                .is_sorted());
+            assert!(!chunk_unsorted_timeline2
+                .timelines()
+                .get(&timeline2)
+                .unwrap()
+                .is_sorted_uncached());
+
+            let chunk_sorted_timeline2 =
+                chunk_unsorted_timeline2.sorted_by_timeline_if_unsorted(&timeline2);
+
+            eprintln!("sorted:\n{chunk_sorted_timeline2}");
+
+            assert!(!chunk_sorted_timeline2.is_sorted());
+            assert!(!chunk_sorted_timeline2.is_sorted_uncached());
+
+            assert!(!chunk_sorted_timeline2
+                .timelines()
+                .get(&timeline1)
+                .unwrap()
+                .is_sorted());
+            assert!(!chunk_sorted_timeline2
+                .timelines()
+                .get(&timeline1)
+                .unwrap()
+                .is_sorted_uncached());
+
+            assert!(chunk_sorted_timeline2
+                .timelines()
+                .get(&timeline2)
+                .unwrap()
+                .is_sorted());
+            assert!(chunk_sorted_timeline2
+                .timelines()
+                .get(&timeline2)
+                .unwrap()
+                .is_sorted_uncached());
+
+            let chunk_sorted_timeline2_expected =
+                Chunk::builder_with_id(chunk_id, entity_path.clone())
+                    .with_sparse_component_batches(
+                        row_id4,
+                        [(timeline1, 1003), (timeline2, 42)],
+                        [
+                            (MyPoint::name(), Some(&points4 as _)),
+                            (MyColor::name(), Some(&colors4 as _)),
+                        ],
+                    )
+                    .with_sparse_component_batches(
+                        row_id3,
+                        [(timeline1, 1002), (timeline2, 43)],
+                        [
+                            (MyPoint::name(), Some(&points3 as _)),
+                            (MyColor::name(), None),
+                        ],
+                    )
+                    .with_sparse_component_batches(
+                        row_id2,
+                        [(timeline1, 1001), (timeline2, 44)],
+                        [
+                            (MyPoint::name(), None),
+                            (MyColor::name(), Some(&colors2 as _)),
+                        ],
+                    )
+                    .with_sparse_component_batches(
+                        row_id1,
+                        [(timeline1, 1000), (timeline2, 45)],
+                        [
+                            (MyPoint::name(), Some(&points1 as _)),
+                            (MyColor::name(), Some(&colors1 as _)),
+                        ],
+                    )
+                    .build()?;
+
+            eprintln!("expected:\n{chunk_sorted_timeline2}");
+
+            assert_eq!(
+                chunk_sorted_timeline2_expected,
+                chunk_sorted_timeline2,
+                "{}",
+                similar_asserts::SimpleDiff::from_str(
+                    &format!("{chunk_sorted_timeline2_expected}"),
+                    &format!("{chunk_sorted_timeline2}"),
+                    "got",
+                    "expected",
+                ),
+            );
         }
 
         Ok(())

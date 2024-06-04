@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 
-use re_data_store::LatestAtQuery;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_space_view::DataResultQuery as _;
 use re_types::{
@@ -315,7 +315,7 @@ fn get_cached_transform(
 fn get_cached_pinhole(
     entity_path: &re_log_types::EntityPath,
     entity_db: &EntityDb,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_chunk_store::LatestAtQuery,
 ) -> Option<(PinholeProjection, ViewCoordinates)> {
     entity_db
         .latest_at_component::<PinholeProjection>(entity_path, query)

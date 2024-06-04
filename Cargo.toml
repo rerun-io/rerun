@@ -34,6 +34,7 @@ re_build_info = { path = "crates/re_build_info", version = "=0.17.0-alpha.9", de
 re_build_tools = { path = "crates/re_build_tools", version = "=0.17.0-alpha.9", default-features = false }
 re_case = { path = "crates/re_case", version = "=0.17.0-alpha.9", default-features = false }
 re_chunk = { path = "crates/re_chunk", version = "=0.17.0-alpha.9", default-features = false }
+re_chunk_store = { path = "crates/re_chunk_store", version = "=0.17.0-alpha.9", default-features = false }
 re_context_menu = { path = "crates/re_context_menu", version = "=0.17.0-alpha.9", default-features = false }
 re_crash_handler = { path = "crates/re_crash_handler", version = "=0.17.0-alpha.9", default-features = false }
 re_data_loader = { path = "crates/re_data_loader", version = "=0.17.0-alpha.9", default-features = false }
