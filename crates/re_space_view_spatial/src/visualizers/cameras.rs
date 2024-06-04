@@ -1,15 +1,17 @@
+use egui::Image;
 use glam::vec3;
 use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{Transform3D, ViewCoordinates},
+    components::{ImagePlaneDistance, Transform3D, ViewCoordinates},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks, SpaceViewState,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContextCollection,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -204,7 +206,7 @@ impl VisualizerSystem for CamerasVisualizer {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
-        _view_state: &dyn SpaceViewState,
+        view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let Some(render_ctx) = ctx.render_ctx else {
@@ -221,9 +223,7 @@ impl VisualizerSystem for CamerasVisualizer {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) =
-                query_pinhole(ctx.recording(), &time_query, &data_result.entity_path)
-            {
+            if let Some(pinhole) = query_pinhole(ctx, &time_query, self, view_state, &data_result) {
                 let entity_highlight = query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash());
@@ -260,4 +260,11 @@ impl VisualizerSystem for CamerasVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => []);
+impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
+        // TODO(jleibs): Existing fallback
+        1.0.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [ImagePlaneDistance]);

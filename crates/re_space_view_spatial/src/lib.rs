@@ -25,7 +25,11 @@ mod view_3d;
 mod view_3d_properties;
 mod visualizers;
 
+use re_space_view::latest_at_with_overrides;
+use re_types::archetypes::Pinhole;
+use re_types::{Archetype as _, Loggable};
 use re_viewer_context::ViewerContext;
+use re_viewer_context::{ComponentFallbackProvider, ViewerContext};
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
@@ -33,7 +37,9 @@ pub use view_3d::SpatialSpaceView3D;
 
 use re_renderer::RenderContext;
 use re_types::blueprint::components::BackgroundKind;
-use re_types::components::{Color, Resolution, TensorData};
+use re_types::components::{
+    Color, ImagePlaneDistance, PinholeProjection, Resolution, TensorData, ViewCoordinates,
+};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
@@ -61,6 +67,76 @@ fn resolution_from_tensor(
 
 /// Utility for querying a pinhole archetype instance.
 fn query_pinhole(
+    ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    fallback_provider: &dyn ComponentFallbackProvider,
+    view_state: &dyn re_viewer_context::SpaceViewState,
+    data_result: &re_viewer_context::DataResult,
+) -> Option<re_types::archetypes::Pinhole> {
+    let resolver = ctx.recording().resolver();
+
+    // TODO(jleibs): I hate everything about this
+    let results = latest_at_with_overrides(
+        ctx,
+        None,
+        query,
+        data_result,
+        re_types::archetypes::Pinhole::all_components()
+            .iter()
+            .copied(),
+    );
+
+    let image_from_camera = *results
+        .get(PinholeProjection::name())?
+        .to_dense(resolver)
+        .flatten()
+        .ok()?
+        .first()?;
+
+    let resolution = results
+        .get_or_empty(Resolution::name())
+        .to_dense(resolver)
+        .flatten()
+        .ok()
+        .and_then(|r| r.first().copied())
+        .or_else(|| resolution_from_tensor(ctx.recording(), query, &data_result.entity_path));
+
+    let camera_xyz = results
+        .get_or_empty(ViewCoordinates::name())
+        .to_dense(resolver)
+        .flatten()
+        .ok()
+        .and_then(|r| r.first().copied());
+
+    let image_plane_distance = results
+        .get_or_empty(ImagePlaneDistance::name())
+        .to_dense(resolver)
+        .flatten()
+        .ok()
+        .and_then(|r| r.first().copied())
+        .or_else(|| {
+            data_result.typed_fallback_for(
+                ctx,
+                fallback_provider,
+                Some(Pinhole::name()),
+                view_state,
+            )
+        });
+
+    Some(re_types::archetypes::Pinhole {
+        image_from_camera,
+        resolution,
+        camera_xyz,
+        image_plane_distance,
+    })
+}
+
+/// Deprecated utility for querying a pinhole archetype instance.
+///
+/// This function won't handle fallbacks correctly.
+///
+// TODO(andreas): This is duplicated into `re_viewport`
+fn query_pinhole_legacy(
     entity_db: &re_entity_db::EntityDb,
     query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
@@ -77,6 +153,7 @@ fn query_pinhole(
             camera_xyz: entity_db
                 .latest_at_component(entity_path, query)
                 .map(|c| c.value),
+            image_plane_distance: None,
         })
 }
 

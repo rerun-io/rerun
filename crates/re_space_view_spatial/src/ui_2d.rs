@@ -24,7 +24,7 @@ use super::{
     ui::{create_labels, picking, screenshot_context_menu},
 };
 use crate::{
-    query_pinhole,
+    query_pinhole_legacy,
     ui::{outline_config, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::collect_ui_labels,
@@ -163,8 +163,12 @@ impl SpatialSpaceView2D {
 
         // Note that we can't rely on the camera being part of scene.space_cameras since that requires
         // the camera to be added to the scene!
+        //
+        // TODO(jleibs): Would be nice to use `query_pinhole` here, but we don't have a data-result or the other pieces
+        // necessary to properly handle overrides, defaults, or fallbacks. We don't actually use the image_plane_distance
+        // so it doesnt technically matter.
         state.pinhole_at_origin =
-            query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
+            query_pinhole_legacy(ctx.recording(), &ctx.current_query(), query.space_origin);
 
         let (mut response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
@@ -339,6 +343,7 @@ fn setup_target_config(
             .into(),
             resolution: Some([resolution.x, resolution.y].into()),
             camera_xyz: Some(ViewCoordinates::RDF),
+            image_plane_distance: None,
         };
     }
     let pinhole_rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(resolution.x, resolution.y));

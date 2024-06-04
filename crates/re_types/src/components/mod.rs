@@ -18,6 +18,7 @@ mod half_sizes2d_ext;
 mod half_sizes3d;
 mod half_sizes3d_ext;
 mod image_plane_distance;
+mod image_plane_distance_ext;
 mod keypoint_id;
 mod keypoint_id_ext;
 mod line_strip2d;
