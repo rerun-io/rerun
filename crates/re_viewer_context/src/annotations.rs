@@ -6,7 +6,8 @@ use nohash_hasher::IntSet;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::RowId;
-use re_types::archetypes::AnnotationContext;
+use re_query::LatestAtMonoResult;
+use re_types::components::AnnotationContext;
 use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
 use super::{auto_color, ViewerContext};
@@ -246,16 +247,16 @@ impl AnnotationMap {
                     // Otherwise check the obj_store for the field.
                     // If we find one, insert it and then we can break.
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        if let Some(((_, row_id), ann_ctx)) = ctx
+                        if let Some(LatestAtMonoResult {
+                            index: (_, row_id),
+                            value: ann_ctx,
+                        }) = ctx
                             .recording()
-                            .latest_at_archetype::<AnnotationContext>(&parent, time_query)
-                            .ok()
-                            .flatten()
+                            .latest_at_component::<AnnotationContext>(&parent, time_query)
                         {
                             let annotations = Annotations {
                                 row_id,
                                 class_map: ann_ctx
-                                    .context
                                     .0
                                     .into_iter()
                                     .map(|elem| {
