@@ -4,7 +4,7 @@ use re_log_types::{external::arrow2, EntityPath, Instance};
 use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiLayout, ViewerContext};
 
-use super::{data_label_for_ui_layout, EntityDataUi};
+use super::EntityDataUi;
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
     re_tracing::profile_function!();
@@ -86,14 +86,14 @@ fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::A
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            data_label_for_ui_layout(ui, ui_layout, string);
+            ui_layout.data_label(ui, string);
             return;
         }
     }
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            data_label_for_ui_layout(ui, ui_layout, string);
+            ui_layout.data_label(ui, string);
             return;
         }
     }
@@ -104,7 +104,7 @@ fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::A
         let mut string = String::new();
         let display = arrow2::array::get_display(array, "null");
         if display(&mut string, 0).is_ok() {
-            data_label_for_ui_layout(ui, ui_layout, &string);
+            ui_layout.data_label(ui, &string);
             return;
         }
     }
@@ -117,7 +117,7 @@ fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::A
 
     if data_type_formatted.len() < 20 {
         // e.g. "4.2 KiB of Float32"
-        data_label_for_ui_layout(ui, ui_layout, &format!("{bytes} of {data_type_formatted}"));
+        ui_layout.data_label(ui, &format!("{bytes} of {data_type_formatted}"));
     } else {
         // Huge datatype, probably a union horror show
         ui.label(format!("{bytes} of data"));
