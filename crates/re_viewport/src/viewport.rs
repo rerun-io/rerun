@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
-use re_ui::{Icon, ReUi};
+use re_ui::{Icon, ReUi, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item, PerViewState,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
@@ -677,7 +677,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let help_text = space_view
             .class(self.ctx.space_view_class_registry)
             .help_text(self.ctx.re_ui);
-        re_ui::help_hover_button(ui).on_hover_text(help_text);
+        ui.help_hover_button().on_hover_text(help_text);
     }
 
     // Styling:

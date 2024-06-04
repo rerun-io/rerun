@@ -16,7 +16,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::{icons, list_item, ReUi, SyntaxHighlighting as _};
+use re_ui::{icons, list_item, ReUi, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
     ContainerId, Contents, DataQueryResult, HoverHighlight, Item, SpaceViewClass, SpaceViewId,
@@ -363,7 +363,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
             .trim();
 
-            re_ui::markdown_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
+            ui.markdown_ui(egui::Id::new("entity_path_filter_help_ui"), markdown);
         }
 
         fn syntax_highlight_entity_path_filter(
@@ -434,7 +434,8 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 egui::vec2(desired_width, ui.available_height()),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    re_ui::help_hover_button(ui).on_hover_ui(entity_path_filter_help_ui);
+                    ui.help_hover_button()
+                        .on_hover_ui(entity_path_filter_help_ui);
                     if ui
                         .button("Edit")
                         .on_hover_text("Modify the entity query using the editor")
@@ -1044,7 +1045,7 @@ fn container_kind_selection_ui(
 ) {
     let selected_text = format!("{in_out_kind:?}");
 
-    re_ui::drop_down_menu(ui, "container_kind", selected_text, |ui| {
+    ui.drop_down_menu("container_kind", selected_text, |ui| {
         static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
         for (kind, icon) in [
             (ContainerKind::Tabs, &icons::CONTAINER_TABS),

@@ -11,7 +11,7 @@ use re_types::{
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
     SpaceViewClassIdentifier,
 };
-use re_ui::{markdown_ui, ReUi};
+use re_ui::{ReUi, UiExt as _};
 use re_viewer_context::{QueryRange, SpaceViewClass, ViewerContext};
 use re_viewport_blueprint::{entity_path_for_view_property, SpaceViewBlueprint};
 
@@ -282,7 +282,7 @@ Notes that the data current as of the time range starting time is included.",
     );
 
     collapsing_response.header_response.on_hover_ui(|ui| {
-        markdown_ui(ui, egui::Id::new(markdown.as_str()), &markdown);
+        ui.markdown_ui(egui::Id::new(markdown.as_str()), &markdown);
     });
 }
 

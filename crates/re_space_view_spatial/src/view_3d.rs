@@ -4,10 +4,12 @@ use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
+use re_types::View;
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Loggable,
     SpaceViewClassIdentifier,
 };
+use re_ui::UiExt as _;
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
@@ -41,7 +43,6 @@ impl VisualizableFilterContext for VisualizableFilterContext3D {
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::Spatial3DView;
 
 impl SpaceViewClass for SpatialSpaceView3D {
@@ -337,8 +338,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                             "Scene up is unspecified".to_owned()
                         };
                     ui.label(up_description).on_hover_ui(|ui| {
-                        re_ui::markdown_ui(
-                            ui,
+                        ui.markdown_ui(
                             egui::Id::new("view_coordinates_tooltip"),
                             "Set with `rerun.ViewCoordinates`.",
                         );

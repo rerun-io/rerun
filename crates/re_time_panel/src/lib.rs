@@ -25,7 +25,7 @@ use re_log_types::{
     ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
-use re_ui::list_item;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
@@ -1063,7 +1063,7 @@ fn paint_range_highlight(
 
 fn help_button(ui: &mut egui::Ui) {
     // TODO(andreas): Nicer help text like on space views.
-    re_ui::help_hover_button(ui).on_hover_text(
+    ui.help_hover_button().on_hover_text(
         "\
         In the top row you can drag to move the time, or shift-drag to select a loop region.\n\
         \n\

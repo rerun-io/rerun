@@ -1229,97 +1229,100 @@ impl ReUi {
 
 // ----------------------------------------------------------------------------
 
-/// Show some close/maximize/minimize buttons for the native window.
-///
-/// Assumes it is in a right-to-left layout.
-///
-/// Use when [`CUSTOM_WINDOW_DECORATIONS`] is set.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn native_window_buttons_ui(ui: &mut egui::Ui) {
-    use egui::{Button, RichText, ViewportCommand};
-
-    let button_height = 12.0;
-
-    let close_response = ui
-        .add(Button::new(RichText::new("❌").size(button_height)))
-        .on_hover_text("Close the window");
-    if close_response.clicked() {
-        ui.ctx().send_viewport_cmd(ViewportCommand::Close);
-    }
-
-    let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-    if maximized {
-        let maximized_response = ui
-            .add(Button::new(RichText::new("🗗").size(button_height)))
-            .on_hover_text("Restore window");
-        if maximized_response.clicked() {
-            ui.ctx()
-                .send_viewport_cmd(ViewportCommand::Maximized(false));
-        }
-    } else {
-        let maximized_response = ui
-            .add(Button::new(RichText::new("🗗").size(button_height)))
-            .on_hover_text("Maximize window");
-        if maximized_response.clicked() {
-            ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
-        }
-    }
-
-    let minimized_response = ui
-        .add(Button::new(RichText::new("🗕").size(button_height)))
-        .on_hover_text("Minimize the window");
-    if minimized_response.clicked() {
-        ui.ctx().send_viewport_cmd(ViewportCommand::Minimized(true));
-    }
-}
-
-pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
-    ui.add(
-        egui::Label::new("❓").sense(egui::Sense::click()), // sensing clicks also gives hover effect
-    )
-}
-
-/// Show some markdown
-pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
-    use parking_lot::Mutex;
-    use std::sync::Arc;
-
-    let commonmark_cache = ui.data_mut(|data| {
-        data.get_temp_mut_or_default::<Arc<Mutex<egui_commonmark::CommonMarkCache>>>(egui::Id::new(
-            "global_egui_commonmark_cache",
-        ))
-        .clone()
-    });
-
-    egui_commonmark::CommonMarkViewer::new(id).show(ui, &mut commonmark_cache.lock(), markdown);
-}
-
-/// A drop-down menu with a list of options.
-///
-/// Designed for use with [`list_item`] content.
-///
-/// Use this instead of using [`egui::ComboBox`] directly.
-pub fn drop_down_menu(
-    ui: &mut egui::Ui,
-    id_source: impl std::hash::Hash,
-    selected_text: String,
-    content: impl FnOnce(&mut egui::Ui),
-) {
-    // TODO(emilk): make the button itself a `ListItem2`
-    egui::ComboBox::from_id_source(id_source)
-        .selected_text(selected_text)
-        .show_ui(ui, |ui| {
-            list_item::list_item_scope(ui, "inner_scope", |ui| {
-                content(ui);
-            });
-        });
-}
-
 /// Rerun custom extensions to [`egui::Ui`].
 // TODO(#4569): move everything here
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
+
+    /// Show some close/maximize/minimize buttons for the native window.
+    ///
+    /// Assumes it is in a right-to-left layout.
+    ///
+    /// Use when [`CUSTOM_WINDOW_DECORATIONS`] is set.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn native_window_buttons_ui(&mut self) {
+        use egui::{Button, RichText, ViewportCommand};
+
+        let button_height = 12.0;
+
+        let ui = self.ui_mut();
+
+        let close_response = ui
+            .add(Button::new(RichText::new("❌").size(button_height)))
+            .on_hover_text("Close the window");
+        if close_response.clicked() {
+            ui.ctx().send_viewport_cmd(ViewportCommand::Close);
+        }
+
+        let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+        if maximized {
+            let maximized_response = ui
+                .add(Button::new(RichText::new("🗗").size(button_height)))
+                .on_hover_text("Restore window");
+            if maximized_response.clicked() {
+                ui.ctx()
+                    .send_viewport_cmd(ViewportCommand::Maximized(false));
+            }
+        } else {
+            let maximized_response = ui
+                .add(Button::new(RichText::new("🗗").size(button_height)))
+                .on_hover_text("Maximize window");
+            if maximized_response.clicked() {
+                ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
+            }
+        }
+
+        let minimized_response = ui
+            .add(Button::new(RichText::new("🗕").size(button_height)))
+            .on_hover_text("Minimize the window");
+        if minimized_response.clicked() {
+            ui.ctx().send_viewport_cmd(ViewportCommand::Minimized(true));
+        }
+    }
+
+    fn help_hover_button(&mut self) -> egui::Response {
+        self.ui_mut().add(
+            egui::Label::new("❓").sense(egui::Sense::click()), // sensing clicks also gives hover effect
+        )
+    }
+
+    /// Show some markdown
+    fn markdown_ui(&mut self, id: egui::Id, markdown: &str) {
+        use parking_lot::Mutex;
+        use std::sync::Arc;
+
+        let ui = self.ui_mut();
+        let commonmark_cache = ui.data_mut(|data| {
+            data.get_temp_mut_or_default::<Arc<Mutex<egui_commonmark::CommonMarkCache>>>(
+                egui::Id::new("global_egui_commonmark_cache"),
+            )
+            .clone()
+        });
+
+        egui_commonmark::CommonMarkViewer::new(id).show(ui, &mut commonmark_cache.lock(), markdown);
+    }
+
+    /// A drop-down menu with a list of options.
+    ///
+    /// Designed for use with [`list_item`] content.
+    ///
+    /// Use this instead of using [`egui::ComboBox`] directly.
+    fn drop_down_menu(
+        &mut self,
+        id_source: impl std::hash::Hash,
+        selected_text: String,
+        content: impl FnOnce(&mut egui::Ui),
+    ) {
+        // TODO(emilk): make the button itself a `ListItem2`
+        egui::ComboBox::from_id_source(id_source)
+            .selected_text(selected_text)
+            .show_ui(self.ui_mut(), |ui| {
+                list_item::list_item_scope(ui, "inner_scope", |ui| {
+                    content(ui);
+                });
+            });
+    }
 
     /// Retrieve the current full-span scope.
     fn full_span(&self) -> egui::Rangef {

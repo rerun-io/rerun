@@ -1,9 +1,10 @@
 use egui::NumExt as _;
 use itertools::Itertools;
+
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::UICommand;
+use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
 use crate::{app_blueprint::AppBlueprint, App};
@@ -98,7 +99,7 @@ fn top_bar_ui(
         if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
             ui.add_space(8.0);
             #[cfg(not(target_arch = "wasm32"))]
-            re_ui::native_window_buttons_ui(ui);
+            ui.native_window_buttons_ui();
             ui.separator();
         } else {
             // Make the first button the same distance form the side as from the top,
