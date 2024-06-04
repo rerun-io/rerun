@@ -2,7 +2,7 @@ use egui::NumExt as _;
 use re_types::{blueprint::components::VisualBounds2D, datatypes::Range2D};
 use re_viewer_context::ViewerContext;
 
-pub fn multiline_edit_visual_bounds_2d(
+pub fn multiline_edit_visual_bounds2d(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     value: &mut VisualBounds2D,
@@ -23,7 +23,7 @@ pub fn multiline_edit_visual_bounds_2d(
                     .horizontal_centered(|ui| {
                         let response_min = ui.add(
                             egui::DragValue::new(x_range_start)
-                                .clamp_range(f64::NEG_INFINITY..=*x_range_end)
+                                .clamp_range(f64::MIN..=*x_range_end)
                                 .max_decimals(2)
                                 .speed(speed),
                         );
@@ -32,7 +32,7 @@ pub fn multiline_edit_visual_bounds_2d(
 
                         let response_max = ui.add(
                             egui::DragValue::new(x_range_end)
-                                .clamp_range(*x_range_start..=f64::INFINITY)
+                                .clamp_range(*x_range_start..=f64::MAX)
                                 .max_decimals(2)
                                 .speed(speed),
                         );
@@ -59,7 +59,7 @@ pub fn multiline_edit_visual_bounds_2d(
                     .horizontal_centered(|ui| {
                         let response_min = ui.add(
                             egui::DragValue::new(y_range_start)
-                                .clamp_range(f64::NEG_INFINITY..=*y_range_end)
+                                .clamp_range(f64::MIN..=*y_range_end)
                                 .max_decimals(2)
                                 .speed(speed),
                         );
@@ -68,7 +68,7 @@ pub fn multiline_edit_visual_bounds_2d(
 
                         let response_max = ui.add(
                             egui::DragValue::new(y_range_end)
-                                .clamp_range(*y_range_start..=f64::INFINITY)
+                                .clamp_range(*y_range_start..=f64::MAX)
                                 .max_decimals(2)
                                 .speed(speed),
                         );
@@ -90,7 +90,7 @@ pub fn multiline_edit_visual_bounds_2d(
     response
 }
 
-pub fn singleline_edit_visual_bounds_2d(
+pub fn singleline_edit_visual_bounds2d(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     value: &mut VisualBounds2D,
@@ -106,33 +106,48 @@ pub fn singleline_edit_visual_bounds_2d(
 
     let response_width = ui.add(
         egui::DragValue::new(&mut width_edit)
-            .clamp_range(f64::NEG_INFINITY..=f64::INFINITY)
+            .clamp_range(0.001..=f64::MAX)
             .max_decimals(1)
             .speed(speed_func(width)),
     );
     ui.label("×");
     let response_height = ui.add(
         egui::DragValue::new(&mut height_edit)
-            .clamp_range(f64::NEG_INFINITY..=f64::INFINITY)
+            .clamp_range(0.001..=f64::MAX)
             .max_decimals(1)
             .speed(speed_func(height)),
     );
+    let response = response_height | response_width;
 
-    let d_width = width_edit - width;
-    let d_height = height_edit - height;
-    *value = Range2D {
-        x_range: [
-            value.x_range.0[0] - d_width * 0.5,
-            value.x_range.0[1] + d_width * 0.5,
-        ]
-        .into(),
-        y_range: [
-            value.y_range.0[0] - d_height * 0.5,
-            value.y_range.0[1] + d_height * 0.5,
-        ]
-        .into(),
+    // Empirically it's quite confusing to edit width/height separately for the visual bounds.
+    // So we lock the aspect ratio.
+
+    if response.changed() {
+        let aspect_ratio = width / height;
+
+        if width != width_edit {
+            height_edit = width_edit / aspect_ratio;
+        } else {
+            width_edit = height_edit * aspect_ratio;
+        }
+
+        let d_width = width_edit - width;
+        let d_height = height_edit - height;
+
+        *value = Range2D {
+            x_range: [
+                value.x_range.0[0] - d_width * 0.5,
+                value.x_range.0[1] + d_width * 0.5,
+            ]
+            .into(),
+            y_range: [
+                value.y_range.0[0] - d_height * 0.5,
+                value.y_range.0[1] + d_height * 0.5,
+            ]
+            .into(),
+        }
+        .into();
     }
-    .into();
 
-    response_height | response_width
+    response
 }

@@ -6,7 +6,7 @@
 mod datatype_editors;
 mod marker_shape;
 mod response_utils;
-mod visual_bounds_2d;
+mod visual_bounds2d;
 
 use datatype_editors::edit_enum;
 use re_types::{
@@ -56,6 +56,6 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL)
     });
 
-    registry.add_multiline_editor_ui(visual_bounds_2d::multiline_edit_visual_bounds_2d);
-    registry.add_singleline_editor_ui(visual_bounds_2d::singleline_edit_visual_bounds_2d);
+    registry.add_multiline_editor_ui(visual_bounds2d::multiline_edit_visual_bounds2d);
+    registry.add_singleline_editor_ui(visual_bounds2d::singleline_edit_visual_bounds2d);
 }
