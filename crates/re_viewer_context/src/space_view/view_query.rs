@@ -4,7 +4,7 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use smallvec::SmallVec;
 
-use re_data_store::LatestAtQuery;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt, Timeline};
 use re_log_types::StoreKind;
 use re_types::ComponentName;
@@ -17,7 +17,7 @@ use crate::{
 /// Path to a specific entity in a specific store used for overrides.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OverridePath {
-    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
+    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `ChunkStore` but
     // might still be ambiguous when we have multiple stores active at a time.
     pub store_kind: StoreKind,
     pub path: EntityPath,
@@ -52,7 +52,7 @@ pub struct PropertyOverrides {
     /// for properties that apply to the individual entity only.
     pub individual_override_path: EntityPath,
 
-    /// What range is queried on the data store.
+    /// What range is queried on the chunk store.
     pub query_range: QueryRange,
 }
 
@@ -314,7 +314,7 @@ impl DataResult {
 
     /// Shorthand for checking for visibility on data overrides.
     ///
-    /// Note that this won't check if the data store has visibility logged.
+    /// Note that this won't check if the chunk store has visibility logged.
     // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
@@ -325,7 +325,7 @@ impl DataResult {
 
     /// Shorthand for checking for interactivity on data overrides.
     ///
-    /// Note that this won't check if the data store has interactivity logged.
+    /// Note that this won't check if the chunk store has interactivity logged.
     // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_interactive(&self, ctx: &ViewerContext<'_>) -> bool {

@@ -77,7 +77,7 @@ pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
         None
     }
 
-    /// Queries the data store and performs data conversions to make it ready for display.
+    /// Queries the chunk store and performs data conversions to make it ready for display.
     ///
     /// Mustn't query any data outside of the archetype.
     fn execute(
@@ -87,7 +87,7 @@ pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
         context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>;
 
-    /// Optionally retrieves a data store reference from the scene element.
+    /// Optionally retrieves a chunk store reference from the scene element.
     ///
     /// This is useful for retrieving data that is common to several visualizers of a [`crate::SpaceViewClass`].
     /// For example, if most visualizers produce ui elements, a concrete [`crate::SpaceViewClass`]

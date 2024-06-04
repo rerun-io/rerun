@@ -1,5 +1,6 @@
-use re_data_store::{DataStore, LatestAtQuery};
-use re_log_types::{EntityPath, RowId, TimeInt};
+use re_chunk::RowId;
+use re_chunk_store::{ChunkStore, LatestAtQuery};
+use re_log_types::{EntityPath, TimeInt};
 use re_types_core::Component;
 use re_types_core::{external::arrow2::array::Array, ComponentName};
 
@@ -48,7 +49,7 @@ impl LatestAtComponentResults {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
             }
-            PromiseResult::Ready(cell) => Some(cell.to_arrow()),
+            PromiseResult::Ready(array) => Some(array),
             PromiseResult::Error(err) => {
                 re_log::log_once!(
                     level,
@@ -131,12 +132,12 @@ impl LatestAtComponentResults {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
             }
-            PromiseResult::Ready(cell) => {
-                match cell.as_arrow_ref().len() {
+            PromiseResult::Ready(array) => {
+                match array.len() {
                     0 => {
                         None // Empty list = no data.
                     }
-                    1 => Some(cell.as_arrow_ref().sliced(0, 1)),
+                    1 => Some(array.sliced(0, 1)),
                     len => {
                         re_log::log_once!(
                             level,
@@ -260,8 +261,8 @@ impl LatestAtComponentResults {
                 None
             }
 
-            PromiseResult::Ready(cell) => {
-                let len = cell.num_instances() as usize;
+            PromiseResult::Ready(array) => {
+                let len = array.len();
 
                 // TODO(#5259): Figure out if/how we'd like to integrate clamping semantics into the
                 // selection panel.
@@ -271,7 +272,7 @@ impl LatestAtComponentResults {
                 let index = usize::min(index, len.saturating_sub(1));
 
                 if len > index {
-                    Some(cell.as_arrow_ref().sliced(index, 1))
+                    Some(array.sliced(index, 1))
                 } else {
                     re_log::log_once!(
                         level,
@@ -338,7 +339,7 @@ impl Caches {
     // TODO(#5607): what should happen if the promise is still pending?
     pub fn latest_at_component_with_log_level<C: Component>(
         &self,
-        store: &DataStore,
+        store: &ChunkStore,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
@@ -401,7 +402,7 @@ impl Caches {
     #[inline]
     pub fn latest_at_component<C: Component>(
         &self,
-        store: &DataStore,
+        store: &ChunkStore,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
@@ -426,7 +427,7 @@ impl Caches {
     #[inline]
     pub fn latest_at_component_quiet<C: Component>(
         &self,
-        store: &DataStore,
+        store: &ChunkStore,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
@@ -443,7 +444,7 @@ impl Caches {
     /// Call [`Self::latest_at_component`] at the given path, walking up the hierarchy until an instance is found.
     pub fn latest_at_component_at_closest_ancestor<C: Component>(
         &self,
-        store: &DataStore,
+        store: &ChunkStore,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,

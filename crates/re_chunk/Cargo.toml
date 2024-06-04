@@ -22,6 +22,16 @@ all-features = true
 [features]
 default = []
 
+## Enable (de)serialization using serde.
+serde = [
+  "dep:serde",
+  "dep:serde_bytes",
+  "re_log_types/serde",
+  "re_string_interner/serde",
+  "re_tuid/serde",
+  "re_types_core/serde",
+]
+
 
 [dependencies]
 
@@ -40,10 +50,8 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow2 = { workspace = true, features = [
-  "io_ipc",
-  "io_print",
-  "compute_comparison",
   "compute_concatenate",
+  "compute_filter",
 ] }
 backtrace.workspace = true
 document-features.workspace = true
@@ -55,12 +63,17 @@ smallvec.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
 
+# Optional dependencies:
+serde = { workspace = true, optional = true, features = ["derive", "rc"] }
+serde_bytes = { workspace = true, optional = true }
+
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 crossbeam.workspace = true
 
 
 [dev-dependencies]
+re_log = { workspace = true, features = ["setup"] }
 criterion.workspace = true
 mimalloc.workspace = true
 similar-asserts.workspace = true

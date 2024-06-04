@@ -1,11 +1,14 @@
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
 
-use re_data_store::LatestAtQuery;
+use std::sync::Arc;
+
+use re_chunk::{Chunk, RowId};
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
-    DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
+    EntityPath, StoreId, TimeInt, TimePoint, Timeline,
 };
 use re_query::PromiseResolver;
 use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
@@ -53,14 +56,11 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let point = MyPoint::new(1.0, 2.0);
         let color = MyColor::from(0xFF0000FF);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_parent.clone(),
-            [&[point] as _, &[color] as _],
-        )?;
+        let chunk = Chunk::builder(entity_path_parent.clone())
+            .with_component_batches(row_id, timepoint, [&[point] as _, &[color] as _])
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
@@ -80,14 +80,11 @@ fn clears() -> anyhow::Result<()> {
         let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let point = MyPoint::new(42.0, 43.0);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_child1.clone(),
-            [&[point] as _],
-        )?;
+        let chunk = Chunk::builder(entity_path_child1.clone())
+            .with_component_batches(row_id, timepoint, [&[point] as _])
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
@@ -104,14 +101,11 @@ fn clears() -> anyhow::Result<()> {
         let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let color = MyColor::from(0x00AA00DD);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_child2.clone(),
-            [&[color] as _],
-        )?;
+        let chunk = Chunk::builder(entity_path_child2.clone())
+            .with_component_batches(row_id, timepoint, [&[color] as _])
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
@@ -130,14 +124,15 @@ fn clears() -> anyhow::Result<()> {
         let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::flat();
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_parent.clone(),
-            clear.as_component_batches().iter().map(|b| b.as_ref()),
-        )?;
+        let chunk = Chunk::builder(entity_path_parent.clone())
+            .with_component_batches(
+                row_id,
+                timepoint,
+                clear.as_component_batches().iter().map(|b| b.as_ref()),
+            )
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
@@ -167,14 +162,15 @@ fn clears() -> anyhow::Result<()> {
         let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::recursive();
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_parent.clone(),
-            clear.as_component_batches().iter().map(|b| b.as_ref()),
-        )?;
+        let chunk = Chunk::builder(entity_path_parent.clone())
+            .with_component_batches(
+                row_id,
+                timepoint,
+                clear.as_component_batches().iter().map(|b| b.as_ref()),
+            )
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
@@ -203,14 +199,11 @@ fn clears() -> anyhow::Result<()> {
         let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let instance = MyIndex(0);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_parent.clone(),
-            [&[instance] as _],
-        )?;
+        let chunk = Chunk::builder(entity_path_parent.clone())
+            .with_component_batches(row_id, timepoint, [&[instance] as _])
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
@@ -234,14 +227,11 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let point = MyPoint::new(42.0, 43.0);
         let color = MyColor::from(0xBBBBBBBB);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_child1.clone(),
-            [&[point] as _, &[color] as _],
-        )?;
+        let chunk = Chunk::builder(entity_path_child1.clone())
+            .with_component_batches(row_id, timepoint, [&[point] as _, &[color] as _])
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
@@ -270,14 +260,11 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let color = MyColor::from(0x00AA00DD);
         let point = MyPoint::new(66.0, 666.0);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_child2.clone(),
-            [&[color] as _, &[point] as _],
-        )?;
+        let chunk = Chunk::builder(entity_path_child2.clone())
+            .with_component_batches(row_id, timepoint, [&[color] as _, &[point] as _])
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
@@ -304,14 +291,11 @@ fn clears() -> anyhow::Result<()> {
         let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let color = MyColor::from(0x00AA00DD);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_grandchild.clone(),
-            [&[color] as _],
-        )?;
+        let chunk = Chunk::builder(entity_path_grandchild.clone())
+            .with_component_batches(row_id, timepoint, [&[color] as _])
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
@@ -334,8 +318,6 @@ fn clears() -> anyhow::Result<()> {
 
 #[test]
 fn clear_and_gc() -> anyhow::Result<()> {
-    use re_data_store::DataStoreStats;
-
     if true {
         // TODO(#6552): Keeping this around for now so we don't forget about it, but this cannot work with
         // read-time clears.
@@ -357,37 +339,36 @@ fn clear_and_gc() -> anyhow::Result<()> {
 
         let point = MyPoint::new(1.0, 2.0);
 
-        let row = DataRow::from_component_batches(
-            RowId::new(),
-            timepoint.clone(),
-            entity_path.clone(),
-            [&[point] as _],
-        )?;
-
-        db.add_data_row(row)?;
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_component_batch(RowId::new(), timepoint.clone(), &[point] as _)
+            .build()?;
+        db.add_chunk(&Arc::new(chunk))?;
+        eprintln!("{}", db.store());
 
         db.gc_everything_but_the_latest_row_on_non_default_timelines();
 
-        let stats = DataStoreStats::from_store(db.store());
-        assert_eq!(stats.temporal.num_rows, 1);
+        let stats = db.store().stats();
+        assert_eq!(stats.temporal_chunks.total_num_rows, 1);
 
-        let clear = DataRow::from_component_batches(
-            RowId::new(),
-            timepoint.clone(),
-            entity_path.clone(),
-            Clear::recursive()
-                .as_component_batches()
-                .iter()
-                .map(|b| b.as_ref()),
-        )?;
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                RowId::new(),
+                timepoint.clone(),
+                Clear::recursive()
+                    .as_component_batches()
+                    .iter()
+                    .map(|b| b.as_ref()),
+            )
+            .build()?;
 
-        db.add_data_row(clear)?;
+        db.add_chunk(&Arc::new(chunk))?;
+        eprintln!("{}", db.store());
 
         db.gc_everything_but_the_latest_row_on_non_default_timelines();
 
         // No rows should remain because the table should have been purged
-        let stats = DataStoreStats::from_store(db.store());
-        assert_eq!(stats.temporal.num_rows, 0);
+        let stats = db.store().stats();
+        assert_eq!(stats.temporal_chunks.total_num_rows, 0);
 
         // EntityTree should be empty again when we end since everything was GC'd
         assert_eq!(db.tree().num_children_and_fields(), 0);

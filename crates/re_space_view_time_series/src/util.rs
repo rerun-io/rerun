@@ -83,7 +83,7 @@ pub fn points_to_series(
     entity_path: &EntityPath,
     time_per_pixel: f64,
     points: Vec<PlotPoint>,
-    store: &re_data_store::DataStore,
+    store: &re_chunk_store::ChunkStore,
     query: &ViewQuery<'_>,
     series_name: Option<Utf8>,
     aggregator: AggregationPolicy,

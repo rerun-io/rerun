@@ -2,8 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 
-use re_data_store::LatestAtQuery;
-use re_log_types::{DataCell, DataRow, EntityPath, RowId};
+use re_chunk::{Chunk, RowId};
+use re_chunk_store::LatestAtQuery;
+use re_log_types::EntityPath;
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -167,8 +168,8 @@ pub fn add_new_default(
 
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.
-                for (component, viz) in component_to_vis {
-                    if active_overrides.contains(component) {
+                for (&component_name, viz) in component_to_vis {
+                    if active_overrides.contains(&component_name) {
                         continue;
                     }
 
@@ -177,46 +178,45 @@ pub fn add_new_default(
                     if !ctx
                         .viewer_ctx
                         .component_ui_registry
-                        .registered_ui_types(*component)
+                        .registered_ui_types(component_name)
                         .contains(ComponentUiTypes::SingleLineEditor)
                     {
                         continue;
                     }
 
-                    if ui.button(component.short_name()).clicked() {
+                    if ui.button(component_name.short_name()).clicked() {
                         // We are creating a new override. We need to decide what initial value to give it.
                         // - First see if there's an existing splat in the recording.
                         // - Next see if visualizer system wants to provide a value.
                         // - Finally, fall back on the default value from the component registry.
 
                         // TODO(jleibs): Is this the right place for fallbacks to come from?
-                        let Some(mut initial_data) = ctx
+                        let Some(initial_data) = ctx
                             .visualizer_collection
                             .get_by_identifier(*viz)
                             .ok()
-                            .and_then(|sys| {
-                                sys.fallback_for(&query_context, *component)
-                                    .map(|fallback| DataCell::from_arrow(*component, fallback))
-                                    .ok()
-                            })
+                            .and_then(|sys| sys.fallback_for(&query_context, component_name).ok())
                         else {
-                            re_log::warn!("Could not identify an initial value for: {}", component);
+                            re_log::warn!(
+                                "Could not identify an initial value for: {}",
+                                component_name
+                            );
                             return;
                         };
 
-                        initial_data.compute_size_bytes();
-
-                        match DataRow::from_cells(
-                            RowId::new(),
-                            ctx.blueprint_timepoint_for_writes(),
-                            defaults_path.clone(),
-                            [initial_data],
-                        ) {
-                            Ok(row) => {
+                        match Chunk::builder(defaults_path.clone())
+                            .with_row(
+                                RowId::new(),
+                                ctx.blueprint_timepoint_for_writes(),
+                                [(component_name, initial_data)],
+                            )
+                            .build()
+                        {
+                            Ok(chunk) => {
                                 ctx.viewer_ctx.command_sender.send_system(
                                     SystemCommand::UpdateBlueprint(
                                         ctx.blueprint_db().store_id().clone(),
-                                        vec![row],
+                                        vec![chunk],
                                     ),
                                 );
                             }
