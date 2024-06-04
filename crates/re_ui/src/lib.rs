@@ -524,7 +524,7 @@ impl ReUi {
 
     /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
     ///
-    /// The span is determined using [`crate::UiExt::get_full_span`]. Contrary to
+    /// The span is determined using [`crate::UiExt::full_span`]. Contrary to
     /// [`egui::Separator`], this separator allocates a single pixel in height, as spacing is
     /// typically handled by content when full span highlighting is used.
     pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
@@ -540,7 +540,7 @@ impl ReUi {
             let painter = ui.painter();
 
             painter.hline(
-                ui.get_full_span(),
+                ui.full_span(),
                 painter.round_to_pixel(rect.center().y),
                 stroke,
             );
@@ -644,7 +644,7 @@ impl ReUi {
             |ui| {
                 // draw horizontal separator lines
                 let rect = egui::Rect::from_x_y_ranges(
-                    ui.get_full_span(),
+                    ui.full_span(),
                     ui.available_rect_before_wrap().y_range(),
                 );
                 let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
@@ -870,7 +870,7 @@ impl ReUi {
                 ui.painter().galley(text_pos, galley, visuals.text_color());
 
                 // Let the rect cover the full panel width:
-                let bg_rect = egui::Rect::from_x_y_ranges(ui.get_full_span(), rect.y_range());
+                let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
                 ui.painter().set(
                     background_frame,
@@ -1322,7 +1322,7 @@ pub trait UiExt {
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
     /// Retrieve the current full-span scope.
-    fn get_full_span(&self) -> egui::Rangef {
+    fn full_span(&self) -> egui::Rangef {
         for node in self.ui().stack().iter() {
             if node.has_visible_frame()
                 || node.is_panel_ui()

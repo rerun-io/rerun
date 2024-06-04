@@ -246,7 +246,7 @@ impl<'a> ListItem<'a> {
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
         let layout_info = LayoutInfoStack::top(ui.ctx());
-        let bg_rect = egui::Rect::from_x_y_ranges(ui.get_full_span(), rect.y_range());
+        let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
         // Record the max allocated width.
         layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);
