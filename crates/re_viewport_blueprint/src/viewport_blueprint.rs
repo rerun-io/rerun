@@ -5,11 +5,11 @@ use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use re_data_store::LatestAtQuery;
-use re_types::SpaceViewClassIdentifier;
+use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use smallvec::SmallVec;
 
 use crate::SpaceViewBlueprint;
-use re_entity_db::external::re_query::PromiseResult;
+use re_entity_db::external::re_query::{LatestAtResults, PromiseResolver};
 use re_entity_db::EntityPath;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_types_blueprint::blueprint::components::{
@@ -69,27 +69,37 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let re_types_blueprint::blueprint::archetypes::ViewportBlueprint {
-            root_container,
-            maximized,
-            auto_layout,
-            auto_space_views,
-            past_viewer_recommendations,
-        } = match blueprint_db.latest_at_archetype(&VIEWPORT_PATH.into(), query) {
-            PromiseResult::Pending => {
-                // TODO(#5607): what should happen if the promise is still pending?
-                Default::default()
-            }
-            PromiseResult::Ready(arch) => arch.map_or_else(Default::default, |(_, arch)| arch),
-            PromiseResult::Error(err) => {
-                if cfg!(debug_assertions) {
-                    re_log::error!("Failed to load viewport blueprint: {err}.");
-                } else {
-                    re_log::debug!("Failed to load viewport blueprint: {err}.");
-                }
-                Default::default()
-            }
-        };
+        let resolver = blueprint_db.resolver();
+        let results = blueprint_db.query_caches().latest_at(
+            blueprint_db.store(),
+            query,
+            &VIEWPORT_PATH.into(),
+            re_types_blueprint::blueprint::archetypes::ViewportBlueprint::all_components()
+                .iter()
+                .copied(),
+        );
+
+        fn get_instance<T: re_types::Component>(
+            results: &LatestAtResults,
+            resolver: &PromiseResolver,
+        ) -> Option<T> {
+            results
+                .get(T::name())
+                .and_then(|r| r.try_instance(resolver, 0))
+        }
+        fn get_dense<'a, T: re_types::Component>(
+            results: &'a LatestAtResults,
+            resolver: &PromiseResolver,
+        ) -> Option<&'a [T]> {
+            results.get(T::name()).and_then(|r| r.dense(resolver))
+        }
+
+        let root_container: Option<RootContainer> = get_instance(&results, resolver);
+        let maximized: Option<SpaceViewMaximized> = get_instance(&results, resolver);
+        let auto_layout: Option<AutoLayout> = get_instance(&results, resolver);
+        let auto_space_views: Option<AutoSpaceViews> = get_instance(&results, resolver);
+        let past_viewer_recommendations: Option<&[ViewerRecommendationHash]> =
+            get_dense(&results, resolver);
 
         let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
             .tree()
@@ -149,7 +159,8 @@ impl ViewportBlueprint {
 
         let past_viewer_recommendations = past_viewer_recommendations
             .unwrap_or_default()
-            .into_iter()
+            .iter()
+            .cloned()
             .collect();
 
         Self {
