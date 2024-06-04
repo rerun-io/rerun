@@ -9,105 +9,138 @@ import numpy as np
 
 # =====================================
 # API RE-EXPORTS
+# Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
+# Background: https://github.com/microsoft/pyright/blob/1.1.365/docs/typed-libraries.md#library-interface
+#
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
-from ._image import ImageEncoded, ImageFormat
+from . import (
+    blueprint as blueprint,
+    experimental as experimental,
+)
+from ._image import (
+    ImageEncoded as ImageEncoded,
+    ImageFormat as ImageFormat,
+)
 from ._log import (
-    AsComponents,
-    ComponentBatchLike,
-    IndicatorComponentBatch,
-    escape_entity_path_part,
-    log,
-    log_components,
-    log_file_from_contents,
-    log_file_from_path,
-    new_entity_path,
+    AsComponents as AsComponents,
+    ComponentBatchLike as ComponentBatchLike,
+    IndicatorComponentBatch as IndicatorComponentBatch,
+    escape_entity_path_part as escape_entity_path_part,
+    log as log,
+    log_components as log_components,
+    log_file_from_contents as log_file_from_contents,
+    log_file_from_path as log_file_from_path,
+    new_entity_path as new_entity_path,
 )
-from .any_value import AnyValues
+from .any_value import (
+    AnyValues as AnyValues,
+)
 from .archetypes import (
-    AnnotationContext,
-    Arrows2D,
-    Arrows3D,
-    Asset3D,
-    BarChart,
-    Boxes2D,
-    Boxes3D,
-    Clear,
-    DepthImage,
-    DisconnectedSpace,
-    Image,
-    LineStrips2D,
-    LineStrips3D,
-    Mesh3D,
-    Pinhole,
-    Points2D,
-    Points3D,
-    Scalar,
-    SegmentationImage,
-    SeriesLine,
-    SeriesPoint,
-    Tensor,
-    TextDocument,
-    TextLog,
-    Transform3D,
-    ViewCoordinates,
+    AnnotationContext as AnnotationContext,
+    Arrows2D as Arrows2D,
+    Arrows3D as Arrows3D,
+    Asset3D as Asset3D,
+    BarChart as BarChart,
+    Boxes2D as Boxes2D,
+    Boxes3D as Boxes3D,
+    Clear as Clear,
+    DepthImage as DepthImage,
+    DisconnectedSpace as DisconnectedSpace,
+    Image as Image,
+    LineStrips2D as LineStrips2D,
+    LineStrips3D as LineStrips3D,
+    Mesh3D as Mesh3D,
+    Pinhole as Pinhole,
+    Points2D as Points2D,
+    Points3D as Points3D,
+    Scalar as Scalar,
+    SegmentationImage as SegmentationImage,
+    SeriesLine as SeriesLine,
+    SeriesPoint as SeriesPoint,
+    Tensor as Tensor,
+    TextDocument as TextDocument,
+    TextLog as TextLog,
+    Transform3D as Transform3D,
+    ViewCoordinates as ViewCoordinates,
 )
-from .archetypes.boxes2d_ext import Box2DFormat
-from .blueprint.api import BlueprintLike
+from .archetypes.boxes2d_ext import (
+    Box2DFormat as Box2DFormat,
+)
+from .blueprint.api import (
+    BlueprintLike as BlueprintLike,
+)
 from .components import (
-    Material,
-    MediaType,
-    OutOfTreeTransform3D,
-    OutOfTreeTransform3DBatch,
-    TextLogLevel,
+    Material as Material,
+    MediaType as MediaType,
+    OutOfTreeTransform3D as OutOfTreeTransform3D,
+    OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
+    TextLogLevel as TextLogLevel,
 )
 from .datatypes import (
-    AnnotationInfo,
-    ClassDescription,
-    Quaternion,
-    RotationAxisAngle,
-    Scale3D,
-    TensorData,
-    TimeInt,
-    TimeRange,
-    TimeRangeBoundary,
-    TranslationAndMat3x3,
-    TranslationRotationScale3D,
-    VisibleTimeRange,
+    AnnotationInfo as AnnotationInfo,
+    ClassDescription as ClassDescription,
+    Quaternion as Quaternion,
+    RotationAxisAngle as RotationAxisAngle,
+    Scale3D as Scale3D,
+    TensorData as TensorData,
+    TimeInt as TimeInt,
+    TimeRange as TimeRange,
+    TimeRangeBoundary as TimeRangeBoundary,
+    TranslationAndMat3x3 as TranslationAndMat3x3,
+    TranslationRotationScale3D as TranslationRotationScale3D,
+    VisibleTimeRange as VisibleTimeRange,
 )
-from .error_utils import set_strict_mode
-from .logging_handler import LoggingHandler
-from .memory import MemoryRecording, memory_recording
-from .notebook import notebook_show
+from .error_utils import (
+    set_strict_mode as set_strict_mode,
+)
+from .logging_handler import (
+    LoggingHandler as LoggingHandler,
+)
+from .memory import (
+    MemoryRecording as MemoryRecording,
+    memory_recording as memory_recording,
+)
+from .notebook import (
+    notebook_show as notebook_show,
+)
 from .recording_stream import (
-    BinaryStream,
-    RecordingStream,
-    binary_stream,
-    get_application_id,
-    get_data_recording,
-    get_global_data_recording,
-    get_recording_id,
-    get_thread_local_data_recording,
-    is_enabled,
-    new_recording,
-    recording_stream_generator_ctx,
-    set_global_data_recording,
-    set_thread_local_data_recording,
-    thread_local_stream,
+    BinaryStream as BinaryStream,
+    RecordingStream as RecordingStream,
+    binary_stream as binary_stream,
+    get_application_id as get_application_id,
+    get_data_recording as get_data_recording,
+    get_global_data_recording as get_global_data_recording,
+    get_recording_id as get_recording_id,
+    get_thread_local_data_recording as get_thread_local_data_recording,
+    is_enabled as is_enabled,
+    new_recording as new_recording,
+    recording_stream_generator_ctx as recording_stream_generator_ctx,
+    set_global_data_recording as set_global_data_recording,
+    set_thread_local_data_recording as set_thread_local_data_recording,
+    thread_local_stream as thread_local_stream,
 )
-from .script_helpers import script_add_args, script_setup, script_teardown
-from .sinks import connect, disconnect, save, send_blueprint, serve, spawn, stdout
+from .script_helpers import (
+    script_add_args as script_add_args,
+    script_setup as script_setup,
+    script_teardown as script_teardown,
+)
+from .sinks import (
+    connect as connect,
+    disconnect as disconnect,
+    save as save,
+    send_blueprint as send_blueprint,
+    serve as serve,
+    spawn as spawn,
+    stdout as stdout,
+)
 from .time import (
-    disable_timeline,
-    reset_time,
-    set_time_nanos,
-    set_time_seconds,
-    set_time_sequence,
+    disable_timeline as disable_timeline,
+    reset_time as reset_time,
+    set_time_nanos as set_time_nanos,
+    set_time_seconds as set_time_seconds,
+    set_time_sequence as set_time_sequence,
 )
-
-# Import experimental last
-from . import experimental  # isort: skip
-from . import blueprint
 
 # =====================================
 # UTILITIES
@@ -320,7 +353,6 @@ def _register_on_fork() -> None:
 
 
 _register_on_fork()
-
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 

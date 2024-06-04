@@ -71,6 +71,14 @@ pub struct StartupOptions {
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
 
+    /// Fullscreen is handled by JS on web.
+    ///
+    /// This holds some callbacks which we use to communicate
+    /// about fullscreen state to JS.
+    #[cfg(target_arch = "wasm32")]
+    pub fullscreen_options: Option<crate::web::FullscreenOptions>,
+
+    /// Default overrides for state of top/side/bottom panels.
     pub panel_state_overrides: PanelStateOverrides,
 }
 
@@ -94,6 +102,9 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+
+            #[cfg(target_arch = "wasm32")]
+            fullscreen_options: Default::default(),
 
             panel_state_overrides: Default::default(),
         }
@@ -163,6 +174,9 @@ pub struct App {
 
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
+
+    /// Lookup table for component placeholder values, used whenever no fallback was provided explicitly.
+    component_placeholders: re_viewer_context::ComponentPlaceholders,
 }
 
 impl App {
@@ -241,6 +255,19 @@ impl App {
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
+        let component_base_fallbacks = {
+            re_tracing::profile_scope!("component_base_fallbacks");
+            match crate::component_defaults::list_default_components() {
+                Ok(defaults) => defaults.collect(),
+                Err(err) => {
+                    re_log::error!(
+                        "Failed to create list of serialized default values for components: {err}"
+                    );
+                    Default::default()
+                }
+            }
+        };
+
         Self {
             build_info,
             startup_options,
@@ -283,6 +310,8 @@ impl App {
 
             panel_state_overrides_active: true,
             panel_state_overrides,
+
+            component_placeholders: component_base_fallbacks,
         }
     }
 
@@ -620,10 +649,8 @@ impl App {
                 self.egui_debug_panel_open ^= true;
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => {
-                let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
-                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+                self.toggle_fullscreen();
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -950,6 +977,7 @@ impl App {
                                 hide: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
+                            &self.component_placeholders,
                         );
                     }
                     render_ctx.before_submit();
@@ -1305,6 +1333,43 @@ impl App {
         } else {
             1.0
         }
+    }
+
+    pub(crate) fn toggle_fullscreen(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let egui_ctx = &self.re_ui.egui_ctx;
+            let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(options) = &self.startup_options.fullscreen_options {
+                // Tell JS to toggle fullscreen.
+                if let Err(err) = options.on_toggle.call() {
+                    re_log::error!("{}", crate::web_tools::string_from_js_value(err));
+                };
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn is_fullscreen_allowed(&self) -> bool {
+        self.startup_options.fullscreen_options.is_some()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn is_fullscreen_mode(&self) -> bool {
+        if let Some(options) = &self.startup_options.fullscreen_options {
+            // Ask JS if fullscreen is on or not.
+            match options.get_state.call() {
+                Ok(v) => return v.is_truthy(),
+                Err(err) => re_log::error_once!("{}", crate::web_tools::string_from_js_value(err)),
+            }
+        }
+
+        false
     }
 }
 

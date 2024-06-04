@@ -72,37 +72,35 @@ impl SelectionPanel {
         ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
-            re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-                ctx.re_ui.panel_content(ui, |_, ui| {
-                    let hover = "The Selection View contains information and options about \
+            ctx.re_ui.panel_content(ui, |_, ui| {
+                let hover = "The Selection View contains information and options about \
                     the currently selected object(s)";
-                    ctx.re_ui
-                        .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
-                            let mut history = ctx.selection_state().history.lock();
-                            if let Some(selection) = self.selection_state_ui.selection_ui(
-                                ctx.re_ui,
-                                ui,
-                                blueprint,
-                                &mut history,
-                            ) {
-                                ctx.selection_state().set_selection(selection);
-                            }
-                        });
-                });
-
-                // move the vertical spacing between the title and the content to _inside_ the scroll
-                // area
-                ui.add_space(-ui.spacing().item_spacing.y);
-
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
-                        ui.add_space(ui.spacing().item_spacing.y);
-                        ctx.re_ui.panel_content(ui, |_, ui| {
-                            self.contents(ctx, blueprint, view_states, ui);
-                        });
+                ctx.re_ui
+                    .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
+                        let mut history = ctx.selection_state().history.lock();
+                        if let Some(selection) = self.selection_state_ui.selection_ui(
+                            ctx.re_ui,
+                            ui,
+                            blueprint,
+                            &mut history,
+                        ) {
+                            ctx.selection_state().set_selection(selection);
+                        }
                     });
             });
+
+            // move the vertical spacing between the title and the content to _inside_ the scroll
+            // area
+            ui.add_space(-ui.spacing().item_spacing.y);
+
+            egui::ScrollArea::both()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    ui.add_space(ui.spacing().item_spacing.y);
+                    ctx.re_ui.panel_content(ui, |_, ui| {
+                        self.contents(ctx, blueprint, view_states, ui);
+                    });
+                });
         });
 
         // run modals (these are noop if the modals are not active)
@@ -162,24 +160,34 @@ impl SelectionPanel {
                 }
 
                 // Special override section for space-view-entities
-                if let Item::DataResult(space_view_id, instance_path) = item {
-                    if let Some(space_view) = blueprint.space_views.get(space_view_id) {
+                if let Item::DataResult(view_id, instance_path) = item {
+                    if let Some(view) = blueprint.space_views.get(view_id) {
                         // TODO(jleibs): Overrides still require special handling inside the visualizers.
                         // For now, only show the override section for TimeSeries until support is implemented
                         // generically.
-                        if *space_view.class_identifier() == TimeSeriesSpaceView::identifier()
+                        if view.class_identifier() == TimeSeriesSpaceView::identifier()
                             || ctx.app_options.experimental_visualizer_selection
                         {
                             ctx.re_ui
                                 .large_collapsing_header(ui, "Visualizers", true, |ui| {
-                                    override_visualizer_ui(ctx, space_view, instance_path, ui);
+                                    override_visualizer_ui(ctx, view, instance_path, ui);
                                 });
+
+                            let view_state = view_states
+                                .get_mut(
+                                    ctx.space_view_class_registry,
+                                    *view_id,
+                                    view.class_identifier(),
+                                )
+                                .view_state
+                                .as_ref();
+
                             ctx.re_ui.large_collapsing_header(
                                 ui,
                                 "Component Overrides",
                                 true,
                                 |ui| {
-                                    override_ui(ctx, space_view, instance_path, ui);
+                                    override_ui(ctx, view, view_state, instance_path, ui);
                                 },
                             );
                         }
@@ -271,12 +279,12 @@ impl SelectionPanel {
         ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
         if let Some(space_view) = blueprint.space_view(&space_view_id) {
-            let class_identifier = *space_view.class_identifier();
+            let class_identifier = space_view.class_identifier();
 
-            let space_view_state = view_states.view_state_mut(
+            let space_view_state = view_states.get_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
-                &class_identifier,
+                class_identifier,
             );
 
             query_range_ui_space_view(ctx, ui, space_view);
@@ -519,16 +527,14 @@ fn container_children(
         ..Default::default()
     }
     .show(ui, |ui| {
-        re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-            list_item::list_item_scope(ui, "children list", |ui| {
-                ui.spacing_mut().item_spacing.y = 0.0;
+        list_item::list_item_scope(ui, "children list", |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
 
-                egui::Frame {
-                    inner_margin: egui::Margin::symmetric(4.0, 0.0),
-                    ..Default::default()
-                }
-                .show(ui, show_content);
-            });
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(4.0, 0.0),
+                ..Default::default()
+            }
+            .show(ui, show_content);
         });
     });
 }

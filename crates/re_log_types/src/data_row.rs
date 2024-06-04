@@ -1,4 +1,5 @@
 use ahash::HashSetExt;
+use arrow2::datatypes::{Field, Metadata};
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
@@ -597,9 +598,16 @@ impl std::fmt::Display for DataRow {
             )?;
         }
 
-        re_format_arrow::format_table(
+        re_format_arrow::format_dataframe(
+            Metadata::default(),
+            self.cells.iter().map(|cell| {
+                Field::new(
+                    cell.component_name().to_string(),
+                    cell.datatype().clone(),
+                    false,
+                )
+            }),
             self.cells.iter().map(|cell| cell.to_arrow_monolist()),
-            self.cells.iter().map(|cell| cell.component_name()),
         )
         .fmt(f)
     }

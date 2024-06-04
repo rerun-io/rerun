@@ -41,9 +41,9 @@ You can use the mouse to scrub the vertical time selector line to jump to arbitr
 The stream view allows panning with right click and zooming with `ctrl/cmd + scroll`.
 
 
-The tree on the left shows you all Entities that were logged for this timeline.
-When you expand an Entity you will see both the Components that are associated with it, as well as any child Entities.
-Selecting Entities or Events in the Streams view shows additional information in the Selection panel about them respectively.
+The tree on the left shows you all entities that were logged for this timeline.
+When you expand an entity you will see both the components that are associated with it, as well as any child entities.
+Selecting entities or events in the streams view shows additional information in the selection panel about them respectively.
 
 ### Discontinuity skipping
 Rerun automatically detects discontinuities in the selected timeline and will skip over them while playing.

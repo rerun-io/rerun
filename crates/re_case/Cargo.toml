@@ -1,0 +1,27 @@
+[package]
+name = "re_case"
+authors.workspace = true
+description = "Case conversions, the way Rerun likes them"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+
+[dependencies]
+convert_case.workspace = true

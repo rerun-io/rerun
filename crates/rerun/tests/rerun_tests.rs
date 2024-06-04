@@ -5,11 +5,11 @@
 /// See for instance <https://github.com/rerun-io/rerun/issues/4415>.
 #[test]
 fn test_row_id_order() {
-    let mut batcher_config = rerun::log::DataTableBatcherConfig::NEVER;
+    let mut batcher_config = rerun::log::ChunkBatcherConfig::NEVER;
     batcher_config.hooks.on_insert = Some(std::sync::Arc::new(|rows| {
         if let [.., penultimate, ultimate] = rows {
             assert!(
-                penultimate.row_id() <= ultimate.row_id(),
+                penultimate.row_id <= ultimate.row_id,
                 "Rows coming to batcher out-of-order"
             );
         }

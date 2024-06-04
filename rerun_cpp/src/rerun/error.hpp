@@ -53,7 +53,6 @@ namespace rerun {
         _CategoryArrow = 0x0000'1000,
         ArrowFfiSchemaImportError,
         ArrowFfiArrayImportError,
-        ArrowDataCellError,
 
         // Errors relating to file IO.
         _CategoryFileIO = 0x0001'0000,

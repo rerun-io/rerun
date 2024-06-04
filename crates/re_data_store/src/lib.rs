@@ -2,7 +2,7 @@
 //! using the [`arrow2`] crate.
 //!
 //! This crate is an in-memory time series database for Rerun log data.
-//! It is indexed by Entity path, component, timeline, and time.
+//! It is indexed by entity path, component, timeline, and time.
 //! It supports out-of-order insertions, and fast `O(log(N))` queries.
 //!
 //! * See [`DataStore`] for an overview of the core data structures.

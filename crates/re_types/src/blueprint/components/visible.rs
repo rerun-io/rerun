@@ -53,6 +53,22 @@ impl From<Visible> for bool {
     }
 }
 
+impl std::ops::Deref for Visible {
+    type Target = bool;
+
+    #[inline]
+    fn deref(&self) -> &bool {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Visible {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut bool {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Visible);
 
 impl ::re_types_core::Loggable for Visible {

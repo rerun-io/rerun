@@ -35,7 +35,7 @@ pub(crate) fn tree_from_space_views(
             )
         })
         .map(|(space_view_id, space_view)| {
-            let class_identifier = *space_view.class_identifier();
+            let class_identifier = space_view.class_identifier();
             let layout_priority = space_view
                 .class(space_view_class_registry)
                 .layout_priority();

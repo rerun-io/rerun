@@ -248,25 +248,25 @@ impl SpaceViewClassRegistry {
     }
 
     /// Queries a Space View type by class name, returning `None` if it is not registered.
-    fn get_class(&self, name: &SpaceViewClassIdentifier) -> Option<&dyn SpaceViewClass> {
+    fn get_class(&self, name: SpaceViewClassIdentifier) -> Option<&dyn SpaceViewClass> {
         self.space_view_classes
-            .get(name)
+            .get(&name)
             .map(|boxed| boxed.class.as_ref())
     }
 
     /// Returns the user-facing name for the given space view class.
     ///
     /// If the class is unknown, returns a placeholder name.
-    pub fn display_name(&self, name: &SpaceViewClassIdentifier) -> &'static str {
+    pub fn display_name(&self, name: SpaceViewClassIdentifier) -> &'static str {
         self.space_view_classes
-            .get(name)
+            .get(&name)
             .map_or("<unknown space view class>", |boxed| {
                 boxed.class.display_name()
             })
     }
 
     /// Queries a Space View type by class name and logs if it fails, returning a placeholder class.
-    pub fn get_class_or_log_error(&self, name: &SpaceViewClassIdentifier) -> &dyn SpaceViewClass {
+    pub fn get_class_or_log_error(&self, name: SpaceViewClassIdentifier) -> &dyn SpaceViewClass {
         if let Some(result) = self.get_class(name) {
             result
         } else {

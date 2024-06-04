@@ -119,19 +119,19 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Boxes3DIndicator".into(),
-            "rerun.components.Color".into(),
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
+            "rerun.components.Color".into(),
+            "rerun.components.Boxes3DIndicator".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ClassId".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 
@@ -139,13 +139,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSizes3D".into(),
-            "rerun.components.Boxes3DIndicator".into(),
-            "rerun.components.Color".into(),
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.components.Color".into(),
+            "rerun.components.Boxes3DIndicator".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 

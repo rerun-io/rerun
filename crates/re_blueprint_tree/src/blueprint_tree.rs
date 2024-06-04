@@ -469,7 +469,7 @@ impl BlueprintTree {
                     list_item::LabelContent::new("$origin")
                         .subdued(true)
                         .italics(true)
-                        .with_icon(&re_ui::icons::LINK),
+                        .with_icon(&re_ui::icons::INTERNAL_LINK),
                 )
                 .on_hover_text(
                     "This subtree corresponds to the Space View's origin, and is displayed above \

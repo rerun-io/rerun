@@ -55,6 +55,22 @@ impl From<ColumnShare> for f32 {
     }
 }
 
+impl std::ops::Deref for ColumnShare {
+    type Target = f32;
+
+    #[inline]
+    fn deref(&self) -> &f32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ColumnShare {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut f32 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(ColumnShare);
 
 impl ::re_types_core::Loggable for ColumnShare {

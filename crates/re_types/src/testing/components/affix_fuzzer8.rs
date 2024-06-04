@@ -51,6 +51,22 @@ impl From<AffixFuzzer8> for Option<f32> {
     }
 }
 
+impl std::ops::Deref for AffixFuzzer8 {
+    type Target = Option<f32>;
+
+    #[inline]
+    fn deref(&self) -> &Option<f32> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer8 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<f32> {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer8);
 
 impl ::re_types_core::Loggable for AffixFuzzer8 {

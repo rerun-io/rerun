@@ -179,7 +179,7 @@ impl ViewportBlueprint {
             && self
                 .space_views
                 .values()
-                .all(|sv| sv.class_identifier() == &SpaceViewClassIdentifier::invalid())
+                .all(|sv| sv.class_identifier() == SpaceViewClassIdentifier::invalid())
     }
 
     pub fn space_view_ids(&self) -> impl Iterator<Item = &SpaceViewId> + '_ {
@@ -365,7 +365,7 @@ impl ViewportBlueprint {
             let existing_path_filters = self
                 .space_views
                 .values()
-                .filter(|space_view| space_view.class_identifier() == &class_id)
+                .filter(|space_view| space_view.class_identifier() == class_id)
                 .map(|space_view| &space_view.contents.entity_path_filter)
                 .collect::<Vec<_>>();
             recommended_space_views.retain(|recommended_view| {

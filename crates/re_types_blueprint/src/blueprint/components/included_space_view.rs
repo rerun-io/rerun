@@ -61,6 +61,13 @@ impl std::ops::Deref for IncludedSpaceView {
     }
 }
 
+impl std::ops::DerefMut for IncludedSpaceView {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Uuid {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(IncludedSpaceView);
 
 impl ::re_types_core::Loggable for IncludedSpaceView {

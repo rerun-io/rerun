@@ -8,7 +8,6 @@ mod syntax_highlighting;
 mod toggle_switch;
 
 pub mod drag_and_drop;
-pub mod full_span;
 pub mod icons;
 pub mod list_item;
 pub mod modal;
@@ -275,6 +274,18 @@ impl ReUi {
             .color(style.visuals.error_fg_color)
     }
 
+    /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
+    pub fn error_label(&self, ui: &mut egui::Ui, error_text: &str) -> egui::Response {
+        let label = egui::Label::new(self.error_text("Error"))
+            .selectable(false)
+            .sense(egui::Sense::click());
+        let response = ui.add(label);
+        if response.clicked() {
+            ui.ctx().copy_text(error_text.to_owned());
+        }
+        response.on_hover_text(error_text)
+    }
+
     /// The color we use to mean "loop this selection"
     pub fn loop_selection_color() -> egui::Color32 {
         egui::Color32::from_rgb(1, 37, 105) // from figma 2023-02-09
@@ -513,9 +524,9 @@ impl ReUi {
 
     /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
     ///
-    /// The span is determined using [`crate::full_span`]. Contrary to [`egui::Separator`], this
-    /// separator allocates a single pixel in height, as spacing is typically handled by content
-    /// when full span highlighting is used.
+    /// The span is determined using [`crate::UiExt::full_span`]. Contrary to
+    /// [`egui::Separator`], this separator allocates a single pixel in height, as spacing is
+    /// typically handled by content when full span highlighting is used.
     pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
         let height = 1.0;
 
@@ -529,7 +540,7 @@ impl ReUi {
             let painter = ui.painter();
 
             painter.hline(
-                crate::full_span::get_full_span(ui),
+                ui.full_span(),
                 painter.round_to_pixel(rect.center().y),
                 stroke,
             );
@@ -572,16 +583,14 @@ impl ReUi {
                     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
                         ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
-                        crate::full_span::full_span_scope(ui, ui.cursor().x_range(), |ui| {
-                            crate::list_item::list_item_scope(ui, popup_id, |ui| {
-                                egui::ScrollArea::vertical().show(ui, |ui| {
-                                    egui::Frame {
-                                        //TODO(ab): use design token
-                                        inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                        ..Default::default()
-                                    }
-                                    .show(ui, |ui| ret = Some(add_contents(ui)))
-                                })
+                        crate::list_item::list_item_scope(ui, popup_id, |ui| {
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                egui::Frame {
+                                    //TODO(ab): use design token
+                                    inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                    ..Default::default()
+                                }
+                                .show(ui, |ui| ret = Some(add_contents(ui)))
                             })
                         })
                     })
@@ -635,7 +644,7 @@ impl ReUi {
             |ui| {
                 // draw horizontal separator lines
                 let rect = egui::Rect::from_x_y_ranges(
-                    crate::full_span::get_full_span(ui),
+                    ui.full_span(),
                     ui.available_rect_before_wrap().y_range(),
                 );
                 let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
@@ -861,10 +870,7 @@ impl ReUi {
                 ui.painter().galley(text_pos, galley, visuals.text_color());
 
                 // Let the rect cover the full panel width:
-                let bg_rect = egui::Rect::from_x_y_ranges(
-                    crate::full_span::get_full_span(ui),
-                    rect.y_range(),
-                );
+                let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
                 ui.painter().set(
                     background_frame,
@@ -1303,12 +1309,41 @@ pub fn drop_down_menu(
     egui::ComboBox::from_id_source(id_source)
         .selected_text(selected_text)
         .show_ui(ui, |ui| {
-            let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
-
             list_item::list_item_scope(ui, "inner_scope", |ui| {
-                full_span::full_span_scope(ui, background_x_range, |ui| {
-                    content(ui);
-                });
+                content(ui);
             });
         });
+}
+
+/// Rerun custom extensions to [`egui::Ui`].
+// TODO(#4569): move everything here
+pub trait UiExt {
+    fn ui(&self) -> &egui::Ui;
+    fn ui_mut(&mut self) -> &mut egui::Ui;
+
+    /// Retrieve the current full-span scope.
+    fn full_span(&self) -> egui::Rangef {
+        for node in self.ui().stack().iter() {
+            if node.has_visible_frame()
+                || node.is_panel_ui()
+                || node.is_root_ui()
+                || node.kind == Some(egui::UiKind::TableCell)
+            {
+                return (node.max_rect + node.frame.inner_margin).x_range();
+            }
+        }
+
+        // should never happen
+        egui::Rangef::EVERYTHING
+    }
+}
+
+impl UiExt for egui::Ui {
+    fn ui(&self) -> &egui::Ui {
+        self
+    }
+
+    fn ui_mut(&mut self) -> &mut egui::Ui {
+        self
+    }
 }

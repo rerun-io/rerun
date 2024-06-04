@@ -35,7 +35,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// in a format with downsampled chroma, such as NV12 or YUY2.
 /// For file formats, the shape is used as a hint, for chroma downsampled format
 /// the shape has to be the shape of the decoded image.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[repr(transparent)]
 pub struct TensorData(pub crate::datatypes::TensorData);
 
@@ -70,6 +70,13 @@ impl std::ops::Deref for TensorData {
     #[inline]
     fn deref(&self) -> &crate::datatypes::TensorData {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for TensorData {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorData {
+        &mut self.0
     }
 }
 

@@ -20,9 +20,10 @@ use re_types::{
 };
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
+    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
@@ -711,6 +712,7 @@ impl VisualizerSystem for ImageVisualizer {
         &mut self,
         ctx: &ViewerContext<'_>,
         view_query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let Some(render_ctx) = ctx.render_ctx else {
@@ -840,6 +842,10 @@ impl VisualizerSystem for ImageVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
 
 impl ImageVisualizer {
@@ -873,7 +879,7 @@ impl ImageVisualizer {
             |ctx, entity_path, entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
@@ -917,3 +923,5 @@ impl ImageVisualizer {
         Ok(())
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => []);

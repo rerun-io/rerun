@@ -71,6 +71,22 @@ impl From<ViewCoordinates> for [u8; 3usize] {
     }
 }
 
+impl std::ops::Deref for ViewCoordinates {
+    type Target = [u8; 3usize];
+
+    #[inline]
+    fn deref(&self) -> &[u8; 3usize] {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ViewCoordinates {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [u8; 3usize] {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(ViewCoordinates);
 
 impl ::re_types_core::Loggable for ViewCoordinates {

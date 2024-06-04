@@ -2,8 +2,8 @@ use re_data_store::LatestAtQuery;
 use re_space_view::external::re_query::PromiseResult;
 use re_types::{archetypes::TextDocument, components};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -35,6 +35,7 @@ impl VisualizerSystem for TextDocumentSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         view_query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
@@ -71,4 +72,10 @@ impl VisualizerSystem for TextDocumentSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(TextDocumentSystem => []);

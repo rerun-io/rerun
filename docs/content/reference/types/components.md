@@ -40,7 +40,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
 * [`Scalar`](components/scalar.md): A double-precision scalar.
-* [`ScalarScattering`](components/scalar_scattering.md): If true, a scalar will be shown as individual point in a scatter plot.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): A multi-dimensional `Tensor` of data.
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.

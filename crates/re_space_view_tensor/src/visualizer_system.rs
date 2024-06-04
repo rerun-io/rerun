@@ -3,8 +3,8 @@ use re_entity_db::{external::re_query::LatestAtMonoResult, EntityPath};
 use re_log_types::RowId;
 use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Default)]
@@ -27,6 +27,7 @@ impl VisualizerSystem for TensorSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -49,7 +50,13 @@ impl VisualizerSystem for TensorSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(TensorSystem => []);
 
 impl TensorSystem {
     fn load_tensor_entity(

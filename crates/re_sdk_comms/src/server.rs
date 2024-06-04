@@ -148,13 +148,7 @@ fn spawn_client(
 ) {
     let addr_string = peer_addr.map_or_else(|| "(unknown ip)".to_owned(), |addr| addr.to_string());
 
-    if options.quiet {
-        re_log::debug!("New SDK client connected: {addr_string}");
-    } else {
-        re_log::info!("New SDK client connected: {addr_string}");
-    }
-
-    if let Err(err) = run_client(stream, tx, options) {
+    if let Err(err) = run_client(stream, &addr_string, tx, options) {
         if let ConnectionError::SendError(err) = &err {
             if err.kind() == ErrorKind::UnexpectedEof {
                 // Client gracefully severed the connection.
@@ -163,13 +157,14 @@ fn spawn_client(
             }
         }
 
-        let log_msg = format!("Closing connection to client at {addr_string}: {err}");
         if matches!(&err, ConnectionError::UnknownClient) {
             // An unknown client that probably stumbled onto the wrong port.
             // Don't log as an error (https://github.com/rerun-io/rerun/issues/5883).
-            re_log::debug!("{log_msg}");
+            re_log::debug!(
+                "Rejected incoming connection from unknown client at {addr_string}: {err}"
+            );
         } else {
-            re_log::warn_once!("{log_msg}");
+            re_log::warn_once!("Closing connection to client at {addr_string}: {err}");
         }
 
         let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.into();
@@ -179,6 +174,7 @@ fn spawn_client(
 
 fn run_client(
     mut stream: TcpStream,
+    addr_string: &str,
     tx: &Sender<LogMsg>,
     options: ServerOptions,
 ) -> Result<(), ConnectionError> {
@@ -200,6 +196,12 @@ fn run_client(
 
         if std::str::from_utf8(&protocol_header) != Ok(crate::PROTOCOL_HEADER) {
             return Err(ConnectionError::UnknownClient);
+        }
+
+        if options.quiet {
+            re_log::debug!("New SDK client connected from: {addr_string}");
+        } else {
+            re_log::info!("New SDK client connected from: {addr_string}");
         }
 
         let server_version = crate::PROTOCOL_VERSION_1;

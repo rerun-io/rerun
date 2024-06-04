@@ -23,7 +23,7 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Component**: The name of a visualizer.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
 pub struct VisualizerOverrides(pub Vec<crate::ArrowString>);
 
@@ -50,6 +50,22 @@ impl From<VisualizerOverrides> for Vec<crate::ArrowString> {
     #[inline]
     fn from(value: VisualizerOverrides) -> Self {
         value.0
+    }
+}
+
+impl std::ops::Deref for VisualizerOverrides {
+    type Target = Vec<crate::ArrowString>;
+
+    #[inline]
+    fn deref(&self) -> &Vec<crate::ArrowString> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for VisualizerOverrides {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Vec<crate::ArrowString> {
+        &mut self.0
     }
 }
 

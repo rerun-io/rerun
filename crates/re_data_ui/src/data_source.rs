@@ -50,9 +50,8 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         recordings.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
         blueprints.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
 
-        // Using the same content ui also for tooltips even if it can't be interacted with.
-        // (still displays the content we want)
-        let content_ui = |ui: &mut egui::Ui| {
+        ui.scope(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
             if !recordings.is_empty() {
                 ui.add_space(8.0);
                 ui.strong("Recordings from this data source");
@@ -67,20 +66,6 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
                 for entity_db in blueprints {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
-            }
-        };
-        ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
-
-            // TODO(#6246): this test is needed because we're called in a context that may or may
-            // not have a full span defined.
-            if ui_layout == UiLayout::Tooltip {
-                // This typically happens in tooltips, so a scope is needed
-                //TODO(ab): in the context of tooltips, ui.max_rect() doesn't provide the correct width
-                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), content_ui);
-            } else {
-                // This only happens from the selection panel, so the full span scope is already set.
-                content_ui(ui);
             }
         });
     }

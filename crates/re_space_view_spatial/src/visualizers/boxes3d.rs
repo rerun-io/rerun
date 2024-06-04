@@ -7,7 +7,7 @@ use re_types::{
     components::{ClassId, Color, HalfSizes3D, KeypointId, Position3D, Radius, Rotation3D, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -197,6 +197,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
         &mut self,
         ctx: &ViewerContext<'_>,
         view_query: &ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let Some(render_ctx) = ctx.render_ctx else {
@@ -214,7 +215,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
@@ -300,4 +301,10 @@ impl VisualizerSystem for Boxes3DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Boxes3DVisualizer => []);

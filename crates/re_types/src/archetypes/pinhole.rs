@@ -152,8 +152,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.PinholeIndicator".into(),
             "rerun.components.Resolution".into(),
+            "rerun.components.PinholeIndicator".into(),
         ]
     });
 
@@ -164,8 +164,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.PinholeProjection".into(),
-            "rerun.components.PinholeIndicator".into(),
             "rerun.components.Resolution".into(),
+            "rerun.components.PinholeIndicator".into(),
             "rerun.components.ViewCoordinates".into(),
         ]
     });

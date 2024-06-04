@@ -4,8 +4,8 @@ use re_viewer::external::{
     re_query, re_renderer,
     re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
-        IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-        ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+        self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+        ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
     },
 };
 
@@ -64,6 +64,7 @@ impl VisualizerSystem for InstanceColorSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
+        _view_state: &dyn re_viewer_context::SpaceViewState,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         // For each entity in the space view that should be displayed with the `InstanceColorSystem`…
@@ -109,4 +110,12 @@ impl VisualizerSystem for InstanceColorSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+// Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
+// It is left empty here but could be used to provides fallback values for optional components in case they're missing.
+re_viewer_context::impl_component_fallback_provider!(InstanceColorSystem => []);

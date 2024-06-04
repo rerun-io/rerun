@@ -45,7 +45,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
                     .map(|identifier| {
                         (
                             identifier,
-                            space_view_class_registry.get_class_or_log_error(identifier),
+                            space_view_class_registry.get_class_or_log_error(*identifier),
                         )
                     })
                     .sorted_by_key(|(_, class)| class.display_name().to_owned())
@@ -145,7 +145,7 @@ fn create_space_view_for_selected_entities(
     let origin = ctx
         .viewer_context
         .space_view_class_registry
-        .get_class_or_log_error(&identifier)
+        .get_class_or_log_error(identifier)
         .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);
 

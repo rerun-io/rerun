@@ -137,7 +137,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
         ]
     ),
     "ScalarBatch": TestCase(3),
-    "ScalarScatteringBatch": TestCase(True),
     "StrokeWidthBatch": TestCase(2.0),
     "TensorDataBatch": TestCase(
         alternatives=[

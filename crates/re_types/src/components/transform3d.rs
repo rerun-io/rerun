@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An affine transform between two 3D spaces, represented in a given direction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Transform3D(
     /// Representation of the transform.
     pub crate::datatypes::Transform3D,
@@ -60,6 +60,13 @@ impl std::ops::Deref for Transform3D {
     #[inline]
     fn deref(&self) -> &crate::datatypes::Transform3D {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for Transform3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Transform3D {
+        &mut self.0
     }
 }
 

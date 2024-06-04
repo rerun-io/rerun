@@ -18,8 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import wheel_utils
-from google.cloud.storage import Blob
-from google.cloud.storage import Client as Gcs
+from google.cloud.storage import Blob, Client as Gcs
 from packaging.utils import canonicalize_version
 
 

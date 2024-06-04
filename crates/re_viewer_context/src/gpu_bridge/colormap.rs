@@ -1,5 +1,5 @@
 use crate::gpu_bridge::{get_or_create_texture, render_image};
-use re_ui::{full_span, list_item};
+use re_ui::list_item;
 
 /// Show the given colormap as a horizontal bar.
 fn colormap_preview_ui(
@@ -93,10 +93,6 @@ pub fn colormap_dropdown_button_ui(
     egui::ComboBox::from_id_source("color map select")
         .selected_text(selected_text)
         .show_ui(ui, |ui| {
-            let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
-
-            list_item::list_item_scope(ui, "inner_scope", |ui| {
-                full_span::full_span_scope(ui, background_x_range, content_ui);
-            });
+            list_item::list_item_scope(ui, "inner_scope", content_ui);
         });
 }
