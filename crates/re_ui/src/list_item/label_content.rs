@@ -214,8 +214,11 @@ impl ListItemContent for LabelContent<'_> {
             || always_show_buttons;
         let button_response = if should_show_buttons {
             if let Some(buttons) = buttons_fn {
-                let mut ui =
-                    ui.child_ui(text_rect, egui::Layout::right_to_left(egui::Align::Center));
+                let mut ui = ui.child_ui(
+                    text_rect,
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    None,
+                );
                 Some(buttons(re_ui, &mut ui))
             } else {
                 None

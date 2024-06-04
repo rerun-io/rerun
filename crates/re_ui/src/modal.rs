@@ -204,40 +204,38 @@ impl Modal {
             let item_spacing_y = ui.spacing().item_spacing.y;
             ui.spacing_mut().item_spacing.y = 0.0;
 
-            crate::full_span::full_span_scope(ui, ui.clip_rect().x_range(), |ui| {
-                egui::Frame {
-                    inner_margin: egui::Margin::symmetric(ReUi::view_padding(), 0.0),
-                    ..Default::default()
-                }
-                .show(ui, |ui| {
-                    ui.add_space(ReUi::view_padding());
-                    Self::title_bar(re_ui, ui, &self.title, &mut open);
-                    ui.add_space(ReUi::view_padding());
-                    crate::ReUi::full_span_separator(ui);
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(ReUi::view_padding(), 0.0),
+                ..Default::default()
+            }
+            .show(ui, |ui| {
+                ui.add_space(ReUi::view_padding());
+                Self::title_bar(re_ui, ui, &self.title, &mut open);
+                ui.add_space(ReUi::view_padding());
+                crate::ReUi::full_span_separator(ui);
 
-                    if self.full_span_content {
-                        // no further spacing for the content UI
-                        content_ui(re_ui, ui, &mut open)
-                    } else {
-                        // we must restore vertical spacing and add view padding at the bottom
-                        ui.add_space(item_spacing_y);
+                if self.full_span_content {
+                    // no further spacing for the content UI
+                    content_ui(re_ui, ui, &mut open)
+                } else {
+                    // we must restore vertical spacing and add view padding at the bottom
+                    ui.add_space(item_spacing_y);
 
-                        egui::Frame {
-                            inner_margin: egui::Margin {
-                                bottom: ReUi::view_padding(),
-                                ..Default::default()
-                            },
+                    egui::Frame {
+                        inner_margin: egui::Margin {
+                            bottom: ReUi::view_padding(),
                             ..Default::default()
-                        }
-                        .show(ui, |ui| {
-                            ui.spacing_mut().item_spacing.y = item_spacing_y;
-                            content_ui(re_ui, ui, &mut open)
-                        })
-                        .inner
+                        },
+                        ..Default::default()
                     }
-                })
-                .inner
+                    .show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = item_spacing_y;
+                        content_ui(re_ui, ui, &mut open)
+                    })
+                    .inner
+                }
             })
+            .inner
         });
 
         // Any click outside causes the window to close.
@@ -283,6 +281,7 @@ impl Modal {
             let mut ui = ui.child_ui(
                 ui.max_rect(),
                 egui::Layout::right_to_left(egui::Align::Center),
+                None,
             );
             if re_ui
                 .small_icon_button(&mut ui, &crate::icons::CLOSE)

@@ -446,20 +446,25 @@ impl TimePanel {
             ui.min_rect().bottom()..=ui.max_rect().bottom(),
         ));
 
+        //TODO(ab): using clip rect here should be replaced by a better mechanism based on `UiStack`
+        let old_clip_rect = ui.clip_rect();
+        ui.set_clip_rect(egui::Rect::from_x_y_ranges(
+            0.0..=time_x_left,
+            ui.max_rect().y_range(),
+        ));
         // All the entity rows and their data density graphs:
-        re_ui::full_span::full_span_scope(ui, (0.0..=time_x_left).into(), |ui| {
-            list_item::list_item_scope(ui, "streams_tree", |ui| {
-                self.tree_ui(
-                    ctx,
-                    viewport_blueprint,
-                    entity_db,
-                    time_ctrl,
-                    &time_area_response,
-                    &lower_time_area_painter,
-                    ui,
-                );
-            });
+        list_item::list_item_scope(ui, "streams_tree", |ui| {
+            self.tree_ui(
+                ctx,
+                viewport_blueprint,
+                entity_db,
+                time_ctrl,
+                &time_area_response,
+                &lower_time_area_painter,
+                ui,
+            );
         });
+        ui.set_clip_rect(old_clip_rect);
 
         {
             // Paint a shadow between the stream names on the left
