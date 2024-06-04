@@ -9,7 +9,6 @@ use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use smallvec::SmallVec;
 
 use crate::SpaceViewBlueprint;
-use re_entity_db::external::re_query::{LatestAtResults, PromiseResolver};
 use re_entity_db::EntityPath;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_types_blueprint::blueprint::components::{
@@ -79,27 +78,13 @@ impl ViewportBlueprint {
                 .copied(),
         );
 
-        fn get_instance<T: re_types::Component>(
-            results: &LatestAtResults,
-            resolver: &PromiseResolver,
-        ) -> Option<T> {
-            results
-                .get(T::name())
-                .and_then(|r| r.try_instance(resolver, 0))
-        }
-        fn get_dense<'a, T: re_types::Component>(
-            results: &'a LatestAtResults,
-            resolver: &PromiseResolver,
-        ) -> Option<&'a [T]> {
-            results.get(T::name()).and_then(|r| r.dense(resolver))
-        }
-
-        let root_container: Option<RootContainer> = get_instance(&results, resolver);
-        let maximized: Option<SpaceViewMaximized> = get_instance(&results, resolver);
-        let auto_layout: Option<AutoLayout> = get_instance(&results, resolver);
-        let auto_space_views: Option<AutoSpaceViews> = get_instance(&results, resolver);
+        // Query the components of the `ViewportBlueprint` archetype.
+        let root_container: Option<RootContainer> = results.get_instance(resolver, 0);
+        let maximized: Option<SpaceViewMaximized> = results.get_instance(resolver, 0);
+        let auto_layout: Option<AutoLayout> = results.get_instance(resolver, 0);
+        let auto_space_views: Option<AutoSpaceViews> = results.get_instance(resolver, 0);
         let past_viewer_recommendations: Option<&[ViewerRecommendationHash]> =
-            get_dense(&results, resolver);
+            results.get_dense(resolver);
 
         let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
             .tree()

@@ -1,5 +1,5 @@
 use itertools::{FoldWhile, Itertools};
-use re_entity_db::{external::re_query::PromiseResult, EntityProperties};
+use re_entity_db::EntityProperties;
 use re_types::SpaceViewClassIdentifier;
 
 use crate::{SpaceViewContents, ViewProperty};
@@ -9,7 +9,7 @@ use re_log_types::{DataRow, EntityPathSubs, RowId, Timeline};
 use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
-        components::{SpaceViewOrigin, Visible},
+        components::{self as blueprint_components, SpaceViewOrigin, Visible},
     },
     components::Name,
 };
@@ -118,30 +118,31 @@ impl SpaceViewBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let blueprint_archetypes::SpaceViewBlueprint {
-            display_name,
-            class_identifier,
-            space_origin,
-            visible,
-        } = match blueprint_db.latest_at_archetype(&id.as_entity_path(), query) {
-            PromiseResult::Pending => {
-                // TODO(#5607): what should happen if the promise is still pending?
-                None
-            }
-            PromiseResult::Ready(arch) => arch.map(|(_, arch)| arch),
-            PromiseResult::Error(err) => {
-                if cfg!(debug_assertions) {
-                    re_log::error!("Failed to load SpaceView blueprint: {err}.");
-                } else {
-                    re_log::debug!("Failed to load SpaceView blueprint: {err}.");
-                }
-                None
-            }
-        }?;
+        let resolver = blueprint_db.resolver();
+        let results = blueprint_db.query_caches().latest_at(
+            blueprint_db.store(),
+            query,
+            &id.as_entity_path(),
+            blueprint_archetypes::SpaceViewBlueprint::all_components()
+                .iter()
+                .copied(),
+        );
 
-        let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
+        let Some(class_identifier) =
+            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)
+        else {
+            re_log::error!("View blueprint is lacking the required class identifier component.");
+            return None;
+        };
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
-        let display_name = display_name.map(|v| v.0.to_string());
+
+        let space_origin = results
+            .get_instance::<SpaceViewOrigin>(resolver, 0)
+            .map_or_else(EntityPath::root, |origin| origin.0.into());
+
+        let display_name = results
+            .get_instance::<Name>(resolver, 0)
+            .map(|v| v.0.to_string());
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);
 
@@ -152,7 +153,9 @@ impl SpaceViewBlueprint {
             class_identifier,
             &space_env,
         );
-        let visible = visible.map_or(true, |v| v.0);
+        let visible = results
+            .get_instance::<Visible>(resolver, 0)
+            .map_or(true, |v| v.0);
 
         Some(Self {
             id,

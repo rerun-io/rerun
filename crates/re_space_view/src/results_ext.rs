@@ -31,7 +31,7 @@ impl RangeResultsExt for Results {
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
         match self {
-            Self::LatestAt(_, results) => results.get_dense(resolver),
+            Self::LatestAt(_, results) => RangeResultsExt::get_dense(results, resolver),
             Self::Range(_, results) => results.get_dense(resolver),
         }
     }
@@ -240,7 +240,7 @@ impl RangeResultsExt for HybridLatestAtResults {
 
             Some(Ok(data))
         } else {
-            self.results.get_dense(resolver)
+            RangeResultsExt::get_dense(&self.results, resolver)
         }
     }
 
