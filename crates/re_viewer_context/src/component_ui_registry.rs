@@ -153,36 +153,6 @@ impl ComponentUiRegistry {
             + 'static,
         multiline: bool,
     ) {
-        fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
-            let component_name = C::name();
-            let deserialized = C::from_arrow(value);
-            match deserialized {
-                Ok(values) => {
-                    if values.len() > 1 {
-                        // Whatever we did prior to calling this should have taken care if it!
-                        re_log::error_once!(
-                                    "Can only edit a single value at a time, got {} values for editing {component_name}",
-                                    values.len(),
-                                );
-                    }
-                    if let Some(v) = values.into_iter().next() {
-                        Some(v)
-                    } else {
-                        re_log::warn_once!(
-                            "Editor ui for {component_name} needs a start value to operate on."
-                        );
-                        None
-                    }
-                }
-                Err(err) => {
-                    re_log::error_once!(
-                        "Failed to deserialize component of type {component_name}: {err}",
-                    );
-                    None
-                }
-            }
-        }
-
         let untyped_callback: UntypedComponentEditCallback =
             Box::new(move |ui, ui_layout, value| {
                 try_deserialize(value).and_then(|mut deserialized_value| {
@@ -472,4 +442,32 @@ fn component_value_or_fallback(
         },
         Ok,
     )
+}
+
+fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
+    let component_name = C::name();
+    let deserialized = C::from_arrow(value);
+    match deserialized {
+        Ok(values) => {
+            if values.len() > 1 {
+                // Whatever we did prior to calling this should have taken care if it!
+                re_log::error_once!(
+                    "Can only edit a single value at a time, got {} values for editing {component_name}",
+                    values.len()
+                );
+            }
+            if let Some(v) = values.into_iter().next() {
+                Some(v)
+            } else {
+                re_log::warn_once!(
+                    "Editor ui for {component_name} needs a start value to operate on."
+                );
+                None
+            }
+        }
+        Err(err) => {
+            re_log::error_once!("Failed to deserialize component of type {component_name}: {err}",);
+            None
+        }
+    }
 }
