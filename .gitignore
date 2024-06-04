@@ -29,6 +29,7 @@ _deps
 **/venv*
 **/.venv*
 .python-version
+.nox/
 
 # Python build artifacts:
 __pycache__
@@ -36,19 +37,26 @@ __pycache__
 *.so
 **/.pytest_cache
 
+# Python wheel build:
+rerun_py/rerun_sdk
+
 # Pixi environment
 .pixi
 
+# Debugging artifacts.
 .gdb_history
 perf.data*
-
-**/dataset/
 
 # Screenshots from samples etc.
 screenshot*.png
 
+# Sample downloads
+**/dataset/
+
 # Saved example `.rrd` files
 example_data
+*.rrd
+
 
 # Various builds
 dist
@@ -57,9 +65,5 @@ wheels
 # Screenshot comparison build
 /compare_screenshot
 
-.nox/
-*.rrd
-
+# Search index
 /meilisearch
-
-.pixi/*
