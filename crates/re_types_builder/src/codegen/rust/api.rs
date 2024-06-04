@@ -33,7 +33,6 @@ use crate::{
 use super::{
     arrow::quote_fqname_as_type_path,
     blueprint_validation::generate_blueprint_validation,
-    to_archetype::generate_to_archetype_impls,
     util::{string_from_quoted, SIMPLE_COMMENT_PREFIX},
 };
 
@@ -71,7 +70,6 @@ impl CodeGenerator for RustCodeGenerator {
 
         generate_component_defaults(reporter, objects, &mut files_to_write);
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
-        generate_to_archetype_impls(reporter, objects, &mut files_to_write);
 
         files_to_write
     }
