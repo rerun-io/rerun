@@ -90,7 +90,7 @@ impl ViewportBlueprint {
             maximized: results.get_instance(resolver, 0),
             auto_layout: results.get_instance(resolver, 0),
             auto_space_views: results.get_instance(resolver, 0),
-            past_viewer_recommendations: results.get_slice(resolver).map(|r| r.to_vec()),
+            past_viewer_recommendations: results.get_vec(resolver),
         };
 
         let all_space_view_ids: Vec<SpaceViewId> = blueprint_db

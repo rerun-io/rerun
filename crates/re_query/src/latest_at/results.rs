@@ -104,6 +104,10 @@ impl LatestAtResults {
     pub fn get_slice<T: re_types::Component>(&self, resolver: &PromiseResolver) -> Option<&[T]> {
         self.get(T::name()).and_then(|r| r.dense::<T>(resolver))
     }
+
+    pub fn get_vec<T: re_types::Component>(&self, resolver: &PromiseResolver) -> Option<Vec<T>> {
+        self.get_slice(resolver).map(|v| v.to_vec())
+    }
 }
 
 impl LatestAtResults {
