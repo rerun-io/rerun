@@ -24,6 +24,7 @@ use re_viewport_blueprint::{query_view_property_or_default, ViewProperty};
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
+use crate::util::next_up_f64;
 use crate::PlotSeriesKind;
 
 // ---
@@ -679,7 +680,23 @@ impl TypedComponentFallbackProvider<Range1D> for TimeSeriesSpaceView {
         ctx.view_state
             .as_any()
             .downcast_ref::<TimeSeriesSpaceViewState>()
-            .map(|s| s.scalar_range)
+            .map(|s| {
+                let mut range = s.scalar_range;
+
+                // egui_plot can't handle a zero or negative range.
+                // Enforce a minimum range.
+                if !range.start().is_normal() {
+                    *range.start_mut() = -1.0;
+                }
+                if !range.end().is_normal() {
+                    *range.end_mut() = 1.0;
+                }
+                if range.start() >= range.end() {
+                    *range.start_mut() = next_up_f64(range.end());
+                }
+
+                range
+            })
             .unwrap_or_default()
     }
 }
