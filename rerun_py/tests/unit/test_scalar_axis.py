@@ -21,31 +21,31 @@ def test_scalar_axis() -> None:
         rr.components.Range1D([42.1337, 1337.42]),
         None,
     ]
-    lock_range_during_zooms = [
+    zoom_locks = [
         True,
         False,
     ]
 
     all_arrays = itertools.zip_longest(
         ranges,
-        lock_range_during_zooms,
+        zoom_locks,
     )
 
-    for range, lock_range_during_zoom in all_arrays:
+    for range, zoom_lock in all_arrays:
         range = cast(Optional[rr.datatypes.Range1DLike], range)
-        lock_range_during_zoom = cast(Optional[rr.datatypes.Bool], lock_range_during_zoom)
+        zoom_lock = cast(Optional[rr.datatypes.Bool], zoom_lock)
 
         print(
             f"rr.ScalarAxis(\n"
             f"    range={range!r}\n"  #
-            f"    lock_range_during_zoom={lock_range_during_zoom!r}\n"
+            f"    zoom_lock={zoom_lock!r}\n"
             f")"
         )
         arch = rrb.ScalarAxis(
             range=range,
-            lock_range_during_zoom=lock_range_during_zoom,
+            zoom_lock=zoom_lock,
         )
         print(f"{arch}\n")
 
         assert arch.range == rr.components.Range1DBatch._optional(none_empty_or_value(range, [42.1337, 1337.42]))
-        assert arch.lock_range_during_zoom == rrb.components.LockRangeDuringZoomBatch._optional(lock_range_during_zoom)
+        assert arch.zoom_lock == rrb.components.LockRangeDuringZoomBatch._optional(zoom_lock)

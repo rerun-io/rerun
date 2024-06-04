@@ -5,12 +5,13 @@
 
 mod datatype_editors;
 mod marker_shape;
+mod range1d;
 mod response_utils;
 mod visual_bounds2d;
 
 use datatype_editors::edit_enum;
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, Visible},
+    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
     components::{Color, MarkerSize, Name, Radius, StrokeWidth, Text},
 };
 use re_viewer_context::ViewerContext;
@@ -39,8 +40,10 @@ fn edit_color_ui(_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, value: &mut Color)
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui(edit_color_ui);
     registry.add_singleline_editor_ui(marker_shape::edit_marker_shape_ui);
+    registry.add_singleline_editor_ui(range1d::edit_range1d);
 
-    registry.add_singleline_editor_ui::<Visible>(datatype_editors::edit_bool);
+    registry.add_singleline_editor_ui::<Visible>(datatype_editors::edit_bool_raw);
+    registry.add_singleline_editor_ui::<LockRangeDuringZoom>(datatype_editors::edit_bool);
 
     registry.add_singleline_editor_ui::<Text>(datatype_editors::edit_singleline_string);
     registry.add_singleline_editor_ui::<Name>(datatype_editors::edit_singleline_string);
