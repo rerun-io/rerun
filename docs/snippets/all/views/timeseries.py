@@ -23,7 +23,7 @@ blueprint = rrb.Blueprint(
     rrb.TimeSeriesView(
         origin="/trig",
         # Set a custom Y axis.
-        axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), lock_range_during_zoom=True),
+        axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), zoom_lock=True),
         # Configure the legend.
         plot_legend=rrb.PlotLegend(visible=False),
         # Set time different time ranges for different timelines.
