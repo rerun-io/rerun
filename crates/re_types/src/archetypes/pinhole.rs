@@ -128,6 +128,11 @@ pub struct Pinhole {
     /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
     /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
     pub camera_xyz: Option<crate::components::ViewCoordinates>,
+
+    /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+    ///
+    /// This is only used for visualization purposes, and does not affect the projection itself.
+    pub image_plane_distance: Option<crate::components::ImagePlaneDistance>,
 }
 
 impl ::re_types_core::SizeBytes for Pinhole {
@@ -136,6 +141,7 @@ impl ::re_types_core::SizeBytes for Pinhole {
         self.image_from_camera.heap_size_bytes()
             + self.resolution.heap_size_bytes()
             + self.camera_xyz.heap_size_bytes()
+            + self.image_plane_distance.heap_size_bytes()
     }
 
     #[inline]
@@ -143,6 +149,7 @@ impl ::re_types_core::SizeBytes for Pinhole {
         <crate::components::PinholeProjection>::is_pod()
             && <Option<crate::components::Resolution>>::is_pod()
             && <Option<crate::components::ViewCoordinates>>::is_pod()
+            && <Option<crate::components::ImagePlaneDistance>>::is_pod()
     }
 }
 
@@ -157,22 +164,28 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ViewCoordinates".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.ViewCoordinates".into(),
+            "rerun.components.ImagePlaneDistance".into(),
+        ]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.PinholeProjection".into(),
             "rerun.components.Resolution".into(),
             "rerun.components.PinholeIndicator".into(),
             "rerun.components.ViewCoordinates".into(),
+            "rerun.components.ImagePlaneDistance".into(),
         ]
     });
 
 impl Pinhole {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`Pinhole`] [`::re_types_core::Archetype`]
@@ -259,10 +272,21 @@ impl ::re_types_core::Archetype for Pinhole {
         } else {
             None
         };
+        let image_plane_distance =
+            if let Some(array) = arrays_by_name.get("rerun.components.ImagePlaneDistance") {
+                <crate::components::ImagePlaneDistance>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Pinhole#image_plane_distance")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self {
             image_from_camera,
             resolution,
             camera_xyz,
+            image_plane_distance,
         })
     }
 }
@@ -280,6 +304,9 @@ impl ::re_types_core::AsComponents for Pinhole {
             self.camera_xyz
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.image_plane_distance
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -295,6 +322,7 @@ impl Pinhole {
             image_from_camera: image_from_camera.into(),
             resolution: None,
             camera_xyz: None,
+            image_plane_distance: None,
         }
     }
 
@@ -345,6 +373,18 @@ impl Pinhole {
         camera_xyz: impl Into<crate::components::ViewCoordinates>,
     ) -> Self {
         self.camera_xyz = Some(camera_xyz.into());
+        self
+    }
+
+    /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+    ///
+    /// This is only used for visualization purposes, and does not affect the projection itself.
+    #[inline]
+    pub fn with_image_plane_distance(
+        mut self,
+        image_plane_distance: impl Into<crate::components::ImagePlaneDistance>,
+    ) -> Self {
+        self.image_plane_distance = Some(image_plane_distance.into());
         self
     }
 }
