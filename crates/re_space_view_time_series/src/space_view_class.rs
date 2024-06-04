@@ -7,7 +7,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
-use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom};
+use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::list_item;
 use re_viewer_context::external::re_entity_db::{
@@ -20,7 +20,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
     ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
-use re_viewport_blueprint::{query_view_property_or_default, ViewProperty};
+use re_viewport_blueprint::ViewProperty;
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
@@ -300,16 +300,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
-        let blueprint_db = ctx.store_context.blueprint;
-        let blueprint_query = ctx.blueprint_query;
-
-        let (
-            re_types::blueprint::archetypes::PlotLegend {
-                visible: legend_visible,
-                corner: legend_corner,
-            },
-            _,
-        ) = query_view_property_or_default(query.space_view_id, blueprint_db, blueprint_query);
+        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(ctx, query.space_view_id);
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(self, state)?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(self, state)?;
 
         let scalar_axis = ViewProperty::from_archetype::<ScalarAxis>(ctx, query.space_view_id);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(self, state)?;
@@ -408,9 +401,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             });
 
-        if legend_visible.unwrap_or(true.into()).0 {
-            plot =
-                plot.legend(Legend::default().position(legend_corner.unwrap_or_default().into()));
+        if *legend_visible {
+            plot = plot.legend(Legend::default().position(legend_corner.into()));
         }
 
         if timeline.typ() == TimeType::Time {

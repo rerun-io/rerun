@@ -182,15 +182,3 @@ pub fn entity_path_for_view_property(
     space_view_blueprint_path.join(&EntityPath::from_single_string(archetype_name.short_name()))
 }
 
-// TODO(andreas): Replace all usages with `ViewProperty`.
-pub fn query_view_property_or_default<A: Archetype + Default>(
-    space_view_id: SpaceViewId,
-    blueprint_db: &EntityDb,
-    query: &LatestAtQuery,
-) -> (A, EntityPath)
-where
-    LatestAtResults: ToArchetype<A>,
-{
-    let (arch, path) = query_view_property(space_view_id, blueprint_db, query);
-    (arch.ok().flatten().unwrap_or_default(), path)
-}
