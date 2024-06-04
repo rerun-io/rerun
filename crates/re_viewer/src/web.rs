@@ -73,12 +73,15 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn toggle_panel_overrides(&self) {
+    pub fn toggle_panel_overrides(&self, value: Option<bool>) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        app.panel_state_overrides_active ^= true;
+        match value {
+            Some(value) => app.panel_state_overrides_active = value,
+            None => app.panel_state_overrides_active ^= true,
+        }
     }
 
     #[wasm_bindgen]
