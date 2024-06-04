@@ -3,7 +3,7 @@
 use egui::{NumExt, Response, Shape, Ui};
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::ReUi;
+use crate::{ReUi, UiExt as _};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -26,7 +26,7 @@ pub struct ShowCollapsingResponse<R> {
 ///
 /// The following features are supported:
 /// - Flat or collapsible hierarchical lists.
-/// - Full-span background highlighting via [`crate::full_span::full_span_scope`].
+/// - Full-span background highlighting.
 /// - Interactive or not.
 /// - Support for drag and drop with [`crate::drag_and_drop`].
 ///
@@ -246,8 +246,7 @@ impl<'a> ListItem<'a> {
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
         let layout_info = LayoutInfoStack::top(ui.ctx());
-        let bg_rect =
-            egui::Rect::from_x_y_ranges(crate::full_span::get_full_span(ui), rect.y_range());
+        let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
         // Record the max allocated width.
         layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);

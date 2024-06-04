@@ -341,8 +341,11 @@ impl ListItemContent for PropertyContent<'_> {
         };
         if let Some(value_fn) = value_fn {
             if should_show_value {
-                let mut child_ui =
-                    ui.child_ui(value_rect, egui::Layout::left_to_right(egui::Align::Center));
+                let mut child_ui = ui.child_ui(
+                    value_rect,
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    None,
+                );
                 value_fn(re_ui, &mut child_ui, visuals);
 
                 context.layout_info.register_property_content_max_width(
@@ -364,6 +367,7 @@ impl ListItemContent for PropertyContent<'_> {
             let mut child_ui = ui.child_ui(
                 action_button_rect,
                 egui::Layout::right_to_left(egui::Align::Center),
+                None,
             );
 
             child_ui.add_enabled_ui(action_button.enabled, |ui| {

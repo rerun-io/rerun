@@ -17,8 +17,6 @@ pub(crate) fn edit_marker_shape_ui(
             .selected_text(marker_text)
             .height(320.0)
             .show_ui(ui, |ui| {
-                let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
-
                 let list_ui = |ui: &mut egui::Ui| {
                     let mut combined_response: Option<egui::Response> = None;
                     for marker in MarkerShape::ALL {
@@ -48,9 +46,7 @@ pub(crate) fn edit_marker_shape_ui(
                     combined_response.expect("At least one marker shape should be available")
                 };
 
-                re_ui::full_span::full_span_scope(ui, background_x_range, |ui| {
-                    re_ui::list_item::list_item_scope(ui, "marker_shape", list_ui)
-                })
+                re_ui::list_item::list_item_scope(ui, "marker_shape", list_ui)
             }),
     )
 }

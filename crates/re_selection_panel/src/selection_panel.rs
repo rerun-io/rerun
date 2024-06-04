@@ -72,37 +72,35 @@ impl SelectionPanel {
         ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
-            re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-                ctx.re_ui.panel_content(ui, |_, ui| {
-                    let hover = "The Selection View contains information and options about \
+            ctx.re_ui.panel_content(ui, |_, ui| {
+                let hover = "The Selection View contains information and options about \
                     the currently selected object(s)";
-                    ctx.re_ui
-                        .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
-                            let mut history = ctx.selection_state().history.lock();
-                            if let Some(selection) = self.selection_state_ui.selection_ui(
-                                ctx.re_ui,
-                                ui,
-                                blueprint,
-                                &mut history,
-                            ) {
-                                ctx.selection_state().set_selection(selection);
-                            }
-                        });
-                });
-
-                // move the vertical spacing between the title and the content to _inside_ the scroll
-                // area
-                ui.add_space(-ui.spacing().item_spacing.y);
-
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
-                        ui.add_space(ui.spacing().item_spacing.y);
-                        ctx.re_ui.panel_content(ui, |_, ui| {
-                            self.contents(ctx, blueprint, view_states, ui);
-                        });
+                ctx.re_ui
+                    .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
+                        let mut history = ctx.selection_state().history.lock();
+                        if let Some(selection) = self.selection_state_ui.selection_ui(
+                            ctx.re_ui,
+                            ui,
+                            blueprint,
+                            &mut history,
+                        ) {
+                            ctx.selection_state().set_selection(selection);
+                        }
                     });
             });
+
+            // move the vertical spacing between the title and the content to _inside_ the scroll
+            // area
+            ui.add_space(-ui.spacing().item_spacing.y);
+
+            egui::ScrollArea::both()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    ui.add_space(ui.spacing().item_spacing.y);
+                    ctx.re_ui.panel_content(ui, |_, ui| {
+                        self.contents(ctx, blueprint, view_states, ui);
+                    });
+                });
         });
 
         // run modals (these are noop if the modals are not active)
@@ -529,16 +527,14 @@ fn container_children(
         ..Default::default()
     }
     .show(ui, |ui| {
-        re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-            list_item::list_item_scope(ui, "children list", |ui| {
-                ui.spacing_mut().item_spacing.y = 0.0;
+        list_item::list_item_scope(ui, "children list", |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
 
-                egui::Frame {
-                    inner_margin: egui::Margin::symmetric(4.0, 0.0),
-                    ..Default::default()
-                }
-                .show(ui, show_content);
-            });
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(4.0, 0.0),
+                ..Default::default()
+            }
+            .show(ui, show_content);
         });
     });
 }
