@@ -26,7 +26,7 @@ pub struct ShowCollapsingResponse<R> {
 ///
 /// The following features are supported:
 /// - Flat or collapsible hierarchical lists.
-/// - Full-span background highlighting via [`crate::full_span::full_span_scope`].
+/// - Full-span background highlighting.
 /// - Interactive or not.
 /// - Support for drag and drop with [`crate::drag_and_drop`].
 ///

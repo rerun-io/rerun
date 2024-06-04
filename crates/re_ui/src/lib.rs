@@ -524,9 +524,9 @@ impl ReUi {
 
     /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
     ///
-    /// The span is determined using [`crate::full_span`]. Contrary to [`egui::Separator`], this
-    /// separator allocates a single pixel in height, as spacing is typically handled by content
-    /// when full span highlighting is used.
+    /// The span is determined using [`crate::UiExt::get_full_span`]. Contrary to
+    /// [`egui::Separator`], this separator allocates a single pixel in height, as spacing is
+    /// typically handled by content when full span highlighting is used.
     pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
         let height = 1.0;
 
