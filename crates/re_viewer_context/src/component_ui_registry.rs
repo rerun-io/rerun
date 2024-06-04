@@ -71,7 +71,7 @@ impl UiLayout {
 
     /// Show a label while respecting the given UI layout.
     ///
-    /// Important: for label only, data should use [`crate::data_label_for_ui_layout`] instead.
+    /// Important: for label only, data should use [`UiLayout::data_label`] instead.
     // TODO(#6315): must be merged with `Self::data_label` and have an improved API
     pub fn label(self, ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) -> egui::Response {
         let mut label = egui::Label::new(text);
@@ -88,7 +88,7 @@ impl UiLayout {
 
     /// Show data while respecting the given UI layout.
     ///
-    /// Import: for data only, labels should use [`crate::label_for_ui_layout`] instead.
+    /// Import: for data only, labels should use [`UiLayout::data_label`] instead.
     // TODO(#6315): must be merged with `Self::label` and have an improved API
     pub fn data_label(self, ui: &mut egui::Ui, string: impl AsRef<str>) {
         let string = string.as_ref();
