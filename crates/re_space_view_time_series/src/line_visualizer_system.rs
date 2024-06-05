@@ -8,9 +8,8 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, SpaceViewState, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewerContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewContext, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::overrides::fallback_color;

@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_log_types::EntityPathHash;
 use re_types::{components::DrawOrder, ComponentNameSet, Loggable as _};
-use re_viewer_context::{IdentifiedViewSystem, SpaceViewState, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]

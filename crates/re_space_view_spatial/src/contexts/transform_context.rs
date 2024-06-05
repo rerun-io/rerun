@@ -2,18 +2,15 @@ use nohash_hasher::IntMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
-use re_space_view::{latest_at_with_overrides, DataResultQuery as _};
+use re_space_view::DataResultQuery as _;
 use re_types::{
     archetypes::Pinhole,
     components::{
         DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Transform3D, ViewCoordinates,
     },
-    Archetype, ComponentNameSet, Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
-use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, SpaceViewState, TypedComponentFallbackProvider,
-    ViewContext, ViewContextSystem,
-};
+use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 
 use crate::visualizers::image_view_coordinates;
 

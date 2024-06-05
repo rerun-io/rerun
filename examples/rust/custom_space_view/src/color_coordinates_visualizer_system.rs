@@ -5,7 +5,7 @@ use re_viewer::external::{
     re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
-        ViewContextCollection, ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo,
+        ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
         VisualizerSystem,
     },
 };

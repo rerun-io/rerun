@@ -1,6 +1,6 @@
 use re_types::{archetypes::AnnotationContext, Archetype, ComponentNameSet};
 use re_viewer_context::{
-    AnnotationMap, IdentifiedViewSystem, SpaceViewState, ViewContextSystem, ViewSystemIdentifier,
+    AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier,
 };
 
 #[derive(Default)]

@@ -13,8 +13,7 @@ pub use transform_context::TransformContext;
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem, SpaceViewClassRegistryError, SpaceViewState,
-    ViewContextSystem,
+    Annotations, IdentifiedViewSystem, SpaceViewClassRegistryError, ViewContextSystem,
 };
 
 /// Context objects for a single entity in a spatial scene.

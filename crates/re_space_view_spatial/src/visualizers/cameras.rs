@@ -1,6 +1,4 @@
-use egui::Image;
 use glam::vec3;
-use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
@@ -10,9 +8,9 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
-    SpaceViewState, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -270,7 +268,7 @@ impl VisualizerSystem for CamerasVisualizer {
 }
 
 impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> ImagePlaneDistance {
         /*
         for ent_path in per_system_entities
             .get(&CamerasVisualizer::identifier())

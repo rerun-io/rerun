@@ -3,7 +3,7 @@ use re_entity_db::{external::re_query::LatestAtMonoResult, EntityPath};
 use re_log_types::RowId;
 use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
     ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };

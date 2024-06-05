@@ -2,9 +2,9 @@ use egui::Color32;
 use re_log_types::{EntityPath, Instance};
 use re_types::components::Transform3D;
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{

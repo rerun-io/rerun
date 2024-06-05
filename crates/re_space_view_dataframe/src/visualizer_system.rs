@@ -1,6 +1,6 @@
 use re_viewer_context::{
-    ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo,
+    ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizerQueryInfo,
     VisualizerSystem,
 };
 

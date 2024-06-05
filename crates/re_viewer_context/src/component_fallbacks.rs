@@ -112,12 +112,12 @@ macro_rules! impl_component_fallback_provider {
         impl $crate::ComponentFallbackProvider for $type {
             fn try_provide_fallback(
                 &self,
-                ctx: &$crate::QueryContext<'_>,
-                component_name: re_types::ComponentName,
+                _ctx: &$crate::QueryContext<'_>,
+                _component_name: re_types::ComponentName,
             ) -> $crate::ComponentFallbackProviderResult {
                 $(
-                    if component_name == <$component as re_types::Loggable>::name() {
-                        return  $crate::TypedComponentFallbackProvider::<$component>::fallback_for(self, ctx).into();
+                    if _component_name == <$component as re_types::Loggable>::name() {
+                        return  $crate::TypedComponentFallbackProvider::<$component>::fallback_for(self, _ctx).into();
                     }
                 )*
                 $crate::ComponentFallbackProviderResult::ComponentNotHandled

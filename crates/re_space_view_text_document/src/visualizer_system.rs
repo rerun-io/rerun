@@ -1,8 +1,8 @@
 use re_data_store::LatestAtQuery;
 use re_types::{archetypes::TextDocument, components};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---

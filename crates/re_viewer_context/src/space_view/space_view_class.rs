@@ -1,11 +1,11 @@
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
-use re_types::{external::arrow2, ArchetypeName, ComponentName, SpaceViewClassIdentifier};
+use re_types::{ComponentName, SpaceViewClassIdentifier};
 
 use crate::{
-    ApplicableEntities, ComponentFallbackProvider, IndicatedEntities, PerSystemEntities,
-    PerVisualizer, QueryContext, QueryRange, SmallVisualizerSet, SpaceViewClassRegistryError,
+    ApplicableEntities, IndicatedEntities, PerSystemEntities,
+    PerVisualizer, QueryRange, SmallVisualizerSet, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
     VisualizableEntities,

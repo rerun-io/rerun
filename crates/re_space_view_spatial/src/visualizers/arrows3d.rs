@@ -7,8 +7,8 @@ use re_types::{
     components::{ClassId, Color, KeypointId, Position3D, Radius, Text, Vector3D},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery, ViewerContext,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 

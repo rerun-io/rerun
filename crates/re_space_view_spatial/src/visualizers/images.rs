@@ -20,10 +20,9 @@ use re_types::{
 };
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
-    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo,
-    VisualizerSystem,
+    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -215,7 +214,6 @@ impl ImageVisualizer {
         ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
-        ent_props: &EntityProperties,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -307,7 +305,6 @@ impl ImageVisualizer {
         ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
-        ent_props: &EntityProperties,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -731,7 +728,7 @@ impl VisualizerSystem for ImageVisualizer {
              ctx,
              _depth_clouds,
              transforms,
-             entity_props,
+             _entity_props,
              entity_path,
              spatial_ctx,
              data| {
@@ -739,7 +736,6 @@ impl VisualizerSystem for ImageVisualizer {
                     ctx,
                     render_ctx,
                     transforms,
-                    entity_props,
                     entity_path,
                     spatial_ctx,
                     data,
@@ -756,7 +752,7 @@ impl VisualizerSystem for ImageVisualizer {
              ctx,
              _depth_clouds,
              transforms,
-             entity_props,
+             _entity_props,
              entity_path,
              spatial_ctx,
              data| {
@@ -764,7 +760,6 @@ impl VisualizerSystem for ImageVisualizer {
                     ctx,
                     render_ctx,
                     transforms,
-                    entity_props,
                     entity_path,
                     spatial_ctx,
                     data,

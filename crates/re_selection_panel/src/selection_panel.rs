@@ -11,13 +11,12 @@ use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
 };
 use re_log_types::EntityPathFilter;
-use re_space_view::{latest_at_with_overrides, DataResultQuery as _};
+use re_space_view::DataResultQuery as _;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     archetypes::Pinhole,
     components::{ImagePlaneDistance, PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
-    Archetype, Loggable,
 };
 use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
@@ -25,7 +24,9 @@ use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewClass,
     SpaceViewId, UiLayout, ViewContext, ViewStates, ViewerContext,
 };
-use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{
+    ui::show_add_space_view_or_container_modal, SpaceViewBlueprint, ViewportBlueprint,
+};
 
 use crate::override_ui::{override_ui, override_visualizer_ui};
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
@@ -224,7 +225,7 @@ impl SelectionPanel {
             }
 
             Item::DataResult(space_view_id, instance_path) => {
-                let Some(space_view) = blueprint.space_view(&space_view_id) else {
+                let Some(space_view) = blueprint.space_view(space_view_id) else {
                     return;
                 };
 
@@ -247,7 +248,7 @@ impl SelectionPanel {
 
                 blueprint_ui_for_data_result(
                     &view_ctx,
-                    blueprint,
+                    space_view,
                     ui,
                     *space_view_id,
                     instance_path,
@@ -1162,40 +1163,36 @@ fn has_blueprint_section(item: &Item) -> bool {
 
 fn blueprint_ui_for_data_result(
     ctx: &ViewContext<'_>,
-    blueprint: &ViewportBlueprint,
+    space_view: &SpaceViewBlueprint,
     ui: &mut Ui,
     space_view_id: SpaceViewId,
     instance_path: &InstancePath,
 ) {
-    if let Some(space_view) = blueprint.space_view(&space_view_id) {
-        if instance_path.instance.is_all() {
-            // the whole entity
-            let entity_path = &instance_path.entity_path;
+    if instance_path.instance.is_all() {
+        // the whole entity
+        let entity_path = &instance_path.entity_path;
 
-            let query_result = ctx.lookup_query_result(space_view.id);
-            if let Some(data_result) = query_result
-                .tree
-                .lookup_result_by_path(entity_path)
-                .cloned()
-            {
-                let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
-                let accumulated_legacy_props_before = accumulated_legacy_props.clone();
+        let query_result = ctx.lookup_query_result(space_view.id);
+        if let Some(data_result) = query_result
+            .tree
+            .lookup_result_by_path(entity_path)
+            .cloned()
+        {
+            let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
+            let accumulated_legacy_props_before = accumulated_legacy_props.clone();
 
-                entity_props_ui(
-                    ctx,
-                    ui,
-                    blueprint,
-                    space_view_id,
-                    ctx.lookup_query_result(space_view_id),
-                    &data_result,
-                    &mut accumulated_legacy_props,
+            entity_props_ui(
+                ctx,
+                ui,
+                ctx.lookup_query_result(space_view_id),
+                &data_result,
+                &mut accumulated_legacy_props,
+            );
+            if accumulated_legacy_props != accumulated_legacy_props_before {
+                data_result.save_individual_override_properties(
+                    ctx.viewer_ctx,
+                    Some(accumulated_legacy_props),
                 );
-                if accumulated_legacy_props != accumulated_legacy_props_before {
-                    data_result.save_individual_override_properties(
-                        ctx.viewer_ctx,
-                        Some(accumulated_legacy_props),
-                    );
-                }
             }
         }
     }
@@ -1204,8 +1201,6 @@ fn blueprint_ui_for_data_result(
 fn entity_props_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    blueprint: &ViewportBlueprint,
-    space_view_id: SpaceViewId,
     query_result: &DataQueryResult,
     data_result: &DataResult,
     entity_props: &mut EntityProperties,

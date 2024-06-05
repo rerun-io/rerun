@@ -3,9 +3,9 @@ use ahash::HashMap;
 use re_types::{Archetype, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewState,
+    ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem,
     SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    ViewSystemIdentifier, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter,
 };
 
