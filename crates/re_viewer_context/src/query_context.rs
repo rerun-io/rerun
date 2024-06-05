@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataResult, SpaceViewId, ViewerContext};
+use crate::{DataResult, SpaceViewId, SpaceViewState, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -31,10 +31,10 @@ pub struct QueryContext<'a> {
     pub archetype_name: Option<re_types::ArchetypeName>,
 
     /// Query which didn't yield a result for the component at the target entity path.
-    // TODO(andreas): Can we make this a `ViewQuery` instead?
-    // pub query: &'a ViewQuery<'a>,
     pub query: &'a re_data_store::LatestAtQuery,
-    // pub view_state: &'a dyn SpaceViewState, // TODO(andreas): Need this, but don't know yet how to patch through everywhere.
+
+    /// The view state of the view in which the query is executed.
+    pub view_state: &'a dyn SpaceViewState,
 }
 
 /// The result of executing a single data query

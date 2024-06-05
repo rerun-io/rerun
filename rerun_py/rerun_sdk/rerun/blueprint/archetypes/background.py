@@ -39,7 +39,7 @@ class Background(BackgroundExt, Archetype):
         metadata={"component": "required"},
         converter=blueprint_components.BackgroundKindBatch._required,  # type: ignore[misc]
     )
-    # The type of the background. Defaults to BackgroundKind.GradientDark.
+    # The type of the background.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -48,9 +48,7 @@ class Background(BackgroundExt, Archetype):
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Color used for BackgroundKind.SolidColor.
-    #
-    # Defaults to White.
+    # Color used for the `SolidColor` background type.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

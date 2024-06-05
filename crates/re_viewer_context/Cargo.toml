@@ -36,10 +36,12 @@ re_ui.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bit-vec.workspace = true
+bitflags.workspace = true
 bytemuck.workspace = true
+egui_extras.workspace = true
+egui_tiles.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
-egui_tiles.workspace = true
 glam = { workspace = true, features = ["serde"] }
 half.workspace = true
 indexmap = { workspace = true, features = ["std", "serde"] }

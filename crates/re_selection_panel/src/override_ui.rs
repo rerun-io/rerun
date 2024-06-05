@@ -7,14 +7,15 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataResult, OverridePath, QueryContext, SpaceViewClassExt as _, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
+    ComponentUiTypes, DataResult, OverridePath, QueryContext, SpaceViewClassExt as _,
+    SystemCommand, SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 pub fn override_ui(
     ctx: &ViewerContext<'_>,
     space_view: &SpaceViewBlueprint,
+    view_state: &dyn re_viewer_context::SpaceViewState,
     instance_path: &InstancePath,
     ui: &mut egui::Ui,
 ) {
@@ -47,7 +48,7 @@ pub fn override_ui(
 
     let view_systems = ctx
         .space_view_class_registry
-        .new_visualizer_collection(*space_view.class_identifier());
+        .new_visualizer_collection(space_view.class_identifier());
 
     let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
 
@@ -80,6 +81,7 @@ pub fn override_ui(
         &component_to_vis,
         &active_overrides,
         &data_result,
+        view_state,
     );
 
     let Some(overrides) = data_result.property_overrides else {
@@ -131,17 +133,16 @@ pub fn override_ui(
                     .cloned(); /* arc */
 
                 if let Some(results) = component_data {
-                    ctx.component_ui_registry.edit_ui(
+                    ctx.component_ui_registry.singleline_edit_ui(
                         &QueryContext {
                             viewer_ctx: ctx,
-                            target_entity_path: entity_path_overridden,
+                            target_entity_path: &instance_path.entity_path,
                             archetype_name: None,
                             query: &query,
+                            view_state,
                         },
                         ui,
-                        UiLayout::List,
                         origin_db,
-                        &instance_path.entity_path,
                         entity_path_overridden,
                         *component_name,
                         &results,
@@ -184,6 +185,7 @@ pub fn add_new_override(
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
     active_overrides: &BTreeSet<ComponentName>,
     data_result: &DataResult,
+    view_state: &dyn re_viewer_context::SpaceViewState,
 ) {
     let remaining_components = component_to_vis
         .keys()
@@ -204,6 +206,7 @@ pub fn add_new_override(
                     target_entity_path: &data_result.entity_path,
                     archetype_name: None,
                     query,
+                    view_state,
                 };
 
                 // Present the option to add new components for each component that doesn't
@@ -222,7 +225,12 @@ pub fn add_new_override(
                     };
 
                     // If there is no registered editor, don't let the user create an override
-                    if !ctx.component_ui_registry.has_registered_editor(component) {
+                    // TODO(andreas): Can only handle single line editors right now.
+                    if !ctx
+                        .component_ui_registry
+                        .registered_ui_types(*component)
+                        .contains(ComponentUiTypes::SingleLineEditor)
+                    {
                         continue;
                     }
 
@@ -388,7 +396,7 @@ pub fn add_new_visualizer(
             &applicable_entities_per_visualizer,
             entity_db,
             &ctx.space_view_class_registry
-                .new_visualizer_collection(*space_view.class_identifier()),
+                .new_visualizer_collection(space_view.class_identifier()),
             &space_view.space_origin,
         );
 

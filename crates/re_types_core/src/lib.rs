@@ -83,7 +83,7 @@ mod tuid;
 mod view;
 
 pub use self::archetype::{
-    Archetype, ArchetypeFieldInfo, ArchetypeName, GenericIndicatorComponent,
+    Archetype, ArchetypeFieldInfo, ArchetypeInfo, ArchetypeName, GenericIndicatorComponent,
     NamedIndicatorComponent,
 };
 pub use self::loggable::{

@@ -7,7 +7,7 @@ use re_types::datatypes::{
 };
 use re_viewer_context::{auto_color, UiLayout, ViewerContext};
 
-use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
+use super::DataUi;
 
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
@@ -32,7 +32,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                     text.push(' ');
                     text.push_str(label.as_str());
                 }
-                label_for_ui_layout(ui, ui_layout, text);
+                ui_layout.label(ui, text);
             });
 
             let id = self.0;
@@ -54,7 +54,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                 }
             }
         } else {
-            label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
+            ui_layout.label(ui, format!("{}", self.0));
         }
     }
 }
@@ -79,10 +79,10 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
                     text.push_str(label.as_str());
                 }
 
-                data_label_for_ui_layout(ui, ui_layout, text);
+                ui_layout.data_label(ui, text);
             });
         } else {
-            data_label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
+            ui_layout.data_label(ui, format!("{}", self.0));
         }
     }
 }
@@ -128,7 +128,7 @@ impl DataUi for AnnotationContext {
                 } else {
                     format!("{} classes", self.0.len())
                 };
-                label_for_ui_layout(ui, ui_layout, text);
+                ui_layout.label(ui, text);
             }
             UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
                 ui.vertical(|ui| {
@@ -208,7 +208,8 @@ fn class_description_ui(
                 ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
                     use egui_extras::Column;
 
-                    let table = table_for_ui_layout(ui_layout, ui)
+                    let table = ui_layout
+                        .table(ui)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                         .column(Column::auto().clip(true).at_least(40.0))
                         .column(Column::auto().clip(true).at_least(40.0));
@@ -276,7 +277,8 @@ fn annotation_info_table_ui(
 
     use egui_extras::Column;
 
-    let table = table_for_ui_layout(ui_layout, ui)
+    let table = ui_layout
+        .table(ui)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
         .column(Column::auto().clip(true).at_least(40.0)) // label

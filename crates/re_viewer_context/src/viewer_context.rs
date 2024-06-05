@@ -92,6 +92,12 @@ impl<'a> ViewerContext<'a> {
         self.store_context.recording.store()
     }
 
+    /// The active blueprint.
+    #[inline]
+    pub fn blueprint_db(&self) -> &re_entity_db::EntityDb {
+        self.store_context.blueprint
+    }
+
     /// The `StoreId` of the active recording.
     #[inline]
     pub fn recording_id(&self) -> &re_log_types::StoreId {

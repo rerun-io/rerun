@@ -31,14 +31,20 @@ impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackProviderResult {
     }
 }
 
-/// Result for a fallback request.
+/// Error type for a fallback request.
+#[derive(thiserror::Error, Debug)]
 pub enum ComponentFallbackError {
     /// The fallback provider is not able to handle the given component _and_ there was no placeholder value.
     ///
     /// This should never happen, since all components should have a placeholder value
     /// registered in [`crate::ViewerContext::component_placeholders`].
     /// Meaning, that this is an unknown component or something went wrong with the placeholder registration.
-    MissingBaseFallback,
+    #[error("Missing placeholder for component. Was the component's default registered with the viewer?")]
+    MissingPlaceholderValue,
+
+    /// Not directly returned by the fallback provider, but useful when serializing a fallback value.
+    #[error("Fallback value turned up to be empty when we expected a value.")]
+    UnexpectedEmptyFallback,
 }
 
 /// Provides fallback values for components, implemented typically by [`crate::SpaceViewClass`] and [`crate::VisualizerSystem`].
@@ -79,8 +85,8 @@ pub trait ComponentFallbackProvider {
         }
 
         match ctx.viewer_ctx.component_placeholders.get(&component) {
-            Some(fallback) => Ok(fallback.clone()),
-            None => Err(ComponentFallbackError::MissingBaseFallback),
+            Some(placeholder) => Ok(placeholder.clone()),
+            None => Err(ComponentFallbackError::MissingPlaceholderValue),
         }
     }
 }

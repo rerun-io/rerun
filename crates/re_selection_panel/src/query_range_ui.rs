@@ -9,7 +9,7 @@ use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-    SpaceViewClassIdentifier,
+    Archetype, SpaceViewClassIdentifier,
 };
 use re_ui::{markdown_ui, ReUi};
 use re_viewer_context::{QueryRange, SpaceViewClass, ViewerContext};
@@ -39,13 +39,15 @@ pub fn query_range_ui_space_view(
     ui: &mut Ui,
     space_view: &SpaceViewBlueprint,
 ) {
-    if !space_view_with_visible_history(*space_view.class_identifier()) {
+    if !space_view_with_visible_history(space_view.class_identifier()) {
         return;
     }
 
-    let property_path = entity_path_for_view_property::<
-        re_types::blueprint::archetypes::VisibleTimeRanges,
-    >(space_view.id, ctx.store_context.blueprint.tree());
+    let property_path = entity_path_for_view_property(
+        space_view.id,
+        ctx.store_context.blueprint.tree(),
+        re_types::blueprint::archetypes::VisibleTimeRanges::name(),
+    );
 
     let query_range = space_view.query_range(
         ctx.store_context.blueprint,

@@ -17,7 +17,7 @@ use re_viewport_blueprint::{TreeAction, ViewportBlueprint};
 
 use crate::{
     screenshot::handle_pending_space_view_screenshots,
-    system_execution::execute_systems_for_all_space_views,
+    system_execution::{execute_systems_for_all_views, execute_systems_for_space_view},
 };
 
 fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
@@ -128,7 +128,7 @@ impl<'a> Viewport<'a> {
         };
 
         let executed_systems_per_space_view =
-            execute_systems_for_all_space_views(ctx, tree, &blueprint.space_views);
+            execute_systems_for_all_views(ctx, tree, &blueprint.space_views, view_states);
 
         let contents_per_tile_id = blueprint
             .contents_iter()
@@ -182,7 +182,7 @@ impl<'a> Viewport<'a> {
                 let PerViewState {
                     auto_properties,
                     view_state: space_view_state,
-                } = view_states.view_state_mut(
+                } = view_states.get_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
                     space_view.class_identifier(),
@@ -494,21 +494,36 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 space_view_blueprint.display_name_or_default()
             );
             }
+            {
+                let ctx: &'a ViewerContext<'_> = self.ctx;
+                let view = space_view_blueprint;
+                re_tracing::profile_function!(view.class_identifier().as_str());
 
-            let highlights =
-                crate::space_view_highlights::highlights_for_space_view(self.ctx, *space_view_id);
-            crate::system_execution::execute_systems_for_space_view(
-                self.ctx,
-                space_view_blueprint,
-                latest_at,
-                highlights,
-            )
+                let query_result = ctx.lookup_query_result(view.id);
+
+                let mut per_visualizer_data_results = re_viewer_context::PerSystemDataResults::default();
+                {
+                    re_tracing::profile_scope!("per_system_data_results");
+
+                    query_result.tree.visit(&mut |node| {
+                        for system in &node.data_result.visualizers {
+                            per_visualizer_data_results
+                                .entry(*system)
+                                .or_default()
+                                .push(&node.data_result);
+                        }
+                        true
+                    });
+                }
+
+                execute_systems_for_space_view(ctx, view, latest_at, self.view_states)
+            }
         });
 
         let PerViewState {
             auto_properties: _,
             view_state: space_view_state,
-        } = self.view_states.view_state_mut(
+        } = self.view_states.get_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
             space_view_blueprint.class_identifier(),

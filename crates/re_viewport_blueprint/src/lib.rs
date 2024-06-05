@@ -16,8 +16,8 @@ pub use space_view::SpaceViewBlueprint;
 pub use space_view_contents::SpaceViewContents;
 pub use tree_actions::TreeAction;
 pub use view_properties::{
-    edit_blueprint_component, entity_path_for_view_property, query_view_property,
-    query_view_property_or_default, view_property,
+    entity_path_for_view_property, query_view_property, query_view_property_or_default,
+    ViewProperty, ViewPropertyQueryError,
 };
 pub use viewport_blueprint::ViewportBlueprint;
 

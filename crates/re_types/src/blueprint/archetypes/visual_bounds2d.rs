@@ -66,6 +66,17 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
+static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+        ::re_types_core::ArchetypeFieldInfo {
+            display_name: "Range",
+            documentation: "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
+            component_name: "rerun.blueprint.components.VisualBounds2D".into(),
+        },
+    ]
+    });
+
 impl VisualBounds2D {
     /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
@@ -111,6 +122,11 @@ impl ::re_types_core::Archetype for VisualBounds2D {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
+        Some(FIELD_INFOS.as_slice().into())
     }
 
     #[inline]

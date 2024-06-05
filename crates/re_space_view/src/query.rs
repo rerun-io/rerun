@@ -1,17 +1,38 @@
 use nohash_hasher::IntSet;
-use re_data_store::RangeQuery;
-use re_types_core::ComponentName;
 
+use re_data_store::{LatestAtQuery, RangeQuery};
 use re_query::{LatestAtResults, RangeResults};
+use re_types_core::ComponentName;
 use re_viewer_context::ViewerContext;
 
 // ---
+
+#[derive(Debug)]
+pub enum HybridResults {
+    LatestAt(LatestAtQuery, HybridLatestAtResults),
+    Range(RangeQuery, HybridRangeResults),
+}
+
+impl From<(LatestAtQuery, HybridLatestAtResults)> for HybridResults {
+    #[inline]
+    fn from((query, results): (LatestAtQuery, HybridLatestAtResults)) -> Self {
+        Self::LatestAt(query, results)
+    }
+}
+
+impl From<(RangeQuery, HybridRangeResults)> for HybridResults {
+    #[inline]
+    fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
+        Self::Range(query, results)
+    }
+}
 
 /// Wrapper that contains the results of a range query with possible overrides.
 ///
 /// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
 /// they will be merged into the results appropriately.
-pub struct HybridResults {
+#[derive(Debug)]
+pub struct HybridRangeResults {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: RangeResults,
 }
@@ -29,17 +50,80 @@ pub fn range_with_overrides(
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-) -> HybridResults {
+) -> HybridRangeResults {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
 
+    let overrides = query_overrides(ctx, data_result, component_set.iter());
+
+    // No need to query for components that have overrides.
+    component_set.retain(|component| !overrides.components.contains_key(component));
+
+    let results = ctx.recording().query_caches().range(
+        ctx.recording_store(),
+        range_query,
+        &data_result.entity_path,
+        component_set,
+    );
+
+    HybridRangeResults { overrides, results }
+}
+
+/// Wrapper that contains the results of a latest-at query with possible overrides.
+///
+/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
+/// they will be merged into the results appropriately.
+#[derive(Debug)]
+pub struct HybridLatestAtResults {
+    pub(crate) overrides: LatestAtResults,
+    pub(crate) results: LatestAtResults,
+}
+
+/// Queries for the given `component_names` using latest-at semantics with override support.
+///
+/// If the `DataResult` contains a specified override from the blueprint, that values
+/// will be used instead of the latest-at query.
+///
+/// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
+/// [`HybridResults`].
+pub fn latest_at_with_overrides(
+    ctx: &ViewerContext<'_>,
+    _annotations: Option<&re_viewer_context::Annotations>,
+    latest_at_query: &LatestAtQuery,
+    data_result: &re_viewer_context::DataResult,
+    component_names: impl IntoIterator<Item = ComponentName>,
+) -> HybridLatestAtResults {
+    re_tracing::profile_function!(data_result.entity_path.to_string());
+
+    let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
+
+    let overrides = query_overrides(ctx, data_result, component_set.iter());
+
+    // No need to query for components that have overrides.
+    component_set.retain(|component| !overrides.components.contains_key(component));
+
+    let results = ctx.recording().query_caches().latest_at(
+        ctx.recording_store(),
+        latest_at_query,
+        &data_result.entity_path,
+        component_set,
+    );
+
+    HybridLatestAtResults { overrides, results }
+}
+
+fn query_overrides<'a>(
+    ctx: &ViewerContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    component_names: impl Iterator<Item = &'a ComponentName>,
+) -> LatestAtResults {
     // First see if any components have overrides.
     let mut overrides = LatestAtResults::default();
 
     if let Some(prop_overrides) = &data_result.property_overrides {
         // TODO(jleibs): partitioning overrides by path
-        for component_name in &component_set {
+        for component_name in component_names {
             if let Some(override_value) = prop_overrides
                 .resolved_component_overrides
                 .get(component_name)
@@ -80,16 +164,5 @@ pub fn range_with_overrides(
             }
         }
     }
-
-    // No need to query for components that have overrides.
-    component_set.retain(|component| !overrides.components.contains_key(component));
-
-    let results = ctx.recording().query_caches().range(
-        ctx.recording_store(),
-        range_query,
-        &data_result.entity_path,
-        component_set,
-    );
-
-    HybridResults { overrides, results }
+    overrides
 }
