@@ -157,6 +157,18 @@ impl<'a> AppBlueprint<'a> {
             command_sender,
         );
     }
+
+    pub fn blueprint_panel_overridden(&self) -> bool {
+        self.overrides.is_some_and(|s| s.blueprint.is_some())
+    }
+
+    pub fn selection_panel_overridden(&self) -> bool {
+        self.overrides.is_some_and(|s| s.selection.is_some())
+    }
+
+    pub fn time_panel_overridden(&self) -> bool {
+        self.overrides.is_some_and(|s| s.time.is_some())
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy)]

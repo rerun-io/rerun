@@ -82,6 +82,9 @@ impl WebHandle {
             Some(value) => app.panel_state_overrides_active = value,
             None => app.panel_state_overrides_active ^= true,
         }
+
+        // request repaint, because the overrides may cause panels to expand/collapse
+        app.re_ui.egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
