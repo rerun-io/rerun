@@ -47,7 +47,6 @@ impl TestContext {
     pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
         egui::__run_test_ui(|ui| {
             re_ui::apply_style_and_install_loaders(ui.ctx());
-            let re_ui = re_ui::ReUi::new(ui.ctx().clone());
             let blueprint_query = LatestAtQuery::latest(re_log_types::Timeline::new(
                 "timeline",
                 re_log_types::TimeType::Time,
@@ -66,6 +65,7 @@ impl TestContext {
                 hub: &Default::default(),
             };
 
+            let egui_context = ui.ctx().clone();
             let ctx = ViewerContext {
                 app_options: &Default::default(),
                 cache: &Default::default(),
@@ -79,7 +79,7 @@ impl TestContext {
                 blueprint_cfg: &Default::default(),
                 selection_state: &self.selection_state,
                 blueprint_query: &blueprint_query,
-                re_ui: &re_ui,
+                egui_ctx: &egui_context,
                 render_ctx: None,
                 command_sender: &command_sender,
                 focused_item: &None,

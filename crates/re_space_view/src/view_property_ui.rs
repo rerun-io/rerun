@@ -1,6 +1,6 @@
 use ahash::HashMap;
 use re_types_core::Archetype;
-use re_ui::list_item;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{ComponentFallbackProvider, QueryContext, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::entity_path_for_view_property;
 
@@ -43,7 +43,7 @@ pub fn view_property_ui<A: Archetype>(
         })
         .unwrap_or_default();
 
-    let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
+    let sub_prop_ui = |ui: &mut egui::Ui| {
         for component_name in component_names.as_ref() {
             if component_name.is_indicator_component() {
                 continue;
@@ -53,28 +53,26 @@ pub fn view_property_ui<A: Archetype>(
             let display_name =
                 field_info.map_or_else(|| component_name.short_name(), |info| info.display_name);
 
-            let mut list_item_response = list_item::ListItem::new(re_ui)
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::PropertyContent::new(display_name)
-                        .action_button(&re_ui::icons::RESET, || {
-                            ctx.reset_blueprint_component_by_name(&blueprint_path, *component_name);
-                        })
-                        .value_fn(|_, ui, _| {
-                            ctx.component_ui_registry.edit_ui(
-                                &query_ctx,
-                                ui,
-                                re_viewer_context::UiLayout::List,
-                                blueprint_db,
-                                &blueprint_path,
-                                &blueprint_path,
-                                *component_name,
-                                component_results.get_or_empty(*component_name),
-                                fallback_provider,
-                            );
-                        }),
-                );
+            let mut list_item_response = ui.list_item().interactive(false).show_flat(
+                ui,
+                list_item::PropertyContent::new(display_name)
+                    .action_button(&re_ui::icons::RESET, || {
+                        ctx.reset_blueprint_component_by_name(&blueprint_path, *component_name);
+                    })
+                    .value_fn(|ui, _| {
+                        ctx.component_ui_registry.edit_ui(
+                            &query_ctx,
+                            ui,
+                            re_viewer_context::UiLayout::List,
+                            blueprint_db,
+                            &blueprint_path,
+                            &blueprint_path,
+                            *component_name,
+                            component_results.get_or_empty(*component_name),
+                            fallback_provider,
+                        );
+                    }),
+            );
 
             if let Some(tooltip) = field_info.map(|info| info.documentation) {
                 list_item_response = list_item_response.on_hover_text(tooltip);
@@ -105,7 +103,7 @@ This has the same effect as not setting the value in the blueprint at all.")
         }
     };
 
-    list_item::ListItem::new(ctx.re_ui)
+    ui.list_item()
         .interactive(false)
         .show_hierarchical_with_children(
             ui,

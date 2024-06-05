@@ -9,6 +9,7 @@ use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_types::components::{DepthMeter, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
+use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
@@ -88,14 +89,8 @@ impl SpatialSpaceViewState {
         config
     }
 
-    pub fn bounding_box_ui(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spatial_kind: SpatialSpaceViewKind,
-    ) {
-        ctx.re_ui
-            .grid_left_hand_label(ui, "Bounding box")
+    pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
+        ui.grid_left_hand_label("Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -110,17 +105,16 @@ impl SpatialSpaceViewState {
     }
 
     /// Default sizes of points and lines.
-    pub fn default_sizes_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn default_sizes_ui(&mut self, ui: &mut egui::Ui) {
         let auto_size_world =
             auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
 
-        ctx.re_ui.grid_left_hand_label(ui, "Default size");
+        ui.grid_left_hand_label("Default size");
 
         egui::Grid::new("default_sizes")
             .num_columns(2)
             .show(ui, |ui| {
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Point radius")
+                ui.grid_left_hand_label("Point radius")
                     .on_hover_text("Point radius used whenever not explicitly specified");
                 ui.push_id("points", |ui| {
                     size_ui(
@@ -132,8 +126,7 @@ impl SpatialSpaceViewState {
                 });
                 ui.end_row();
 
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Line radius")
+                ui.grid_left_hand_label("Line radius")
                     .on_hover_text("Line radius used whenever not explicitly specified");
                 size_ui(
                     ui,
@@ -150,7 +143,6 @@ impl SpatialSpaceViewState {
     // Say the name out loud. It is fun!
     pub fn view_eye_ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         scene_view_coordinates: Option<ViewCoordinates>,
     ) {
@@ -168,8 +160,8 @@ impl SpatialSpaceViewState {
 
         {
             let mut spin = self.state_3d.spin();
-            if re_ui
-                .re_checkbox(ui, &mut spin, "Spin")
+            if ui
+                .re_checkbox(&mut spin, "Spin")
                 .on_hover_text("Spin camera around the orbit center")
                 .changed()
             {

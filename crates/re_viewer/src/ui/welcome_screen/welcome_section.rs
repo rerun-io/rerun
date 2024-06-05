@@ -1,5 +1,7 @@
 use egui::Ui;
 
+use re_ui::UiExt as _;
+
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
 pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize multimodal data";
 pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
@@ -32,7 +34,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         let bullet_text = |ui: &mut Ui, text: &str| {
             ui.horizontal(|ui| {
                 ui.add_space(1.0);
-                re_ui::ReUi::bullet(ui, ui.visuals().strong_text_color());
+                ui.bullet(ui.visuals().strong_text_color());
                 ui.add_space(5.0);
                 ui.add(
                     egui::Label::new(

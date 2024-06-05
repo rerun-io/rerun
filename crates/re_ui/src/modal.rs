@@ -1,4 +1,4 @@
-use crate::DesignTokens;
+use crate::{DesignTokens, UiExt as _};
 use egui::NumExt;
 
 /// Helper object to handle a [`Modal`] window.
@@ -9,17 +9,14 @@ use egui::NumExt;
 /// Usage:
 /// ```
 /// # use re_ui::modal::{Modal, ModalHandler};
-/// # use re_ui::ReUi;
 /// let mut modal_handler = ModalHandler::default();
 ///
 /// # egui::__run_test_ui(|ui| {
-/// #   let re_ui = ReUi::load_and_apply(ui.ctx());
-/// #   let re_ui = &re_ui;
 /// if ui.button("Open").clicked() {
 ///     modal_handler.open();
 /// }
 ///
-/// modal_handler.ui(re_ui, ui.ctx(), || Modal::new("Modal Window"), |_, ui, _| {
+/// modal_handler.ui(ui.ctx(), || Modal::new("Modal Window"), |_, ui, _| {
 ///     ui.label("Modal content");
 /// });
 /// # });
@@ -39,10 +36,9 @@ impl ModalHandler {
     /// Draw the modal window, creating/destroying it as required.
     pub fn ui<R>(
         &mut self,
-        re_ui: &crate::ReUi,
         ctx: &egui::Context,
         make_modal: impl FnOnce() -> Modal,
-        content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &mut bool) -> R,
+        content_ui: impl FnOnce(&mut egui::Ui, &mut bool) -> R,
     ) -> Option<R> {
         if self.modal.is_none() && self.should_open {
             self.modal = Some(make_modal());
@@ -50,7 +46,7 @@ impl ModalHandler {
         }
 
         if let Some(modal) = &mut self.modal {
-            let ModalResponse { inner, open } = modal.ui(re_ui, ctx, content_ui);
+            let ModalResponse { inner, open } = modal.ui(ctx, content_ui);
 
             if !open {
                 self.modal = None;
@@ -97,7 +93,7 @@ pub struct ModalResponse<R> {
 /// ```
 ///
 /// The modal sets the clip rect such as to allow full-span highlighting behavior (e.g. with
-/// [`crate::list_item::ListItem`]). Consider using [`crate::ReUi::full_span_separator`] to draw a
+/// [`crate::list_item::ListItem`]). Consider using [`crate::UiExt::full_span_separator`] to draw a
 /// separator that spans the full width of the modal instead of the usual [`egui::Ui::separator`]
 /// method.
 ///
@@ -162,9 +158,8 @@ impl Modal {
     /// Typically called by [`ModalHandler::ui`].
     pub fn ui<R>(
         &mut self,
-        re_ui: &crate::ReUi,
         ctx: &egui::Context,
-        content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &mut bool) -> R,
+        content_ui: impl FnOnce(&mut egui::Ui, &mut bool) -> R,
     ) -> ModalResponse<R> {
         Self::dim_background(ctx);
 
@@ -210,13 +205,13 @@ impl Modal {
             }
             .show(ui, |ui| {
                 ui.add_space(DesignTokens::view_padding());
-                Self::title_bar(re_ui, ui, &self.title, &mut open);
+                Self::title_bar(ui, &self.title, &mut open);
                 ui.add_space(DesignTokens::view_padding());
-                crate::ReUi::full_span_separator(ui);
+                ui.full_span_separator();
 
                 if self.full_span_content {
                     // no further spacing for the content UI
-                    content_ui(re_ui, ui, &mut open)
+                    content_ui(ui, &mut open)
                 } else {
                     // we must restore vertical spacing and add view padding at the bottom
                     ui.add_space(item_spacing_y);
@@ -230,7 +225,7 @@ impl Modal {
                     }
                     .show(ui, |ui| {
                         ui.spacing_mut().item_spacing.y = item_spacing_y;
-                        content_ui(re_ui, ui, &mut open)
+                        content_ui(ui, &mut open)
                     })
                     .inner
                 }
@@ -272,7 +267,7 @@ impl Modal {
     }
 
     /// Display a title bar in our own style.
-    fn title_bar(re_ui: &crate::ReUi, ui: &mut egui::Ui, title: &str, open: &mut bool) {
+    fn title_bar(ui: &mut egui::Ui, title: &str, open: &mut bool) {
         ui.horizontal(|ui| {
             ui.strong(title);
 
@@ -283,10 +278,7 @@ impl Modal {
                 egui::Layout::right_to_left(egui::Align::Center),
                 None,
             );
-            if re_ui
-                .small_icon_button(&mut ui, &crate::icons::CLOSE)
-                .clicked()
-            {
+            if ui.small_icon_button(&crate::icons::CLOSE).clicked() {
                 *open = false;
             }
         });

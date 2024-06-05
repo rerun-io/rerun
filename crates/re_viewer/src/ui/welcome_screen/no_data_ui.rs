@@ -1,11 +1,13 @@
 use egui::Ui;
 
+use re_ui::UiExt as _;
+
 #[derive(Debug, Default, Clone, Copy)]
 struct TextSize(egui::Vec2);
 
 /// Show a minimal welcome section.
 pub fn no_data_ui(ui: &mut egui::Ui) {
-    re_ui::ReUi::center(ui, "no_data_ui_contents", |ui| {
+    ui.center("no_data_ui_contents", |ui| {
         ui.add(
             egui::Label::new(
                 egui::RichText::new(super::welcome_section::WELCOME_SCREEN_TITLE)
@@ -21,7 +23,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
         let bullet_text = |ui: &mut Ui, text: &str| {
             ui.horizontal(|ui| {
                 ui.add_space(1.0);
-                re_ui::ReUi::bullet(ui, ui.visuals().weak_text_color());
+                ui.bullet(ui.visuals().weak_text_color());
                 ui.add_space(5.0);
                 ui.add(
                     egui::Label::new(

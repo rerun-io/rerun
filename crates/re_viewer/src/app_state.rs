@@ -126,7 +126,6 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
-        re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
@@ -240,7 +239,7 @@ impl AppState {
 
         let rec_cfg =
             recording_config_entry(recording_configs, recording.store_id().clone(), recording);
-
+        let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             app_options,
             cache,
@@ -254,7 +253,7 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            re_ui,
+            egui_ctx: &egui_ctx,
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
@@ -318,7 +317,7 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            re_ui,
+            egui_ctx: &egui_ctx,
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
@@ -434,7 +433,7 @@ impl AppState {
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
                 if show_welcome {
-                    welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_state);
+                    welcome_screen.ui(ui, command_sender, welcome_screen_state);
                 } else {
                     viewport.viewport_ui(ui, &ctx, view_states);
                 }
@@ -489,7 +488,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&re_ui.egui_ctx, ctx.selection_state);
+        check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
 
         // Reset the focused item.
         *focused_item = None;

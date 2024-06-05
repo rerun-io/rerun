@@ -244,7 +244,6 @@ impl ExampleSection {
     pub(super) fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        _re_ui: &re_ui::ReUi,
         command_sender: &CommandSender,
         header_ui: &impl Fn(&mut Ui),
     ) {

@@ -6,7 +6,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
-use re_ui::ContextExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     DataResult, OverridePath, QueryContext, SpaceViewClassExt as _, SystemCommand,
     SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
@@ -158,8 +158,7 @@ pub fn override_ui(
                 }
             };
 
-            ctx.re_ui
-                .list_item()
+            ui.list_item()
                 .interactive(false)
                 .show_flat(
                     ui,
@@ -171,7 +170,7 @@ pub fn override_ui(
                                 *component_name,
                             );
                         })
-                        .value_fn(|_, ui, _| value_fn(ui)),
+                        .value_fn(|ui, _| value_fn(ui)),
                 )
                 .on_hover_text(component_name.full_name());
         }
@@ -339,12 +338,12 @@ pub fn override_visualizer_ui(
             ui.spacing_mut().item_spacing.y = 0.0;
 
             for viz_name in &active_visualizers {
-                ctx.re_ui.list_item().interactive(false).show_flat(
+                ui.list_item().interactive(false).show_flat(
                     ui,
                     re_ui::list_item::LabelContent::new(viz_name.as_str())
                         .min_desired_width(150.0)
-                        .with_buttons(|re_ui, ui| {
-                            let response = re_ui.small_icon_button(ui, &re_ui::icons::CLOSE);
+                        .with_buttons(|ui| {
+                            let response = ui.small_icon_button(&re_ui::icons::CLOSE);
                             if response.clicked() {
                                 let component = VisualizerOverrides::from(
                                     active_visualizers

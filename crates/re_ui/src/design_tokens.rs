@@ -366,9 +366,9 @@ impl DesignTokens {
     /// Layout area to allocate for the collapsing triangle.
     ///
     /// Note that this is not the _size_ of the collapsing triangle (which is defined by
-    /// [`ReUi::paint_collapsing_triangle`]), but how much screen real-estate should be allocated
-    /// for it. It's set to the same size as the small icon size so that everything is properly
-    /// aligned in [`list_item::ListItem`].
+    /// [`crate::UiExt::paint_collapsing_triangle`]), but how much screen real-estate should be
+    /// allocated for it. It's set to the same size as the small icon size so that everything is
+    /// properly aligned in [`crate::list_item::ListItem`].
     pub fn collapsing_triangle_area() -> egui::Vec2 {
         Self::small_icon_size()
     }

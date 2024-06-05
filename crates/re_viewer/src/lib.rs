@@ -200,7 +200,7 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
 /// Customize eframe and egui to suit the rerun viewer.
 pub fn customize_eframe_and_setup_renderer(
     cc: &eframe::CreationContext<'_>,
-) -> Result<re_ui::ReUi, re_renderer::RenderContextError> {
+) -> Result<(), re_renderer::RenderContextError> {
     re_tracing::profile_function!();
 
     if let Some(render_state) = &cc.wgpu_render_state {
@@ -222,7 +222,7 @@ pub fn customize_eframe_and_setup_renderer(
     }
 
     re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
-    Ok(re_ui::ReUi::new(cc.egui_ctx.clone()))
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

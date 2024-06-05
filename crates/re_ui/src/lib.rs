@@ -5,7 +5,6 @@ mod command_palette;
 mod design_tokens;
 mod layout_job_builder;
 mod syntax_highlighting;
-mod toggle_switch;
 
 pub mod drag_and_drop;
 pub mod icons;
@@ -20,7 +19,6 @@ pub use self::{
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
     syntax_highlighting::SyntaxHighlighting,
-    toggle_switch::toggle_switch,
 };
 use std::hash::Hash;
 
@@ -65,9 +63,10 @@ pub enum LabelStyle {
 
 // ----------------------------------------------------------------------------
 
+use crate::list_item::{LabelContent, ListItem};
 use egui::{
     emath::{Float, Rangef, Rot2},
-    pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Ui, Vec2, Widget,
+    pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Vec2, Widget,
 };
 
 /// Return a reference to the global design tokens structure.
@@ -215,59 +214,47 @@ impl ContextExt for egui::Context {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, Clone)]
-pub struct ReUi {
-    pub egui_ctx: egui::Context,
-}
-
-impl ReUi {
-    //TODO: temporary
-    pub fn new(egui_ctx: egui::Context) -> Self {
-        Self { egui_ctx }
-    }
+/// Rerun custom extensions to [`egui::Ui`].
+pub trait UiExt {
+    fn ui(&self) -> &egui::Ui;
+    fn ui_mut(&mut self) -> &mut egui::Ui;
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
-    pub fn error_label(&self, ui: &mut egui::Ui, error_text: &str) -> egui::Response {
-        let label = egui::Label::new(ui.ctx().error_text("Error"))
+    fn error_label(&mut self, error_text: &str) -> egui::Response {
+        let label = egui::Label::new(self.ui().ctx().error_text("Error"))
             .selectable(false)
             .sense(egui::Sense::click());
-        let response = ui.add(label);
+        let response = self.ui_mut().add(label);
         if response.clicked() {
-            ui.ctx().copy_text(error_text.to_owned());
+            self.ui().ctx().copy_text(error_text.to_owned());
         }
         response.on_hover_text(error_text)
     }
 
-    #[allow(clippy::unused_self)]
-    pub fn small_icon_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
-        ui.add(self.small_icon_button_widget(ui, icon))
+    fn small_icon_button(&mut self, icon: &Icon) -> egui::Response {
+        let widget = self.small_icon_button_widget(icon);
+        self.ui_mut().add(widget)
     }
 
-    #[allow(clippy::unused_self)]
-    pub fn small_icon_button_widget(&self, ui: &egui::Ui, icon: &Icon) -> egui::ImageButton<'_> {
+    fn small_icon_button_widget<'a>(&self, icon: &'a Icon) -> egui::ImageButton<'a> {
         // TODO(emilk): change color and size on hover
         egui::ImageButton::new(
             icon.as_image()
                 .fit_to_exact_size(DesignTokens::small_icon_size()),
         )
-        .tint(ui.visuals().widgets.inactive.fg_stroke.color)
+        .tint(self.ui().visuals().widgets.inactive.fg_stroke.color)
     }
 
-    #[allow(clippy::unused_self)]
-    pub fn medium_icon_toggle_button(
-        &self,
-        ui: &mut egui::Ui,
-        icon: &Icon,
-        selected: &mut bool,
-    ) -> egui::Response {
+    fn medium_icon_toggle_button(&mut self, icon: &Icon, selected: &mut bool) -> egui::Response {
         let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from design tokens
 
         let tint = if *selected {
-            ui.visuals().widgets.inactive.fg_stroke.color
+            self.ui().visuals().widgets.inactive.fg_stroke.color
         } else {
             egui::Color32::from_gray(100) // TODO(emilk): get from design tokens
         };
-        let mut response = ui
+        let mut response = self
+            .ui_mut()
             .add(egui::ImageButton::new(icon.as_image().fit_to_exact_size(size_points)).tint(tint));
         if response.clicked() {
             *selected = !*selected;
@@ -276,14 +263,14 @@ impl ReUi {
         response
     }
 
-    #[allow(clippy::unused_self)]
     fn large_button_impl(
-        &self,
-        ui: &mut egui::Ui,
+        &mut self,
         icon: &Icon,
         bg_fill: Option<Color32>,
         tint: Option<Color32>,
     ) -> egui::Response {
+        let ui = self.ui_mut();
+
         let prev_style = ui.style().clone();
         {
             // For big buttons we have a background color even when inactive:
@@ -322,79 +309,68 @@ impl ReUi {
         response
     }
 
-    #[allow(clippy::unused_self)]
-    pub fn re_checkbox(
-        &self,
-        ui: &mut egui::Ui,
+    fn re_checkbox(
+        &mut self,
         selected: &mut bool,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(ui, selected, text, false)
+        self.checkbox_indeterminate(selected, text, false)
     }
 
     #[allow(clippy::disallowed_types)]
-    pub fn checkbox_indeterminate(
-        &self,
-        ui: &mut egui::Ui,
+    fn checkbox_indeterminate(
+        &mut self,
         selected: &mut bool,
         text: impl Into<egui::WidgetText>,
         indeterminate: bool,
     ) -> egui::Response {
-        ui.scope(|ui| {
-            ui.visuals_mut().widgets.hovered.expansion = 0.0;
-            ui.visuals_mut().widgets.active.expansion = 0.0;
-            ui.visuals_mut().widgets.open.expansion = 0.0;
+        self.ui_mut()
+            .scope(|ui| {
+                ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                ui.visuals_mut().widgets.active.expansion = 0.0;
+                ui.visuals_mut().widgets.open.expansion = 0.0;
 
-            egui::Checkbox::new(selected, text)
-                .indeterminate(indeterminate)
-                .ui(ui)
-        })
-        .inner
+                egui::Checkbox::new(selected, text)
+                    .indeterminate(indeterminate)
+                    .ui(ui)
+            })
+            .inner
     }
 
     #[allow(clippy::disallowed_methods)]
-    pub fn re_radio_value<Value: PartialEq>(
-        &self,
-        ui: &mut egui::Ui,
+    fn re_radio_value<Value: PartialEq>(
+        &mut self,
         current_value: &mut Value,
         alternative: Value,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
-        ui.scope(|ui| {
-            ui.visuals_mut().widgets.hovered.expansion = 0.0;
-            ui.visuals_mut().widgets.active.expansion = 0.0;
-            ui.visuals_mut().widgets.open.expansion = 0.0;
+        self.ui_mut()
+            .scope(|ui| {
+                ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                ui.visuals_mut().widgets.active.expansion = 0.0;
+                ui.visuals_mut().widgets.open.expansion = 0.0;
 
-            // NOLINT
-            ui.radio_value(current_value, alternative, text)
-        })
-        .inner
+                ui.radio_value(current_value, alternative, text)
+            })
+            .inner
     }
 
-    pub fn large_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
-        self.large_button_impl(ui, icon, None, None)
+    fn large_button(&mut self, icon: &Icon) -> egui::Response {
+        self.large_button_impl(icon, None, None)
     }
 
-    pub fn large_button_selected(
-        &self,
-        ui: &mut egui::Ui,
-        icon: &Icon,
-        selected: bool,
-    ) -> egui::Response {
+    fn large_button_selected(&mut self, icon: &Icon, selected: bool) -> egui::Response {
+        let ui = self.ui();
         let bg_fill = selected.then(|| ui.visuals().selection.bg_fill);
         let tint = selected.then(|| ui.visuals().selection.stroke.color);
-        self.large_button_impl(ui, icon, bg_fill, tint)
+        self.large_button_impl(icon, bg_fill, tint)
     }
 
-    pub fn visibility_toggle_button(
-        &self,
-        ui: &mut egui::Ui,
-        visible: &mut bool,
-    ) -> egui::Response {
-        let mut response = if *visible && ui.is_enabled() {
-            self.small_icon_button(ui, &icons::VISIBLE)
+    fn visibility_toggle_button(&mut self, visible: &mut bool) -> egui::Response {
+        let mut response = if *visible && self.ui().is_enabled() {
+            self.small_icon_button(&icons::VISIBLE)
         } else {
-            self.small_icon_button(ui, &icons::INVISIBLE)
+            self.small_icon_button(&icons::INVISIBLE)
         };
         if response.clicked() {
             response.mark_changed();
@@ -408,7 +384,9 @@ impl ReUi {
     /// The span is determined using [`crate::UiExt::full_span`]. Contrary to
     /// [`egui::Separator`], this separator allocates a single pixel in height, as spacing is
     /// typically handled by content when full span highlighting is used.
-    pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
+    fn full_span_separator(&mut self) -> egui::Response {
+        let ui = self.ui_mut();
+
         let height = 1.0;
 
         let available_space = ui.available_size_before_wrap();
@@ -434,13 +412,15 @@ impl ReUi {
     /// [`crate::list_item::ListItem`].
     ///
     /// Note that `add_contents` is called within a [`crate::list_item::list_item_scope`].
-    pub fn list_item_popup<R>(
-        ui: &egui::Ui,
+    fn list_item_popup<R>(
+        &self,
         popup_id: egui::Id,
         widget_response: &egui::Response,
         vertical_offset: f32,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> Option<R> {
+        let ui = self.ui();
+
         if !ui.memory(|mem| mem.is_popup_open(popup_id)) {
             return None;
         }
@@ -484,16 +464,14 @@ impl ReUi {
         ret
     }
 
-    pub fn panel_content<R>(
-        &self,
-        ui: &mut egui::Ui,
-        add_contents: impl FnOnce(&Self, &mut egui::Ui) -> R,
-    ) -> R {
+    // TODO(ab): this used to be used for inner margin, after registering full span range in panels.
+    // It's highly likely that all these use are now redundant.
+    fn panel_content<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
         egui::Frame {
             inner_margin: DesignTokens::panel_margin(),
             ..Default::default()
         }
-        .show(ui, |ui| add_contents(self, ui))
+        .show(self.ui_mut(), |ui| add_contents(ui))
         .inner
     }
 
@@ -502,23 +480,23 @@ impl ReUi {
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
     /// set.
     ///
-    /// Use [`ReUi::panel_title_bar_with_buttons`] to display buttons in the title bar.
-    pub fn panel_title_bar(&self, ui: &mut egui::Ui, label: &str, hover_text: Option<&str>) {
-        self.panel_title_bar_with_buttons(ui, label, hover_text, |_ui| {});
+    /// Use [`UiExt::panel_title_bar_with_buttons`] to display buttons in the title bar.
+    fn panel_title_bar(&mut self, label: &str, hover_text: Option<&str>) {
+        self.panel_title_bar_with_buttons(label, hover_text, |_ui| {});
     }
 
     /// Static title bar used to separate panels into section with custom buttons when hovered.
     ///h
     /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
     /// set.
-    #[allow(clippy::unused_self)]
-    pub fn panel_title_bar_with_buttons<R>(
-        &self,
-        ui: &mut egui::Ui,
+    fn panel_title_bar_with_buttons<R>(
+        &mut self,
         label: &str,
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
+        let ui = self.ui_mut();
+
         ui.allocate_ui_with_layout(
             egui::vec2(ui.available_width(), DesignTokens::title_bar_height()),
             egui::Layout::left_to_right(egui::Align::Center),
@@ -556,14 +534,13 @@ impl ReUi {
     ///
     /// The layout is fine-tuned to fit well in inspector panels (such as Rerun's Selection Panel)
     /// where the collapsing header should align nicely with checkboxes and other controls.
-    #[allow(clippy::unused_self)]
-    pub fn collapsing_header<R>(
-        &self,
-        ui: &mut egui::Ui,
+    fn collapsing_header<R>(
+        &mut self,
         label: &str,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::CollapsingResponse<R> {
+        let ui = self.ui_mut();
         let id = ui.make_persistent_id(label);
         let button_padding = ui.spacing().button_padding;
 
@@ -622,8 +599,7 @@ impl ReUi {
                 );
 
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                Self::paint_collapsing_triangle(
-                    ui,
+                ui.paint_collapsing_triangle(
                     openness,
                     icon_rect.center(),
                     ui.style().interact(&icon_response),
@@ -654,21 +630,20 @@ impl ReUi {
     /// Conditionally collapsing header.
     ///
     /// Display content under a header that is conditionally collapsible. If `collapsing` is `true`,
-    /// this is equivalent to [`ReUi::collapsing_header`]. If `collapsing` is `false`, the content
+    /// this is equivalent to [`Self::collapsing_header`]. If `collapsing` is `false`, the content
     /// is displayed under a static, non-collapsible header.
-    #[allow(clippy::unused_self)]
-    pub fn maybe_collapsing_header<R>(
-        &self,
-        ui: &mut egui::Ui,
+    fn maybe_collapsing_header<R>(
+        &mut self,
+
         collapsing: bool,
         label: &str,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::CollapsingResponse<R> {
         if collapsing {
-            self.collapsing_header(ui, label, default_open, add_body)
+            self.collapsing_header(label, default_open, add_body)
         } else {
-            let response = ui.strong(label);
+            let response = self.ui_mut().strong(label);
             CollapsingResponse {
                 header_response: response,
                 body_response: None,
@@ -681,14 +656,14 @@ impl ReUi {
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
     ///
     /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
-    #[allow(clippy::unused_self)]
-    pub fn large_collapsing_header<R>(
-        &self,
-        ui: &mut egui::Ui,
+    fn large_collapsing_header<R>(
+        &mut self,
         label: &str,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
     ) {
+        let ui = self.ui_mut();
+
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             ui.make_persistent_id(label),
@@ -733,8 +708,7 @@ impl ReUi {
                     egui::Vec2::splat(icon_width),
                 );
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                Self::paint_collapsing_triangle(
-                    ui,
+                ui.paint_collapsing_triangle(
                     openness,
                     icon_rect.center(),
                     ui.style().interact(&icon_response),
@@ -774,8 +748,8 @@ impl ReUi {
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
     /// painted with a fixed size.
-    pub fn paint_collapsing_triangle(
-        ui: &egui::Ui,
+    fn paint_collapsing_triangle(
+        &self,
         openness: f32,
         center: egui::Pos2,
         visuals: &egui::style::WidgetVisuals,
@@ -808,7 +782,7 @@ impl ReUi {
             *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
         }
 
-        ui.painter().add(Shape::convex_polygon(
+        self.ui().painter().add(Shape::convex_polygon(
             points,
             visuals.fg_stroke.color,
             egui::Stroke::NONE,
@@ -818,27 +792,26 @@ impl ReUi {
     /// Workaround for putting a label into a grid at the top left of its row.
     ///
     /// You only need to use this if you expect the right side to have multi-line entries.
-    #[allow(clippy::unused_self)]
-    pub fn grid_left_hand_label(&self, ui: &mut egui::Ui, label: &str) -> egui::Response {
-        ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-            ui.label(label)
-        })
-        .inner
+    fn grid_left_hand_label(&mut self, label: &str) -> egui::Response {
+        self.ui_mut()
+            .with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                ui.label(label)
+            })
+            .inner
     }
 
     /// Two-column grid to be used in selection view.
     ///
     /// Use this when you expect the right column to have multi-line entries.
     #[allow(clippy::unused_self)]
-    pub fn selection_grid(&self, _ui: &mut egui::Ui, id: &str) -> egui::Grid {
+    fn selection_grid(&self, id: &str) -> egui::Grid {
         // Spread rows a bit to make it easier to see the groupings
         let spacing = egui::vec2(8.0, 16.0);
         egui::Grid::new(id).num_columns(2).spacing(spacing)
     }
 
     /// Draws a shadow into the given rect with the shadow direction given from dark to light
-    #[allow(clippy::unused_self)]
-    pub fn draw_shadow_line(&self, ui: &egui::Ui, rect: Rect, direction: egui::Direction) {
+    fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
         let color_dark = design_tokens().shadow_gradient_dark_start;
         let color_bright = Color32::TRANSPARENT;
 
@@ -876,23 +849,24 @@ impl ReUi {
             ],
             texture_id: Default::default(),
         };
-        ui.painter().add(shadow);
+        self.ui().painter().add(shadow);
     }
 
     /// Convenience function to create a [`list_item::ListItem`].
-    pub fn list_item(&self) -> list_item::ListItem<'_> {
-        list_item::ListItem::new(self)
+    #[allow(clippy::unused_self)]
+    fn list_item(&self) -> list_item::ListItem {
+        list_item::ListItem::new()
     }
 
-    #[allow(clippy::unused_self)]
-    pub fn selectable_label_with_icon(
-        &self,
-        ui: &mut egui::Ui,
+    fn selectable_label_with_icon(
+        &mut self,
+
         icon: &Icon,
         text: impl Into<egui::WidgetText>,
         selected: bool,
         style: LabelStyle,
     ) -> egui::Response {
+        let ui = self.ui_mut();
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
@@ -976,15 +950,14 @@ impl ReUi {
     }
 
     /// Paints a time cursor for indicating the time on a time axis along x.
-    #[allow(clippy::unused_self)]
-    pub fn paint_time_cursor(
+    fn paint_time_cursor(
         &self,
-        ui: &egui::Ui,
         painter: &egui::Painter,
         response: &egui::Response,
         x: f32,
         y: Rangef,
     ) {
+        let ui = self.ui();
         let stroke = if response.dragged() {
             ui.style().visuals.widgets.active.fg_stroke
         } else if response.hovered() {
@@ -1018,7 +991,8 @@ impl ReUi {
     }
 
     /// Draw a bullet (for text lists).
-    pub fn bullet(ui: &mut Ui, color: Color32) {
+    fn bullet(&mut self, color: Color32) {
+        let ui = self.ui_mut();
         static DIAMETER: f32 = 6.0;
         let (rect, _) =
             ui.allocate_exact_size(egui::vec2(DIAMETER, DIAMETER), egui::Sense::hover());
@@ -1034,8 +1008,8 @@ impl ReUi {
     /// Center the content within [`egui::Ui::max_rect()`].
     ///
     /// The `add_contents` closure is executed in the context of a vertical layout.
-    pub fn center<R>(
-        ui: &mut egui::Ui,
+    fn center<R>(
+        &mut self,
         id_source: impl Hash,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
@@ -1049,6 +1023,7 @@ impl ReUi {
         #[derive(Clone, Copy)]
         struct TextSize(egui::Vec2);
 
+        let ui = self.ui_mut();
         let id = ui.make_persistent_id(id_source);
 
         let text_size: Option<TextSize> = ui.data(|reader| reader.get_temp(id));
@@ -1079,15 +1054,68 @@ impl ReUi {
         })
         .inner
     }
-}
 
-// ----------------------------------------------------------------------------
+    /// Binary toggle switch.
+    ///
+    /// Adapted from `egui_demo_lib/src/demo/toggle_switch.rs`
+    fn toggle_switch(&mut self, height: f32, on: &mut bool) -> egui::Response {
+        let ui = self.ui_mut();
+        let width = (height / 2. * 3.).ceil();
+        let size = egui::vec2(width, height); // 12x7 in figma, but 12x8 looks _much_ better in epaint
 
-/// Rerun custom extensions to [`egui::Ui`].
-// TODO(#4569): move everything here
-pub trait UiExt {
-    fn ui(&self) -> &egui::Ui;
-    fn ui_mut(&mut self) -> &mut egui::Ui;
+        let (interact_rect, mut response) = ui.allocate_exact_size(size, egui::Sense::click());
+
+        let visual_rect = egui::Align2::CENTER_CENTER.align_size_within_rect(size, interact_rect);
+
+        if response.clicked() {
+            *on = !*on;
+            response.mark_changed();
+        }
+        response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, *on, ""));
+
+        if ui.is_rect_visible(visual_rect) {
+            let how_on = ui.ctx().animate_bool(response.id, *on);
+            let visuals = ui.style().interact(&response);
+            let expanded_rect = visual_rect.expand(visuals.expansion);
+            let fg_fill = visuals.bg_fill;
+            let bg_fill = visuals.text_color();
+            let rounding = 0.5 * expanded_rect.height();
+            ui.painter()
+                .rect(expanded_rect, rounding, bg_fill, egui::Stroke::NONE);
+            let circle_x = egui::lerp(
+                (expanded_rect.left() + rounding)..=(expanded_rect.right() - rounding),
+                how_on,
+            );
+
+            let circle_center = egui::pos2(circle_x, expanded_rect.center().y);
+            let circle_radius = 0.3 * expanded_rect.height();
+            ui.painter()
+                .circle(circle_center, circle_radius, fg_fill, egui::Stroke::NONE);
+        }
+
+        response
+    }
+
+    /// Helper for adding a list-item hyperlink.
+    fn re_hyperlink(
+        &mut self,
+        text: impl Into<egui::WidgetText>,
+        url: impl ToString,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let response = ListItem::new()
+            .show_flat(
+                ui,
+                LabelContent::new(text)
+                    .with_icon(&crate::icons::EXTERNAL_LINK)
+                    .exact_width(true),
+            )
+            .on_hover_cursor(egui::CursorIcon::PointingHand);
+        if response.clicked() {
+            ui.ctx().open_url(egui::OpenUrl::new_tab(url));
+        }
+        response
+    }
 
     /// Show some close/maximize/minimize buttons for the native window.
     ///
@@ -1196,10 +1224,12 @@ pub trait UiExt {
 }
 
 impl UiExt for egui::Ui {
+    #[inline]
     fn ui(&self) -> &egui::Ui {
         self
     }
 
+    #[inline]
     fn ui_mut(&mut self) -> &mut egui::Ui {
         self
     }

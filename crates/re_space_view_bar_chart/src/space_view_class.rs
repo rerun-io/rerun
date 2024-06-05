@@ -2,7 +2,9 @@ use egui::{ahash::HashMap, util::hash};
 use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
 use re_log_types::EntityPath;
 use re_space_view::{controls, suggest_space_view_for_each_entity};
+use re_types::View;
 use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     auto_color, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
@@ -14,7 +16,6 @@ use super::visualizer_system::BarChartVisualizerSystem;
 #[derive(Default)]
 pub struct BarChartSpaceView;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::BarChartView;
 
 impl SpaceViewClass for BarChartSpaceView {
@@ -105,62 +106,55 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        ctx.re_ui
-            .selection_grid(ui, "bar_chart_selection_ui")
-            .show(ui, |ui| {
-                ctx.re_ui.grid_left_hand_label(ui, "Legend");
+        ui.selection_grid("bar_chart_selection_ui").show(ui, |ui| {
+            ui.grid_left_hand_label("Legend");
 
-                ui.vertical(|ui| {
-                    let mut selected = *root_entity_properties.show_legend.get();
-                    if ctx
-                        .re_ui
-                        .re_checkbox(ui, &mut selected, "Visible")
-                        .changed()
-                    {
-                        root_entity_properties.show_legend =
-                            EditableAutoValue::UserEdited(selected);
-                    }
+            ui.vertical(|ui| {
+                let mut selected = *root_entity_properties.show_legend.get();
+                if ui.re_checkbox(&mut selected, "Visible").changed() {
+                    root_entity_properties.show_legend = EditableAutoValue::UserEdited(selected);
+                }
 
-                    let mut corner = root_entity_properties
-                        .legend_location
-                        .unwrap_or(LegendCorner::RightTop);
+                let mut corner = root_entity_properties
+                    .legend_location
+                    .unwrap_or(LegendCorner::RightTop);
 
-                    egui::ComboBox::from_id_source("legend_corner")
-                        .selected_text(corner.to_string())
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::LeftTop,
-                                LegendCorner::LeftTop.to_string(),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::RightTop,
-                                LegendCorner::RightTop.to_string(),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::LeftBottom,
-                                LegendCorner::LeftBottom.to_string(),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::RightBottom,
-                                LegendCorner::RightBottom.to_string(),
-                            );
-                        });
+                egui::ComboBox::from_id_source("legend_corner")
+                    .selected_text(corner.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut corner,
+                            LegendCorner::LeftTop,
+                            LegendCorner::LeftTop.to_string(),
+                        );
+                        ui.selectable_value(
+                            &mut corner,
+                            LegendCorner::RightTop,
+                            LegendCorner::RightTop.to_string(),
+                        );
+                        ui.selectable_value(
+                            &mut corner,
+                            LegendCorner::LeftBottom,
+                            LegendCorner::LeftBottom.to_string(),
+                        );
+                        ui.selectable_value(
+                            &mut corner,
+                            LegendCorner::RightBottom,
+                            LegendCorner::RightBottom.to_string(),
+                        );
+                    });
 
-                    root_entity_properties.legend_location = Some(corner);
-                });
-                ui.end_row();
+                root_entity_properties.legend_location = Some(corner);
             });
+            ui.end_row();
+        });
 
         Ok(())
     }

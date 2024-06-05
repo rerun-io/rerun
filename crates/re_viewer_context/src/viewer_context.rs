@@ -56,8 +56,8 @@ pub struct ViewerContext<'a> {
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
 
-    /// The look and feel of the UI.
-    pub re_ui: &'a re_ui::ReUi,
+    /// The [`egui::Context`].
+    pub egui_ctx: &'a egui::Context,
 
     /// The global `re_renderer` context, holds on to all GPU resources.
     pub render_ctx: Option<&'a re_renderer::RenderContext>,

@@ -251,9 +251,8 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
             &re_ui::icons::MAXIMIZE
         };
 
-        if app
-            .re_ui()
-            .medium_icon_toggle_button(ui, icon, &mut is_fullscreen)
+        if ui
+            .medium_icon_toggle_button(icon, &mut is_fullscreen)
             .on_hover_text("Toggle fullscreen")
             .clicked()
         {
@@ -262,10 +261,8 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
     }
 
     // selection panel
-    if app
-        .re_ui()
+    if ui
         .medium_icon_toggle_button(
-            ui,
             &re_ui::icons::RIGHT_PANEL_TOGGLE,
             &mut app_blueprint.selection_panel_state().is_expanded(),
         )
@@ -279,10 +276,8 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
     }
 
     // time panel
-    if app
-        .re_ui()
+    if ui
         .medium_icon_toggle_button(
-            ui,
             &re_ui::icons::BOTTOM_PANEL_TOGGLE,
             &mut app_blueprint.time_panel_state().is_expanded(),
         )
@@ -296,10 +291,8 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
     }
 
     // blueprint panel
-    if app
-        .re_ui()
+    if ui
         .medium_icon_toggle_button(
-            ui,
             &re_ui::icons::LEFT_PANEL_TOGGLE,
             &mut app_blueprint.blueprint_panel_state().is_expanded(),
         )

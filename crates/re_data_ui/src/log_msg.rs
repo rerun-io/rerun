@@ -1,7 +1,7 @@
 use re_log_types::{
     ArrowMsg, BlueprintActivationCommand, DataTable, LogMsg, SetStoreInfo, StoreInfo,
 };
-use re_ui::ContextExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -52,46 +52,44 @@ impl DataUi for SetStoreInfo {
             store_version,
         } = info;
 
-        let re_ui = &ctx.re_ui;
-
         ui.code("SetStoreInfo");
 
         egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-            re_ui.grid_left_hand_label(ui, "application_id:");
+            ui.grid_left_hand_label("application_id:");
             ui.label(application_id.to_string());
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "store_id:");
+            ui.grid_left_hand_label("store_id:");
             ui.label(format!("{store_id:?}"));
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "cloned_from");
+            ui.grid_left_hand_label("cloned_from");
             if let Some(cloned_from) = cloned_from {
                 crate::item_ui::store_id_button_ui(ctx, ui, cloned_from);
             }
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "started:");
+            ui.grid_left_hand_label("started:");
             ui.label(started.format(ctx.app_options.time_zone));
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "store_source:");
+            ui.grid_left_hand_label("store_source:");
             ui.label(format!("{store_source}"));
             ui.end_row();
 
             if let Some(store_version) = store_version {
-                re_ui.grid_left_hand_label(ui, "store_version:");
+                ui.grid_left_hand_label("store_version:");
                 ui.label(format!("{store_version}"));
                 ui.end_row();
             } else {
                 re_log::debug_once!("store version is undefined for this recording, this is a bug");
             }
 
-            re_ui.grid_left_hand_label(ui, "is_official_example:");
+            ui.grid_left_hand_label("is_official_example:");
             ui.label(format!("{is_official_example}"));
             ui.end_row();
 
-            re_ui.grid_left_hand_label(ui, "store_kind:");
+            ui.grid_left_hand_label("store_kind:");
             ui.label(format!("{}", store_id.kind));
             ui.end_row();
         });

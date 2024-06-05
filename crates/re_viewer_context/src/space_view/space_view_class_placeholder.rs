@@ -55,7 +55,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        ui.centered_and_justified(|ui| ui.label(self.help_text(&ctx.re_ui.egui_ctx)));
+        ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.egui_ctx)));
         Ok(())
     }
 }

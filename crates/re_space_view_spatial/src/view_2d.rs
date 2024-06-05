@@ -5,6 +5,7 @@ use re_entity_db::{EntityDb, EntityProperties, EntityTree};
 use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
+use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::{
@@ -13,6 +14,7 @@ use re_types::{
     },
     Archetype, ComponentName, SpaceViewClassIdentifier,
 };
+use re_ui::UiExt as _;
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
@@ -47,7 +49,6 @@ impl VisualizableFilterContext for VisualizableFilterContext2D {
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::Spatial2DView;
 
 impl SpaceViewClass for SpatialSpaceView2D {
@@ -248,15 +249,13 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         // TODO(andreas): list_item'ify the rest
-        ctx.re_ui
-            .selection_grid(ui, "spatial_settings_ui")
-            .show(ui, |ui| {
-                state.default_sizes_ui(ctx, ui);
+        ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
+            state.default_sizes_ui(ui);
 
-                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
+            state.bounding_box_ui(ui, SpatialSpaceViewKind::TwoD);
 
-                visual_bounds_ui(ctx, view_id, ui);
-            });
+            visual_bounds_ui(ctx, view_id, ui);
+        });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             view_property_ui::<Background>(ctx, ui, view_id, self, state);
@@ -299,8 +298,7 @@ fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mu
         ctx,
         space_view_id,
         |bounds2d_opt: &mut Option<blueprint_components::VisualBounds2D>| {
-            ctx.re_ui
-                .grid_left_hand_label(ui, "Visible bounds")
+            ui.grid_left_hand_label("Visible bounds")
                 .on_hover_text(tooltip);
             ui.vertical(|ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);

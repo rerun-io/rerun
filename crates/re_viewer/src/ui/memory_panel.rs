@@ -4,6 +4,7 @@ use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_query::{CachedComponentStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
+use re_ui::UiExt as _;
 use re_viewer_context::store_hub::StoreHubStats;
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
@@ -45,7 +46,6 @@ impl MemoryPanel {
     pub fn ui(
         &self,
         ui: &mut egui::Ui,
-        re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
@@ -60,7 +60,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
+                Self::left_side(ui, limit, gpu_resource_stats, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -71,7 +71,6 @@ impl MemoryPanel {
 
     fn left_side(
         ui: &mut egui::Ui,
-        re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
@@ -80,7 +79,7 @@ impl MemoryPanel {
 
         ui.separator();
         ui.collapsing("CPU Resources", |ui| {
-            Self::cpu_stats(ui, re_ui, limit);
+            Self::cpu_stats(ui, limit);
         });
 
         ui.separator();
@@ -114,7 +113,7 @@ impl MemoryPanel {
         }
     }
 
-    fn cpu_stats(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, limit: &MemoryLimit) {
+    fn cpu_stats(ui: &mut egui::Ui, limit: &MemoryLimit) {
         if let Some(max_bytes) = limit.max_bytes {
             ui.label(format!("Memory limit: {}", format_bytes(max_bytes as _)));
         } else {
@@ -143,12 +142,7 @@ impl MemoryPanel {
         }
 
         let mut is_tracking_callstacks = re_memory::accounting_allocator::is_tracking_callstacks();
-        re_ui
-            .re_checkbox(
-                ui,
-                &mut is_tracking_callstacks,
-                "Detailed allocation tracking",
-            )
+        ui.re_checkbox(&mut is_tracking_callstacks, "Detailed allocation tracking")
             .on_hover_text("This will slow down the program");
         re_memory::accounting_allocator::set_tracking_callstacks(is_tracking_callstacks);
 

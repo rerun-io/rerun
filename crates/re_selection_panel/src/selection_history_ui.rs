@@ -1,6 +1,6 @@
 use egui::RichText;
 
-use re_ui::UICommand;
+use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::{Item, ItemCollection, SelectionHistory};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -13,27 +13,25 @@ pub struct SelectionHistoryUi {}
 impl SelectionHistoryUi {
     pub(crate) fn selection_ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
-        let next = self.next_button_ui(re_ui, ui, blueprint, history);
-        let prev = self.prev_button_ui(re_ui, ui, blueprint, history);
+        let next = self.next_button_ui(ui, blueprint, history);
+        let prev = self.prev_button_ui(ui, blueprint, history);
         prev.or(next)
     }
 
     fn prev_button_ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // undo selection
         if let Some(previous) = history.previous() {
-            let response = re_ui
-                .small_icon_button(ui, &re_ui::icons::ARROW_LEFT)
+            let response = ui
+                .small_icon_button(&re_ui::icons::ARROW_LEFT)
                 .on_hover_text(format!(
                     "Go to previous selection{}:\n\
                 {}\n\
@@ -64,8 +62,7 @@ impl SelectionHistoryUi {
             }
         } else {
             ui.add_enabled_ui(false, |ui| {
-                re_ui
-                    .small_icon_button(ui, &re_ui::icons::ARROW_LEFT)
+                ui.small_icon_button(&re_ui::icons::ARROW_LEFT)
                     .on_disabled_hover_text("No past selections found");
             });
         }
@@ -75,15 +72,14 @@ impl SelectionHistoryUi {
 
     fn next_button_ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // redo selection
         if let Some(next) = history.next() {
-            let response = re_ui
-                .small_icon_button(ui, &re_ui::icons::ARROW_RIGHT)
+            let response = ui
+                .small_icon_button(&re_ui::icons::ARROW_RIGHT)
                 .on_hover_text(format!(
                     "Go to next selection{}:\n\
                 {}\n\
@@ -114,8 +110,7 @@ impl SelectionHistoryUi {
             }
         } else {
             ui.add_enabled_ui(false, |ui| {
-                re_ui
-                    .small_icon_button(ui, &re_ui::icons::ARROW_RIGHT)
+                ui.small_icon_button(&re_ui::icons::ARROW_RIGHT)
                     .on_disabled_hover_text("No future selections found");
             });
         }

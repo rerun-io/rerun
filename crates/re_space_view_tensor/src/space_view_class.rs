@@ -14,7 +14,7 @@ use re_types::{
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,
 };
-use re_ui::ContextExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     gpu_bridge::{self, colormap_dropdown_button_ui},
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
@@ -136,38 +136,28 @@ impl SpaceViewClass for TensorSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
 
-        ctx.re_ui
-            .selection_grid(ui, "tensor_selection_ui")
-            .show(ui, |ui| {
-                if let Some((tensor_data_row_id, tensor)) = &state.tensor {
-                    let tensor_stats = ctx
-                        .cache
-                        .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
+        ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
+            if let Some((tensor_data_row_id, tensor)) = &state.tensor {
+                let tensor_stats = ctx
+                    .cache
+                    .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
 
-                    // We are in a bare Tensor view -- meaning / meter is unknown.
-                    let meaning = TensorDataMeaning::Unknown;
-                    let meter = None;
-                    tensor_summary_ui_grid_contents(
-                        ctx.re_ui,
-                        ui,
-                        tensor,
-                        tensor,
-                        meaning,
-                        meter,
-                        &tensor_stats,
-                    );
-                }
+                // We are in a bare Tensor view -- meaning / meter is unknown.
+                let meaning = TensorDataMeaning::Unknown;
+                let meter = None;
+                tensor_summary_ui_grid_contents(ui, tensor, tensor, meaning, meter, &tensor_stats);
+            }
 
-                state.texture_settings.ui(ctx.re_ui, ui);
-                if let Some(render_ctx) = ctx.render_ctx {
-                    state.color_mapping.ui(render_ctx, ctx.re_ui, ui);
-                }
-            });
+            state.texture_settings.ui(ui);
+            if let Some(render_ctx) = ctx.render_ctx {
+                state.color_mapping.ui(render_ctx, ui);
+            }
+        });
 
         if let Some((_, tensor)) = &state.tensor {
             ui.separator();
             ui.strong("Dimension Mapping");
-            dimension_mapping_ui(ctx.re_ui, ui, &mut state.slice.dim_mapping, tensor.shape());
+            dimension_mapping_ui(ui, &mut state.slice.dim_mapping, tensor.shape());
             let default_mapping = DimensionMapping::create(tensor.shape());
             if ui
                 .add_enabled(
@@ -385,19 +375,14 @@ impl Default for ColorMapping {
 }
 
 impl ColorMapping {
-    fn ui(
-        &mut self,
-        render_ctx: &re_renderer::RenderContext,
-        re_ui: &re_ui::ReUi,
-        ui: &mut egui::Ui,
-    ) {
+    fn ui(&mut self, render_ctx: &re_renderer::RenderContext, ui: &mut egui::Ui) {
         let Self { map, gamma } = self;
 
-        re_ui.grid_left_hand_label(ui, "Color map");
-        colormap_dropdown_button_ui(Some(render_ctx), re_ui, ui, map);
+        ui.grid_left_hand_label("Color map");
+        colormap_dropdown_button_ui(Some(render_ctx), ui, map);
         ui.end_row();
 
-        re_ui.grid_left_hand_label(ui, "Brightness");
+        ui.grid_left_hand_label("Brightness");
         let mut brightness = 1.0 / *gamma;
         ui.add(egui::Slider::new(&mut brightness, 0.1..=10.0).logarithmic(true));
         *gamma = 1.0 / brightness;
@@ -462,14 +447,14 @@ impl Default for TextureSettings {
 
 // ui
 impl TextureSettings {
-    fn ui(&mut self, re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+    fn ui(&mut self, ui: &mut egui::Ui) {
         let Self {
             keep_aspect_ratio,
             scaling,
             options,
         } = self;
 
-        re_ui.grid_left_hand_label(ui, "Scale");
+        ui.grid_left_hand_label("Scale");
         ui.vertical(|ui| {
             egui::ComboBox::from_id_source("texture_scaling")
                 .selected_text(scaling.to_string())
@@ -480,13 +465,12 @@ impl TextureSettings {
                     selectable_value(ui, TextureScaling::Fill);
                 });
             if *scaling == TextureScaling::Fill {
-                re_ui.re_checkbox(ui, keep_aspect_ratio, "Keep aspect ratio");
+                ui.re_checkbox(keep_aspect_ratio, "Keep aspect ratio");
             }
         });
         ui.end_row();
 
-        re_ui
-            .grid_left_hand_label(ui, "Filtering")
+        ui.grid_left_hand_label("Filtering")
             .on_hover_text("Filtering to use when magnifying");
 
         fn tf_to_string(tf: egui::TextureFilter) -> &'static str {

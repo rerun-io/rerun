@@ -547,7 +547,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         } else {
             // All panes are space views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("SpaceViewId missing during egui_tiles");
-            self.ctx.re_ui.egui_ctx.error_text("Internal error").into()
+            self.ctx.egui_ctx.error_text("Internal error").into()
         }
     }
 
@@ -651,10 +651,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         if *self.maximized == Some(space_view_id) {
             // Show minimize-button:
-            if self
-                .ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::MINIMIZE)
+            if ui
+                .small_icon_button(&re_ui::icons::MINIMIZE)
                 .on_hover_text("Restore - show all spaces")
                 .clicked()
             {
@@ -662,10 +660,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             }
         } else if num_space_views > 1 {
             // Show maximize-button:
-            if self
-                .ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
+            if ui
+                .small_icon_button(&re_ui::icons::MAXIMIZE)
                 .on_hover_text("Maximize space view")
                 .clicked()
             {
@@ -676,7 +672,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let help_text = space_view
             .class(self.ctx.space_view_class_registry)
-            .help_text(&self.ctx.re_ui.egui_ctx);
+            .help_text(self.ctx.egui_ctx);
         ui.help_hover_button().on_hover_text(help_text);
     }
 
@@ -812,7 +808,6 @@ impl TabWidget {
                     TabDesc {
                         label: tab_viewer
                             .ctx
-                            .re_ui
                             .egui_ctx
                             .error_text("Unknown space view")
                             .into(),
@@ -839,12 +834,7 @@ impl TabWidget {
                     } else {
                         re_log::warn_once!("Container {container_id} missing during egui_tiles");
                         (
-                            tab_viewer
-                                .ctx
-                                .re_ui
-                                .egui_ctx
-                                .error_text("Internal error")
-                                .into(),
+                            tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
                             false,
                         )
                     };
@@ -870,7 +860,6 @@ impl TabWidget {
                     TabDesc {
                         label: tab_viewer
                             .ctx
-                            .re_ui
                             .egui_ctx
                             .error_text("Unknown container")
                             .into(),
@@ -884,12 +873,7 @@ impl TabWidget {
                 re_log::warn_once!("Tile {tile_id:?} not found");
 
                 TabDesc {
-                    label: tab_viewer
-                        .ctx
-                        .re_ui
-                        .egui_ctx
-                        .error_text("Internal error")
-                        .into(),
+                    label: tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
                     icon: &re_ui::icons::SPACE_VIEW_UNKNOWN,
                     user_named: false,
                     item: None,

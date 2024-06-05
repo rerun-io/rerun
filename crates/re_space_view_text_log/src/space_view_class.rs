@@ -1,9 +1,11 @@
-use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
+use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_types::View;
 use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     level_to_rich_text, IdentifiedViewSystem as _, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
@@ -39,7 +41,6 @@ impl SpaceViewState for TextSpaceViewState {
 #[derive(Default)]
 pub struct TextSpaceView;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::TextLogView;
 
 impl SpaceViewClass for TextSpaceView {
@@ -99,7 +100,7 @@ impl SpaceViewClass for TextSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
@@ -114,33 +115,29 @@ impl SpaceViewClass for TextSpaceView {
             row_log_levels,
         } = &mut state.filters;
 
-        let re_ui = ctx.re_ui;
-
-        ctx.re_ui.selection_grid(ui, "log_config").show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Columns");
+        ui.selection_grid("log_config").show(ui, |ui| {
+            ui.grid_left_hand_label("Columns");
             ui.vertical(|ui| {
                 for (timeline, visible) in col_timelines {
-                    re_ui.re_checkbox(ui, visible, timeline.name().to_string());
+                    ui.re_checkbox(visible, timeline.name().to_string());
                 }
-                re_ui.re_checkbox(ui, col_entity_path, "Entity path");
-                re_ui.re_checkbox(ui, col_log_level, "Log level");
+                ui.re_checkbox(col_entity_path, "Entity path");
+                ui.re_checkbox(col_log_level, "Log level");
             });
             ui.end_row();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Level Filter");
+            ui.grid_left_hand_label("Level Filter");
             ui.vertical(|ui| {
                 for (log_level, visible) in row_log_levels {
-                    re_ui.re_checkbox(ui, visible, level_to_rich_text(ui, log_level));
+                    ui.re_checkbox(visible, level_to_rich_text(ui, log_level));
                 }
             });
             ui.end_row();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Text style");
+            ui.grid_left_hand_label("Text style");
             ui.vertical(|ui| {
-                ctx.re_ui
-                    .re_radio_value(ui, &mut state.monospace, false, "Proportional");
-                ctx.re_ui
-                    .re_radio_value(ui, &mut state.monospace, true, "Monospace");
+                ui.re_radio_value(&mut state.monospace, false, "Proportional");
+                ui.re_radio_value(&mut state.monospace, true, "Monospace");
             });
             ui.end_row();
         });
