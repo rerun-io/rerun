@@ -117,7 +117,7 @@ impl ComponentUiRegistry {
     ///
     /// If the component has already a single- or multiline editor registered respectively,
     /// the new callback replaces the old one.
-    /// Prefer [`ComponentUiRegistry::add_single_line_editor_ui`] whenever possible
+    /// Prefer [`ComponentUiRegistry::add_singleline_editor_ui`] whenever possible
     pub fn add_untyped_editor_ui(
         &mut self,
         name: ComponentName,
@@ -135,7 +135,7 @@ impl ComponentUiRegistry {
     /// Registers how to edit a given component in the ui.
     ///
     /// If the component has already a multi line editor registered, the new callback replaces the old one.
-    /// Prefer [`ComponentUiRegistry::add_multi_line_editor_ui`] whenever possible
+    /// Prefer [`ComponentUiRegistry::add_multiline_editor_ui`] whenever possible
     pub fn add_untyped_multiline_editor_ui(
         &mut self,
         name: ComponentName,
