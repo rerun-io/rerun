@@ -321,3 +321,5 @@ fn to_egui_plot_corner(value: LegendCorner) -> egui_plot::Corner {
         LegendCorner::RightBottom => egui_plot::Corner::RightBottom,
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(BarChartSpaceView => []);

@@ -59,3 +59,5 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         Ok(())
     }
 }
+
+crate::impl_component_fallback_provider!(SpaceViewClassPlaceholder => []);

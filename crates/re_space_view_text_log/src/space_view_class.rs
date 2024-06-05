@@ -462,3 +462,5 @@ fn calc_row_height(entry: &Entry) -> f32 {
     let num_rows = 1 + num_newlines;
     num_rows as f32 * re_ui::ReUi::table_line_height()
 }
+
+re_viewer_context::impl_component_fallback_provider!(TextSpaceView => []);

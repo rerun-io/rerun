@@ -1,13 +1,14 @@
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
-use re_types::{ComponentName, SpaceViewClassIdentifier};
+use re_types::{external::arrow2, ArchetypeName, ComponentName, SpaceViewClassIdentifier};
 
 use crate::{
-    ApplicableEntities, IndicatedEntities, PerSystemEntities, PerVisualizer, QueryRange,
-    SmallVisualizerSet, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext, VisualizableEntities,
+    ApplicableEntities, ComponentFallbackProvider, IndicatedEntities, PerSystemEntities,
+    PerVisualizer, QueryContext, QueryRange, SmallVisualizerSet, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    VisualizableEntities,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -44,7 +45,7 @@ impl VisualizableFilterContext for () {
 ///
 /// TODO(andreas): Consider formulating a space view instance context object that is passed to all
 /// methods that operate on concrete space views as opposed to be about general information on the class.
-pub trait SpaceViewClass: Send + Sync {
+pub trait SpaceViewClass: Send + Sync + ComponentFallbackProvider {
     /// Identifier string of this space view class.
     ///
     /// By convention we use `PascalCase`.
@@ -209,6 +210,25 @@ pub trait SpaceViewClass: Send + Sync {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError>;
+
+    fn untyped_fallback_raw(
+        &self,
+        ctx: &ViewerContext<'_>,
+        archetype_name: Option<ArchetypeName>,
+        view_state: &dyn crate::SpaceViewState,
+        data_result: &crate::DataResult,
+        component_name: ComponentName,
+    ) -> Option<Box<dyn arrow2::array::Array>> {
+        let query_context = QueryContext {
+            viewer_ctx: ctx,
+            target_entity_path: &data_result.entity_path,
+            archetype_name,
+            query: &ctx.current_query(),
+            view_state,
+        };
+
+        self.fallback_for(&query_context, component_name).ok()
+    }
 }
 
 pub trait SpaceViewClassExt<'a>: SpaceViewClass + 'a {

@@ -756,3 +756,5 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &TensorD
         }
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(TensorSpaceView => []);

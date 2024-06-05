@@ -242,3 +242,5 @@ fn sorted_instance_paths_for<'a>(
         .into_iter()
         .map(|instance| InstancePath::instance(entity_path.clone(), instance))
 }
+
+re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => []);
