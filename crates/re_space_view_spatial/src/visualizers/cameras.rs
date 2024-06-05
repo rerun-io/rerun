@@ -6,12 +6,13 @@ use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
     components::{ImagePlaneDistance, Transform3D, ViewCoordinates},
+    Archetype,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks, SpaceViewState,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
+    SpaceViewState, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -49,18 +50,28 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
+        ctx: &ViewerContext<'_>,
+        view_state: &dyn SpaceViewState,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformContext,
-        ent_path: &EntityPath,
-        props: &EntityProperties,
+        data_result: &DataResult,
         pinhole: &Pinhole,
         transform_at_entity: Option<Transform3D>,
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
         let instance = Instance::from(0);
+        let ent_path = &data_result.entity_path;
 
-        let frustum_length = *props.pinhole_image_plane_distance;
+        let frustum_length = pinhole
+            .image_plane_distance
+            .unwrap_or_else(|| {
+                data_result
+                    .typed_fallback_for(ctx, self, Some(Pinhole::name()), view_state)
+                    .unwrap_or_default()
+            })
+            .0
+             .0;
 
         // If the camera is our reference, there is nothing for us to display.
         if transforms.reference_path() == ent_path {
@@ -223,16 +234,17 @@ impl VisualizerSystem for CamerasVisualizer {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = query_pinhole(ctx, &time_query, self, view_state, &data_result) {
+            if let Some(pinhole) = query_pinhole(ctx, &time_query, data_result) {
                 let entity_highlight = query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash());
 
                 self.visit_instance(
+                    ctx,
+                    view_state,
                     &mut line_builder,
                     transforms,
-                    &data_result.entity_path,
-                    data_result.accumulated_properties(),
+                    data_result,
                     &pinhole,
                     // TODO(#5607): what should happen if the promise is still pending?
                     ctx.recording()
@@ -262,6 +274,27 @@ impl VisualizerSystem for CamerasVisualizer {
 
 impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
+        /*
+        for ent_path in per_system_entities
+            .get(&CamerasVisualizer::identifier())
+            .unwrap_or(&BTreeSet::new())
+        {
+            let mut properties = auto_properties.get(ent_path);
+
+            let scene_size = scene_bbox_accum.size().length();
+            let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+                scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
+            } else {
+                // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+                // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+                // this value works better with the default camera setup.
+                0.3
+            };
+            properties.pinhole_image_plane_distance =
+                EditableAutoValue::Auto(default_image_plane_distance);
+            auto_properties.overwrite_properties(ent_path.clone(), properties);
+        }
+        */
         // TODO(jleibs): Existing fallback
         1.0.into()
     }

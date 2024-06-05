@@ -280,9 +280,7 @@ impl ImageVisualizer {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                    || !ent_props.pinhole_image_plane_distance.is_auto()
-                {
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
                     self.data.add_bounding_box(
                         entity_path.hash(),
                         Self::compute_bounding_box(&textured_rect),
@@ -373,7 +371,8 @@ impl ImageVisualizer {
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                // TODO(jleibs): Is there an equivalent for this?
+                // || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
                         entity_path.hash(),
@@ -503,7 +502,8 @@ impl ImageVisualizer {
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                // TODO(jleibs): Is there an equivalent for this?
+                // || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
                         entity_path.hash(),

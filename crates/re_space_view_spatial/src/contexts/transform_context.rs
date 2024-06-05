@@ -2,11 +2,18 @@ use nohash_hasher::IntMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertyMap, EntityTree};
+use re_space_view::latest_at_with_overrides;
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
-    ComponentNameSet, Loggable as _,
+    archetypes::Pinhole,
+    components::{
+        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Transform3D, ViewCoordinates,
+    },
+    Archetype, ComponentNameSet, Loggable as _,
 };
-use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
+use re_viewer_context::{
+    IdentifiedViewSystem, QueryContext, SpaceViewState, TypedComponentFallbackProvider,
+    ViewContextSystem,
+};
 
 use crate::visualizers::{image_view_coordinates, CamerasVisualizer};
 
@@ -88,6 +95,7 @@ impl ViewContextSystem for TransformContext {
         &mut self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
+        view_state: &dyn SpaceViewState,
     ) {
         re_tracing::profile_function!();
 
@@ -122,6 +130,9 @@ impl ViewContextSystem for TransformContext {
 
         // Child transforms of this space
         self.gather_descendants_transforms(
+            ctx,
+            query,
+            view_state,
             current_tree,
             ctx.recording(),
             &time_query,
@@ -168,6 +179,9 @@ impl ViewContextSystem for TransformContext {
 
             // (skip over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
+                ctx,
+                query,
+                view_state,
                 parent_tree,
                 ctx.recording(),
                 &time_query,
@@ -189,6 +203,9 @@ impl TransformContext {
     #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
+        ctx: &re_viewer_context::ViewerContext<'_>,
+        view_query: &re_viewer_context::ViewQuery<'_>,
+        view_state: &dyn SpaceViewState,
         subtree: &EntityTree,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
@@ -214,7 +231,45 @@ impl TransformContext {
                 child_tree,
                 entity_db,
                 query,
-                |p| *entity_properties.get(p).pinhole_image_plane_distance,
+                |p| {
+                    // TODO(jleibs): Make this way less painful
+                    let resolver = ctx.recording().resolver();
+
+                    let query_result = ctx.lookup_query_result(view_query.space_view_id);
+
+                    query_result
+                        .tree
+                        .lookup_result_by_path(p)
+                        .cloned()
+                        .map(|data_result| {
+                            let results = latest_at_with_overrides(
+                                ctx,
+                                None,
+                                query,
+                                &data_result,
+                                [ImagePlaneDistance::name()],
+                            );
+
+                            let image_plane_distance = results
+                                .get_or_empty(ImagePlaneDistance::name())
+                                .to_dense::<ImagePlaneDistance>(resolver)
+                                .flatten()
+                                .ok()
+                                .and_then(|r| r.first().copied())
+                                .unwrap_or_else(|| {
+                                    data_result
+                                        .typed_fallback_for(
+                                            ctx,
+                                            self,
+                                            Some(Pinhole::name()),
+                                            view_state,
+                                        )
+                                        .unwrap_or_default()
+                                });
+                        });
+
+                    0.0
+                },
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
@@ -226,6 +281,9 @@ impl TransformContext {
                 Ok(Some(child_from_parent)) => reference_from_entity * child_from_parent,
             };
             self.gather_descendants_transforms(
+                ctx,
+                view_query,
+                view_state,
                 child_tree,
                 entity_db,
                 query,
@@ -396,3 +454,12 @@ fn transform_at(
         Ok(None)
     }
 }
+
+impl TypedComponentFallbackProvider<ImagePlaneDistance> for TransformContext {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
+        // TODO(jleibs): Existing fallback
+        1.0.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(TransformContext => [ImagePlaneDistance]);
