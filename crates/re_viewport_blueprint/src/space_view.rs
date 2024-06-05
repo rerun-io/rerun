@@ -429,7 +429,7 @@ impl SpaceViewBlueprint {
         // * can't be specified in the data store
         // Here, we query the visual time range that serves as the default for all entities in this space.
 
-        let property = ViewProperty::from_archetype_no_ctx::<blueprint_archetypes::VisibleTimeRanges>(
+        let property = ViewProperty::from_archetype::<blueprint_archetypes::VisibleTimeRanges>(
             blueprint,
             blueprint_query,
             self.id,

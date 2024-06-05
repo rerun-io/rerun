@@ -41,7 +41,11 @@ fn ui_from_scene(
     view_class: &SpatialSpaceView2D,
     view_state: &SpatialSpaceViewState,
 ) -> RectTransform {
-    let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(ctx, view_id);
+    let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        view_id,
+    );
     let bounds: blueprint_components::VisualBounds2D = bounds_property
         .component_or_fallback(ctx, view_class, view_state)
         .ok_or_log_error()
@@ -229,7 +233,11 @@ impl SpatialSpaceView2D {
             view_builder.queue_draw(draw_data);
         }
 
-        let background = ViewProperty::from_archetype::<Background>(ctx, query.space_view_id);
+        let background = ViewProperty::from_archetype::<Background>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
         let (background_drawable, clear_color) =
             crate::configure_background(ctx, &background, render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {

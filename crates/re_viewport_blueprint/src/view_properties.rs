@@ -37,17 +37,6 @@ pub struct ViewProperty<'a> {
 impl<'a> ViewProperty<'a> {
     /// Query a specific view property for a given view.
     pub fn from_archetype<A: Archetype>(
-        viewer_ctx: &'a ViewerContext<'a>,
-        view_id: SpaceViewId,
-    ) -> Self {
-        let blueprint_db = viewer_ctx.blueprint_db();
-        let blueprint_query = viewer_ctx.blueprint_query;
-
-        Self::from_archetype_no_ctx::<A>(blueprint_db, blueprint_query, view_id)
-    }
-
-    /// Query a specific view property for a given view, without proving a viewer context.
-    pub fn from_archetype_no_ctx<A: Archetype>(
         blueprint_db: &'a EntityDb,
         blueprint_query: &'a LatestAtQuery,
         view_id: SpaceViewId,

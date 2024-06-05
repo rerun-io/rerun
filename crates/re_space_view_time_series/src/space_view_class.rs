@@ -300,11 +300,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
-        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(ctx, query.space_view_id);
+        let blueprint_db = ctx.blueprint_db();
+        let view_id = query.space_view_id;
+
+        let plot_legend =
+            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
         let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
 
-        let scalar_axis = ViewProperty::from_archetype::<ScalarAxis>(ctx, query.space_view_id);
+        let scalar_axis =
+            ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
         let y_zoom_lock =
             scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;

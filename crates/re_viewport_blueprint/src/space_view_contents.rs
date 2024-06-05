@@ -107,7 +107,7 @@ impl SpaceViewContents {
         view_class_identifier: SpaceViewClassIdentifier,
         space_env: &EntityPathSubs,
     ) -> Self {
-        let property = ViewProperty::from_archetype_no_ctx::<blueprint_archetypes::SpaceViewContents>(
+        let property = ViewProperty::from_archetype::<blueprint_archetypes::SpaceViewContents>(
             blueprint_db,
             query,
             view_id,
