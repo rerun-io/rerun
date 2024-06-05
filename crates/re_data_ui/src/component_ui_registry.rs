@@ -36,7 +36,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
 /// Registers how to show a given component in the ui.
 pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut ComponentUiRegistry) {
-    registry.add(
+    registry.add_display_ui(
         C::name(),
         Box::new(
             |ctx, ui, ui_layout, query, db, entity_path, component, instance| {

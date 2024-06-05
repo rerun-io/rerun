@@ -20,7 +20,7 @@ pub fn query_view_property<A: Archetype>(
 where
     LatestAtResults: ToArchetype<A>,
 {
-    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
+    let path = entity_path_for_view_property(space_view_id, blueprint_db.tree(), A::name());
     (
         blueprint_db
             .latest_at_archetype(&path, query)
@@ -72,11 +72,8 @@ impl<'a> ViewProperty<'a> {
     ) -> Self {
         let blueprint_db = viewer_ctx.blueprint_db();
 
-        let blueprint_store_path = entity_path_for_view_property_from_archetype_name(
-            space_view_id,
-            blueprint_db.tree(),
-            archetype_name,
-        );
+        let blueprint_store_path =
+            entity_path_for_view_property(space_view_id, blueprint_db.tree(), archetype_name);
 
         let query_results = blueprint_db.latest_at(
             viewer_ctx.blueprint_query,
@@ -169,19 +166,7 @@ impl<'a> ViewProperty<'a> {
     }
 }
 
-// TODO(andreas): Replace all usages with `ViewProperty`.
-pub fn entity_path_for_view_property<T: Archetype>(
-    space_view_id: SpaceViewId,
-    _blueprint_entity_tree: &EntityTree,
-) -> EntityPath {
-    entity_path_for_view_property_from_archetype_name(
-        space_view_id,
-        _blueprint_entity_tree,
-        T::name(),
-    )
-}
-
-fn entity_path_for_view_property_from_archetype_name(
+pub fn entity_path_for_view_property(
     space_view_id: SpaceViewId,
     _blueprint_entity_tree: &EntityTree,
     archetype_name: ArchetypeName,
@@ -198,25 +183,6 @@ fn entity_path_for_view_property_from_archetype_name(
 }
 
 // TODO(andreas): Replace all usages with `ViewProperty`.
-/// Return the archetype value for the given space view, or `None` if it doesn't exist.
-pub fn view_property<A: re_types::Archetype>(
-    ctx: &re_viewer_context::ViewerContext<'_>,
-    space_view_id: re_viewer_context::SpaceViewId,
-) -> Option<A>
-where
-    LatestAtResults: ToArchetype<A>,
-{
-    let blueprint_db = ctx.blueprint_db();
-    let blueprint_query = ctx.blueprint_query;
-    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
-    blueprint_db
-        .latest_at_archetype(&path, blueprint_query)
-        .ok()
-        .flatten()
-        .map(|(_index, value)| value)
-}
-
-// TODO(andreas): Replace all usages with `ViewProperty`.
 pub fn query_view_property_or_default<A: Archetype + Default>(
     space_view_id: SpaceViewId,
     blueprint_db: &EntityDb,
@@ -227,35 +193,4 @@ where
 {
     let (arch, path) = query_view_property(space_view_id, blueprint_db, query);
     (arch.ok().flatten().unwrap_or_default(), path)
-}
-
-// TODO(andreas): Replace all usages with `ViewProperty`.
-/// Edit a single component of a blueprint archetype in a space view.
-///
-/// Set to `None` to reset the value to the value in the default blueprint, if any,
-/// else will just store `None` (an empty component list) in the store.
-pub fn edit_blueprint_component<A: re_types::Archetype, C: re_types::Component + PartialEq, R>(
-    ctx: &ViewerContext<'_>,
-    space_view_id: SpaceViewId,
-    edit_component: impl FnOnce(&mut Option<C>) -> R,
-) -> R {
-    let active_blueprint = ctx.blueprint_db();
-    let active_path = entity_path_for_view_property::<A>(space_view_id, active_blueprint.tree());
-    let original_value: Option<C> = active_blueprint
-        .latest_at_component::<C>(&active_path, ctx.blueprint_query)
-        .map(|x| x.value);
-
-    let mut edited_value = original_value.clone();
-    let ret = edit_component(&mut edited_value);
-
-    if edited_value != original_value {
-        if let Some(edited) = edited_value {
-            ctx.save_blueprint_component(&active_path, &edited);
-        } else {
-            // Reset to the value in the default blueprint, if any.
-            ctx.reset_blueprint_component_by_name(&active_path, C::name());
-        }
-    }
-
-    ret
 }

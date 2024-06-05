@@ -7,6 +7,7 @@ use re_format::format_f32;
 use re_log_types::Instance;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
+use re_types::archetypes::Pinhole;
 use re_types::components::{DepthMeter, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
@@ -64,6 +65,9 @@ pub struct SpatialSpaceViewState {
 
     /// Size of automatically sized objects. None if it wasn't configured.
     auto_size_config: re_renderer::AutoSizeConfig,
+
+    /// Pinhole component logged at the origin if any.
+    pub pinhole_at_origin: Option<Pinhole>,
 }
 
 impl SpaceViewState for SpatialSpaceViewState {

@@ -7,8 +7,8 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataResult, OverridePath, QueryContext, SpaceViewClassExt as _, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
+    ComponentUiTypes, DataResult, OverridePath, QueryContext, SpaceViewClassExt as _,
+    SystemCommand, SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -133,18 +133,16 @@ pub fn override_ui(
                     .cloned(); /* arc */
 
                 if let Some(results) = component_data {
-                    ctx.component_ui_registry.edit_ui(
+                    ctx.component_ui_registry.singleline_edit_ui(
                         &QueryContext {
                             viewer_ctx: ctx,
-                            target_entity_path: entity_path_overridden,
+                            target_entity_path: &instance_path.entity_path,
                             archetype_name: None,
                             query: &query,
                             view_state,
                         },
                         ui,
-                        UiLayout::List,
                         origin_db,
-                        &instance_path.entity_path,
                         entity_path_overridden,
                         *component_name,
                         &results,
@@ -227,7 +225,12 @@ pub fn add_new_override(
                     };
 
                     // If there is no registered editor, don't let the user create an override
-                    if !ctx.component_ui_registry.has_registered_editor(component) {
+                    // TODO(andreas): Can only handle single line editors right now.
+                    if !ctx
+                        .component_ui_registry
+                        .registered_ui_types(*component)
+                        .contains(ComponentUiTypes::SingleLineEditor)
+                    {
                         continue;
                     }
 

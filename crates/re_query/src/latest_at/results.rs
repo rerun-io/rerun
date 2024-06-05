@@ -46,11 +46,6 @@ impl LatestAtResults {
         self.components.contains_key(&component_name.into())
     }
 
-    pub fn contains_non_empty(&self, component_name: impl Into<ComponentName>) -> bool {
-        self.get(component_name)
-            .map_or(false, |result| result.num_instances() != 0)
-    }
-
     /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
     #[inline]
     pub fn get(
