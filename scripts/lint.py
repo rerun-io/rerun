@@ -13,7 +13,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator
+from typing import Any, Callable, Dict
 
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
