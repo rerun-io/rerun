@@ -8,8 +8,8 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -17,7 +17,8 @@ use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
     contexts::TransformContext,
     instance_hash_conversions::picking_layer_id_from_instance_path_hash, query_pinhole,
-    space_camera_3d::SpaceCamera3D, visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    space_camera_3d::SpaceCamera3D, ui::SpatialSpaceViewState,
+    visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -268,30 +269,23 @@ impl VisualizerSystem for CamerasVisualizer {
 }
 
 impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> ImagePlaneDistance {
-        /*
-        for ent_path in per_system_entities
-            .get(&CamerasVisualizer::identifier())
-            .unwrap_or(&BTreeSet::new())
-        {
-            let mut properties = auto_properties.get(ent_path);
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
+        let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() else {
+            return Default::default();
+        };
 
-            let scene_size = scene_bbox_accum.size().length();
-            let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-                scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
-            } else {
-                // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-                // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-                // this value works better with the default camera setup.
-                0.3
-            };
-            properties.pinhole_image_plane_distance =
-                EditableAutoValue::Auto(default_image_plane_distance);
-            auto_properties.overwrite_properties(ent_path.clone(), properties);
+        let scene_size = state.bounding_boxes.accumulated.size().length();
+
+        if scene_size.is_finite() && scene_size > 0.0 {
+            // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
+            scene_size * 0.02
+        } else {
+            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+            // this value works better with the default camera setup.
+            0.3
         }
-        */
-        // TODO(jleibs): Existing fallback
-        4.2.into()
+        .into()
     }
 }
 
