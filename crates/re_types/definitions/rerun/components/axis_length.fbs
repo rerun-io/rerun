@@ -13,7 +13,7 @@ namespace rerun.components;
 struct AxisLength (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   "attr.rust.repr": "transparent"
 ) {
   length: rerun.datatypes.Float32 (order: 100);
