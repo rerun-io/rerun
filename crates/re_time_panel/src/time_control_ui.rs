@@ -182,7 +182,8 @@ impl TimeControlUi {
                     }
                 }
                 Looping::All => {
-                    ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_everything_color();
+                    ui.visuals_mut().selection.bg_fill =
+                        re_ui::DesignTokens::loop_everything_color();
                     if re_ui
                         .large_button_selected(ui, icon, true)
                         .on_hover_text("Looping entire recording")

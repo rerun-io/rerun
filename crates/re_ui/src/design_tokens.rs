@@ -372,6 +372,16 @@ impl DesignTokens {
     pub fn collapsing_triangle_area() -> egui::Vec2 {
         Self::small_icon_size()
     }
+
+    /// The color we use to mean "loop this selection"
+    pub fn loop_selection_color() -> egui::Color32 {
+        egui::Color32::from_rgb(1, 37, 105) // from figma 2023-02-09
+    }
+
+    /// The color we use to mean "loop all the data"
+    pub fn loop_everything_color() -> egui::Color32 {
+        egui::Color32::from_rgb(2, 80, 45) // from figma 2023-02-09
+    }
 }
 
 // ----------------------------------------------------------------------------

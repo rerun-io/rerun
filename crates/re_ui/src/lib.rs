@@ -141,16 +141,6 @@ impl ReUi {
         response.on_hover_text(error_text)
     }
 
-    /// The color we use to mean "loop this selection"
-    pub fn loop_selection_color() -> egui::Color32 {
-        egui::Color32::from_rgb(1, 37, 105) // from figma 2023-02-09
-    }
-
-    /// The color we use to mean "loop all the data"
-    pub fn loop_everything_color() -> egui::Color32 {
-        egui::Color32::from_rgb(2, 80, 45) // from figma 2023-02-09
-    }
-
     /// Paint a watermark
     pub fn paint_watermark(&self) {
         if let Ok(egui::load::TexturePoll::Ready { texture }) = self.egui_ctx.try_load_texture(
