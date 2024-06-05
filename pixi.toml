@@ -216,13 +216,15 @@ mdlint = "python scripts/ci/mdlint.py"
 
 [target.win-64.tasks]
 # Builds a debug mode Python wheel for install in an environment.
-py-wheel = { cmd = "cp target/debug/rerun.exe rerun_py/rerun_sdk/rerun_cli/rerun.exe && pixi run maturin build --manifest-path rerun_py/Cargo.toml --no-default-features --features pypi", depends_on = [
+py-wheel = { cmd = "cp target/debug/rerun.exe rerun_py/rerun_sdk/rerun_cli/rerun.exe && maturin build --manifest-path rerun_py/Cargo.toml --no-default-features --features pypi", depends_on = [
+  "rerun-build-web-cli",
   "py-build",
 ] }
 
 [target.unix.tasks]
 # Builds a debug mode Python wheel for install in an environment.
-py-wheel = { cmd = "cp target/debug/rerun rerun_py/rerun_sdk/rerun_cli/rerun && pixi run maturin build --manifest-path rerun_py/Cargo.toml --no-default-features --features pypi", depends_on = [
+py-wheel = { cmd = "cp target/debug/rerun rerun_py/rerun_sdk/rerun_cli/rerun && maturin build --manifest-path rerun_py/Cargo.toml --no-default-features --features pypi", depends_on = [
+  "rerun-build-web-cli",
   "py-build",
 ] }
 
