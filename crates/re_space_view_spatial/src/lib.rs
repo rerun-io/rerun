@@ -25,8 +25,7 @@ mod view_3d;
 mod view_3d_properties;
 mod visualizers;
 
-use re_space_view::latest_at_with_overrides;
-use re_types::{Archetype as _, Loggable};
+use re_space_view::DataResultQuery as _;
 use re_viewer_context::{ViewContext, ViewerContext};
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
@@ -35,9 +34,7 @@ pub use view_3d::SpatialSpaceView3D;
 
 use re_renderer::RenderContext;
 use re_types::blueprint::components::BackgroundKind;
-use re_types::components::{
-    Color, ImagePlaneDistance, PinholeProjection, Resolution, TensorData, ViewCoordinates,
-};
+use re_types::components::{Color, Resolution, TensorData};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
@@ -69,47 +66,17 @@ fn query_pinhole(
     query: &re_data_store::LatestAtQuery,
     data_result: &re_viewer_context::DataResult,
 ) -> Option<re_types::archetypes::Pinhole> {
-    let resolver = ctx.recording().resolver();
+    let results = data_result.latest_at_with_overrides::<re_types::archetypes::Pinhole>(ctx, query);
 
-    // TODO(jleibs): I hate everything about this
-    let results = latest_at_with_overrides(
-        ctx,
-        None,
-        query,
-        data_result,
-        re_types::archetypes::Pinhole::all_components()
-            .iter()
-            .copied(),
-    );
-
-    let image_from_camera = *results
-        .get(PinholeProjection::name())?
-        .to_dense(resolver)
-        .flatten()
-        .ok()?
-        .first()?;
+    let image_from_camera = results.get_mono()?;
 
     let resolution = results
-        .get_or_empty(Resolution::name())
-        .to_dense(resolver)
-        .flatten()
-        .ok()
-        .and_then(|r| r.first().copied())
+        .get_mono()
         .or_else(|| resolution_from_tensor(ctx.recording(), query, &data_result.entity_path));
 
-    let camera_xyz = results
-        .get_or_empty(ViewCoordinates::name())
-        .to_dense(resolver)
-        .flatten()
-        .ok()
-        .and_then(|r| r.first().copied());
+    let camera_xyz = results.get_mono();
 
-    let image_plane_distance = results
-        .get_or_empty(ImagePlaneDistance::name())
-        .to_dense(resolver)
-        .flatten()
-        .ok()
-        .and_then(|r| r.first().copied());
+    let image_plane_distance = Some(results.get_mono_with_fallback());
 
     Some(re_types::archetypes::Pinhole {
         image_from_camera,

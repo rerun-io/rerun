@@ -4,7 +4,6 @@ use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
     components::{ImagePlaneDistance, Transform3D, ViewCoordinates},
-    Archetype,
 };
 use re_viewer_context::{
     ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
@@ -49,7 +48,6 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        ctx: &ViewContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformContext,
         data_result: &DataResult,
@@ -61,15 +59,8 @@ impl CamerasVisualizer {
         let instance = Instance::from(0);
         let ent_path = &data_result.entity_path;
 
-        let frustum_length = pinhole
-            .image_plane_distance
-            .unwrap_or_else(|| {
-                data_result
-                    .typed_fallback_for(ctx.viewer_ctx, self, Some(Pinhole::name()), ctx.view_state)
-                    .unwrap_or_default()
-            })
-            .0
-             .0;
+        // Assuming the fallback provider did the right thing, this value should always be set.
+        let frustum_length = pinhole.image_plane_distance.unwrap_or_default().into();
 
         // If the camera is our reference, there is nothing for us to display.
         if transforms.reference_path() == ent_path {
@@ -237,7 +228,6 @@ impl VisualizerSystem for CamerasVisualizer {
                     .entity_outline_mask(data_result.entity_path.hash());
 
                 self.visit_instance(
-                    ctx,
                     &mut line_builder,
                     transforms,
                     data_result,
