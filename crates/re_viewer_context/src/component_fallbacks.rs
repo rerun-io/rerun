@@ -1,7 +1,7 @@
 use ahash::HashMap;
-use re_types::{external::arrow2, ComponentName, View};
+use re_types::{external::arrow2, ComponentName};
 
-use crate::{QueryContext, ViewerContext};
+use crate::QueryContext;
 
 /// Lookup table for component placeholder values, used whenever no fallback was provided explicitly.
 pub type ComponentPlaceholders = HashMap<ComponentName, Box<dyn arrow2::array::Array>>;

@@ -9,7 +9,7 @@ use re_types::{
     Archetype,
 };
 use re_viewer_context::{
-    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
+    ApplicableEntities, DataResult, QueryContext, IdentifiedViewSystem, SpaceViewOutlineMasks,
     SpaceViewState, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
     ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,

@@ -11,16 +11,19 @@ use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
 };
 use re_log_types::EntityPathFilter;
+use re_space_view::latest_at_with_overrides;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    components::{PinholeProjection, Transform3D},
+    archetypes::Pinhole,
+    components::{ImagePlaneDistance, PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
+    Archetype, Loggable,
 };
 use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
-    ContainerId, Contents, DataQueryResult, HoverHighlight, Item, SpaceViewClass, SpaceViewId,
-    UiLayout, ViewStates, ViewerContext,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewClass,
+    SpaceViewId, UiLayout, ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
@@ -221,7 +224,14 @@ impl SelectionPanel {
             }
 
             Item::DataResult(space_view_id, instance_path) => {
-                blueprint_ui_for_data_result(ctx, blueprint, ui, *space_view_id, instance_path);
+                blueprint_ui_for_data_result(
+                    ctx,
+                    blueprint,
+                    ui,
+                    *space_view_id,
+                    view_states,
+                    instance_path,
+                );
             }
         }
     }
@@ -1135,6 +1145,7 @@ fn blueprint_ui_for_data_result(
     blueprint: &ViewportBlueprint,
     ui: &mut Ui,
     space_view_id: SpaceViewId,
+    view_states: &mut ViewStates,
     instance_path: &InstancePath,
 ) {
     if let Some(space_view) = blueprint.space_view(&space_view_id) {
@@ -1154,8 +1165,11 @@ fn blueprint_ui_for_data_result(
                 entity_props_ui(
                     ctx,
                     ui,
+                    blueprint,
+                    space_view_id,
+                    view_states,
                     ctx.lookup_query_result(space_view_id),
-                    entity_path,
+                    &data_result,
                     &mut accumulated_legacy_props,
                 );
                 if accumulated_legacy_props != accumulated_legacy_props_before {
@@ -1170,16 +1184,17 @@ fn blueprint_ui_for_data_result(
 fn entity_props_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    blueprint: &ViewportBlueprint,
+    space_view_id: SpaceViewId,
+    view_states: &mut ViewStates,
     query_result: &DataQueryResult,
-    entity_path: &EntityPath,
+    data_result: &DataResult,
     entity_props: &mut EntityProperties,
 ) {
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
 
-    let Some(data_result) = query_result.tree.lookup_result_by_path(entity_path) else {
-        return;
-    };
+    let entity_path = &data_result.entity_path;
 
     {
         let visible_before = data_result.is_visible(ctx);
@@ -1216,7 +1231,7 @@ fn entity_props_ui(
         .show(ui, |ui| {
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-            pinhole_props_ui(ctx, ui, entity_path, entity_props);
+            pinhole_props_ui(ctx, ui, blueprint, space_view_id, view_states, data_result);
             depth_props_ui(ctx, ui, entity_path, entity_props);
             transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
         });
@@ -1255,27 +1270,78 @@ fn colormap_props_ui(
 fn pinhole_props_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    entity_path: &EntityPath,
-    entity_props: &mut EntityProperties,
+    blueprint: &ViewportBlueprint,
+    view_id: SpaceViewId,
+    view_states: &mut ViewStates,
+    data_result: &DataResult,
 ) {
-    let (query, store) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+    let (query, store) = guess_query_and_db_for_selected_entity(ctx, &data_result.entity_path);
+
+    let resolver = ctx.recording().resolver();
+
+    let Some(class) = blueprint
+        .space_view(&view_id)
+        .map(|sv| sv.class(ctx.space_view_class_registry))
+    else {
+        return;
+    };
+
+    let view_state = view_states
+        .get_mut(ctx.space_view_class_registry, view_id, "3D".into())
+        .view_state
+        .as_ref();
+
+    let results = latest_at_with_overrides(
+        ctx,
+        None,
+        &query,
+        &data_result,
+        [ImagePlaneDistance::name()],
+    );
+
+    let mut image_plane_value = results
+        .get_or_empty(ImagePlaneDistance::name())
+        .to_dense::<ImagePlaneDistance>(resolver)
+        .flatten()
+        .ok()
+        .and_then(|r| r.first().copied())
+        .or_else(|| {
+            class
+                .untyped_fallback_raw(
+                    ctx,
+                    Some(Pinhole::name()),
+                    view_state,
+                    data_result,
+                    ImagePlaneDistance::name(),
+                )
+                .and_then(|r| {
+                    ImagePlaneDistance::from_arrow(r.as_ref())
+                        .ok()
+                        .and_then(|r| r.first().copied())
+                })
+        })
+        .unwrap_or_default()
+        .0
+         .0;
+
     if store
-        .latest_at_component::<PinholeProjection>(entity_path, &query)
+        .latest_at_component::<PinholeProjection>(&data_result.entity_path, &query)
         .is_some()
     {
         ui.label("Image plane distance");
-        let mut distance = *entity_props.pinhole_image_plane_distance;
-        let speed = (distance * 0.05).at_least(0.01);
+        let speed = (image_plane_value * 0.05).at_least(0.01);
         if ui
             .add(
-                egui::DragValue::new(&mut distance)
+                egui::DragValue::new(&mut image_plane_value)
                     .clamp_range(0.0..=1.0e8)
                     .speed(speed),
             )
             .on_hover_text("Controls how far away the image plane is")
             .changed()
         {
-            entity_props.pinhole_image_plane_distance = EditableAutoValue::UserEdited(distance);
+            let mut new_image_plane: ImagePlaneDistance = image_plane_value.into();
+
+            data_result.save_individual_override(ctx, &new_image_plane);
         }
         ui.end_row();
     }

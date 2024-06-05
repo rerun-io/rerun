@@ -1,7 +1,7 @@
 use nohash_hasher::IntMap;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::{EntityDb, EntityPath, EntityPropertyMap, EntityTree};
+use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_space_view::latest_at_with_overrides;
 use re_types::{
     archetypes::Pinhole,
@@ -15,7 +15,7 @@ use re_viewer_context::{
     ViewContextSystem,
 };
 
-use crate::visualizers::{image_view_coordinates, CamerasVisualizer};
+use crate::visualizers::image_view_coordinates;
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -101,21 +101,6 @@ impl ViewContextSystem for TransformContext {
 
         let entity_tree = ctx.recording().tree();
 
-        // TODO(jleibs): The need to do this hints at a problem with how we think about
-        // the interaction between properties and "context-systems".
-        // Build an entity_property_map for just the CamerasParts, where we would expect to find
-        // the image_depth_plane_distance property.
-        let entity_prop_map: EntityPropertyMap = query
-            .per_visualizer_data_results
-            .get(&CamerasVisualizer::identifier())
-            .map(|results| {
-                results
-                    .iter()
-                    .map(|r| (r.entity_path.clone(), r.accumulated_properties().clone()))
-                    .collect()
-            })
-            .unwrap_or_default();
-
         self.space_origin = query.space_origin.clone();
 
         // Find the entity path tree for the root.
@@ -136,7 +121,6 @@ impl ViewContextSystem for TransformContext {
             current_tree,
             ctx.recording(),
             &time_query,
-            &entity_prop_map,
             glam::Affine3A::IDENTITY,
             &None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
         );
@@ -185,7 +169,6 @@ impl ViewContextSystem for TransformContext {
                 parent_tree,
                 ctx.recording(),
                 &time_query,
-                &entity_prop_map,
                 reference_from_ancestor,
                 &encountered_pinhole,
             );
@@ -209,7 +192,6 @@ impl TransformContext {
         subtree: &EntityTree,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
-        entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Affine3A,
         encountered_pinhole: &Option<EntityPath>,
     ) {
@@ -227,49 +209,50 @@ impl TransformContext {
 
         for child_tree in subtree.children.values() {
             let mut encountered_pinhole = encountered_pinhole.clone();
+
+            let lookup_image_plane = |p: &_| {
+                let resolver = ctx.recording().resolver();
+
+                let query_result = ctx.lookup_query_result(view_query.space_view_id);
+
+                query_result
+                    .tree
+                    .lookup_result_by_path(p)
+                    .cloned()
+                    .and_then(|data_result| {
+                        let results = latest_at_with_overrides(
+                            ctx,
+                            None,
+                            query,
+                            &data_result,
+                            [ImagePlaneDistance::name()],
+                        );
+
+                        results
+                            .get_or_empty(ImagePlaneDistance::name())
+                            .to_dense::<ImagePlaneDistance>(resolver)
+                            .flatten()
+                            .ok()
+                            .and_then(|r| r.first().copied())
+                            .or_else(|| {
+                                data_result.typed_fallback_for(
+                                    ctx,
+                                    self,
+                                    Some(Pinhole::name()),
+                                    view_state,
+                                )
+                            })
+                    })
+                    .unwrap_or_default()
+                    .0
+                     .0
+            };
+
             let reference_from_child = match transform_at(
                 child_tree,
                 entity_db,
                 query,
-                |p| {
-                    // TODO(jleibs): Make this way less painful
-                    let resolver = ctx.recording().resolver();
-
-                    let query_result = ctx.lookup_query_result(view_query.space_view_id);
-
-                    query_result
-                        .tree
-                        .lookup_result_by_path(p)
-                        .cloned()
-                        .map(|data_result| {
-                            let results = latest_at_with_overrides(
-                                ctx,
-                                None,
-                                query,
-                                &data_result,
-                                [ImagePlaneDistance::name()],
-                            );
-
-                            let image_plane_distance = results
-                                .get_or_empty(ImagePlaneDistance::name())
-                                .to_dense::<ImagePlaneDistance>(resolver)
-                                .flatten()
-                                .ok()
-                                .and_then(|r| r.first().copied())
-                                .unwrap_or_else(|| {
-                                    data_result
-                                        .typed_fallback_for(
-                                            ctx,
-                                            self,
-                                            Some(Pinhole::name()),
-                                            view_state,
-                                        )
-                                        .unwrap_or_default()
-                                });
-                        });
-
-                    0.0
-                },
+                lookup_image_plane,
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
@@ -287,7 +270,6 @@ impl TransformContext {
                 child_tree,
                 entity_db,
                 query,
-                entity_properties,
                 reference_from_child,
                 &encountered_pinhole,
             );
