@@ -25,7 +25,7 @@ use re_log_types::{
     ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
-use re_ui::{list_item, DesignTokens, UiExt as _};
+use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
@@ -803,7 +803,7 @@ impl TimePanel {
                     messages_over_time.total_count() + data.num_static_messages();
                 response.on_hover_ui(|ui| {
                     if total_num_messages == 0 {
-                        ui.label(ctx.re_ui.warning_text(format!(
+                        ui.label(ui.ctx().warning_text(format!(
                             "No event logged on timeline {:?}",
                             timeline.name()
                         )));
@@ -944,7 +944,7 @@ impl TimePanel {
                 {
                     // TODO(jleibs): Once we can edit blueprint while in follow mode, show
                     // this conditionally.
-                    ui.label(ctx.re_ui.warning_text("Blueprint Editing is Disabled"));
+                    ui.label(ui.ctx().warning_text("Blueprint Editing is Disabled"));
                 }
             });
         }

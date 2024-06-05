@@ -929,7 +929,7 @@ impl App {
             .show(egui_ctx, |ui| {
                 paint_background_fill(ui);
 
-                crate::ui::mobile_warning_ui(&self.re_ui, ui);
+                crate::ui::mobile_warning_ui(ui);
 
                 crate::ui::top_panel(
                     frame,

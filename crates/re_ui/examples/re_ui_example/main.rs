@@ -3,7 +3,8 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use re_ui::{
-    list_item, toasts, CommandPalette, DesignTokens, ReUi, UICommand, UICommandSender, UiExt as _,
+    list_item, toasts, CommandPalette, ContextExt as _, DesignTokens, ReUi, UICommand,
+    UICommandSender, UiExt as _,
 };
 
 /// Sender that queues up the execution of a command.
@@ -363,7 +364,7 @@ impl eframe::App for ExampleApp {
 
 impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context) {
-        let top_bar_style = self.re_ui.top_bar_style(false);
+        let top_bar_style = egui_ctx.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
             .frame(DesignTokens::top_panel_frame())

@@ -5,7 +5,7 @@ use egui::NumExt;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityPath, InstancePath};
 use re_log_types::Instance;
 use re_types::ComponentName;
-use re_ui::SyntaxHighlighting as _;
+use re_ui::{ContextExt as _, SyntaxHighlighting as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::{table_for_ui_layout, DataUi};
@@ -77,7 +77,7 @@ impl DataUi for EntityLatestAtResults {
                     .and_then(|tree| tree.entity.components.get(&self.component_name))
                 {
                     if histogram.num_static_messages() > 1 {
-                        ui.label(ctx.re_ui.warning_text(format!(
+                        ui.label(ui.ctx().warning_text(format!(
                             "Static component value was overridden {} times",
                             histogram.num_static_messages().saturating_sub(1),
                         )))
@@ -90,7 +90,7 @@ impl DataUi for EntityLatestAtResults {
 
                     let timeline_message_count = histogram.num_temporal_messages();
                     if timeline_message_count > 0 {
-                        ui.label(ctx.re_ui.error_text(format!(
+                        ui.label(ui.ctx().error_text(format!(
                             "Static component has {} event{} logged on timelines",
                             timeline_message_count,
                             if timeline_message_count > 1 { "s" } else { "" }

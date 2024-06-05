@@ -4,7 +4,7 @@ use itertools::Itertools;
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{UICommand, UiExt as _};
+use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
 use crate::{app_blueprint::AppBlueprint, App};
@@ -20,7 +20,7 @@ pub fn top_panel(
     re_tracing::profile_function!();
 
     let style_like_web = app.is_screenshotting();
-    let top_bar_style = app.re_ui().top_bar_style(style_like_web);
+    let top_bar_style = ui.ctx().top_bar_style(style_like_web);
     let top_panel_frame = re_ui::DesignTokens::top_panel_frame();
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
@@ -518,7 +518,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
             if latency_sec < app.app_options().warn_latency {
                 ui.weak(text).on_hover_text(hover_text);
             } else {
-                ui.label(app.re_ui().warning_text(text))
+                ui.label(ui.ctx().warning_text(text))
                     .on_hover_text(hover_text);
             }
         } else {

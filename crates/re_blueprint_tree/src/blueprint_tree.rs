@@ -7,7 +7,7 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
-use re_ui::{drag_and_drop::DropTarget, list_item, DesignTokens, ReUi};
+use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, ReUi};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultTree,
     SystemCommandSender,
@@ -506,7 +506,7 @@ impl BlueprintTree {
         let item_label = if ctx.recording().is_known_entity(entity_path) {
             egui::RichText::new(item_label)
         } else {
-            ctx.re_ui.warning_text(item_label)
+            ui.ctx().warning_text(item_label)
         };
 
         let subdued = !space_view_visible || !visible;
@@ -610,7 +610,7 @@ impl BlueprintTree {
             );
 
             if empty_origin {
-                ui.label(ctx.re_ui.warning_text(
+                ui.label(ui.ctx().warning_text(
                     "This space view's query did not match any data under the space origin",
                 ));
             }

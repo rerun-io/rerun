@@ -6,6 +6,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
+use re_ui::ContextExt as _;
 use re_viewer_context::{
     DataResult, OverridePath, QueryContext, SpaceViewClassExt as _, SystemCommand,
     SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
@@ -36,7 +37,7 @@ pub fn override_ui(
         .lookup_result_by_path(entity_path)
         .cloned()
     else {
-        ui.label(ctx.re_ui.error_text("Entity not found in view."));
+        ui.label(ui.ctx().error_text("Entity not found in view."));
         return;
     };
 
@@ -312,7 +313,7 @@ pub fn override_visualizer_ui(
             .lookup_result_by_path(entity_path)
             .cloned()
         else {
-            ui.label(ctx.re_ui.error_text("Entity not found in view."));
+            ui.label(ui.ctx().error_text("Entity not found in view."));
             return;
         };
 

@@ -5,6 +5,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
+use re_ui::ContextExt as _;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
@@ -484,7 +485,7 @@ impl AppState {
         }
 
         if WATERMARK {
-            re_ui.paint_watermark();
+            ui.ctx().paint_watermark();
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:

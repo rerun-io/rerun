@@ -1,6 +1,7 @@
 use re_log_types::{
     ArrowMsg, BlueprintActivationCommand, DataTable, LogMsg, SetStoreInfo, StoreInfo,
 };
+use re_ui::ContextExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -110,7 +111,7 @@ impl DataUi for ArrowMsg {
             Ok(table) => table,
             Err(err) => {
                 ui.label(
-                    ctx.re_ui
+                    ui.ctx()
                         .error_text(format!("Error parsing ArrowMsg: {err}")),
                 );
                 return;
@@ -136,7 +137,7 @@ impl DataUi for ArrowMsg {
                     });
                 }
                 Err(err) => {
-                    ui.label(ctx.re_ui.error_text(err.to_string()));
+                    ui.label(ui.ctx().error_text(err.to_string()));
                 }
             }
         }

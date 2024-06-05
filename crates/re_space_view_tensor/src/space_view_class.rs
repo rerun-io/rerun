@@ -12,8 +12,9 @@ use re_renderer::Colormap;
 use re_types::{
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    SpaceViewClassIdentifier,
+    SpaceViewClassIdentifier, View,
 };
+use re_ui::ContextExt as _;
 use re_viewer_context::{
     gpu_bridge::{self, colormap_dropdown_button_ui},
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
@@ -27,7 +28,6 @@ use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::Te
 #[derive(Default)]
 pub struct TensorSpaceView;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::TensorView;
 
 #[derive(Default)]
@@ -285,7 +285,7 @@ fn view_tensor(
         if let Err(err) =
             tensor_slice_ui(ctx, ui, state, tensor_data_row_id, tensor, dimension_labels)
         {
-            ui.label(ctx.re_ui.error_text(err.to_string()));
+            ui.label(ui.ctx().error_text(err.to_string()));
         }
     });
 }

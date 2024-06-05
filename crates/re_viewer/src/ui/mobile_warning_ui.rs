@@ -1,4 +1,6 @@
-pub fn mobile_warning_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+use re_ui::ContextExt as _;
+
+pub fn mobile_warning_ui(ui: &mut egui::Ui) {
     // We have not yet optimized the UI experience for mobile. Show a warning banner
     // with a link to the tracking issue.
 
@@ -15,8 +17,9 @@ pub fn mobile_warning_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
             .frame(frame)
             .show_inside(ui, |ui| {
                 ui.centered_and_justified(|ui| {
-                    let text =
-                        re_ui.warning_text("Mobile OSes are not yet supported. Click for details.");
+                    let text = ui
+                        .ctx()
+                        .warning_text("Mobile OSes are not yet supported. Click for details.");
                     ui.hyperlink_to(text, "https://github.com/rerun-io/rerun/issues/1672");
                 });
             });

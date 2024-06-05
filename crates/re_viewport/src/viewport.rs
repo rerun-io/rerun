@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
-use re_ui::{DesignTokens, Icon, UiExt as _};
+use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item, PerViewState,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
@@ -547,7 +547,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         } else {
             // All panes are space views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("SpaceViewId missing during egui_tiles");
-            self.ctx.re_ui.error_text("Internal error").into()
+            self.ctx.re_ui.egui_ctx.error_text("Internal error").into()
         }
     }
 
@@ -810,7 +810,12 @@ impl TabWidget {
                     re_log::warn_once!("Space view {space_view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown space view").into(),
+                        label: tab_viewer
+                            .ctx
+                            .re_ui
+                            .egui_ctx
+                            .error_text("Unknown space view")
+                            .into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -834,7 +839,12 @@ impl TabWidget {
                     } else {
                         re_log::warn_once!("Container {container_id} missing during egui_tiles");
                         (
-                            tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                            tab_viewer
+                                .ctx
+                                .re_ui
+                                .egui_ctx
+                                .error_text("Internal error")
+                                .into(),
                             false,
                         )
                     };
@@ -858,7 +868,12 @@ impl TabWidget {
                     re_log::warn_once!("Container for tile ID {tile_id:?} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown container").into(),
+                        label: tab_viewer
+                            .ctx
+                            .re_ui
+                            .egui_ctx
+                            .error_text("Unknown container")
+                            .into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -869,7 +884,12 @@ impl TabWidget {
                 re_log::warn_once!("Tile {tile_id:?} not found");
 
                 TabDesc {
-                    label: tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                    label: tab_viewer
+                        .ctx
+                        .re_ui
+                        .egui_ctx
+                        .error_text("Internal error")
+                        .into(),
                     icon: &re_ui::icons::SPACE_VIEW_UNKNOWN,
                     user_named: false,
                     item: None,

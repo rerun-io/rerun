@@ -6,6 +6,7 @@ use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{ClassId, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
+use re_ui::ContextExt as _;
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
@@ -84,7 +85,7 @@ impl EntityDataUi for re_types::components::TensorData {
                 );
             }
             Err(err) => {
-                label_for_ui_layout(ui, ui_layout, ctx.re_ui.error_text(err.to_string()));
+                label_for_ui_layout(ui, ui_layout, ui.ctx().error_text(err.to_string()));
             }
         }
     }

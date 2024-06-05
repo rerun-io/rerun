@@ -16,7 +16,9 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::{icons, list_item, DesignTokens, ReUi, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{
+    icons, list_item, ContextExt as _, DesignTokens, ReUi, SyntaxHighlighting as _, UiExt as _,
+};
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
     ContainerId, Contents, DataQueryResult, HoverHighlight, Item, SpaceViewClass, SpaceViewId,
@@ -460,7 +462,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         // Show some statistics about the query, print a warning text if something seems off.
         let query = ctx.lookup_query_result(space_view_id);
         if query.num_matching_entities == 0 {
-            ui.label(ctx.re_ui.warning_text("Does not match any entity"));
+            ui.label(ui.ctx().warning_text("Does not match any entity"));
         } else if query.num_matching_entities == 1 {
             ui.label("Matches 1 entity");
         } else {
@@ -468,7 +470,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         }
         if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
             // TODO(andreas): Talk about this root bit only if it's a spatial view.
-            ui.label(ctx.re_ui.warning_text(
+            ui.label(ui.ctx().warning_text(
                 format!("This space view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
             ));
         }

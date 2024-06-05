@@ -92,19 +92,14 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     design_tokens().apply(egui_ctx);
 }
 
-#[derive(Debug, Clone)]
-pub struct ReUi {
-    pub egui_ctx: egui::Context,
-}
+// ----------------------------------------------------------------------------
 
-impl ReUi {
-    //TODO: temporary
-    pub fn new(egui_ctx: egui::Context) -> Self {
-        Self { egui_ctx }
-    }
+/// Extension trait for [`egui::Context`].
+pub trait ContextExt {
+    fn ctx(&self) -> &egui::Context;
 
     fn rerun_logo_uri(&self) -> &'static str {
-        if self.egui_ctx.style().visuals.dark_mode {
+        if self.ctx().style().visuals.dark_mode {
             "bytes://logo_dark_mode"
         } else {
             "bytes://logo_light_mode"
@@ -112,56 +107,25 @@ impl ReUi {
     }
 
     #[must_use]
-    #[allow(clippy::unused_self)]
-    pub fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
-        let style = self.egui_ctx.style();
+    fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
+        let style = self.ctx().style();
         egui::RichText::new(text)
             .italics()
             .color(style.visuals.warn_fg_color)
     }
 
     #[must_use]
-    #[allow(clippy::unused_self)]
-    pub fn error_text(&self, text: impl Into<String>) -> egui::RichText {
-        let style = self.egui_ctx.style();
+    fn error_text(&self, text: impl Into<String>) -> egui::RichText {
+        let style = self.ctx().style();
         egui::RichText::new(text)
             .italics()
             .color(style.visuals.error_fg_color)
     }
 
-    /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
-    pub fn error_label(&self, ui: &mut egui::Ui, error_text: &str) -> egui::Response {
-        let label = egui::Label::new(self.error_text("Error"))
-            .selectable(false)
-            .sense(egui::Sense::click());
-        let response = ui.add(label);
-        if response.clicked() {
-            ui.ctx().copy_text(error_text.to_owned());
-        }
-        response.on_hover_text(error_text)
-    }
-
-    /// Paint a watermark
-    pub fn paint_watermark(&self) {
-        if let Ok(egui::load::TexturePoll::Ready { texture }) = self.egui_ctx.try_load_texture(
-            self.rerun_logo_uri(),
-            egui::TextureOptions::default(),
-            egui::SizeHint::Scale(1.0.ord()),
-        ) {
-            let rect = Align2::RIGHT_BOTTOM
-                .align_size_within_rect(texture.size, self.egui_ctx.screen_rect())
-                .translate(-Vec2::splat(16.0));
-            let mut mesh = Mesh::with_texture(texture.id);
-            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-            mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
-            self.egui_ctx.debug_painter().add(Shape::mesh(mesh));
-        }
-    }
-
-    pub fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
-        let egui_zoom_factor = self.egui_ctx.zoom_factor();
+    fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
+        let egui_zoom_factor = self.ctx().zoom_factor();
         let fullscreen = self
-            .egui_ctx
+            .ctx()
             .input(|i| i.viewport().fullscreen)
             .unwrap_or(false);
 
@@ -202,6 +166,55 @@ impl ReUi {
         };
 
         TopBarStyle { height, indent }
+    }
+
+    /// Paint a watermark
+    fn paint_watermark(&self) {
+        if let Ok(egui::load::TexturePoll::Ready { texture }) = self.ctx().try_load_texture(
+            self.rerun_logo_uri(),
+            egui::TextureOptions::default(),
+            egui::SizeHint::Scale(1.0.ord()),
+        ) {
+            let rect = Align2::RIGHT_BOTTOM
+                .align_size_within_rect(texture.size, self.ctx().screen_rect())
+                .translate(-Vec2::splat(16.0));
+            let mut mesh = Mesh::with_texture(texture.id);
+            let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
+            mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
+            self.ctx().debug_painter().add(Shape::mesh(mesh));
+        }
+    }
+}
+
+impl ContextExt for egui::Context {
+    fn ctx(&self) -> &egui::Context {
+        self
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct ReUi {
+    pub egui_ctx: egui::Context,
+}
+
+impl ReUi {
+    //TODO: temporary
+    pub fn new(egui_ctx: egui::Context) -> Self {
+        Self { egui_ctx }
+    }
+
+    /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
+    pub fn error_label(&self, ui: &mut egui::Ui, error_text: &str) -> egui::Response {
+        let label = egui::Label::new(ui.ctx().error_text("Error"))
+            .selectable(false)
+            .sense(egui::Sense::click());
+        let response = ui.add(label);
+        if response.clicked() {
+            ui.ctx().copy_text(error_text.to_owned());
+        }
+        response.on_hover_text(error_text)
     }
 
     #[allow(clippy::unused_self)]
