@@ -1327,9 +1327,9 @@ pub trait UiExt {
             if node.has_visible_frame()
                 || node.is_panel_ui()
                 || node.is_root_ui()
-                || node.kind == Some(egui::UiKind::TableCell)
+                || node.kind() == Some(egui::UiKind::TableCell)
             {
-                return (node.max_rect + node.frame.inner_margin).x_range();
+                return (node.max_rect + node.frame().inner_margin).x_range();
             }
         }
 

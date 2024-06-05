@@ -94,16 +94,13 @@ impl RightPanel {
                                 format!("Some item {i}")
                             };
 
-                            // Note: we use `exact_width(true)` here to force the item to allocate
+                            // Note: we use `truncate(false)` here to force the item to allocate
                             // as much as needed for the label, which in turn will trigger the
                             // scroll area.
                             if re_ui
                                 .list_item()
                                 .selected(Some(i) == self.selected_list_item)
-                                .show_flat(
-                                    ui,
-                                    list_item::LabelContent::new(&label).exact_width(true),
-                                )
+                                .show_flat(ui, list_item::LabelContent::new(&label).truncate(false))
                                 .clicked()
                             {
                                 self.selected_list_item = Some(i);
