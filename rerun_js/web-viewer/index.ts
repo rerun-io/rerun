@@ -55,12 +55,6 @@ export type CanvasStyle = {
   };
 };
 
-type FullscreenOff = { on: false; saved_style: null; saved_rect: null };
-
-type FullscreenOn = { on: true; saved_style: CanvasStyle; saved_rect: DOMRect };
-
-type FullscreenState = FullscreenOff | FullscreenOn;
-
 interface WebViewerOptions {
   manifest_url?: string;
   render_backend?: Backend;
@@ -109,13 +103,14 @@ export class WebViewer {
 
   #state: "ready" | "starting" | "stopped" = "stopped";
 
-  #fullscreen_state: FullscreenState = {
-    on: false,
-    saved_style: null,
-    saved_rect: null,
-  };
+  #fullscreen = false;
 
   #allow_fullscreen = false;
+
+  constructor() {
+    injectStyle();
+    setupGlobalEventListeners();
+  }
 
   /**
    * Start the viewer.
@@ -146,7 +141,7 @@ export class WebViewer {
 
     const fullscreen = this.#allow_fullscreen
       ? {
-          get_state: () => this.#fullscreen_state.on,
+          get_state: () => this.#fullscreen,
           on_toggle: () => this.toggle_fullscreen(),
         }
       : undefined;
@@ -311,9 +306,8 @@ export class WebViewer {
    */
   stop() {
     if (this.#state === "stopped") return;
-    if (this.#allow_fullscreen && this.#canvas) {
-      const state = this.#fullscreen_state;
-      if (state.on) this.#minimize(this.#canvas, state);
+    if (this.#allow_fullscreen && this.#canvas && this.#fullscreen) {
+      this.#minimize();
     }
 
     this.#state = "stopped";
@@ -324,7 +318,7 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
-    this.#fullscreen_state.on = false;
+    this.#fullscreen = false;
     this.#allow_fullscreen = false;
   }
 
@@ -410,10 +404,6 @@ export class WebViewer {
    * This functionality can also be directly accessed in the viewer:
    * - The maximize/minimize top panel button
    * - The `Toggle fullscreen` UI command (accessible via the command palette, CTRL+P)
-   *
-   * Note: When toggling fullscreen, panel overrides are also toggled:
-   * - Maximize turns panel overrides _off_,
-   * - Minimize turns panel overrides to their state before a maximize.
    */
   toggle_fullscreen() {
     if (!this.#allow_fullscreen) return;
@@ -424,125 +414,66 @@ export class WebViewer {
       );
     }
 
-    const state = this.#fullscreen_state;
-    if (state.on) {
-      this.#dispatch_event("fullscreen", true);
-      this.#minimize(this.#canvas, state);
+    if (this.#fullscreen) {
+      this.#minimize();
     } else {
-      this.#dispatch_event("fullscreen", false);
-      this.#maximize(this.#canvas);
+      this.#maximize();
     }
   }
 
-  #minimize = (
-    canvas: HTMLCanvasElement,
-    { saved_style, saved_rect }: FullscreenOn,
-  ) => {
-    this.#fullscreen_state = {
-      on: false,
-      saved_style: null,
-      saved_rect: null,
-    };
+  #minimize = () => {};
 
-    if (this.#fullscreen_state.on) return;
-
-    canvas.style.width = saved_rect.width + "px";
-    canvas.style.height = saved_rect.height + "px";
-    canvas.style.top = saved_rect.top + "px";
-    canvas.style.left = saved_rect.left + "px";
-    canvas.style.bottom = saved_rect.bottom + "px";
-    canvas.style.right = saved_rect.right + "px";
-
-    setTimeout(
-      () =>
-        requestAnimationFrame(() => {
-          if (this.#fullscreen_state.on) return;
-
-          // restore saved style
-          for (const prop in saved_style.canvas) {
-            // @ts-expect-error
-            canvas.style[prop] = saved_style.canvas[prop];
-          }
-          for (const key in saved_style.document) {
-            // @ts-expect-error
-            for (const prop in saved_style.document[key]) {
-              // @ts-expect-error
-              document[key].style[prop] = saved_style.document[key][prop];
-            }
-          }
-        }),
-      100,
-    );
-
-    _minimize_current_fullscreen_viewer = null;
-  };
-
-  #maximize = (canvas: HTMLCanvasElement) => {
+  #maximize = () => {
     _minimize_current_fullscreen_viewer?.();
 
-    const style = canvas.style;
+    const canvas = this.#canvas!;
+    const rect = canvas.getBoundingClientRect();
 
-    const saved_style: CanvasStyle = {
-      canvas: {
-        position: style.position,
-        width: style.width,
-        height: style.height,
-        top: style.top,
-        left: style.left,
-        bottom: style.bottom,
-        right: style.right,
-        transition: style.transition,
-        zIndex: style.zIndex,
-      },
-      document: {
-        body: {
-          overflow: document.body.style.overflow,
-          scrollbarGutter: document.body.style.scrollbarGutter,
-        },
-        root: {
-          overflow: document.documentElement.style.overflow,
-          scrollbarGutter: document.documentElement.style.scrollbarGutter,
-        },
-      },
+    const sync_style_to_rect = () => {
+      canvas.style.left = rect.left + "px";
+      canvas.style.top = rect.top + "px";
+      canvas.style.width = rect.width + "px";
+      canvas.style.height = rect.height + "px";
     };
-    const saved_rect = canvas.getBoundingClientRect();
+    const undo_style = () => canvas.removeAttribute("style");
+    const transition = (callback: () => void) =>
+      setTimeout(() => requestAnimationFrame(callback), transition_delay_ms);
 
-    style.position = "fixed";
-    style.width = saved_rect.width + "px";
-    style.height = saved_rect.height + "px";
-    style.top = saved_rect.top + "px";
-    style.left = saved_rect.left + "px";
-    style.bottom = saved_rect.bottom + "px";
-    style.right = saved_rect.right + "px";
-    style.zIndex = "99999";
-    style.transition = ["width", "height", "top", "left", "bottom", "right"]
-      .map((p) => `${p} 0.1s linear`)
-      .join(", ");
-    document.body.style.overflow = "hidden";
-    document.body.style.scrollbarGutter = "";
-    document.documentElement.style.overflow = "hidden";
-    document.documentElement.style.scrollbarGutter = "";
+    canvas.classList.add(classes.fullscreen_base, classes.fullscreen_rect);
+    sync_style_to_rect();
+    requestAnimationFrame(() => {
+      if (!this.#fullscreen) return;
+      canvas.classList.add(classes.transition);
+      transition(() => {
+        if (!this.#fullscreen) return;
+        undo_style();
 
-    setTimeout(() => {
-      requestAnimationFrame(() => {
-        if (!this.#fullscreen_state.on) return;
-
-        style.width = `100%`;
-        style.height = `100%`;
-        style.top = `0px`;
-        style.left = `0px`;
-        style.bottom = `0px`;
-        style.right = `0px`;
+        document.body.classList.add(classes.hide_scrollbars);
+        document.documentElement.classList.add(classes.hide_scrollbars);
       });
-    }, 0);
+    });
 
-    this.#fullscreen_state = {
-      on: true,
-      saved_style,
-      saved_rect,
+    this.#minimize = () => {
+      document.body.classList.remove(classes.hide_scrollbars);
+      document.documentElement.classList.remove(classes.hide_scrollbars);
+
+      sync_style_to_rect();
+      canvas.classList.remove(classes.fullscreen_rect);
+      transition(() => {
+        if (this.#fullscreen) return;
+
+        undo_style();
+        canvas.classList.remove(classes.fullscreen_base, classes.transition);
+      });
+
+      _minimize_current_fullscreen_viewer = null;
+      this.#fullscreen = false;
+      this.#dispatch_event("fullscreen", false);
     };
 
-    _minimize_current_fullscreen_viewer = () => this.toggle_fullscreen();
+    _minimize_current_fullscreen_viewer = () => this.#minimize();
+    this.#fullscreen = true;
+    this.#dispatch_event("fullscreen", true);
   };
 }
 
@@ -593,4 +524,59 @@ class LogChannel {
     this.#on_close();
     this.#closed = true;
   }
+}
+
+const classes = {
+  hide_scrollbars: "rerun-viewer-hide-scrollbars",
+  fullscreen_base: "rerun-viewer-fullscreen-base",
+  fullscreen_rect: "rerun-viewer-fullscreen-rect",
+  transition: "rerun-viewer-transition",
+};
+
+const transition_delay_ms = 100;
+
+const css = `
+  html.${classes.hide_scrollbars},
+  body.${classes.hide_scrollbars} {
+    scrollbar-gutter: auto !important;
+    overflow: hidden !important;
+  }
+
+  .${classes.fullscreen_base} {
+    position: fixed;
+    z-index: 99999;
+  }
+
+  .${classes.transition} {
+    transition: all ${transition_delay_ms / 1000}s linear;
+  }
+
+  .${classes.fullscreen_rect} {
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+  }
+`;
+
+function injectStyle() {
+  const ID = "__rerun_viewer_style";
+
+  if (document.getElementById(ID)) {
+    // already injected
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = ID;
+  style.appendChild(document.createTextNode(css));
+  document.head.appendChild(style);
+}
+
+function setupGlobalEventListeners() {
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Escape") {
+      _minimize_current_fullscreen_viewer?.();
+    }
+  });
 }
