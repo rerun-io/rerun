@@ -1,3 +1,4 @@
+use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
@@ -11,11 +12,14 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    IdentifiedViewSystem as _, IndicatedEntities, PerSystemEntities, PerVisualizer,
+    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext,
 };
 
+use crate::visualizers::{CamerasVisualizer, Transform3DArrowsVisualizer};
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
@@ -182,6 +186,49 @@ impl SpaceViewClass for SpatialSpaceView3D {
         });
 
         Box::new(context.unwrap_or_default())
+    }
+
+    /// Choose the default visualizers to enable for this entity.
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet {
+        let available_visualizers: HashSet<&ViewSystemIdentifier> =
+            visualizable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+        let mut visualizers: SmallVisualizerSet = available_visualizers
+            .iter()
+            .filter_map(|visualizer| {
+                if indicated_entities_per_visualizer
+                    .get(*visualizer)
+                    .map_or(false, |matching_list| matching_list.contains(entity_path))
+                {
+                    Some(**visualizer)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // If there were no other visualizers, or this is a camera, then we will include axes.
+        if (visualizers.is_empty() || visualizers.contains(&CamerasVisualizer::identifier()))
+            && available_visualizers.contains(&Transform3DArrowsVisualizer::identifier())
+        {
+            visualizers.insert(0, Transform3DArrowsVisualizer::identifier());
+        }
+
+        visualizers
     }
 
     fn spawn_heuristics(
