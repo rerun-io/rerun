@@ -11,6 +11,8 @@ use crate::{
     ContextExt, DesignTokens, Icon, LabelStyle,
 };
 
+static FULL_SPAN_TAG: &str = "rerun_full_span";
+
 /// Rerun custom extensions to [`egui::Ui`].
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
@@ -1003,15 +1005,39 @@ pub trait UiExt {
             });
     }
 
+    /// Use the provided range as full span for the nested content.
+    ///
+    /// See [`Self::full_span`] for details.
+    fn full_span_scope<R>(
+        &mut self,
+        span: impl Into<egui::Rangef>,
+        content: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
+        self.ui_mut()
+            .push_stack_info(
+                egui::UiStackInfo::default().with_tag_value(FULL_SPAN_TAG, span.into()),
+                content,
+            )
+            .inner
+    }
+
     /// Retrieve the current full-span scope.
+    ///
+    /// By default, this method uses a heuristics to identify which parent `Ui`'s boundary should be
+    /// used (e.g. top-level panel, tooltip, etc.). Use [`Self::full_span_scope`] to set a specific
+    /// range as full span.
     fn full_span(&self) -> egui::Rangef {
         for node in self.ui().stack().iter() {
+            if let Some(span) = node.tags().get_downcast(FULL_SPAN_TAG) {
+                return *span;
+            }
+
             if node.has_visible_frame()
                 || node.is_panel_ui()
                 || node.is_root_ui()
-                || node.kind == Some(egui::UiKind::TableCell)
+                || node.kind() == Some(egui::UiKind::TableCell)
             {
-                return (node.max_rect + node.frame.inner_margin).x_range();
+                return (node.max_rect + node.frame().inner_margin).x_range();
             }
         }
 
