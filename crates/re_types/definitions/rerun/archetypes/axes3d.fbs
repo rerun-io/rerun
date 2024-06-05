@@ -1,0 +1,27 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// This archetype shows a set of orthogonal coordinate axes such as for reprsenting a transform.
+///
+/// \py See [`Transform3D`][rerun.archetypes.Transform3D]
+/// \rs See [`Transform3D`][crate::archetypes.ScTransform3Dalar]
+/// \cpp See `rerun::archetypes::Transform3D`
+table Axes3D (
+    "attr.docs.category": "Plotting",
+    "attr.docs.view_types": "Spatial3D,  Spatial2DView: if logged above active projection"
+) {
+    // --- Required ---
+
+    // --- Optional ---
+
+    /// Length of the 3 axes.
+    length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// TODO(jleibs): Abillity to set color for the axes.
+}
