@@ -4,6 +4,7 @@
 #import <./utils/flags.wgsl>
 #import <./utils/size.wgsl>
 #import <./utils/sphere_quad.wgsl>
+#import <./utils/sphere_depth.wgsl>
 #import <./utils/depth_offset.wgsl>
 
 @group(1) @binding(0)
@@ -64,7 +65,19 @@ struct VertexOut {
 
     @location(4) @interpolate(flat)
     picking_instance_id: vec2u,
+
+    // Offset on the projected Z axis corresponding to the frontmost point on the sphere.
+    @location(5) @interpolate(flat)
+    sphere_radius_projected_depth: f32,
 };
+
+struct FragmentOut {
+    @location(0)
+    color: vec4f,
+
+    @builtin(frag_depth)
+    depth: f32
+}
 
 struct PointData {
     pos: vec3f,
@@ -120,6 +133,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.world_position = quad.pos_in_world;
     out.point_center = point_data.pos;
     out.picking_instance_id = point_data.picking_instance_id;
+    out.sphere_radius_projected_depth = sphere_radius_projected_depth(point_data.pos, world_radius);
 
     return out;
 }
@@ -147,20 +161,28 @@ fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
 
 
 @fragment
-fn fs_main(in: VertexOut) -> @location(0) vec4f {
+fn fs_main(in: VertexOut) -> FragmentOut {
     let coverage = coverage(in.world_position, in.radius, in.point_center);
     if coverage < 0.001 {
         discard;
     }
 
-    // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
+    let depth_offset = sphere_fragment_projected_depth(
+        in.radius,
+        in.sphere_radius_projected_depth,
+        in.world_position - in.point_center,
+    );
+
     // TODO(andreas): Proper shading
     // TODO(andreas): This doesn't even use the sphere's world position for shading, the world position used here is flat!
     var shading = 1.0;
     if has_any_flag(batch.flags, FLAG_ENABLE_SHADING) {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
-    return vec4f(in.color.rgb * shading, coverage);
+    return FragmentOut(
+        vec4f(in.color.rgb * shading, coverage),
+        in.position.z + depth_offset,
+    );
 }
 
 @fragment
