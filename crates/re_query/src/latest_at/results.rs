@@ -89,6 +89,31 @@ impl LatestAtResults {
             &EMPTY
         }
     }
+
+    /// Utility for retrieving a single instance of a component.
+    pub fn get_instance<T: re_types_core::Component>(
+        &self,
+        resolver: &PromiseResolver,
+        index: usize,
+    ) -> Option<T> {
+        self.get(T::name())
+            .and_then(|r| r.try_instance::<T>(resolver, index))
+    }
+
+    /// Utility for retrieving a specific component.
+    pub fn get_slice<T: re_types_core::Component>(
+        &self,
+        resolver: &PromiseResolver,
+    ) -> Option<&[T]> {
+        self.get(T::name()).and_then(|r| r.dense::<T>(resolver))
+    }
+
+    pub fn get_vec<T: re_types_core::Component>(
+        &self,
+        resolver: &PromiseResolver,
+    ) -> Option<Vec<T>> {
+        self.get_slice(resolver).map(|v| v.to_vec())
+    }
 }
 
 impl LatestAtResults {
