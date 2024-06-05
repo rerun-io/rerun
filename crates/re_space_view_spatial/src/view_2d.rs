@@ -245,12 +245,10 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         // TODO(andreas): list_item'ify the rest
-        ui
-            .selection_grid("spatial_settings_ui")
-            .show(ui, |ui| {
-                state.default_sizes_ui(ctx, ui);
-                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
-            });
+        ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
+            state.default_sizes_ui(ui);
+            state.bounding_box_ui(ui, SpatialSpaceViewKind::TwoD);
+        });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);

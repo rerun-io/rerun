@@ -145,7 +145,7 @@ fn view_property_component_ui(
                 id,
                 default_open,
                 singleline_list_item_content,
-                |_, ui| {
+                |ui| {
                     ctx.viewer_ctx.component_ui_registry.multiline_edit_ui(
                         ctx,
                         ui,
@@ -224,7 +224,7 @@ fn singleline_list_item_content<'a>(
             ctx.viewer_ctx
                 .reset_blueprint_component_by_name(blueprint_path, component_name);
         })
-        .value_fn(move |_, ui, _| {
+        .value_fn(move |ui, _| {
             ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
                 ctx,
                 ui,
