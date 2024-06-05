@@ -2,6 +2,7 @@
 
 mod annotation_context;
 mod axis_length;
+mod axis_length_ext;
 mod blob;
 mod blob_ext;
 mod class_id;
