@@ -918,7 +918,7 @@ pub trait UiExt {
     ///
     /// Assumes it is in a right-to-left layout.
     ///
-    /// Use when [`CUSTOM_WINDOW_DECORATIONS`] is set.
+    /// Use when [`crate::CUSTOM_WINDOW_DECORATIONS`] is set.
     #[cfg(not(target_arch = "wasm32"))]
     fn native_window_buttons_ui(&mut self) {
         use egui::{Button, RichText, ViewportCommand};
