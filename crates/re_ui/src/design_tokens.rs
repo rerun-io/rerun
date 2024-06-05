@@ -485,7 +485,7 @@ fn parse_color(color: &str) -> egui::Color32 {
 #[test]
 fn test_design_tokens() {
     let ctx = egui::Context::default();
-    DesignTokens::new().apply(&ctx);
+    crate::apply_style_and_install_loaders(&ctx);
 
     // Make sure it works:
     let _ = ctx.run(Default::default(), |ctx| {

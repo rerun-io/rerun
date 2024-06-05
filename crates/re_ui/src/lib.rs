@@ -73,7 +73,7 @@ use egui::{
 /// Return a reference to the global design tokens structure.
 pub fn design_tokens() -> &'static DesignTokens {
     static DESIGN_TOKENS: std::sync::OnceLock<DesignTokens> = std::sync::OnceLock::new();
-    DESIGN_TOKENS.get_or_init(|| DesignTokens::load())
+    DESIGN_TOKENS.get_or_init(DesignTokens::load)
 }
 
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
@@ -332,7 +332,7 @@ impl ReUi {
         self.checkbox_indeterminate(ui, selected, text, false)
     }
 
-    #[allow(clippy::unused_self)]
+    #[allow(clippy::disallowed_types)]
     pub fn checkbox_indeterminate(
         &self,
         ui: &mut egui::Ui,
@@ -345,7 +345,6 @@ impl ReUi {
             ui.visuals_mut().widgets.active.expansion = 0.0;
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
-            // NOLINT
             egui::Checkbox::new(selected, text)
                 .indeterminate(indeterminate)
                 .ui(ui)
@@ -353,7 +352,7 @@ impl ReUi {
         .inner
     }
 
-    #[allow(clippy::unused_self)]
+    #[allow(clippy::disallowed_methods)]
     pub fn re_radio_value<Value: PartialEq>(
         &self,
         ui: &mut egui::Ui,

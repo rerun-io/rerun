@@ -695,8 +695,10 @@ force_capitalized = [
 ]
 
 allow_capitalized = [
-    "Viewer",  # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
-    "Arrow",  # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
+    "Viewer",
+    # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
+    "Arrow",
+    # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
 ]
 
 force_capitalized_as_lower = [word.lower() for word in force_capitalized]
@@ -843,56 +845,6 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
     return errors, lines_out
 
 
-# -----------------------------------------------------------------------------
-# We may not use egui's widgets for which we have a custom version in re_ui.
-
-# Note: this really is best-effort detection, it will only catch the most common code layout cases. If this gets any
-# more complicated, a syn-based linter in Rust would certainly be better approach.
-
-re_forbidden_widgets = [
-    (
-        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*checkbox(?!\w)", re.MULTILINE),
-        "ui.checkbox() is forbidden (use re_ui.checkbox() instead)",
-    ),
-    (
-        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*radio_value(?!\w)", re.MULTILINE),
-        "ui.radio_value() is forbidden (use re_ui.radio_value() instead)",
-    ),
-]
-
-
-def lint_forbidden_widgets(content: str) -> Iterator[tuple[str, int, int]]:
-    for re_widget, error in re_forbidden_widgets:
-        for match in re_widget.finditer(content):
-            yield error, match.start(0), match.end(0)
-
-
-def test_lint_forbidden_widgets() -> None:
-    re_checkbox = re_forbidden_widgets[0][0]
-    assert re_checkbox.search("ui.checkbox")
-    assert re_checkbox.search("  ui.\n\t\t   checkbox  ")
-    assert re_checkbox.search("  ui.\n\t\t   checkbox()")
-    assert re_checkbox.search("  ui\n\t\t   .checkbox()")
-    assert re_checkbox.search("  ui //bla\n\t\t   .checkbox()")
-    assert not re_checkbox.search("re_ui.checkbox")
-    assert not re_checkbox.search("ui.checkbox_re")
-
-    should_fail_two_times = """
-        ui.checkbox()
-        re_ui.checkbox()
-        ui.checkbox_re()
-
-        ui  // hello!
-            .checkbox()
-            .bla()
-    """
-
-    res = list(lint_forbidden_widgets(should_fail_two_times))
-    assert len(res) == 2
-    assert _index_to_line_nr(should_fail_two_times, res[0][1]) == 1
-    assert _index_to_line_nr(should_fail_two_times, res[1][1]) == 5
-
-
 def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
     # only applies to examples' readme
 
@@ -1013,12 +965,6 @@ def lint_file(filepath: str, args: Any) -> int:
             num_errors += 1
 
     if filepath.endswith(".rs") or filepath.endswith(".fbs"):
-        if filepath.endswith(".rs"):
-            for error, start_idx, end_idx in lint_forbidden_widgets(source.content):
-                if not source.should_ignore_index(start_idx, end_idx):
-                    print(source.error(error, index=start_idx))
-                    num_errors += 1
-
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
             print(source.error(error))
