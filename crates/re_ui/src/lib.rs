@@ -1280,6 +1280,8 @@ pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
 }
 
 /// Show some markdown
+///
+/// The `id` should be globally unique and persistent.
 pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
     use parking_lot::Mutex;
     use std::sync::Arc;
