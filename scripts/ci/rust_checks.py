@@ -39,7 +39,7 @@ class Timing:
 
 def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Timing:
     args = ["cargo", cargo_cmd]
-    if cargo_cmd != "deny":
+    if cargo_cmd not in ["deny", "fmt", "format"]:
         args.append("--quiet")
     args += cargo_args.split(" ")
 
@@ -52,7 +52,8 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     additional_env_vars["RUSTDOCFLAGS"] = "--deny warnings"
     if clippy_conf is not None:
         additional_env_vars["CLIPPY_CONF_DIR"] = (
-            f"{os.getcwd()}/{clippy_conf}"  # Clippy has issues finding this directory on CI when we're not using an absolute path here.
+            # Clippy has issues finding this directory on CI when we're not using an absolute path here.
+            f"{os.getcwd()}/{clippy_conf}"
         )
 
     env = os.environ.copy()

@@ -5275,6 +5275,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "egui-wgpu",
+ "egui_extras",
  "egui_tiles",
  "glam",
  "half 2.3.1",
