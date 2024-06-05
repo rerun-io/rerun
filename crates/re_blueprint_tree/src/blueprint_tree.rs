@@ -1043,9 +1043,16 @@ fn remove_button_ui(ui: &mut Ui, tooltip: &str) -> Response {
         .on_hover_text(tooltip)
 }
 
-fn visibility_button_ui(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
-    ui.set_enabled(enabled);
-    ui.visibility_toggle_button(visible)
-        .on_hover_text("Toggle visibility")
-        .on_disabled_hover_text("A parent is invisible")
+fn visibility_button_ui(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    visible: &mut bool,
+) -> egui::Response {
+    ui.add_enabled_ui(enabled, |ui| {
+        ui
+            .visibility_toggle_button(visible)
+            .on_hover_text("Toggle visibility")
+            .on_disabled_hover_text("A parent is invisible")
+    })
+    .inner
 }
