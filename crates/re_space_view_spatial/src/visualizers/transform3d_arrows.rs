@@ -1,6 +1,11 @@
 use egui::Color32;
 use re_log_types::{EntityPath, Instance};
-use re_types::components::Transform3D;
+use re_space_view::DataResultQuery;
+use re_types::{
+    archetypes::{self, Axes3D},
+    components::{AxisLength, Transform3D},
+    Archetype as _, ComponentNameSet,
+};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
@@ -32,7 +37,14 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
 
 impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<re_types::archetypes::Transform3D>()
+        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Transform3D>();
+        let mut axes_queried: ComponentNameSet = Axes3D::all_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect::<ComponentNameSet>();
+        query_info.queried.append(&mut axes_queried);
+        query_info.indicators = std::iter::once(Axes3D::indicator().name()).collect();
+        query_info
     }
 
     fn filter_visualizable_entities(
@@ -63,10 +75,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            if !*data_result.accumulated_properties().transform_3d_visible {
-                continue;
-            }
-
             if ctx
                 .recording()
                 .latest_at_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
@@ -91,11 +99,14 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 world_from_obj,
             );
 
+            let results = data_result.latest_at_with_overrides::<Axes3D>(ctx, &latest_at_query);
+            let axis_length = results.get_mono_with_fallback::<AxisLength>().into();
+
             add_axis_arrows(
                 &mut line_builder,
                 world_from_obj,
                 Some(&data_result.entity_path),
-                *data_result.accumulated_properties().transform_3d_size,
+                axis_length,
                 query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash())
