@@ -30,7 +30,7 @@ fn run_space_view_systems(
             .par_iter_mut()
             .for_each(|(_name, system)| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", _name.as_str());
-                system.execute(ctx, query);
+                system.execute(ctx, query, view_state);
             });
     };
 

@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_log_types::EntityPathHash;
 use re_types::{components::DrawOrder, ComponentNameSet, Loggable as _};
-use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, SpaceViewState, ViewContextSystem};
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]
@@ -34,6 +34,7 @@ impl ViewContextSystem for EntityDepthOffsets {
         &mut self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
     ) {
         #[derive(PartialEq, PartialOrd, Eq, Ord)]
         enum DrawOrderTarget {

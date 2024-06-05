@@ -1,6 +1,6 @@
 use re_types::{archetypes::AnnotationContext, Archetype, ComponentNameSet};
 use re_viewer_context::{
-    AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier,
+    AnnotationMap, IdentifiedViewSystem, SpaceViewState, ViewContextSystem, ViewSystemIdentifier,
 };
 
 #[derive(Default)]
@@ -26,6 +26,7 @@ impl ViewContextSystem for AnnotationSceneContext {
         &mut self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
     ) {
         re_tracing::profile_function!();
         // We create a list of *all* entities here, do not only iterate over those with annotation context.

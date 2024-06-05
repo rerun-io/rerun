@@ -13,7 +13,8 @@ pub use transform_context::TransformContext;
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem, SpaceViewClassRegistryError, ViewContextSystem,
+    Annotations, IdentifiedViewSystem, SpaceViewClassRegistryError, SpaceViewState,
+    ViewContextSystem,
 };
 
 /// Context objects for a single entity in a spatial scene.
@@ -46,6 +47,7 @@ impl ViewContextSystem for PrimitiveCounter {
         &mut self,
         _ctx: &re_viewer_context::ViewerContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
+        _view_state: &dyn SpaceViewState,
     ) {
     }
 

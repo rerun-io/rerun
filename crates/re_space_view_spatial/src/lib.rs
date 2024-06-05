@@ -26,10 +26,8 @@ mod view_3d_properties;
 mod visualizers;
 
 use re_space_view::latest_at_with_overrides;
-use re_types::archetypes::Pinhole;
 use re_types::{Archetype as _, Loggable};
 use re_viewer_context::ViewerContext;
-use re_viewer_context::{ComponentFallbackProvider, ViewerContext};
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
@@ -69,8 +67,6 @@ fn resolution_from_tensor(
 fn query_pinhole(
     ctx: &ViewerContext<'_>,
     query: &re_data_store::LatestAtQuery,
-    fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn re_viewer_context::SpaceViewState,
     data_result: &re_viewer_context::DataResult,
 ) -> Option<re_types::archetypes::Pinhole> {
     let resolver = ctx.recording().resolver();
@@ -113,15 +109,7 @@ fn query_pinhole(
         .to_dense(resolver)
         .flatten()
         .ok()
-        .and_then(|r| r.first().copied())
-        .or_else(|| {
-            data_result.typed_fallback_for(
-                ctx,
-                fallback_provider,
-                Some(Pinhole::name()),
-                view_state,
-            )
-        });
+        .and_then(|r| r.first().copied());
 
     Some(re_types::archetypes::Pinhole {
         image_from_camera,
