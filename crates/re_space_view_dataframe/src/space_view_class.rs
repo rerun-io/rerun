@@ -202,10 +202,10 @@ impl SpaceViewClass for DataframeSpaceView {
                             .vscroll(false)
                             .auto_shrink([false, true])
                             .striped(true)
-                            .header(re_ui::ReUi::table_line_height(), header_ui)
+                            .header(re_ui::DesignTokens::table_line_height(), header_ui)
                             .body(|body| {
                                 body.rows(
-                                    re_ui::ReUi::table_line_height(),
+                                    re_ui::DesignTokens::table_line_height(),
                                     sorted_instance_paths.len(),
                                     row_ui,
                                 );

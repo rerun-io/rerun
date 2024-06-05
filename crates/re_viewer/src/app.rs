@@ -4,7 +4,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{toasts, UICommand, UICommandSender};
+use re_ui::{toasts, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -863,7 +863,7 @@ impl App {
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..self.re_ui.bottom_panel_frame()
+            ..DesignTokens::bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("memory_panel")
@@ -887,7 +887,7 @@ impl App {
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
-            .frame(self.re_ui.top_panel_frame())
+            .frame(DesignTokens::top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     egui::CollapsingHeader::new("egui settings")
@@ -1681,7 +1681,7 @@ fn paint_background_fill(ui: &egui::Ui) {
 
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::ReUi::native_window_rounding(),
+        re_ui::DesignTokens::native_window_rounding(),
         ui.visuals().panel_fill,
     );
 }
@@ -1697,7 +1697,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect().shrink(0.5),
-        re_ui::ReUi::native_window_rounding(),
+        re_ui::DesignTokens::native_window_rounding(),
         stroke,
     );
 }

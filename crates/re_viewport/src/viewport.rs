@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
-use re_ui::{Icon, ReUi, UiExt as _};
+use re_ui::{DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item, PerViewState,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
@@ -136,7 +136,7 @@ impl<'a> Viewport<'a> {
             .collect();
 
         ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
+            ui.spacing_mut().item_spacing.x = DesignTokens::view_padding();
 
             re_tracing::profile_scope!("tree.ui");
 
@@ -702,7 +702,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     /// The height of the bar holding tab titles.
     fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::ReUi::title_bar_height()
+        re_ui::DesignTokens::title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?
@@ -887,8 +887,8 @@ impl TabWidget {
             .map_or(false, |item| tab_viewer.ctx.selection().contains_item(item));
 
         // tab icon
-        let icon_size = ReUi::small_icon_size();
-        let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
+        let icon_size = DesignTokens::small_icon_size();
+        let icon_width_plus_padding = icon_size.x + DesignTokens::text_to_icon_padding();
 
         // tab title
         let text = if !tab_desc.user_named {
@@ -904,7 +904,7 @@ impl TabWidget {
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(
             galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
-            ReUi::title_bar_height(),
+            DesignTokens::title_bar_height(),
         ));
         let galley_rect = egui::Rect::from_two_pos(
             rect.min + egui::vec2(icon_width_plus_padding, 0.0),

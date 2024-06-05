@@ -129,7 +129,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
         egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
+            inner_margin: re_ui::DesignTokens::view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {

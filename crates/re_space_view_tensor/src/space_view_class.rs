@@ -212,7 +212,7 @@ impl SpaceViewClass for TensorSpaceView {
             state.tensor = None;
 
             egui::Frame {
-                inner_margin: re_ui::ReUi::view_padding().into(),
+                inner_margin: re_ui::DesignTokens::view_padding().into(),
                 ..egui::Frame::default()
             }
             .show(ui, |ui| {
@@ -594,7 +594,7 @@ fn paint_axis_names(
     let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
     let text_color = ui.visuals().text_color();
 
-    let rounding = re_ui::ReUi::normal_rounding();
+    let rounding = re_ui::DesignTokens::normal_rounding();
     let inner_margin = rounding;
     let outer_margin = 8.0;
 

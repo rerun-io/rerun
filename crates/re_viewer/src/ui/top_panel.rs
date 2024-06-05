@@ -21,7 +21,7 @@ pub fn top_panel(
 
     let style_like_web = app.is_screenshotting();
     let top_bar_style = app.re_ui().top_bar_style(style_like_web);
-    let top_panel_frame = app.re_ui().top_panel_frame();
+    let top_panel_frame = re_ui::DesignTokens::top_panel_frame();
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:

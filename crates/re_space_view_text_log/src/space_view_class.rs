@@ -175,7 +175,7 @@ impl SpaceViewClass for TextSpaceView {
             .collect::<Vec<_>>();
 
         egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
+            inner_margin: re_ui::DesignTokens::view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
@@ -333,8 +333,8 @@ fn table_ui(
         table_builder = table_builder.column(Column::remainder().at_least(100.0));
     }
     table_builder
-        .header(re_ui::ReUi::table_header_height(), |mut header| {
-            re_ui::ReUi::setup_table_header(&mut header);
+        .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+            re_ui::DesignTokens::setup_table_header(&mut header);
             for timeline in &timelines {
                 header.col(|ui| {
                     item_ui::timeline_button(ctx, ui, timeline);
@@ -355,7 +355,7 @@ fn table_ui(
             });
         })
         .body(|mut body| {
-            re_ui::ReUi::setup_table_body(&mut body);
+            re_ui::DesignTokens::setup_table_body(&mut body);
 
             body_clip_rect = Some(body.max_rect());
 
@@ -460,5 +460,5 @@ fn calc_row_height(entry: &Entry) -> f32 {
     // Simple, fast, ugly, and functional
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;
-    num_rows as f32 * re_ui::ReUi::table_line_height()
+    num_rows as f32 * re_ui::DesignTokens::table_line_height()
 }

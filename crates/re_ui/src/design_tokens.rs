@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)] // fixed json file
 
+use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
 use egui::Color32;
 
 /// The look and feel of the UI.
@@ -184,9 +185,9 @@ impl DesignTokens {
         egui_style.visuals.window_stroke = egui::Stroke::NONE;
         egui_style.visuals.panel_fill = panel_bg_color;
 
-        egui_style.visuals.window_rounding = crate::ReUi::window_rounding().into();
-        egui_style.visuals.menu_rounding = crate::ReUi::window_rounding().into();
-        let small_rounding = crate::ReUi::small_rounding().into();
+        egui_style.visuals.window_rounding = Self::window_rounding().into();
+        egui_style.visuals.menu_rounding = Self::window_rounding().into();
+        let small_rounding = Self::small_rounding().into();
         egui_style.visuals.widgets.noninteractive.rounding = small_rounding;
         egui_style.visuals.widgets.inactive.rounding = small_rounding;
         egui_style.visuals.widgets.hovered.rounding = small_rounding;
@@ -194,7 +195,7 @@ impl DesignTokens {
         egui_style.visuals.widgets.open.rounding = small_rounding;
 
         egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
-        egui_style.spacing.menu_margin = crate::ReUi::view_padding().into();
+        egui_style.spacing.menu_margin = Self::view_padding().into();
         egui_style.spacing.menu_spacing = 1.0;
 
         // avoid some visual glitches with the default non-zero value
@@ -245,6 +246,131 @@ impl DesignTokens {
     #[inline]
     pub fn welcome_screen_tag() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-tag".into())
+    }
+
+    /// Margin on all sides of views.
+    pub fn view_padding() -> f32 {
+        12.0
+    }
+
+    pub fn panel_margin() -> egui::Margin {
+        egui::Margin::symmetric(Self::view_padding(), 0.0)
+    }
+
+    pub fn window_rounding() -> f32 {
+        12.0
+    }
+
+    pub fn normal_rounding() -> f32 {
+        6.0
+    }
+
+    pub fn small_rounding() -> f32 {
+        4.0
+    }
+
+    pub fn table_line_height() -> f32 {
+        16.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
+    }
+
+    pub fn table_header_height() -> f32 {
+        20.0
+    }
+
+    pub fn top_bar_margin() -> egui::Margin {
+        egui::Margin::symmetric(8.0, 2.0)
+    }
+
+    pub fn text_to_icon_padding() -> f32 {
+        4.0
+    }
+
+    /// Height of the top-most bar.
+    pub fn top_bar_height() -> f32 {
+        28.0 // Don't waste vertical space, especially important for embedded web viewers
+    }
+
+    /// Height of the title row in the blueprint view and selection view,
+    /// as well as the tab bar height in the viewport view.
+    pub fn title_bar_height() -> f32 {
+        24.0 // https://github.com/rerun-io/rerun/issues/5589
+    }
+
+    pub fn list_item_height() -> f32 {
+        24.0
+    }
+
+    pub fn native_window_rounding() -> f32 {
+        10.0
+    }
+
+    pub fn top_panel_frame() -> egui::Frame {
+        let mut frame = egui::Frame {
+            inner_margin: Self::top_bar_margin(),
+            fill: design_tokens().top_bar_color,
+            ..Default::default()
+        };
+        if CUSTOM_WINDOW_DECORATIONS {
+            frame.rounding.nw = Self::native_window_rounding();
+            frame.rounding.ne = Self::native_window_rounding();
+        }
+        frame
+    }
+
+    pub fn bottom_panel_margin() -> egui::Margin {
+        Self::top_bar_margin()
+    }
+
+    /// For the streams view (time panel)
+    pub fn bottom_panel_frame() -> egui::Frame {
+        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
+        // (on the inner margin we counteract this again)
+        let margin_offset = design_tokens().bottom_bar_stroke.width * 0.5;
+
+        let margin = Self::bottom_panel_margin();
+
+        let design_tokens = design_tokens();
+
+        let mut frame = egui::Frame {
+            fill: design_tokens.bottom_bar_color,
+            inner_margin: margin + margin_offset,
+            outer_margin: egui::Margin {
+                left: -margin_offset,
+                right: -margin_offset,
+                // Add a proper stoke width thick margin on the top.
+                top: design_tokens.bottom_bar_stroke.width,
+                bottom: -margin_offset,
+            },
+            stroke: design_tokens.bottom_bar_stroke,
+            rounding: design_tokens.bottom_bar_rounding,
+            ..Default::default()
+        };
+        if CUSTOM_WINDOW_DECORATIONS {
+            frame.rounding.sw = Self::native_window_rounding();
+            frame.rounding.se = Self::native_window_rounding();
+        }
+        frame
+    }
+
+    pub fn small_icon_size() -> egui::Vec2 {
+        egui::Vec2::splat(14.0)
+    }
+
+    pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
+
+    pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
+        // Make sure buttons don't visually overflow:
+        body.ui_mut().spacing_mut().interact_size.y = Self::table_line_height();
+    }
+
+    /// Layout area to allocate for the collapsing triangle.
+    ///
+    /// Note that this is not the _size_ of the collapsing triangle (which is defined by
+    /// [`ReUi::paint_collapsing_triangle`]), but how much screen real-estate should be allocated
+    /// for it. It's set to the same size as the small icon size so that everything is properly
+    /// aligned in [`list_item::ListItem`].
+    pub fn collapsing_triangle_area() -> egui::Vec2 {
+        Self::small_icon_size()
     }
 }
 

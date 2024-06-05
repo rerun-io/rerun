@@ -7,7 +7,7 @@ pub fn mobile_warning_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
     {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..re_ui.bottom_panel_frame()
+            ..re_ui::DesignTokens::bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("warning_panel")

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use egui::NumExt;
 
-use re_ui::{list_item, ReUi};
+use re_ui::{list_item, DesignTokens};
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
@@ -410,7 +410,7 @@ impl HierarchicalDragAndDrop {
             &item_desc,
             response.rect,
             body_response.map(|r| r.rect),
-            ReUi::list_item_height(),
+            DesignTokens::list_item_height(),
         );
 
         if let Some(drop_target) = drop_target {

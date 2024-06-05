@@ -7,7 +7,7 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
-use re_ui::{drag_and_drop::DropTarget, list_item, ReUi};
+use re_ui::{drag_and_drop::DropTarget, list_item, DesignTokens, ReUi};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultTree,
     SystemCommandSender,
@@ -695,7 +695,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             None,
-            ReUi::list_item_height(),
+            DesignTokens::list_item_height(),
         );
 
         if let Some(drop_target) = drop_target {
@@ -779,7 +779,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             body_response.map(|r| r.rect),
-            ReUi::list_item_height(),
+            DesignTokens::list_item_height(),
         );
 
         if let Some(drop_target) = drop_target {

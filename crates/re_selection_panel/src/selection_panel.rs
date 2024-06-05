@@ -16,7 +16,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::{icons, list_item, ReUi, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{icons, list_item, DesignTokens, ReUi, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
     ContainerId, Contents, DataQueryResult, HoverHighlight, Item, SpaceViewClass, SpaceViewId,
@@ -833,7 +833,7 @@ fn item_title_ui(
 
     list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
         list_item::ListItem::new(re_ui)
-            .with_height(ReUi::title_bar_height())
+            .with_height(DesignTokens::title_bar_height())
             .selected(true)
             .show_flat(ui, content)
             .on_hover_text(hover)

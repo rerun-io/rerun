@@ -111,132 +111,6 @@ impl ReUi {
         }
     }
 
-    pub fn welcome_screen_tab_bar_style(ui: &mut egui::Ui) {
-        ui.spacing_mut().item_spacing.x = 16.0;
-        ui.visuals_mut().selection.bg_fill = egui::Color32::TRANSPARENT;
-        ui.visuals_mut().selection.stroke = ui.visuals().widgets.active.fg_stroke;
-        ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-        ui.visuals_mut().widgets.hovered.fg_stroke = ui.visuals().widgets.active.fg_stroke;
-        ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-        ui.visuals_mut().widgets.inactive.fg_stroke = ui.visuals().widgets.noninteractive.fg_stroke;
-    }
-
-    /// Margin on all sides of views.
-    pub fn view_padding() -> f32 {
-        12.0
-    }
-
-    pub fn panel_margin() -> egui::Margin {
-        egui::Margin::symmetric(Self::view_padding(), 0.0)
-    }
-
-    pub fn window_rounding() -> f32 {
-        12.0
-    }
-
-    pub fn normal_rounding() -> f32 {
-        6.0
-    }
-
-    pub fn small_rounding() -> f32 {
-        4.0
-    }
-
-    pub fn table_line_height() -> f32 {
-        16.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
-    }
-
-    pub fn table_header_height() -> f32 {
-        20.0
-    }
-
-    pub fn top_bar_margin() -> egui::Margin {
-        egui::Margin::symmetric(8.0, 2.0)
-    }
-
-    pub fn text_to_icon_padding() -> f32 {
-        4.0
-    }
-
-    /// Height of the top-most bar.
-    pub fn top_bar_height() -> f32 {
-        28.0 // Don't waste vertical space, especially important for embedded web viewers
-    }
-
-    /// Height of the title row in the blueprint view and selection view,
-    /// as well as the tab bar height in the viewport view.
-    pub fn title_bar_height() -> f32 {
-        24.0 // https://github.com/rerun-io/rerun/issues/5589
-    }
-
-    pub fn list_item_height() -> f32 {
-        24.0
-    }
-
-    pub fn native_window_rounding() -> f32 {
-        10.0
-    }
-
-    pub fn top_panel_frame(&self) -> egui::Frame {
-        let mut frame = egui::Frame {
-            inner_margin: Self::top_bar_margin(),
-            fill: design_tokens().top_bar_color,
-            ..Default::default()
-        };
-        if CUSTOM_WINDOW_DECORATIONS {
-            frame.rounding.nw = Self::native_window_rounding();
-            frame.rounding.ne = Self::native_window_rounding();
-        }
-        frame
-    }
-
-    #[allow(clippy::unused_self)]
-    pub fn bottom_panel_margin(&self) -> egui::Margin {
-        Self::top_bar_margin()
-    }
-
-    /// For the streams view (time panel)
-    pub fn bottom_panel_frame(&self) -> egui::Frame {
-        // Show a stroke only on the top. To achieve this, we add a negative outer margin.
-        // (on the inner margin we counteract this again)
-        let margin_offset = design_tokens().bottom_bar_stroke.width * 0.5;
-
-        let margin = self.bottom_panel_margin();
-
-        let design_tokens = design_tokens();
-
-        let mut frame = egui::Frame {
-            fill: design_tokens.bottom_bar_color,
-            inner_margin: margin + margin_offset,
-            outer_margin: egui::Margin {
-                left: -margin_offset,
-                right: -margin_offset,
-                // Add a proper stoke width thick margin on the top.
-                top: design_tokens.bottom_bar_stroke.width,
-                bottom: -margin_offset,
-            },
-            stroke: design_tokens.bottom_bar_stroke,
-            rounding: design_tokens.bottom_bar_rounding,
-            ..Default::default()
-        };
-        if CUSTOM_WINDOW_DECORATIONS {
-            frame.rounding.sw = Self::native_window_rounding();
-            frame.rounding.se = Self::native_window_rounding();
-        }
-        frame
-    }
-
-    pub fn small_icon_size() -> egui::Vec2 {
-        egui::Vec2::splat(14.0)
-    }
-
-    pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
-
-    pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
-        // Make sure buttons don't visually overflow:
-        body.ui_mut().spacing_mut().interact_size.y = Self::table_line_height();
-    }
-
     #[must_use]
     #[allow(clippy::unused_self)]
     pub fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
@@ -327,7 +201,7 @@ impl ReUi {
             // …but never shrink below the native button height when zoomed out.
             height.max(native_buttons_size_in_native_scale.y / egui_zoom_factor)
         } else {
-            Self::top_bar_height() - Self::top_bar_margin().sum().y
+            DesignTokens::top_bar_height() - DesignTokens::top_bar_margin().sum().y
         };
 
         let indent = if make_room_for_window_buttons {
@@ -348,8 +222,11 @@ impl ReUi {
     #[allow(clippy::unused_self)]
     pub fn small_icon_button_widget(&self, ui: &egui::Ui, icon: &Icon) -> egui::ImageButton<'_> {
         // TODO(emilk): change color and size on hover
-        egui::ImageButton::new(icon.as_image().fit_to_exact_size(Self::small_icon_size()))
-            .tint(ui.visuals().widgets.inactive.fg_stroke.color)
+        egui::ImageButton::new(
+            icon.as_image()
+                .fit_to_exact_size(DesignTokens::small_icon_size()),
+        )
+        .tint(ui.visuals().widgets.inactive.fg_stroke.color)
     }
 
     #[allow(clippy::unused_self)]
@@ -590,7 +467,7 @@ impl ReUi {
         add_contents: impl FnOnce(&Self, &mut egui::Ui) -> R,
     ) -> R {
         egui::Frame {
-            inner_margin: Self::panel_margin(),
+            inner_margin: DesignTokens::panel_margin(),
             ..Default::default()
         }
         .show(ui, |ui| add_contents(self, ui))
@@ -620,7 +497,7 @@ impl ReUi {
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), Self::title_bar_height()),
+            egui::vec2(ui.available_width(), DesignTokens::title_bar_height()),
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
                 // draw horizontal separator lines
@@ -797,7 +674,7 @@ impl ReUi {
 
         let openness = state.openness(ui.ctx());
 
-        let height = Self::list_item_height();
+        let height = DesignTokens::list_item_height();
         let header_size = egui::vec2(ui.available_width(), height);
 
         // Draw custom header.
@@ -868,16 +745,6 @@ impl ReUi {
             add_body(ui);
             ui.add_space(4.0); // Same here
         });
-    }
-
-    /// Layout area to allocate for the collapsing triangle.
-    ///
-    /// Note that this is not the _size_ of the collapsing triangle (which is defined by
-    /// [`ReUi::paint_collapsing_triangle`]), but how much screen real-estate should be allocated
-    /// for it. It's set to the same size as the small icon size so that everything is properly
-    /// aligned in [`list_item::ListItem`].
-    pub fn collapsing_triangle_area() -> egui::Vec2 {
-        Self::small_icon_size()
     }
 
     /// Paint a collapsing triangle with rounded corners.
@@ -1019,14 +886,15 @@ impl ReUi {
 
         let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
-        let icon_width_plus_padding = Self::small_icon_size().x + Self::text_to_icon_padding();
+        let icon_width_plus_padding =
+            DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
 
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
-            .at_least(Self::small_icon_size().y);
+            .at_least(DesignTokens::small_icon_size().y);
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
             egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, selected, galley.text())
@@ -1048,11 +916,11 @@ impl ReUi {
             }
 
             // Draw icon
-            let image_size = Self::small_icon_size();
+            let image_size = DesignTokens::small_icon_size();
             let image_rect = egui::Rect::from_min_size(
                 ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x.ceil(),
-                    (rect.center().y - 0.5 * Self::small_icon_size().y).ceil(),
+                    (rect.center().y - 0.5 * DesignTokens::small_icon_size().y).ceil(),
                 )),
                 image_size,
             );
@@ -1063,7 +931,7 @@ impl ReUi {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + Self::text_to_icon_padding();
+            text_rect.min.x = image_rect.max.x + DesignTokens::text_to_icon_padding();
             let text_pos = ui
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)

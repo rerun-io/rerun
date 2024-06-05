@@ -178,7 +178,7 @@ fn class_description_ui(
         ui_layout = UiLayout::SelectionPanelFull;
     }
 
-    let row_height = re_ui::ReUi::table_line_height();
+    let row_height = re_ui::DesignTokens::table_line_height();
     if !class.keypoint_annotations.is_empty() {
         ctx.re_ui.maybe_collapsing_header(
             ui,
@@ -213,8 +213,8 @@ fn class_description_ui(
                         .column(Column::auto().clip(true).at_least(40.0))
                         .column(Column::auto().clip(true).at_least(40.0));
                     table
-                        .header(re_ui::ReUi::table_header_height(), |mut header| {
-                            re_ui::ReUi::setup_table_header(&mut header);
+                        .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+                            re_ui::DesignTokens::setup_table_header(&mut header);
                             header.col(|ui| {
                                 ui.strong("From");
                             });
@@ -223,7 +223,7 @@ fn class_description_ui(
                             });
                         })
                         .body(|mut body| {
-                            re_ui::ReUi::setup_table_body(&mut body);
+                            re_ui::DesignTokens::setup_table_body(&mut body);
 
                             // TODO(jleibs): Helper to do this with caching somewhere
                             let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
@@ -270,7 +270,7 @@ fn annotation_info_table_ui(
 ) {
     re_tracing::profile_function!();
 
-    let row_height = re_ui::ReUi::table_line_height();
+    let row_height = re_ui::DesignTokens::table_line_height();
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
@@ -283,8 +283,8 @@ fn annotation_info_table_ui(
         .column(Column::auto()); // color
 
     table
-        .header(re_ui::ReUi::table_header_height(), |mut header| {
-            re_ui::ReUi::setup_table_header(&mut header);
+        .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+            re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Class Id");
             });
@@ -296,7 +296,7 @@ fn annotation_info_table_ui(
             });
         })
         .body(|mut body| {
-            re_ui::ReUi::setup_table_body(&mut body);
+            re_ui::DesignTokens::setup_table_body(&mut body);
 
             body.rows(row_height, annotation_infos.len(), |mut row| {
                 let info = &annotation_infos[row.index()];
@@ -333,7 +333,7 @@ fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
 }
 
 fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
-    let size = egui::Vec2::splat(re_ui::ReUi::table_line_height());
+    let size = egui::Vec2::splat(re_ui::DesignTokens::table_line_height());
 
     let color = info
         .color

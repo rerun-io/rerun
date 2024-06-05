@@ -1,4 +1,4 @@
-use crate::ReUi;
+use crate::DesignTokens;
 use egui::NumExt;
 
 /// Helper object to handle a [`Modal`] window.
@@ -205,13 +205,13 @@ impl Modal {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             egui::Frame {
-                inner_margin: egui::Margin::symmetric(ReUi::view_padding(), 0.0),
+                inner_margin: egui::Margin::symmetric(DesignTokens::view_padding(), 0.0),
                 ..Default::default()
             }
             .show(ui, |ui| {
-                ui.add_space(ReUi::view_padding());
+                ui.add_space(DesignTokens::view_padding());
                 Self::title_bar(re_ui, ui, &self.title, &mut open);
-                ui.add_space(ReUi::view_padding());
+                ui.add_space(DesignTokens::view_padding());
                 crate::ReUi::full_span_separator(ui);
 
                 if self.full_span_content {
@@ -223,7 +223,7 @@ impl Modal {
 
                     egui::Frame {
                         inner_margin: egui::Margin {
-                            bottom: ReUi::view_padding(),
+                            bottom: DesignTokens::view_padding(),
                             ..Default::default()
                         },
                         ..Default::default()

@@ -3,7 +3,7 @@
 use egui::{NumExt, Response, Shape, Ui};
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::{ReUi, UiExt as _};
+use crate::{DesignTokens, ReUi, UiExt as _};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -58,7 +58,7 @@ impl<'a> ListItem<'a> {
             drag_target: false,
             force_hovered: false,
             collapse_openness: None,
-            height: ReUi::list_item_height(),
+            height: DesignTokens::list_item_height(),
         }
     }
 
@@ -109,7 +109,7 @@ impl<'a> ListItem<'a> {
 
     /// Set the item height.
     ///
-    /// The default is provided by [`ReUi::list_item_height`] and is suitable for hierarchical
+    /// The default is provided by [`DesignTokens::list_item_height`] and is suitable for hierarchical
     /// lists.
     #[inline]
     pub fn with_height(mut self, height: f32) -> Self {
@@ -136,7 +136,7 @@ impl<'a> ListItem<'a> {
             self.ui(
                 ui,
                 None,
-                ReUi::small_icon_size().x + ReUi::text_to_icon_padding(),
+                DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding(),
                 Box::new(content),
             )
         })
@@ -184,7 +184,8 @@ impl<'a> ListItem<'a> {
 
         let body_response = ui
             .scope(|ui| {
-                ui.spacing_mut().indent = ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
+                ui.spacing_mut().indent =
+                    DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
                 state.show_body_indented(&response.response, ui, |ui| add_childrens(re_ui, ui))
             })
             .inner;
@@ -214,7 +215,7 @@ impl<'a> ListItem<'a> {
         } = self;
 
         let collapse_extra = if collapse_openness.is_some() {
-            ReUi::collapsing_triangle_area().x + ReUi::text_to_icon_padding()
+            DesignTokens::collapsing_triangle_area().x + DesignTokens::text_to_icon_padding()
         } else {
             0.0
         };
@@ -278,10 +279,10 @@ impl<'a> ListItem<'a> {
         if let Some(openness) = collapse_openness {
             let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
                 rect.min.x,
-                rect.center().y - 0.5 * ReUi::collapsing_triangle_area().y,
+                rect.center().y - 0.5 * DesignTokens::collapsing_triangle_area().y,
             ));
             let triangle_rect =
-                egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_area());
+                egui::Rect::from_min_size(triangle_pos, DesignTokens::collapsing_triangle_area());
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
                 id.unwrap_or(ui.id()).with("collapsing_triangle"),

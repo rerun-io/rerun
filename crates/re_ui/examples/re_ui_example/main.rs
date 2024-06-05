@@ -169,7 +169,7 @@ impl eframe::App for ExampleApp {
         self.top_bar(egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(self.re_ui.bottom_panel_frame())
+            .frame(DesignTokens::bottom_panel_frame())
             .show_animated(egui_ctx, self.show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
@@ -274,9 +274,12 @@ impl eframe::App for ExampleApp {
             })
             .show_animated(egui_ctx, self.show_left_panel, |ui| {
                 egui::TopBottomPanel::top("left_panel_top_bar")
-                    .exact_height(re_ui::ReUi::title_bar_height())
+                    .exact_height(re_ui::DesignTokens::title_bar_height())
                     .frame(egui::Frame {
-                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
+                        inner_margin: egui::Margin::symmetric(
+                            re_ui::DesignTokens::view_padding(),
+                            0.0,
+                        ),
                         ..Default::default()
                     })
                     .show_inside(ui, left_panel_top_section_ui);
@@ -285,7 +288,7 @@ impl eframe::App for ExampleApp {
                     .auto_shrink([false; 2])
                     .show(ui, |ui| {
                         egui::Frame {
-                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                            inner_margin: egui::Margin::same(re_ui::DesignTokens::view_padding()),
                             ..Default::default()
                         }
                         .show(ui, left_panel_bottom_section_ui);
@@ -363,7 +366,7 @@ impl ExampleApp {
         let top_bar_style = self.re_ui.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
-            .frame(self.re_ui.top_panel_frame())
+            .frame(DesignTokens::top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -478,7 +481,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
     /// The height of the bar holding tab titles.
     fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::ReUi::title_bar_height()
+        re_ui::DesignTokens::title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?

@@ -228,8 +228,8 @@ impl DataUi for LineStrip2D {
                     .resizable(true)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
-                    .header(re_ui::ReUi::table_header_height(), |mut header| {
-                        re_ui::ReUi::setup_table_header(&mut header);
+                    .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+                        re_ui::DesignTokens::setup_table_header(&mut header);
                         header.col(|ui| {
                             ui.label("x");
                         });
@@ -238,8 +238,8 @@ impl DataUi for LineStrip2D {
                         });
                     })
                     .body(|mut body| {
-                        re_ui::ReUi::setup_table_body(&mut body);
-                        let row_height = re_ui::ReUi::table_line_height();
+                        re_ui::DesignTokens::setup_table_body(&mut body);
+                        let row_height = re_ui::DesignTokens::table_line_height();
                         body.rows(row_height, self.0.len(), |mut row| {
                             if let Some(pos) = self.0.get(row.index()) {
                                 row.col(|ui| {
@@ -275,8 +275,8 @@ impl DataUi for LineStrip3D {
                     .resizable(true)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
-                    .header(re_ui::ReUi::table_header_height(), |mut header| {
-                        re_ui::ReUi::setup_table_header(&mut header);
+                    .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+                        re_ui::DesignTokens::setup_table_header(&mut header);
                         header.col(|ui| {
                             ui.label("x");
                         });
@@ -288,8 +288,8 @@ impl DataUi for LineStrip3D {
                         });
                     })
                     .body(|mut body| {
-                        re_ui::ReUi::setup_table_body(&mut body);
-                        let row_height = re_ui::ReUi::table_line_height();
+                        re_ui::DesignTokens::setup_table_body(&mut body);
+                        let row_height = re_ui::DesignTokens::table_line_height();
                         body.rows(row_height, self.0.len(), |mut row| {
                             if let Some(pos) = self.0.get(row.index()) {
                                 row.col(|ui| {

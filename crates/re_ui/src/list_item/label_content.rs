@@ -1,7 +1,7 @@
 use egui::{text::TextWrapping, Align, Align2, NumExt, Ui};
 
 use super::{ContentContext, DesiredWidth, ListItemContent};
-use crate::{Icon, LabelStyle, ReUi};
+use crate::{DesignTokens, Icon, LabelStyle, ReUi};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
 #[allow(clippy::type_complexity)]
@@ -166,13 +166,13 @@ impl ListItemContent for LabelContent<'_> {
         } = *self;
 
         let icon_rect = egui::Rect::from_center_size(
-            context.rect.left_center() + egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
-            ReUi::small_icon_size(),
+            context.rect.left_center() + egui::vec2(DesignTokens::small_icon_size().x / 2., 0.0),
+            DesignTokens::small_icon_size(),
         );
 
         let mut text_rect = context.rect;
         if icon_fn.is_some() {
-            text_rect.min.x += icon_rect.width() + ReUi::text_to_icon_padding();
+            text_rect.min.x += icon_rect.width() + DesignTokens::text_to_icon_padding();
         }
 
         // text styling
@@ -230,7 +230,7 @@ impl ListItemContent for LabelContent<'_> {
         // Draw text
 
         if let Some(button_response) = &button_response {
-            text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
+            text_rect.max.x -= button_response.rect.width() + DesignTokens::text_to_icon_padding();
         }
 
         let mut layout_job =
@@ -271,7 +271,8 @@ impl ListItemContent for LabelContent<'_> {
             let mut desired_width = galley.size().x;
 
             if self.icon_fn.is_some() {
-                desired_width += ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
+                desired_width +=
+                    DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
             }
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being
