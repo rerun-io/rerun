@@ -1,6 +1,5 @@
 #![allow(clippy::unwrap_used)] // fixed json file
 
-use crate::ReUi;
 use egui::Color32;
 
 /// The look and feel of the UI.
@@ -42,7 +41,7 @@ impl DesignTokens {
     }
 
     /// Apply style to the given egui context.
-    pub fn apply(&self, ctx: &egui::Context) {
+    pub(crate) fn apply(&self, ctx: &egui::Context) {
         let apply_font = true;
         let apply_font_size = true;
 
@@ -100,21 +99,21 @@ impl DesignTokens {
         // TODO(ab): font sizes should come from design tokens
         egui_style
             .text_styles
-            .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(41.0));
+            .insert(Self::welcome_screen_h1(), egui::FontId::proportional(41.0));
         egui_style
             .text_styles
-            .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(27.0));
+            .insert(Self::welcome_screen_h2(), egui::FontId::proportional(27.0));
         egui_style.text_styles.insert(
-            ReUi::welcome_screen_example_title(),
+            Self::welcome_screen_example_title(),
             egui::FontId::proportional(13.0),
         );
         egui_style.text_styles.insert(
-            ReUi::welcome_screen_body(),
+            Self::welcome_screen_body(),
             egui::FontId::proportional(15.0),
         );
         egui_style
             .text_styles
-            .insert(ReUi::welcome_screen_tag(), egui::FontId::proportional(10.5));
+            .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
 
         let panel_bg_color = get_aliased_color(&self.json, "{Alias.Color.Surface.Default.value}");
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
@@ -222,6 +221,31 @@ impl DesignTokens {
 
         ctx.set_style(egui_style);
     }
+
+    #[inline]
+    pub fn welcome_screen_h1() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-h1".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_h2() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-h2".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_example_title() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-example-title".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_body() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-body".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_tag() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-tag".into())
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -325,7 +349,7 @@ fn parse_color(color: &str) -> egui::Color32 {
 #[test]
 fn test_design_tokens() {
     let ctx = egui::Context::default();
-    apply_design_tokens(&ctx);
+    DesignTokens::new().apply(&ctx);
 
     // Make sure it works:
     let _ = ctx.run(Default::default(), |ctx| {

@@ -2,7 +2,9 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use re_ui::{list_item, toasts, CommandPalette, ReUi, UICommand, UICommandSender};
+use re_ui::{
+    list_item, toasts, CommandPalette, DesignTokens, ReUi, UICommand, UICommandSender, UiExt as _,
+};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -57,8 +59,10 @@ fn main() -> eframe::Result<()> {
         "re_ui example app",
         native_options,
         Box::new(move |cc| {
-            let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
-            Ok(Box::new(ExampleApp::new(re_ui)))
+            re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
+            Ok(Box::new(ExampleApp::new(re_ui::ReUi::new(
+                cc.egui_ctx.clone(),
+            ))))
         }),
     )
 }
@@ -397,7 +401,7 @@ impl ExampleApp {
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 ui.add_space(8.0);
-                re_ui::native_window_buttons_ui(ui);
+                ui.native_window_buttons_ui();
                 ui.separator();
             } else {
                 ui.add_space(16.0);
@@ -450,7 +454,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
         ui.label(
             egui::RichText::new("Welcome to the ReUi example")
-                .text_style(ReUi::welcome_screen_h1()),
+                .text_style(DesignTokens::welcome_screen_h1()),
         );
 
         Default::default()

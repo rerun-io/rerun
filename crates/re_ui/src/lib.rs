@@ -111,32 +111,6 @@ impl ReUi {
         }
     }
 
-    /// Welcome screen big title
-    #[inline]
-    pub fn welcome_screen_h1() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-h1".into())
-    }
-
-    #[inline]
-    pub fn welcome_screen_h2() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-h2".into())
-    }
-
-    #[inline]
-    pub fn welcome_screen_example_title() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-example-title".into())
-    }
-
-    #[inline]
-    pub fn welcome_screen_body() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-body".into())
-    }
-
-    #[inline]
-    pub fn welcome_screen_tag() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-tag".into())
-    }
-
     pub fn welcome_screen_tab_bar_style(ui: &mut egui::Ui) {
         ui.spacing_mut().item_spacing.x = 16.0;
         ui.visuals_mut().selection.bg_fill = egui::Color32::TRANSPARENT;

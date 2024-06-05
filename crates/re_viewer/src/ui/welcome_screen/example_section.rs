@@ -304,7 +304,7 @@ impl ExampleSection {
                     egui::RichText::new("View example recordings")
                         .strong()
                         .line_height(Some(32.0))
-                        .text_style(re_ui::ReUi::welcome_screen_h2()),
+                        .text_style(re_ui::DesignTokens::welcome_screen_h2()),
                 ));
 
                 ui.add_space(TITLE_TO_GRID_VSPACE);
@@ -545,7 +545,7 @@ impl ExampleDescLayout {
         let title = egui::RichText::new(self.desc.title.clone())
             .strong()
             .line_height(Some(16.0))
-            .text_style(re_ui::ReUi::welcome_screen_example_title());
+            .text_style(re_ui::DesignTokens::welcome_screen_example_title());
 
         ui.add_space(DESCRIPTION_INNER_MARGIN);
         egui::Frame {
@@ -572,7 +572,8 @@ impl ExampleDescLayout {
                 for tag in self.desc.tags.iter().sorted() {
                     ui.add(
                         egui::Button::new(
-                            egui::RichText::new(tag).text_style(re_ui::ReUi::welcome_screen_tag()),
+                            egui::RichText::new(tag)
+                                .text_style(re_ui::DesignTokens::welcome_screen_tag()),
                         )
                         .sense(egui::Sense::hover())
                         .rounding(6.0)
