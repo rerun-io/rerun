@@ -1,5 +1,7 @@
 use egui::Ui;
 
+use re_ui::UiExt as _;
+
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
 pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize multimodal data";
 pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
@@ -12,9 +14,9 @@ pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
     ui.vertical(|ui| {
         let (style, line_height) = if ui.available_width() > 400.0 {
-            (re_ui::ReUi::welcome_screen_h1(), 50.0)
+            (re_ui::DesignTokens::welcome_screen_h1(), 50.0)
         } else {
-            (re_ui::ReUi::welcome_screen_h2(), 36.0)
+            (re_ui::DesignTokens::welcome_screen_h2(), 36.0)
         };
 
         ui.add(
@@ -32,13 +34,13 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         let bullet_text = |ui: &mut Ui, text: &str| {
             ui.horizontal(|ui| {
                 ui.add_space(1.0);
-                re_ui::ReUi::bullet(ui, ui.visuals().strong_text_color());
+                ui.bullet(ui.visuals().strong_text_color());
                 ui.add_space(5.0);
                 ui.add(
                     egui::Label::new(
                         egui::RichText::new(text)
                             .color(ui.visuals().widgets.active.text_color())
-                            .text_style(re_ui::ReUi::welcome_screen_body()),
+                            .text_style(re_ui::DesignTokens::welcome_screen_body()),
                     )
                     .wrap(),
                 );
@@ -55,7 +57,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
             .button(
                 egui::RichText::new("Go to documentation →")
                     .color(egui::Color32::from_hex("#60A0FF").expect("this color is valid"))
-                    .text_style(re_ui::ReUi::welcome_screen_body()),
+                    .text_style(re_ui::DesignTokens::welcome_screen_body()),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()

@@ -1,9 +1,11 @@
 use egui::NumExt as _;
+
 use re_types::{blueprint::components::VisualBounds2D, datatypes::Range2D};
+use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
 pub fn multiline_edit_visual_bounds2d(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     value: &mut VisualBounds2D,
 ) -> egui::Response {
@@ -11,77 +13,73 @@ pub fn multiline_edit_visual_bounds2d(
 
     let mut any_edit = false;
 
-    let response_x = re_ui::list_item::ListItem::new(ctx.re_ui)
-        .interactive(false)
-        .show_flat(
-            ui,
-            re_ui::list_item::PropertyContent::new("x").value_fn(|_, ui, _| {
-                let [x_range_start, x_range_end] = &mut value.x_range.0;
-                let speed = speed_func(*x_range_start, *x_range_end);
+    let response_x = ui.list_item().interactive(false).show_flat(
+        ui,
+        re_ui::list_item::PropertyContent::new("x").value_fn(|ui, _| {
+            let [x_range_start, x_range_end] = &mut value.x_range.0;
+            let speed = speed_func(*x_range_start, *x_range_end);
 
-                let response = ui
-                    .horizontal_centered(|ui| {
-                        let response_min = ui.add(
-                            egui::DragValue::new(x_range_start)
-                                .clamp_range(f64::MIN..=*x_range_end)
-                                .max_decimals(2)
-                                .speed(speed),
-                        );
+            let response = ui
+                .horizontal_centered(|ui| {
+                    let response_min = ui.add(
+                        egui::DragValue::new(x_range_start)
+                            .clamp_range(f64::MIN..=*x_range_end)
+                            .max_decimals(2)
+                            .speed(speed),
+                    );
 
-                        ui.label("-");
+                    ui.label("-");
 
-                        let response_max = ui.add(
-                            egui::DragValue::new(x_range_end)
-                                .clamp_range(*x_range_start..=f64::MAX)
-                                .max_decimals(2)
-                                .speed(speed),
-                        );
+                    let response_max = ui.add(
+                        egui::DragValue::new(x_range_end)
+                            .clamp_range(*x_range_start..=f64::MAX)
+                            .max_decimals(2)
+                            .speed(speed),
+                    );
 
-                        response_min | response_max
-                    })
-                    .inner;
+                    response_min | response_max
+                })
+                .inner;
 
-                if response.changed() {
-                    any_edit = true;
-                }
-            }),
-        );
+            if response.changed() {
+                any_edit = true;
+            }
+        }),
+    );
 
-    let response_y = re_ui::list_item::ListItem::new(ctx.re_ui)
-        .interactive(false)
-        .show_flat(
-            ui,
-            re_ui::list_item::PropertyContent::new("y").value_fn(|_, ui, _| {
-                let [y_range_start, y_range_end] = &mut value.y_range.0;
-                let speed = speed_func(*y_range_start, *y_range_end);
+    let response_y = ui.list_item().interactive(false).show_flat(
+        ui,
+        re_ui::list_item::PropertyContent::new("y").value_fn(|ui, _| {
+            let [y_range_start, y_range_end] = &mut value.y_range.0;
+            let speed = speed_func(*y_range_start, *y_range_end);
 
-                let response = ui
-                    .horizontal_centered(|ui| {
-                        let response_min = ui.add(
-                            egui::DragValue::new(y_range_start)
-                                .clamp_range(f64::MIN..=*y_range_end)
-                                .max_decimals(2)
-                                .speed(speed),
-                        );
+            let response = ui
+                .horizontal_centered(|ui| {
+                    let response_min = ui.add(
+                        egui::DragValue::new(y_range_start)
+                            .clamp_range(f64::MIN..=*y_range_end)
+                            .max_decimals(2)
+                            .speed(speed),
+                    );
 
-                        ui.label("-");
+                    ui.label("-");
 
-                        let response_max = ui.add(
-                            egui::DragValue::new(y_range_end)
-                                .clamp_range(*y_range_start..=f64::MAX)
-                                .max_decimals(2)
-                                .speed(speed),
-                        );
+                    let response_max = ui.add(
+                        egui::DragValue::new(y_range_end)
+                            .clamp_range(*y_range_start..=f64::MAX)
+                            .max_decimals(2)
+                            .speed(speed),
+                    );
 
-                        response_min | response_max
-                    })
-                    .inner;
+                    response_min | response_max
+                })
+                .inner;
 
-                if response.changed() {
-                    any_edit = true;
-                }
-            }),
-        );
+            if response.changed() {
+                any_edit = true;
+            }
+        }),
+    );
 
     let mut response = response_x | response_y;
     if any_edit {

@@ -4,10 +4,12 @@ use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
+use re_types::View;
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Loggable,
     SpaceViewClassIdentifier,
 };
+use re_ui::UiExt as _;
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
@@ -41,7 +43,6 @@ impl VisualizableFilterContext for VisualizableFilterContext3D {
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::Spatial3DView;
 
 impl SpaceViewClass for SpatialSpaceView3D {
@@ -57,8 +58,8 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &re_ui::icons::SPACE_VIEW_3D
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        super::ui_3d::help_text(re_ui)
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        super::ui_3d::help_text(egui_ctx)
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -313,64 +314,55 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .map(|c| c.value);
 
         // TODO(andreas): list_item'ify the rest
-        ctx.re_ui
-            .selection_grid(ui, "spatial_settings_ui")
-            .show(ui, |ui| {
-                state.default_sizes_ui(ctx, ui);
+        ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
+            state.default_sizes_ui(ui);
 
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Camera")
-                    .on_hover_text("The virtual camera which controls what is shown on screen");
-                ui.vertical(|ui| {
-                    state.view_eye_ui(ctx.re_ui, ui, scene_view_coordinates);
-                });
-                ui.end_row();
-
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Coordinates")
-                    .on_hover_text("The world coordinate system used for this view");
-                ui.vertical(|ui| {
-                    let up_description =
-                        if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
-                            format!("Scene up is {scene_up}")
-                        } else {
-                            "Scene up is unspecified".to_owned()
-                        };
-                    ui.label(up_description).on_hover_ui(|ui| {
-                        re_ui::markdown_ui(
-                            ui,
-                            egui::Id::new("view_coordinates_tooltip"),
-                            "Set with `rerun.ViewCoordinates`.",
-                        );
-                    });
-
-                    if let Some(eye) = &state.state_3d.view_eye {
-                        if let Some(eye_up) = eye.eye_up() {
-                            ui.label(format!(
-                                "Current camera-eye up-axis is {}",
-                                format_vector(eye_up)
-                            ));
-                        }
-                    }
-
-                    ctx.re_ui
-                        .checkbox(ui, &mut state.state_3d.show_axes, "Show origin axes")
-                        .on_hover_text("Show X-Y-Z axes");
-                    ctx.re_ui
-                        .checkbox(ui, &mut state.state_3d.show_bbox, "Show bounding box")
-                        .on_hover_text("Show the current scene bounding box");
-                    ctx.re_ui
-                        .checkbox(
-                            ui,
-                            &mut state.state_3d.show_accumulated_bbox,
-                            "Show accumulated bounding box",
-                        )
-                        .on_hover_text("Show bounding box accumulated over all rendered frames");
-                });
-                ui.end_row();
-
-                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
+            ui.grid_left_hand_label("Camera")
+                .on_hover_text("The virtual camera which controls what is shown on screen");
+            ui.vertical(|ui| {
+                state.view_eye_ui(ui, scene_view_coordinates);
             });
+            ui.end_row();
+
+            ui.grid_left_hand_label("Coordinates")
+                .on_hover_text("The world coordinate system used for this view");
+            ui.vertical(|ui| {
+                let up_description =
+                    if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                        format!("Scene up is {scene_up}")
+                    } else {
+                        "Scene up is unspecified".to_owned()
+                    };
+                ui.label(up_description).on_hover_ui(|ui| {
+                    ui.markdown_ui(
+                        egui::Id::new("view_coordinates_tooltip"),
+                        "Set with `rerun.ViewCoordinates`.",
+                    );
+                });
+
+                if let Some(eye) = &state.state_3d.view_eye {
+                    if let Some(eye_up) = eye.eye_up() {
+                        ui.label(format!(
+                            "Current camera-eye up-axis is {}",
+                            format_vector(eye_up)
+                        ));
+                    }
+                }
+
+                ui.re_checkbox(&mut state.state_3d.show_axes, "Show origin axes")
+                    .on_hover_text("Show X-Y-Z axes");
+                ui.re_checkbox(&mut state.state_3d.show_bbox, "Show bounding box")
+                    .on_hover_text("Show the current scene bounding box");
+                ui.re_checkbox(
+                    &mut state.state_3d.show_accumulated_bbox,
+                    "Show accumulated bounding box",
+                )
+                .on_hover_text("Show bounding box accumulated over all rendered frames");
+            });
+            ui.end_row();
+
+            state.bounding_box_ui(ui, SpatialSpaceViewKind::ThreeD);
+        });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
             view_property_ui::<Background>(ctx, ui, view_id, self, state);

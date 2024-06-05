@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
-use re_ui::{Icon, ReUi};
+use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item, PerViewState,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
@@ -136,7 +136,7 @@ impl<'a> Viewport<'a> {
             .collect();
 
         ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
+            ui.spacing_mut().item_spacing.x = DesignTokens::view_padding();
 
             re_tracing::profile_scope!("tree.ui");
 
@@ -547,7 +547,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         } else {
             // All panes are space views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("SpaceViewId missing during egui_tiles");
-            self.ctx.re_ui.error_text("Internal error").into()
+            self.ctx.egui_ctx.error_text("Internal error").into()
         }
     }
 
@@ -651,10 +651,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         if *self.maximized == Some(space_view_id) {
             // Show minimize-button:
-            if self
-                .ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::MINIMIZE)
+            if ui
+                .small_icon_button(&re_ui::icons::MINIMIZE)
                 .on_hover_text("Restore - show all spaces")
                 .clicked()
             {
@@ -662,10 +660,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             }
         } else if num_space_views > 1 {
             // Show maximize-button:
-            if self
-                .ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
+            if ui
+                .small_icon_button(&re_ui::icons::MAXIMIZE)
                 .on_hover_text("Maximize space view")
                 .clicked()
             {
@@ -676,14 +672,14 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let help_text = space_view
             .class(self.ctx.space_view_class_registry)
-            .help_text(self.ctx.re_ui);
-        re_ui::help_hover_button(ui).on_hover_text(help_text);
+            .help_text(self.ctx.egui_ctx);
+        ui.help_hover_button().on_hover_text(help_text);
     }
 
     // Styling:
 
     fn tab_bar_color(&self, _visuals: &egui::Visuals) -> egui::Color32 {
-        self.ctx.re_ui.design_tokens.tab_bar_color
+        re_ui::design_tokens().tab_bar_color
     }
 
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
@@ -702,7 +698,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     /// The height of the bar holding tab titles.
     fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::ReUi::title_bar_height()
+        re_ui::DesignTokens::title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?
@@ -810,7 +806,11 @@ impl TabWidget {
                     re_log::warn_once!("Space view {space_view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown space view").into(),
+                        label: tab_viewer
+                            .ctx
+                            .egui_ctx
+                            .error_text("Unknown space view")
+                            .into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -834,7 +834,7 @@ impl TabWidget {
                     } else {
                         re_log::warn_once!("Container {container_id} missing during egui_tiles");
                         (
-                            tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                            tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
                             false,
                         )
                     };
@@ -858,7 +858,11 @@ impl TabWidget {
                     re_log::warn_once!("Container for tile ID {tile_id:?} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown container").into(),
+                        label: tab_viewer
+                            .ctx
+                            .egui_ctx
+                            .error_text("Unknown container")
+                            .into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -869,7 +873,7 @@ impl TabWidget {
                 re_log::warn_once!("Tile {tile_id:?} not found");
 
                 TabDesc {
-                    label: tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                    label: tab_viewer.ctx.egui_ctx.error_text("Internal error").into(),
                     icon: &re_ui::icons::SPACE_VIEW_UNKNOWN,
                     user_named: false,
                     item: None,
@@ -887,8 +891,8 @@ impl TabWidget {
             .map_or(false, |item| tab_viewer.ctx.selection().contains_item(item));
 
         // tab icon
-        let icon_size = ReUi::small_icon_size();
-        let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
+        let icon_size = DesignTokens::small_icon_size();
+        let icon_width_plus_padding = icon_size.x + DesignTokens::text_to_icon_padding();
 
         // tab title
         let text = if !tab_desc.user_named {
@@ -904,7 +908,7 @@ impl TabWidget {
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(
             galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
-            ReUi::title_bar_height(),
+            DesignTokens::title_bar_height(),
         ));
         let galley_rect = egui::Rect::from_two_pos(
             rect.min + egui::vec2(icon_width_plus_padding, 0.0),

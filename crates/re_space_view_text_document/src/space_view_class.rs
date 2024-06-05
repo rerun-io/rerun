@@ -2,6 +2,8 @@ use egui::Label;
 
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::SpaceViewClassIdentifier;
+use re_types::View;
+use re_ui::UiExt as _;
 use re_viewer_context::external::re_entity_db::EntityProperties;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
@@ -46,7 +48,6 @@ impl SpaceViewState for TextDocumentSpaceViewState {
 #[derive(Default)]
 pub struct TextDocumentSpaceView;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::TextDocumentView;
 
 impl SpaceViewClass for TextDocumentSpaceView {
@@ -62,7 +63,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXT
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
         "Displays text from a text entry components.".into()
     }
 
@@ -83,7 +84,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
@@ -92,14 +93,12 @@ impl SpaceViewClass for TextDocumentSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TextDocumentSpaceViewState>()?;
 
-        ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Text style");
+        ui.selection_grid("text_config").show(ui, |ui| {
+            ui.grid_left_hand_label("Text style");
             ui.vertical(|ui| {
-                ctx.re_ui
-                    .radio_value(ui, &mut state.monospace, false, "Proportional");
-                ctx.re_ui
-                    .radio_value(ui, &mut state.monospace, true, "Monospace");
-                ctx.re_ui.checkbox(ui, &mut state.word_wrap, "Word Wrap");
+                ui.re_radio_value(&mut state.monospace, false, "Proportional");
+                ui.re_radio_value(&mut state.monospace, true, "Monospace");
+                ui.re_checkbox(&mut state.word_wrap, "Word Wrap");
             });
             ui.end_row();
         });
@@ -129,7 +128,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
         egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
+            inner_margin: re_ui::DesignTokens::view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {

@@ -25,7 +25,7 @@ impl ExampleDragAndDrop {
     /// Draw the drag-and-drop demo.
     ///
     /// Note: this function uses `ListItem` and must be wrapped in a `ListItemContent`.
-    pub fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
         let mut swap: Option<(usize, usize)> = None;
 
         for (i, item_id) in self.items.iter().enumerate() {
@@ -34,7 +34,7 @@ impl ExampleDragAndDrop {
             //
 
             let label = format!("Item {}", item_id.0);
-            let response = list_item::ListItem::new(re_ui)
+            let response = list_item::ListItem::new()
                 .selected(self.selected_items.contains(item_id))
                 .draggable(true)
                 .show_flat(ui, list_item::LabelContent::new(&label));

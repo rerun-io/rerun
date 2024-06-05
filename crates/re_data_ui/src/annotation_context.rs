@@ -5,6 +5,7 @@ use re_types::components::AnnotationContext;
 use re_types::datatypes::{
     AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
 };
+use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{auto_color, UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -42,7 +43,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ctx, ui, UiLayout::Tooltip, class, id);
+                            class_description_ui(ui, UiLayout::Tooltip, class, id);
                         });
                     }
                 }
@@ -50,7 +51,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                 | UiLayout::SelectionPanelFull
                 | UiLayout::SelectionPanelLimitHeight => {
                     ui.separator();
-                    class_description_ui(ctx, ui, ui_layout, class, id);
+                    class_description_ui(ui, ui_layout, class, id);
                 }
             }
         } else {
@@ -109,7 +110,7 @@ fn annotation_info(
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
@@ -132,23 +133,22 @@ impl DataUi for AnnotationContext {
             }
             UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
                 ui.vertical(|ui| {
-                    ctx.re_ui
-                        .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
-                            let annotation_infos = self
-                                .0
-                                .iter()
-                                .map(|class| &class.class_description.info)
-                                .sorted_by_key(|info| info.id)
-                                .collect_vec();
-                            annotation_info_table_ui(ui, ui_layout, &annotation_infos);
-                        });
+                    ui.maybe_collapsing_header(true, "Classes", true, |ui| {
+                        let annotation_infos = self
+                            .0
+                            .iter()
+                            .map(|class| &class.class_description.info)
+                            .sorted_by_key(|info| info.id)
+                            .collect_vec();
+                        annotation_info_table_ui(ui, ui_layout, &annotation_infos);
+                    });
 
                     for ClassDescriptionMapElem {
                         class_id,
                         class_description,
                     } in &self.0
                     {
-                        class_description_ui(ctx, ui, ui_layout, class_description, *class_id);
+                        class_description_ui(ui, ui_layout, class_description, *class_id);
                     }
                 });
             }
@@ -157,7 +157,6 @@ impl DataUi for AnnotationContext {
 }
 
 fn class_description_ui(
-    ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
     mut ui_layout: UiLayout,
     class: &ClassDescription,
@@ -178,10 +177,9 @@ fn class_description_ui(
         ui_layout = UiLayout::SelectionPanelFull;
     }
 
-    let row_height = re_ui::ReUi::table_line_height();
+    let row_height = DesignTokens::table_line_height();
     if !class.keypoint_annotations.is_empty() {
-        ctx.re_ui.maybe_collapsing_header(
-            ui,
+        ui.maybe_collapsing_header(
             use_collapsible,
             &format!("Keypoints Annotation for Class {}", id.0),
             true,
@@ -199,8 +197,7 @@ fn class_description_ui(
     }
 
     if !class.keypoint_connections.is_empty() {
-        ctx.re_ui.maybe_collapsing_header(
-            ui,
+        ui.maybe_collapsing_header(
             use_collapsible,
             &format!("Keypoint Connections for Class {}", id.0),
             true,
@@ -214,8 +211,8 @@ fn class_description_ui(
                         .column(Column::auto().clip(true).at_least(40.0))
                         .column(Column::auto().clip(true).at_least(40.0));
                     table
-                        .header(re_ui::ReUi::table_header_height(), |mut header| {
-                            re_ui::ReUi::setup_table_header(&mut header);
+                        .header(DesignTokens::table_header_height(), |mut header| {
+                            DesignTokens::setup_table_header(&mut header);
                             header.col(|ui| {
                                 ui.strong("From");
                             });
@@ -224,7 +221,7 @@ fn class_description_ui(
                             });
                         })
                         .body(|mut body| {
-                            re_ui::ReUi::setup_table_body(&mut body);
+                            DesignTokens::setup_table_body(&mut body);
 
                             // TODO(jleibs): Helper to do this with caching somewhere
                             let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
@@ -271,7 +268,7 @@ fn annotation_info_table_ui(
 ) {
     re_tracing::profile_function!();
 
-    let row_height = re_ui::ReUi::table_line_height();
+    let row_height = DesignTokens::table_line_height();
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
@@ -285,8 +282,8 @@ fn annotation_info_table_ui(
         .column(Column::auto()); // color
 
     table
-        .header(re_ui::ReUi::table_header_height(), |mut header| {
-            re_ui::ReUi::setup_table_header(&mut header);
+        .header(DesignTokens::table_header_height(), |mut header| {
+            DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Class Id");
             });
@@ -298,7 +295,7 @@ fn annotation_info_table_ui(
             });
         })
         .body(|mut body| {
-            re_ui::ReUi::setup_table_body(&mut body);
+            DesignTokens::setup_table_body(&mut body);
 
             body.rows(row_height, annotation_infos.len(), |mut row| {
                 let info = &annotation_infos[row.index()];
@@ -335,7 +332,7 @@ fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
 }
 
 fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
-    let size = egui::Vec2::splat(re_ui::ReUi::table_line_height());
+    let size = egui::Vec2::splat(DesignTokens::table_line_height());
 
     let color = info
         .color

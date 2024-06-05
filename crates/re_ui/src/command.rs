@@ -424,7 +424,7 @@ impl UICommand {
         let mut button = if let Some(icon) = self.icon() {
             egui::Button::image_and_text(
                 icon.as_image()
-                    .fit_to_exact_size(crate::ReUi::small_icon_size()),
+                    .fit_to_exact_size(crate::DesignTokens::small_icon_size()),
                 self.text(),
             )
         } else {

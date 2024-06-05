@@ -1,5 +1,6 @@
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -34,7 +35,7 @@ impl DataUi for InstancePath {
             } else {
                 ui_layout.label(
                     ui,
-                    ctx.re_ui
+                    ui.ctx()
                         .error_text(format!("Unknown entity: {entity_path:?}")),
                 );
             }
@@ -88,7 +89,7 @@ impl DataUi for InstancePath {
                 };
                 let item = Item::ComponentPath(component_path);
 
-                let mut list_item = ctx.re_ui.list_item().interactive(interactive);
+                let mut list_item = ui.list_item().interactive(interactive);
 
                 if interactive {
                     let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
@@ -116,7 +117,7 @@ impl DataUi for InstancePath {
                     let mut content =
                         re_ui::list_item::PropertyContent::new(component_name.short_name())
                             .with_icon(icon)
-                            .value_fn(|_, ui, _| {
+                            .value_fn(|ui, _| {
                                 if instance.is_all() {
                                     crate::EntityLatestAtResults {
                                         entity_path: entity_path.clone(),

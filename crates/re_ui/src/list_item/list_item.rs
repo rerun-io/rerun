@@ -3,7 +3,7 @@
 use egui::{NumExt, Response, Shape, Ui};
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::{ReUi, UiExt as _};
+use crate::{DesignTokens, UiExt as _};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -36,8 +36,7 @@ pub struct ShowCollapsingResponse<R> {
 /// Usage example can be found in `re_ui_example`.
 
 #[derive(Debug, Clone)]
-pub struct ListItem<'a> {
-    re_ui: &'a ReUi,
+pub struct ListItem {
     pub interactive: bool,
     pub selected: bool,
     pub draggable: bool,
@@ -47,19 +46,24 @@ pub struct ListItem<'a> {
     height: f32,
 }
 
-impl<'a> ListItem<'a> {
-    /// Create a new [`ListItem`] with the given label.
-    pub fn new(re_ui: &'a ReUi) -> Self {
+impl Default for ListItem {
+    fn default() -> Self {
         Self {
-            re_ui,
             interactive: true,
             selected: false,
             draggable: false,
             drag_target: false,
             force_hovered: false,
             collapse_openness: None,
-            height: ReUi::list_item_height(),
+            height: DesignTokens::list_item_height(),
         }
+    }
+}
+
+impl ListItem {
+    /// Create a new [`ListItem`] with the given label.
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Can the user click and interact with it?
@@ -109,7 +113,7 @@ impl<'a> ListItem<'a> {
 
     /// Set the item height.
     ///
-    /// The default is provided by [`ReUi::list_item_height`] and is suitable for hierarchical
+    /// The default is provided by [`DesignTokens::list_item_height`] and is suitable for hierarchical
     /// lists.
     #[inline]
     pub fn with_height(mut self, height: f32) -> Self {
@@ -120,7 +124,7 @@ impl<'a> ListItem<'a> {
     /// Draw the item as part of a flat list.
     ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
-    pub fn show_flat(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
+    pub fn show_flat<'a>(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
             .inner
@@ -130,13 +134,13 @@ impl<'a> ListItem<'a> {
     /// Draw the item as a leaf node from a hierarchical list.
     ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
-    pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
+    pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| {
             self.ui(
                 ui,
                 None,
-                ReUi::small_icon_size().x + ReUi::text_to_icon_padding(),
+                DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding(),
                 Box::new(content),
             )
         })
@@ -155,8 +159,8 @@ impl<'a> ListItem<'a> {
         ui: &mut Ui,
         id: egui::Id,
         default_open: bool,
-        content: impl ListItemContent + 'a,
-        add_childrens: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
+        content: impl ListItemContent,
+        add_childrens: impl FnOnce(&mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -167,7 +171,6 @@ impl<'a> ListItem<'a> {
         // enable collapsing arrow
         self.collapse_openness = Some(state.openness(ui.ctx()));
 
-        let re_ui = self.re_ui;
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         let response = ui
             .scope(|ui| self.ui(ui, Some(id), 0.0, Box::new(content)))
@@ -184,8 +187,9 @@ impl<'a> ListItem<'a> {
 
         let body_response = ui
             .scope(|ui| {
-                ui.spacing_mut().indent = ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
-                state.show_body_indented(&response.response, ui, |ui| add_childrens(re_ui, ui))
+                ui.spacing_mut().indent =
+                    DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+                state.show_body_indented(&response.response, ui, |ui| add_childrens(ui))
             })
             .inner;
 
@@ -195,7 +199,7 @@ impl<'a> ListItem<'a> {
         }
     }
 
-    fn ui(
+    fn ui<'a>(
         self,
         ui: &mut Ui,
         id: Option<egui::Id>,
@@ -203,7 +207,6 @@ impl<'a> ListItem<'a> {
         content: Box<dyn ListItemContent + 'a>,
     ) -> ListItemResponse {
         let Self {
-            re_ui,
             interactive,
             selected,
             draggable,
@@ -214,12 +217,12 @@ impl<'a> ListItem<'a> {
         } = self;
 
         let collapse_extra = if collapse_openness.is_some() {
-            ReUi::collapsing_triangle_area().x + ReUi::text_to_icon_padding()
+            DesignTokens::collapsing_triangle_area().x + DesignTokens::text_to_icon_padding()
         } else {
             0.0
         };
 
-        let desired_width = match content.desired_width(re_ui, ui) {
+        let desired_width = match content.desired_width(ui) {
             // // content will use all available width
             // None => ui.available_width().at_least(extra_indent + collapse_extra),
             // // content will use the required width
@@ -278,17 +281,16 @@ impl<'a> ListItem<'a> {
         if let Some(openness) = collapse_openness {
             let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
                 rect.min.x,
-                rect.center().y - 0.5 * ReUi::collapsing_triangle_area().y,
+                rect.center().y - 0.5 * DesignTokens::collapsing_triangle_area().y,
             ));
             let triangle_rect =
-                egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_area());
+                egui::Rect::from_min_size(triangle_pos, DesignTokens::collapsing_triangle_area());
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
                 id.unwrap_or(ui.id()).with("collapsing_triangle"),
                 egui::Sense::click(),
             );
-            ReUi::paint_collapsing_triangle(
-                ui,
+            ui.paint_collapsing_triangle(
                 openness,
                 triangle_rect.center(),
                 ui.style().interact(&triangle_response),
@@ -309,7 +311,7 @@ impl<'a> ListItem<'a> {
             list_item: &self,
             layout_info,
         };
-        content.ui(re_ui, ui, &content_ctx);
+        content.ui(ui, &content_ctx);
 
         if ui.is_rect_visible(bg_rect) {
             // Ensure the background highlight is drawn over round pixel coordinates. Otherwise,

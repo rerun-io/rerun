@@ -52,7 +52,7 @@ impl TestContext {
 
     pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
         egui::__run_test_ui(|ui| {
-            let re_ui = re_ui::ReUi::load_and_apply(ui.ctx());
+            re_ui::apply_style_and_install_loaders(ui.ctx());
             let blueprint_query = LatestAtQuery::latest(self.active_timeline);
             let (command_sender, _) = command_channel();
             let component_ui_registry = ComponentUiRegistry::new(Box::new(
@@ -71,6 +71,7 @@ impl TestContext {
             let rec_cfg = RecordingConfig::default();
             rec_cfg.time_ctrl.write().set_timeline(self.active_timeline);
 
+            let egui_context = ui.ctx().clone();
             let ctx = ViewerContext {
                 app_options: &Default::default(),
                 cache: &Default::default(),
@@ -84,7 +85,7 @@ impl TestContext {
                 blueprint_cfg: &Default::default(),
                 selection_state: &self.selection_state,
                 blueprint_query: &blueprint_query,
-                re_ui: &re_ui,
+                egui_ctx: &egui_context,
                 render_ctx: None,
                 command_sender: &command_sender,
                 focused_item: &None,
