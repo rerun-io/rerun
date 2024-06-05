@@ -41,6 +41,7 @@ pub enum UiLayout {
     /// restriction. When using a table, use the `re_data_ui::table_for_ui_layout` function.
     SelectionPanelFull,
 }
+
 impl UiLayout {
     /// Build an egui table and configure it for the given UI layout.
     ///
