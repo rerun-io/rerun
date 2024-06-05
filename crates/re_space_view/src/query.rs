@@ -78,6 +78,7 @@ pub fn latest_at_with_overrides<'a>(
         ctx,
         query: latest_at_query.clone(),
         data_result,
+        resolver: Default::default(),
     }
 }
 

@@ -293,7 +293,7 @@ impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
         }
         */
         // TODO(jleibs): Existing fallback
-        1.0.into()
+        4.2.into()
     }
 }
 

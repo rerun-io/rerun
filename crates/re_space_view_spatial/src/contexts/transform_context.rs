@@ -2,7 +2,7 @@ use nohash_hasher::IntMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityTree};
-use re_space_view::latest_at_with_overrides;
+use re_space_view::{latest_at_with_overrides, DataResultQuery as _};
 use re_types::{
     archetypes::Pinhole,
     components::{
@@ -207,43 +207,19 @@ impl TransformContext {
             let mut encountered_pinhole = encountered_pinhole.clone();
 
             let lookup_image_plane = |p: &_| {
-                let resolver = ctx.recording().resolver();
-
                 let query_result = ctx.viewer_ctx.lookup_query_result(view_query.space_view_id);
 
                 query_result
                     .tree
                     .lookup_result_by_path(p)
                     .cloned()
-                    .and_then(|data_result| {
-                        let results = latest_at_with_overrides(
-                            ctx,
-                            None,
-                            query,
-                            &data_result,
-                            [ImagePlaneDistance::name()],
-                        );
+                    .map(|data_result| {
+                        let results = data_result.latest_at_with_overrides::<Pinhole>(ctx, query);
 
-                        results
-                            .get_or_empty(ImagePlaneDistance::name())
-                            .to_dense::<ImagePlaneDistance>(resolver)
-                            .flatten()
-                            .ok()
-                            .and_then(|r| r.first().copied())
-                        /*
-                        .or_else(|| {
-                            data_result.typed_fallback_for(
-                                ctx,
-                                self,
-                                Some(Pinhole::name()),
-                                view_state,
-                            )
-                        })
-                        */
+                        results.get_mono_with_fallback::<ImagePlaneDistance>()
                     })
                     .unwrap_or_default()
-                    .0
-                     .0
+                    .into()
             };
 
             let reference_from_child = match transform_at(
@@ -433,12 +409,3 @@ fn transform_at(
         Ok(None)
     }
 }
-
-impl TypedComponentFallbackProvider<ImagePlaneDistance> for TransformContext {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
-        // TODO(jleibs): Existing fallback
-        1.0.into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(TransformContext => [ImagePlaneDistance]);

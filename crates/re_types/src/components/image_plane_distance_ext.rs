@@ -6,3 +6,10 @@ impl Default for ImagePlaneDistance {
         1.0.into()
     }
 }
+
+impl From<ImagePlaneDistance> for f32 {
+    #[inline]
+    fn from(val: ImagePlaneDistance) -> Self {
+        val.0.into()
+    }
+}

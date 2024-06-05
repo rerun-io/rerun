@@ -11,7 +11,7 @@ use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
 };
 use re_log_types::EntityPathFilter;
-use re_space_view::latest_at_with_overrides;
+use re_space_view::{latest_at_with_overrides, DataResultQuery as _};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     archetypes::Pinhole,
@@ -1250,7 +1250,7 @@ fn entity_props_ui(
         .show(ui, |ui| {
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-            pinhole_props_ui(ctx, ui, blueprint, space_view_id, data_result);
+            pinhole_props_ui(ctx, ui, data_result);
             depth_props_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
             transform3d_visualization_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
         });
@@ -1286,61 +1286,20 @@ fn colormap_props_ui(
     ui.end_row();
 }
 
-fn pinhole_props_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    blueprint: &ViewportBlueprint,
-    view_id: SpaceViewId,
-    data_result: &DataResult,
-) {
+fn pinhole_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
     let (query, store) =
         guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-
-    let resolver = ctx.recording().resolver();
-
-    let Some(view) = blueprint.space_view(&view_id) else {
-        return;
-    };
-
-    let results = latest_at_with_overrides(
-        ctx,
-        None,
-        &query,
-        &data_result,
-        [ImagePlaneDistance::name()],
-    );
-
-    let mut image_plane_value = results
-        .get_or_empty(ImagePlaneDistance::name())
-        .to_dense::<ImagePlaneDistance>(resolver)
-        .flatten()
-        .ok()
-        .and_then(|r| r.first().copied())
-        /*
-        .or_else(|| {
-            class
-                .untyped_fallback_raw(
-                    ctx,
-                    Some(Pinhole::name()),
-                    view_state,
-                    data_result,
-                    ImagePlaneDistance::name(),
-                )
-                .and_then(|r| {
-                    ImagePlaneDistance::from_arrow(r.as_ref())
-                        .ok()
-                        .and_then(|r| r.first().copied())
-                })
-        })
-        */
-        .unwrap_or_default()
-        .0
-         .0;
 
     if store
         .latest_at_component::<PinholeProjection>(&data_result.entity_path, &query)
         .is_some()
     {
+        let results = data_result.latest_at_with_overrides::<Pinhole>(ctx, &query);
+
+        let mut image_plane_value: f32 = results
+            .get_mono_with_fallback::<ImagePlaneDistance>()
+            .into();
+
         ui.label("Image plane distance");
         let speed = (image_plane_value * 0.05).at_least(0.01);
         if ui
@@ -1352,7 +1311,7 @@ fn pinhole_props_ui(
             .on_hover_text("Controls how far away the image plane is")
             .changed()
         {
-            let mut new_image_plane: ImagePlaneDistance = image_plane_value.into();
+            let new_image_plane: ImagePlaneDistance = image_plane_value.into();
 
             data_result.save_individual_override(ctx.viewer_ctx, &new_image_plane);
         }

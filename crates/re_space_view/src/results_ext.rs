@@ -21,6 +21,7 @@ pub struct HybridLatestAtResults<'a> {
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
     pub data_result: &'a DataResult,
+    pub resolver: PromiseResolver,
 }
 
 /// Wrapper that contains the results of a range query with possible overrides.
@@ -99,6 +100,41 @@ impl<'a> HybridLatestAtResults<'a> {
         fallback_provider
             .fallback_for(&query_context, component_name)
             .ok()
+    }
+
+    /// Utility for retrieving a single instance of a component.
+    #[inline]
+    pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
+        self.get(T::name())
+            .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+    }
+
+    /// Utility for retrieving a single instance of a component.
+    #[inline]
+    pub fn get_mono<T: re_types_core::Component>(&self) -> Option<T> {
+        self.get_instance(0)
+    }
+
+    /// Utility for retrieving a single instance of a component with fallback
+    #[inline]
+    pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
+        &self,
+        index: usize,
+    ) -> T {
+        self.get(T::name())
+            .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+            .or_else(|| {
+                self.try_fallback_raw(T::name())
+                    .and_then(|raw| T::from_arrow(raw.as_ref()).ok())
+                    .and_then(|r| r.first().cloned())
+            })
+            .unwrap_or_default()
+    }
+
+    /// Utility for retrieving a single instance of a component.
+    #[inline]
+    pub fn get_mono_with_fallback<T: re_types_core::Component + Default>(&self) -> T {
+        self.get_instance_with_fallback(0)
     }
 }
 
