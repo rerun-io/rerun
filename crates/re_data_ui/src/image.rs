@@ -189,14 +189,7 @@ pub fn tensor_ui(
                     format_tensor_shape_single_line(&shape)
                 );
                 ui_layout.label(ui, text).on_hover_ui(|ui| {
-                    tensor_summary_ui(
-                        ui,
-                        original_tensor,
-                        tensor,
-                        meaning,
-                        meter,
-                        &tensor_stats,
-                    );
+                    tensor_summary_ui(ui, original_tensor, tensor, meaning, meter, &tensor_stats);
                 });
             });
         }
