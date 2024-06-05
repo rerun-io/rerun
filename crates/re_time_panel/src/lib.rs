@@ -420,7 +420,6 @@ impl TimePanel {
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
-            ctx.re_ui,
             ui,
             &time_bg_area_painter,
             full_y_range,
@@ -1138,7 +1137,6 @@ fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
 /// Visually separate the different time segments
 fn paint_time_ranges_gaps(
     time_ranges_ui: &TimeRangesUi,
-    re_ui: &re_ui::ReUi,
     ui: &egui::Ui,
     painter: &egui::Painter,
     y_range: Rangef,
@@ -1218,7 +1216,8 @@ fn paint_time_ranges_gaps(
             mesh.colored_vertex(right_pos, fill_color);
 
             shadow_mesh.colored_vertex(pos2(right - shadow_width, y), Color32::TRANSPARENT);
-            shadow_mesh.colored_vertex(right_pos, re_ui.design_tokens.shadow_gradient_dark_start);
+            shadow_mesh
+                .colored_vertex(right_pos, re_ui::design_tokens().shadow_gradient_dark_start);
 
             left_line_strip.push(left_pos);
             right_line_strip.push(right_pos);

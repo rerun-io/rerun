@@ -46,7 +46,8 @@ impl TestContext {
 
     pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
         egui::__run_test_ui(|ui| {
-            let re_ui = re_ui::ReUi::load_and_apply(ui.ctx());
+            re_ui::apply_style_and_install_loaders(ui.ctx());
+            let re_ui = re_ui::ReUi::new(ui.ctx().clone());
             let blueprint_query = LatestAtQuery::latest(re_log_types::Timeline::new(
                 "timeline",
                 re_log_types::TimeType::Time,

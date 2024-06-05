@@ -221,7 +221,8 @@ pub fn customize_eframe_and_setup_renderer(
         paint_callback_resources.insert(render_ctx);
     }
 
-    Ok(re_ui::ReUi::load_and_apply(&cc.egui_ctx))
+    re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
+    Ok(re_ui::ReUi::new(cc.egui_ctx.clone()))
 }
 
 // ---------------------------------------------------------------------------

@@ -683,7 +683,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     // Styling:
 
     fn tab_bar_color(&self, _visuals: &egui::Visuals) -> egui::Color32 {
-        self.ctx.re_ui.design_tokens.tab_bar_color
+        re_ui::design_tokens().tab_bar_color
     }
 
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {

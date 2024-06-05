@@ -70,32 +70,37 @@ use egui::{
     pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Ui, Vec2, Widget,
 };
 
+/// Return a reference to the global design tokens structure.
+pub fn design_tokens() -> &'static DesignTokens {
+    static DESIGN_TOKENS: std::sync::OnceLock<DesignTokens> = std::sync::OnceLock::new();
+    DESIGN_TOKENS.get_or_init(|| DesignTokens::load())
+}
+
+/// Apply the Rerun design tokens to the given egui context and install image loaders.
+pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
+    egui_extras::install_image_loaders(egui_ctx);
+
+    egui_ctx.include_bytes(
+        "bytes://logo_dark_mode",
+        include_bytes!("../data/logo_dark_mode.png"),
+    );
+    egui_ctx.include_bytes(
+        "bytes://logo_light_mode",
+        include_bytes!("../data/logo_light_mode.png"),
+    );
+
+    design_tokens().apply(egui_ctx);
+}
+
 #[derive(Debug, Clone)]
 pub struct ReUi {
     pub egui_ctx: egui::Context,
-
-    /// Colors, styles etc loaded from a design_tokens.json
-    pub design_tokens: DesignTokens,
 }
 
 impl ReUi {
-    /// Create [`ReUi`] and apply style to the given egui context.
-    pub fn load_and_apply(egui_ctx: &egui::Context) -> Self {
-        egui_extras::install_image_loaders(egui_ctx);
-
-        egui_ctx.include_bytes(
-            "bytes://logo_dark_mode",
-            include_bytes!("../data/logo_dark_mode.png"),
-        );
-        egui_ctx.include_bytes(
-            "bytes://logo_light_mode",
-            include_bytes!("../data/logo_light_mode.png"),
-        );
-
-        Self {
-            egui_ctx: egui_ctx.clone(),
-            design_tokens: DesignTokens::load_and_apply(egui_ctx),
-        }
+    //TODO: temporary
+    pub fn new(egui_ctx: egui::Context) -> Self {
+        Self { egui_ctx }
     }
 
     fn rerun_logo_uri(&self) -> &'static str {
@@ -201,7 +206,7 @@ impl ReUi {
     pub fn top_panel_frame(&self) -> egui::Frame {
         let mut frame = egui::Frame {
             inner_margin: Self::top_bar_margin(),
-            fill: self.design_tokens.top_bar_color,
+            fill: design_tokens().top_bar_color,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
@@ -220,22 +225,24 @@ impl ReUi {
     pub fn bottom_panel_frame(&self) -> egui::Frame {
         // Show a stroke only on the top. To achieve this, we add a negative outer margin.
         // (on the inner margin we counteract this again)
-        let margin_offset = self.design_tokens.bottom_bar_stroke.width * 0.5;
+        let margin_offset = design_tokens().bottom_bar_stroke.width * 0.5;
 
         let margin = self.bottom_panel_margin();
 
+        let design_tokens = design_tokens();
+
         let mut frame = egui::Frame {
-            fill: self.design_tokens.bottom_bar_color,
+            fill: design_tokens.bottom_bar_color,
             inner_margin: margin + margin_offset,
             outer_margin: egui::Margin {
                 left: -margin_offset,
                 right: -margin_offset,
                 // Add a proper stoke width thick margin on the top.
-                top: self.design_tokens.bottom_bar_stroke.width,
+                top: design_tokens.bottom_bar_stroke.width,
                 bottom: -margin_offset,
             },
-            stroke: self.design_tokens.bottom_bar_stroke,
-            rounding: self.design_tokens.bottom_bar_rounding,
+            stroke: design_tokens.bottom_bar_stroke,
+            rounding: design_tokens.bottom_bar_rounding,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
@@ -968,7 +975,7 @@ impl ReUi {
     /// Draws a shadow into the given rect with the shadow direction given from dark to light
     #[allow(clippy::unused_self)]
     pub fn draw_shadow_line(&self, ui: &egui::Ui, rect: Rect, direction: egui::Direction) {
-        let color_dark = self.design_tokens.shadow_gradient_dark_start;
+        let color_dark = design_tokens().shadow_gradient_dark_start;
         let color_bright = Color32::TRANSPARENT;
 
         let (left_top, right_top, left_bottom, right_bottom) = match direction {
