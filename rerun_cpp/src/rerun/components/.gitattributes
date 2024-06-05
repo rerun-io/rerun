@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 annotation_context.cpp linguist-generated=true
 annotation_context.hpp linguist-generated=true
+axis_length.hpp linguist-generated=true
 blob.cpp linguist-generated=true
 blob.hpp linguist-generated=true
 class_id.hpp linguist-generated=true

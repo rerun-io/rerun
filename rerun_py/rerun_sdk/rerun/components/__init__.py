@@ -9,6 +9,7 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
+from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
 from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import (
@@ -78,6 +79,9 @@ __all__ = [
     "AnnotationContextBatch",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "AxisLength",
+    "AxisLengthBatch",
+    "AxisLengthType",
     "Blob",
     "BlobArrayLike",
     "BlobBatch",
