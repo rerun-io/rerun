@@ -182,6 +182,7 @@ impl ComponentUiRegistry {
     ///
     /// Design principles for writing editors:
     /// * This is the value column function for a [`re_ui::list_item::PropertyContent`], behave accordingly!
+    ///     * Unless you introduce hierarchy yourself, use [`re_ui::list_item::ListItem::show_flat`].
     /// * Don't show a tooltip, this is solved at a higher level.
     /// * Try not to assume context of the component beyond its inherent semantics
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)

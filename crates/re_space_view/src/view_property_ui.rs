@@ -161,7 +161,8 @@ fn view_property_component_ui(
     } else {
         list_item::ListItem::new(ctx.viewer_ctx.re_ui)
             .interactive(false)
-            .show_flat(ui, singleline_list_item_content)
+            // It might have siblings that have a hierarchy.
+            .show_hierarchical(ui, singleline_list_item_content)
     };
 
     if let Some(tooltip) = field_info.map(|info| info.documentation) {
