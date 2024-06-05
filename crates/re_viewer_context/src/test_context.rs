@@ -1,10 +1,11 @@
 use crate::{
-    command_channel, ApplicationSelectionState, ComponentUiRegistry, StoreContext, ViewerContext,
+    command_channel, ApplicationSelectionState, ComponentUiRegistry, RecordingConfig,
+    SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
+use re_log_types::{StoreId, StoreKind, Timeline};
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
@@ -19,19 +20,24 @@ use re_log_types::{StoreId, StoreKind};
 /// });
 /// ```
 pub struct TestContext {
-    recording_store: EntityDb,
-    blueprint_store: EntityDb,
-    selection_state: ApplicationSelectionState,
+    pub recording_store: EntityDb,
+    pub blueprint_store: EntityDb,
+    pub space_view_class_registry: SpaceViewClassRegistry,
+    pub selection_state: ApplicationSelectionState,
+    pub active_timeline: Timeline,
 }
 
 impl Default for TestContext {
     fn default() -> Self {
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
+        let active_timeline = Timeline::new("time", re_log_types::TimeType::Time);
         Self {
             recording_store,
             blueprint_store,
+            space_view_class_registry: Default::default(),
             selection_state: Default::default(),
+            active_timeline,
         }
     }
 }
@@ -47,10 +53,7 @@ impl TestContext {
     pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
         egui::__run_test_ui(|ui| {
             let re_ui = re_ui::ReUi::load_and_apply(ui.ctx());
-            let blueprint_query = LatestAtQuery::latest(re_log_types::Timeline::new(
-                "timeline",
-                re_log_types::TimeType::Time,
-            ));
+            let blueprint_query = LatestAtQuery::latest(self.active_timeline);
             let (command_sender, _) = command_channel();
             let component_ui_registry = ComponentUiRegistry::new(Box::new(
                 |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _component, _instance| {},
@@ -65,16 +68,19 @@ impl TestContext {
                 hub: &Default::default(),
             };
 
+            let rec_cfg = RecordingConfig::default();
+            rec_cfg.time_ctrl.write().set_timeline(self.active_timeline);
+
             let ctx = ViewerContext {
                 app_options: &Default::default(),
                 cache: &Default::default(),
                 component_ui_registry: &component_ui_registry,
-                space_view_class_registry: &Default::default(),
+                space_view_class_registry: &self.space_view_class_registry,
                 store_context: &store_context,
                 applicable_entities_per_visualizer: &Default::default(),
                 indicated_entities_per_visualizer: &Default::default(),
                 query_results: &Default::default(),
-                rec_cfg: &Default::default(),
+                rec_cfg: &rec_cfg,
                 blueprint_cfg: &Default::default(),
                 selection_state: &self.selection_state,
                 blueprint_query: &blueprint_query,

@@ -473,10 +473,12 @@ mod tests {
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
-        blueprint_timeline, IndicatedEntities, OverridePath, PerVisualizer, SpaceViewClassRegistry,
-        StoreContext, VisualizableEntities,
+        test_context::TestContext, IndicatedEntities, OverridePath, PerVisualizer, StoreContext,
+        VisualizableEntities,
     };
     use std::collections::HashMap;
+
+    use crate::space_view_contents::DataQueryPropertyResolver;
 
     use super::*;
 
@@ -495,10 +497,7 @@ mod tests {
 
     #[test]
     fn test_entity_properties() {
-        let space_view_class_registry = SpaceViewClassRegistry::default();
-        let timeline = Timeline::new("time", re_log_types::TimeType::Time);
-        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut test_ctx = TestContext::default();
         let legacy_auto_properties = EntityPropertyMap::default();
 
         let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
@@ -510,7 +509,7 @@ mod tests {
         ] {
             let row =
                 DataRow::from_archetype(RowId::new(), TimePoint::default(), path, &points).unwrap();
-            recording.add_data_row(row).ok();
+            test_ctx.recording_store.add_data_row(row).ok();
         }
 
         let recommended = RecommendedSpaceView::new(
@@ -542,11 +541,10 @@ mod tests {
                 .collect(),
         );
 
-        let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
         let contents = &space_view.contents;
 
         let resolver = contents.build_resolver(
-            &space_view_class_registry,
+            &test_ctx.space_view_class_registry,
             &space_view,
             &visualizable_entities,
             &indicated_entities_per_visualizer,
@@ -554,23 +552,12 @@ mod tests {
 
         // No overrides set. Everybody has default values.
         {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
 
             let parent = query_result
@@ -600,29 +587,18 @@ mod tests {
             save_override(
                 overrides,
                 parent.individual_override_path().unwrap(),
-                &mut blueprint,
+                &mut test_ctx.blueprint_store,
             );
         }
 
         // Parent is not interactive, but children are
         {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
 
             let parent_group = query_result
@@ -658,31 +634,19 @@ mod tests {
             save_override(
                 overrides,
                 parent_group.recursive_override_path().unwrap(),
-                &mut blueprint,
+                &mut test_ctx.blueprint_store,
             );
         }
 
         // Nobody is interactive
         {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
-
             let parent = query_result
                 .tree
                 .lookup_result_by_path(&EntityPath::from("parent"))
@@ -704,12 +668,9 @@ mod tests {
 
     #[test]
     fn test_component_overrides() {
-        let space_view_class_registry = SpaceViewClassRegistry::default();
-        let timeline = Timeline::new("time", re_log_types::TimeType::Time);
         let legacy_auto_properties = EntityPropertyMap::default();
-        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let mut visualizable_entities_per_visualizer =
-            PerVisualizer::<VisualizableEntities>::default();
+        let mut test_ctx = TestContext::default();
+        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
 
         // Set up a store DB with some entities.
         {
@@ -726,11 +687,11 @@ mod tests {
                     [&[MyPoint::new(1.0, 2.0)] as _],
                 )
                 .unwrap();
-                recording.add_data_row(row).unwrap();
+                test_ctx.recording_store.add_data_row(row).unwrap();
             }
 
             // All of them are visualizable with some arbitrary visualizer.
-            visualizable_entities_per_visualizer
+            visualizable_entities
                 .0
                 .entry("Points3D".into())
                 .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
@@ -750,9 +711,9 @@ mod tests {
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
         let resolver = space_view.contents.build_resolver(
-            &space_view_class_registry,
+            &test_ctx.space_view_class_registry,
             &space_view,
-            &visualizable_entities_per_visualizer,
+            &visualizable_entities,
             &indicated_entities_per_visualizer,
         );
 
@@ -924,7 +885,9 @@ mod tests {
             },
         ) in scenarios.into_iter().enumerate()
         {
-            let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+            // Reset blueprint store for each scenario.
+            test_ctx.blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
+
             let mut add_to_blueprint = |path: &EntityPath, batch: &dyn ComponentBatch| {
                 let row = DataRow::from_component_batches(
                     RowId::new(),
@@ -933,7 +896,7 @@ mod tests {
                     std::iter::once(batch),
                 )
                 .unwrap();
-                blueprint.add_data_row(row).unwrap();
+                test_ctx.blueprint_store.add_data_row(row).unwrap();
             };
 
             // log individual and override components as instructed.
@@ -945,25 +908,12 @@ mod tests {
             }
 
             // Set up a store query and update the overrides.
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-            let mut query_result = space_view
-                .contents
-                .execute_query(&ctx, &visualizable_entities_per_visualizer);
-            let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                &space_view.contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
 
             // Extract component overrides for testing.
@@ -991,5 +941,37 @@ mod tests {
 
             assert_eq!(visited, expected_overrides, "Scenario {i}");
         }
+    }
+
+    fn update_overrides(
+        test_ctx: &TestContext,
+        contents: &SpaceViewContents,
+        visualizable_entities: &PerVisualizer<VisualizableEntities>,
+        resolver: &DataQueryPropertyResolver<'_>,
+        legacy_auto_properties: &EntityPropertyMap,
+    ) -> re_viewer_context::DataQueryResult {
+        let store_ctx = StoreContext {
+            app_id: re_log_types::ApplicationId::unknown(),
+            blueprint: &test_ctx.blueprint_store,
+            default_blueprint: None,
+            recording: &test_ctx.recording_store,
+            bundle: &Default::default(),
+            hub: &re_viewer_context::StoreHub::test_hub(),
+        };
+
+        let mut query_result = contents.execute_query(&store_ctx, visualizable_entities);
+
+        test_ctx.run(|ctx, _ui| {
+            resolver.update_overrides(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                &test_ctx.active_timeline,
+                ctx.space_view_class_registry,
+                legacy_auto_properties,
+                &mut query_result,
+            );
+        });
+
+        query_result
     }
 }
