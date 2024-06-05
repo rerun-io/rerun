@@ -5,7 +5,7 @@
 // Note: This technique is only an approximation. It ignores that depth is non-linear, so the
 // curve of the sphere's surface will be distorted.
 //
-// It also ignores the fact that spheres not in line with the camera's  optical axis are
+// It also ignores the fact that spheres not in line with the camera's optical axis are
 // distorted by perspective projection in an asymmetric way — their outlines may be ellipses,
 // but the peak of the screen-space depth is *not* centered on the screen-space center of the
 // ellipse. In addition to that lack of distortion, the `projected_with_offset` point is the
