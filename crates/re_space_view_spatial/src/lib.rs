@@ -27,7 +27,7 @@ mod visualizers;
 
 use re_space_view::latest_at_with_overrides;
 use re_types::{Archetype as _, Loggable};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{ViewContext, ViewerContext};
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
@@ -65,7 +65,7 @@ fn resolution_from_tensor(
 
 /// Utility for querying a pinhole archetype instance.
 fn query_pinhole(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     query: &re_data_store::LatestAtQuery,
     data_result: &re_viewer_context::DataResult,
 ) -> Option<re_types::archetypes::Pinhole> {

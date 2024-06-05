@@ -4,7 +4,8 @@ use re_log_types::RowId;
 use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 #[derive(Default)]
@@ -25,10 +26,9 @@ impl VisualizerSystem for TensorSystem {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        _view_state: &dyn SpaceViewState,
-        _view_ctx: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
@@ -40,7 +40,7 @@ impl VisualizerSystem for TensorSystem {
                 .recording()
                 .latest_at_component::<TensorData>(&data_result.entity_path, &timeline_query)
             {
-                self.load_tensor_entity(ctx, &data_result.entity_path, tensor);
+                self.load_tensor_entity(ctx.viewer_ctx, &data_result.entity_path, tensor);
             }
         }
 

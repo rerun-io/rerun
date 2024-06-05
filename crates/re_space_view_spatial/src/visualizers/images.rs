@@ -21,7 +21,7 @@ use re_types::{
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
+    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
     VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo,
     VisualizerSystem,
 };
@@ -57,7 +57,7 @@ pub struct ViewerImage {
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     render_ctx: &RenderContext,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
@@ -70,6 +70,7 @@ fn to_textured_rect(
 
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
+        .viewer_ctx
         .cache
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
@@ -211,7 +212,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_image_data<'a>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
@@ -247,7 +248,7 @@ impl ImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
                 c.entry(tensor_data_row_id, data.tensor.0.clone())
             }) {
                 Ok(tensor) => tensor,
@@ -303,7 +304,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_segmentation_image_data<'a>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
@@ -337,7 +338,7 @@ impl ImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
                 c.entry(tensor_data_row_id, data.tensor.0.clone())
             }) {
                 Ok(tensor) => tensor,
@@ -396,7 +397,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_depth_image_data<'a>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
@@ -435,7 +436,7 @@ impl ImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
                 c.entry(tensor_data_row_id, data.tensor.0.clone())
             }) {
                 Ok(tensor) => tensor,
@@ -526,7 +527,7 @@ impl ImageVisualizer {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -568,6 +569,7 @@ impl ImageVisualizer {
 
         let debug_name = ent_path.to_string();
         let tensor_stats = ctx
+            .viewer_ctx
             .cache
             .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
         let depth_texture = re_viewer_context::gpu_bridge::tensor_to_gpu(
@@ -710,12 +712,11 @@ impl VisualizerSystem for ImageVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        _view_state: &dyn SpaceViewState,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
@@ -724,7 +725,7 @@ impl VisualizerSystem for ImageVisualizer {
         self.process_image_archetype::<Image, _>(
             ctx,
             view_query,
-            view_ctx,
+            context_systems,
             &mut depth_clouds,
             |visualizer,
              ctx,
@@ -749,7 +750,7 @@ impl VisualizerSystem for ImageVisualizer {
         self.process_image_archetype::<SegmentationImage, _>(
             ctx,
             view_query,
-            view_ctx,
+            context_systems,
             &mut depth_clouds,
             |visualizer,
              ctx,
@@ -774,7 +775,7 @@ impl VisualizerSystem for ImageVisualizer {
         self.process_image_archetype::<DepthImage, _>(
             ctx,
             view_query,
-            view_ctx,
+            context_systems,
             &mut depth_clouds,
             |visualizer,
              ctx,
@@ -851,7 +852,7 @@ impl VisualizerSystem for ImageVisualizer {
 impl ImageVisualizer {
     fn process_image_archetype<A: Archetype, F>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
         depth_clouds: &mut Vec<DepthCloud>,
@@ -860,7 +861,7 @@ impl ImageVisualizer {
     where
         F: FnMut(
             &mut Self,
-            &ViewerContext<'_>,
+            &ViewContext<'_>,
             &mut Vec<DepthCloud>,
             &TransformContext,
             &EntityProperties,

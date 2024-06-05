@@ -23,7 +23,7 @@ use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting 
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewClass,
-    SpaceViewId, UiLayout, ViewStates, ViewerContext,
+    SpaceViewId, UiLayout, ViewContext, ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
@@ -224,12 +224,32 @@ impl SelectionPanel {
             }
 
             Item::DataResult(space_view_id, instance_path) => {
+                let Some(space_view) = blueprint.space_view(&space_view_id) else {
+                    return;
+                };
+
+                let visualizer_collection = ctx
+                    .space_view_class_registry
+                    .new_visualizer_collection(space_view.class_identifier());
+
+                let Some(view_state) = view_states
+                    .get(*space_view_id)
+                    .map(|states| states.view_state.as_ref())
+                else {
+                    return;
+                };
+
+                let view_ctx = ViewContext {
+                    viewer_ctx: ctx,
+                    view_state,
+                    visualizer_collection: &visualizer_collection,
+                };
+
                 blueprint_ui_for_data_result(
-                    ctx,
+                    &view_ctx,
                     blueprint,
                     ui,
                     *space_view_id,
-                    view_states,
                     instance_path,
                 );
             }
@@ -1141,11 +1161,10 @@ fn has_blueprint_section(item: &Item) -> bool {
 }
 
 fn blueprint_ui_for_data_result(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     blueprint: &ViewportBlueprint,
     ui: &mut Ui,
     space_view_id: SpaceViewId,
-    view_states: &mut ViewStates,
     instance_path: &InstancePath,
 ) {
     if let Some(space_view) = blueprint.space_view(&space_view_id) {
@@ -1167,14 +1186,15 @@ fn blueprint_ui_for_data_result(
                     ui,
                     blueprint,
                     space_view_id,
-                    view_states,
                     ctx.lookup_query_result(space_view_id),
                     &data_result,
                     &mut accumulated_legacy_props,
                 );
                 if accumulated_legacy_props != accumulated_legacy_props_before {
-                    data_result
-                        .save_individual_override_properties(ctx, Some(accumulated_legacy_props));
+                    data_result.save_individual_override_properties(
+                        ctx.viewer_ctx,
+                        Some(accumulated_legacy_props),
+                    );
                 }
             }
         }
@@ -1182,11 +1202,10 @@ fn blueprint_ui_for_data_result(
 }
 
 fn entity_props_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     blueprint: &ViewportBlueprint,
     space_view_id: SpaceViewId,
-    view_states: &mut ViewStates,
     query_result: &DataQueryResult,
     data_result: &DataResult,
     entity_props: &mut EntityProperties,
@@ -1197,7 +1216,7 @@ fn entity_props_ui(
     let entity_path = &data_result.entity_path;
 
     {
-        let visible_before = data_result.is_visible(ctx);
+        let visible_before = data_result.is_visible(ctx.viewer_ctx);
         let mut visible = visible_before;
 
         let override_source =
@@ -1214,7 +1233,7 @@ fn entity_props_ui(
 
         if visible_before != visible {
             data_result.save_recursive_override_or_clear_if_redundant(
-                ctx,
+                ctx.viewer_ctx,
                 &query_result.tree,
                 &Visible(visible),
             );
@@ -1224,16 +1243,16 @@ fn entity_props_ui(
     ui.re_checkbox(&mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    query_range_ui_data_result(ctx, ui, data_result);
+    query_range_ui_data_result(ctx.viewer_ctx, ui, data_result);
 
     egui::Grid::new("entity_properties")
         .num_columns(2)
         .show(ui, |ui| {
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-            pinhole_props_ui(ctx, ui, blueprint, space_view_id, view_states, data_result);
-            depth_props_ui(ctx, ui, entity_path, entity_props);
-            transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
+            pinhole_props_ui(ctx, ui, blueprint, space_view_id, data_result);
+            depth_props_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
+            transform3d_visualization_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
         });
 }
 
@@ -1268,28 +1287,20 @@ fn colormap_props_ui(
 }
 
 fn pinhole_props_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     blueprint: &ViewportBlueprint,
     view_id: SpaceViewId,
-    view_states: &mut ViewStates,
     data_result: &DataResult,
 ) {
-    let (query, store) = guess_query_and_db_for_selected_entity(ctx, &data_result.entity_path);
+    let (query, store) =
+        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
 
     let resolver = ctx.recording().resolver();
 
-    let Some(class) = blueprint
-        .space_view(&view_id)
-        .map(|sv| sv.class(ctx.space_view_class_registry))
-    else {
+    let Some(view) = blueprint.space_view(&view_id) else {
         return;
     };
-
-    let view_state = view_states
-        .get_mut(ctx.space_view_class_registry, view_id, "3D".into())
-        .view_state
-        .as_ref();
 
     let results = latest_at_with_overrides(
         ctx,
@@ -1305,6 +1316,7 @@ fn pinhole_props_ui(
         .flatten()
         .ok()
         .and_then(|r| r.first().copied())
+        /*
         .or_else(|| {
             class
                 .untyped_fallback_raw(
@@ -1320,6 +1332,7 @@ fn pinhole_props_ui(
                         .and_then(|r| r.first().copied())
                 })
         })
+        */
         .unwrap_or_default()
         .0
          .0;
@@ -1341,7 +1354,7 @@ fn pinhole_props_ui(
         {
             let mut new_image_plane: ImagePlaneDistance = image_plane_value.into();
 
-            data_result.save_individual_override(ctx, &new_image_plane);
+            data_result.save_individual_override(ctx.viewer_ctx, &new_image_plane);
         }
         ui.end_row();
     }

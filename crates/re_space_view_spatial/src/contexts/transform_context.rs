@@ -12,7 +12,7 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, SpaceViewState, TypedComponentFallbackProvider,
-    ViewContextSystem,
+    ViewContext, ViewContextSystem,
 };
 
 use crate::visualizers::image_view_coordinates;
@@ -93,9 +93,8 @@ impl ViewContextSystem for TransformContext {
     /// entities are transformed relative to it.
     fn execute(
         &mut self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        view_state: &dyn SpaceViewState,
     ) {
         re_tracing::profile_function!();
 
@@ -117,7 +116,6 @@ impl ViewContextSystem for TransformContext {
         self.gather_descendants_transforms(
             ctx,
             query,
-            view_state,
             current_tree,
             ctx.recording(),
             &time_query,
@@ -165,7 +163,6 @@ impl ViewContextSystem for TransformContext {
             self.gather_descendants_transforms(
                 ctx,
                 query,
-                view_state,
                 parent_tree,
                 ctx.recording(),
                 &time_query,
@@ -186,9 +183,8 @@ impl TransformContext {
     #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &re_viewer_context::ViewQuery<'_>,
-        view_state: &dyn SpaceViewState,
         subtree: &EntityTree,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
@@ -213,7 +209,7 @@ impl TransformContext {
             let lookup_image_plane = |p: &_| {
                 let resolver = ctx.recording().resolver();
 
-                let query_result = ctx.lookup_query_result(view_query.space_view_id);
+                let query_result = ctx.viewer_ctx.lookup_query_result(view_query.space_view_id);
 
                 query_result
                     .tree
@@ -234,14 +230,16 @@ impl TransformContext {
                             .flatten()
                             .ok()
                             .and_then(|r| r.first().copied())
-                            .or_else(|| {
-                                data_result.typed_fallback_for(
-                                    ctx,
-                                    self,
-                                    Some(Pinhole::name()),
-                                    view_state,
-                                )
-                            })
+                        /*
+                        .or_else(|| {
+                            data_result.typed_fallback_for(
+                                ctx,
+                                self,
+                                Some(Pinhole::name()),
+                                view_state,
+                            )
+                        })
+                        */
                     })
                     .unwrap_or_default()
                     .0
@@ -266,7 +264,6 @@ impl TransformContext {
             self.gather_descendants_transforms(
                 ctx,
                 view_query,
-                view_state,
                 child_tree,
                 entity_db,
                 query,

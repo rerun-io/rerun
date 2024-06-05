@@ -6,8 +6,8 @@ use re_renderer::DepthOffset;
 use re_space_view::{latest_at_with_overrides, range_with_overrides, HybridResults};
 use re_types::Archetype;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError, ViewContext,
+    ViewContextCollection, ViewQuery,
 };
 
 use crate::{
@@ -39,13 +39,13 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
 
 // --- Cached APIs ---
 
-pub fn query_archetype_with_history<A: Archetype>(
-    ctx: &ViewerContext<'_>,
+pub fn query_archetype_with_history<'a, A: Archetype>(
+    ctx: &'a ViewContext<'a>,
     timeline: &Timeline,
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
-    data_result: &re_viewer_context::DataResult,
-) -> HybridResults {
+    data_result: &'a re_viewer_context::DataResult,
+) -> HybridResults<'a> {
     match query_range {
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
@@ -56,7 +56,7 @@ pub fn query_archetype_with_history<A: Archetype>(
                 ),
             );
             let results = range_with_overrides(
-                ctx,
+                ctx.viewer_ctx,
                 None,
                 &range_query,
                 data_result,
@@ -83,7 +83,7 @@ pub fn query_archetype_with_history<A: Archetype>(
 /// The callback passed in gets passed along an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
     default_depth_offset: DepthOffset,
@@ -92,11 +92,11 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
 where
     A: Archetype,
     F: FnMut(
-        &ViewerContext<'_>,
+        &ViewContext<'_>,
         &EntityPath,
         &EntityProperties,
         &SpatialSceneEntityContext<'_>,
-        &HybridResults,
+        &HybridResults<'_>,
     ) -> Result<(), SpaceViewSystemExecutionError>,
 {
     let transforms = view_ctx.get::<TransformContext>()?;

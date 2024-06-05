@@ -9,8 +9,8 @@ use re_types::{
     Archetype,
 };
 use re_viewer_context::{
-    ApplicableEntities, DataResult, QueryContext, IdentifiedViewSystem, SpaceViewOutlineMasks,
-    SpaceViewState, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
+    SpaceViewState, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -50,8 +50,7 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        ctx: &ViewerContext<'_>,
-        view_state: &dyn SpaceViewState,
+        ctx: &ViewContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformContext,
         data_result: &DataResult,
@@ -67,7 +66,7 @@ impl CamerasVisualizer {
             .image_plane_distance
             .unwrap_or_else(|| {
                 data_result
-                    .typed_fallback_for(ctx, self, Some(Pinhole::name()), view_state)
+                    .typed_fallback_for(ctx.viewer_ctx, self, Some(Pinhole::name()), ctx.view_state)
                     .unwrap_or_default()
             })
             .0
@@ -215,16 +214,15 @@ impl VisualizerSystem for CamerasVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        view_state: &dyn SpaceViewState,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let transforms = view_ctx.get::<TransformContext>()?;
+        let transforms = context_systems.get::<TransformContext>()?;
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -241,7 +239,6 @@ impl VisualizerSystem for CamerasVisualizer {
 
                 self.visit_instance(
                     ctx,
-                    view_state,
                     &mut line_builder,
                     transforms,
                     data_result,

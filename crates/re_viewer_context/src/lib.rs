@@ -64,7 +64,7 @@ pub use space_view::{
     SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContext,
     ViewContextCollection, ViewContextSystem, ViewQuery, ViewStates, ViewSystemIdentifier,
     VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
     VisualizerQueryInfo, VisualizerSystem,

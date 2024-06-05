@@ -2,10 +2,9 @@ use ahash::HashMap;
 
 use re_types::{ComponentNameSet, SpaceViewClassIdentifier};
 
-use crate::{
-    IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, ViewQuery,
-    ViewSystemIdentifier, ViewerContext,
-};
+use crate::{IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier};
+
+use super::view_context::ViewContext;
 
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
 ///
@@ -23,12 +22,7 @@ pub trait ViewContextSystem: Send + Sync {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
-    fn execute(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
-        view_state: &dyn SpaceViewState,
-    );
+    fn execute(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>);
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;

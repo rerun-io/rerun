@@ -11,6 +11,7 @@ mod space_view_class_placeholder;
 mod space_view_class_registry;
 mod spawn_heuristics;
 mod system_execution_output;
+mod view_context;
 mod view_context_system;
 mod view_query;
 mod view_states;
@@ -28,6 +29,7 @@ pub use space_view_class_registry::{
 };
 pub use spawn_heuristics::{RecommendedSpaceView, SpaceViewSpawnHeuristics};
 pub use system_execution_output::SystemExecutionOutput;
+pub use view_context::ViewContext;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
 pub use view_query::{
     DataResult, OverridePath, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet,

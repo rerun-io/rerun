@@ -1,10 +1,13 @@
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_log_types::{RowId, TimeInt};
+use re_log_types::{external::arrow2, RowId, TimeInt};
 use re_query::{
     LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult, RangeData,
     RangeResults, Results,
 };
 use re_types_core::{Component, ComponentName};
+use re_viewer_context::{DataResult, QueryContext, ViewContext};
+
+use crate::DataResultQuery as _;
 
 // ---
 
@@ -12,10 +15,12 @@ use re_types_core::{Component, ComponentName};
 ///
 /// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
 /// they will be merged into the results appropriately.
-#[derive(Debug)]
-pub struct HybridLatestAtResults {
+pub struct HybridLatestAtResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: LatestAtResults,
+    pub ctx: &'a ViewContext<'a>,
+    pub query: LatestAtQuery,
+    pub data_result: &'a DataResult,
 }
 
 /// Wrapper that contains the results of a range query with possible overrides.
@@ -28,7 +33,7 @@ pub struct HybridRangeResults {
     pub(crate) results: RangeResults,
 }
 
-impl HybridLatestAtResults {
+impl<'a> HybridLatestAtResults<'a> {
     /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
     #[inline]
     pub fn get(
@@ -74,22 +79,42 @@ impl HybridLatestAtResults {
             self.results.get_or_empty(component_name)
         }
     }
+
+    pub fn try_fallback_raw(
+        &self,
+        component_name: ComponentName,
+    ) -> Option<Box<dyn arrow2::array::Array>> {
+        let fallback_provider = self
+            .data_result
+            .best_fallback_for(self.ctx, component_name)?;
+
+        let query_context = QueryContext {
+            viewer_ctx: self.ctx.viewer_ctx,
+            target_entity_path: &self.data_result.entity_path,
+            archetype_name: None, // TODO(jleibs): Do we need this?
+            query: &self.query,
+            view_state: self.ctx.view_state,
+        };
+
+        fallback_provider
+            .fallback_for(&query_context, component_name)
+            .ok()
+    }
 }
 
-#[derive(Debug)]
-pub enum HybridResults {
-    LatestAt(LatestAtQuery, HybridLatestAtResults),
+pub enum HybridResults<'a> {
+    LatestAt(LatestAtQuery, HybridLatestAtResults<'a>),
     Range(RangeQuery, HybridRangeResults),
 }
 
-impl From<(LatestAtQuery, HybridLatestAtResults)> for HybridResults {
+impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> {
     #[inline]
-    fn from((query, results): (LatestAtQuery, HybridLatestAtResults)) -> Self {
+    fn from((query, results): (LatestAtQuery, HybridLatestAtResults<'a>)) -> Self {
         Self::LatestAt(query, results)
     }
 }
 
-impl From<(RangeQuery, HybridRangeResults)> for HybridResults {
+impl<'a> From<(RangeQuery, HybridRangeResults)> for HybridResults<'a> {
     #[inline]
     fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
         Self::Range(query, results)
@@ -296,12 +321,12 @@ impl RangeResultsExt for HybridRangeResults {
     }
 }
 
-impl RangeResultsExt for HybridLatestAtResults {
+impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     #[inline]
-    fn get_dense<'a, C: Component>(
-        &'a self,
+    fn get_dense<'b, C: Component>(
+        &'b self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
+    ) -> Option<re_query::Result<RangeData<'b, C>>> {
         let component_name = C::name();
 
         if self.overrides.contains(component_name) {
@@ -332,10 +357,10 @@ impl RangeResultsExt for HybridLatestAtResults {
     }
 
     #[inline]
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
+    fn get_or_empty_dense<'b, C: Component>(
+        &'b self,
         resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
+    ) -> re_query::Result<RangeData<'b, C>> {
         let component_name = C::name();
 
         if self.overrides.contains(component_name) {
@@ -362,21 +387,21 @@ impl RangeResultsExt for HybridLatestAtResults {
     }
 }
 
-impl RangeResultsExt for HybridResults {
-    fn get_dense<'a, C: Component>(
-        &'a self,
+impl<'a> RangeResultsExt for HybridResults<'a> {
+    fn get_dense<'b, C: Component>(
+        &'b self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
+    ) -> Option<re_query::Result<RangeData<'b, C>>> {
         match self {
             Self::LatestAt(_, results) => results.get_dense(resolver),
             Self::Range(_, results) => results.get_dense(resolver),
         }
     }
 
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
+    fn get_or_empty_dense<'b, C: Component>(
+        &'b self,
         resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
+    ) -> re_query::Result<RangeData<'b, C>> {
         match self {
             Self::LatestAt(_, results) => results.get_or_empty_dense(resolver),
             Self::Range(_, results) => results.get_or_empty_dense(resolver),

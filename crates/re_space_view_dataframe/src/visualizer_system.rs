@@ -1,6 +1,7 @@
 use re_viewer_context::{
     ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the space view
@@ -20,10 +21,9 @@ impl VisualizerSystem for EmptySystem {
 
     fn execute(
         &mut self,
-        _ctx: &ViewerContext<'_>,
+        _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
-        _view_state: &dyn SpaceViewState,
-        _view_ctx: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         Ok(vec![])
     }

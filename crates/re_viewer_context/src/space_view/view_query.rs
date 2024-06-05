@@ -12,7 +12,7 @@ use re_types::{Archetype, ArchetypeName, ComponentName};
 
 use crate::{
     ComponentFallbackProvider, DataResultTree, QueryContext, QueryRange, SpaceViewHighlights,
-    SpaceViewId, ViewSystemIdentifier, ViewerContext,
+    SpaceViewId, ViewContext, ViewSystemIdentifier, ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
@@ -479,7 +479,7 @@ impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
     pub fn iter_visible_data_results<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a ViewContext<'a>,
         visualizer: ViewSystemIdentifier,
     ) -> impl Iterator<Item = &DataResult>
     where
@@ -491,7 +491,7 @@ impl<'s> ViewQuery<'s> {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .filter(|result| result.is_visible(ctx))
+                        .filter(|result| result.is_visible(ctx.viewer_ctx))
                         .copied(),
                 )
             },

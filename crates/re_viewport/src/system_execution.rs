@@ -15,13 +15,24 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 
 fn run_space_view_systems(
     ctx: &ViewerContext<'_>,
-    _space_view_class: SpaceViewClassIdentifier,
+    space_view_class: SpaceViewClassIdentifier,
     query: &ViewQuery<'_>,
     view_state: &dyn SpaceViewState,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
 ) -> Vec<re_renderer::QueueableDrawData> {
-    re_tracing::profile_function!(_space_view_class.as_str());
+    re_tracing::profile_function!(space_view_class.as_str());
+
+    // TODO(jleibs): This is weird. Most of the time we don't need this.
+    let visualizer_collection = ctx
+        .space_view_class_registry
+        .new_visualizer_collection(space_view_class);
+
+    let view_ctx = re_viewer_context::ViewContext {
+        viewer_ctx: ctx,
+        view_state,
+        visualizer_collection: &visualizer_collection,
+    };
 
     {
         re_tracing::profile_wait!("ViewContextSystem::execute");
@@ -30,7 +41,7 @@ fn run_space_view_systems(
             .par_iter_mut()
             .for_each(|(_name, system)| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", _name.as_str());
-                system.execute(ctx, query, view_state);
+                system.execute(&view_ctx, query);
             });
     };
 
@@ -40,7 +51,7 @@ fn run_space_view_systems(
         .par_iter_mut()
         .map(|(name, part)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            match part.execute(ctx, query, view_state, context_systems) {
+            match part.execute(&view_ctx, query, context_systems) {
                 Ok(part_draw_data) => part_draw_data,
                 Err(err) => {
                     re_log::error_once!("Error executing visualizer {name:?}: {err}");

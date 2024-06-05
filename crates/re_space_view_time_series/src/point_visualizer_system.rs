@@ -9,7 +9,7 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, SpaceViewState, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizerQueryInfo,
+    TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewerContext, VisualizerQueryInfo,
     VisualizerSystem,
 };
 
@@ -50,14 +50,13 @@ impl VisualizerSystem for SeriesPointSystem {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        view_state: &dyn SpaceViewState,
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        match self.load_scalars(ctx, query, view_state) {
+        match self.load_scalars(ctx, query) {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
             Err(err) => Err(err.into()),
         }
@@ -89,25 +88,24 @@ re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color
 impl SeriesPointSystem {
     fn load_scalars(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        view_state: &dyn SpaceViewState,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
         let resolver = ctx.recording().resolver();
 
         let (plot_bounds, time_per_pixel) =
-            determine_plot_bounds_and_time_per_pixel(ctx, view_query);
+            determine_plot_bounds_and_time_per_pixel(ctx.viewer_ctx, view_query);
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             let query_ctx = QueryContext {
-                viewer_ctx: ctx,
+                viewer_ctx: ctx.viewer_ctx,
                 archetype_name: Some(SeriesPoint::name()),
                 query: &ctx.current_query(),
                 target_entity_path: &data_result.entity_path,
-                view_state,
+                view_state: ctx.view_state,
             };
 
             let fallback_color =
@@ -144,7 +142,7 @@ impl SeriesPointSystem {
                 view_query.latest_at,
                 data_result,
                 plot_bounds,
-                ctx.app_options.experimental_plot_query_clamping,
+                ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
             );
 
             {
@@ -156,7 +154,7 @@ impl SeriesPointSystem {
                 let query = re_data_store::RangeQuery::new(view_query.timeline, time_range);
 
                 let results = range_with_overrides(
-                    ctx,
+                    ctx.viewer_ctx,
                     None,
                     &query,
                     data_result,
