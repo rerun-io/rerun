@@ -71,7 +71,8 @@ use egui::{
 
 /// Return a reference to the global design tokens structure.
 pub fn design_tokens() -> &'static DesignTokens {
-    static DESIGN_TOKENS: std::sync::OnceLock<DesignTokens> = std::sync::OnceLock::new();
+    use once_cell::sync::OnceCell;
+    static DESIGN_TOKENS: OnceCell<DesignTokens> = OnceCell::new();
     DESIGN_TOKENS.get_or_init(DesignTokens::load)
 }
 
