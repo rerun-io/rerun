@@ -40,7 +40,7 @@ pub fn determine_time_range(
         re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
         re_viewer_context::QueryRange::LatestAt => {
             re_log::error_once!(
-                "Unexexpected LatestAt query for time series data result at path {:?}",
+                "Unexpected LatestAt query for time series data result at path {:?}",
                 data_result.entity_path
             );
             TimeRange {
@@ -97,6 +97,9 @@ pub fn points_to_series(
     let min_time = store
         .entity_min_time(&query.timeline, &data_result.entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+    let max_time = store
+        .entity_max_time(&query.timeline, &data_result.entity_path)
+        .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
     let series_label = series_name.unwrap_or_else(|| {
         let same_label = |points: &[PlotPoint]| -> Option<Utf8> {
@@ -122,6 +125,7 @@ pub fn points_to_series(
             aggregator,
             aggregation_factor,
             min_time,
+            max_time,
         });
     } else {
         add_series_runs(
@@ -131,6 +135,7 @@ pub fn points_to_series(
             aggregator,
             aggregation_factor,
             min_time,
+            max_time,
             all_series,
         );
     }
@@ -210,6 +215,7 @@ fn add_series_runs(
     aggregator: TimeSeriesAggregator,
     aggregation_factor: f64,
     min_time: i64,
+    max_time: i64,
     all_series: &mut Vec<PlotSeries>,
 ) {
     re_tracing::profile_function!();
@@ -226,6 +232,7 @@ fn add_series_runs(
         aggregator,
         aggregation_factor,
         min_time,
+        max_time,
     };
 
     for (i, p) in points.into_iter().enumerate() {
@@ -250,6 +257,7 @@ fn add_series_runs(
                     aggregator,
                     aggregation_factor,
                     min_time,
+                    max_time,
                 },
             );
 

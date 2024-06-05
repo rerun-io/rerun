@@ -4,7 +4,10 @@ use re_entity_db::{
     EntityDb,
 };
 use re_log_types::EntityPath;
-use re_types::{external::arrow2, Archetype, ArchetypeName, ComponentName};
+use re_types::{
+    external::arrow2, Archetype, ArchetypeName, ComponentBatch, ComponentName,
+    DeserializationResult,
+};
 use re_viewer_context::{
     external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
     QueryContext, SpaceViewId, SpaceViewSystemExecutionError, ViewerContext,
@@ -117,6 +120,15 @@ impl<'a> ViewProperty<'a> {
         )?)
     }
 
+    /// Get an array of a specific component.
+    pub fn component_array<C: re_types::Component + Default>(
+        &self,
+    ) -> Option<DeserializationResult<Vec<C>>> {
+        let component_name = C::name();
+        self.component_raw(component_name)
+            .map(|raw| C::from_arrow(raw.as_ref()))
+    }
+
     fn component_raw(
         &self,
         component_name: ComponentName,
@@ -141,9 +153,9 @@ impl<'a> ViewProperty<'a> {
     }
 
     /// Save change to a blueprint component.
-    pub fn save_blueprint_component<C: re_types::Component>(&self, component: &C) {
+    pub fn save_blueprint_component(&self, components: &dyn ComponentBatch) {
         self.viewer_ctx
-            .save_blueprint_component(&self.blueprint_store_path, component);
+            .save_blueprint_component(&self.blueprint_store_path, components);
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.

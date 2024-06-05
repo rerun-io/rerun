@@ -192,6 +192,37 @@ impl DataStore {
         }
     }
 
+    /// Find the maximum time at which something was logged for a given entity on the specified
+    /// timeline so far.
+    ///
+    /// Ignores static data.
+    #[inline]
+    pub fn entity_max_time(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> Option<TimeInt> {
+        let entity_path_hash = entity_path.hash();
+
+        let max_time = self
+            .tables
+            .get(&(entity_path_hash, *timeline))?
+            .buckets
+            .last_key_value()?
+            .1
+            .inner
+            .read()
+            .time_range
+            .max();
+
+        // handle case where no data was logged
+        if max_time == TimeInt::MIN {
+            None
+        } else {
+            Some(max_time)
+        }
+    }
+
     /// Queries the datastore for the cells of the specified `component_names`, as seen from the point
     /// of view of the so-called `primary` component.
     ///

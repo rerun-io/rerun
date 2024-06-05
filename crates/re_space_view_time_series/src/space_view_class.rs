@@ -4,10 +4,11 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeInt, TimeZone};
+use re_log_types::{EntityPath, TimeZone};
 use re_space_view::{controls, view_property_ui};
-use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
-use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom};
+use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis, VisibleTimeRanges};
+use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, VisibleTimeRange};
+use re_types::datatypes::{TimeInt, TimeRangeBoundary};
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::list_item;
 use re_viewer_context::external::re_entity_db::{
@@ -316,16 +317,29 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(self, state)?;
         let y_zoom_lock = y_zoom_lock.0 .0;
 
-        let (current_time, time_type, timeline) = {
+        let (cursor_time, time_type, timeline) = {
             // Avoid holding the lock for long
             let time_ctrl = ctx.rec_cfg.time_ctrl.read();
-            let current_time = time_ctrl.time_i64();
+            let cursor_time = time_ctrl.time_i64();
             let time_type = time_ctrl.time_type();
             let timeline = *time_ctrl.timeline();
-            (current_time, time_type, timeline)
+            (cursor_time, time_type, timeline)
         };
 
         let timeline_name = timeline.name().to_string();
+
+        // Query visible time range since we're going to use this as the x range of the plot.
+        // Don't use a fallback provider here since the fallback wouldn't help much - we need a default for every possible timeline.
+        let visible_time_ranges =
+            ViewProperty::from_archetype::<VisibleTimeRanges>(ctx, query.space_view_id);
+        let mut time_ranges = visible_time_ranges
+            .component_array::<VisibleTimeRange>()
+            .and_then(|time_ranges| time_ranges.ok())
+            .unwrap_or_default();
+        let time_range = time_ranges
+            .iter()
+            .find(|time_range| time_range.timeline.as_str() == timeline_name)
+            .map_or(TimeRange::EVERYTHING, |time_range| time_range.range.clone());
 
         let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
         let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
@@ -335,12 +349,34 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             .chain(point_series.all_series.iter())
             .collect();
 
-        // Get the minimum time/X value for the entire plot…
+        // Get the minimum & maximum time/X value for the entire plot…
         let min_time = all_plot_series
             .iter()
             .map(|line| line.min_time)
             .min()
             .unwrap_or(0);
+        let max_time = all_plot_series
+            .iter()
+            .map(|line| line.max_time)
+            .min()
+            .unwrap_or(1);
+
+        let (x_range_start, x_range_end) = {
+            let mut x_range_start = time_range
+                .start
+                .start_boundary_time(cursor_time.map_or(TimeInt::MIN, Into::into));
+            if x_range_start == TimeInt::MIN {
+                x_range_start = min_time.into();
+            }
+            let mut x_range_end = time_range
+                .end
+                .end_boundary_time(cursor_time.map_or(TimeInt::MAX, Into::into));
+            if x_range_end == TimeInt::MAX {
+                x_range_end = max_time.into();
+            }
+
+            (x_range_start, x_range_end)
+        };
 
         // TODO(jleibs): If this is allowed to be different, need to track it per line.
         let aggregation_factor = all_plot_series
@@ -378,7 +414,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let time_zone_for_timestamps = ctx.app_options.time_zone;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
-            .auto_bounds([true, false].into()) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
+            .auto_bounds([false, false].into())
             .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
@@ -392,7 +428,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
-                    TimeInt::new_temporal((value.x as i64).saturating_add(time_offset)),
+                    re_log_types::TimeInt::new_temporal(
+                        (value.x as i64).saturating_add(time_offset),
+                    ),
                     time_zone_for_timestamps,
                 );
 
@@ -440,20 +478,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
             is_resetting = plot_ui.response().double_clicked();
 
-            let current_bounds = plot_ui.plot_bounds();
             plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
-                [current_bounds.min()[0], y_range.start()],
-                [current_bounds.max()[0], y_range.end()],
+                [x_range_start.0 as _, y_range.start()],
+                [x_range_end.0 as _, y_range.end()],
             ));
-
-            let current_auto = plot_ui.auto_bounds();
-            plot_ui.set_auto_bounds(
-                [
-                    current_auto[0] || is_resetting,
-                    is_resetting && !y_zoom_lock,
-                ]
-                .into(),
-            );
+            plot_ui.set_auto_bounds([is_resetting, is_resetting && !y_zoom_lock].into());
 
             *state.scalar_range.start_mut() = f64::INFINITY;
             *state.scalar_range.end_mut() = f64::NEG_INFINITY;
@@ -514,15 +543,33 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         });
 
         // Write new y_range if it has changed.
-        let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
+        let y_range_new = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
             scalar_axis.reset_blueprint_component::<Range1D>();
-        } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(&new_y_range);
+        } else if y_range_new != y_range {
+            scalar_axis.save_blueprint_component(&y_range_new);
+        }
+
+        // If the x range has changed, we have to update the visual time range.
+        let x_range_start_new = TimeInt(transform.bounds().min()[0] as i64);
+        let x_range_end_new = TimeInt(transform.bounds().max()[0] as i64);
+        if x_range_start != x_range_start_new || x_range_end != x_range_end_new {
+            // TODO: push out relative ranges if possible instead of stomping.
+            let new_time_range = re_types::datatypes::VisibleTimeRange {
+                timeline: timeline.name().as_str().into(),
+                range: TimeRange {
+                    start: TimeRangeBoundary::Absolute(x_range_start_new),
+                    end: TimeRangeBoundary::Absolute(x_range_end_new),
+                },
+            };
+            time_ranges
+                .retain(|time_range| time_range.timeline.as_str() != timeline.name().as_str());
+            time_ranges.push(new_time_range.into());
+            visible_time_ranges.save_blueprint_component(&time_ranges);
         }
 
         // Decide if the time cursor should be displayed, and if so where:
-        let time_x = current_time
+        let time_x = cursor_time
             .map(|current_time| (current_time - time_offset) as f64)
             .filter(|&x| {
                 // only display the time cursor when it's actually above the plot area
@@ -597,7 +644,10 @@ fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: Tim
         let time = re_log_types::Time::from_ns_since_epoch(time_int);
         time.format_time_compact(time_zone_for_timestamps)
     } else {
-        time_type.format(TimeInt::new_temporal(time_int), time_zone_for_timestamps)
+        time_type.format(
+            re_log_types::TimeInt::new_temporal(time_int),
+            time_zone_for_timestamps,
+        )
     }
 }
 

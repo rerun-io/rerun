@@ -87,6 +87,9 @@ pub struct PlotSeries {
     /// Earliest time an entity was recorded at on the current timeline.
     pub min_time: i64,
 
+    /// Latest time an entity was recorded at on the current timeline.
+    pub max_time: i64,
+
     /// What kind of aggregation was used to compute the graph?
     pub aggregator: TimeSeriesAggregator,
 
