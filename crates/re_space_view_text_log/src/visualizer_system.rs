@@ -8,8 +8,8 @@ use re_types::{
     Component, Loggable as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
+    ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]

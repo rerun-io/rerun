@@ -5,9 +5,8 @@ use re_entity_db::EntityPath;
 use re_space_view::diff_component_filter;
 use re_types::{archetypes::BarChart, components::Color, datatypes::TensorData};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizerAdditionalApplicabilityFilter,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
+    ViewQuery, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// A bar chart system, with everything needed to render it.

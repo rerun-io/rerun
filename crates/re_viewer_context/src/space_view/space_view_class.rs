@@ -4,11 +4,10 @@ use re_log_types::EntityPath;
 use re_types::{ComponentName, SpaceViewClassIdentifier};
 
 use crate::{
-    ApplicableEntities, IndicatedEntities, PerSystemEntities,
-    PerVisualizer, QueryRange, SmallVisualizerSet, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
-    VisualizableEntities,
+    ApplicableEntities, IndicatedEntities, PerSystemEntities, PerVisualizer, QueryRange,
+    SmallVisualizerSet, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext, VisualizableEntities,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]

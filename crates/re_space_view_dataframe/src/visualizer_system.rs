@@ -1,7 +1,6 @@
 use re_viewer_context::{
-    ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizerQueryInfo,
-    VisualizerSystem,
+    ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the space view
