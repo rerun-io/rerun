@@ -31,8 +31,6 @@ pub struct QueryContext<'a> {
     pub archetype_name: Option<re_types::ArchetypeName>,
 
     /// Query which didn't yield a result for the component at the target entity path.
-    // TODO(andreas): Can we make this a `ViewQuery` instead?
-    // pub query: &'a ViewQuery<'a>,
     pub query: &'a re_data_store::LatestAtQuery,
 
     /// The view state of the view in which the query is executed.

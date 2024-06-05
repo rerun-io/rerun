@@ -307,13 +307,13 @@ fn get_cached_pinhole(
     query: &re_data_store::LatestAtQuery,
 ) -> Option<(PinholeProjection, ViewCoordinates)> {
     entity_db
-        .latest_at_archetype::<re_types::archetypes::Pinhole>(entity_path, query)
-        .ok()
-        .flatten()
-        .map(|(_, arch)| {
+        .latest_at_component::<PinholeProjection>(entity_path, query)
+        .map(|image_from_camera| {
             (
-                arch.image_from_camera,
-                arch.camera_xyz.unwrap_or(ViewCoordinates::RDF),
+                image_from_camera.value,
+                entity_db
+                    .latest_at_component::<ViewCoordinates>(entity_path, query)
+                    .map_or(ViewCoordinates::RDF, |res| res.value),
             )
         })
 }

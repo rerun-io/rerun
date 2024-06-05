@@ -1,7 +1,7 @@
 use re_types::components::{PinholeProjection, Resolution};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use crate::{data_label_for_ui_layout, label_for_ui_layout, DataUi};
+use crate::DataUi;
 
 impl DataUi for PinholeProjection {
     fn data_ui(
@@ -24,13 +24,9 @@ impl DataUi for PinholeProjection {
                         fl.to_string()
                     };
 
-                    label_for_ui_layout(
-                        ui,
-                        ui_layout,
-                        format!("Focal length: {fl}, principal point: {pp}"),
-                    )
+                    ui_layout.label(ui, format!("Focal length: {fl}, principal point: {pp}"))
                 } else {
-                    label_for_ui_layout(ui, ui_layout, "3×3 projection matrix")
+                    ui_layout.label(ui, "3×3 projection matrix")
                 }
                 .on_hover_ui(|ui| self.data_ui(ctx, ui, UiLayout::Tooltip, query, db));
             }
@@ -51,6 +47,6 @@ impl DataUi for Resolution {
         _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;
-        data_label_for_ui_layout(ui, ui_layout, format!("{x}×{y}"));
+        ui_layout.data_label(ui, format!("{x}×{y}"));
     }
 }

@@ -46,11 +46,6 @@ impl LatestAtResults {
         self.components.contains_key(&component_name.into())
     }
 
-    pub fn contains_non_empty(&self, component_name: impl Into<ComponentName>) -> bool {
-        self.get(component_name)
-            .map_or(false, |result| result.num_instances() != 0)
-    }
-
     /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
     #[inline]
     pub fn get(
@@ -93,6 +88,31 @@ impl LatestAtResults {
             static EMPTY: LatestAtComponentResults = LatestAtComponentResults::empty();
             &EMPTY
         }
+    }
+
+    /// Utility for retrieving a single instance of a component.
+    pub fn get_instance<T: re_types_core::Component>(
+        &self,
+        resolver: &PromiseResolver,
+        index: usize,
+    ) -> Option<T> {
+        self.get(T::name())
+            .and_then(|r| r.try_instance::<T>(resolver, index))
+    }
+
+    /// Utility for retrieving a specific component.
+    pub fn get_slice<T: re_types_core::Component>(
+        &self,
+        resolver: &PromiseResolver,
+    ) -> Option<&[T]> {
+        self.get(T::name()).and_then(|r| r.dense::<T>(resolver))
+    }
+
+    pub fn get_vec<T: re_types_core::Component>(
+        &self,
+        resolver: &PromiseResolver,
+    ) -> Option<Vec<T>> {
+        self.get_slice(resolver).map(|v| v.to_vec())
     }
 }
 

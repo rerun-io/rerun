@@ -280,7 +280,7 @@ pub fn list_item_scope<R>(
     };
 
     // push, run, pop
-    LayoutInfoStack::push(ui.ctx(), state);
+    LayoutInfoStack::push(ui.ctx(), state.clone());
     let result = ui
         .scope(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;

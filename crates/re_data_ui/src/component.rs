@@ -8,7 +8,7 @@ use re_types::ComponentName;
 use re_ui::{ContextExt as _, SyntaxHighlighting as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use super::{table_for_ui_layout, DataUi};
+use super::DataUi;
 use crate::item_ui;
 
 /// All the values of a specific [`re_log_types::ComponentPath`].
@@ -145,7 +145,8 @@ impl DataUi for EntityLatestAtResults {
         } else if one_line {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
         } else {
-            table_for_ui_layout(ui_layout, ui)
+            ui_layout
+                .table(ui)
                 .resizable(false)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                 .column(egui_extras::Column::auto())

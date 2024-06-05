@@ -4,14 +4,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
-use re_types::SpaceViewClassIdentifier;
+use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use smallvec::SmallVec;
 
 use crate::SpaceViewBlueprint;
 use re_data_store::LatestAtQuery;
-use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::EntityPath;
 use re_types::blueprint::components::ViewerRecommendationHash;
+use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{
     AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
 };
@@ -69,26 +69,28 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let re_types_blueprint::blueprint::archetypes::ViewportBlueprint {
+        let resolver = blueprint_db.resolver();
+        let results = blueprint_db.query_caches().latest_at(
+            blueprint_db.store(),
+            query,
+            &VIEWPORT_PATH.into(),
+            blueprint_archetypes::ViewportBlueprint::all_components()
+                .iter()
+                .copied(),
+        );
+
+        let blueprint_archetypes::ViewportBlueprint {
             root_container,
             maximized,
             auto_layout,
             auto_space_views,
             past_viewer_recommendations,
-        } = match blueprint_db.latest_at_archetype(&VIEWPORT_PATH.into(), query) {
-            PromiseResult::Pending => {
-                // TODO(#5607): what should happen if the promise is still pending?
-                Default::default()
-            }
-            PromiseResult::Ready(arch) => arch.map_or_else(Default::default, |(_, arch)| arch),
-            PromiseResult::Error(err) => {
-                if cfg!(debug_assertions) {
-                    re_log::error!("Failed to load viewport blueprint: {err}.");
-                } else {
-                    re_log::debug!("Failed to load viewport blueprint: {err}.");
-                }
-                Default::default()
-            }
+        } = blueprint_archetypes::ViewportBlueprint {
+            root_container: results.get_instance(resolver, 0),
+            maximized: results.get_instance(resolver, 0),
+            auto_layout: results.get_instance(resolver, 0),
+            auto_space_views: results.get_instance(resolver, 0),
+            past_viewer_recommendations: results.get_vec(resolver),
         };
 
         let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
@@ -149,7 +151,8 @@ impl ViewportBlueprint {
 
         let past_viewer_recommendations = past_viewer_recommendations
             .unwrap_or_default()
-            .into_iter()
+            .iter()
+            .cloned()
             .collect();
 
         Self {

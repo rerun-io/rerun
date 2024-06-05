@@ -2,16 +2,12 @@ use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
-use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
-    blueprint::{
-        archetypes::{Background, VisualBounds2D},
-        components::{self as blueprint_components},
-    },
+    blueprint::archetypes::{Background, VisualBounds2D},
     Archetype, ComponentName, SpaceViewClassIdentifier,
 };
 use re_ui::UiExt as _;
@@ -249,15 +245,15 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         // TODO(andreas): list_item'ify the rest
-        ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            state.default_sizes_ui(ui);
-
-            state.bounding_box_ui(ui, SpatialSpaceViewKind::TwoD);
-
-            visual_bounds_ui(ctx, view_id, ui);
-        });
+        ui
+            .selection_grid("spatial_settings_ui")
+            .show(ui, |ui| {
+                state.default_sizes_ui(ctx, ui);
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
+            });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
+            view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);
             view_property_ui::<Background>(ctx, ui, view_id, self, state);
         });
 
@@ -285,40 +281,6 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         self.view_2d(ctx, ui, state, query, system_output)
     }
-}
-
-fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
-    let tooltip = "The area guaranteed to be visible.\n\
-                   Depending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.";
-    re_viewport_blueprint::edit_blueprint_component::<
-        VisualBounds2D,
-        blueprint_components::VisualBounds2D,
-        (),
-    >(
-        ctx,
-        space_view_id,
-        |bounds2d_opt: &mut Option<blueprint_components::VisualBounds2D>| {
-            ui.grid_left_hand_label("Visible bounds")
-                .on_hover_text(tooltip);
-            ui.vertical(|ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-
-                if let Some(bounds2d) = bounds2d_opt {
-                    let rect = egui::Rect::from(*bounds2d);
-                    let (min, max) = (rect.min, rect.max);
-                    ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-                    ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-
-                    if ui.button("Reset visible bounds").clicked() {
-                        *bounds2d_opt = None;
-                    }
-                } else {
-                    ui.weak("Default");
-                }
-            });
-            ui.end_row();
-        },
-    );
 }
 
 // Count the number of image entities with the given component exist that aren't

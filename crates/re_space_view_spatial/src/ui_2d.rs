@@ -2,11 +2,16 @@ use egui::{emath::RectTransform, pos2, vec2, Align2, Color32, Pos2, Rect, Shape,
 use macaw::IsoTransform;
 
 use re_entity_db::EntityPath;
+use re_log::ResultExt as _;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{
-    archetypes::Pinhole, blueprint::archetypes::Background, blueprint::archetypes::VisualBounds2D,
-    blueprint::components as blueprint_components, components::ViewCoordinates,
+    archetypes::Pinhole,
+    blueprint::{
+        archetypes::{Background, VisualBounds2D},
+        components as blueprint_components,
+    },
+    components::ViewCoordinates,
 };
 use re_viewer_context::{
     gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
@@ -28,120 +33,89 @@ use crate::{
 
 // ---
 
-fn valid_bound(rect: &Rect) -> bool {
-    rect.is_finite() && rect.is_positive()
-}
-
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
     ctx: &ViewerContext<'_>,
-    space_view_id: SpaceViewId,
+    view_id: SpaceViewId,
     response: &egui::Response,
-    default_scene_rect: Rect,
+    view_class: &SpatialSpaceView2D,
+    view_state: &SpatialSpaceViewState,
 ) -> RectTransform {
-    /// Pan and zoom, and return the current transform.
-    fn update_ui_from_scene_impl(
-        visual_bounds: &mut Option<Rect>,
-        response: &egui::Response,
-        default_scene_rect: Rect,
-    ) -> RectTransform {
-        if let Some(visual_bounds) = visual_bounds.as_mut() {
-            if !valid_bound(visual_bounds) {
-                *visual_bounds = default_scene_rect;
-            }
-        }
+    let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        view_id,
+    );
+    let bounds: blueprint_components::VisualBounds2D = bounds_property
+        .component_or_fallback(ctx, view_class, view_state)
+        .ok_or_log_error()
+        .unwrap_or_default();
+    let mut bounds_rect: egui::Rect = bounds.into();
 
-        // --------------------------------------------------------------------------
-        // Expand bounds for uniform scaling (letterboxing):
+    // --------------------------------------------------------------------------
+    // Expand bounds for uniform scaling (letterboxing):
 
-        let active_bounds = visual_bounds.unwrap_or(default_scene_rect);
-        let mut letterboxed_bounds = active_bounds;
+    let mut letterboxed_bounds = bounds_rect;
 
-        // Temporary before applying letterboxing:
-        let ui_from_scene = RectTransform::from_to(active_bounds, response.rect);
+    // Temporary before applying letterboxing:
+    let ui_from_scene = RectTransform::from_to(bounds_rect, response.rect);
 
-        let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
-        if scale_aspect < 1.0 {
-            // Letterbox top/bottom:
-            let add = active_bounds.height() * (1.0 / scale_aspect - 1.0);
-            letterboxed_bounds.min.y -= 0.5 * add;
-            letterboxed_bounds.max.y += 0.5 * add;
-        } else {
-            // Letterbox sides:
-            let add = active_bounds.width() * (scale_aspect - 1.0);
-            letterboxed_bounds.min.x -= 0.5 * add;
-            letterboxed_bounds.max.x += 0.5 * add;
-        }
-
-        // --------------------------------------------------------------------------
-
-        // Temporary before applying panning/zooming delta:
-        let ui_from_scene = RectTransform::from_to(letterboxed_bounds, response.rect);
-
-        // --------------------------------------------------------------------------
-
-        let mut pan_delta_in_ui = response.drag_delta();
-        if response.hovered() {
-            pan_delta_in_ui += response.ctx.input(|i| i.smooth_scroll_delta);
-        }
-        if pan_delta_in_ui != Vec2::ZERO {
-            *visual_bounds =
-                Some(active_bounds.translate(-pan_delta_in_ui / ui_from_scene.scale()));
-        }
-
-        if response.hovered() {
-            let zoom_delta = response.ctx.input(|i| i.zoom_delta_2d());
-
-            if zoom_delta != Vec2::splat(1.0) {
-                let zoom_center_in_ui = response
-                    .hover_pos()
-                    .unwrap_or_else(|| response.rect.center());
-                let zoom_center_in_scene = ui_from_scene
-                    .inverse()
-                    .transform_pos(zoom_center_in_ui)
-                    .to_vec2();
-                *visual_bounds = Some(
-                    scale_rect(
-                        active_bounds.translate(-zoom_center_in_scene),
-                        Vec2::splat(1.0) / zoom_delta,
-                    )
-                    .translate(zoom_center_in_scene),
-                );
-            }
-        }
-
-        // --------------------------------------------------------------------------
-
-        RectTransform::from_to(letterboxed_bounds, response.rect)
+    let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
+    if scale_aspect < 1.0 {
+        // Letterbox top/bottom:
+        let add = bounds_rect.height() * (1.0 / scale_aspect - 1.0);
+        letterboxed_bounds.min.y -= 0.5 * add;
+        letterboxed_bounds.max.y += 0.5 * add;
+    } else {
+        // Letterbox sides:
+        let add = bounds_rect.width() * (scale_aspect - 1.0);
+        letterboxed_bounds.min.x -= 0.5 * add;
+        letterboxed_bounds.max.x += 0.5 * add;
     }
 
-    re_viewport_blueprint::edit_blueprint_component::<
-        VisualBounds2D,
-        blueprint_components::VisualBounds2D,
-        RectTransform,
-    >(
-        ctx,
-        space_view_id,
-        |range2d: &mut Option<blueprint_components::VisualBounds2D>| {
-            // Convert to a Rect
-            let mut rect = range2d.map(Rect::from);
+    // --------------------------------------------------------------------------
 
-            // Apply pan and zoom based on input
-            let ui_from_scene = update_ui_from_scene_impl(&mut rect, response, default_scene_rect);
+    // Temporary before applying panning/zooming delta:
+    let ui_from_scene = RectTransform::from_to(letterboxed_bounds, response.rect);
 
-            // Store the result back (if changed).
-            *range2d = rect.map(Into::into);
+    // --------------------------------------------------------------------------
 
-            if response.double_clicked() {
-                // Double-click to reset.
-                // We put it last so that we reset to the value in the default blueprint
-                // (which is not the same as `default_scene_rect`).
-                *range2d = None;
-            }
+    let mut pan_delta_in_ui = response.drag_delta();
+    if response.hovered() {
+        pan_delta_in_ui += response.ctx.input(|i| i.smooth_scroll_delta);
+    }
+    if pan_delta_in_ui != Vec2::ZERO {
+        bounds_rect = bounds_rect.translate(-pan_delta_in_ui / ui_from_scene.scale());
+    }
 
-            ui_from_scene
-        },
-    )
+    if response.hovered() {
+        let zoom_delta = response.ctx.input(|i| i.zoom_delta_2d());
+
+        if zoom_delta != Vec2::splat(1.0) {
+            let zoom_center_in_ui = response
+                .hover_pos()
+                .unwrap_or_else(|| response.rect.center());
+            let zoom_center_in_scene = ui_from_scene
+                .inverse()
+                .transform_pos(zoom_center_in_ui)
+                .to_vec2();
+            bounds_rect = scale_rect(
+                bounds_rect.translate(-zoom_center_in_scene),
+                Vec2::splat(1.0) / zoom_delta,
+            )
+            .translate(zoom_center_in_scene);
+        }
+    }
+
+    // Update blueprint if changed
+    let updated_bounds: blueprint_components::VisualBounds2D = bounds_rect.into();
+    if response.double_clicked() {
+        bounds_property.reset_blueprint_component::<blueprint_components::VisualBounds2D>(ctx);
+    } else if bounds != updated_bounds {
+        bounds_property.save_blueprint_component(ctx, &updated_bounds);
+    }
+
+    RectTransform::from_to(letterboxed_bounds, response.rect)
 }
 
 fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
@@ -165,14 +139,6 @@ pub fn help_text(egui_ctx: &egui::Context) -> egui::WidgetText {
     layout.add(" to reset the view.");
 
     layout.layout_job.into()
-}
-
-/// The pinhole sensor rectangle: [0, 0] - [width, height],
-/// ignoring principal point.
-fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<Rect> {
-    pinhole
-        .resolution()
-        .map(|res| Rect::from_min_max(Pos2::ZERO, pos2(res.x, res.y)))
 }
 
 /// Create the outer 2D view, which consists of a scrollable region
@@ -201,35 +167,14 @@ impl SpatialSpaceView2D {
 
         // Note that we can't rely on the camera being part of scene.space_cameras since that requires
         // the camera to be added to the scene!
-        let pinhole = query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
+        state.pinhole_at_origin =
+            query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
 
         let (mut response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
-        let default_scene_rect = {
-            let default_scene_rect = pinhole
-                .as_ref()
-                .and_then(pinhole_resolution_rect)
-                .unwrap_or_else(|| {
-                    // TODO(emilk): if there is a single image, use that as the default bounds
-                    let scene_rect_accum = state.bounding_boxes.accumulated;
-                    egui::Rect::from_min_max(
-                        scene_rect_accum.min.truncate().to_array().into(),
-                        scene_rect_accum.max.truncate().to_array().into(),
-                    )
-                });
-
-            if !valid_bound(&default_scene_rect) {
-                // Nothing in scene, probably.
-                // Just return something that isn't NaN.
-                Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0))
-            } else {
-                default_scene_rect
-            }
-        };
-
         // Convert ui coordinates to/from scene coordinates.
-        let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, default_scene_rect);
+        let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, self, state);
         let scene_from_ui = ui_from_scene.inverse();
 
         // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.
@@ -245,7 +190,7 @@ impl SpatialSpaceView2D {
             &query.space_origin.to_string(),
             state.auto_size_config(),
             query.highlights.any_outlines(),
-            pinhole,
+            &state.pinhole_at_origin,
         ) else {
             return Ok(());
         };
@@ -288,9 +233,13 @@ impl SpatialSpaceView2D {
             view_builder.queue_draw(draw_data);
         }
 
-        let background = ViewProperty::from_archetype::<Background>(ctx, query.space_view_id);
+        let background = ViewProperty::from_archetype::<Background>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
         let (background_drawable, clear_color) =
-            crate::configure_background(&background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }
@@ -344,7 +293,7 @@ fn setup_target_config(
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
-    scene_pinhole: Option<Pinhole>,
+    scene_pinhole: &Option<Pinhole>,
 ) -> anyhow::Result<TargetConfiguration> {
     // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.
 
@@ -374,7 +323,7 @@ fn setup_target_config(
     if let Some(scene_pinhole) = scene_pinhole {
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
-        pinhole = scene_pinhole;
+        pinhole = scene_pinhole.clone();
 
         resolution = pinhole.resolution().unwrap_or_else(|| {
             // This is weird - we have a projection with an unknown resolution.

@@ -1,5 +1,10 @@
 use super::Range1D;
 
+impl Range1D {
+    /// Range that expands from negative infinity to positive infinity.
+    pub const INFINITY: Self = Self([f64::NEG_INFINITY, f64::INFINITY]);
+}
+
 impl From<emath::Rangef> for Range1D {
     #[inline]
     fn from(rangef: emath::Rangef) -> Self {

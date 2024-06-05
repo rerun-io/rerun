@@ -25,6 +25,7 @@ mod view_3d;
 mod view_3d_properties;
 mod visualizers;
 
+use re_viewer_context::ViewerContext;
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
@@ -59,8 +60,6 @@ fn resolution_from_tensor(
 }
 
 /// Utility for querying a pinhole archetype instance.
-///
-// TODO(andreas): This is duplicated into `re_viewport`
 fn query_pinhole(
     entity_db: &re_entity_db::EntityDb,
     query: &re_data_store::LatestAtQuery,
@@ -82,6 +81,7 @@ fn query_pinhole(
 }
 
 pub(crate) fn configure_background(
+    ctx: &ViewerContext<'_>,
     background: &ViewProperty<'_>,
     render_ctx: &RenderContext,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,
@@ -89,7 +89,7 @@ pub(crate) fn configure_background(
 ) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewPropertyQueryError> {
     use re_renderer::renderer;
 
-    let kind: BackgroundKind = background.component_or_fallback(view_system, state)?;
+    let kind: BackgroundKind = background.component_or_fallback(ctx, view_system, state)?;
 
     match kind {
         BackgroundKind::GradientDark => Ok((
@@ -115,7 +115,7 @@ pub(crate) fn configure_background(
         )),
 
         BackgroundKind::SolidColor => {
-            let color: Color = background.component_or_fallback(view_system, state)?;
+            let color: Color = background.component_or_fallback(ctx, view_system, state)?;
             Ok((None, color.into()))
         }
     }

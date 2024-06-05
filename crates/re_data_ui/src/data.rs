@@ -7,7 +7,7 @@ use re_types::blueprint::components::VisualBounds2D;
 use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, ViewCoordinates};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
+use super::DataUi;
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
@@ -65,13 +65,14 @@ impl DataUi for ViewCoordinates {
     ) {
         match ui_layout {
             UiLayout::List => {
-                label_for_ui_layout(ui, ui_layout, self.describe_short())
+                ui_layout
+                    .label(ui, self.describe_short())
                     .on_hover_text(self.describe());
             }
             UiLayout::SelectionPanelFull
             | UiLayout::SelectionPanelLimitHeight
             | UiLayout::Tooltip => {
-                label_for_ui_layout(ui, ui_layout, self.describe());
+                ui_layout.label(ui, self.describe());
             }
         }
     }
@@ -114,7 +115,7 @@ impl DataUi for re_types::datatypes::Vec2D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -127,7 +128,7 @@ impl DataUi for re_types::datatypes::Vec3D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -140,7 +141,7 @@ impl DataUi for re_types::datatypes::Vec4D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -153,7 +154,7 @@ impl DataUi for re_types::datatypes::UVec2D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -166,7 +167,7 @@ impl DataUi for re_types::datatypes::UVec3D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -179,7 +180,7 @@ impl DataUi for re_types::datatypes::UVec4D {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -192,7 +193,7 @@ impl DataUi for Range1D {
         _query: &LatestAtQuery,
         _db: &EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -205,7 +206,7 @@ impl DataUi for VisualBounds2D {
         _query: &LatestAtQuery,
         _db: &EntityDb,
     ) {
-        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+        ui_layout.data_label(ui, self.to_string());
     }
 }
 
@@ -220,11 +221,12 @@ impl DataUi for LineStrip2D {
     ) {
         match ui_layout {
             UiLayout::List | UiLayout::Tooltip => {
-                label_for_ui_layout(ui, ui_layout, format!("{} positions", self.0.len()));
+                ui_layout.label(ui, format!("{} positions", self.0.len()));
             }
             UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
                 use egui_extras::Column;
-                table_for_ui_layout(ui_layout, ui)
+                ui_layout
+                    .table(ui)
                     .resizable(true)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
@@ -267,11 +269,12 @@ impl DataUi for LineStrip3D {
     ) {
         match ui_layout {
             UiLayout::List | UiLayout::Tooltip => {
-                label_for_ui_layout(ui, ui_layout, format!("{} positions", self.0.len()));
+                ui_layout.label(ui, format!("{} positions", self.0.len()));
             }
             UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight => {
                 use egui_extras::Column;
-                table_for_ui_layout(ui_layout, ui)
+                ui_layout
+                    .table(ui)
                     .resizable(true)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)

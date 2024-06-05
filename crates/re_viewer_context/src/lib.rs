@@ -46,7 +46,7 @@ pub use component_fallbacks::{
     ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
     ComponentPlaceholders, TypedComponentFallbackProvider,
 };
-pub use component_ui_registry::{ComponentUiRegistry, UiLayout};
+pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
 pub use item::Item;
 pub use query_context::{
