@@ -95,8 +95,29 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
 // ----------------------------------------------------------------------------
 
 /// Extension trait for [`egui::Context`].
+///
+/// This trait provides Rerun-specific helpers and utilities that require access to the egui
+/// context.
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
+
+    /// Text format used for regular body.
+    fn text_format_body(&self) -> egui::TextFormat {
+        egui::TextFormat::simple(
+            egui::TextStyle::Body.resolve(&self.ctx().style()),
+            self.ctx().style().visuals.text_color(),
+        )
+    }
+
+    /// Text format used for labels referring to keys and buttons.
+    fn text_format_key(&self) -> egui::TextFormat {
+        let mut style = egui::TextFormat::simple(
+            egui::TextStyle::Monospace.resolve(&self.ctx().style()),
+            self.ctx().style().visuals.text_color(),
+        );
+        style.background = self.ctx().style().visuals.widgets.noninteractive.bg_fill;
+        style
+    }
 
     fn rerun_logo_uri(&self) -> &'static str {
         if self.ctx().style().visuals.dark_mode {
@@ -953,24 +974,6 @@ impl ReUi {
         }
 
         response
-    }
-
-    /// Text format used for regular body.
-    pub fn text_format_body(&self) -> egui::TextFormat {
-        egui::TextFormat::simple(
-            egui::TextStyle::Body.resolve(&self.egui_ctx.style()),
-            self.egui_ctx.style().visuals.text_color(),
-        )
-    }
-
-    /// Text format used for labels referring to keys and buttons.
-    pub fn text_format_key(&self) -> egui::TextFormat {
-        let mut style = egui::TextFormat::simple(
-            egui::TextStyle::Monospace.resolve(&self.egui_ctx.style()),
-            self.egui_ctx.style().visuals.text_color(),
-        );
-        style.background = self.egui_ctx.style().visuals.widgets.noninteractive.bg_fill;
-        style
     }
 
     /// Paints a time cursor for indicating the time on a time axis along x.

@@ -34,8 +34,8 @@ impl SpaceViewClass for BarChartSpaceView {
         Box::<()>::default()
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
         layout.add("Pan by dragging, or scroll (+ ");
         layout.add(controls::HORIZONTAL_SCROLL_MODIFIER);

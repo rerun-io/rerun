@@ -55,7 +55,7 @@ impl SpaceViewClass for TextSpaceView {
         &re_ui::icons::SPACE_VIEW_LOG
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
         "Shows TextLog entries over time.\nSelect the Space View for filtering options.".into()
     }
 

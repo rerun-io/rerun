@@ -676,7 +676,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         let help_text = space_view
             .class(self.ctx.space_view_class_registry)
-            .help_text(self.ctx.re_ui);
+            .help_text(&self.ctx.re_ui.egui_ctx);
         ui.help_hover_button().on_hover_text(help_text);
     }
 

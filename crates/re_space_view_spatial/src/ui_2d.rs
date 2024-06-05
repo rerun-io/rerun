@@ -151,8 +151,8 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
     )
 }
 
-pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
-    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+pub fn help_text(egui_ctx: &egui::Context) -> egui::WidgetText {
+    let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
     layout.add(ZOOM_SCROLL_MODIFIER);
     layout.add(" + scroll to zoom.\n");

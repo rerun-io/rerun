@@ -31,7 +31,7 @@ impl SpaceViewClass for DataframeSpaceView {
         &re_ui::icons::SPACE_VIEW_DATAFRAME
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
         "Show the data contained in entities in a table.\n\n\
         Each entity is represented by as many rows as it has instances."
             .into()

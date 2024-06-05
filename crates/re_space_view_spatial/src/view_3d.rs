@@ -58,8 +58,8 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &re_ui::icons::SPACE_VIEW_3D
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        super::ui_3d::help_text(re_ui)
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        super::ui_3d::help_text(egui_ctx)
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {

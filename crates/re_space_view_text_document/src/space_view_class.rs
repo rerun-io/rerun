@@ -62,7 +62,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         &re_ui::icons::SPACE_VIEW_TEXT
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
         "Displays text from a text entry components.".into()
     }
 
