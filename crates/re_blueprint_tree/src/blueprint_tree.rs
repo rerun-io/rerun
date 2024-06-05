@@ -1054,9 +1054,11 @@ fn visibility_button_ui(
     enabled: bool,
     visible: &mut bool,
 ) -> egui::Response {
-    ui.set_enabled(enabled);
-    re_ui
-        .visibility_toggle_button(ui, visible)
-        .on_hover_text("Toggle visibility")
-        .on_disabled_hover_text("A parent is invisible")
+    ui.add_enabled_ui(enabled, |ui| {
+        re_ui
+            .visibility_toggle_button(ui, visible)
+            .on_hover_text("Toggle visibility")
+            .on_disabled_hover_text("A parent is invisible")
+    })
+    .inner
 }
