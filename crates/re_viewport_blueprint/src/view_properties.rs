@@ -90,7 +90,7 @@ impl<'a> ViewProperty<'a> {
             .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
     }
 
-    /// Get the value of a specific component or its fallback if the component is not present.
+    /// Get the component array for a given type or its fallback if the component is not present or empty.
     pub fn component_array_or_fallback<C: re_types::Component + Default>(
         &self,
         ctx: &'a ViewerContext<'a>,
@@ -104,7 +104,7 @@ impl<'a> ViewProperty<'a> {
         )?)
     }
 
-    /// Get the value of a specific component or its fallback if the component is not present.
+    /// Get the component array for a given type.
     pub fn component_array<C: re_types::Component + Default>(
         &self,
     ) -> Option<Result<Vec<C>, DeserializationError>> {
