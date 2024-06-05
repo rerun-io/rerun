@@ -323,7 +323,7 @@ impl ReUi {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn checkbox(
+    pub fn re_checkbox(
         &self,
         ui: &mut egui::Ui,
         selected: &mut bool,
@@ -354,7 +354,7 @@ impl ReUi {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn radio_value<Value: PartialEq>(
+    pub fn re_radio_value<Value: PartialEq>(
         &self,
         ui: &mut egui::Ui,
         current_value: &mut Value,

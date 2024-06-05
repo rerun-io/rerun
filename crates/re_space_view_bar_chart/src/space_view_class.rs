@@ -119,7 +119,11 @@ impl SpaceViewClass for BarChartSpaceView {
 
                 ui.vertical(|ui| {
                     let mut selected = *root_entity_properties.show_legend.get();
-                    if ctx.re_ui.checkbox(ui, &mut selected, "Visible").changed() {
+                    if ctx
+                        .re_ui
+                        .re_checkbox(ui, &mut selected, "Visible")
+                        .changed()
+                    {
                         root_entity_properties.show_legend =
                             EditableAutoValue::UserEdited(selected);
                     }

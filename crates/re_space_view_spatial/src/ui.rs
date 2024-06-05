@@ -169,7 +169,7 @@ impl SpatialSpaceViewState {
         {
             let mut spin = self.state_3d.spin();
             if re_ui
-                .checkbox(ui, &mut spin, "Spin")
+                .re_checkbox(ui, &mut spin, "Spin")
                 .on_hover_text("Spin camera around the orbit center")
                 .changed()
             {

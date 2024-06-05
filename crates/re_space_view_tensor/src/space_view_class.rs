@@ -480,7 +480,7 @@ impl TextureSettings {
                     selectable_value(ui, TextureScaling::Fill);
                 });
             if *scaling == TextureScaling::Fill {
-                re_ui.checkbox(ui, keep_aspect_ratio, "Keep aspect ratio");
+                re_ui.re_checkbox(ui, keep_aspect_ratio, "Keep aspect ratio");
             }
         });
         ui.end_row();

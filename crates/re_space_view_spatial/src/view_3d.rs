@@ -354,13 +354,13 @@ impl SpaceViewClass for SpatialSpaceView3D {
                     }
 
                     ctx.re_ui
-                        .checkbox(ui, &mut state.state_3d.show_axes, "Show origin axes")
+                        .re_checkbox(ui, &mut state.state_3d.show_axes, "Show origin axes")
                         .on_hover_text("Show X-Y-Z axes");
                     ctx.re_ui
-                        .checkbox(ui, &mut state.state_3d.show_bbox, "Show bounding box")
+                        .re_checkbox(ui, &mut state.state_3d.show_bbox, "Show bounding box")
                         .on_hover_text("Show the current scene bounding box");
                     ctx.re_ui
-                        .checkbox(
+                        .re_checkbox(
                             ui,
                             &mut state.state_3d.show_accumulated_bbox,
                             "Show accumulated bounding box",

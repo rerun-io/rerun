@@ -96,10 +96,10 @@ impl SpaceViewClass for TextDocumentSpaceView {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
             ui.vertical(|ui| {
                 ctx.re_ui
-                    .radio_value(ui, &mut state.monospace, false, "Proportional");
+                    .re_radio_value(ui, &mut state.monospace, false, "Proportional");
                 ctx.re_ui
-                    .radio_value(ui, &mut state.monospace, true, "Monospace");
-                ctx.re_ui.checkbox(ui, &mut state.word_wrap, "Word Wrap");
+                    .re_radio_value(ui, &mut state.monospace, true, "Monospace");
+                ctx.re_ui.re_checkbox(ui, &mut state.word_wrap, "Word Wrap");
             });
             ui.end_row();
         });

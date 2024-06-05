@@ -256,12 +256,12 @@ impl eframe::App for ExampleApp {
                 .large_collapsing_header(ui, "Blueprint", true, |ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                     ui.label("Some blueprint stuff here, that might be wide.");
-                    self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
+                    self.re_ui.re_checkbox(ui, &mut self.dummy_bool, "Checkbox");
 
                     self.re_ui
                         .collapsing_header(ui, "Collapsing header", true, |ui| {
                             ui.label("Some data here");
-                            self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
+                            self.re_ui.re_checkbox(ui, &mut self.dummy_bool, "Checkbox");
                         });
                 });
         };

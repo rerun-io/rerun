@@ -169,7 +169,7 @@ fn query_range_ui(
         .collapsing_header(ui, "Visible time range", false, |ui| {
             ui.horizontal(|ui| {
                 re_ui
-                    .radio_value(ui, has_individual_time_range, false, "Default")
+                    .re_radio_value(ui, has_individual_time_range, false, "Default")
                     .on_hover_text(if is_space_view {
                         "Default query range settings for this kind of space view"
                     } else {
@@ -177,7 +177,7 @@ fn query_range_ui(
                         space view"
                     });
                 re_ui
-                    .radio_value(ui, has_individual_time_range, true, "Override")
+                    .re_radio_value(ui, has_individual_time_range, true, "Override")
                     .on_hover_text(if is_space_view {
                         "Set query range settings for the contents of this space view"
                     } else {

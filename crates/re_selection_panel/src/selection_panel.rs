@@ -1235,7 +1235,7 @@ fn entity_props_ui(
             override_source.is_some() && override_source.as_ref() != Some(entity_path);
 
         ui.horizontal(|ui| {
-            re_ui.checkbox(ui, &mut visible, "Visible");
+            re_ui.re_checkbox(ui, &mut visible, "Visible");
             if is_inherited {
                 ui.label("(inherited)");
             }
@@ -1251,7 +1251,7 @@ fn entity_props_ui(
     }
 
     re_ui
-        .checkbox(ui, &mut entity_props.interactive, "Interactive")
+        .re_checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
     query_range_ui_data_result(ctx, ui, data_result);
@@ -1350,7 +1350,7 @@ fn depth_props_ui(
 
     if ctx
         .re_ui
-        .checkbox(ui, &mut backproject_depth, "Backproject Depth")
+        .re_checkbox(ui, &mut backproject_depth, "Backproject Depth")
         .on_hover_text(
             "If enabled, the depth texture will be backprojected into a point cloud rather \
                 than simply displayed as an image.",
@@ -1450,7 +1450,7 @@ fn transform3d_visualization_ui(
 
     {
         let mut checked = *show_arrows.get();
-        let response = ctx.re_ui.checkbox(ui, &mut checked, "Show transform").on_hover_text(
+        let response = ctx.re_ui.re_checkbox(ui, &mut checked, "Show transform").on_hover_text(
             "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
         if response.changed() {
             *show_arrows = EditableAutoValue::UserEdited(checked);

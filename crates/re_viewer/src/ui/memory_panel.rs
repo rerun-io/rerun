@@ -144,7 +144,7 @@ impl MemoryPanel {
 
         let mut is_tracking_callstacks = re_memory::accounting_allocator::is_tracking_callstacks();
         re_ui
-            .checkbox(
+            .re_checkbox(
                 ui,
                 &mut is_tracking_callstacks,
                 "Detailed allocation tracking",

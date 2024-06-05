@@ -308,7 +308,7 @@ fn options_menu_ui(
     app_options: &mut re_viewer_context::AppOptions,
 ) {
     re_ui
-        .checkbox(
+        .re_checkbox(
             ui,
             &mut app_options.show_metrics,
             "Show performance metrics",
@@ -320,13 +320,13 @@ fn options_menu_ui(
     });
     ui.horizontal(|ui| {
         re_ui
-            .radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
+            .re_radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
             .on_hover_text("Display timestamps in UTC");
         re_ui
-            .radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
+            .re_radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
             .on_hover_text("Display timestamps in the local timezone");
         re_ui
-            .radio_value(
+            .re_radio_value(
                 ui,
                 &mut app_options.time_zone,
                 TimeZone::UnixEpoch,
@@ -335,7 +335,7 @@ fn options_menu_ui(
             .on_hover_text("Display timestamps in seconds since unix epoch");
     });
 
-    re_ui.checkbox(
+    re_ui.re_checkbox(
         ui,
         &mut app_options.include_welcome_screen_button_in_recordings_panel,
         "Show 'Welcome screen' button",
@@ -373,11 +373,11 @@ fn experimental_feature_ui(
 ) {
     #[cfg(not(target_arch = "wasm32"))]
     re_ui
-        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space view screenshots")
+        .re_checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
 
     if re_ui
-        .checkbox(
+        .re_checkbox(
             ui,
             &mut app_options.experimental_dataframe_space_view,
             "Dataframe space view",
@@ -391,7 +391,7 @@ fn experimental_feature_ui(
     }
 
     re_ui
-        .checkbox(
+        .re_checkbox(
             ui,
             &mut app_options.experimental_plot_query_clamping,
             "Plots: query clamping",
@@ -399,7 +399,7 @@ fn experimental_feature_ui(
         .on_hover_text("Toggle query clamping for the plot visualizers.");
 
     re_ui
-        .checkbox(
+        .re_checkbox(
             ui,
             &mut app_options.experimental_visualizer_selection,
             "Visualizer selection for all views",
@@ -413,22 +413,22 @@ fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
     let mut any_clicked = false;
 
     any_clicked |= re_ui
-        .checkbox(ui, &mut debug.debug_on_hover, "Ui debug on hover")
+        .re_checkbox(ui, &mut debug.debug_on_hover, "Ui debug on hover")
         .on_hover_text("However over widgets to see their rectangles")
         .changed();
     any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_expand_width, "Show expand width")
+        .re_checkbox(ui, &mut debug.show_expand_width, "Show expand width")
         .on_hover_text("Show which widgets make their parent wider")
         .changed();
     any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_expand_height, "Show expand height")
+        .re_checkbox(ui, &mut debug.show_expand_height, "Show expand height")
         .on_hover_text("Show which widgets make their parent higher")
         .changed();
     any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_resize, "Show resize")
+        .re_checkbox(ui, &mut debug.show_resize, "Show resize")
         .changed();
     any_clicked |= re_ui
-        .checkbox(
+        .re_checkbox(
             ui,
             &mut debug.show_interactive_widgets,
             "Show interactive widgets",
@@ -474,13 +474,13 @@ fn debug_menu_options_ui(
 
     ui.horizontal(|ui| {
         ui.label("Blueprint GC:");
-        re_ui.radio_value(ui, &mut app_options.blueprint_gc, true, "Enabled");
-        re_ui.radio_value(ui, &mut app_options.blueprint_gc, false, "Disabled");
+        re_ui.re_radio_value(ui, &mut app_options.blueprint_gc, true, "Enabled");
+        re_ui.re_radio_value(ui, &mut app_options.blueprint_gc, false, "Disabled");
     });
 
-    re_ui.checkbox(ui,
-        &mut app_options.show_picking_debug_overlay,
-        "Picking Debug Overlay",
+    re_ui.re_checkbox(ui,
+                      &mut app_options.show_picking_debug_overlay,
+                      "Picking Debug Overlay",
     ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
 
     ui.menu_button("Crash", |ui| {
