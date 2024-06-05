@@ -2,7 +2,7 @@ use itertools::{FoldWhile, Itertools};
 use re_entity_db::{external::re_query::PromiseResult, EntityProperties};
 use re_types::SpaceViewClassIdentifier;
 
-use crate::SpaceViewContents;
+use crate::{SpaceViewContents, ViewProperty};
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
 use re_log_types::{DataRow, EntityPathSubs, RowId, Timeline};
@@ -428,15 +428,21 @@ impl SpaceViewBlueprint {
         // * default does not vary per visualizer
         // * can't be specified in the data store
         // Here, we query the visual time range that serves as the default for all entities in this space.
-        let (visible_time_range_archetype, _) = crate::query_view_property::<
-            blueprint_archetypes::VisibleTimeRanges,
-        >(self.id, blueprint, blueprint_query);
 
-        let visible_time_range_archetype = visible_time_range_archetype.ok().flatten();
+        let property = ViewProperty::from_archetype::<blueprint_archetypes::VisibleTimeRanges>(
+            blueprint,
+            blueprint_query,
+            self.id,
+        );
+        let ranges = property.component_array();
 
-        let time_range = visible_time_range_archetype
-            .as_ref()
-            .and_then(|arch| arch.range_for_timeline(active_timeline.name().as_str()));
+        let time_range = ranges.and_then(|ranges| {
+            ranges.ok().and_then(|ranges| {
+                blueprint_archetypes::VisibleTimeRanges { ranges }
+                    .range_for_timeline(active_timeline.name().as_str())
+                    .cloned()
+            })
+        });
         time_range.map_or_else(
             || {
                 let space_view_class =
