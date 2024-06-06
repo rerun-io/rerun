@@ -30,6 +30,7 @@ fn run_space_view_systems(
 
     let view_ctx = re_viewer_context::ViewContext {
         viewer_ctx: ctx,
+        view_id: query.space_view_id,
         view_state,
         visualizer_collection: &visualizer_collection,
     };

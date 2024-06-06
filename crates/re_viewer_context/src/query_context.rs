@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataResult, SpaceViewId, SpaceViewState, ViewerContext};
+use crate::{DataResult, SpaceViewId, ViewContext, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -17,7 +17,7 @@ slotmap::new_key_type! {
 // This is currently used only for fallback providers, but the expectation is that we're using this more widely as the primary context object
 // in all places where we query a specific entity in a specific view.
 pub struct QueryContext<'a> {
-    pub viewer_ctx: &'a ViewerContext<'a>,
+    pub view_ctx: &'a ViewContext<'a>,
 
     /// Target entity path which is lacking the component and needs a fallback.
     ///
@@ -32,9 +32,6 @@ pub struct QueryContext<'a> {
 
     /// Query which didn't yield a result for the component at the target entity path.
     pub query: &'a re_data_store::LatestAtQuery,
-
-    /// The view state of the view in which the query is executed.
-    pub view_state: &'a dyn SpaceViewState,
 }
 
 /// The result of executing a single data query

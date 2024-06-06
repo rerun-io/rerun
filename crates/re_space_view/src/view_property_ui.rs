@@ -2,7 +2,7 @@ use ahash::HashMap;
 use re_types_core::{Archetype, ArchetypeFieldInfo, ArchetypeInfo, ComponentName};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
-    ComponentFallbackProvider, ComponentUiTypes, QueryContext, SpaceViewId, SpaceViewState,
+    ComponentFallbackProvider, ComponentUiTypes, QueryContext, SpaceViewId, ViewContext,
     ViewerContext,
 };
 use re_viewport_blueprint::entity_path_for_view_property;
@@ -11,35 +11,32 @@ use re_viewport_blueprint::entity_path_for_view_property;
 ///
 /// Note that this will show default values for components that are null.
 pub fn view_property_ui<A: Archetype>(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: SpaceViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
-    view_state: &dyn SpaceViewState,
 ) {
-    view_property_ui_impl(ctx, ui, view_id, A::info(), view_state, fallback_provider);
+    view_property_ui_impl(ctx, ui, view_id, A::info(), fallback_provider);
 }
 
 fn view_property_ui_impl(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     view_id: SpaceViewId,
     archetype: ArchetypeInfo,
-    view_state: &dyn SpaceViewState,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let blueprint_path =
         entity_path_for_view_property(view_id, ctx.blueprint_db().tree(), archetype.name);
     let query_ctx = QueryContext {
-        viewer_ctx: ctx,
+        view_ctx: ctx,
         target_entity_path: &blueprint_path,
         archetype_name: Some(archetype.name),
-        query: ctx.blueprint_query,
-        view_state,
+        query: ctx.viewer_ctx.blueprint_query,
     };
 
     let component_results = ctx.blueprint_db().latest_at(
-        ctx.blueprint_query,
+        ctx.viewer_ctx.blueprint_query,
         &blueprint_path,
         archetype.component_names.iter().copied(),
     );
@@ -131,6 +128,7 @@ fn view_property_component_ui(
     );
 
     let ui_types = ctx
+        .view_ctx
         .viewer_ctx
         .component_ui_registry
         .registered_ui_types(component_name);
@@ -146,15 +144,18 @@ fn view_property_component_ui(
                 default_open,
                 singleline_list_item_content,
                 |ui| {
-                    ctx.viewer_ctx.component_ui_registry.multiline_edit_ui(
-                        ctx,
-                        ui,
-                        ctx.viewer_ctx.blueprint_db(),
-                        blueprint_path,
-                        component_name,
-                        component_results,
-                        fallback_provider,
-                    );
+                    ctx.view_ctx
+                        .viewer_ctx
+                        .component_ui_registry
+                        .multiline_edit_ui(
+                            ctx,
+                            ui,
+                            ctx.view_ctx.blueprint_db(),
+                            blueprint_path,
+                            component_name,
+                            component_results,
+                            fallback_provider,
+                        );
                 },
             )
             .item_response
@@ -170,7 +171,7 @@ fn view_property_component_ui(
     }
 
     view_property_context_menu(
-        ctx.viewer_ctx,
+        ctx.view_ctx.viewer_ctx,
         &list_item_response,
         blueprint_path,
         component_name,
@@ -221,18 +222,22 @@ fn singleline_list_item_content<'a>(
 ) -> list_item::PropertyContent<'a> {
     list_item::PropertyContent::new(display_name)
         .action_button(&re_ui::icons::RESET, move || {
-            ctx.viewer_ctx
+            ctx.view_ctx
+                .viewer_ctx
                 .reset_blueprint_component_by_name(blueprint_path, component_name);
         })
         .value_fn(move |ui, _| {
-            ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
-                ctx,
-                ui,
-                ctx.viewer_ctx.blueprint_db(),
-                blueprint_path,
-                component_name,
-                component_results,
-                fallback_provider,
-            );
+            ctx.view_ctx
+                .viewer_ctx
+                .component_ui_registry
+                .singleline_edit_ui(
+                    ctx,
+                    ui,
+                    ctx.view_ctx.blueprint_db(),
+                    blueprint_path,
+                    component_name,
+                    component_results,
+                    fallback_provider,
+                );
         })
 }

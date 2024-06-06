@@ -182,8 +182,19 @@ impl SelectionPanel {
                                 .view_state
                                 .as_ref();
 
+                            let visualizer_collection = ctx
+                                .space_view_class_registry
+                                .new_visualizer_collection(view.class_identifier());
+
+                            let view_ctx = ViewContext {
+                                viewer_ctx: ctx,
+                                view_id: *view_id,
+                                view_state,
+                                visualizer_collection: &visualizer_collection,
+                            };
+
                             ui.large_collapsing_header("Component Overrides", true, |ui| {
-                                override_ui(ctx, view, view_state, instance_path, ui);
+                                override_ui(&view_ctx, view, instance_path, ui);
                             });
                         }
                     }
@@ -242,6 +253,7 @@ impl SelectionPanel {
 
                 let view_ctx = ViewContext {
                     viewer_ctx: ctx,
+                    view_id: *space_view_id,
                     view_state,
                     visualizer_collection: &visualizer_collection,
                 };

@@ -17,8 +17,8 @@ use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, view_coordinates::SignedAxis3,
 };
 use re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
-    ViewQuery, ViewerContext,
+    gpu_bridge, Item, ItemSpaceContext, SpaceViewClass as _, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, ViewContext, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -681,8 +681,20 @@ impl SpatialSpaceView3D {
             ctx.blueprint_query,
             query.space_view_id,
         );
+
+        let visualizer_collection = ctx
+            .space_view_class_registry
+            .new_visualizer_collection(Self::identifier());
+
+        let view_ctx = ViewContext {
+            viewer_ctx: ctx,
+            view_id: query.space_view_id,
+            view_state: state,
+            visualizer_collection: &visualizer_collection,
+        };
+
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, render_ctx, self, state)?;
+            crate::configure_background(&view_ctx, &background, render_ctx, self)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }

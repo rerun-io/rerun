@@ -150,11 +150,10 @@ impl SeriesLineSystem {
         let resolver = ctx.recording().resolver();
 
         let query_ctx = QueryContext {
-            viewer_ctx: ctx.viewer_ctx,
+            view_ctx: ctx,
             archetype_name: Some(SeriesLine::name()),
             query: &ctx.current_query(),
             target_entity_path: &data_result.entity_path,
-            view_state: ctx.view_state,
         };
 
         let fallback_color =

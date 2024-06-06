@@ -469,10 +469,12 @@ impl ComponentUiRegistry {
                 }
             };
 
-            if let Some(updated) =
-                (*edit_callback)(ctx.viewer_ctx, ui, component_value_or_fallback.as_ref())
-            {
-                ctx.viewer_ctx.save_blueprint_data_cell(
+            if let Some(updated) = (*edit_callback)(
+                ctx.view_ctx.viewer_ctx,
+                ui,
+                component_value_or_fallback.as_ref(),
+            ) {
+                ctx.view_ctx.viewer_ctx.save_blueprint_data_cell(
                     blueprint_write_path,
                     re_log_types::DataCell::from_arrow(component_name, updated),
                 );
@@ -480,7 +482,7 @@ impl ComponentUiRegistry {
         } else {
             // Even if we can't edit the component, it's still helpful to show what the value is.
             self.ui(
-                ctx.viewer_ctx,
+                ctx.view_ctx.viewer_ctx,
                 ui,
                 UiLayout::List,
                 ctx.query,

@@ -14,8 +14,8 @@ use re_types::{
     components::ViewCoordinates,
 };
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    gpu_bridge, ItemSpaceContext, SpaceViewClass as _, SpaceViewId, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, ViewContext, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -35,19 +35,18 @@ use crate::{
 
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     view_id: SpaceViewId,
     response: &egui::Response,
     view_class: &SpatialSpaceView2D,
-    view_state: &SpatialSpaceViewState,
 ) -> RectTransform {
     let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
         ctx.blueprint_db(),
-        ctx.blueprint_query,
+        ctx.viewer_ctx.blueprint_query,
         view_id,
     );
     let bounds: blueprint_components::VisualBounds2D = bounds_property
-        .component_or_fallback(ctx, view_class, view_state)
+        .component_or_fallback(ctx, view_class)
         .ok_or_log_error()
         .unwrap_or_default();
     let mut bounds_rect: egui::Rect = bounds.into();
@@ -110,9 +109,10 @@ fn ui_from_scene(
     // Update blueprint if changed
     let updated_bounds: blueprint_components::VisualBounds2D = bounds_rect.into();
     if response.double_clicked() {
-        bounds_property.reset_blueprint_component::<blueprint_components::VisualBounds2D>(ctx);
+        bounds_property
+            .reset_blueprint_component::<blueprint_components::VisualBounds2D>(ctx.viewer_ctx);
     } else if bounds != updated_bounds {
-        bounds_property.save_blueprint_component(ctx, &updated_bounds);
+        bounds_property.save_blueprint_component(ctx.viewer_ctx, &updated_bounds);
     }
 
     RectTransform::from_to(letterboxed_bounds, response.rect)
@@ -177,8 +177,19 @@ impl SpatialSpaceView2D {
         let (mut response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
+        let visualizer_collection = ctx
+            .space_view_class_registry
+            .new_visualizer_collection(Self::identifier());
+
+        let view_context = ViewContext {
+            viewer_ctx: ctx,
+            view_id: query.space_view_id,
+            view_state: state,
+            visualizer_collection: &visualizer_collection,
+        };
+
         // Convert ui coordinates to/from scene coordinates.
-        let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, self, state);
+        let ui_from_scene = ui_from_scene(&view_context, query.space_view_id, &response, self);
         let scene_from_ui = ui_from_scene.inverse();
 
         // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.
@@ -233,6 +244,14 @@ impl SpatialSpaceView2D {
             )?;
         }
 
+        // TODO(jleibs): Creating (and recreating this) is annoying. Sort out when we need state to be mutable.
+        let view_context = ViewContext {
+            viewer_ctx: ctx,
+            view_id: query.space_view_id,
+            view_state: state,
+            visualizer_collection: &visualizer_collection,
+        };
+
         for draw_data in draw_data {
             view_builder.queue_draw(draw_data);
         }
@@ -243,7 +262,7 @@ impl SpatialSpaceView2D {
             query.space_view_id,
         );
         let (background_drawable, clear_color) =
-            crate::configure_background(ctx, &background, render_ctx, self, state)?;
+            crate::configure_background(&view_context, &background, render_ctx, self)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }

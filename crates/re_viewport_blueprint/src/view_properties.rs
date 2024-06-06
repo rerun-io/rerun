@@ -4,7 +4,7 @@ use re_log_types::EntityPath;
 use re_types::{external::arrow2, Archetype, ArchetypeName, ComponentName, DeserializationError};
 use re_viewer_context::{
     external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
-    QueryContext, SpaceViewId, SpaceViewSystemExecutionError, ViewerContext,
+    QueryContext, SpaceViewId, SpaceViewSystemExecutionError, ViewContext, ViewerContext,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -80,11 +80,10 @@ impl<'a> ViewProperty<'a> {
     // This sadly means that there's a bit of unnecessary back and forth between arrow array and untyped that could be avoided otherwise.
     pub fn component_or_fallback<C: re_types::Component + Default>(
         &self,
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a ViewContext<'a>,
         fallback_provider: &dyn ComponentFallbackProvider,
-        view_state: &'a dyn re_viewer_context::SpaceViewState,
     ) -> Result<C, ViewPropertyQueryError> {
-        self.component_array_or_fallback::<C>(ctx, fallback_provider, view_state)?
+        self.component_array_or_fallback::<C>(ctx, fallback_provider)?
             .into_iter()
             .next()
             .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
@@ -93,13 +92,12 @@ impl<'a> ViewProperty<'a> {
     /// Get the component array for a given type or its fallback if the component is not present or empty.
     pub fn component_array_or_fallback<C: re_types::Component + Default>(
         &self,
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a ViewContext<'a>,
         fallback_provider: &dyn ComponentFallbackProvider,
-        view_state: &'a dyn re_viewer_context::SpaceViewState,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         let component_name = C::name();
         Ok(C::from_arrow(
-            self.component_or_fallback_raw(ctx, component_name, fallback_provider, view_state)?
+            self.component_or_fallback_raw(ctx, component_name, fallback_provider)?
                 .as_ref(),
         )?)
     }
@@ -124,17 +122,16 @@ impl<'a> ViewProperty<'a> {
 
     fn component_or_fallback_raw(
         &self,
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a ViewContext<'a>,
         component_name: ComponentName,
         fallback_provider: &dyn ComponentFallbackProvider,
-        view_state: &'a dyn re_viewer_context::SpaceViewState,
     ) -> Result<Box<dyn arrow2::array::Array>, ComponentFallbackError> {
         if let Some(value) = self.component_raw(component_name) {
             if value.len() > 0 {
                 return Ok(value);
             }
         }
-        fallback_provider.fallback_for(&self.query_context(ctx, view_state), component_name)
+        fallback_provider.fallback_for(&self.query_context(ctx), component_name)
     }
 
     /// Save change to a blueprint component.
@@ -151,17 +148,12 @@ impl<'a> ViewProperty<'a> {
         ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, C::name());
     }
 
-    fn query_context(
-        &self,
-        viewer_ctx: &'a ViewerContext<'a>,
-        view_state: &'a dyn re_viewer_context::SpaceViewState,
-    ) -> QueryContext<'_> {
+    fn query_context(&self, view_ctx: &'a ViewContext<'a>) -> QueryContext<'_> {
         QueryContext {
-            viewer_ctx,
+            view_ctx,
             target_entity_path: &self.blueprint_store_path,
             archetype_name: Some(self.archetype_name),
             query: self.blueprint_query,
-            view_state,
         }
     }
 }

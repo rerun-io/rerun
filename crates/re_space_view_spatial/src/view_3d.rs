@@ -15,7 +15,7 @@ use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerSystemEntities, PerVisualizer,
     RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
+    SpaceViewSystemExecutionError, ViewContext, ViewQuery, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizableFilterContext,
 };
 
@@ -411,8 +411,19 @@ impl SpaceViewClass for SpatialSpaceView3D {
             state.bounding_box_ui(ui, SpatialSpaceViewKind::ThreeD);
         });
 
+        let visualizer_collection = ctx
+            .space_view_class_registry
+            .new_visualizer_collection(Self::identifier());
+
+        let view_ctx = ViewContext {
+            viewer_ctx: ctx,
+            view_id,
+            view_state: state,
+            visualizer_collection: &visualizer_collection,
+        };
+
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            view_property_ui::<Background>(ctx, ui, view_id, self, state);
+            view_property_ui::<Background>(&view_ctx, ui, view_id, self);
         });
 
         Ok(())

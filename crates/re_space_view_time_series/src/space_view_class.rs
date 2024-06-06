@@ -18,7 +18,7 @@ use re_viewer_context::{
     SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
-    ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    ViewContext, ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -180,8 +180,19 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                      (and readability) in such situations as it prevents overdraw.",
                 );
 
-            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
-            view_property_ui::<ScalarAxis>(ctx, ui, space_view_id, self, state);
+            let visualizer_collection = ctx
+                .space_view_class_registry
+                .new_visualizer_collection(Self::identifier());
+
+            let view_context = ViewContext {
+                viewer_ctx: ctx,
+                view_id: space_view_id,
+                view_state: state,
+                visualizer_collection: &visualizer_collection,
+            };
+
+            view_property_ui::<PlotLegend>(&view_context, ui, space_view_id, self);
+            view_property_ui::<ScalarAxis>(&view_context, ui, space_view_id, self);
         });
 
         Ok(())
@@ -298,22 +309,33 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
-
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.space_view_id;
 
+        let visualizer_collection = ctx
+            .space_view_class_registry
+            .new_visualizer_collection(Self::identifier());
+
+        let view_context = ViewContext {
+            viewer_ctx: ctx,
+            view_id: query.space_view_id,
+            view_state: state,
+            visualizer_collection: &visualizer_collection,
+        };
+
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
-        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(&view_context, self)?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(&view_context, self)?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(&view_context, self)?;
         let y_zoom_lock =
-            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
+            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(&view_context, self)?;
         let y_zoom_lock = y_zoom_lock.0 .0;
+
+        let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
@@ -669,7 +691,8 @@ impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesSpaceView {
 
 impl TypedComponentFallbackProvider<Range1D> for TimeSeriesSpaceView {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
-        ctx.view_state
+        ctx.view_ctx
+            .view_state
             .as_any()
             .downcast_ref::<TimeSeriesSpaceViewState>()
             .map(|s| {
