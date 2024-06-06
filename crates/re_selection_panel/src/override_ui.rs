@@ -6,9 +6,10 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    DataResult, OverridePath, QueryContext, SpaceViewClassExt as _, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewSystemIdentifier, ViewerContext,
+    ComponentUiTypes, DataResult, OverridePath, QueryContext, SpaceViewClassExt as _,
+    SystemCommand, SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -36,7 +37,7 @@ pub fn override_ui(
         .lookup_result_by_path(entity_path)
         .cloned()
     else {
-        ui.label(ctx.re_ui.error_text("Entity not found in view."));
+        ui.label(ui.ctx().error_text("Entity not found in view."));
         return;
     };
 
@@ -133,18 +134,16 @@ pub fn override_ui(
                     .cloned(); /* arc */
 
                 if let Some(results) = component_data {
-                    ctx.component_ui_registry.edit_ui(
+                    ctx.component_ui_registry.singleline_edit_ui(
                         &QueryContext {
                             viewer_ctx: ctx,
-                            target_entity_path: entity_path_overridden,
+                            target_entity_path: &instance_path.entity_path,
                             archetype_name: None,
                             query: &query,
                             view_state,
                         },
                         ui,
-                        UiLayout::List,
                         origin_db,
-                        &instance_path.entity_path,
                         entity_path_overridden,
                         *component_name,
                         &results,
@@ -157,8 +156,7 @@ pub fn override_ui(
                 }
             };
 
-            ctx.re_ui
-                .list_item()
+            ui.list_item()
                 .interactive(false)
                 .show_flat(
                     ui,
@@ -170,7 +168,7 @@ pub fn override_ui(
                                 *component_name,
                             );
                         })
-                        .value_fn(|_, ui, _| value_fn(ui)),
+                        .value_fn(|ui, _| value_fn(ui)),
                 )
                 .on_hover_text(component_name.full_name());
         }
@@ -227,7 +225,12 @@ pub fn add_new_override(
                     };
 
                     // If there is no registered editor, don't let the user create an override
-                    if !ctx.component_ui_registry.has_registered_editor(component) {
+                    // TODO(andreas): Can only handle single line editors right now.
+                    if !ctx
+                        .component_ui_registry
+                        .registered_ui_types(*component)
+                        .contains(ComponentUiTypes::SingleLineEditor)
+                    {
                         continue;
                     }
 
@@ -312,7 +315,7 @@ pub fn override_visualizer_ui(
             .lookup_result_by_path(entity_path)
             .cloned()
         else {
-            ui.label(ctx.re_ui.error_text("Entity not found in view."));
+            ui.label(ui.ctx().error_text("Entity not found in view."));
             return;
         };
 
@@ -338,12 +341,12 @@ pub fn override_visualizer_ui(
             ui.spacing_mut().item_spacing.y = 0.0;
 
             for viz_name in &active_visualizers {
-                ctx.re_ui.list_item().interactive(false).show_flat(
+                ui.list_item().interactive(false).show_flat(
                     ui,
                     re_ui::list_item::LabelContent::new(viz_name.as_str())
                         .min_desired_width(150.0)
-                        .with_buttons(|re_ui, ui| {
-                            let response = re_ui.small_icon_button(ui, &re_ui::icons::CLOSE);
+                        .with_buttons(|ui| {
+                            let response = ui.small_icon_button(&re_ui::icons::CLOSE);
                             if response.clicked() {
                                 let component = VisualizerOverrides::from(
                                     active_visualizers

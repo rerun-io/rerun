@@ -1,5 +1,4 @@
 use re_data_store::LatestAtQuery;
-use re_space_view::external::re_query::PromiseResult;
 use re_types::{archetypes::TextDocument, components};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -41,27 +40,25 @@ impl VisualizerSystem for TextDocumentSystem {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
-            let TextDocument { text, media_type } = match ctx
+            let Some(text) = ctx
                 .recording()
-                .latest_at_archetype(&data_result.entity_path, &timeline_query)
-            {
-                PromiseResult::Pending | PromiseResult::Ready(None) => {
-                    // TODO(#5607): what should happen if the promise is still pending?
-                    continue;
-                }
-                PromiseResult::Ready(Some((_, arch))) => arch,
-                PromiseResult::Error(err) => {
-                    re_log::error_once!(
-                        "Unexpected error querying {:?}: {err}",
-                        &data_result.entity_path
-                    );
-                    continue;
-                }
+                .latest_at_component::<components::Text>(&data_result.entity_path, &timeline_query)
+                .map(|res| res.value)
+            else {
+                // Text component is required.
+                continue;
             };
+            let media_type = ctx
+                .recording()
+                .latest_at_component::<components::MediaType>(
+                    &data_result.entity_path,
+                    &timeline_query,
+                )
+                .map(|res| res.value);
 
             let media_type = media_type.unwrap_or(components::MediaType::plain_text());
             self.text_entries.push(TextDocumentEntry {
-                body: text,
+                body: text.clone(),
                 media_type,
             });
         }

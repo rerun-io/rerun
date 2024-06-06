@@ -1,7 +1,7 @@
 //! Modal for adding a new space view of container to an existing target container.
 
 use crate::{SpaceViewBlueprint, ViewportBlueprint};
-use re_ui::ReUi;
+use re_ui::UiExt as _;
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedSpaceView,
     ViewerContext,
@@ -26,14 +26,13 @@ impl AddSpaceViewOrContainerModal {
         viewport: &ViewportBlueprint,
     ) {
         self.modal_handler.ui(
-            ctx.re_ui,
             egui_ctx,
             || {
                 re_ui::modal::Modal::new("Add space view or container")
                     .min_width(500.0)
                     .full_span_content(true)
             },
-            |_, ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
+            |ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
         );
     }
 }
@@ -103,7 +102,7 @@ fn modal_ui(
         }
     }
 
-    ReUi::full_span_separator(ui);
+    ui.full_span_separator();
 
     // space view of any kind
     for space_view in ctx

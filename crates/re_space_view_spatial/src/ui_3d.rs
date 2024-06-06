@@ -384,8 +384,8 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
-    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+pub fn help_text(egui_ctx: &egui::Context) -> egui::WidgetText {
+    let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
     layout.add("Click and drag ");
     layout.add(ROTATE3D_BUTTON);
@@ -411,7 +411,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.add_button_text("QE");
     layout.add(".\n");
 
-    layout.add(RuntimeModifiers::slow_down(&re_ui.egui_ctx.os()));
+    layout.add(RuntimeModifiers::slow_down(&egui_ctx.os()));
     layout.add(" slows down, ");
     layout.add(SPEED_UP_3D_MODIFIER);
     layout.add(" speeds up\n\n");
@@ -676,9 +676,13 @@ impl SpatialSpaceView3D {
         // Commit ui induced lines.
         view_builder.queue_draw(line_builder.into_draw_data()?);
 
-        let background = ViewProperty::from_archetype::<Background>(ctx, query.space_view_id);
+        let background = ViewProperty::from_archetype::<Background>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
         let (background_drawable, clear_color) =
-            crate::configure_background(&background, render_ctx, self, state)?;
+            crate::configure_background(ctx, &background, render_ctx, self, state)?;
         if let Some(background_drawable) = background_drawable {
             view_builder.queue_draw(background_drawable);
         }

@@ -1,9 +1,11 @@
-use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
+use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_types::View;
 use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     level_to_rich_text, IdentifiedViewSystem as _, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
@@ -39,7 +41,6 @@ impl SpaceViewState for TextSpaceViewState {
 #[derive(Default)]
 pub struct TextSpaceView;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::TextLogView;
 
 impl SpaceViewClass for TextSpaceView {
@@ -55,7 +56,7 @@ impl SpaceViewClass for TextSpaceView {
         &re_ui::icons::SPACE_VIEW_LOG
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
         "Shows TextLog entries over time.\nSelect the Space View for filtering options.".into()
     }
 
@@ -99,7 +100,7 @@ impl SpaceViewClass for TextSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
@@ -114,33 +115,29 @@ impl SpaceViewClass for TextSpaceView {
             row_log_levels,
         } = &mut state.filters;
 
-        let re_ui = ctx.re_ui;
-
-        ctx.re_ui.selection_grid(ui, "log_config").show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Columns");
+        ui.selection_grid("log_config").show(ui, |ui| {
+            ui.grid_left_hand_label("Columns");
             ui.vertical(|ui| {
                 for (timeline, visible) in col_timelines {
-                    re_ui.checkbox(ui, visible, timeline.name().to_string());
+                    ui.re_checkbox(visible, timeline.name().to_string());
                 }
-                re_ui.checkbox(ui, col_entity_path, "Entity path");
-                re_ui.checkbox(ui, col_log_level, "Log level");
+                ui.re_checkbox(col_entity_path, "Entity path");
+                ui.re_checkbox(col_log_level, "Log level");
             });
             ui.end_row();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Level Filter");
+            ui.grid_left_hand_label("Level Filter");
             ui.vertical(|ui| {
                 for (log_level, visible) in row_log_levels {
-                    re_ui.checkbox(ui, visible, level_to_rich_text(ui, log_level));
+                    ui.re_checkbox(visible, level_to_rich_text(ui, log_level));
                 }
             });
             ui.end_row();
 
-            ctx.re_ui.grid_left_hand_label(ui, "Text style");
+            ui.grid_left_hand_label("Text style");
             ui.vertical(|ui| {
-                ctx.re_ui
-                    .radio_value(ui, &mut state.monospace, false, "Proportional");
-                ctx.re_ui
-                    .radio_value(ui, &mut state.monospace, true, "Monospace");
+                ui.re_radio_value(&mut state.monospace, false, "Proportional");
+                ui.re_radio_value(&mut state.monospace, true, "Monospace");
             });
             ui.end_row();
         });
@@ -175,7 +172,7 @@ impl SpaceViewClass for TextSpaceView {
             .collect::<Vec<_>>();
 
         egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
+            inner_margin: re_ui::DesignTokens::view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
@@ -333,8 +330,8 @@ fn table_ui(
         table_builder = table_builder.column(Column::remainder().at_least(100.0));
     }
     table_builder
-        .header(re_ui::ReUi::table_header_height(), |mut header| {
-            re_ui::ReUi::setup_table_header(&mut header);
+        .header(re_ui::DesignTokens::table_header_height(), |mut header| {
+            re_ui::DesignTokens::setup_table_header(&mut header);
             for timeline in &timelines {
                 header.col(|ui| {
                     item_ui::timeline_button(ctx, ui, timeline);
@@ -355,7 +352,7 @@ fn table_ui(
             });
         })
         .body(|mut body| {
-            re_ui::ReUi::setup_table_body(&mut body);
+            re_ui::DesignTokens::setup_table_body(&mut body);
 
             body_clip_rect = Some(body.max_rect());
 
@@ -460,5 +457,5 @@ fn calc_row_height(entry: &Entry) -> f32 {
     // Simple, fast, ugly, and functional
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;
-    num_rows as f32 * re_ui::ReUi::table_line_height()
+    num_rows as f32 * re_ui::DesignTokens::table_line_height()
 }

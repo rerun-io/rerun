@@ -16,7 +16,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::{icons, list_item, ReUi, SyntaxHighlighting as _};
+use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
     ContainerId, Contents, DataQueryResult, HoverHighlight, Item, SpaceViewClass, SpaceViewId,
@@ -72,21 +72,18 @@ impl SelectionPanel {
         ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
-            ctx.re_ui.panel_content(ui, |_, ui| {
+            ui.panel_content(|ui| {
                 let hover = "The Selection View contains information and options about \
                     the currently selected object(s)";
-                ctx.re_ui
-                    .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
-                        let mut history = ctx.selection_state().history.lock();
-                        if let Some(selection) = self.selection_state_ui.selection_ui(
-                            ctx.re_ui,
-                            ui,
-                            blueprint,
-                            &mut history,
-                        ) {
-                            ctx.selection_state().set_selection(selection);
-                        }
-                    });
+                ui.panel_title_bar_with_buttons("Selection", Some(hover), |ui| {
+                    let mut history = ctx.selection_state().history.lock();
+                    if let Some(selection) =
+                        self.selection_state_ui
+                            .selection_ui(ui, blueprint, &mut history)
+                    {
+                        ctx.selection_state().set_selection(selection);
+                    }
+                });
             });
 
             // move the vertical spacing between the title and the content to _inside_ the scroll
@@ -97,7 +94,7 @@ impl SelectionPanel {
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
-                    ctx.re_ui.panel_content(ui, |_, ui| {
+                    ui.panel_content(|ui| {
                         self.contents(ctx, blueprint, view_states, ui);
                     });
                 });
@@ -149,7 +146,7 @@ impl SelectionPanel {
                 }
 
                 if let Some(data_ui_item) = data_section_ui(item) {
-                    ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+                    ui.large_collapsing_header("Data", true, |ui| {
                         let (query, db) = if let Some(entity_path) = item.entity_path() {
                             guess_query_and_db_for_selected_entity(ctx, entity_path)
                         } else {
@@ -168,10 +165,9 @@ impl SelectionPanel {
                         if view.class_identifier() == TimeSeriesSpaceView::identifier()
                             || ctx.app_options.experimental_visualizer_selection
                         {
-                            ctx.re_ui
-                                .large_collapsing_header(ui, "Visualizers", true, |ui| {
-                                    override_visualizer_ui(ctx, view, instance_path, ui);
-                                });
+                            ui.large_collapsing_header("Visualizers", true, |ui| {
+                                override_visualizer_ui(ctx, view, instance_path, ui);
+                            });
 
                             let view_state = view_states
                                 .get_mut(
@@ -182,23 +178,17 @@ impl SelectionPanel {
                                 .view_state
                                 .as_ref();
 
-                            ctx.re_ui.large_collapsing_header(
-                                ui,
-                                "Component Overrides",
-                                true,
-                                |ui| {
-                                    override_ui(ctx, view, view_state, instance_path, ui);
-                                },
-                            );
+                            ui.large_collapsing_header("Component Overrides", true, |ui| {
+                                override_ui(ctx, view, view_state, instance_path, ui);
+                            });
                         }
                     }
                 }
 
                 if has_blueprint_section(item) {
-                    ctx.re_ui
-                        .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                            self.blueprint_ui(ctx, blueprint, view_states, ui, item);
-                        });
+                    ui.large_collapsing_header("Blueprint", true, |ui| {
+                        self.blueprint_ui(ctx, blueprint, view_states, ui, item);
+                    });
                 }
 
                 if i < selection.len() - 1 {
@@ -275,7 +265,7 @@ impl SelectionPanel {
         }
 
         ui.add_space(ui.spacing().item_spacing.y / 2.0);
-        ReUi::full_span_separator(ui);
+        ui.full_span_separator();
         ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
         if let Some(space_view) = blueprint.space_view(&space_view_id) {
@@ -363,7 +353,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
             .trim();
 
-            re_ui::markdown_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
+            ui.markdown_ui(egui::Id::new("entity_path_filter_help_ui"), markdown);
         }
 
         fn syntax_highlight_entity_path_filter(
@@ -434,7 +424,8 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 egui::vec2(desired_width, ui.available_height()),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    re_ui::help_hover_button(ui).on_hover_ui(entity_path_filter_help_ui);
+                    ui.help_hover_button()
+                        .on_hover_ui(entity_path_filter_help_ui);
                     if ui
                         .button("Edit")
                         .on_hover_text("Modify the entity query using the editor")
@@ -459,7 +450,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         // Show some statistics about the query, print a warning text if something seems off.
         let query = ctx.lookup_query_result(space_view_id);
         if query.num_matching_entities == 0 {
-            ui.label(ctx.re_ui.warning_text("Does not match any entity"));
+            ui.label(ui.ctx().warning_text("Does not match any entity"));
         } else if query.num_matching_entities == 1 {
             ui.label("Matches 1 entity");
         } else {
@@ -467,7 +458,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         }
         if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
             // TODO(andreas): Talk about this root bit only if it's a spatial view.
-            ui.label(ctx.re_ui.warning_text(
+            ui.label(ui.ctx().warning_text(
                 format!("This space view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
             ));
         }
@@ -496,7 +487,7 @@ fn container_children(
         ui.strong("Contents");
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ctx.re_ui.small_icon_button(ui, &icons::ADD).clicked() {
+            if ui.small_icon_button(&icons::ADD).clicked() {
                 show_add_space_view_or_container_modal(*container_id);
             }
         });
@@ -509,14 +500,12 @@ fn container_children(
         }
 
         if !has_child {
-            list_item::ListItem::new(ctx.re_ui)
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::LabelContent::new("empty — use the + button to add content")
-                        .weak(true)
-                        .italics(true),
-                );
+            ui.list_item().interactive(false).show_flat(
+                ui,
+                list_item::LabelContent::new("empty — use the + button to add content")
+                    .weak(true)
+                    .italics(true),
+            );
         }
     };
 
@@ -562,10 +551,8 @@ fn space_view_button(
     let is_selected = ctx.selection().contains_item(&item);
     let space_view_name = space_view.display_name_or_default();
 
-    let response = ctx
-        .re_ui
+    let response = ui
         .selectable_label_with_icon(
-            ui,
             space_view.class(ctx.space_view_class_registry).icon(),
             space_view_name.as_ref(),
             is_selected,
@@ -587,25 +574,11 @@ fn what_is_selected_ui(
     match item {
         Item::AppId(app_id) => {
             let title = app_id.to_string();
-            item_title_ui(
-                ctx.re_ui,
-                ui,
-                &title,
-                Some(&icons::APPLICATION),
-                None,
-                &title,
-            );
+            item_title_ui(ui, &title, Some(&icons::APPLICATION), None, &title);
         }
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
-            item_title_ui(
-                ctx.re_ui,
-                ui,
-                &title,
-                Some(&icons::DATA_SOURCE),
-                None,
-                &title,
-            );
+            item_title_ui(ui, &title, Some(&icons::DATA_SOURCE), None, &title);
         }
 
         Item::StoreId(store_id) => {
@@ -631,7 +604,7 @@ fn what_is_selected_ui(
                 re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
             };
 
-            item_title_ui(ctx.re_ui, ui, &title, Some(icon), None, &id_str);
+            item_title_ui(ui, &title, Some(icon), None, &id_str);
         }
 
         Item::Container(container_id) => {
@@ -648,7 +621,6 @@ fn what_is_selected_ui(
 
                 let container_name = container_blueprint.display_name_or_default();
                 item_title_ui(
-                    ctx.re_ui,
                     ui,
                     container_name.as_ref(),
                     Some(re_viewer_context::icon_for_container_kind(
@@ -668,7 +640,6 @@ fn what_is_selected_ui(
             let is_static = db.is_component_static(component_path).unwrap_or_default();
 
             item_title_ui(
-                ctx.re_ui,
                 ui,
                 component_name.short_name(),
                 Some(if is_static {
@@ -715,7 +686,6 @@ fn what_is_selected_ui(
 
                 let space_view_name = space_view.display_name_or_default();
                 item_title_ui(
-                    ctx.re_ui,
                     ui,
                     space_view_name.as_ref(),
                     Some(space_view.class(ctx.space_view_class_registry).icon()),
@@ -730,7 +700,6 @@ fn what_is_selected_ui(
             let name = instance_path.syntax_highlighted(ui.style());
 
             item_title_ui(
-                ctx.re_ui,
                 ui,
                 name,
                 Some(guess_instance_path_icon(ctx, instance_path)),
@@ -764,7 +733,6 @@ fn what_is_selected_ui(
             if let Some(space_view) = blueprint.space_view(space_view_id) {
                 let typ = item.kind();
                 item_title_ui(
-                    ctx.re_ui,
                     ui,
                     name,
                     Some(guess_instance_path_icon(ctx, instance_path)),
@@ -813,7 +781,6 @@ fn what_is_selected_ui(
 
 /// A title bar for an item.
 fn item_title_ui(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     name: impl Into<egui::WidgetText>,
     icon: Option<&re_ui::Icon>,
@@ -831,8 +798,8 @@ fn item_title_ui(
     }
 
     list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
-        list_item::ListItem::new(re_ui)
-            .with_height(ReUi::title_bar_height())
+        ui.list_item()
+            .with_height(DesignTokens::title_bar_height())
             .selected(true)
             .show_flat(ui, content)
             .on_hover_text(hover)
@@ -949,7 +916,7 @@ fn container_top_level_properties(
             ui.label("Kind");
 
             let mut container_kind = container.container_kind;
-            container_kind_selection_ui(ctx, ui, &mut container_kind);
+            container_kind_selection_ui(ui, &mut container_kind);
 
             blueprint.set_container_kind(*container_id, container_kind);
 
@@ -1037,14 +1004,10 @@ fn container_top_level_properties(
         });
 }
 
-fn container_kind_selection_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut Ui,
-    in_out_kind: &mut ContainerKind,
-) {
+fn container_kind_selection_ui(ui: &mut Ui, in_out_kind: &mut ContainerKind) {
     let selected_text = format!("{in_out_kind:?}");
 
-    re_ui::drop_down_menu(ui, "container_kind", selected_text, |ui| {
+    ui.drop_down_menu("container_kind", selected_text, |ui| {
         static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
         for (kind, icon) in [
             (ContainerKind::Tabs, &icons::CONTAINER_TABS),
@@ -1052,14 +1015,10 @@ fn container_kind_selection_ui(
             (ContainerKind::Horizontal, &icons::CONTAINER_HORIZONTAL),
             (ContainerKind::Vertical, &icons::CONTAINER_VERTICAL),
         ] {
-            let response = ctx
-                .re_ui
-                .list_item()
-                .selected(*in_out_kind == kind)
-                .show_flat(
-                    ui,
-                    list_item::LabelContent::new(format!("{kind:?}")).with_icon(icon),
-                );
+            let response = ui.list_item().selected(*in_out_kind == kind).show_flat(
+                ui,
+                list_item::LabelContent::new(format!("{kind:?}")).with_icon(icon),
+            );
 
             if response.clicked() {
                 *in_out_kind = kind;
@@ -1092,9 +1051,9 @@ fn show_list_item_for_container_child(
                 list_item::LabelContent::new(space_view_name.as_ref())
                     .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
-                    .with_buttons(|re_ui, ui| {
-                        let response = re_ui
-                            .small_icon_button(ui, &icons::REMOVE)
+                    .with_buttons(|ui| {
+                        let response = ui
+                            .small_icon_button(&icons::REMOVE)
                             .on_hover_text("Remove this space view");
 
                         if response.clicked() {
@@ -1118,9 +1077,9 @@ fn show_list_item_for_container_child(
                 list_item::LabelContent::new(container_name.as_ref())
                     .label_style(contents_name_style(&container_name))
                     .with_icon(icon_for_container_kind(&container.container_kind))
-                    .with_buttons(|re_ui, ui| {
-                        let response = re_ui
-                            .small_icon_button(ui, &icons::REMOVE)
+                    .with_buttons(|ui| {
+                        let response = ui
+                            .small_icon_button(&icons::REMOVE)
                             .on_hover_text("Remove this container");
 
                         if response.clicked() {
@@ -1136,7 +1095,8 @@ fn show_list_item_for_container_child(
     let is_item_hovered =
         ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    let response = list_item::ListItem::new(ctx.re_ui)
+    let response = ui
+        .list_item()
         .force_hovered(is_item_hovered)
         .show_flat(ui, list_item_content);
 
@@ -1217,7 +1177,6 @@ fn entity_props_ui(
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
 
-    let re_ui = ctx.re_ui;
     let Some(data_result) = query_result.tree.lookup_result_by_path(entity_path) else {
         return;
     };
@@ -1232,7 +1191,7 @@ fn entity_props_ui(
             override_source.is_some() && override_source.as_ref() != Some(entity_path);
 
         ui.horizontal(|ui| {
-            re_ui.checkbox(ui, &mut visible, "Visible");
+            ui.re_checkbox(&mut visible, "Visible");
             if is_inherited {
                 ui.label("(inherited)");
             }
@@ -1247,8 +1206,7 @@ fn entity_props_ui(
         }
     }
 
-    re_ui
-        .checkbox(ui, &mut entity_props.interactive, "Interactive")
+    ui.re_checkbox(&mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
     query_range_ui_data_result(ctx, ui, data_result);
@@ -1266,7 +1224,6 @@ fn entity_props_ui(
 
 fn colormap_props_ui(
     ctx: &ViewerContext<'_>,
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     entity_props: &mut EntityProperties,
 ) {
@@ -1280,7 +1237,7 @@ fn colormap_props_ui(
     };
 
     ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.render_ctx, re_ui, ui, &mut re_renderer_colormap);
+    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
 
     let new_colormap = match re_renderer_colormap {
         re_renderer::Colormap::Grayscale => Colormap::Grayscale,
@@ -1345,9 +1302,8 @@ fn depth_props_ui(
 
     let mut backproject_depth = *entity_props.backproject_depth;
 
-    if ctx
-        .re_ui
-        .checkbox(ui, &mut backproject_depth, "Backproject Depth")
+    if ui
+        .re_checkbox(&mut backproject_depth, "Backproject Depth")
         .on_hover_text(
             "If enabled, the depth texture will be backprojected into a point cloud rather \
                 than simply displayed as an image.",
@@ -1372,7 +1328,7 @@ fn depth_props_ui(
 
         // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
         // need to get the current hardcoded colormapping out of the image cache first.
-        colormap_props_ui(ctx, ctx.re_ui, ui, entity_props);
+        colormap_props_ui(ctx, ui, entity_props);
     }
 
     Some(())
@@ -1447,7 +1403,7 @@ fn transform3d_visualization_ui(
 
     {
         let mut checked = *show_arrows.get();
-        let response = ctx.re_ui.checkbox(ui, &mut checked, "Show transform").on_hover_text(
+        let response = ui.re_checkbox( &mut checked, "Show transform").on_hover_text(
             "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
         if response.changed() {
             *show_arrows = EditableAutoValue::UserEdited(checked);

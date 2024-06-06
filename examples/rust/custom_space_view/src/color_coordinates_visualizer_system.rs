@@ -1,7 +1,7 @@
 use re_viewer::external::{
     egui,
     re_log_types::{EntityPath, Instance},
-    re_query, re_renderer,
+    re_renderer,
     re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -35,16 +35,6 @@ impl re_types::Archetype for ColorArchetype {
 
     fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         vec![re_types::components::Color::name()].into()
-    }
-}
-
-impl re_query::ToArchetype<ColorArchetype> for re_query::LatestAtResults {
-    #[inline]
-    fn to_archetype(
-        &self,
-        _resolver: &re_query::PromiseResolver,
-    ) -> re_query::PromiseResult<re_query::Result<ColorArchetype>> {
-        re_query::PromiseResult::Ready(Ok(ColorArchetype))
     }
 }
 

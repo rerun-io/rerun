@@ -2,7 +2,10 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use re_ui::{list_item, toasts, CommandPalette, ReUi, UICommand, UICommandSender};
+use re_ui::{
+    list_item, toasts, CommandPalette, ContextExt as _, DesignTokens, UICommand, UICommandSender,
+    UiExt as _,
+};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -57,14 +60,13 @@ fn main() -> eframe::Result<()> {
         "re_ui example app",
         native_options,
         Box::new(move |cc| {
-            let re_ui = re_ui::ReUi::load_and_apply(&cc.egui_ctx);
-            Ok(Box::new(ExampleApp::new(re_ui)))
+            re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
+            Ok(Box::new(ExampleApp::new()))
         }),
     )
 }
 
 pub struct ExampleApp {
-    re_ui: re_ui::ReUi,
     toasts: toasts::Toasts,
 
     /// Listens to the local text log stream
@@ -95,7 +97,7 @@ pub struct ExampleApp {
 }
 
 impl ExampleApp {
-    fn new(re_ui: re_ui::ReUi) -> Self {
+    fn new() -> Self {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
 
@@ -104,7 +106,6 @@ impl ExampleApp {
         let (command_sender, command_receiver) = command_channel();
 
         Self {
-            re_ui,
             toasts: Default::default(),
             text_log_rx,
 
@@ -165,7 +166,7 @@ impl eframe::App for ExampleApp {
         self.top_bar(egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(self.re_ui.bottom_panel_frame())
+            .frame(DesignTokens::bottom_panel_frame())
             .show_animated(egui_ctx, self.show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
@@ -205,7 +206,7 @@ impl eframe::App for ExampleApp {
         let left_panel_bottom_section_ui = |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
                 ui.label("Toggle switch:");
-                ui.add(re_ui::toggle_switch(8.0, &mut self.dummy_bool));
+                ui.toggle_switch(8.0, &mut self.dummy_bool);
             });
             ui.label(format!("Latest command: {}", self.latest_cmd));
 
@@ -216,10 +217,9 @@ impl eframe::App for ExampleApp {
             }
 
             self.modal_handler.ui(
-                &self.re_ui,
                 ui.ctx(),
                 || re_ui::modal::Modal::new("Modal window"),
-                |_, ui, _| ui.label("This is a modal window."),
+                |ui, _| ui.label("This is a modal window."),
             );
 
             // ---
@@ -229,13 +229,12 @@ impl eframe::App for ExampleApp {
             }
 
             self.full_span_modal_handler.ui(
-                &self.re_ui,
                 ui.ctx(),
                 || re_ui::modal::Modal::new("Modal window").full_span_content(true),
-                |_, ui, _| {
+                |ui, _| {
                     list_item::list_item_scope(ui, "modal demo", |ui| {
                         for idx in 0..10 {
-                            list_item::ListItem::new(&self.re_ui)
+                            list_item::ListItem::new()
                                 .show_flat(ui, list_item::LabelContent::new(format!("Item {idx}")));
                         }
                     });
@@ -244,21 +243,19 @@ impl eframe::App for ExampleApp {
 
             // ---
 
-            self.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+            ui.large_collapsing_header("Data", true, |ui| {
                 ui.label("Some data here");
             });
-            self.re_ui
-                .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                    ui.label("Some blueprint stuff here, that might be wide.");
-                    self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
+            ui.large_collapsing_header("Blueprint", true, |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                ui.label("Some blueprint stuff here, that might be wide.");
+                ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
 
-                    self.re_ui
-                        .collapsing_header(ui, "Collapsing header", true, |ui| {
-                            ui.label("Some data here");
-                            self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
-                        });
+                ui.collapsing_header("Collapsing header", true, |ui| {
+                    ui.label("Some data here");
+                    ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
                 });
+            });
         };
 
         // UI code
@@ -270,9 +267,12 @@ impl eframe::App for ExampleApp {
             })
             .show_animated(egui_ctx, self.show_left_panel, |ui| {
                 egui::TopBottomPanel::top("left_panel_top_bar")
-                    .exact_height(re_ui::ReUi::title_bar_height())
+                    .exact_height(re_ui::DesignTokens::title_bar_height())
                     .frame(egui::Frame {
-                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
+                        inner_margin: egui::Margin::symmetric(
+                            re_ui::DesignTokens::view_padding(),
+                            0.0,
+                        ),
                         ..Default::default()
                     })
                     .show_inside(ui, left_panel_top_section_ui);
@@ -281,7 +281,7 @@ impl eframe::App for ExampleApp {
                     .auto_shrink([false; 2])
                     .show(ui, |ui| {
                         egui::Frame {
-                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                            inner_margin: egui::Margin::same(re_ui::DesignTokens::view_padding()),
                             ..Default::default()
                         }
                         .show(ui, left_panel_bottom_section_ui);
@@ -310,7 +310,7 @@ impl eframe::App for ExampleApp {
             .min_width(0.0)
             .show_animated(egui_ctx, self.show_right_panel, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
-                self.right_panel.ui(&self.re_ui, ui);
+                self.right_panel.ui(ui);
             });
 
         egui::CentralPanel::default()
@@ -356,10 +356,10 @@ impl eframe::App for ExampleApp {
 
 impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context) {
-        let top_bar_style = self.re_ui.top_bar_style(false);
+        let top_bar_style = egui_ctx.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
-            .frame(self.re_ui.top_panel_frame())
+            .frame(DesignTokens::top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -397,24 +397,21 @@ impl ExampleApp {
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 ui.add_space(8.0);
-                re_ui::native_window_buttons_ui(ui);
+                ui.native_window_buttons_ui();
                 ui.separator();
             } else {
                 ui.add_space(16.0);
             }
 
-            self.re_ui.medium_icon_toggle_button(
-                ui,
+            ui.medium_icon_toggle_button(
                 &re_ui::icons::RIGHT_PANEL_TOGGLE,
                 &mut self.show_right_panel,
             );
-            self.re_ui.medium_icon_toggle_button(
-                ui,
+            ui.medium_icon_toggle_button(
                 &re_ui::icons::BOTTOM_PANEL_TOGGLE,
                 &mut self.show_bottom_panel,
             );
-            self.re_ui.medium_icon_toggle_button(
-                ui,
+            ui.medium_icon_toggle_button(
                 &re_ui::icons::LEFT_PANEL_TOGGLE,
                 &mut self.show_left_panel,
             );
@@ -450,7 +447,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
         ui.label(
             egui::RichText::new("Welcome to the ReUi example")
-                .text_style(ReUi::welcome_screen_h1()),
+                .text_style(DesignTokens::welcome_screen_h1()),
         );
 
         Default::default()
@@ -474,7 +471,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 
     /// The height of the bar holding tab titles.
     fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::ReUi::title_bar_height()
+        re_ui::DesignTokens::title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?

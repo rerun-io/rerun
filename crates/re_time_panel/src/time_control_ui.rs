@@ -2,6 +2,7 @@ use egui::NumExt as _;
 
 use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
+use re_ui::UiExt as _;
 
 use re_viewer_context::{Looping, PlayState, TimeControl};
 
@@ -65,17 +66,16 @@ impl TimeControlUi {
     pub fn play_pause_ui(
         &mut self,
         time_control: &mut TimeControl,
-        re_ui: &re_ui::ReUi,
         times_per_timeline: &TimesPerTimeline,
         ui: &mut egui::Ui,
     ) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 5.0; // from figma
-            self.play_button_ui(time_control, re_ui, ui, times_per_timeline);
-            self.follow_button_ui(time_control, re_ui, ui, times_per_timeline);
-            self.pause_button_ui(time_control, re_ui, ui);
-            self.step_time_button_ui(time_control, re_ui, ui, times_per_timeline);
-            self.loop_button_ui(time_control, re_ui, ui);
+            self.play_button_ui(time_control, ui, times_per_timeline);
+            self.follow_button_ui(time_control, ui, times_per_timeline);
+            self.pause_button_ui(time_control, ui);
+            self.step_time_button_ui(time_control, ui, times_per_timeline);
+            self.loop_button_ui(time_control, ui);
         });
     }
 
@@ -83,13 +83,12 @@ impl TimeControlUi {
     fn play_button_ui(
         &mut self,
         time_control: &mut TimeControl,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         times_per_timeline: &TimesPerTimeline,
     ) {
         let is_playing = time_control.play_state() == PlayState::Playing;
-        if re_ui
-            .large_button_selected(ui, &re_ui::icons::PLAY, is_playing)
+        if ui
+            .large_button_selected(&re_ui::icons::PLAY, is_playing)
             .on_hover_text(format!("Play.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
@@ -101,13 +100,12 @@ impl TimeControlUi {
     fn follow_button_ui(
         &mut self,
         time_control: &mut TimeControl,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         times_per_timeline: &TimesPerTimeline,
     ) {
         let is_following = time_control.play_state() == PlayState::Following;
-        if re_ui
-            .large_button_selected(ui, &re_ui::icons::FOLLOW, is_following)
+        if ui
+            .large_button_selected(&re_ui::icons::FOLLOW, is_following)
             .on_hover_text(format!(
                 "Follow latest data.{}",
                 toggle_playback_text(ui.ctx())
@@ -119,15 +117,10 @@ impl TimeControlUi {
     }
 
     #[allow(clippy::unused_self)]
-    fn pause_button_ui(
-        &mut self,
-        time_control: &mut TimeControl,
-        re_ui: &re_ui::ReUi,
-        ui: &mut egui::Ui,
-    ) {
+    fn pause_button_ui(&mut self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
         let is_paused = time_control.play_state() == PlayState::Paused;
-        if re_ui
-            .large_button_selected(ui, &re_ui::icons::PAUSE, is_paused)
+        if ui
+            .large_button_selected(&re_ui::icons::PAUSE, is_paused)
             .on_hover_text(format!("Pause.{}", toggle_playback_text(ui.ctx())))
             .clicked()
         {
@@ -139,20 +132,19 @@ impl TimeControlUi {
     fn step_time_button_ui(
         &mut self,
         time_control: &mut TimeControl,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         times_per_timeline: &TimesPerTimeline,
     ) {
-        if re_ui
-            .large_button(ui, &re_ui::icons::ARROW_LEFT)
+        if ui
+            .large_button(&re_ui::icons::ARROW_LEFT)
             .on_hover_text("Step back to previous time with any new data (left arrow)")
             .clicked()
         {
             time_control.step_time_back(times_per_timeline);
         }
 
-        if re_ui
-            .large_button(ui, &re_ui::icons::ARROW_RIGHT)
+        if ui
+            .large_button(&re_ui::icons::ARROW_RIGHT)
             .on_hover_text("Step forwards to next time with any new data (right arrow)")
             .clicked()
         {
@@ -161,20 +153,15 @@ impl TimeControlUi {
     }
 
     #[allow(clippy::unused_self)]
-    fn loop_button_ui(
-        &mut self,
-        time_control: &mut TimeControl,
-        re_ui: &re_ui::ReUi,
-        ui: &mut egui::Ui,
-    ) {
+    fn loop_button_ui(&mut self, time_control: &mut TimeControl, ui: &mut egui::Ui) {
         let icon = &re_ui::icons::LOOP;
 
         ui.scope(|ui| {
             // Loop-button cycles between states:
             match time_control.looping() {
                 Looping::Off => {
-                    if re_ui
-                        .large_button_selected(ui, icon, false)
+                    if ui
+                        .large_button_selected(icon, false)
                         .on_hover_text("Looping is off")
                         .clicked()
                     {
@@ -182,9 +169,10 @@ impl TimeControlUi {
                     }
                 }
                 Looping::All => {
-                    ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_everything_color();
-                    if re_ui
-                        .large_button_selected(ui, icon, true)
+                    ui.visuals_mut().selection.bg_fill =
+                        re_ui::DesignTokens::loop_everything_color();
+                    if ui
+                        .large_button_selected(icon, true)
                         .on_hover_text("Looping entire recording")
                         .clicked()
                     {
@@ -194,8 +182,8 @@ impl TimeControlUi {
                 Looping::Selection => {
                     // ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color(); // we have one color for the button, and a slightly different shade of it for the actual selection :/
                     #[allow(clippy::collapsible_else_if)]
-                    if re_ui
-                        .large_button_selected(ui, icon, true)
+                    if ui
+                        .large_button_selected(icon, true)
                         .on_hover_text("Looping selection")
                         .clicked()
                     {
