@@ -84,7 +84,7 @@ impl WebHandle {
         }
 
         // request repaint, because the overrides may cause panels to expand/collapse
-        app.re_ui.egui_ctx.request_repaint();
+        app.egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
