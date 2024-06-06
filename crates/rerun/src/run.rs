@@ -424,7 +424,7 @@ fn initialize_thread_pool(threads_args: i32) {
             Err(err) => {
                 re_log::warn!("Failed to query system of the number of cores: {err}.");
                 // Let rayon decide for itself how many threads to use.
-                // It's default is to use as many threads as we have cores,
+                // Its default is to use as many threads as we have cores,
                 // (if rayon manages to figure out how many cores we have).
             }
         }
@@ -752,12 +752,12 @@ fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(
-            Box::new(move |cc, re_ui| {
+            Box::new(move |cc| {
                 let mut app = re_viewer::App::new(
                     _build_info,
                     &call_source.app_env(),
                     startup_options,
-                    re_ui,
+                    cc.egui_ctx.clone(),
                     cc.storage,
                 );
                 for rx in rx {

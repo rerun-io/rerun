@@ -3,7 +3,7 @@
 use egui::NumExt as _;
 
 use re_log_types::TimeZone;
-use re_ui::{ReUi, UICommand};
+use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
 
 use crate::App;
@@ -81,27 +81,16 @@ impl App {
 
             ui.menu_button("Options", |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                options_menu_ui(
-                    &self.command_sender,
-                    &self.re_ui,
-                    ui,
-                    frame,
-                    &mut self.state.app_options,
-                );
+                options_menu_ui(&self.command_sender, ui, frame, &mut self.state.app_options);
             });
 
             #[cfg(debug_assertions)]
             ui.menu_button("Debug", |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                debug_menu_options_ui(
-                    &self.re_ui,
-                    ui,
-                    &mut self.state.app_options,
-                    &self.command_sender,
-                );
+                debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
 
                 ui.label("egui debug options:");
-                egui_debug_options_ui(&self.re_ui, ui);
+                egui_debug_options_ui(ui);
             });
 
             ui.add_space(SPACING);
@@ -302,41 +291,30 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 
 fn options_menu_ui(
     command_sender: &re_viewer_context::CommandSender,
-    re_ui: &ReUi,
     ui: &mut egui::Ui,
     frame: &eframe::Frame,
     app_options: &mut re_viewer_context::AppOptions,
 ) {
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.show_metrics,
-            "Show performance metrics",
-        )
+    ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
     ui.horizontal(|ui| {
         ui.label("Timezone:");
     });
     ui.horizontal(|ui| {
-        re_ui
-            .radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
+        ui.re_radio_value(&mut app_options.time_zone, TimeZone::Utc, "UTC")
             .on_hover_text("Display timestamps in UTC");
-        re_ui
-            .radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
+        ui.re_radio_value(&mut app_options.time_zone, TimeZone::Local, "Local")
             .on_hover_text("Display timestamps in the local timezone");
-        re_ui
-            .radio_value(
-                ui,
-                &mut app_options.time_zone,
-                TimeZone::UnixEpoch,
-                "Unix epoch",
-            )
-            .on_hover_text("Display timestamps in seconds since unix epoch");
+        ui.re_radio_value(
+            &mut app_options.time_zone,
+            TimeZone::UnixEpoch,
+            "Unix epoch",
+        )
+        .on_hover_text("Display timestamps in seconds since unix epoch");
     });
 
-    re_ui.checkbox(
-        ui,
+    ui.re_checkbox(
         &mut app_options.include_welcome_screen_button_in_recordings_panel,
         "Show 'Welcome screen' button",
     );
@@ -344,7 +322,7 @@ fn options_menu_ui(
     {
         ui.add_space(SPACING);
         ui.label("Experimental features:");
-        experimental_feature_ui(command_sender, re_ui, ui, app_options);
+        experimental_feature_ui(command_sender, ui, app_options);
     }
 
     if let Some(_backend) = frame
@@ -367,18 +345,16 @@ fn options_menu_ui(
 
 fn experimental_feature_ui(
     command_sender: &re_viewer_context::CommandSender,
-    re_ui: &ReUi,
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
 ) {
     #[cfg(not(target_arch = "wasm32"))]
-    re_ui
-        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space view screenshots")
+    ui
+        .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
 
-    if re_ui
-        .checkbox(
-            ui,
+    if ui
+        .re_checkbox(
             &mut app_options.experimental_dataframe_space_view,
             "Dataframe space view",
         )
@@ -390,17 +366,15 @@ fn experimental_feature_ui(
         ));
     }
 
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.experimental_plot_query_clamping,
-            "Plots: query clamping",
-        )
-        .on_hover_text("Toggle query clamping for the plot visualizers.");
+    ui.re_checkbox(
+        &mut app_options.experimental_plot_query_clamping,
+        "Plots: query clamping",
+    )
+    .on_hover_text("Toggle query clamping for the plot visualizers.");
 
-    re_ui
-        .checkbox(
-            ui,
+    ui
+        .re_checkbox(
+
             &mut app_options.experimental_visualizer_selection,
             "Visualizer selection for all views",
         )
@@ -408,28 +382,27 @@ fn experimental_feature_ui(
 }
 
 #[cfg(debug_assertions)]
-fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+fn egui_debug_options_ui(ui: &mut egui::Ui) {
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
-    any_clicked |= re_ui
-        .checkbox(ui, &mut debug.debug_on_hover, "Ui debug on hover")
+    any_clicked |= ui
+        .re_checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
         .on_hover_text("However over widgets to see their rectangles")
         .changed();
-    any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_expand_width, "Show expand width")
+    any_clicked |= ui
+        .re_checkbox(&mut debug.show_expand_width, "Show expand width")
         .on_hover_text("Show which widgets make their parent wider")
         .changed();
-    any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_expand_height, "Show expand height")
+    any_clicked |= ui
+        .re_checkbox(&mut debug.show_expand_height, "Show expand height")
         .on_hover_text("Show which widgets make their parent higher")
         .changed();
-    any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_resize, "Show resize")
+    any_clicked |= ui
+        .re_checkbox(&mut debug.show_resize, "Show resize")
         .changed();
-    any_clicked |= re_ui
-        .checkbox(
-            ui,
+    any_clicked |= ui
+        .re_checkbox(
             &mut debug.show_interactive_widgets,
             "Show interactive widgets",
         )
@@ -448,7 +421,6 @@ use re_viewer_context::CommandSender;
 
 #[cfg(debug_assertions)]
 fn debug_menu_options_ui(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
     command_sender: &CommandSender,
@@ -474,14 +446,18 @@ fn debug_menu_options_ui(
 
     ui.horizontal(|ui| {
         ui.label("Blueprint GC:");
-        re_ui.radio_value(ui, &mut app_options.blueprint_gc, true, "Enabled");
-        re_ui.radio_value(ui, &mut app_options.blueprint_gc, false, "Disabled");
+        ui.re_radio_value(&mut app_options.blueprint_gc, true, "Enabled");
+        ui.re_radio_value(&mut app_options.blueprint_gc, false, "Disabled");
     });
 
-    re_ui.checkbox(ui,
+    ui.re_checkbox(
         &mut app_options.show_picking_debug_overlay,
         "Picking Debug Overlay",
-    ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
+    )
+    .on_hover_text(
+        "Show a debug overlay that renders the picking layer information using the \
+        `debug_overlay.wgsl` shader.",
+    );
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

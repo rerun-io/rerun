@@ -9,7 +9,7 @@ use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
-use re_ui::list_item;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
@@ -83,8 +83,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &re_ui::icons::SPACE_VIEW_TIMESERIES
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
         layout.add("Pan by dragging, or scroll (+ ");
         layout.add(controls::HORIZONTAL_SCROLL_MODIFIER);
@@ -149,11 +149,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            list_item::ListItem::new(ctx.re_ui)
+            ui.list_item()
                 .interactive(false)
                 .show_hierarchical(
                     ui,
-                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|ui, _| {
                         let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
                         egui::ComboBox::from_id_source("aggregation_mode")
@@ -577,13 +577,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             }
 
-            ctx.re_ui.paint_time_cursor(
-                ui,
-                ui.painter(),
-                &response,
-                time_x,
-                response.rect.y_range(),
-            );
+            ui.paint_time_cursor(ui.painter(), &response, time_x, response.rect.y_range());
         }
 
         Ok(())

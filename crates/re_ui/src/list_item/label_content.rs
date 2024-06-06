@@ -1,7 +1,7 @@
 use egui::{text::TextWrapping, Align, Align2, NumExt, Ui};
 
 use super::{ContentContext, DesiredWidth, ListItemContent};
-use crate::{Icon, LabelStyle, ReUi};
+use crate::{DesignTokens, Icon, LabelStyle};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
 #[allow(clippy::type_complexity)]
@@ -14,8 +14,8 @@ pub struct LabelContent<'a> {
     italics: bool,
 
     label_style: LabelStyle,
-    icon_fn: Option<Box<dyn FnOnce(&ReUi, &egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
-    buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
+    icon_fn: Option<Box<dyn FnOnce(&egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
+    buttons_fn: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
     always_show_buttons: bool,
 
     text_wrap_mode: Option<egui::TextWrapMode>,
@@ -104,7 +104,7 @@ impl<'a> LabelContent<'a> {
     /// Provide an [`Icon`] to be displayed on the left of the item.
     #[inline]
     pub fn with_icon(self, icon: &'a Icon) -> Self {
-        self.with_icon_fn(|_, ui, rect, visuals| {
+        self.with_icon_fn(|ui, rect, visuals| {
             let tint = visuals.fg_stroke.color;
             icon.as_image().tint(tint).paint_at(ui, rect);
         })
@@ -114,7 +114,7 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn with_icon_fn(
         mut self,
-        icon_fn: impl FnOnce(&ReUi, &egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+        icon_fn: impl FnOnce(&egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
     ) -> Self {
         self.icon_fn = Some(Box::new(icon_fn));
         self
@@ -133,7 +133,7 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn with_buttons(
         mut self,
-        buttons: impl FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a,
+        buttons: impl FnOnce(&mut egui::Ui) -> egui::Response + 'a,
     ) -> Self {
         self.buttons_fn = Some(Box::new(buttons));
         self
@@ -178,7 +178,7 @@ impl<'a> LabelContent<'a> {
 }
 
 impl ListItemContent for LabelContent<'_> {
-    fn ui(self: Box<Self>, re_ui: &ReUi, ui: &mut Ui, context: &ContentContext<'_>) {
+    fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) {
         let text_wrap_mode = self.get_text_wrap_mode(ui);
 
         let Self {
@@ -195,13 +195,13 @@ impl ListItemContent for LabelContent<'_> {
         } = *self;
 
         let icon_rect = egui::Rect::from_center_size(
-            context.rect.left_center() + egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
-            ReUi::small_icon_size(),
+            context.rect.left_center() + egui::vec2(DesignTokens::small_icon_size().x / 2., 0.0),
+            DesignTokens::small_icon_size(),
         );
 
         let mut text_rect = context.rect;
         if icon_fn.is_some() {
-            text_rect.min.x += icon_rect.width() + ReUi::text_to_icon_padding();
+            text_rect.min.x += icon_rect.width() + DesignTokens::text_to_icon_padding();
         }
 
         // text styling
@@ -229,7 +229,7 @@ impl ListItemContent for LabelContent<'_> {
 
         // Draw icon
         if let Some(icon_fn) = icon_fn {
-            icon_fn(re_ui, ui, icon_rect, visuals);
+            icon_fn(ui, icon_rect, visuals);
         }
 
         // We can't use `.hovered()` or the buttons disappear just as the user clicks,
@@ -248,7 +248,7 @@ impl ListItemContent for LabelContent<'_> {
                     egui::Layout::right_to_left(egui::Align::Center),
                     None,
                 );
-                Some(buttons(re_ui, &mut ui))
+                Some(buttons(&mut ui))
             } else {
                 None
             }
@@ -259,7 +259,7 @@ impl ListItemContent for LabelContent<'_> {
         // Draw text
 
         if let Some(button_response) = &button_response {
-            text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
+            text_rect.max.x -= button_response.rect.width() + DesignTokens::text_to_icon_padding();
         }
 
         let mut layout_job =
@@ -284,7 +284,7 @@ impl ListItemContent for LabelContent<'_> {
         ui.painter().galley(text_pos, galley, visuals.text_color());
     }
 
-    fn desired_width(&self, _re_ui: &ReUi, ui: &Ui) -> DesiredWidth {
+    fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         let text_wrap_mode = self.get_text_wrap_mode(ui);
 
         let measured_width = {
@@ -302,7 +302,8 @@ impl ListItemContent for LabelContent<'_> {
             let mut desired_width = galley.size().x;
 
             if self.icon_fn.is_some() {
-                desired_width += ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
+                desired_width +=
+                    DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
             }
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being

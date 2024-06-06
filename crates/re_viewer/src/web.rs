@@ -108,7 +108,7 @@ impl WebHandle {
         }
 
         // request repaint, because the overrides may cause panels to expand/collapse
-        app.re_ui.egui_ctx.request_repaint();
+        app.egui_ctx.request_repaint();
 
         Ok(())
     }
@@ -147,7 +147,7 @@ impl WebHandle {
             return;
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
-        let rx = url_to_receiver(app.re_ui.egui_ctx.clone(), follow_if_http, url);
+        let rx = url_to_receiver(app.egui_ctx.clone(), follow_if_http, url);
         if let Some(rx) = rx.ok_or_log_error() {
             app.add_receiver(rx);
         }
@@ -203,8 +203,7 @@ impl WebHandle {
         }
 
         // Request a repaint since closing the channel may update the top bar.
-        app.re_ui
-            .egui_ctx
+        app.egui_ctx
             .request_repaint_after(std::time::Duration::from_millis(10));
     }
 
@@ -219,7 +218,7 @@ impl WebHandle {
         if let Some(tx) = self.tx_channels.get(id).cloned() {
             let data: Vec<u8> = data.to_vec();
 
-            let egui_ctx = app.re_ui.egui_ctx.clone();
+            let egui_ctx = app.egui_ctx.clone();
 
             let ui_waker = Box::new(move || {
                 // Spend a few more milliseconds decoding incoming messages,
@@ -361,9 +360,15 @@ fn create_app(
         fullscreen_options: app_options.fullscreen.clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
-    let re_ui = crate::customize_eframe_and_setup_renderer(cc)?;
+    crate::customize_eframe_and_setup_renderer(cc)?;
 
-    let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+    let mut app = crate::App::new(
+        build_info,
+        &app_env,
+        startup_options,
+        cc.egui_ctx.clone(),
+        cc.storage,
+    );
 
     let query_map = &cc.integration_info.web_info.location.query_map;
 
