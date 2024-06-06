@@ -12,10 +12,10 @@
   ],
   "scripts": {
     "build:wasm": "cargo run -p re_dev_tools -- build-web-viewer --release -g --module -o rerun_js/web-viewer",
-    "build:types": "tsc --noEmit && dts-buddy",
-    "build": "npm run build:wasm && npm run build:types",
+    "build:js": "tsc",
+    "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "cargo run -p re_dev_tools -- build-web-viewer --debug --module -o rerun_js/web-viewer",
-    "build:debug": "npm run build:wasm:debug && npm run build:types"
+    "build:debug": "npm run build:wasm:debug && npm run build:js"
   },
   "repository": {
     "type": "git",
@@ -39,9 +39,11 @@
     }
   },
   "files": [
+    "index.ts",
     "index.d.ts",
     "index.d.ts.map",
     "index.js",
+    "index.js.map",
     "package.json",
     "re_viewer_bg.js",
     "re_viewer_bg.wasm",
