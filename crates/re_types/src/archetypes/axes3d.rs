@@ -25,6 +25,48 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for representing a transform.
 ///
 /// See [`Transform3D`][crate::archetypes.ScTransform3Dalar]
+///
+/// ## Example
+///
+/// ### Transform with axes
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_axes").spawn()?;
+///
+///     let base_axes = rerun::Axes3D::new().with_length(1.0);
+///     let other_axes = rerun::Axes3D::new().with_length(0.5);
+///
+///     rec.log_static("base", &base_axes)?;
+///     rec.log_static("base/rotated", &other_axes)?;
+///     rec.log_static("base/rotated/translated", &other_axes)?;
+///
+///     for deg in 0..360 {
+///         rec.set_time_sequence("step", deg);
+///         rec.log(
+///             "base/rotated",
+///             &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
+///                 [1.0, 1.0, 1.0],
+///                 rerun::Angle::Degrees(deg as f32),
+///             )),
+///         )?;
+///         rec.log(
+///             "base/rotated/translated",
+///             &rerun::Transform3D::from_translation([2.0, 0.0, 0.0]),
+///         )?;
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1200w.png">
+///   <img src="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug)]
 pub struct Axes3D {
     /// Length of the 3 axes.
