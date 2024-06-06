@@ -420,33 +420,6 @@ impl DataResult {
             .as_ref()
             .map_or(&DEFAULT_RANGE, |p| &p.query_range)
     }
-
-    /// Get the typed fallback for a specific component.
-    pub fn typed_fallback_for<C: re_types::Component + Default>(
-        &self,
-        ctx: &ViewerContext<'_>,
-        fallback_provider: &dyn ComponentFallbackProvider,
-        archetype_name: Option<ArchetypeName>,
-        view_state: &dyn crate::SpaceViewState,
-    ) -> Option<C> {
-        let query_context = QueryContext {
-            viewer_ctx: ctx,
-            target_entity_path: &self.entity_path,
-            archetype_name,
-            query: &ctx.current_query(),
-            view_state,
-        };
-
-        C::from_arrow(
-            fallback_provider
-                .fallback_for(&query_context, C::name())
-                .ok()?
-                .as_ref(),
-        )
-        .ok()?
-        .into_iter()
-        .next()
-    }
 }
 
 pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
