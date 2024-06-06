@@ -14,9 +14,9 @@ This archetype shows a set of orthogonal coordinate axes such as for representin
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 
 ## API reference links
- * 🌊 [C++ API docs for `Axes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Axes3D.html)
- * 🐍 [Python API docs for `Axes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Axes3D)
- * 🦀 [Rust API docs for `Axes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Axes3D.html)
+ * 🌊 [C++ API docs for `Axes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Axes3D.html?speculative-link)
+ * 🐍 [Python API docs for `Axes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Axes3D)
+ * 🦀 [Rust API docs for `Axes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Axes3D.html?speculative-link)
 
 ## Example
 

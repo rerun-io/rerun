@@ -17,5 +17,5 @@ A single-precision 32-bit IEEE 754 floating point number.
 
 ## Used by
 
-* [`AxisLength`](../components/axis_length.md)
+* [`AxisLength`](../components/axis_length.md?speculative-link)
 * [`ImagePlaneDistance`](../components/image_plane_distance.md?speculative-link)
