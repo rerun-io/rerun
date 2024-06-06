@@ -1,5 +1,12 @@
 use crate::{DataQueryResult, SpaceViewId};
 
+/// The context associated with a view.
+///
+/// This combines our [`crate::ViewerContext`] with [`crate::SpaceViewState`]
+/// and other view-specific information. This is used as the interface for
+/// execution of view systems and selection panel UI elements that happen
+/// within the context of a view to simplify plumbing of the necessary
+/// information to resolve a query with possible overrides and fallback values.
 pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_state: &'a dyn crate::SpaceViewState,
