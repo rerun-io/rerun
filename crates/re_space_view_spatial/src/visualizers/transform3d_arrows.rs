@@ -215,7 +215,7 @@ re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer
 /// The `Transform3DDetector` doesn't actually visualize anything, but it allows us to detect
 /// when a transform should otherwise be visualized.
 ///
-/// See the logic in [`crate::SpatialSpaceView3D::choose_default_visualizers`]
+/// See the logic in [`crate::SpatialSpaceView3D`]`::choose_default_visualizers`.
 #[derive(Default)]
 pub struct Transform3DDetector();
 
