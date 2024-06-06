@@ -15,7 +15,7 @@ use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 /// will be used instead of the range query.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`HybridResults`].
+/// [`crate::HybridResults`].
 pub fn range_with_overrides(
     ctx: &ViewerContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
@@ -48,7 +48,7 @@ pub fn range_with_overrides(
 /// will be used instead of the latest-at query.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`HybridResults`].
+/// [`crate::HybridResults`].
 pub fn latest_at_with_overrides<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
