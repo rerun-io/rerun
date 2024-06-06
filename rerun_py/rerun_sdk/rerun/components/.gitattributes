@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
 annotation_context.py linguist-generated=true
+axis_length.py linguist-generated=true
 blob.py linguist-generated=true
 class_id.py linguist-generated=true
 clear_is_recursive.py linguist-generated=true

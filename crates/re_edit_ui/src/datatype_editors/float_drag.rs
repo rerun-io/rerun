@@ -1,7 +1,17 @@
 use egui::NumExt as _;
+use re_types::datatypes;
 
-/// Generic editor for a f32 value from zero to infinity.
+/// Generic editor for a [`re_types::datatypes::Float32`] value from zero to infinity.
 pub fn edit_f32_zero_to_inf(
+    _ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    value: &mut impl std::ops::DerefMut<Target = datatypes::Float32>,
+) -> egui::Response {
+    edit_f32_zero_to_inf_impl(ui, &mut value.deref_mut().0)
+}
+
+/// Generic editor for a raw f32 value from zero to infinity.
+pub fn edit_f32_zero_to_inf_raw(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
     value: &mut impl std::ops::DerefMut<Target = f32>,

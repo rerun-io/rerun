@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 annotation_context.md linguist-generated=true
+axis_length.md linguist-generated=true
 blob.md linguist-generated=true
 class_id.md linguist-generated=true
 clear_is_recursive.md linguist-generated=true

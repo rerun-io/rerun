@@ -108,6 +108,7 @@ impl SpaceViewClass for TextSpaceView {
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TextSpaceViewState>()?;
+
         let ViewTextFilters {
             col_timelines,
             col_entity_path,

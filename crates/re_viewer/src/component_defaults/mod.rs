@@ -111,6 +111,10 @@ pub fn list_default_components(
             <AnnotationContext as Loggable>::name(),
             AnnotationContext::default().to_arrow()?,
         ),
+        (
+            <AxisLength as Loggable>::name(),
+            AxisLength::default().to_arrow()?,
+        ),
         (<Blob as Loggable>::name(), Blob::default().to_arrow()?),
         (
             <ClassId as Loggable>::name(),

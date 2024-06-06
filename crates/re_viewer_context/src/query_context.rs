@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataResult, SpaceViewId, SpaceViewState, ViewerContext};
+use crate::{DataResult, SpaceViewId, SpaceViewState, ViewContext, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -35,6 +35,10 @@ pub struct QueryContext<'a> {
 
     /// The view state of the view in which the query is executed.
     pub view_state: &'a dyn SpaceViewState,
+
+    /// The view context, if available.
+    // TODO(jleibs): Make this non-optional.
+    pub view_ctx: Option<&'a ViewContext<'a>>,
 }
 
 /// The result of executing a single data query

@@ -8,15 +8,14 @@ use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    ComponentUiTypes, DataResult, OverridePath, QueryContext, SpaceViewClassExt as _,
-    SystemCommand, SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
+    ComponentUiTypes, DataResult, OverridePath, SpaceViewClassExt as _, SystemCommand,
+    SystemCommandSender as _, ViewContext, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 pub fn override_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     space_view: &SpaceViewBlueprint,
-    view_state: &dyn re_viewer_context::SpaceViewState,
     instance_path: &InstancePath,
     ui: &mut egui::Ui,
 ) {
@@ -47,10 +46,6 @@ pub fn override_ui(
         .map(|props| props.resolved_component_overrides.keys().copied().collect())
         .unwrap_or_default();
 
-    let view_systems = ctx
-        .space_view_class_registry
-        .new_visualizer_collection(space_view.class_identifier());
-
     let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
 
     // Accumulate the components across all visualizers and track which visualizer
@@ -60,7 +55,8 @@ pub fn override_ui(
     // TODO(jleibs): We can do something fancier in the future such as presenting both
     // options once we have a motivating use-case.
     for vis in &data_result.visualizers {
-        let Some(queried) = view_systems
+        let Some(queried) = ctx
+            .visualizer_collection
             .get_by_identifier(*vis)
             .ok()
             .map(|vis| vis.visualizer_query_info().queried)
@@ -78,14 +74,14 @@ pub fn override_ui(
         &query,
         ctx.recording(),
         ui,
-        &view_systems,
         &component_to_vis,
         &active_overrides,
         &data_result,
-        view_state,
     );
 
-    let Some(overrides) = data_result.property_overrides else {
+    // TODO(jleibs): This clone is annoying, but required because QueryContext wants
+    // a reference to the EntityPath. We could probably refactor this to avoid the clone.
+    let Some(overrides) = data_result.property_overrides.clone() else {
         return;
     };
 
@@ -93,6 +89,8 @@ pub fn override_ui(
         .resolved_component_overrides
         .into_iter()
         .sorted_by_key(|(c, _)| *c);
+
+    let query_context = ctx.query_context(&data_result, &query);
 
     re_ui::list_item::list_item_scope(ui, "overrides", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -107,7 +105,10 @@ pub fn override_ui(
             let Some(visualizer_identifier) = component_to_vis.get(component_name) else {
                 continue;
             };
-            let Ok(visualizer) = view_systems.get_by_identifier(*visualizer_identifier) else {
+            let Ok(visualizer) = ctx
+                .visualizer_collection
+                .get_by_identifier(*visualizer_identifier)
+            else {
                 re_log::warn!(
                     "Failed to resolve visualizer identifier {visualizer_identifier}, to a visualizer implementation"
                 );
@@ -117,7 +118,7 @@ pub fn override_ui(
             let value_fn = |ui: &mut egui::Ui| {
                 let (origin_db, query) = match store_kind {
                     StoreKind::Blueprint => {
-                        (ctx.store_context.blueprint, ctx.blueprint_query.clone())
+                        (ctx.blueprint_db(), ctx.viewer_ctx.blueprint_query.clone())
                     }
                     StoreKind::Recording => (ctx.recording(), ctx.current_query()),
                 };
@@ -134,14 +135,8 @@ pub fn override_ui(
                     .cloned(); /* arc */
 
                 if let Some(results) = component_data {
-                    ctx.component_ui_registry.singleline_edit_ui(
-                        &QueryContext {
-                            viewer_ctx: ctx,
-                            target_entity_path: &instance_path.entity_path,
-                            archetype_name: None,
-                            query: &query,
-                            view_state,
-                        },
+                    ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
+                        &query_context,
                         ui,
                         origin_db,
                         entity_path_overridden,
@@ -177,15 +172,13 @@ pub fn override_ui(
 
 #[allow(clippy::too_many_arguments)]
 pub fn add_new_override(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     query: &LatestAtQuery,
     db: &EntityDb,
     ui: &mut egui::Ui,
-    view_systems: &re_viewer_context::VisualizerCollection,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
     active_overrides: &BTreeSet<ComponentName>,
     data_result: &DataResult,
-    view_state: &dyn re_viewer_context::SpaceViewState,
 ) {
     let remaining_components = component_to_vis
         .keys()
@@ -201,13 +194,7 @@ pub fn add_new_override(
                 opened = true;
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-                let query_context = QueryContext {
-                    viewer_ctx: ctx,
-                    target_entity_path: &data_result.entity_path,
-                    archetype_name: None,
-                    query,
-                    view_state,
-                };
+                let query_context = ctx.query_context(data_result, query);
 
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.
@@ -227,6 +214,7 @@ pub fn add_new_override(
                     // If there is no registered editor, don't let the user create an override
                     // TODO(andreas): Can only handle single line editors right now.
                     if !ctx
+                        .viewer_ctx
                         .component_ui_registry
                         .registered_ui_types(*component)
                         .contains(ComponentUiTypes::SingleLineEditor)
@@ -247,11 +235,16 @@ pub fn add_new_override(
                             .latest_at(query, &data_result.entity_path, *component, &components)
                             .and_then(|result| result.2[0].clone())
                             .or_else(|| {
-                                view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
-                                    sys.fallback_for(&query_context, *component)
-                                        .map(|fallback| DataCell::from_arrow(*component, fallback))
-                                        .ok()
-                                })
+                                ctx.visualizer_collection
+                                    .get_by_identifier(*viz)
+                                    .ok()
+                                    .and_then(|sys| {
+                                        sys.fallback_for(&query_context, *component)
+                                            .map(|fallback| {
+                                                DataCell::from_arrow(*component, fallback)
+                                            })
+                                            .ok()
+                                    })
                             })
                         else {
                             re_log::warn!("Could not identify an initial value for: {}", component);
@@ -262,16 +255,17 @@ pub fn add_new_override(
 
                         match DataRow::from_cells(
                             RowId::new(),
-                            ctx.store_context.blueprint_timepoint_for_writes(),
+                            ctx.blueprint_timepoint_for_writes(),
                             override_path.clone(),
                             [initial_data],
                         ) {
                             Ok(row) => {
-                                ctx.command_sender
-                                    .send_system(SystemCommand::UpdateBlueprint(
-                                        ctx.store_context.blueprint.store_id().clone(),
+                                ctx.viewer_ctx.command_sender.send_system(
+                                    SystemCommand::UpdateBlueprint(
+                                        ctx.blueprint_db().store_id().clone(),
                                         vec![row],
-                                    ));
+                                    ),
+                                );
                             }
                             Err(err) => {
                                 re_log::warn!(

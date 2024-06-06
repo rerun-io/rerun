@@ -6,6 +6,7 @@ from .annotation_context import AnnotationContext
 from .arrows2d import Arrows2D
 from .arrows3d import Arrows3D
 from .asset3d import Asset3D
+from .axes3d import Axes3D
 from .bar_chart import BarChart
 from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
@@ -34,6 +35,7 @@ __all__ = [
     "Arrows2D",
     "Arrows3D",
     "Asset3D",
+    "Axes3D",
     "BarChart",
     "Boxes2D",
     "Boxes3D",

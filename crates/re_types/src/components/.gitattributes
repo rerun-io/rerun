@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 annotation_context.rs linguist-generated=true
+axis_length.rs linguist-generated=true
 blob.rs linguist-generated=true
 class_id.rs linguist-generated=true
 color.rs linguist-generated=true

@@ -1,4 +1,5 @@
 include "./components/annotation_context.fbs";
+include "./components/axis_length.fbs";
 include "./components/blob.fbs";
 include "./components/class_id.fbs";
 include "./components/clear_is_recursive.fbs";

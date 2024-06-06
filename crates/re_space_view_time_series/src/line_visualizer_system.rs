@@ -149,13 +149,8 @@ impl SeriesLineSystem {
 
         let resolver = ctx.recording().resolver();
 
-        let query_ctx = QueryContext {
-            viewer_ctx: ctx.viewer_ctx,
-            archetype_name: Some(SeriesLine::name()),
-            query: &ctx.current_query(),
-            target_entity_path: &data_result.entity_path,
-            view_state: ctx.view_state,
-        };
+        let current_query = ctx.current_query();
+        let query_ctx = ctx.query_context(data_result, &current_query);
 
         let fallback_color =
             re_viewer_context::TypedComponentFallbackProvider::<Color>::fallback_for(

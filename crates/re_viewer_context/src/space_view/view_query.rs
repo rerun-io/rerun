@@ -236,6 +236,22 @@ impl DataResult {
         ctx.save_empty_blueprint_component::<C>(recursive_override_path);
     }
 
+    /// Clears the recursive override for a given component
+    pub fn clear_individual_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(individual_override_path) = self.individual_override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        ctx.save_empty_blueprint_component::<C>(individual_override_path);
+    }
+
     /// Write the [`EntityProperties`] for this result back to the Blueprint store on the recursive override.
     ///
     /// Setting `new_recursive_props` to `None` will always clear the override.

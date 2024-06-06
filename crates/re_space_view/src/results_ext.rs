@@ -95,6 +95,7 @@ impl<'a> HybridLatestAtResults<'a> {
             archetype_name: None, // TODO(jleibs): Do we need this?
             query: &self.query,
             view_state: self.ctx.view_state,
+            view_ctx: Some(self.ctx),
         };
 
         fallback_provider

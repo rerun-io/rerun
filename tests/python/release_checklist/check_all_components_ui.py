@@ -89,6 +89,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             ),
         )
     ]),
+    "AxisLengthBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "BlobBatch": TestCase(
         alternatives=[
             b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09",
