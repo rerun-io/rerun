@@ -14,8 +14,10 @@ use re_log_types::EntityPathFilter;
 use re_space_view::DataResultQuery as _;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    archetypes::Pinhole,
-    components::{ImagePlaneDistance, PinholeProjection, Transform3D},
+    archetypes::{Axes3D, Pinhole},
+    components::{
+        AxisLength, ImagePlaneDistance, PinholeProjection, Transform3D, VisualizerOverrides,
+    },
     tensor_data::TensorDataMeaning,
 };
 use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
@@ -1259,7 +1261,7 @@ fn entity_props_ui(
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
             pinhole_props_ui(ctx, ui, data_result);
             depth_props_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
-            transform3d_visualization_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
+            transform3d_visualization_ui(ctx, ui, data_result);
         });
 }
 
@@ -1324,6 +1326,84 @@ fn pinhole_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &Data
         }
         ui.end_row();
     }
+}
+
+fn transform3d_visualization_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+) {
+    re_tracing::profile_function!();
+
+    let (query, store) =
+        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
+
+    if store
+        .latest_at_component::<Transform3D>(&data_result.entity_path, &query)
+        .is_none()
+    {
+        return;
+    }
+
+    let arrow_viz = "Transform3DArrows".into();
+
+    let mut show_arrows = data_result.visualizers.contains(&arrow_viz);
+
+    let results = data_result.latest_at_with_overrides::<Axes3D>(ctx, &query);
+
+    let mut arrow_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
+
+    {
+        let response = ui.re_checkbox( &mut show_arrows, "Show transform").on_hover_text(
+            "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
+        if response.changed() {
+            let component = if show_arrows {
+                VisualizerOverrides::from(
+                    data_result
+                        .visualizers
+                        .iter()
+                        .chain(std::iter::once(&arrow_viz))
+                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
+                        .collect::<Vec<_>>(),
+                )
+            } else {
+                VisualizerOverrides::from(
+                    data_result
+                        .visualizers
+                        .iter()
+                        .filter(|v| **v != arrow_viz)
+                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
+                        .collect::<Vec<_>>(),
+                )
+            };
+
+            data_result.save_individual_override(ctx.viewer_ctx, &component);
+        }
+    }
+
+    if show_arrows {
+        ui.end_row();
+        ui.label("Transform-arrow length");
+        let speed = (arrow_length * 0.05).at_least(0.001);
+        let response = ui
+            .add(
+                egui::DragValue::new(&mut arrow_length)
+                    .clamp_range(0.0..=1.0e8)
+                    .speed(speed),
+            )
+            .on_hover_text(
+                "How long the arrows should be in the entity's own coordinate system. Double-click to reset to auto.",
+            );
+        if response.double_clicked() {
+            data_result.clear_individual_override::<AxisLength>(ctx.viewer_ctx);
+            response.surrender_focus();
+        } else if response.changed() {
+            data_result
+                .save_individual_override::<AxisLength>(ctx.viewer_ctx, &arrow_length.into());
+        }
+    }
+
+    ui.end_row();
 }
 
 fn depth_props_ui(
@@ -1423,63 +1503,5 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
     } else if response.changed() {
         *property = EditableAutoValue::UserEdited(value);
     }
-    ui.end_row();
-}
-
-fn transform3d_visualization_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_path: &EntityPath,
-    entity_props: &mut EntityProperties,
-) {
-    re_tracing::profile_function!();
-
-    let (query, store) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-
-    if store
-        .latest_at_component::<Transform3D>(entity_path, &query)
-        .is_none()
-    {
-        return;
-    }
-
-    let show_arrows = &mut entity_props.transform_3d_visible;
-    let arrow_length = &mut entity_props.transform_3d_size;
-
-    {
-        let mut checked = *show_arrows.get();
-        let response = ui.re_checkbox( &mut checked, "Show transform").on_hover_text(
-            "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
-        if response.changed() {
-            *show_arrows = EditableAutoValue::UserEdited(checked);
-        }
-        if response.double_clicked() {
-            *show_arrows = EditableAutoValue::Auto(checked);
-        }
-    }
-
-    if *show_arrows.get() {
-        ui.end_row();
-        ui.label("Transform-arrow length");
-        let mut value = *arrow_length.get();
-        let speed = (value * 0.05).at_least(0.001);
-        let response = ui
-            .add(
-                egui::DragValue::new(&mut value)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text(
-                "How long the arrows should be in the entity's own coordinate system. Double-click to reset to auto.",
-            );
-        if response.double_clicked() {
-            // reset to auto - the exact value will be restored somewhere else
-            *arrow_length = EditableAutoValue::Auto(value);
-            response.surrender_focus();
-        } else if response.changed() {
-            *arrow_length = EditableAutoValue::UserEdited(value);
-        }
-    }
-
     ui.end_row();
 }
