@@ -858,12 +858,12 @@ pub trait UiExt {
     ///
     /// Adapted from `egui_demo_lib/src/demo/toggle_switch.rs`
     fn toggle_switch(&mut self, height: f32, on: &mut bool) -> egui::Response {
+        //TODO(ab): use https://github.com/emilk/egui/pull/4627
         fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
             (a as f32 + t * (b as f32 - a as f32)).round() as u8
         }
 
         let ui = self.ui_mut();
-
         let width = (height / 2. * 3.).ceil();
         let size = egui::vec2(width, height); // 12x7 in figma, but 12x8 looks _much_ better in epaint
 
@@ -900,9 +900,13 @@ pub trait UiExt {
             );
 
             let circle_center = egui::pos2(circle_x, expanded_rect.center().y);
-            let circle_radius = 0.3 * expanded_rect.height();
-            ui.painter()
-                .circle_filled(circle_center, circle_radius, fg_fill);
+            let circle_radius_off = 0.3 * expanded_rect.height();
+            let circle_radius_on = 0.35 * expanded_rect.height();
+            ui.painter().circle_filled(
+                circle_center,
+                egui::lerp(circle_radius_off..=circle_radius_on, how_on),
+                fg_fill,
+            );
         }
 
         response
