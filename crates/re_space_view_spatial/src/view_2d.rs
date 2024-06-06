@@ -160,15 +160,11 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ent_paths: &PerSystemEntities,
         auto_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
-        let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
+        let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
             return;
         };
-        *auto_properties = generate_auto_legacy_properties(
-            ctx,
-            ent_paths,
-            &state.bounding_boxes.accumulated,
-            SpatialSpaceViewKind::TwoD,
-        );
+        *auto_properties =
+            generate_auto_legacy_properties(ctx, ent_paths, SpatialSpaceViewKind::TwoD);
     }
 
     fn spawn_heuristics(

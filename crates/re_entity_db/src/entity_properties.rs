@@ -114,17 +114,6 @@ pub struct EntityProperties {
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>, // TODO(andreas): should be a component on the DepthImage archetype.
 
-    /// Whether to show the 3D transform visualization at all.
-    // TODO(andreas): should go away once we can disable visualizer. Revisit how to collectively enable/disable these on an entire view.
-    // To consider: Make a TransformAxis archetype whose indicator is what enables the visualizer
-    // -> size etc. are now part of this archetype, not the `Transform` archetype
-    // -> `TransformAxis` itself doesn't have a required component, but the visualizer has. Just like in SeriesLines & Scalar.
-    // TODO(andreas)/TODO(jleibs): There's a pattern here that we should capture & formalize in the API / codegen / definitions.
-    pub transform_3d_visible: EditableAutoValue<bool>,
-
-    /// The length of the arrows in the entity's own coordinate system (space).
-    pub transform_3d_size: EditableAutoValue<f32>, // TODO(andreas): should be a component on the Transform3D/TransformAxis archetype.
-
     /// Should the legend be shown (for plot space views).
     pub show_legend: EditableAutoValue<bool>, // TODO(andreas): BarChart is still using it, we already have the legend archteype!
 
@@ -147,8 +136,6 @@ impl Default for EntityProperties {
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
-            transform_3d_visible: EditableAutoValue::Auto(false),
-            transform_3d_size: EditableAutoValue::Auto(1.0),
             show_legend: EditableAutoValue::Auto(true),
             legend_location: None,
             time_series_aggregator: EditableAutoValue::Auto(TimeSeriesAggregator::default()),
@@ -174,12 +161,6 @@ impl EntityProperties {
                 .backproject_radius_scale
                 .or(&child.backproject_radius_scale)
                 .clone(),
-
-            transform_3d_visible: self
-                .transform_3d_visible
-                .or(&child.transform_3d_visible)
-                .clone(),
-            transform_3d_size: self.transform_3d_size.or(&child.transform_3d_size).clone(),
 
             show_legend: self.show_legend.or(&child.show_legend).clone(),
             legend_location: self.legend_location.or(child.legend_location),
@@ -213,12 +194,6 @@ impl EntityProperties {
                 .or(&self.backproject_radius_scale)
                 .clone(),
 
-            transform_3d_visible: other
-                .transform_3d_visible
-                .or(&self.transform_3d_visible)
-                .clone(),
-            transform_3d_size: self.transform_3d_size.or(&other.transform_3d_size).clone(),
-
             show_legend: other.show_legend.or(&self.show_legend).clone(),
             legend_location: other.legend_location.or(self.legend_location),
             time_series_aggregator: other
@@ -236,8 +211,6 @@ impl EntityProperties {
             backproject_depth,
             depth_from_world_scale,
             backproject_radius_scale,
-            transform_3d_visible,
-            transform_3d_size,
             show_legend,
             legend_location,
             time_series_aggregator,
@@ -248,8 +221,6 @@ impl EntityProperties {
             || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
-            || transform_3d_visible.has_edits(&other.transform_3d_visible)
-            || transform_3d_size.has_edits(&other.transform_3d_size)
             || show_legend.has_edits(&other.show_legend)
             || *legend_location != other.legend_location
             || time_series_aggregator.has_edits(&other.time_series_aggregator)

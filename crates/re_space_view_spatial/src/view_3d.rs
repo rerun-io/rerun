@@ -332,15 +332,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ent_paths: &PerSystemEntities,
         auto_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
-        let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
+        let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
             return;
         };
-        *auto_properties = generate_auto_legacy_properties(
-            ctx,
-            ent_paths,
-            &state.bounding_boxes.accumulated,
-            SpatialSpaceViewKind::ThreeD,
-        );
+        *auto_properties =
+            generate_auto_legacy_properties(ctx, ent_paths, SpatialSpaceViewKind::ThreeD);
     }
 
     fn selection_ui(
