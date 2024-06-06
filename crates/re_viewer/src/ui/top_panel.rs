@@ -243,8 +243,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
-        let mut is_fullscreen = app.is_fullscreen_mode();
-        let icon = if is_fullscreen {
+        let icon = if app.is_fullscreen_mode() {
             &re_ui::icons::MINIMIZE
         } else {
             &re_ui::icons::MAXIMIZE
@@ -252,7 +251,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
 
         if app
             .re_ui()
-            .medium_icon_toggle_button(ui, icon, &mut is_fullscreen)
+            .medium_icon_toggle_button(ui, icon, &mut true)
             .on_hover_text("Toggle fullscreen")
             .clicked()
         {
