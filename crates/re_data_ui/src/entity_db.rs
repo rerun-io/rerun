@@ -1,6 +1,7 @@
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_types::SizeBytes;
+use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::{app_id_button_ui, data_source_button_ui};
@@ -14,8 +15,6 @@ impl crate::DataUi for EntityDb {
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        let re_ui = &ctx.re_ui;
-
         if ui_layout == UiLayout::List {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
             let mut string = self.store_id().to_string();
@@ -31,7 +30,7 @@ impl crate::DataUi for EntityDb {
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
             {
-                re_ui.grid_left_hand_label(ui, &format!("{} ID", self.store_id().kind));
+                ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind));
                 ui.label(self.store_id().to_string());
                 ui.end_row();
             }
@@ -47,57 +46,63 @@ impl crate::DataUi for EntityDb {
                     store_version,
                 } = store_info;
 
-                if let Some(cloned_from) =  cloned_from {
-                    re_ui.grid_left_hand_label(ui, "Clone of");
+                if let Some(cloned_from) = cloned_from {
+                    ui.grid_left_hand_label("Clone of");
                     crate::item_ui::store_id_button_ui(ctx, ui, cloned_from);
                     ui.end_row();
                 }
 
-                re_ui.grid_left_hand_label(ui, "Application ID");
+                ui.grid_left_hand_label("Application ID");
                 app_id_button_ui(ctx, ui, application_id);
                 ui.end_row();
 
-                re_ui.grid_left_hand_label(ui, "Source");
+                ui.grid_left_hand_label("Source");
                 ui.label(store_source.to_string());
                 ui.end_row();
 
                 if let Some(store_version) = store_version {
-                    re_ui.grid_left_hand_label(ui, "Source RRD version");
+                    ui.grid_left_hand_label("Source RRD version");
                     ui.label(store_version.to_string());
                     ui.end_row();
                 } else {
-                    re_log::debug_once!("store version is undefined for this recording, this is a bug");
+                    re_log::debug_once!(
+                        "store version is undefined for this recording, this is a bug"
+                    );
                 }
 
-                re_ui.grid_left_hand_label(ui, "Kind");
+                ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind.to_string());
                 ui.end_row();
 
-                re_ui.grid_left_hand_label(ui, "Created");
+                ui.grid_left_hand_label("Created");
                 ui.label(started.format(ctx.app_options.time_zone));
                 ui.end_row();
             }
 
             if let Some(latest_row_id) = self.latest_row_id() {
-                if let Ok(nanos_since_epoch) = i64::try_from(latest_row_id.nanoseconds_since_epoch()) {
+                if let Ok(nanos_since_epoch) =
+                    i64::try_from(latest_row_id.nanoseconds_since_epoch())
+                {
                     let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
-                    re_ui.grid_left_hand_label(ui, "Modified");
+                    ui.grid_left_hand_label("Modified");
                     ui.label(time.format(ctx.app_options.time_zone));
                     ui.end_row();
                 }
             }
 
             {
-                re_ui.grid_left_hand_label(ui, "Size");
+                ui.grid_left_hand_label("Size");
                 ui.label(re_format::format_bytes(self.total_size_bytes() as _))
                     .on_hover_text(
                         "Approximate size in RAM (decompressed).\n\
-                         If you hover an entity in the streams view (bottom panel) you can see the size of individual entities.");
+                         If you hover an entity in the streams view (bottom panel) you can see the \
+                         size of individual entities.",
+                    );
                 ui.end_row();
             }
 
             if let Some(data_source) = &self.data_source {
-                re_ui.grid_left_hand_label(ui, "Data source");
+                ui.grid_left_hand_label("Data source");
                 data_source_button_ui(ctx, ui, data_source);
                 ui.end_row();
             }

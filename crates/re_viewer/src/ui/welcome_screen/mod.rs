@@ -21,7 +21,6 @@ impl WelcomeScreen {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        re_ui: &re_ui::ReUi,
         command_sender: &re_viewer_context::CommandSender,
         welcome_screen_state: &WelcomeScreenState,
     ) {
@@ -53,7 +52,7 @@ impl WelcomeScreen {
                         no_data_ui::no_data_ui(ui);
                     } else {
                         self.example_page
-                            .ui(ui, re_ui, command_sender, &welcome_section_ui);
+                            .ui(ui, command_sender, &welcome_section_ui);
                     }
                 });
             });

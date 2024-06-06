@@ -8,6 +8,7 @@ use re_types::{
     external::arrow2::{self},
     ComponentName,
 };
+use re_ui::UiExt as _;
 
 use crate::{ComponentFallbackProvider, QueryContext, ViewerContext};
 
@@ -463,7 +464,7 @@ impl ComponentUiRegistry {
                 Ok(value) => value,
                 Err(error_text) => {
                     re_log::error_once!("{error_text}");
-                    ctx.viewer_ctx.re_ui.error_label(ui, &error_text);
+                    ui.error_label(&error_text);
                     return;
                 }
             };

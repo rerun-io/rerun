@@ -1,16 +1,16 @@
-use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
-use crate::ReUi;
 use egui::Ui;
+
+use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 
 /// [`ListItemContent`] that delegates to a closure.
 #[allow(clippy::type_complexity)]
 pub struct CustomContent<'a> {
-    ui: Box<dyn FnOnce(&crate::ReUi, &mut egui::Ui, &ContentContext<'_>) + 'a>,
+    ui: Box<dyn FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a>,
     desired_width: DesiredWidth,
 }
 
 impl<'a> CustomContent<'a> {
-    pub fn new(ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &ContentContext<'_>) + 'a) -> Self {
+    pub fn new(ui: impl FnOnce(&mut egui::Ui, &ContentContext<'_>) + 'a) -> Self {
         Self {
             ui: Box::new(ui),
             desired_width: Default::default(),
@@ -25,11 +25,11 @@ impl<'a> CustomContent<'a> {
 }
 
 impl ListItemContent for CustomContent<'_> {
-    fn ui(self: Box<Self>, re_ui: &crate::ReUi, ui: &mut egui::Ui, context: &ContentContext<'_>) {
-        (self.ui)(re_ui, ui, context);
+    fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>) {
+        (self.ui)(ui, context);
     }
 
-    fn desired_width(&self, _re_ui: &ReUi, _ui: &Ui) -> DesiredWidth {
+    fn desired_width(&self, _ui: &Ui) -> DesiredWidth {
         self.desired_width
     }
 }
@@ -56,13 +56,13 @@ impl DebugContent {
 }
 
 impl ListItemContent for DebugContent {
-    fn ui(self: Box<Self>, _re_ui: &crate::ReUi, ui: &mut egui::Ui, context: &ContentContext<'_>) {
+    fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>) {
         ui.ctx()
             .debug_painter()
             .debug_rect(context.rect, egui::Color32::DARK_GREEN, self.label);
     }
 
-    fn desired_width(&self, _re_ui: &ReUi, _ui: &Ui) -> DesiredWidth {
+    fn desired_width(&self, _ui: &Ui) -> DesiredWidth {
         self.desired_width
     }
 }

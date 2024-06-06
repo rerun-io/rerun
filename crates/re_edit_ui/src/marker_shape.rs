@@ -1,10 +1,11 @@
 use re_types::components::MarkerShape;
+use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
 use crate::response_utils::response_with_changes_of_inner;
 
 pub(crate) fn edit_marker_shape_ui(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     edit_marker: &mut MarkerShape,
 ) -> egui::Response {
@@ -20,15 +21,12 @@ pub(crate) fn edit_marker_shape_ui(
                 let list_ui = |ui: &mut egui::Ui| {
                     let mut combined_response: Option<egui::Response> = None;
                     for marker in MarkerShape::ALL {
-                        let mut response = ctx
-                            .re_ui
-                            .list_item()
-                            .selected(*edit_marker == marker)
-                            .show_flat(
+                        let mut response =
+                            ui.list_item().selected(*edit_marker == marker).show_flat(
                                 ui,
                                 re_ui::list_item::LabelContent::new(marker.to_string())
                                     .min_desired_width(item_width)
-                                    .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                                    .with_icon_fn(|ui, rect, visuals| {
                                         paint_marker(ui, marker.into(), rect, visuals.text_color());
                                     }),
                             );

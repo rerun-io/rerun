@@ -26,9 +26,9 @@ pub fn loop_selection_ui(
     let is_active = time_ctrl.looping() == Looping::Selection;
 
     let selection_color = if is_active {
-        re_ui::ReUi::loop_selection_color().gamma_multiply(0.7)
+        re_ui::DesignTokens::loop_selection_color().gamma_multiply(0.7)
     } else {
-        re_ui::ReUi::loop_selection_color().gamma_multiply(0.5)
+        re_ui::DesignTokens::loop_selection_color().gamma_multiply(0.5)
     };
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
@@ -63,10 +63,10 @@ pub fn loop_selection_ui(
 
             if is_active {
                 let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
-                let rounding = re_ui::ReUi::normal_rounding();
+                let rounding = re_ui::DesignTokens::normal_rounding();
                 time_area_painter.rect_filled(full_rect, rounding, selection_color);
             } else {
-                let rounding = re_ui::ReUi::normal_rounding();
+                let rounding = re_ui::DesignTokens::normal_rounding();
                 time_area_painter.rect_filled(rect, rounding, selection_color);
             }
 

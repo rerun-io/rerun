@@ -1,6 +1,6 @@
 use ahash::HashMap;
 use re_types_core::{Archetype, ArchetypeFieldInfo, ArchetypeInfo, ComponentName};
-use re_ui::list_item;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     ComponentFallbackProvider, ComponentUiTypes, QueryContext, SpaceViewId, SpaceViewState,
     ViewerContext,
@@ -78,7 +78,7 @@ fn view_property_ui_impl(
             fallback_provider,
         );
     } else {
-        let sub_prop_ui = |_: &re_ui::ReUi, ui: &mut egui::Ui| {
+        let sub_prop_ui = |ui: &mut egui::Ui| {
             for component_name in non_indicator_components {
                 let field_info = field_info_per_component.get(component_name);
                 let display_name = field_info
@@ -97,7 +97,7 @@ fn view_property_ui_impl(
             }
         };
 
-        list_item::ListItem::new(ctx.re_ui)
+        ui.list_item()
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
@@ -138,14 +138,14 @@ fn view_property_component_ui(
     let mut list_item_response = if ui_types.contains(ComponentUiTypes::MultiLineEditor) {
         let default_open = false;
         let id = egui::Id::new((blueprint_path.hash(), component_name));
-        list_item::ListItem::new(ctx.viewer_ctx.re_ui)
+        ui.list_item()
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
                 id,
                 default_open,
                 singleline_list_item_content,
-                |_, ui| {
+                |ui| {
                     ctx.viewer_ctx.component_ui_registry.multiline_edit_ui(
                         ctx,
                         ui,
@@ -159,7 +159,7 @@ fn view_property_component_ui(
             )
             .item_response
     } else {
-        list_item::ListItem::new(ctx.viewer_ctx.re_ui)
+        ui.list_item()
             .interactive(false)
             // It might have siblings that have a hierarchy.
             .show_hierarchical(ui, singleline_list_item_content)
@@ -224,7 +224,7 @@ fn singleline_list_item_content<'a>(
             ctx.viewer_ctx
                 .reset_blueprint_component_by_name(blueprint_path, component_name);
         })
-        .value_fn(move |_, ui, _| {
+        .value_fn(move |ui, _| {
             ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
                 ctx,
                 ui,

@@ -7,7 +7,7 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
-use re_ui::{drag_and_drop::DropTarget, list_item, ReUi};
+use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultTree,
     SystemCommandSender,
@@ -77,9 +77,8 @@ impl BlueprintTree {
         blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
     ) {
-        ctx.re_ui.panel_content(ui, |_, ui| {
-            ctx.re_ui.panel_title_bar_with_buttons(
-                ui,
+        ui.panel_content(|ui| {
+            ui.panel_title_bar_with_buttons(
                 "Blueprint",
                 Some("The blueprint is where you can configure the Rerun Viewer"),
                 |ui| {
@@ -111,7 +110,7 @@ impl BlueprintTree {
             .id_source("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
-                ctx.re_ui.panel_content(ui, |_, ui| {
+                ui.panel_content(|ui| {
                     self.blueprint_tree_scroll_to_item = ctx
                         .focused_item
                         .as_ref()
@@ -198,7 +197,8 @@ impl BlueprintTree {
         let item = Item::Container(container_id);
         let container_name = container_blueprint.display_name_or_default();
 
-        let item_response = list_item::ListItem::new(ctx.re_ui)
+        let item_response = ui
+            .list_item()
             .selected(ctx.selection().contains_item(&item))
             .draggable(false)
             .drop_target_style(self.is_candidate_drop_parent_container(&container_id))
@@ -258,10 +258,10 @@ impl BlueprintTree {
             .subdued(!container_visible)
             .label_style(contents_name_style(&container_name))
             .with_icon(icon_for_container_kind(&container_blueprint.container_kind))
-            .with_buttons(|re_ui, ui| {
-                let vis_response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);
+            .with_buttons(|ui| {
+                let vis_response = visibility_button_ui(ui, parent_visible, &mut visible);
 
-                let remove_response = remove_button_ui(re_ui, ui, "Remove container");
+                let remove_response = remove_button_ui(ui, "Remove container");
                 if remove_response.clicked() {
                     blueprint.mark_user_interaction(ctx);
                     blueprint.remove_contents(content);
@@ -277,11 +277,12 @@ impl BlueprintTree {
         let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
-        } = list_item::ListItem::new(ctx.re_ui)
+        } = ui
+            .list_item()
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .drop_target_style(self.is_candidate_drop_parent_container(container_id))
-            .show_hierarchical_with_children(ui, id, default_open, item_content, |_, ui| {
+            .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                 for child in &container_blueprint.contents {
                     self.contents_ui(ctx, blueprint, ui, child, container_visible);
                 }
@@ -343,10 +344,10 @@ impl BlueprintTree {
             .label_style(contents_name_style(&space_view_name))
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .subdued(!space_view_visible)
-            .with_buttons(|re_ui, ui| {
-                let vis_response = visibility_button_ui(re_ui, ui, container_visible, &mut visible);
+            .with_buttons(|ui| {
+                let vis_response = visibility_button_ui(ui, container_visible, &mut visible);
 
-                let response = remove_button_ui(re_ui, ui, "Remove space view from the viewport");
+                let response = remove_button_ui(ui, "Remove space view from the viewport");
                 if response.clicked() {
                     blueprint.mark_user_interaction(ctx);
                     blueprint.remove_contents(Contents::SpaceView(*space_view_id));
@@ -362,11 +363,12 @@ impl BlueprintTree {
         let list_item::ShowCollapsingResponse {
             item_response: mut response,
             body_response,
-        } = list_item::ListItem::new(ctx.re_ui)
+        } = ui
+            .list_item()
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
             .force_hovered(is_item_hovered)
-            .show_hierarchical_with_children(ui, id, default_open, item_content, |_, ui| {
+            .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                 // Always show the origin hierarchy first.
                 self.space_view_entity_hierarchy_ui(
                     ctx,
@@ -397,12 +399,10 @@ impl BlueprintTree {
                     }
                 });
                 if !projections.is_empty() {
-                    list_item::ListItem::new(ctx.re_ui)
-                        .interactive(false)
-                        .show_flat(
-                            ui,
-                            list_item::LabelContent::new("Projections:").italics(true),
-                        );
+                    ui.list_item().interactive(false).show_flat(
+                        ui,
+                        list_item::LabelContent::new("Projections:").italics(true),
+                    );
 
                     for projection in projections {
                         self.space_view_entity_hierarchy_ui(
@@ -463,7 +463,8 @@ impl BlueprintTree {
         let entity_path = node_or_path.path();
 
         if projection_mode && entity_path == &space_view.space_origin {
-            if list_item::ListItem::new(ctx.re_ui)
+            if ui
+                .list_item()
                 .show_hierarchical(
                     ui,
                     list_item::LabelContent::new("$origin")
@@ -506,7 +507,7 @@ impl BlueprintTree {
         let item_label = if ctx.recording().is_known_entity(entity_path) {
             egui::RichText::new(item_label)
         } else {
-            ctx.re_ui.warning_text(item_label)
+            ui.ctx().warning_text(item_label)
         };
 
         let subdued = !space_view_visible || !visible;
@@ -518,17 +519,17 @@ impl BlueprintTree {
             ))
             .subdued(subdued);
 
-        let list_item = list_item::ListItem::new(ctx.re_ui)
+        let list_item = ui
+            .list_item()
             .selected(is_selected)
             .force_hovered(is_item_hovered);
 
         // We force the origin to be displayed, even if it's fully empty, in which case it can be
         // neither shown/hidden nor removed.
         if !empty_origin {
-            item_content = item_content.with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
+            item_content = item_content.with_buttons(|ui: &mut egui::Ui| {
                 let mut visible_after = visible;
-                let vis_response =
-                    visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
+                let vis_response = visibility_button_ui(ui, space_view_visible, &mut visible_after);
                 if visible_after != visible {
                     if let Some(data_result_node) = data_result_node {
                         data_result_node
@@ -542,7 +543,6 @@ impl BlueprintTree {
                 }
 
                 let response = remove_button_ui(
-                    re_ui,
                     ui,
                     "Remove this entity and all its children from the space view",
                 );
@@ -570,7 +570,7 @@ impl BlueprintTree {
             );
 
             list_item
-                .show_hierarchical_with_children(ui, id, default_open, item_content, |_, ui| {
+                .show_hierarchical_with_children(ui, id, default_open, item_content, |ui| {
                     for child in node.children.iter().sorted_by_key(|c| {
                         query_result
                             .tree
@@ -610,7 +610,7 @@ impl BlueprintTree {
             );
 
             if empty_origin {
-                ui.label(ctx.re_ui.warning_text(
+                ui.label(ui.ctx().warning_text(
                     "This space view's query did not match any data under the space origin",
                 ));
             }
@@ -635,9 +635,8 @@ impl BlueprintTree {
         blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
     ) {
-        if ctx
-            .re_ui
-            .small_icon_button(ui, &re_ui::icons::ADD)
+        if ui
+            .small_icon_button(&re_ui::icons::ADD)
             .on_hover_text("Add a new space view or container")
             .clicked()
         {
@@ -695,7 +694,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             None,
-            ReUi::list_item_height(),
+            DesignTokens::list_item_height(),
         );
 
         if let Some(drop_target) = drop_target {
@@ -779,7 +778,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             body_response.map(|r| r.rect),
-            ReUi::list_item_height(),
+            DesignTokens::list_item_height(),
         );
 
         if let Some(drop_target) = drop_target {
@@ -895,15 +894,12 @@ fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let last_modified_at_the_same_time =
             default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
         if active_is_clone_of_default && last_modified_at_the_same_time {
-            disabled_reason = Some("No modifications has been made");
+            disabled_reason = Some("No modifications have been made");
         }
     }
 
     let enabled = disabled_reason.is_none();
-    let response = ui.add_enabled(
-        enabled,
-        ctx.re_ui.small_icon_button_widget(ui, &re_ui::icons::RESET),
-    );
+    let response = ui.add_enabled(enabled, ui.small_icon_button_widget(&re_ui::icons::RESET));
 
     let response = if let Some(disabled_reason) = disabled_reason {
         response.on_disabled_hover_text(disabled_reason)
@@ -1042,21 +1038,16 @@ fn expand_all_data_results_until(
     }
 }
 
-fn remove_button_ui(re_ui: &ReUi, ui: &mut Ui, tooltip: &str) -> Response {
-    re_ui
-        .small_icon_button(ui, &re_ui::icons::REMOVE)
+fn remove_button_ui(ui: &mut Ui, tooltip: &str) -> Response {
+    ui.small_icon_button(&re_ui::icons::REMOVE)
         .on_hover_text(tooltip)
 }
 
-fn visibility_button_ui(
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    enabled: bool,
-    visible: &mut bool,
-) -> egui::Response {
-    ui.set_enabled(enabled);
-    re_ui
-        .visibility_toggle_button(ui, visible)
-        .on_hover_text("Toggle visibility")
-        .on_disabled_hover_text("A parent is invisible")
+fn visibility_button_ui(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
+    ui.add_enabled_ui(enabled, |ui| {
+        ui.visibility_toggle_button(visible)
+            .on_hover_text("Toggle visibility")
+            .on_disabled_hover_text("A parent is invisible")
+    })
+    .inner
 }

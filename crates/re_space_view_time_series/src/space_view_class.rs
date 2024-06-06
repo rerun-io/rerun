@@ -7,9 +7,9 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
-use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom};
+use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
-use re_ui::list_item;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
@@ -20,7 +20,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
     ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
-use re_viewport_blueprint::{query_view_property_or_default, ViewProperty};
+use re_viewport_blueprint::ViewProperty;
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
@@ -83,8 +83,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &re_ui::icons::SPACE_VIEW_TIMESERIES
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
         layout.add("Pan by dragging, or scroll (+ ");
         layout.add(controls::HORIZONTAL_SCROLL_MODIFIER);
@@ -149,11 +149,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            list_item::ListItem::new(ctx.re_ui)
+            ui.list_item()
                 .interactive(false)
                 .show_hierarchical(
                     ui,
-                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|ui, _| {
                         let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
                         egui::ComboBox::from_id_source("aggregation_mode")
@@ -300,20 +300,19 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
-        let blueprint_db = ctx.store_context.blueprint;
-        let blueprint_query = ctx.blueprint_query;
+        let blueprint_db = ctx.blueprint_db();
+        let view_id = query.space_view_id;
 
-        let (
-            re_types::blueprint::archetypes::PlotLegend {
-                visible: legend_visible,
-                corner: legend_corner,
-            },
-            _,
-        ) = query_view_property_or_default(query.space_view_id, blueprint_db, blueprint_query);
+        let plot_legend =
+            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
 
-        let scalar_axis = ViewProperty::from_archetype::<ScalarAxis>(ctx, query.space_view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(self, state)?;
-        let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(self, state)?;
+        let scalar_axis =
+            ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_zoom_lock =
+            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
         let y_zoom_lock = y_zoom_lock.0 .0;
 
         let (current_time, time_type, timeline) = {
@@ -408,9 +407,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             });
 
-        if legend_visible.unwrap_or(true.into()).0 {
-            plot =
-                plot.legend(Legend::default().position(legend_corner.unwrap_or_default().into()));
+        if *legend_visible {
+            plot = plot.legend(Legend::default().position(legend_corner.into()));
         }
 
         if timeline.typ() == TimeType::Time {
@@ -516,9 +514,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
-            scalar_axis.reset_blueprint_component::<Range1D>();
+            scalar_axis.reset_blueprint_component::<Range1D>(ctx);
         } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(&new_y_range);
+            scalar_axis.save_blueprint_component(ctx, &new_y_range);
         }
 
         // Decide if the time cursor should be displayed, and if so where:
@@ -579,13 +577,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             }
 
-            ctx.re_ui.paint_time_cursor(
-                ui,
-                ui.painter(),
-                &response,
-                time_x,
-                response.rect.y_range(),
-            );
+            ui.paint_time_cursor(ui.painter(), &response, time_x, response.rect.y_range());
         }
 
         Ok(())

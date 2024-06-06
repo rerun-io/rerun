@@ -4,11 +4,13 @@ use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
+use re_types::View;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, VisualBounds2D},
     Archetype, ComponentName, SpaceViewClassIdentifier,
 };
+use re_ui::UiExt as _;
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
@@ -43,7 +45,6 @@ impl VisualizableFilterContext for VisualizableFilterContext2D {
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::Spatial2DView;
 
 impl SpaceViewClass for SpatialSpaceView2D {
@@ -59,8 +60,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &re_ui::icons::SPACE_VIEW_2D
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        super::ui_2d::help_text(re_ui)
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        super::ui_2d::help_text(egui_ctx)
     }
 
     fn on_register(
@@ -244,12 +245,10 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         // TODO(andreas): list_item'ify the rest
-        ctx.re_ui
-            .selection_grid(ui, "spatial_settings_ui")
-            .show(ui, |ui| {
-                state.default_sizes_ui(ctx, ui);
-                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
-            });
+        ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
+            state.default_sizes_ui(ui);
+            state.bounding_box_ui(ui, SpatialSpaceViewKind::TwoD);
+        });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             view_property_ui::<VisualBounds2D>(ctx, ui, view_id, self, state);

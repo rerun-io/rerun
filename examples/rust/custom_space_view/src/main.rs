@@ -39,12 +39,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Try for example to run: `cargo run -p minimal_options -- --connect` in another terminal instance.");
 
     re_viewer::run_native_app(
-        Box::new(move |cc, re_ui| {
+        Box::new(move |cc| {
             let mut app = re_viewer::App::new(
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,
-                re_ui,
+                cc.egui_ctx.clone(),
                 cc.storage,
             );
             app.add_receiver(rx);

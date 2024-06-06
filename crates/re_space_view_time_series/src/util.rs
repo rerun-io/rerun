@@ -12,7 +12,7 @@ pub fn determine_plot_bounds_and_time_per_pixel(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
 ) -> (Option<egui_plot::PlotBounds>, f64) {
-    let egui_ctx = &ctx.re_ui.egui_ctx;
+    let egui_ctx = ctx.egui_ctx;
 
     let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
     let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());

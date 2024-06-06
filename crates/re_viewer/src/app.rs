@@ -4,7 +4,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{toasts, UICommand, UICommandSender};
+use re_ui::{toasts, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -124,7 +124,7 @@ pub struct App {
     startup_options: StartupOptions,
     start_time: web_time::Instant,
     ram_limit_warner: re_memory::RamLimitWarner,
-    pub(crate) re_ui: re_ui::ReUi,
+    pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -185,7 +185,7 @@ impl App {
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
-        re_ui: re_ui::ReUi,
+        egui_ctx: egui::Context,
         storage: Option<&dyn eframe::Storage>,
     ) -> Self {
         re_tracing::profile_function!();
@@ -238,7 +238,7 @@ impl App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(screenshot_path) = startup_options.screenshot_to_path_then_quit.clone() {
-            screenshotter.screenshot_to_path_then_quit(&re_ui.egui_ctx, screenshot_path);
+            screenshotter.screenshot_to_path_then_quit(&egui_ctx, screenshot_path);
         }
 
         let (command_sender, command_receiver) = command_channel();
@@ -273,7 +273,7 @@ impl App {
             startup_options,
             start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
-            re_ui,
+            egui_ctx,
             screenshotter,
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -322,16 +322,11 @@ impl App {
 
     pub fn set_examples_manifest_url(&mut self, url: String) {
         re_log::info!("Using manifest_url={url:?}");
-        self.state
-            .set_examples_manifest_url(&self.re_ui.egui_ctx, url);
+        self.state.set_examples_manifest_url(&self.egui_ctx, url);
     }
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
         &self.build_info
-    }
-
-    pub fn re_ui(&self) -> &re_ui::ReUi {
-        &self.re_ui
     }
 
     pub fn app_options(&self) -> &AppOptions {
@@ -349,7 +344,7 @@ impl App {
     pub fn add_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
-        let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.re_ui.egui_ctx.clone());
+        let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
 
         self.rx.add(rx);
     }
@@ -443,8 +438,7 @@ impl App {
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                let egui_ctx = self.re_ui.egui_ctx.clone();
-
+                let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need
                 // to supply a waker that is called when new messages arrive in background tasks
@@ -711,9 +705,7 @@ impl App {
                     match table {
                         Ok(table) => {
                             let text = format!("{table}");
-                            self.re_ui
-                                .egui_ctx
-                                .output_mut(|o| o.copied_text = text.clone());
+                            egui_ctx.output_mut(|o| o.copied_text = text.clone());
                             println!("{text}");
                         }
                         Err(err) => {
@@ -729,9 +721,8 @@ impl App {
                     match table {
                         Ok(table) => {
                             let text = format!("{table}");
-                            self.re_ui
-                                .egui_ctx
-                                .output_mut(|o| o.copied_text = text.clone());
+
+                            egui_ctx.output_mut(|o| o.copied_text = text.clone());
                             println!("{text}");
                         }
                         Err(err) => {
@@ -750,9 +741,7 @@ impl App {
             UICommand::PrintPrimaryCache => {
                 if let Some(ctx) = store_context {
                     let text = format!("{:?}", ctx.recording.query_caches());
-                    self.re_ui
-                        .egui_ctx
-                        .output_mut(|o| o.copied_text = text.clone());
+                    egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
             }
@@ -845,8 +834,7 @@ impl App {
             _ => href,
         };
 
-        self.re_ui
-            .egui_ctx
+        self.egui_ctx
             .output_mut(|o| o.copied_text = direct_link.clone());
         self.toasts.add(toasts::Toast {
             kind: toasts::ToastKind::Success,
@@ -863,7 +851,7 @@ impl App {
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..self.re_ui.bottom_panel_frame()
+            ..DesignTokens::bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("memory_panel")
@@ -873,7 +861,6 @@ impl App {
             .show_animated_inside(ui, self.memory_panel_open, |ui| {
                 self.memory_panel.ui(
                     ui,
-                    self.re_ui(),
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
                     store_stats,
@@ -887,7 +874,7 @@ impl App {
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
-            .frame(self.re_ui.top_panel_frame())
+            .frame(DesignTokens::top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     egui::CollapsingHeader::new("egui settings")
@@ -929,7 +916,7 @@ impl App {
             .show(egui_ctx, |ui| {
                 paint_background_fill(ui);
 
-                crate::ui::mobile_warning_ui(&self.re_ui, ui);
+                crate::ui::mobile_warning_ui(ui);
 
                 crate::ui::top_panel(
                     frame,
@@ -968,7 +955,6 @@ impl App {
                             render_ctx,
                             entity_db,
                             store_view,
-                            &self.re_ui,
                             &self.component_ui_registry,
                             &self.space_view_class_registry,
                             &self.rx,
@@ -1335,12 +1321,15 @@ impl App {
         }
     }
 
+    #[allow(clippy::unused_self)]
     pub(crate) fn toggle_fullscreen(&self) {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let egui_ctx = &self.re_ui.egui_ctx;
-            let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
-            egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+            let fullscreen = self
+                .egui_ctx
+                .input(|i| i.viewport().fullscreen.unwrap_or(false));
+            self.egui_ctx
+                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -1681,7 +1670,7 @@ fn paint_background_fill(ui: &egui::Ui) {
 
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::ReUi::native_window_rounding(),
+        re_ui::DesignTokens::native_window_rounding(),
         ui.visuals().panel_fill,
     );
 }
@@ -1697,7 +1686,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect().shrink(0.5),
-        re_ui::ReUi::native_window_rounding(),
+        re_ui::DesignTokens::native_window_rounding(),
         stroke,
     );
 }

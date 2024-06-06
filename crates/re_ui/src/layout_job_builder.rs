@@ -1,14 +1,16 @@
+use crate::ContextExt as _;
+
 /// Utility for building layout jobs.
 pub struct LayoutJobBuilder<'a> {
     pub layout_job: egui::text::LayoutJob,
-    pub re_ui: &'a crate::ReUi,
+    pub ctx: &'a egui::Context,
 }
 
 impl<'a> LayoutJobBuilder<'a> {
-    pub fn new(re_ui: &'a crate::ReUi) -> Self {
+    pub fn new(ctx: &'a egui::Context) -> Self {
         Self {
             layout_job: egui::text::LayoutJob::default(),
-            re_ui,
+            ctx,
         }
     }
 
@@ -26,13 +28,13 @@ impl<'a> LayoutJobBuilder<'a> {
     /// Append body text.
     pub fn add_body(&mut self, text: &str) {
         self.layout_job
-            .append(text, 0.0, self.re_ui.text_format_body());
+            .append(text, 0.0, self.ctx.text_format_body());
     }
 
     /// Append text that has special formatting for a button.
     pub fn add_button_text(&mut self, text: &str) {
         self.layout_job
-            .append(&text.to_lowercase(), 0.0, self.re_ui.text_format_key());
+            .append(&text.to_lowercase(), 0.0, self.ctx.text_format_key());
     }
 
     /// Append text for a keyboard key.
@@ -43,7 +45,7 @@ impl<'a> LayoutJobBuilder<'a> {
     /// Append text for one or more modifier keys.
     pub fn add_modifier(&mut self, modifier: egui::Modifiers) {
         let is_mac = matches!(
-            self.re_ui.egui_ctx.os(),
+            self.ctx.os(),
             egui::os::OperatingSystem::Mac | egui::os::OperatingSystem::IOS
         );
         let text = egui::ModifierNames::NAMES.format(&modifier, is_mac);
