@@ -18,3 +18,17 @@ This archetype shows a set of orthogonal coordinate axes such as for reprsenting
  * 🐍 [Python API docs for `Axes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Axes3D)
  * 🦀 [Rust API docs for `Axes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Axes3D.html)
 
+## Example
+
+### Transform with Axes
+
+snippet: archetypes/transform3d_axes
+
+<picture data-inline-viewer="snippets/transform3d_axes">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1200w.png">
+  <img src="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/full.png">
+</picture>
+

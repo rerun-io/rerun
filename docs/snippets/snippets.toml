@@ -5,7 +5,8 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
-"archetypes/image_advanced" = ["cpp", "rust"] # Missing examples
+"archetypes/image_advanced" = ["cpp", "rust"]   # Missing examples
+"archetypes/transform3d_axes" = ["cpp", "rust"] # Missing examples
 
 "tutorials/annotation-context" = [ # Not a complete examples
   "cpp",

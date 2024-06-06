@@ -22,6 +22,50 @@ class Axes3D(Archetype):
     **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for reprsenting a transform.
 
     See [`Transform3D`][rerun.archetypes.Transform3D]
+
+    Example
+    -------
+    ### Transform with Axes:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_transform3d_axes", spawn=True)
+
+    # Make the base axes longer
+    # Log all axes markers as static first
+    rr.log("base", rr.Axes3D(length=1), static=True)
+    rr.log("base/rotated", rr.Axes3D(length=0.5), static=True)
+    rr.log("base/rotated/translated", rr.Axes3D(length=0.5), static=True)
+
+    # Now sweep out a rotation relative to the base
+    for deg in range(360):
+        rr.set_time_sequence("step", deg)
+        rr.log(
+            "base/rotated",
+            rr.Transform3D(
+                rotation=rr.RotationAxisAngle(
+                    axis=[1.0, 1.0, 1.0],
+                    degrees=deg,
+                )
+            ),
+        )
+        rr.log(
+            "base/rotated/translated",
+            rr.Transform3D(
+                translation=[2.0, 0, 0],
+            ),
+        )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1200w.png">
+      <img src="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     def __init__(self: Any, *, length: datatypes.Float32Like | None = None):
