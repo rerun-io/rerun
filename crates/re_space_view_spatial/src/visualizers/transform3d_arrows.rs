@@ -18,7 +18,7 @@ use crate::{
     visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -181,46 +181,50 @@ pub fn add_axis_arrows(
 
 impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> AxisLength {
-        // If someone already override the image plane distance, we should use that.
-        // This is interesting since that data may already have come from either the
-        // datastore or the blueprint store.
-
         let query_result = ctx.view_ctx.lookup_query_result(ctx.view_ctx.view_id);
 
+        // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
         if let Some(length) = query_result
             .tree
             .lookup_result_by_path(ctx.target_entity_path)
             .cloned()
             .and_then(|data_result| {
-                let results =
-                    data_result.latest_at_with_overrides::<Pinhole>(ctx.view_ctx, ctx.query);
+                if data_result
+                    .visualizers
+                    .contains(&CamerasVisualizer::identifier())
+                {
+                    let results =
+                        data_result.latest_at_with_overrides::<Pinhole>(ctx.view_ctx, ctx.query);
 
-                results.get_mono::<ImagePlaneDistance>()
+                    Some(results.get_mono_with_fallback::<ImagePlaneDistance>())
+                } else {
+                    None
+                }
             })
         {
             let length: f32 = length.into();
-            return (length * 0.25).into();
+            return (length * 0.5).into();
         }
 
-        let Ok(state) = ctx
+        // If there is a finite bounding box, use the scene size to determine the axis length.
+        if let Ok(state) = ctx
             .view_ctx
             .view_state
             .downcast_ref::<SpatialSpaceViewState>()
-        else {
-            return Default::default();
-        };
+        {
+            let scene_size = state.bounding_boxes.accumulated.size().length();
 
-        let scene_size = state.bounding_boxes.accumulated.size().length();
-
-        if scene_size.is_finite() && scene_size > 0.0 {
-            scene_size * 0.05
-        } else {
-            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-            // this value works better with the default camera setup.
-            0.3
+            if scene_size.is_finite() && scene_size > 0.0 {
+                return (scene_size * 0.05).into();
+            };
         }
-        .into()
+
+        // Otherwise 0.3 is a reasonable default.
+
+        // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+        // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+        // this value works better with the default camera setup.
+        0.3.into()
     }
 }
 
