@@ -38,22 +38,6 @@ function randomId(): string {
 export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
-export type CanvasRect = {
-  width: string;
-  height: string;
-  top: string;
-  left: string;
-  bottom: string;
-  right: string;
-};
-
-export type CanvasStyle = {
-  canvas: CanvasRect & { position: string; transition: string; zIndex: string };
-  document: {
-    body: { overflow: string; scrollbarGutter: string };
-    root: { overflow: string; scrollbarGutter: string };
-  };
-};
 
 interface WebViewerOptions {
   manifest_url?: string;
@@ -72,6 +56,9 @@ interface WebViewerEvents {
   ready: void;
 }
 
+// This abomination is a mapped type with key filtering, and is used to split the events
+// into those which take no value in their callback, and those which do.
+// https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
     ? never
@@ -84,27 +71,14 @@ type EventsWithoutValue = {
     : never]: WebViewerEvents[K];
 };
 
-type WithValue<Events> = {
-  [K in keyof Events as Events[K] extends void ? never : K]: Events[K];
-};
-
-type WithoutValue<Events> = {
-  [K in keyof Events as Events[K] extends void ? K : never]: Events[K];
-};
-
 type Cancel = () => void;
 
 export class WebViewer {
   #id = randomId();
-
   #handle: WebHandle | null = null;
-
   #canvas: HTMLCanvasElement | null = null;
-
   #state: "ready" | "starting" | "stopped" = "stopped";
-
   #fullscreen = false;
-
   #allow_fullscreen = false;
 
   constructor() {
@@ -196,11 +170,11 @@ export class WebViewer {
    *
    * Returns a function which removes the listener when called.
    */
-  on<E extends keyof WithValue<WebViewerEvents>>(
+  on<E extends keyof EventsWithValue>(
     event: E,
-    callback: (value: WithValue<WebViewerEvents>[E]) => void,
+    callback: (value: EventsWithValue[E]) => void,
   ): Cancel;
-  on<E extends keyof WithoutValue<WebViewerEvents>>(
+  on<E extends keyof EventsWithoutValue>(
     event: E,
     callback: () => void,
   ): Cancel;
@@ -216,11 +190,11 @@ export class WebViewer {
    *
    * Returns a function which removes the listener when called.
    */
-  once<E extends keyof WithValue<WebViewerEvents>>(
+  once<E extends keyof EventsWithValue>(
     event: E,
-    callback: (value: WithValue<WebViewerEvents>[E]) => void,
+    callback: (value: EventsWithValue[E]) => void,
   ): Cancel;
-  once<E extends keyof WithoutValue<WebViewerEvents>>(
+  once<E extends keyof EventsWithoutValue>(
     event: E,
     callback: () => void,
   ): Cancel;
@@ -237,21 +211,18 @@ export class WebViewer {
    * The event emitter relies on referential equality to store callbacks.
    * The `callback` passed in must be the exact same _instance_ of the function passed in to `on` or `once`.
    */
-  off<E extends keyof WithValue<WebViewerEvents>>(
+  off<E extends keyof EventsWithValue>(
     event: E,
-    callback: (value: WithValue<WebViewerEvents>[E]) => void,
+    callback: (value: EventsWithValue[E]) => void,
   ): void;
-  off<E extends keyof WithoutValue<WebViewerEvents>>(
-    event: E,
-    callback: () => void,
-  ): void;
+  off<E extends keyof EventsWithoutValue>(event: E, callback: () => void): void;
   off(event: any, callback: any): void {
     const callbacks = this.#event_map.get(event);
     if (callbacks) {
       callbacks.delete(callback);
     } else {
       console.warn(
-        "Attempted to call `WebViewer.off` with an unregistered callback. Are you using ",
+        "Attempted to call `WebViewer.off` with an unregistered callback. Are you passing in the same function instance?",
       );
     }
   }
