@@ -8,11 +8,11 @@ use smallvec::SmallVec;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::StoreKind;
-use re_types::{ArchetypeName, ComponentName};
+use re_types::ComponentName;
 
 use crate::{
-    ComponentFallbackProvider, DataResultTree, QueryContext, QueryRange, SpaceViewHighlights,
-    SpaceViewId, ViewContext, ViewSystemIdentifier, ViewerContext,
+    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewContext,
+    ViewSystemIdentifier, ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
