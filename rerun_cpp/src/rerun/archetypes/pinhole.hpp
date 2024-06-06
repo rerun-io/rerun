@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/image_plane_distance.hpp"
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
 #include "../components/view_coordinates.hpp"
@@ -115,6 +116,11 @@ namespace rerun::archetypes {
         /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
         /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
         std::optional<rerun::components::ViewCoordinates> camera_xyz;
+
+        /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+        ///
+        /// This is only used for visualization purposes, and does not affect the projection itself.
+        std::optional<rerun::components::ImagePlaneDistance> image_plane_distance;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.PinholeIndicator";
@@ -227,6 +233,17 @@ namespace rerun::archetypes {
         /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
         Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
             camera_xyz = std::move(_camera_xyz);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+        ///
+        /// This is only used for visualization purposes, and does not affect the projection itself.
+        Pinhole with_image_plane_distance(
+            rerun::components::ImagePlaneDistance _image_plane_distance
+        ) && {
+            image_plane_distance = std::move(_image_plane_distance);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

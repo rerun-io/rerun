@@ -14,11 +14,9 @@ use re_types::{
 use re_viewer_context::{IdentifiedViewSystem, PerSystemEntities, ViewerContext};
 
 use crate::{
-    query_pinhole,
+    query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        CamerasVisualizer, ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer,
-    },
+    visualizers::{ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer},
 };
 
 pub fn generate_auto_legacy_properties(
@@ -32,7 +30,6 @@ pub fn generate_auto_legacy_properties(
     let mut auto_properties = re_entity_db::EntityPropertyMap::default();
 
     // Do pinhole properties before, since they may be used in transform3d heuristics.
-    update_pinhole_property_heuristics(per_system_entities, &mut auto_properties, scene_bbox_accum);
     update_depth_cloud_property_heuristics(
         ctx,
         per_system_entities,
@@ -72,32 +69,6 @@ pub fn auto_size_world_heuristic(
         (median_extent / (scene_num_primitives.at_least(1) as f32).powf(1.0 / 1.7)) * 0.25;
 
     heuristic0.min(heuristic1)
-}
-
-fn update_pinhole_property_heuristics(
-    per_system_entities: &PerSystemEntities,
-    auto_properties: &mut re_entity_db::EntityPropertyMap,
-    scene_bbox_accum: &macaw::BoundingBox,
-) {
-    for ent_path in per_system_entities
-        .get(&CamerasVisualizer::identifier())
-        .unwrap_or(&BTreeSet::new())
-    {
-        let mut properties = auto_properties.get(ent_path);
-
-        let scene_size = scene_bbox_accum.size().length();
-        let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-            scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
-        } else {
-            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-            // this value works better with the default camera setup.
-            0.3
-        };
-        properties.pinhole_image_plane_distance =
-            EditableAutoValue::Auto(default_image_plane_distance);
-        auto_properties.overwrite_properties(ent_path.clone(), properties);
-    }
 }
 
 fn update_depth_cloud_property_heuristics(
@@ -163,13 +134,13 @@ fn update_transform3d_lines_heuristics(
             ent_path: &'a EntityPath,
             ctx: &'a ViewerContext<'_>,
         ) -> Option<&'a EntityPath> {
-            if query_pinhole(ctx.recording(), &ctx.current_query(), ent_path).is_some() {
+            if query_pinhole_legacy(ctx.recording(), &ctx.current_query(), ent_path).is_some() {
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
                 if let Some(child_tree) = ctx.recording().tree().subtree(ent_path) {
                     for child in child_tree.children.values() {
-                        if query_pinhole(ctx.recording(), &ctx.current_query(), &child.path)
+                        if query_pinhole_legacy(ctx.recording(), &ctx.current_query(), &child.path)
                             .is_some()
                         {
                             return Some(&child.path);
@@ -196,16 +167,18 @@ fn update_transform3d_lines_heuristics(
             only_has_transform_components || is_pinhole_extrinsics_of(ent_path, ctx).is_some(),
         );
 
-        if let Some(pinhole_path) = is_pinhole_extrinsics_of(ent_path, ctx) {
-            // If there's a pinhole, we orient ourselves on its image plane distance
-            let pinhole_path_props = auto_properties.get(pinhole_path);
-            properties.transform_3d_size =
-                EditableAutoValue::Auto(*pinhole_path_props.pinhole_image_plane_distance * 0.25);
-        } else {
-            // Size should be proportional to the scene extent, here covered by its diagonal
-            let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
-            properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.05);
-        }
+        // TODO(jleibs): This should be an independent heuristic.
+        /*
+                if let Some(pinhole_path) = is_pinhole_extrinsics_of(ent_path, ctx) {
+                    // If there's a pinhole, we orient ourselves on its image plane distance
+                    //let pinhole_path_props = auto_properties.get(pinhole_path);
+                    //properties.transform_3d_size =
+                    //    EditableAutoValue::Auto(*pinhole_path_props.pinhole_image_plane_distance * 0.25);
+                } else {
+        */
+        // Size should be proportional to the scene extent, here covered by its diagonal
+        let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
+        properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.05);
 
         auto_properties.overwrite_properties(ent_path.clone(), properties);
     }

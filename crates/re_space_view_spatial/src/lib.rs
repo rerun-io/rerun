@@ -25,7 +25,8 @@ mod view_3d;
 mod view_3d_properties;
 mod visualizers;
 
-use re_viewer_context::ViewerContext;
+use re_space_view::DataResultQuery as _;
+use re_viewer_context::{ViewContext, ViewerContext};
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
@@ -61,6 +62,36 @@ fn resolution_from_tensor(
 
 /// Utility for querying a pinhole archetype instance.
 fn query_pinhole(
+    ctx: &ViewContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    data_result: &re_viewer_context::DataResult,
+) -> Option<re_types::archetypes::Pinhole> {
+    let results = data_result.latest_at_with_overrides::<re_types::archetypes::Pinhole>(ctx, query);
+
+    let image_from_camera = results.get_mono()?;
+
+    let resolution = results
+        .get_mono()
+        .or_else(|| resolution_from_tensor(ctx.recording(), query, &data_result.entity_path));
+
+    let camera_xyz = results.get_mono();
+
+    let image_plane_distance = Some(results.get_mono_with_fallback());
+
+    Some(re_types::archetypes::Pinhole {
+        image_from_camera,
+        resolution,
+        camera_xyz,
+        image_plane_distance,
+    })
+}
+
+/// Deprecated utility for querying a pinhole archetype instance.
+///
+/// This function won't handle fallbacks correctly.
+///
+// TODO(andreas): This is duplicated into `re_viewport`
+fn query_pinhole_legacy(
     entity_db: &re_entity_db::EntityDb,
     query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
@@ -77,6 +108,7 @@ fn query_pinhole(
             camera_xyz: entity_db
                 .latest_at_component(entity_path, query)
                 .map(|c| c.value),
+            image_plane_distance: None,
         })
 }
 

@@ -1,14 +1,18 @@
 use nohash_hasher::IntMap;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::{EntityDb, EntityPath, EntityPropertyMap, EntityTree};
+use re_entity_db::{EntityDb, EntityPath, EntityTree};
+use re_space_view::DataResultQuery as _;
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
+    archetypes::Pinhole,
+    components::{
+        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Transform3D, ViewCoordinates,
+    },
     ComponentNameSet, Loggable as _,
 };
-use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 
-use crate::visualizers::{image_view_coordinates, CamerasVisualizer};
+use crate::visualizers::image_view_coordinates;
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -86,27 +90,12 @@ impl ViewContextSystem for TransformContext {
     /// entities are transformed relative to it.
     fn execute(
         &mut self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();
 
         let entity_tree = ctx.recording().tree();
-
-        // TODO(jleibs): The need to do this hints at a problem with how we think about
-        // the interaction between properties and "context-systems".
-        // Build an entity_property_map for just the CamerasParts, where we would expect to find
-        // the image_depth_plane_distance property.
-        let entity_prop_map: EntityPropertyMap = query
-            .per_visualizer_data_results
-            .get(&CamerasVisualizer::identifier())
-            .map(|results| {
-                results
-                    .iter()
-                    .map(|r| (r.entity_path.clone(), r.accumulated_properties().clone()))
-                    .collect()
-            })
-            .unwrap_or_default();
 
         self.space_origin = query.space_origin.clone();
 
@@ -122,10 +111,11 @@ impl ViewContextSystem for TransformContext {
 
         // Child transforms of this space
         self.gather_descendants_transforms(
+            ctx,
+            query,
             current_tree,
             ctx.recording(),
             &time_query,
-            &entity_prop_map,
             glam::Affine3A::IDENTITY,
             &None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
         );
@@ -168,10 +158,11 @@ impl ViewContextSystem for TransformContext {
 
             // (skip over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
+                ctx,
+                query,
                 parent_tree,
                 ctx.recording(),
                 &time_query,
-                &entity_prop_map,
                 reference_from_ancestor,
                 &encountered_pinhole,
             );
@@ -189,10 +180,11 @@ impl TransformContext {
     #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
+        ctx: &ViewContext<'_>,
+        view_query: &re_viewer_context::ViewQuery<'_>,
         subtree: &EntityTree,
         entity_db: &EntityDb,
         query: &LatestAtQuery,
-        entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Affine3A,
         encountered_pinhole: &Option<EntityPath>,
     ) {
@@ -210,11 +202,28 @@ impl TransformContext {
 
         for child_tree in subtree.children.values() {
             let mut encountered_pinhole = encountered_pinhole.clone();
+
+            let lookup_image_plane = |p: &_| {
+                let query_result = ctx.viewer_ctx.lookup_query_result(view_query.space_view_id);
+
+                query_result
+                    .tree
+                    .lookup_result_by_path(p)
+                    .cloned()
+                    .map(|data_result| {
+                        let results = data_result.latest_at_with_overrides::<Pinhole>(ctx, query);
+
+                        results.get_mono_with_fallback::<ImagePlaneDistance>()
+                    })
+                    .unwrap_or_default()
+                    .into()
+            };
+
             let reference_from_child = match transform_at(
                 child_tree,
                 entity_db,
                 query,
-                |p| *entity_properties.get(p).pinhole_image_plane_distance,
+                lookup_image_plane,
                 &mut encountered_pinhole,
             ) {
                 Err(unreachable_reason) => {
@@ -226,10 +235,11 @@ impl TransformContext {
                 Ok(Some(child_from_parent)) => reference_from_entity * child_from_parent,
             };
             self.gather_descendants_transforms(
+                ctx,
+                view_query,
                 child_tree,
                 entity_db,
                 query,
-                entity_properties,
                 reference_from_child,
                 &encountered_pinhole,
             );

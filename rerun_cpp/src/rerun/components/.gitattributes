@@ -17,6 +17,7 @@ draw_order.cpp linguist-generated=true
 draw_order.hpp linguist-generated=true
 half_sizes2d.hpp linguist-generated=true
 half_sizes3d.hpp linguist-generated=true
+image_plane_distance.hpp linguist-generated=true
 keypoint_id.hpp linguist-generated=true
 line_strip2d.cpp linguist-generated=true
 line_strip2d.hpp linguist-generated=true

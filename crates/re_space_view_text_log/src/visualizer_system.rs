@@ -8,8 +8,8 @@ use re_types::{
     Component, Loggable as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
+    ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]
@@ -47,10 +47,9 @@ impl VisualizerSystem for TextLogSystem {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        _view_state: &dyn SpaceViewState,
-        _view_ctx: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let resolver = ctx.recording().resolver();
         let query =

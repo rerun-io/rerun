@@ -2,9 +2,9 @@ use egui::Color32;
 use re_log_types::{EntityPath, Instance};
 use re_types::components::Transform3D;
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -45,16 +45,15 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        _view_state: &dyn SpaceViewState,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let transforms = view_ctx.get::<TransformContext>()?;
+        let transforms = context_systems.get::<TransformContext>()?;
 
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 

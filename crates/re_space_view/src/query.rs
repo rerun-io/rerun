@@ -1,41 +1,13 @@
 use nohash_hasher::IntSet;
 
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_query::{LatestAtResults, RangeResults};
+use re_query::LatestAtResults;
 use re_types_core::ComponentName;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{DataResult, ViewContext, ViewerContext};
+
+use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 
 // ---
-
-#[derive(Debug)]
-pub enum HybridResults {
-    LatestAt(LatestAtQuery, HybridLatestAtResults),
-    Range(RangeQuery, HybridRangeResults),
-}
-
-impl From<(LatestAtQuery, HybridLatestAtResults)> for HybridResults {
-    #[inline]
-    fn from((query, results): (LatestAtQuery, HybridLatestAtResults)) -> Self {
-        Self::LatestAt(query, results)
-    }
-}
-
-impl From<(RangeQuery, HybridRangeResults)> for HybridResults {
-    #[inline]
-    fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
-        Self::Range(query, results)
-    }
-}
-
-/// Wrapper that contains the results of a range query with possible overrides.
-///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
-/// they will be merged into the results appropriately.
-#[derive(Debug)]
-pub struct HybridRangeResults {
-    pub(crate) overrides: LatestAtResults,
-    pub(crate) results: RangeResults,
-}
 
 /// Queries for the given `component_names` using range semantics with override support.
 ///
@@ -43,7 +15,7 @@ pub struct HybridRangeResults {
 /// will be used instead of the range query.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`HybridResults`].
+/// [`crate::HybridResults`].
 pub fn range_with_overrides(
     ctx: &ViewerContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
@@ -70,47 +42,44 @@ pub fn range_with_overrides(
     HybridRangeResults { overrides, results }
 }
 
-/// Wrapper that contains the results of a latest-at query with possible overrides.
-///
-/// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
-/// they will be merged into the results appropriately.
-#[derive(Debug)]
-pub struct HybridLatestAtResults {
-    pub(crate) overrides: LatestAtResults,
-    pub(crate) results: LatestAtResults,
-}
-
 /// Queries for the given `component_names` using latest-at semantics with override support.
 ///
 /// If the `DataResult` contains a specified override from the blueprint, that values
 /// will be used instead of the latest-at query.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
-/// [`HybridResults`].
-pub fn latest_at_with_overrides(
-    ctx: &ViewerContext<'_>,
-    _annotations: Option<&re_viewer_context::Annotations>,
+/// [`crate::HybridResults`].
+pub fn latest_at_with_overrides<'a>(
+    ctx: &'a ViewContext<'a>,
+    _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
-    data_result: &re_viewer_context::DataResult,
+    data_result: &'a re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
-) -> HybridLatestAtResults {
+) -> HybridLatestAtResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx, data_result, component_set.iter());
+    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
 
     // No need to query for components that have overrides.
     component_set.retain(|component| !overrides.components.contains_key(component));
 
-    let results = ctx.recording().query_caches().latest_at(
-        ctx.recording_store(),
+    let results = ctx.viewer_ctx.recording().query_caches().latest_at(
+        ctx.viewer_ctx.recording_store(),
         latest_at_query,
         &data_result.entity_path,
         component_set,
     );
 
-    HybridLatestAtResults { overrides, results }
+    HybridLatestAtResults {
+        overrides,
+        results,
+        ctx,
+        query: latest_at_query.clone(),
+        data_result,
+        resolver: Default::default(),
+    }
 }
 
 fn query_overrides<'a>(
@@ -165,4 +134,53 @@ fn query_overrides<'a>(
         }
     }
     overrides
+}
+
+pub trait DataResultQuery {
+    fn latest_at_with_overrides<'a, A: re_types_core::Archetype>(
+        &'a self,
+        ctx: &'a ViewContext<'a>,
+        latest_at_query: &'a LatestAtQuery,
+    ) -> HybridLatestAtResults<'a>;
+
+    fn best_fallback_for<'a>(
+        &self,
+        ctx: &'a ViewContext<'a>,
+        component: re_types_core::ComponentName,
+    ) -> Option<&'a dyn re_viewer_context::ComponentFallbackProvider>;
+}
+
+impl DataResultQuery for DataResult {
+    fn latest_at_with_overrides<'a, A: re_types_core::Archetype>(
+        &'a self,
+        ctx: &'a ViewContext<'a>,
+        latest_at_query: &'a LatestAtQuery,
+    ) -> HybridLatestAtResults<'a> {
+        latest_at_with_overrides(
+            ctx,
+            None,
+            latest_at_query,
+            self,
+            A::all_components().iter().copied(),
+        )
+    }
+
+    fn best_fallback_for<'a>(
+        &self,
+        ctx: &'a ViewContext<'a>,
+        component: re_types_core::ComponentName,
+    ) -> Option<&'a dyn re_viewer_context::ComponentFallbackProvider> {
+        // TODO(jleibs): This should be cached somewhere
+        for vis in &self.visualizers {
+            let Ok(vis) = ctx.visualizer_collection.get_by_identifier(*vis) else {
+                continue;
+            };
+
+            if vis.visualizer_query_info().queried.contains(&component) {
+                return Some(vis.as_fallback_provider());
+            }
+        }
+
+        None
+    }
 }

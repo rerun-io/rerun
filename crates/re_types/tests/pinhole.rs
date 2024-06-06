@@ -12,6 +12,7 @@ fn roundtrip() {
         ),
         resolution: Some(components::Resolution([1.0, 2.0].into())),
         camera_xyz: Some(components::ViewCoordinates::RDF),
+        image_plane_distance: None,
     };
 
     let arch = Pinhole::new([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])

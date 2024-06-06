@@ -99,11 +99,6 @@ pub struct EntityProperties {
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>, // TODO(andreas): should become a component and be part of the DepthImage and regular Images (with limitation to mono channel image).
 
-    /// Distance of the projection plane (frustum far plane).
-    ///
-    /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
-    pub pinhole_image_plane_distance: EditableAutoValue<f32>, // TODO(#6084): should be a regular component on the Pinhole archetype.
-
     /// Should the depth texture be backprojected into a point cloud?
     ///
     /// Only applies to tensors with meaning=depth that are affected by a pinhole transform.
@@ -149,7 +144,6 @@ impl Default for EntityProperties {
         Self {
             interactive: true,
             color_mapper: EditableAutoValue::default(),
-            pinhole_image_plane_distance: EditableAutoValue::Auto(1.0),
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
@@ -170,11 +164,6 @@ impl EntityProperties {
             interactive: self.interactive && child.interactive,
 
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
-
-            pinhole_image_plane_distance: self
-                .pinhole_image_plane_distance
-                .or(&child.pinhole_image_plane_distance)
-                .clone(),
 
             backproject_depth: self.backproject_depth.or(&child.backproject_depth).clone(),
             depth_from_world_scale: self
@@ -214,11 +203,6 @@ impl EntityProperties {
 
             color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
 
-            pinhole_image_plane_distance: other
-                .pinhole_image_plane_distance
-                .or(&self.pinhole_image_plane_distance)
-                .clone(),
-
             backproject_depth: other.backproject_depth.or(&self.backproject_depth).clone(),
             depth_from_world_scale: other
                 .depth_from_world_scale
@@ -249,7 +233,6 @@ impl EntityProperties {
         let Self {
             interactive,
             color_mapper,
-            pinhole_image_plane_distance,
             backproject_depth,
             depth_from_world_scale,
             backproject_radius_scale,
@@ -262,7 +245,6 @@ impl EntityProperties {
 
         interactive != &other.interactive
             || color_mapper.has_edits(&other.color_mapper)
-            || pinhole_image_plane_distance.has_edits(&other.pinhole_image_plane_distance)
             || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)

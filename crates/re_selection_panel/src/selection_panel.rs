@@ -11,18 +11,22 @@ use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
 };
 use re_log_types::EntityPathFilter;
+use re_space_view::DataResultQuery as _;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    components::{PinholeProjection, Transform3D},
+    archetypes::Pinhole,
+    components::{ImagePlaneDistance, PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
 use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
-    ContainerId, Contents, DataQueryResult, HoverHighlight, Item, SpaceViewClass, SpaceViewId,
-    UiLayout, ViewStates, ViewerContext,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewClass,
+    SpaceViewId, UiLayout, ViewContext, ViewStates, ViewerContext,
 };
-use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{
+    ui::show_add_space_view_or_container_modal, SpaceViewBlueprint, ViewportBlueprint,
+};
 
 use crate::override_ui::{override_ui, override_visualizer_ui};
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
@@ -221,7 +225,34 @@ impl SelectionPanel {
             }
 
             Item::DataResult(space_view_id, instance_path) => {
-                blueprint_ui_for_data_result(ctx, blueprint, ui, *space_view_id, instance_path);
+                let Some(space_view) = blueprint.space_view(space_view_id) else {
+                    return;
+                };
+
+                let visualizer_collection = ctx
+                    .space_view_class_registry
+                    .new_visualizer_collection(space_view.class_identifier());
+
+                let Some(view_state) = view_states
+                    .get(*space_view_id)
+                    .map(|states| states.view_state.as_ref())
+                else {
+                    return;
+                };
+
+                let view_ctx = ViewContext {
+                    viewer_ctx: ctx,
+                    view_state,
+                    visualizer_collection: &visualizer_collection,
+                };
+
+                blueprint_ui_for_data_result(
+                    &view_ctx,
+                    space_view,
+                    ui,
+                    *space_view_id,
+                    instance_path,
+                );
             }
         }
     }
@@ -1131,58 +1162,56 @@ fn has_blueprint_section(item: &Item) -> bool {
 }
 
 fn blueprint_ui_for_data_result(
-    ctx: &ViewerContext<'_>,
-    blueprint: &ViewportBlueprint,
+    ctx: &ViewContext<'_>,
+    space_view: &SpaceViewBlueprint,
     ui: &mut Ui,
     space_view_id: SpaceViewId,
     instance_path: &InstancePath,
 ) {
-    if let Some(space_view) = blueprint.space_view(&space_view_id) {
-        if instance_path.instance.is_all() {
-            // the whole entity
-            let entity_path = &instance_path.entity_path;
+    if instance_path.instance.is_all() {
+        // the whole entity
+        let entity_path = &instance_path.entity_path;
 
-            let query_result = ctx.lookup_query_result(space_view.id);
-            if let Some(data_result) = query_result
-                .tree
-                .lookup_result_by_path(entity_path)
-                .cloned()
-            {
-                let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
-                let accumulated_legacy_props_before = accumulated_legacy_props.clone();
+        let query_result = ctx.lookup_query_result(space_view.id);
+        if let Some(data_result) = query_result
+            .tree
+            .lookup_result_by_path(entity_path)
+            .cloned()
+        {
+            let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
+            let accumulated_legacy_props_before = accumulated_legacy_props.clone();
 
-                entity_props_ui(
-                    ctx,
-                    ui,
-                    ctx.lookup_query_result(space_view_id),
-                    entity_path,
-                    &mut accumulated_legacy_props,
+            entity_props_ui(
+                ctx,
+                ui,
+                ctx.lookup_query_result(space_view_id),
+                &data_result,
+                &mut accumulated_legacy_props,
+            );
+            if accumulated_legacy_props != accumulated_legacy_props_before {
+                data_result.save_individual_override_properties(
+                    ctx.viewer_ctx,
+                    Some(accumulated_legacy_props),
                 );
-                if accumulated_legacy_props != accumulated_legacy_props_before {
-                    data_result
-                        .save_individual_override_properties(ctx, Some(accumulated_legacy_props));
-                }
             }
         }
     }
 }
 
 fn entity_props_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     query_result: &DataQueryResult,
-    entity_path: &EntityPath,
+    data_result: &DataResult,
     entity_props: &mut EntityProperties,
 ) {
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
 
-    let Some(data_result) = query_result.tree.lookup_result_by_path(entity_path) else {
-        return;
-    };
+    let entity_path = &data_result.entity_path;
 
     {
-        let visible_before = data_result.is_visible(ctx);
+        let visible_before = data_result.is_visible(ctx.viewer_ctx);
         let mut visible = visible_before;
 
         let override_source =
@@ -1199,7 +1228,7 @@ fn entity_props_ui(
 
         if visible_before != visible {
             data_result.save_recursive_override_or_clear_if_redundant(
-                ctx,
+                ctx.viewer_ctx,
                 &query_result.tree,
                 &Visible(visible),
             );
@@ -1209,16 +1238,16 @@ fn entity_props_ui(
     ui.re_checkbox(&mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    query_range_ui_data_result(ctx, ui, data_result);
+    query_range_ui_data_result(ctx.viewer_ctx, ui, data_result);
 
     egui::Grid::new("entity_properties")
         .num_columns(2)
         .show(ui, |ui| {
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-            pinhole_props_ui(ctx, ui, entity_path, entity_props);
-            depth_props_ui(ctx, ui, entity_path, entity_props);
-            transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
+            pinhole_props_ui(ctx, ui, data_result);
+            depth_props_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
+            transform3d_visualization_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
         });
 }
 
@@ -1252,30 +1281,34 @@ fn colormap_props_ui(
     ui.end_row();
 }
 
-fn pinhole_props_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_path: &EntityPath,
-    entity_props: &mut EntityProperties,
-) {
-    let (query, store) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+fn pinhole_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
+    let (query, store) =
+        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
+
     if store
-        .latest_at_component::<PinholeProjection>(entity_path, &query)
+        .latest_at_component::<PinholeProjection>(&data_result.entity_path, &query)
         .is_some()
     {
+        let results = data_result.latest_at_with_overrides::<Pinhole>(ctx, &query);
+
+        let mut image_plane_value: f32 = results
+            .get_mono_with_fallback::<ImagePlaneDistance>()
+            .into();
+
         ui.label("Image plane distance");
-        let mut distance = *entity_props.pinhole_image_plane_distance;
-        let speed = (distance * 0.05).at_least(0.01);
+        let speed = (image_plane_value * 0.05).at_least(0.01);
         if ui
             .add(
-                egui::DragValue::new(&mut distance)
+                egui::DragValue::new(&mut image_plane_value)
                     .clamp_range(0.0..=1.0e8)
                     .speed(speed),
             )
             .on_hover_text("Controls how far away the image plane is")
             .changed()
         {
-            entity_props.pinhole_image_plane_distance = EditableAutoValue::UserEdited(distance);
+            let new_image_plane: ImagePlaneDistance = image_plane_value.into();
+
+            data_result.save_individual_override(ctx.viewer_ctx, &new_image_plane);
         }
         ui.end_row();
     }

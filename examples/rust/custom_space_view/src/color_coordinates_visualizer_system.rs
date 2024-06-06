@@ -4,8 +4,9 @@ use re_viewer::external::{
     re_renderer,
     re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
-        self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-        ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+        self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+        ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
+        VisualizerSystem,
     },
 };
 
@@ -52,10 +53,9 @@ impl VisualizerSystem for InstanceColorSystem {
     /// Populates the scene part with data from the store.
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        _view_state: &dyn re_viewer_context::SpaceViewState,
-        _view_ctx: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         // For each entity in the space view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {

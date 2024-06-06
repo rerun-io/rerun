@@ -32,7 +32,7 @@ impl ViewContextSystem for EntityDepthOffsets {
 
     fn execute(
         &mut self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         #[derive(PartialEq, PartialOrd, Eq, Ord)]
@@ -49,14 +49,13 @@ impl ViewContextSystem for EntityDepthOffsets {
         for data_result in query.iter_all_data_results() {
             // Note that we can't use `query.iter_visible_data_results` here since `EntityDepthOffsets` isn't a visualizer
             // and thus not in the list of per system data results.
-            if !data_result.is_visible(ctx) {
+            if !data_result.is_visible(ctx.viewer_ctx) {
                 continue;
             }
 
             // TODO(#5607): what should happen if the promise is still pending?
             if let Some(draw_order) = ctx
-                .store_context
-                .recording
+                .recording()
                 .latest_at_component::<DrawOrder>(&data_result.entity_path, &ctx.current_query())
             {
                 entities_per_draw_order
