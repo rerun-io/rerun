@@ -410,17 +410,15 @@ pub fn component_path_button_to(
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // Make tooltip as wide as needed
 
         list_item::list_item_scope(ui, "component_path_tooltip", |ui| {
-            ui.list_item()
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::LabelContent::new(if is_static {
-                        "Static component"
-                    } else {
-                        "Temporal component"
-                    })
-                    .with_icon(icon),
-                );
+            ui.list_item().interactive(false).show_flat(
+                ui,
+                list_item::LabelContent::new(if is_static {
+                    "Static component"
+                } else {
+                    "Temporal component"
+                })
+                .with_icon(icon),
+            );
 
             let component_name = component_path.component_name;
 

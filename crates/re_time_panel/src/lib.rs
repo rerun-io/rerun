@@ -816,7 +816,7 @@ impl TimePanel {
                                         )
                                     },
                                 ))
-                                    .truncate(false)
+                                .truncate(false)
                                 .with_icon(if is_static {
                                     &re_ui::icons::COMPONENT_STATIC
                                 } else {
