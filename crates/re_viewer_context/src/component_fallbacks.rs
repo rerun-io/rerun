@@ -84,12 +84,7 @@ pub trait ComponentFallbackProvider {
             ComponentFallbackProviderResult::ComponentNotHandled => {}
         }
 
-        match ctx
-            .view_ctx
-            .viewer_ctx
-            .component_placeholders
-            .get(&component)
-        {
+        match ctx.viewer_ctx.component_placeholders.get(&component) {
             Some(placeholder) => Ok(placeholder.clone()),
             None => Err(ComponentFallbackError::MissingPlaceholderValue),
         }

@@ -8,8 +8,8 @@ use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    ComponentUiTypes, DataResult, OverridePath, QueryContext, SpaceViewClassExt as _,
-    SystemCommand, SystemCommandSender as _, ViewContext, ViewSystemIdentifier, ViewerContext,
+    ComponentUiTypes, DataResult, OverridePath, SpaceViewClassExt as _, SystemCommand,
+    SystemCommandSender as _, ViewContext, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -79,7 +79,9 @@ pub fn override_ui(
         &data_result,
     );
 
-    let Some(overrides) = data_result.property_overrides else {
+    // TODO(jleibs): This clone is annoying, but required because QueryContext wants
+    // a reference to the EntityPath. We could probably refactor this to avoid the clone.
+    let Some(overrides) = data_result.property_overrides.clone() else {
         return;
     };
 
@@ -87,6 +89,8 @@ pub fn override_ui(
         .resolved_component_overrides
         .into_iter()
         .sorted_by_key(|(c, _)| *c);
+
+    let query_context = ctx.query_context(&data_result, &query);
 
     re_ui::list_item::list_item_scope(ui, "overrides", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -132,12 +136,7 @@ pub fn override_ui(
 
                 if let Some(results) = component_data {
                     ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
-                        &QueryContext {
-                            view_ctx: ctx,
-                            target_entity_path: &instance_path.entity_path,
-                            archetype_name: None,
-                            query: &query,
-                        },
+                        &query_context,
                         ui,
                         origin_db,
                         entity_path_overridden,
@@ -195,12 +194,7 @@ pub fn add_new_override(
                 opened = true;
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-                let query_context = QueryContext {
-                    view_ctx: ctx,
-                    target_entity_path: &data_result.entity_path,
-                    archetype_name: None,
-                    query,
-                };
+                let query_context = ctx.query_context(data_result, query);
 
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.

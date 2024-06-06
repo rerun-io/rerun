@@ -90,10 +90,12 @@ impl<'a> HybridLatestAtResults<'a> {
             .best_fallback_for(self.ctx, component_name)?;
 
         let query_context = QueryContext {
-            view_ctx: self.ctx,
+            viewer_ctx: self.ctx.viewer_ctx,
             target_entity_path: &self.data_result.entity_path,
             archetype_name: None, // TODO(jleibs): Do we need this?
             query: &self.query,
+            view_state: self.ctx.view_state,
+            view_ctx: None,
         };
 
         fallback_provider

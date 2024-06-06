@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use re_data_store::LatestAtQuery;
 use re_log_types::{DataCell, EntityPath, TimePoint};
 use re_types::{AsComponents, ComponentBatch, ComponentName};
 
-use crate::{DataQueryResult, SpaceViewId};
+use crate::{DataQueryResult, DataResult, QueryContext, SpaceViewId};
 
 /// The context associated with a view.
 ///
@@ -20,6 +21,22 @@ pub struct ViewContext<'a> {
 }
 
 impl<'a> ViewContext<'a> {
+    #[inline]
+    pub fn query_context(
+        &'a self,
+        data_result: &'a DataResult,
+        query: &'a LatestAtQuery,
+    ) -> QueryContext<'a> {
+        QueryContext {
+            viewer_ctx: self.viewer_ctx,
+            target_entity_path: &data_result.entity_path,
+            archetype_name: None,
+            query,
+            view_state: self.view_state,
+            view_ctx: Some(self),
+        }
+    }
+
     /// The active recording.
     #[inline]
     pub fn recording(&self) -> &re_entity_db::EntityDb {

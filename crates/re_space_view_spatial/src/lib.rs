@@ -26,7 +26,7 @@ mod view_3d_properties;
 mod visualizers;
 
 use re_space_view::DataResultQuery as _;
-use re_viewer_context::ViewContext;
+use re_viewer_context::{ViewContext, ViewerContext};
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
@@ -113,14 +113,15 @@ fn query_pinhole_legacy(
 }
 
 pub(crate) fn configure_background(
-    ctx: &ViewContext<'_>,
+    ctx: &ViewerContext<'_>,
     background: &ViewProperty<'_>,
     render_ctx: &RenderContext,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,
+    state: &dyn re_viewer_context::SpaceViewState,
 ) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewPropertyQueryError> {
     use re_renderer::renderer;
 
-    let kind: BackgroundKind = background.component_or_fallback(ctx, view_system)?;
+    let kind: BackgroundKind = background.component_or_fallback(ctx, view_system, state)?;
 
     match kind {
         BackgroundKind::GradientDark => Ok((
@@ -146,7 +147,7 @@ pub(crate) fn configure_background(
         )),
 
         BackgroundKind::SolidColor => {
-            let color: Color = background.component_or_fallback(ctx, view_system)?;
+            let color: Color = background.component_or_fallback(ctx, view_system, state)?;
             Ok((None, color.into()))
         }
     }

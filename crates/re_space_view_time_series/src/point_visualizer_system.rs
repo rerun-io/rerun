@@ -99,12 +99,8 @@ impl SeriesPointSystem {
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
-            let query_ctx = QueryContext {
-                view_ctx: ctx,
-                archetype_name: Some(SeriesPoint::name()),
-                query: &ctx.current_query(),
-                target_entity_path: &data_result.entity_path,
-            };
+            let current_query = ctx.current_query();
+            let query_ctx = ctx.query_context(data_result, &current_query);
 
             let fallback_color =
                 re_viewer_context::TypedComponentFallbackProvider::<Color>::fallback_for(

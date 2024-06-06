@@ -260,11 +260,7 @@ impl VisualizerSystem for CamerasVisualizer {
 
 impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
-        let Ok(state) = ctx
-            .view_ctx
-            .view_state
-            .downcast_ref::<SpatialSpaceViewState>()
-        else {
+        let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() else {
             return Default::default();
         };
 

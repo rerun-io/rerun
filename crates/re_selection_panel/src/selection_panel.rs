@@ -175,7 +175,7 @@ impl SelectionPanel {
                                 override_visualizer_ui(ctx, view, instance_path, ui);
                             });
 
-                            let view_ctx = view.bundle_context(ctx, view_states);
+                            let view_ctx = view.bundle_context_with_states(ctx, view_states);
 
                             ui.large_collapsing_header("Component Overrides", true, |ui| {
                                 override_ui(&view_ctx, view, instance_path, ui);
@@ -220,19 +220,13 @@ impl SelectionPanel {
             }
 
             Item::DataResult(space_view_id, instance_path) => {
-                let Some(space_view) = blueprint.space_view(space_view_id) else {
+                let Some(view) = blueprint.space_view(space_view_id) else {
                     return;
                 };
 
-                let view_ctx = view.bundle_context(ctx, view_states);
+                let view_ctx = view.bundle_context_with_states(ctx, view_states);
 
-                blueprint_ui_for_data_result(
-                    &view_ctx,
-                    space_view,
-                    ui,
-                    *space_view_id,
-                    instance_path,
-                );
+                blueprint_ui_for_data_result(&view_ctx, view, ui, *space_view_id, instance_path);
             }
         }
     }
