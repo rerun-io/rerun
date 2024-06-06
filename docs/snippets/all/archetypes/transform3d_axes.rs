@@ -1,4 +1,4 @@
-//! Log different transforms.
+//! Log different transforms with visualized coordinates axes.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_axes").spawn()?;

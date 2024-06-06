@@ -1,4 +1,4 @@
-"""Log different transforms."""
+"""Log different transforms with visualized coordinates axes."""
 
 import rerun as rr
 
