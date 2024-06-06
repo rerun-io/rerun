@@ -2,18 +2,19 @@ use egui::Color32;
 use re_log_types::{EntityPath, Instance};
 use re_space_view::DataResultQuery;
 use re_types::{
-    archetypes::{self, Axes3D},
-    components::{AxisLength, Transform3D},
+    archetypes::{self, Axes3D, Pinhole},
+    components::{AxisLength, ImagePlaneDistance, Transform3D},
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::TransformContext, view_kind::SpatialSpaceViewKind,
+    contexts::TransformContext, ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
     visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
@@ -178,4 +179,49 @@ pub fn add_axis_arrows(
         .picking_instance_id(picking_instance_id);
 }
 
-re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer => []);
+impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> AxisLength {
+        // If someone already override the image plane distance, we should use that.
+        // This is interesting since that data may already have come from either the
+        // datastore or the blueprint store.
+
+        let query_result = ctx.view_ctx.lookup_query_result(ctx.view_ctx.view_id);
+
+        if let Some(length) = query_result
+            .tree
+            .lookup_result_by_path(ctx.target_entity_path)
+            .cloned()
+            .and_then(|data_result| {
+                let results =
+                    data_result.latest_at_with_overrides::<Pinhole>(ctx.view_ctx, ctx.query);
+
+                results.get_mono::<ImagePlaneDistance>()
+            })
+        {
+            let length: f32 = length.into();
+            return (length * 0.25).into();
+        }
+
+        let Ok(state) = ctx
+            .view_ctx
+            .view_state
+            .downcast_ref::<SpatialSpaceViewState>()
+        else {
+            return Default::default();
+        };
+
+        let scene_size = state.bounding_boxes.accumulated.size().length();
+
+        if scene_size.is_finite() && scene_size > 0.0 {
+            scene_size * 0.05
+        } else {
+            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+            // this value works better with the default camera setup.
+            0.3
+        }
+        .into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer => [AxisLength]);
