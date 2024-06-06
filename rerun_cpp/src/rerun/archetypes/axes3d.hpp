@@ -16,7 +16,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for reprsenting a transform.
+    /// **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for representing a transform.
     ///
     /// See `rerun::archetypes::Transform3D`
     struct Axes3D {

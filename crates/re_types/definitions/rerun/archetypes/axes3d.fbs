@@ -7,13 +7,13 @@ namespace rerun.archetypes;
 
 // ---
 
-/// This archetype shows a set of orthogonal coordinate axes such as for reprsenting a transform.
+/// This archetype shows a set of orthogonal coordinate axes such as for representing a transform.
 ///
 /// \py See [`Transform3D`][rerun.archetypes.Transform3D]
 /// \rs See [`Transform3D`][crate::archetypes.ScTransform3Dalar]
 /// \cpp See `rerun::archetypes::Transform3D`
 ///
-/// \example archetypes/transform3d_axes title="Transform with Axes" image="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1200w.png"
+/// \example archetypes/transform3d_axes title="Transform with axes" image="https://static.rerun.io/transform3d_axes/35cd6a68cce0cd582231984be4e2628d1627540b/1200w.png"
 table Axes3D (
     "attr.docs.category": "Plotting",
     "attr.docs.view_types": "Spatial3D,  Spatial2DView: if logged above active projection"

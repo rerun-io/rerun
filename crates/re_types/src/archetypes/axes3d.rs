@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for reprsenting a transform.
+/// **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for representing a transform.
 ///
 /// See [`Transform3D`][crate::archetypes.ScTransform3Dalar]
 #[derive(Clone, Debug)]

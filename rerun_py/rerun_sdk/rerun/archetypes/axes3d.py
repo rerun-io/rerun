@@ -19,13 +19,13 @@ __all__ = ["Axes3D"]
 @define(str=False, repr=False, init=False)
 class Axes3D(Archetype):
     """
-    **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for reprsenting a transform.
+    **Archetype**: This archetype shows a set of orthogonal coordinate axes such as for representing a transform.
 
     See [`Transform3D`][rerun.archetypes.Transform3D]
 
     Example
     -------
-    ### Transform with Axes:
+    ### Transform with axes:
     ```python
     import rerun as rr
 

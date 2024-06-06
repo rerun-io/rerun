@@ -15,7 +15,7 @@ Archetypes are bundles of components. This page lists all built-in components.
 
 ## Plotting
 
-* [`Axes3D`](archetypes/axes3d.md): This archetype shows a set of orthogonal coordinate axes such as for reprsenting a transform.
+* [`Axes3D`](archetypes/axes3d.md): This archetype shows a set of orthogonal coordinate axes such as for representing a transform.
 * [`BarChart`](archetypes/bar_chart.md): A bar chart.
 * [`Scalar`](archetypes/scalar.md): Log a double-precision scalar.
 * [`SeriesLine`](archetypes/series_line.md): Define the style properties for a line series in a chart.
