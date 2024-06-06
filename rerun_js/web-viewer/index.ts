@@ -428,6 +428,7 @@ export class WebViewer {
 
         document.body.classList.add(classes.hide_scrollbars);
         document.documentElement.classList.add(classes.hide_scrollbars);
+        this.#dispatch_event("fullscreen", true);
       });
     });
 
@@ -451,7 +452,6 @@ export class WebViewer {
 
     _minimize_current_fullscreen_viewer = () => this.#minimize();
     this.#fullscreen = true;
-    this.#dispatch_event("fullscreen", true);
   };
 }
 
