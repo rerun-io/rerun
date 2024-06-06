@@ -2,9 +2,8 @@ use egui::Color32;
 use re_log_types::{EntityPath, Instance};
 use re_space_view::DataResultQuery;
 use re_types::{
-    archetypes::{self, Axes3D, Pinhole},
-    components::{AxisLength, ImagePlaneDistance, Transform3D},
-    Archetype as _, ComponentNameSet,
+    archetypes::{Axes3D, Pinhole},
+    components::{AxisLength, ImagePlaneDistance},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewStateExt,
@@ -38,14 +37,7 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
 
 impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Transform3D>();
-        let mut axes_queried: ComponentNameSet = Axes3D::all_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect::<ComponentNameSet>();
-        query_info.queried.append(&mut axes_queried);
-        query_info.indicators = std::iter::once(Axes3D::indicator().name()).collect();
-        query_info
+        VisualizerQueryInfo::from_archetype::<Axes3D>()
     }
 
     fn filter_visualizable_entities(
@@ -76,14 +68,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            if ctx
-                .recording()
-                .latest_at_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
-                .is_none()
-            {
-                continue;
-            }
-
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(world_from_obj) = transforms.reference_from_entity_ignoring_pinhole(
                 &data_result.entity_path,
