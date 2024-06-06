@@ -2,7 +2,7 @@ use egui::Color32;
 use re_log_types::{EntityPath, Instance};
 use re_space_view::DataResultQuery;
 use re_types::{
-    archetypes::{Axes3D, Pinhole},
+    archetypes::{Axes3D, Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
 };
 use re_viewer_context::{
@@ -211,3 +211,51 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
 }
 
 re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer => [AxisLength]);
+
+/// The `Transform3DDetector` doesn't actually visualize anything, but it allows us to detect
+/// when a transform should otherwise be visualized.
+///
+/// See the logic in [`crate::SpatialSpaceView3D::choose_default_visualizers`]
+#[derive(Default)]
+pub struct Transform3DDetector();
+
+impl IdentifiedViewSystem for Transform3DDetector {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
+        "Transform3DDetector".into()
+    }
+}
+
+impl VisualizerSystem for Transform3DDetector {
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Transform3D>()
+    }
+
+    fn execute(
+        &mut self,
+        _ctx: &ViewContext<'_>,
+        _query: &ViewQuery<'_>,
+        _context_systems: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        Ok(vec![])
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
+
+    #[inline]
+    fn filter_visualizable_entities(
+        &self,
+        _entities: ApplicableEntities,
+        _context: &dyn VisualizableFilterContext,
+    ) -> VisualizableEntities {
+        // Never actually visualize this detector
+        Default::default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Transform3DDetector => []);

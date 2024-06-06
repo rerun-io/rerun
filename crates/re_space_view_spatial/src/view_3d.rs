@@ -19,7 +19,7 @@ use re_viewer_context::{
     VisualizableEntities, VisualizableFilterContext,
 };
 
-use crate::visualizers::{CamerasVisualizer, Transform3DArrowsVisualizer};
+use crate::visualizers::{CamerasVisualizer, Transform3DArrowsVisualizer, Transform3DDetector};
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
@@ -221,12 +221,19 @@ impl SpaceViewClass for SpatialSpaceView3D {
             })
             .collect();
 
-        // If there were no other visualizers, or this is a camera, then we will include axes.
-        if (visualizers.is_empty() || visualizers.contains(&CamerasVisualizer::identifier()))
-            && available_visualizers.contains(&Transform3DArrowsVisualizer::identifier())
-        {
-            visualizers.insert(0, Transform3DArrowsVisualizer::identifier());
+        if available_visualizers.contains(&Transform3DArrowsVisualizer::identifier()) {
+            // There are two cases where we want to activate the [`Transform3DArrowVisualizer`]:
+            //  - If we have no visualizers, but [`Transform3DDetector`] indicates there is a transform here.
+            //  - If we have the [`CamerasVisualizer`] active.
+            if (visualizers.is_empty()
+                && available_visualizers.contains(&Transform3DDetector::identifier()))
+                || visualizers.contains(&CamerasVisualizer::identifier())
+            {
+                visualizers.push(Transform3DArrowsVisualizer::identifier());
+            }
         }
+
+        // If there were no other visualizers, or this is a camera, then we will include axes.
 
         visualizers
     }
