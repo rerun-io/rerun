@@ -175,25 +175,7 @@ impl SelectionPanel {
                                 override_visualizer_ui(ctx, view, instance_path, ui);
                             });
 
-                            let view_state = view_states
-                                .get_mut(
-                                    ctx.space_view_class_registry,
-                                    *view_id,
-                                    view.class_identifier(),
-                                )
-                                .view_state
-                                .as_ref();
-
-                            let visualizer_collection = ctx
-                                .space_view_class_registry
-                                .new_visualizer_collection(view.class_identifier());
-
-                            let view_ctx = ViewContext {
-                                viewer_ctx: ctx,
-                                view_id: *view_id,
-                                view_state,
-                                visualizer_collection: &visualizer_collection,
-                            };
+                            let view_ctx = view.bundle_context(ctx, view_states);
 
                             ui.large_collapsing_header("Component Overrides", true, |ui| {
                                 override_ui(&view_ctx, view, instance_path, ui);
@@ -242,23 +224,7 @@ impl SelectionPanel {
                     return;
                 };
 
-                let visualizer_collection = ctx
-                    .space_view_class_registry
-                    .new_visualizer_collection(space_view.class_identifier());
-
-                let Some(view_state) = view_states
-                    .get(*space_view_id)
-                    .map(|states| states.view_state.as_ref())
-                else {
-                    return;
-                };
-
-                let view_ctx = ViewContext {
-                    viewer_ctx: ctx,
-                    view_id: *space_view_id,
-                    view_state,
-                    visualizer_collection: &visualizer_collection,
-                };
+                let view_ctx = view.bundle_context(ctx, view_states);
 
                 blueprint_ui_for_data_result(
                     &view_ctx,

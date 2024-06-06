@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_log_types::{DataCell, EntityPath, TimePoint};
 use re_types::{AsComponents, ComponentBatch, ComponentName};
 
@@ -14,7 +16,7 @@ pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_id: SpaceViewId,
     pub view_state: &'a dyn crate::SpaceViewState,
-    pub visualizer_collection: &'a crate::VisualizerCollection,
+    pub visualizer_collection: Arc<crate::VisualizerCollection>,
 }
 
 impl<'a> ViewContext<'a> {

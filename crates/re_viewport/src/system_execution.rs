@@ -4,7 +4,6 @@ use ahash::HashMap;
 use rayon::prelude::*;
 
 use re_log_types::TimeInt;
-use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::{
     PerSystemDataResults, SpaceViewId, SpaceViewState, SystemExecutionOutput,
     ViewContextCollection, ViewQuery, ViewStates, ViewerContext, VisualizerCollection,
@@ -15,25 +14,15 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 
 fn run_space_view_systems(
     ctx: &ViewerContext<'_>,
-    space_view_class: SpaceViewClassIdentifier,
+    view: &SpaceViewBlueprint,
     query: &ViewQuery<'_>,
     view_state: &dyn SpaceViewState,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
 ) -> Vec<re_renderer::QueueableDrawData> {
-    re_tracing::profile_function!(space_view_class.as_str());
+    re_tracing::profile_function!(view.class_identifier().as_str());
 
-    // TODO(jleibs): This is weird. Most of the time we don't need this.
-    let visualizer_collection = ctx
-        .space_view_class_registry
-        .new_visualizer_collection(space_view_class);
-
-    let view_ctx = re_viewer_context::ViewContext {
-        viewer_ctx: ctx,
-        view_id: query.space_view_id,
-        view_state,
-        visualizer_collection: &visualizer_collection,
-    };
+    let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
     {
         re_tracing::profile_wait!("ViewContextSystem::execute");
@@ -110,7 +99,7 @@ pub fn execute_systems_for_space_view<'a>(
     let draw_data = if let Some(view_state) = view_states.get(view.id) {
         run_space_view_systems(
             ctx,
-            view.class_identifier(),
+            view,
             &query,
             view_state.view_state.as_ref(),
             &mut context_systems,
