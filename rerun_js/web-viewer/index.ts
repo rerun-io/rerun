@@ -175,13 +175,20 @@ export class WebViewer {
   ): void;
   #dispatch_event<E extends keyof EventsWithoutValue>(event: E): void;
   #dispatch_event(event: any, value?: any): void {
-    const callbacks = this.#event_map.get(event);
-    if (callbacks) {
-      for (const [callback, { once }] of [...callbacks.entries()]) {
-        callback(value);
-        if (once) callbacks.delete(callback);
+    // Dispatch events on next tick.
+    // This is necessary because we may have been called somewhere deep within the viewer's call stack,
+    // which means that `app` may be locked. The event will not actually be dispatched until the
+    // full call stack has returned or the current task has yielded to the event loop. It does not
+    // guarantee that we will be able to acquire the lock here, but it makes it a lot more likely.
+    setTimeout(() => {
+      const callbacks = this.#event_map.get(event);
+      if (callbacks) {
+        for (const [callback, { once }] of [...callbacks.entries()]) {
+          callback(value);
+          if (once) callbacks.delete(callback);
+        }
       }
-    }
+    }, 0);
   }
 
   /**
