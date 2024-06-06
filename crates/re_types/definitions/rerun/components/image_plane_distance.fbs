@@ -1,4 +1,5 @@
 include "rust/attributes.fbs";
+include "docs/attributes.fbs";
 
 include "../datatypes/float32.fbs";
 
@@ -10,7 +11,8 @@ namespace rerun.components;
   ///
   /// This is only used for visualization purposes, and does not affect the projection itself.
 struct ImagePlaneDistance (
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd"
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.docs.unreleased"
 ) {
   image_from_camera: rerun.datatypes.Float32 (order: 100);
 }

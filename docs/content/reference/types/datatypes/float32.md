@@ -17,4 +17,4 @@ A single-precision 32-bit IEEE 754 floating point number.
 
 ## Used by
 
-* [`ImagePlaneDistance`](../components/image_plane_distance.md)
+* [`ImagePlaneDistance`](../components/image_plane_distance.md?speculative-link)
