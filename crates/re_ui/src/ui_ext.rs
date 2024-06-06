@@ -858,11 +858,6 @@ pub trait UiExt {
     ///
     /// Adapted from `egui_demo_lib/src/demo/toggle_switch.rs`
     fn toggle_switch(&mut self, height: f32, on: &mut bool) -> egui::Response {
-        //TODO(ab): use https://github.com/emilk/egui/pull/4627
-        fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
-            (a as f32 + t * (b as f32 - a as f32)).round() as u8
-        }
-
         let ui = self.ui_mut();
         let width = (height / 2. * 3.).ceil();
         let size = egui::vec2(width, height); // 12x7 in figma, but 12x8 looks _much_ better in epaint
@@ -883,12 +878,7 @@ pub trait UiExt {
             let expanded_rect = visual_rect.expand(visuals.expansion);
             let fg_fill_off = visuals.bg_fill;
             let fg_fill_on = egui::Color32::from_rgba_premultiplied(0, 128, 255, 255);
-            let fg_fill = egui::Color32::from_rgba_premultiplied(
-                lerp_u8(fg_fill_off.r(), fg_fill_on.r(), how_on),
-                lerp_u8(fg_fill_off.g(), fg_fill_on.g(), how_on),
-                lerp_u8(fg_fill_off.b(), fg_fill_on.b(), how_on),
-                lerp_u8(fg_fill_off.a(), fg_fill_on.a(), how_on),
-            );
+            let fg_fill = fg_fill_off.lerp_to_gamma(fg_fill_on, how_on);
             let bg_fill_off = visuals.text_color();
 
             let rounding = 0.5 * expanded_rect.height();
