@@ -1,11 +1,11 @@
 use std::{ops::ControlFlow, sync::Arc};
 
 use anyhow::Context as _;
+use serde::Deserialize;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 
 use re_log::ResultExt as _;
-use re_viewer_context::CommandSender;
 
 /// Web-specific tools used by various parts of the application.
 
@@ -134,46 +134,6 @@ pub fn replace_history(new_relative_url: &str) -> Option<()> {
         .ok_or_log_error()
 }
 
-/// Parse the `?query` parst of the url, and translate it into commands to control the application.
-pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    use re_viewer_context::{SystemCommand, SystemCommandSender as _};
-
-    let location = eframe::web::web_location();
-
-    if let Some(app_ids) = location.query_map.get("app_id") {
-        if let Some(app_id) = app_ids.last() {
-            let app_id = re_log_types::ApplicationId::from(app_id.as_str());
-            command_sender.send_system(SystemCommand::ActivateApp(app_id));
-        }
-    }
-
-    // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
-    let urls: Vec<&String> = location
-        .query_map
-        .get("url")
-        .into_iter()
-        .flatten()
-        .collect();
-    if !urls.is_empty() {
-        let follow_if_http = false;
-        for url in urls {
-            if let Some(receiver) =
-                url_to_receiver(egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
-            {
-                // We may be here because the user clicked Back/Forward in the browser while trying
-                // out examples. If we re-download the same file we should clear out the old data first.
-                command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-                    receiver.source().clone(),
-                ));
-
-                command_sender.send_system(SystemCommand::AddReceiver(receiver));
-            }
-        }
-    }
-
-    egui_ctx.request_repaint(); // wake up to receive the messages
-}
-
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
     ///
@@ -184,23 +144,23 @@ enum EndpointCategory {
     WebSocket(String),
 
     /// An eventListener for rrd posted from containing html
-    WebEventListener,
+    WebEventListener(String),
 }
 
 impl EndpointCategory {
-    fn categorize_uri(uri: &str) -> Self {
+    fn categorize_uri(uri: String) -> Self {
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::HttpRrd(uri.into())
+            Self::HttpRrd(uri)
         } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-            Self::WebSocket(uri.into())
+            Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
-            Self::WebEventListener
+            Self::WebEventListener(uri)
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
             re_log::info!("Assuming WebSocket endpoint");
             if uri.contains("://") {
-                Self::WebSocket(uri.into())
+                Self::WebSocket(uri)
             } else {
                 Self::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
             }
@@ -212,7 +172,7 @@ impl EndpointCategory {
 pub fn url_to_receiver(
     egui_ctx: egui::Context,
     follow_if_http: bool,
-    url: &str,
+    url: String,
 ) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
@@ -227,13 +187,12 @@ pub fn url_to_receiver(
                 Some(ui_waker),
             ),
         ),
-        EndpointCategory::WebEventListener => {
+        EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(
                 re_smart_channel::SmartMessageSource::RrdWebEventCallback,
                 re_smart_channel::SmartChannelSource::RrdWebEventListener,
             );
-            let url = url.to_owned();
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
                 move |msg| {
                     ui_waker();
@@ -263,5 +222,59 @@ pub fn url_to_receiver(
         }
         EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
             .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
+    }
+}
+
+// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
+#[derive(Clone, Deserialize)]
+#[repr(transparent)]
+pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
+
+impl Callback {
+    pub fn call(&self) -> Result<JsValue, JsValue> {
+        self.0.call0(&web_sys::window().unwrap())
+    }
+}
+
+// Deserializes from JS string or array of strings.
+#[derive(Clone)]
+pub struct StringOrStringArray(Vec<String>);
+
+impl StringOrStringArray {
+    pub fn into_inner(self) -> Vec<String> {
+        self.0
+    }
+}
+
+impl std::ops::Deref for StringOrStringArray {
+    type Target = Vec<String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for StringOrStringArray {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        fn from_value(value: JsValue) -> Option<Vec<String>> {
+            if let Some(value) = value.as_string() {
+                return Some(vec![value]);
+            }
+
+            let array = value.dyn_into::<js_sys::Array>().ok()?;
+            let mut out = Vec::with_capacity(array.length() as usize);
+            for item in array.into_iter() {
+                out.push(item.as_string()?);
+            }
+            Some(out)
+        }
+
+        let value = serde_wasm_bindgen::preserve::deserialize(deserializer)?;
+        from_value(value)
+            .map(Self)
+            .ok_or_else(|| serde::de::Error::custom("value is not a string or array of strings"))
     }
 }
