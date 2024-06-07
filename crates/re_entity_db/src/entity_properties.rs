@@ -114,15 +114,6 @@ pub struct EntityProperties {
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>, // TODO(andreas): should be a component on the DepthImage archetype.
 
-    /// Should the legend be shown (for plot space views).
-    pub show_legend: EditableAutoValue<bool>, // TODO(andreas): BarChart is still using it, we already have the legend archteype!
-
-    /// The location of the legend (for plot space views).
-    ///
-    /// This is an Option instead of an EditableAutoValue to let each space view class decide on
-    /// what's the best default.
-    pub legend_location: Option<LegendCorner>, // TODO(andreas): BarChart is still using it, we already have the legend archteype!
-
     /// What kind of data aggregation to perform (for plot space views).
     pub time_series_aggregator: EditableAutoValue<TimeSeriesAggregator>, // TODO(andreas): Should be a component probably on SeriesLine, but today it would become a view property.
 }
@@ -136,8 +127,6 @@ impl Default for EntityProperties {
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
-            show_legend: EditableAutoValue::Auto(true),
-            legend_location: None,
             time_series_aggregator: EditableAutoValue::Auto(TimeSeriesAggregator::default()),
         }
     }
@@ -162,8 +151,6 @@ impl EntityProperties {
                 .or(&child.backproject_radius_scale)
                 .clone(),
 
-            show_legend: self.show_legend.or(&child.show_legend).clone(),
-            legend_location: self.legend_location.or(child.legend_location),
             time_series_aggregator: self
                 .time_series_aggregator
                 .or(&child.time_series_aggregator)
@@ -194,8 +181,6 @@ impl EntityProperties {
                 .or(&self.backproject_radius_scale)
                 .clone(),
 
-            show_legend: other.show_legend.or(&self.show_legend).clone(),
-            legend_location: other.legend_location.or(self.legend_location),
             time_series_aggregator: other
                 .time_series_aggregator
                 .or(&self.time_series_aggregator)
@@ -211,8 +196,6 @@ impl EntityProperties {
             backproject_depth,
             depth_from_world_scale,
             backproject_radius_scale,
-            show_legend,
-            legend_location,
             time_series_aggregator,
         } = self;
 
@@ -221,8 +204,6 @@ impl EntityProperties {
             || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
-            || show_legend.has_edits(&other.show_legend)
-            || *legend_location != other.legend_location
             || time_series_aggregator.has_edits(&other.time_series_aggregator)
     }
 }
