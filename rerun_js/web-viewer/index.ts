@@ -1,6 +1,7 @@
 import type { WebHandle } from "./re_viewer.js";
 
 interface AppOptions {
+  app_id?: string;
   url?: string;
   manifest_url?: string;
   render_backend?: Backend;
@@ -9,6 +10,9 @@ interface AppOptions {
     [K in Panel]: PanelState;
   }>;
   fullscreen?: FullscreenOptions;
+
+  persist?: boolean;
+  notebook?: boolean;
 }
 
 type WebHandleConstructor = {
