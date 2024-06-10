@@ -83,6 +83,7 @@ impl<'a> LabelContent<'a> {
     }
 
     /// Should we truncate text if it is too long?
+    #[inline]
     pub fn truncate(mut self, truncate: bool) -> Self {
         self.text_wrap_mode = Some(if truncate {
             egui::TextWrapMode::Truncate
