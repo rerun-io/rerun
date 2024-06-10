@@ -26,24 +26,24 @@ ARCHETYPES_PATHS = [
 ]
 
 opt_out = {
-    "asset3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "bar_chart": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "scalar": ["cpp", "py", "rust"],  # TODO(jleibs)
-    "series_line": ["cpp", "py", "rust"],  # TODO(jleibs)
-    "series_point": ["cpp", "py", "rust"],  # TODO(jleibs)
+    "asset3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "bar_chart": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "clear": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "mesh3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "scalar": ["cpp", "python", "rust"],  # TODO(jleibs)
+    "series_line": ["cpp", "python", "rust"],  # TODO(jleibs)
+    "series_point": ["cpp", "python", "rust"],  # TODO(jleibs)
     #
     # Most blueprint archetypes are untested currently:
-    "background": ["cpp", "py", "rust"],
-    "container_blueprint": ["cpp", "py", "rust"],
-    "panel_blueprint": ["cpp", "py", "rust"],
-    "plot_legend": ["cpp", "py", "rust"],
-    "scalar_axis": ["cpp", "py", "rust"],
-    "space_view_blueprint": ["cpp", "py", "rust"],
-    "space_view_contents": ["cpp", "py", "rust"],
-    "viewport_blueprint": ["cpp", "py", "rust"],
-    "visual_bounds2d": ["cpp", "py", "rust"],
+    "background": ["cpp", "python", "rust"],
+    "container_blueprint": ["cpp", "python", "rust"],
+    "panel_blueprint": ["cpp", "python", "rust"],
+    "plot_legend": ["cpp", "python", "rust"],
+    "scalar_axis": ["cpp", "python", "rust"],
+    "space_view_blueprint": ["cpp", "python", "rust"],
+    "space_view_contents": ["cpp", "python", "rust"],
+    "viewport_blueprint": ["cpp", "python", "rust"],
+    "visual_bounds2d": ["cpp", "python", "rust"],
 }
 
 
@@ -125,7 +125,7 @@ def main() -> None:
         jobs = []
         for arch in archetypes:
             arch_opt_out = opt_out.get(arch, [])
-            for language in ["py", "rust"]:
+            for language in ["python", "rust"]:
                 if language in arch_opt_out:
                     continue
                 job = pool.apply_async(build, (arch, language, args))
@@ -152,7 +152,7 @@ def main() -> None:
             python_output_path = f"tests/python/roundtrips/{arch}/out.rrd"
             rust_output_path = f"tests/rust/roundtrips/{arch}/out.rrd"
 
-            if "py" not in arch_opt_out:
+            if "python" not in arch_opt_out:
                 run_comparison(python_output_path, rust_output_path, args.full_dump)
 
             if "cpp" not in arch_opt_out:
@@ -169,7 +169,7 @@ def main() -> None:
 def build(arch: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
         run_roundtrip_cpp(arch, args.release)
-    elif language == "py":
+    elif language == "python":
         run_roundtrip_python(arch)
     elif language == "rust":
         run_roundtrip_rust(arch, args.release, args.target, args.target_dir)
