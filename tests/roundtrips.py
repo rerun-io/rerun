@@ -67,6 +67,32 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # Which archetypes to run?
+    if len(args.archetype) > 0:
+        archetypes = args.archetype
+    else:
+        files = [
+            f for archetype_path in ARCHETYPES_PATHS for f in listdir(archetype_path) if isfile(join(archetype_path, f))
+        ]
+        archetypes = [
+            filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"
+        ]
+        assert len(archetypes) > 0, "No archetypes found!"
+
+        # Check that we have a roundtrip test for each language for each archetype:
+        errors = []
+        for arch in archetypes:
+            for lang in ["cpp", "python", "rust"]:
+                if lang not in opt_out.get(arch, []):
+                    dir_path = f"tests/{lang}/roundtrips/{arch}"
+                    if not os.path.exists(dir_path):
+                        errors.append(f"Missing {lang} roundtrip test for archetype '{arch}' (should be in '{dir_path}')")
+        if errors:
+            print("ERROR: Missing roundtrip tests for some archetypes!")
+            for error in errors:
+                print(f"  {error}")
+            sys.exit(1)
+
     build_env = os.environ.copy()
     if "RUST_LOG" in build_env:
         del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
@@ -93,17 +119,6 @@ def main() -> None:
         elapsed = time.time() - start_time
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
-
-    files = [
-        f for archetype_path in ARCHETYPES_PATHS for f in listdir(archetype_path) if isfile(join(archetype_path, f))
-    ]
-
-    if len(args.archetype) > 0:
-        archetypes = args.archetype
-    else:
-        archetypes = [
-            filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"
-        ]
 
     print("----------------------------------------------------------")
     print(f"Building {len(archetypes)} archetypes…")
