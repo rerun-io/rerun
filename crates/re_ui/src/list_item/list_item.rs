@@ -231,7 +231,7 @@ impl ListItem {
                 let total_width = extra_indent + collapse_extra + width;
                 if ui.is_sizing_pass() {
                     // In the sizing pass we try to be as small as possible.
-                    // egui will then use the maxiumum width from the sizing pass
+                    // egui will then use the maximum width from the sizing pass
                     // as the max width in all following frames.
                     total_width
                 } else {
