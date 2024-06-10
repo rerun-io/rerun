@@ -100,12 +100,9 @@ impl TimeHistogramPerTimeline {
                 });
         } else {
             for (timeline, time_value) in timepoint.iter() {
-                let remaining_count = self
-                    .times
-                    .entry(*timeline)
-                    .or_default()
-                    .decrement(time_value.as_i64(), n);
-                if remaining_count == 0 {
+                let hist = self.times.entry(*timeline).or_default();
+                hist.decrement(time_value.as_i64(), n);
+                if hist.is_empty() {
                     self.times.remove(timeline);
                 }
             }
