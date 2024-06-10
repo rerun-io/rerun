@@ -133,14 +133,8 @@ impl SpaceViewBlueprint {
                 .copied(),
         );
 
-        let Some(class_identifier) =
-            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)
-        else {
-            re_log::error!(
-                "View blueprint at {id:?} is lacking the required `SpaceViewClass` component."
-            );
-            return None;
-        };
+        let class_identifier =
+            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)?;
 
         let blueprint_archetypes::SpaceViewBlueprint {
             class_identifier,
