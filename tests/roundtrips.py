@@ -49,7 +49,11 @@ opt_out = {
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
-    parser.add_argument("--no-run", action="store_true", help="Do not build or run anything. Only check that the roundtrip tests exists.")
+    parser.add_argument(
+        "--no-run",
+        action="store_true",
+        help="Do not build or run anything. Only check that the roundtrip tests exists.",
+    )
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
         "--no-cpp-build",
