@@ -371,23 +371,21 @@ impl ListItemContent for PropertyContent<'_> {
 
         if crate::is_in_resizable_area(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
-        } else {
-            if let Some(max_width) = layout_info.property_content_max_width {
-                let mut desired_width = max_width + layout_info.left_x - ui.max_rect().left();
+        } else if let Some(max_width) = layout_info.property_content_max_width {
+            let mut desired_width = max_width + layout_info.left_x - ui.max_rect().left();
 
-                // TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
-                let action_button_dimension =
-                    DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
-                let reserve_action_button_space =
-                    self.action_buttons.is_some() || layout_info.reserve_action_button_space;
-                if reserve_action_button_space {
-                    desired_width += action_button_dimension + DesignTokens::text_to_icon_padding();
-                }
-
-                DesiredWidth::AtLeast(desired_width.ceil())
-            } else {
-                DesiredWidth::AtLeast(self.min_desired_width)
+            // TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
+            let action_button_dimension =
+                DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+            let reserve_action_button_space =
+                self.action_buttons.is_some() || layout_info.reserve_action_button_space;
+            if reserve_action_button_space {
+                desired_width += action_button_dimension + DesignTokens::text_to_icon_padding();
             }
+
+            DesiredWidth::AtLeast(desired_width.ceil())
+        } else {
+            DesiredWidth::AtLeast(self.min_desired_width)
         }
     }
 }
