@@ -125,8 +125,11 @@ impl DataStore {
 
         let (initial_num_rows, initial_num_bytes) = stats_before.total_rows_and_bytes();
 
-        let protected_rows =
-            self.find_all_protected_rows(options.protect_latest, &options.dont_protect_components);
+        let protected_rows = self.find_all_protected_rows(
+            options.protect_latest,
+            &options.dont_protect_components,
+            &options.dont_protect_timelines,
+        );
 
         let mut diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
@@ -437,7 +440,8 @@ impl DataStore {
     fn find_all_protected_rows(
         &mut self,
         target_count: usize,
-        dont_protect: &HashSet<ComponentName>,
+        dont_protect_components: &HashSet<ComponentName>,
+        dont_protect_timelines: &HashSet<Timeline>,
     ) -> HashSet<RowId> {
         re_tracing::profile_function!();
 
@@ -451,11 +455,14 @@ impl DataStore {
         let mut protected_rows: HashSet<RowId> = Default::default();
 
         // Find all protected rows in regular indexed tables
-        for table in self.tables.values() {
+        for ((_, timeline), table) in &self.tables {
+            if dont_protect_timelines.contains(timeline) {
+                continue;
+            }
             let mut components_to_find: HashMap<ComponentName, usize> = table
                 .all_components
                 .iter()
-                .filter(|c| !dont_protect.contains(*c))
+                .filter(|c| !dont_protect_components.contains(*c))
                 .map(|c| (*c, target_count))
                 .collect();
 
