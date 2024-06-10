@@ -369,7 +369,7 @@ impl ListItemContent for PropertyContent<'_> {
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         let layout_info = LayoutInfoStack::top(ui.ctx());
 
-        if crate::is_in_resizable_area(ui) {
+        if crate::is_in_resizable_panel(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
         } else if let Some(max_width) = layout_info.property_content_max_width {
             let mut desired_width = max_width + layout_info.left_x - ui.max_rect().left();

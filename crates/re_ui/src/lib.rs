@@ -92,7 +92,7 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
 /// Used as a heuristic to figure out if it is safe to truncate text.
 ///
 /// If this returns false, we should never truncate.
-fn is_in_resizable_area(ui: &egui::Ui) -> bool {
+fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
     re_tracing::profile_function!();
 
     let mut is_in_side_panel = false;

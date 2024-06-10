@@ -153,10 +153,10 @@ impl<'a> LabelContent<'a> {
     fn get_text_wrap_mode(&self, ui: &egui::Ui) -> egui::TextWrapMode {
         if let Some(text_wrap_mode) = self.text_wrap_mode {
             text_wrap_mode
-        } else if crate::is_in_resizable_area(ui) {
-            egui::TextWrapMode::Truncate
+        } else if crate::is_in_resizable_panel(ui) {
+            egui::TextWrapMode::Truncate // The user can resize the panl to see the full text
         } else {
-            egui::TextWrapMode::Extend
+            egui::TextWrapMode::Extend // Show everything
         }
     }
 }
