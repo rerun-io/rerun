@@ -88,3 +88,29 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
 
     design_tokens().apply(egui_ctx);
 }
+
+/// Used as a heuristic to figure out if it is safe to truncate text.
+///
+/// If this returns false, we should never truncate.
+fn is_in_resizable_area(ui: &egui::Ui) -> bool {
+    re_tracing::profile_function!();
+
+    let mut is_in_side_panel = false;
+
+    for frame in ui.stack().iter() {
+        if let Some(kind) = frame.kind() {
+            if kind.is_area() {
+                return false; // Our popups (tooltips etc) aren't resizable
+            }
+            if matches!(kind, egui::UiKind::LeftPanel | egui::UiKind::RightPanel) {
+                is_in_side_panel = true;
+            }
+        }
+    }
+
+    if is_in_side_panel {
+        true // Our side-panels are resizable
+    } else {
+        false // Safe fallback
+    }
+}

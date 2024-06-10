@@ -152,27 +152,10 @@ impl<'a> LabelContent<'a> {
     fn get_text_wrap_mode(&self, ui: &egui::Ui) -> egui::TextWrapMode {
         if let Some(text_wrap_mode) = self.text_wrap_mode {
             text_wrap_mode
+        } else if crate::is_in_resizable_area(ui) {
+            egui::TextWrapMode::Truncate
         } else {
-            let mut is_in_side_panel = false;
-            for frame in ui.stack().iter() {
-                if let Some(kind) = frame.kind() {
-                    if kind.is_area() {
-                        // Our popups (tooltips etc) aren't resizable, so show all of the text
-                        return egui::TextWrapMode::Extend;
-                    }
-                    if matches!(kind, egui::UiKind::LeftPanel | egui::UiKind::RightPanel) {
-                        is_in_side_panel = true;
-                    }
-                }
-            }
-
-            if is_in_side_panel {
-                // Our side-panels are resizable, so truncate the text if we don't fit.
-                egui::TextWrapMode::Truncate
-            } else {
-                // Safe fallback
-                egui::TextWrapMode::Extend
-            }
+            egui::TextWrapMode::Extend
         }
     }
 }
