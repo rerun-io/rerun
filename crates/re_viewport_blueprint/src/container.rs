@@ -57,7 +57,7 @@ impl ContainerBlueprint {
                 .copied(),
         );
         let Some(container_kind) = results.get_instance::<ContainerKind>(resolver, 0) else {
-            re_log::error!("Container {id:?} is lacking the required `ContainerKind` component.");
+            re_log::error_once!("Container is lacking the required `ContainerKind` component. Maybe you are loading an old blueprint?");
             return None;
         };
         let blueprint_archetypes::ContainerBlueprint {
