@@ -49,6 +49,7 @@ opt_out = {
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
+    parser.add_argument("--no-run", action="store_true", help="Do not build or run anything. Only check that the roundtrip tests exists.")
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
         "--no-cpp-build",
@@ -79,19 +80,23 @@ def main() -> None:
         ]
         assert len(archetypes) > 0, "No archetypes found!"
 
-        # Check that we have a roundtrip test for each language for each archetype:
-        errors = []
-        for arch in archetypes:
-            for lang in ["cpp", "python", "rust"]:
-                if lang not in opt_out.get(arch, []):
-                    dir_path = f"tests/{lang}/roundtrips/{arch}"
-                    if not os.path.exists(dir_path):
-                        errors.append(f"Missing {lang} roundtrip test for archetype '{arch}' (should be in '{dir_path}')")
-        if errors:
-            print("ERROR: Missing roundtrip tests for some archetypes!")
-            for error in errors:
-                print(f"  {error}")
-            sys.exit(1)
+    # Check that we have a roundtrip test for each language for each archetype:
+    errors = []
+    for arch in archetypes:
+        for lang in ["cpp", "python", "rust"]:
+            if lang not in opt_out.get(arch, []):
+                dir_path = f"tests/{lang}/roundtrips/{arch}"
+                if not os.path.exists(dir_path):
+                    errors.append(f"Missing {lang} roundtrip test for archetype '{arch}' (should be in '{dir_path}')")
+    if errors:
+        print("ERROR: Missing roundtrip tests for some archetypes!")
+        for error in errors:
+            print(f"  {error}")
+        sys.exit(1)
+
+    if args.no_run:
+        print("All archetypes have roundtrip tests.")
+        sys.exit(0)
 
     build_env = os.environ.copy()
     if "RUST_LOG" in build_env:
