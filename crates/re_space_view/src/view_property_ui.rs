@@ -36,6 +36,7 @@ fn view_property_ui_impl(
         archetype_name: Some(archetype.name),
         query: ctx.blueprint_query,
         view_state,
+        view_ctx: None,
     };
 
     let component_results = ctx.blueprint_db().latest_at(

@@ -162,6 +162,7 @@ impl<'a> ViewProperty<'a> {
             archetype_name: Some(self.archetype_name),
             query: self.blueprint_query,
             view_state,
+            view_ctx: None,
         }
     }
 }

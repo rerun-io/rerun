@@ -3,9 +3,9 @@ use ahash::HashMap;
 use re_types::{Archetype, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewSystemIdentifier,
-    ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem,
+    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemIdentifier, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter,
 };
 
@@ -82,10 +82,9 @@ pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
     /// Mustn't query any data outside of the archetype.
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        view_state: &dyn SpaceViewState,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>;
 
     /// Optionally retrieves a data store reference from the scene element.

@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
+use ahash::HashMap;
 use itertools::{FoldWhile, Itertools};
+use parking_lot::Mutex;
 use re_entity_db::EntityProperties;
 use re_types::SpaceViewClassIdentifier;
 
@@ -18,7 +22,8 @@ use re_types_core::Archetype as _;
 use re_viewer_context::{
     ContentsName, DataResult, PerSystemEntities, QueryRange, RecommendedSpaceView, SpaceViewClass,
     SpaceViewClassRegistry, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
-    SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SystemCommandSender as _, SystemExecutionOutput, ViewContext, ViewQuery, ViewStates,
+    ViewerContext, VisualizerCollection,
 };
 
 /// A view of a space.
@@ -128,14 +133,11 @@ impl SpaceViewBlueprint {
                 .copied(),
         );
 
-        let Some(class_identifier) =
-            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)
-        else {
-            re_log::error!(
-                "View blueprint at {id:?} is lacking the required `SpaceViewClass` component."
-            );
-            return None;
-        };
+        // This is a required component. Note that when loading space-views we crawl the subtree and so
+        // cleared empty space-views paths may exist transiently. The fact that they have an empty class_identifier
+        // is the marker that the have been cleared and not an error.
+        let class_identifier =
+            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)?;
 
         let blueprint_archetypes::SpaceViewBlueprint {
             class_identifier,
@@ -461,6 +463,58 @@ impl SpaceViewBlueprint {
             },
             |time_range| QueryRange::TimeRange(time_range.clone()),
         )
+    }
+
+    pub fn bundle_context_with_states<'a>(
+        &self,
+        ctx: &'a ViewerContext<'a>,
+        view_states: &'a mut ViewStates,
+    ) -> ViewContext<'a> {
+        let view_state = view_states
+            .get_mut(
+                ctx.space_view_class_registry,
+                self.id,
+                self.class_identifier(),
+            )
+            .view_state
+            .as_ref();
+
+        ViewContext {
+            viewer_ctx: ctx,
+            view_id: self.id,
+            view_state,
+            visualizer_collection: self.visualizer_collection(ctx),
+        }
+    }
+
+    pub fn bundle_context_with_state<'a>(
+        &self,
+        ctx: &'a ViewerContext<'a>,
+        view_state: &'a dyn SpaceViewState,
+    ) -> ViewContext<'a> {
+        ViewContext {
+            viewer_ctx: ctx,
+            view_id: self.id,
+            view_state,
+            visualizer_collection: self.visualizer_collection(ctx),
+        }
+    }
+
+    fn visualizer_collection(&self, ctx: &ViewerContext<'_>) -> Arc<VisualizerCollection> {
+        static VISUALIZER_FOR_CONTEXT: once_cell::sync::Lazy<
+            Mutex<HashMap<SpaceViewClassIdentifier, Arc<VisualizerCollection>>>,
+        > = once_cell::sync::Lazy::new(Default::default);
+
+        VISUALIZER_FOR_CONTEXT
+            .lock()
+            .entry(self.class_identifier())
+            .or_insert_with(|| {
+                Arc::new(
+                    ctx.space_view_class_registry
+                        .new_visualizer_collection(self.class_identifier()),
+                )
+            })
+            .clone()
     }
 }
 

@@ -111,6 +111,10 @@ pub fn list_default_components(
             <AnnotationContext as Loggable>::name(),
             AnnotationContext::default().to_arrow()?,
         ),
+        (
+            <AxisLength as Loggable>::name(),
+            AxisLength::default().to_arrow()?,
+        ),
         (<Blob as Loggable>::name(), Blob::default().to_arrow()?),
         (
             <ClassId as Loggable>::name(),
@@ -140,6 +144,10 @@ pub fn list_default_components(
         (
             <HalfSizes3D as Loggable>::name(),
             HalfSizes3D::default().to_arrow()?,
+        ),
+        (
+            <ImagePlaneDistance as Loggable>::name(),
+            ImagePlaneDistance::default().to_arrow()?,
         ),
         (
             <KeypointId as Loggable>::name(),

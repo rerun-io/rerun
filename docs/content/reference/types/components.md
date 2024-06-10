@@ -14,6 +14,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 
 
 * [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
+* [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
@@ -23,6 +24,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`DrawOrder`](components/draw_order.md): Draw order used for the display order of 2D elements.
 * [`HalfSizes2D`](components/half_sizes2d.md): Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
 * [`HalfSizes3D`](components/half_sizes3d.md): Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
+* [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
 * [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.

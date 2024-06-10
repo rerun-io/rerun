@@ -1,4 +1,5 @@
 include "./components/annotation_context.fbs";
+include "./components/axis_length.fbs";
 include "./components/blob.fbs";
 include "./components/class_id.fbs";
 include "./components/clear_is_recursive.fbs";
@@ -8,6 +9,7 @@ include "./components/disconnected_space.fbs";
 include "./components/draw_order.fbs";
 include "./components/half_sizes2d.fbs";
 include "./components/half_sizes3d.fbs";
+include "./components/image_plane_distance.fbs";
 include "./components/keypoint_id.fbs";
 include "./components/line_strip2d.fbs";
 include "./components/line_strip3d.fbs";

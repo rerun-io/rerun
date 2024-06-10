@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 annotation_context.md linguist-generated=true
+axis_length.md linguist-generated=true
 blob.md linguist-generated=true
 class_id.md linguist-generated=true
 clear_is_recursive.md linguist-generated=true
@@ -11,6 +12,7 @@ disconnected_space.md linguist-generated=true
 draw_order.md linguist-generated=true
 half_sizes2d.md linguist-generated=true
 half_sizes3d.md linguist-generated=true
+image_plane_distance.md linguist-generated=true
 keypoint_id.md linguist-generated=true
 line_strip2d.md linguist-generated=true
 line_strip3d.md linguist-generated=true

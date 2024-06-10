@@ -1,3 +1,4 @@
+use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
@@ -11,11 +12,14 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    IdentifiedViewSystem, IndicatedEntities, PerSystemEntities, PerVisualizer,
+    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext,
 };
 
+use crate::visualizers::{CamerasVisualizer, Transform3DArrowsVisualizer, Transform3DDetector};
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
@@ -184,6 +188,56 @@ impl SpaceViewClass for SpatialSpaceView3D {
         Box::new(context.unwrap_or_default())
     }
 
+    /// Choose the default visualizers to enable for this entity.
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet {
+        let available_visualizers: HashSet<&ViewSystemIdentifier> =
+            visualizable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+        let mut visualizers: SmallVisualizerSet = available_visualizers
+            .iter()
+            .filter_map(|visualizer| {
+                if indicated_entities_per_visualizer
+                    .get(*visualizer)
+                    .map_or(false, |matching_list| matching_list.contains(entity_path))
+                {
+                    Some(**visualizer)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if available_visualizers.contains(&Transform3DArrowsVisualizer::identifier()) {
+            // There are two cases where we want to activate the [`Transform3DArrowVisualizer`]:
+            //  - If we have no visualizers, but [`Transform3DDetector`] indicates there is a transform here.
+            //  - If we have the [`CamerasVisualizer`] active.
+            if (visualizers.is_empty()
+                && available_visualizers.contains(&Transform3DDetector::identifier()))
+                || visualizers.contains(&CamerasVisualizer::identifier())
+            {
+                visualizers.push(Transform3DArrowsVisualizer::identifier());
+            }
+        }
+
+        // If there were no other visualizers, or this is a camera, then we will include axes.
+
+        visualizers
+    }
+
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
@@ -285,15 +339,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ent_paths: &PerSystemEntities,
         auto_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
-        let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
+        let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
             return;
         };
-        *auto_properties = generate_auto_legacy_properties(
-            ctx,
-            ent_paths,
-            &state.bounding_boxes.accumulated,
-            SpatialSpaceViewKind::ThreeD,
-        );
+        *auto_properties =
+            generate_auto_legacy_properties(ctx, ent_paths, SpatialSpaceViewKind::ThreeD);
     }
 
     fn selection_ui(

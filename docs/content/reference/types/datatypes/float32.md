@@ -15,3 +15,7 @@ A single-precision 32-bit IEEE 754 floating point number.
  * 🦀 [Rust API docs for `Float32`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Float32.html)
 
 
+## Used by
+
+* [`AxisLength`](../components/axis_length.md?speculative-link)
+* [`ImagePlaneDistance`](../components/image_plane_distance.md?speculative-link)

@@ -69,6 +69,9 @@ impl ListItem {
     /// Can the user click and interact with it?
     ///
     /// Set to `false` for items that only show info, but shouldn't be interactive.
+    /// Note: making the list item non-interactive does not necessarily make its content
+    /// non-interactive. For example, a non-interactive list item may be used in conjunction with
+    /// [`super::PropertyContent`] to build property-like editors.
     #[inline]
     pub fn interactive(mut self, interactive: bool) -> Self {
         self.interactive = interactive;
@@ -330,7 +333,7 @@ impl ListItem {
                         (1.0, ui.visuals().selection.bg_fill),
                     ),
                 );
-            } else {
+            } else if interactive {
                 let bg_fill = if !response.hovered() && ui.rect_contains_pointer(bg_rect) {
                     // if some part of the content is active and hovered, our background should
                     // become dimmer

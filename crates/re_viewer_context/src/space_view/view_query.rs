@@ -11,8 +11,8 @@ use re_log_types::StoreKind;
 use re_types::ComponentName;
 
 use crate::{
-    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier,
-    ViewerContext,
+    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewContext,
+    ViewSystemIdentifier, ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
@@ -196,6 +196,30 @@ impl DataResult {
         ctx.save_blueprint_component(recursive_override_path, desired_override);
     }
 
+    /// Saves a recursive override, does not take into current or default values.
+    ///
+    /// Ignores individual overrides and current value.
+    pub fn save_individual_override<C: re_types::Component>(
+        &self,
+        ctx: &ViewerContext<'_>,
+        desired_override: &C,
+    ) {
+        re_tracing::profile_function!();
+
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(override_path) = self.individual_override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        ctx.save_blueprint_component(override_path, desired_override);
+    }
+
     /// Clears the recursive override for a given component
     pub fn clear_recursive_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
         // TODO(jleibs): Make it impossible for this to happen with different type structure
@@ -210,6 +234,22 @@ impl DataResult {
         };
 
         ctx.save_empty_blueprint_component::<C>(recursive_override_path);
+    }
+
+    /// Clears the recursive override for a given component
+    pub fn clear_individual_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(individual_override_path) = self.individual_override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        ctx.save_empty_blueprint_component::<C>(individual_override_path);
     }
 
     /// Write the [`EntityProperties`] for this result back to the Blueprint store on the recursive override.
@@ -428,7 +468,7 @@ impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
     pub fn iter_visible_data_results<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a ViewContext<'a>,
         visualizer: ViewSystemIdentifier,
     ) -> impl Iterator<Item = &DataResult>
     where
@@ -440,7 +480,7 @@ impl<'s> ViewQuery<'s> {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .filter(|result| result.is_visible(ctx))
+                        .filter(|result| result.is_visible(ctx.viewer_ctx))
                         .copied(),
                 )
             },

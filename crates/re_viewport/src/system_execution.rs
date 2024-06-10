@@ -4,7 +4,6 @@ use ahash::HashMap;
 use rayon::prelude::*;
 
 use re_log_types::TimeInt;
-use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::{
     PerSystemDataResults, SpaceViewId, SpaceViewState, SystemExecutionOutput,
     ViewContextCollection, ViewQuery, ViewStates, ViewerContext, VisualizerCollection,
@@ -15,13 +14,15 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 
 fn run_space_view_systems(
     ctx: &ViewerContext<'_>,
-    _space_view_class: SpaceViewClassIdentifier,
+    view: &SpaceViewBlueprint,
     query: &ViewQuery<'_>,
     view_state: &dyn SpaceViewState,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
 ) -> Vec<re_renderer::QueueableDrawData> {
-    re_tracing::profile_function!(_space_view_class.as_str());
+    re_tracing::profile_function!(view.class_identifier().as_str());
+
+    let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
     {
         re_tracing::profile_wait!("ViewContextSystem::execute");
@@ -30,7 +31,7 @@ fn run_space_view_systems(
             .par_iter_mut()
             .for_each(|(_name, system)| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", _name.as_str());
-                system.execute(ctx, query);
+                system.execute(&view_ctx, query);
             });
     };
 
@@ -40,7 +41,7 @@ fn run_space_view_systems(
         .par_iter_mut()
         .map(|(name, part)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            match part.execute(ctx, query, view_state, context_systems) {
+            match part.execute(&view_ctx, query, context_systems) {
                 Ok(part_draw_data) => part_draw_data,
                 Err(err) => {
                     re_log::error_once!("Error executing visualizer {name:?}: {err}");
@@ -98,7 +99,7 @@ pub fn execute_systems_for_space_view<'a>(
     let draw_data = if let Some(view_state) = view_states.get(view.id) {
         run_space_view_systems(
             ctx,
-            view.class_identifier(),
+            view,
             &query,
             view_state.view_state.as_ref(),
             &mut context_systems,

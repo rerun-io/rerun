@@ -24,17 +24,51 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A bar chart view.
 #[derive(Clone, Debug)]
-pub struct BarChartView {}
+pub struct BarChartView {
+    /// Configures the legend of the plot.
+    pub plot_legend: crate::blueprint::archetypes::PlotLegend,
+}
 
 impl ::re_types_core::SizeBytes for BarChartView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        self.plot_legend.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        true
+        <crate::blueprint::archetypes::PlotLegend>::is_pod()
+    }
+}
+
+impl<T: Into<crate::blueprint::archetypes::PlotLegend>> From<T> for BarChartView {
+    fn from(v: T) -> Self {
+        Self {
+            plot_legend: v.into(),
+        }
+    }
+}
+
+impl std::borrow::Borrow<crate::blueprint::archetypes::PlotLegend> for BarChartView {
+    #[inline]
+    fn borrow(&self) -> &crate::blueprint::archetypes::PlotLegend {
+        &self.plot_legend
+    }
+}
+
+impl std::ops::Deref for BarChartView {
+    type Target = crate::blueprint::archetypes::PlotLegend;
+
+    #[inline]
+    fn deref(&self) -> &crate::blueprint::archetypes::PlotLegend {
+        &self.plot_legend
+    }
+}
+
+impl std::ops::DerefMut for BarChartView {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::PlotLegend {
+        &mut self.plot_legend
     }
 }
 

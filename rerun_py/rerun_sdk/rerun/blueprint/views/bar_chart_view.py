@@ -8,7 +8,7 @@ __all__ = ["BarChartView"]
 
 from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
-from .. import components as blueprint_components
+from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -52,6 +52,7 @@ class BarChartView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
+        plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
     ) -> None:
         """
         Construct a blueprint for a new BarChartView view.
@@ -71,10 +72,17 @@ class BarChartView(SpaceView):
             Whether this view is visible.
 
             Defaults to true if not specified.
+        plot_legend:
+            Configures the legend of the plot.
 
         """
 
         properties: dict[str, AsComponents] = {}
+        if plot_legend is not None:
+            if not isinstance(plot_legend, blueprint_archetypes.PlotLegend):
+                plot_legend = blueprint_archetypes.PlotLegend(plot_legend)
+            properties["PlotLegend"] = plot_legend
+
         super().__init__(
             class_identifier="BarChart",
             origin=origin,

@@ -19,7 +19,7 @@ mod transform3d_arrows;
 pub use cameras::CamerasVisualizer;
 pub use images::{ImageVisualizer, ViewerImage};
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
-pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
+pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer, Transform3DDetector};
 
 // ---
 
@@ -65,6 +65,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
 }
 
@@ -84,6 +85,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
 }
 

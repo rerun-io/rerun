@@ -3,6 +3,7 @@
 #pragma once
 
 #include "components/annotation_context.hpp"
+#include "components/axis_length.hpp"
 #include "components/blob.hpp"
 #include "components/class_id.hpp"
 #include "components/clear_is_recursive.hpp"
@@ -12,6 +13,7 @@
 #include "components/draw_order.hpp"
 #include "components/half_sizes2d.hpp"
 #include "components/half_sizes3d.hpp"
+#include "components/image_plane_distance.hpp"
 #include "components/keypoint_id.hpp"
 #include "components/line_strip2d.hpp"
 #include "components/line_strip3d.hpp"

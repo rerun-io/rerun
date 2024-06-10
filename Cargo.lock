@@ -1564,16 +1564,17 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "bytemuck",
+ "emath",
  "serde",
 ]
 
 [[package]]
 name = "eframe"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1609,7 +1610,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1626,7 +1627,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1645,7 +1646,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -1685,7 +1686,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "ahash",
  "egui",
@@ -1701,7 +1702,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1719,7 +1720,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "ahash",
  "egui",
@@ -1762,7 +1763,7 @@ checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 [[package]]
 name = "emath"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1863,7 +1864,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.27.2"
-source = "git+https://github.com/emilk/egui.git?rev=cbb5d6aa936c7498214dba03b594fbe75dbe7488#cbb5d6aa936c7498214dba03b594fbe75dbe7488"
+source = "git+https://github.com/emilk/egui.git?rev=2545939c150379b85517de691da56a46f5ee0d1d#2545939c150379b85517de691da56a46f5ee0d1d"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -4820,6 +4821,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
+ "re_space_view",
  "re_space_view_spatial",
  "re_space_view_time_series",
  "re_tracing",
@@ -4877,6 +4879,7 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]

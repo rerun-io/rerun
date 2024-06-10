@@ -7,8 +7,8 @@ use re_types::{
     components::{ClassId, Color, KeypointId, LineStrip2D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -193,12 +193,11 @@ impl VisualizerSystem for Lines2DVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        _view_state: &dyn SpaceViewState,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
@@ -208,8 +207,8 @@ impl VisualizerSystem for Lines2DVisualizer {
         super::entity_iterator::process_archetype::<Self, LineStrips2D, _>(
             ctx,
             view_query,
-            view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.points,
+            context_systems,
+            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 

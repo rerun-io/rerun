@@ -41,6 +41,7 @@ snippet: views/spatial3d
 * [`AnnotationContext`](../archetypes/annotation_context.md)
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Asset3D`](../archetypes/asset3d.md)
+* [`Axes3D`](../archetypes/axes3d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Clear`](../archetypes/clear.md)
 * [`DisconnectedSpace`](../archetypes/disconnected_space.md)
