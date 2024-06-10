@@ -581,12 +581,13 @@ impl EntityDb {
             target: re_data_store::GarbageCollectionTarget::Everything,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
-            dont_protect: [
+            dont_protect_components: [
                 re_types_core::components::ClearIsRecursive::name(),
                 re_types_core::archetypes::Clear::indicator().name(),
             ]
             .into_iter()
             .collect(),
+            dont_protect_timelines: Default::default(),
             enable_batching: false,
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });
@@ -603,7 +604,8 @@ impl EntityDb {
             ),
             protect_latest: 1,
             purge_empty_tables: false,
-            dont_protect: Default::default(),
+            dont_protect_components: Default::default(),
+            dont_protect_timelines: Default::default(),
             enable_batching: false,
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });
