@@ -27,7 +27,7 @@ ARCHETYPES_PATHS = [
 
 opt_out = {
     "asset3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
-    "axes3d": ["cpp", "python", "rust"],  # TODO(#6525)
+    "axes3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
     "bar_chart": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
     "clear": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
     "mesh3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
