@@ -56,6 +56,10 @@ impl ContainerBlueprint {
                 .iter()
                 .copied(),
         );
+
+        // This is a required component. Note that when loading containers we crawl the subtree and so
+        // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
+        // is the marker that the have been cleared and not an error.
         let container_kind = results.get_instance::<ContainerKind>(resolver, 0)?;
 
         let blueprint_archetypes::ContainerBlueprint {

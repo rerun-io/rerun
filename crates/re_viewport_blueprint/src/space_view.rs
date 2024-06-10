@@ -133,6 +133,9 @@ impl SpaceViewBlueprint {
                 .copied(),
         );
 
+        // This is a required component. Note that when loading space-views we crawl the subtree and so
+        // cleared empty space-views paths may exist transiently. The fact that they have an empty class_identifier
+        // is the marker that the have been cleared and not an error.
         let class_identifier =
             results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)?;
 
