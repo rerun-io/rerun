@@ -11,7 +11,12 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = [
     "AutoSpaceViews",
@@ -23,8 +28,10 @@ __all__ = [
 
 
 @define(init=False)
-class AutoSpaceViews:
+class AutoSpaceViews(ComponentMixin):
     """**Component**: Whether or not space views should be created automatically."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, auto_space_views: AutoSpaceViewsLike):
         """Create a new instance of the AutoSpaceViews component."""

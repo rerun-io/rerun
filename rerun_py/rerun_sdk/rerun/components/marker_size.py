@@ -12,14 +12,21 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["MarkerSize", "MarkerSizeArrayLike", "MarkerSizeBatch", "MarkerSizeLike", "MarkerSizeType"]
 
 
 @define(init=False)
-class MarkerSize:
+class MarkerSize(ComponentMixin):
     """**Component**: Size of a marker in UI points."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, value: MarkerSizeLike):
         """Create a new instance of the MarkerSize component."""

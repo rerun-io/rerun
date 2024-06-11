@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Vector2D", "Vector2DBatch", "Vector2DType"]
 
 
-class Vector2D(datatypes.Vec2D):
+class Vector2D(datatypes.Vec2D, ComponentMixin):
     """**Component**: A vector in 2D space."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of Vector2DExt in vector2d_ext.py
 
     # Note: there are no fields here because Vector2D delegates to datatypes.Vec2D
@@ -26,3 +30,7 @@ class Vector2DType(datatypes.Vec2DType):
 
 class Vector2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Vector2DType()
+
+
+# This is patched in late to avoid circular dependencies.
+Vector2D._BATCH_TYPE = Vector2DBatch  # type: ignore[assignment]

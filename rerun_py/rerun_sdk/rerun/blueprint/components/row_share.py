@@ -12,14 +12,21 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["RowShare", "RowShareArrayLike", "RowShareBatch", "RowShareLike", "RowShareType"]
 
 
 @define(init=False)
-class RowShare:
+class RowShare(ComponentMixin):
     """**Component**: The layout share of a row in the container."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, share: RowShareLike):
         """

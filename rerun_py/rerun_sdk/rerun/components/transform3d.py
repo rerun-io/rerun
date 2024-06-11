@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Transform3D", "Transform3DBatch", "Transform3DType"]
 
 
-class Transform3D(datatypes.Transform3D):
+class Transform3D(datatypes.Transform3D, ComponentMixin):
     """**Component**: An affine transform between two 3D spaces, represented in a given direction."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
     # Note: there are no fields here because Transform3D delegates to datatypes.Transform3D
@@ -26,3 +30,7 @@ class Transform3DType(datatypes.Transform3DType):
 
 class Transform3DBatch(datatypes.Transform3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Transform3DType()
+
+
+# This is patched in late to avoid circular dependencies.
+Transform3D._BATCH_TYPE = Transform3DBatch  # type: ignore[assignment]

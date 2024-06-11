@@ -12,14 +12,21 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType"]
 
 
 @define(init=False)
-class Radius:
+class Radius(ComponentMixin):
     """**Component**: A Radius component."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, value: RadiusLike):
         """Create a new instance of the Radius component."""

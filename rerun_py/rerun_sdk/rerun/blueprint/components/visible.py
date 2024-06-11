@@ -11,14 +11,21 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Visible", "VisibleArrayLike", "VisibleBatch", "VisibleLike", "VisibleType"]
 
 
 @define(init=False)
-class Visible:
+class Visible(ComponentMixin):
     """**Component**: Whether the container, space view, entity or instance is currently visible."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, visible: VisibleLike):
         """Create a new instance of the Visible component."""

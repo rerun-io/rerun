@@ -8,7 +8,9 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import Archetype
+from .._baseclasses import (
+    Archetype,
+)
 from .transform3d_ext import Transform3DExt
 
 __all__ = ["Transform3D"]

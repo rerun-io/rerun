@@ -13,14 +13,19 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .line_strip3d_ext import LineStrip3DExt
 
 __all__ = ["LineStrip3D", "LineStrip3DArrayLike", "LineStrip3DBatch", "LineStrip3DLike", "LineStrip3DType"]
 
 
 @define(init=False)
-class LineStrip3D(LineStrip3DExt):
+class LineStrip3D(LineStrip3DExt, ComponentMixin):
     r"""
     **Component**: A line strip in 3D space.
 
@@ -35,6 +40,8 @@ class LineStrip3D(LineStrip3DExt):
                      4
     ```
     """
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, points: LineStrip3DLike):
         """Create a new instance of the LineStrip3D component."""

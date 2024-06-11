@@ -11,7 +11,12 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from rerun._converters import (
     float_or_none,
 )
@@ -20,7 +25,9 @@ __all__ = ["AffixFuzzer8", "AffixFuzzer8ArrayLike", "AffixFuzzer8Batch", "AffixF
 
 
 @define(init=False)
-class AffixFuzzer8:
+class AffixFuzzer8(ComponentMixin):
+    _BATCH_TYPE = None
+
     def __init__(self: Any, single_float_optional: float | None = None):
         """Create a new instance of the AffixFuzzer8 component."""
 

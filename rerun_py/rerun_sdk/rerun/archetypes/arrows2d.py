@@ -8,7 +8,9 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import Archetype
+from .._baseclasses import (
+    Archetype,
+)
 from .arrows2d_ext import Arrows2DExt
 
 __all__ = ["Arrows2D"]

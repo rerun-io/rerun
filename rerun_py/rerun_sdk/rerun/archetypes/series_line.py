@@ -10,7 +10,9 @@ from typing import Any
 from attrs import define, field
 
 from .. import components, datatypes
-from .._baseclasses import Archetype
+from .._baseclasses import (
+    Archetype,
+)
 from ..error_utils import catch_and_log_exceptions
 
 __all__ = ["SeriesLine"]

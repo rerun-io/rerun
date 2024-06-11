@@ -10,7 +10,12 @@ from typing import Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = [
     "VisualizerOverrides",
@@ -22,8 +27,10 @@ __all__ = [
 
 
 @define(init=False)
-class VisualizerOverrides:
+class VisualizerOverrides(ComponentMixin):
     """**Component**: The name of a visualizer."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, value: VisualizerOverridesLike):
         """Create a new instance of the VisualizerOverrides component."""

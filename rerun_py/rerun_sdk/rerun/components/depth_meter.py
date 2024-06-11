@@ -12,14 +12,21 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["DepthMeter", "DepthMeterArrayLike", "DepthMeterBatch", "DepthMeterLike", "DepthMeterType"]
 
 
 @define(init=False)
-class DepthMeter:
+class DepthMeter(ComponentMixin):
     """**Component**: A component indicating how long a meter is, expressed in native units."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, value: DepthMeterLike):
         """Create a new instance of the DepthMeter component."""

@@ -6,18 +6,22 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Resolution", "ResolutionBatch", "ResolutionType"]
 
 
-class Resolution(datatypes.Vec2D):
+class Resolution(datatypes.Vec2D, ComponentMixin):
     """
     **Component**: Pixel resolution width & height, e.g. of a camera sensor.
 
     Typically in integer units, but for some use cases floating point may be used.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ResolutionExt in resolution_ext.py
 
     # Note: there are no fields here because Resolution delegates to datatypes.Vec2D
@@ -30,3 +34,7 @@ class ResolutionType(datatypes.Vec2DType):
 
 class ResolutionBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = ResolutionType()
+
+
+# This is patched in late to avoid circular dependencies.
+Resolution._BATCH_TYPE = ResolutionBatch  # type: ignore[assignment]

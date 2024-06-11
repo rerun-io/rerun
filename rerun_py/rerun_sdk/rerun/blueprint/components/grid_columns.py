@@ -12,14 +12,21 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["GridColumns", "GridColumnsArrayLike", "GridColumnsBatch", "GridColumnsLike", "GridColumnsType"]
 
 
 @define(init=False)
-class GridColumns:
+class GridColumns(ComponentMixin):
     """**Component**: How many columns a grid container should have."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, columns: GridColumnsLike):
         """

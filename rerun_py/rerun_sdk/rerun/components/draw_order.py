@@ -12,13 +12,18 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["DrawOrder", "DrawOrderArrayLike", "DrawOrderBatch", "DrawOrderLike", "DrawOrderType"]
 
 
 @define(init=False)
-class DrawOrder:
+class DrawOrder(ComponentMixin):
     """
     **Component**: Draw order used for the display order of 2D elements.
 
@@ -28,6 +33,8 @@ class DrawOrder:
 
     Draw order for entities with the same draw order is generally undefined.
     """
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, value: DrawOrderLike):
         """Create a new instance of the DrawOrder component."""

@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Range1D", "Range1DBatch", "Range1DType"]
 
 
-class Range1D(datatypes.Range1D):
+class Range1D(datatypes.Range1D, ComponentMixin):
     """**Component**: A 1D range, specifying a lower and upper bound."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of Range1DExt in range1d_ext.py
 
     # Note: there are no fields here because Range1D delegates to datatypes.Range1D
@@ -26,3 +30,7 @@ class Range1DType(datatypes.Range1DType):
 
 class Range1DBatch(datatypes.Range1DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Range1DType()
+
+
+# This is patched in late to avoid circular dependencies.
+Range1D._BATCH_TYPE = Range1DBatch  # type: ignore[assignment]

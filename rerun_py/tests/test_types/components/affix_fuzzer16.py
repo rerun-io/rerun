@@ -9,7 +9,12 @@ from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 from .. import datatypes
 
@@ -17,7 +22,9 @@ __all__ = ["AffixFuzzer16", "AffixFuzzer16ArrayLike", "AffixFuzzer16Batch", "Aff
 
 
 @define(init=False)
-class AffixFuzzer16:
+class AffixFuzzer16(ComponentMixin):
+    _BATCH_TYPE = None
+
     def __init__(self: Any, many_required_unions: AffixFuzzer16Like):
         """Create a new instance of the AffixFuzzer16 component."""
 
