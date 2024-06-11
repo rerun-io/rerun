@@ -148,7 +148,7 @@ impl SeriesPointSystem {
                 let query = re_data_store::RangeQuery::new(view_query.timeline, time_range);
 
                 let results = range_with_overrides(
-                    ctx.viewer_ctx,
+                    ctx,
                     None,
                     &query,
                     data_result,

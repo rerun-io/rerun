@@ -56,7 +56,7 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
                 ),
             );
             let results = range_with_overrides(
-                ctx.viewer_ctx,
+                ctx,
                 None,
                 &range_query,
                 data_result,

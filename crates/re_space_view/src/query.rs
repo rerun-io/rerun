@@ -17,7 +17,7 @@ use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
 pub fn range_with_overrides(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
@@ -27,7 +27,7 @@ pub fn range_with_overrides(
 
     let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx, data_result, component_set.iter());
+    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
 
     // No need to query for components that have overrides.
     component_set.retain(|component| !overrides.components.contains_key(component));
@@ -36,10 +36,25 @@ pub fn range_with_overrides(
         ctx.recording_store(),
         range_query,
         &data_result.entity_path,
-        component_set,
+        component_set.iter().copied(),
     );
 
-    HybridRangeResults { overrides, results }
+    // TODO(jleibs): This doesn't work when the component set contains empty results.
+    // This means we over-query for defaults that will never be used.
+    // component_set.retain(|component| !results.components.contains_key(component));
+
+    let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
+        ctx.viewer_ctx.store_context.blueprint.store(),
+        ctx.viewer_ctx.blueprint_query,
+        ctx.defaults_path,
+        component_set.iter().copied(),
+    );
+
+    HybridRangeResults {
+        overrides,
+        results,
+        defaults,
+    }
 }
 
 /// Queries for the given `component_names` using latest-at semantics with override support.
@@ -79,7 +94,7 @@ pub fn latest_at_with_overrides<'a>(
     let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
         ctx.viewer_ctx.store_context.blueprint.store(),
         ctx.viewer_ctx.blueprint_query,
-        &ctx.defaults_path,
+        ctx.defaults_path,
         component_set.iter().copied(),
     );
 
