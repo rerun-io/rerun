@@ -80,6 +80,11 @@ pub struct DepthImage {
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
+
+    /// Colormap to use for rendering the depth image.
+    ///
+    /// If not set, the depth image will be rendered using the Turbo colormap.
+    pub colormap: Option<crate::components::Colormap>,
 }
 
 impl ::re_types_core::SizeBytes for DepthImage {
@@ -88,6 +93,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
         self.data.heap_size_bytes()
             + self.meter.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
+            + self.colormap.heap_size_bytes()
     }
 
     #[inline]
@@ -95,6 +101,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
         <crate::components::TensorData>::is_pod()
             && <Option<crate::components::DepthMeter>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
+            && <Option<crate::components::Colormap>>::is_pod()
     }
 }
 
@@ -104,27 +111,29 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DepthImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.DepthMeter".into(),
             "rerun.components.DrawOrder".into(),
+            "rerun.components.Colormap".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
             "rerun.components.DrawOrder".into(),
+            "rerun.components.Colormap".into(),
         ]
     });
 
 impl DepthImage {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`DepthImage`] [`::re_types_core::Archetype`]
@@ -210,10 +219,20 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
+        let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
+            <crate::components::Colormap>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#colormap")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             data,
             meter,
             draw_order,
+            colormap,
         })
     }
 }
@@ -231,6 +250,9 @@ impl ::re_types_core::AsComponents for DepthImage {
             self.draw_order
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.colormap
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -246,6 +268,7 @@ impl DepthImage {
             data: data.into(),
             meter: None,
             draw_order: None,
+            colormap: None,
         }
     }
 
@@ -265,6 +288,15 @@ impl DepthImage {
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
+        self
+    }
+
+    /// Colormap to use for rendering the depth image.
+    ///
+    /// If not set, the depth image will be rendered using the Turbo colormap.
+    #[inline]
+    pub fn with_colormap(mut self, colormap: impl Into<crate::components::Colormap>) -> Self {
+        self.colormap = Some(colormap.into());
         self
     }
 }

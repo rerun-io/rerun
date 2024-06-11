@@ -34,6 +34,7 @@ impl DepthImage {
             data: data.into(),
             draw_order: None,
             meter: None,
+            colormap: None,
         })
     }
 }

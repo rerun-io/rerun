@@ -69,6 +69,7 @@ class DepthImage(DepthImageExt, Archetype):
         *,
         meter: components.DepthMeterLike | None = None,
         draw_order: components.DrawOrderLike | None = None,
+        colormap: components.ColormapLike | None = None,
     ):
         """
         Create a new instance of the DepthImage archetype.
@@ -86,12 +87,16 @@ class DepthImage(DepthImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+        colormap:
+            Colormap to use for rendering the depth image.
+
+            If not set, the depth image will be rendered using the Turbo colormap.
 
         """
 
         # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(data=data, meter=meter, draw_order=draw_order)
+            self.__attrs_init__(data=data, meter=meter, draw_order=draw_order, colormap=colormap)
             return
         self.__attrs_clear__()
 
@@ -101,6 +106,7 @@ class DepthImage(DepthImageExt, Archetype):
             data=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
+            colormap=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -138,6 +144,17 @@ class DepthImage(DepthImageExt, Archetype):
     # An optional floating point value that specifies the 2D drawing order.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    colormap: components.ColormapBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ColormapBatch._optional,  # type: ignore[misc]
+    )
+    # Colormap to use for rendering the depth image.
+    #
+    # If not set, the depth image will be rendered using the Turbo colormap.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
@@ -80,6 +81,11 @@ namespace rerun::archetypes {
         /// Objects with higher values are drawn on top of those with lower values.
         std::optional<rerun::components::DrawOrder> draw_order;
 
+        /// Colormap to use for rendering the depth image.
+        ///
+        /// If not set, the depth image will be rendered using the Turbo colormap.
+        std::optional<rerun::components::Colormap> colormap;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.components.DepthImageIndicator";
@@ -140,6 +146,15 @@ namespace rerun::archetypes {
         /// Objects with higher values are drawn on top of those with lower values.
         DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
             draw_order = std::move(_draw_order);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Colormap to use for rendering the depth image.
+        ///
+        /// If not set, the depth image will be rendered using the Turbo colormap.
+        DepthImage with_colormap(rerun::components::Colormap _colormap) && {
+            colormap = std::move(_colormap);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

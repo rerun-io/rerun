@@ -12,7 +12,7 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
-**Optional**: [`DepthMeter`](../components/depth_meter.md), [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`DepthMeter`](../components/depth_meter.md), [`DrawOrder`](../components/draw_order.md), [`Colormap`](../components/colormap.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

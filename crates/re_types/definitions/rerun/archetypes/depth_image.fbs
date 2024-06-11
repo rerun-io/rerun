@@ -40,4 +40,9 @@ table DepthImage (
   ///
   /// Objects with higher values are drawn on top of those with lower values.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Colormap to use for rendering the depth image.
+  ///
+  /// If not set, the depth image will be rendered using the Turbo colormap.
+  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 3300);
 }

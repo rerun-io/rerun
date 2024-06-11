@@ -24,3 +24,6 @@ but currently the Viewer is limited to the types defined here.
  * 🦀 [Rust API docs for `Colormap`](https://docs.rs/rerun/latest/rerun/components/enum.Colormap.html)
 
 
+## Used by
+
+* [`DepthImage`](../archetypes/depth_image.md)
