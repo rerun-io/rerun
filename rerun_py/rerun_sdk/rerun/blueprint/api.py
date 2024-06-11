@@ -5,7 +5,7 @@ from typing import Any, Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
-from .._baseclasses import AsComponents
+from .._baseclasses import AsComponents, ComponentBatchLike
 from .._spawn import _spawn_viewer
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
@@ -44,6 +44,7 @@ class SpaceView:
         name: Utf8Like | None,
         visible: VisibleLike | None = None,
         properties: dict[str, AsComponents] = {},
+        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
     ):
         """
         Construct a blueprint for a new space view.
@@ -67,6 +68,10 @@ class SpaceView:
             Defaults to true if not specified.
         properties
             Dictionary of property archetypes to add to space view's internal hierarchy.
+        defaults:
+            List of default components or component batches to add to the space view. When an archetype
+            in the view is missing a component included in this set, the value of default will be used
+            instead of the normal fallback for the visualizer.
 
         """
         self.id = uuid.uuid4()
@@ -76,6 +81,7 @@ class SpaceView:
         self.contents = contents
         self.visible = visible
         self.properties = properties
+        self.defaults = defaults
 
     def blueprint_path(self) -> str:
         """
@@ -118,6 +124,14 @@ class SpaceView:
 
         for prop_name, prop in self.properties.items():
             stream.log(f"{self.blueprint_path()}/{prop_name}", prop, recording=stream)  # type: ignore[attr-defined]
+
+        for default in self.defaults:
+            if hasattr(default, "as_component_batches"):
+                stream.log(f"{self.blueprint_path()}/defaults", default, recording=stream)  # type: ignore[attr-defined]
+            elif hasattr(default, "component_name"):
+                stream.log(f"{self.blueprint_path()}/defaults", [default], recording=stream)  # type: ignore[attr-defined]
+            else:
+                raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
     def _repr_html_(self) -> Any:
         """IPython interface to conversion to html."""
