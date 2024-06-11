@@ -89,9 +89,16 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     design_tokens().apply(egui_ctx);
 }
 
+/// Is this Ui in a resizable panel?
+///
 /// Used as a heuristic to figure out if it is safe to truncate text.
 ///
-/// If this returns false, we should never truncate.
+/// In a resizable panel, it is safe to truncate text if it doesn't fit,
+/// because the user can just make the panel wider to see the full text.
+///
+/// In other places, we should never truncate text, because then the user
+/// cannot read it all. In those places (when this functions returns `false`)
+/// you should either wrap the text or let it grow the Ui it is in.
 fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
     re_tracing::profile_function!();
 
