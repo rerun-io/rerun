@@ -94,7 +94,8 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
-    pub interactive: bool, // TODO(andreas): similar to `visible`, needs to become a regular (slightly special - doesn't show up in archetypes) component.
+    // TODO(#5067): Test property used so we don't have to continously adjust existing tests while we're dismantling `EntityProperties`.
+    pub test_property: bool,
 
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>, // TODO(andreas): should become a component and be part of the DepthImage and regular Images (with limitation to mono channel image).
@@ -122,7 +123,7 @@ pub struct EntityProperties {
 impl Default for EntityProperties {
     fn default() -> Self {
         Self {
-            interactive: true,
+            test_property: true,
             color_mapper: EditableAutoValue::default(),
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
@@ -137,7 +138,7 @@ impl EntityProperties {
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
-            interactive: self.interactive && child.interactive,
+            test_property: self.test_property && child.test_property,
 
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
 
@@ -167,7 +168,7 @@ impl EntityProperties {
     /// loaded from the Blueprint store where the Auto values are not up-to-date.
     pub fn merge_with(&self, other: &Self) -> Self {
         Self {
-            interactive: other.interactive,
+            test_property: other.test_property,
 
             color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
 
@@ -191,7 +192,7 @@ impl EntityProperties {
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
-            interactive,
+            test_property,
             color_mapper,
             backproject_depth,
             depth_from_world_scale,
@@ -199,7 +200,7 @@ impl EntityProperties {
             time_series_aggregator,
         } = self;
 
-        interactive != &other.interactive
+        test_property != &other.test_property
             || color_mapper.has_edits(&other.color_mapper)
             || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)

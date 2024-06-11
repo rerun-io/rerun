@@ -377,11 +377,10 @@ impl DataResult {
     ///
     /// Returns None if there was no override at all.
     /// Note that if this returns the current path, the override might be either an individual or recursive override.
-    #[inline]
     pub fn component_override_source(
         &self,
         result_tree: &DataResultTree,
-        component_name: &ComponentName,
+        component_name: ComponentName,
     ) -> Option<EntityPath> {
         re_tracing::profile_function!();
 
@@ -389,7 +388,7 @@ impl DataResult {
         let active_override = self
             .property_overrides
             .as_ref()
-            .and_then(|p| p.resolved_component_overrides.get(component_name))?;
+            .and_then(|p| p.resolved_component_overrides.get(&component_name))?;
 
         // Walk up the tree to find the highest ancestor which has a matching override.
         // This must be the ancestor we inherited the override from. Note that `active_override`
@@ -404,7 +403,7 @@ impl DataResult {
                     //                This should access `recursive_component_overrides` instead.
                     property_overrides
                         .resolved_component_overrides
-                        .get(component_name)
+                        .get(&component_name)
                         != Some(active_override)
                 })
             {
@@ -417,6 +416,16 @@ impl DataResult {
         Some(override_source)
     }
 
+    /// Returns true if the current component's value was inherited from a parent entity.
+    pub fn is_inherited(
+        &self,
+        result_tree: &DataResultTree,
+        component_name: ComponentName,
+    ) -> bool {
+        let override_source = self.component_override_source(result_tree, component_name);
+        override_source.is_some() && override_source.as_ref() != Some(&self.entity_path)
+    }
+
     /// Shorthand for checking for visibility on data overrides.
     ///
     /// Note that this won't check if the data store has visibility logged.
@@ -425,6 +434,19 @@ impl DataResult {
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
         self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
+            .unwrap_or_default()
+            .0
+    }
+
+    /// Shorthand for checking for interactivity on data overrides.
+    ///
+    /// Note that this won't check if the data store has interactivity logged.
+    // TODO(andreas): Should this be possible?
+    // TODO(andreas): Should the result be cached, this might be a very common operation?
+    #[inline]
+    pub fn is_interactive(&self, ctx: &ViewerContext<'_>) -> bool {
+        *self
+            .lookup_override::<re_types::blueprint::components::Interactive>(ctx)
             .unwrap_or_default()
             .0
     }
