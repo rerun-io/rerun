@@ -9,14 +9,18 @@ use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 
 // ---
 
-/// Queries for the given `component_names` using range semantics with override support.
+/// Queries for the given `component_names` using range semantics with blueprint support.
 ///
-/// If the `DataResult` contains a specified override from the blueprint, that values
-/// will be used instead of the range query.
+/// Data will be resolved, in order of priority:
+/// - Data overrides from the blueprint
+/// - Data from the recording
+/// - Default data from the blueprint
+/// - Fallback from the visualizer
+/// - Placeholder from the component.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-pub fn range_with_overrides(
+pub fn range_with_blueprint_resolved_data(
     ctx: &ViewContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
@@ -57,14 +61,18 @@ pub fn range_with_overrides(
     }
 }
 
-/// Queries for the given `component_names` using latest-at semantics with override support.
+/// Queries for the given `component_names` using latest-at semantics with blueprint support.
 ///
-/// If the `DataResult` contains a specified override from the blueprint, that values
-/// will be used instead of the latest-at query.
+/// Data will be resolved, in order of priority:
+/// - Data overrides from the blueprint
+/// - Data from the recording
+/// - Default data from the blueprint
+/// - Fallback from the visualizer
+/// - Placeholder from the component.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-pub fn latest_at_with_overrides<'a>(
+pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
@@ -183,7 +191,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a> {
-        latest_at_with_overrides(
+        latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,

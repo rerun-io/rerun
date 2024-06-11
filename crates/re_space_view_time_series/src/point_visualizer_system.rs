@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_query::{PromiseResult, QueryError};
-use re_space_view::range_with_overrides;
+use re_space_view::range_with_blueprint_resolved_data;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
@@ -147,7 +147,7 @@ impl SeriesPointSystem {
                 let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(view_query.timeline, time_range);
 
-                let results = range_with_overrides(
+                let results = range_with_blueprint_resolved_data(
                     ctx,
                     None,
                     &query,
