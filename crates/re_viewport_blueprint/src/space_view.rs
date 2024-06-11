@@ -51,6 +51,9 @@ pub struct SpaceViewBlueprint {
     /// True if this space view is visible in the UI.
     pub visible: bool,
 
+    /// Path where these space_views defaults can be found.
+    pub defaults_path: EntityPath,
+
     /// Pending blueprint writes for nested components from duplicate.
     pending_writes: Vec<DataRow>,
 }
@@ -73,6 +76,7 @@ impl SpaceViewBlueprint {
             space_origin: recommended.origin,
             contents: SpaceViewContents::new(id, space_view_class, recommended.query_filter),
             visible: true,
+            defaults_path: id.as_entity_path().join(&"defaults".into()),
             pending_writes: Default::default(),
         }
     }
@@ -165,6 +169,7 @@ impl SpaceViewBlueprint {
             &space_env,
         );
         let visible = visible.map_or(true, |v| v.0);
+        let defaults_path = id.as_entity_path().join(&"defaults".into());
 
         Some(Self {
             id,
@@ -173,6 +178,7 @@ impl SpaceViewBlueprint {
             space_origin,
             contents: content,
             visible,
+            defaults_path,
             pending_writes: Default::default(),
         })
     }
@@ -193,6 +199,7 @@ impl SpaceViewBlueprint {
             space_origin,
             contents,
             visible,
+            defaults_path: _,
             pending_writes,
         } = self;
 
@@ -287,6 +294,7 @@ impl SpaceViewBlueprint {
             space_origin: self.space_origin.clone(),
             contents,
             visible: self.visible,
+            defaults_path: self.defaults_path.clone(),
             pending_writes,
         }
     }
@@ -466,7 +474,7 @@ impl SpaceViewBlueprint {
     }
 
     pub fn bundle_context_with_states<'a>(
-        &self,
+        &'a self,
         ctx: &'a ViewerContext<'a>,
         view_states: &'a mut ViewStates,
     ) -> ViewContext<'a> {
@@ -483,12 +491,13 @@ impl SpaceViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_state,
+            defaults_path: &self.defaults_path,
             visualizer_collection: self.visualizer_collection(ctx),
         }
     }
 
     pub fn bundle_context_with_state<'a>(
-        &self,
+        &'a self,
         ctx: &'a ViewerContext<'a>,
         view_state: &'a dyn SpaceViewState,
     ) -> ViewContext<'a> {
@@ -496,6 +505,7 @@ impl SpaceViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_state,
+            defaults_path: &self.defaults_path,
             visualizer_collection: self.visualizer_collection(ctx),
         }
     }

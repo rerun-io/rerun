@@ -9,15 +9,19 @@ use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
 
 // ---
 
-/// Queries for the given `component_names` using range semantics with override support.
+/// Queries for the given `component_names` using range semantics with blueprint support.
 ///
-/// If the `DataResult` contains a specified override from the blueprint, that values
-/// will be used instead of the range query.
+/// Data will be resolved, in order of priority:
+/// - Data overrides from the blueprint
+/// - Data from the recording
+/// - Default data from the blueprint
+/// - Fallback from the visualizer
+/// - Placeholder from the component.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-pub fn range_with_overrides(
-    ctx: &ViewerContext<'_>,
+pub fn range_with_blueprint_resolved_data(
+    ctx: &ViewContext<'_>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
@@ -27,7 +31,7 @@ pub fn range_with_overrides(
 
     let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx, data_result, component_set.iter());
+    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
 
     // No need to query for components that have overrides.
     component_set.retain(|component| !overrides.components.contains_key(component));
@@ -36,20 +40,39 @@ pub fn range_with_overrides(
         ctx.recording_store(),
         range_query,
         &data_result.entity_path,
-        component_set,
+        component_set.iter().copied(),
     );
 
-    HybridRangeResults { overrides, results }
+    // TODO(jleibs): This doesn't work when the component set contains empty results.
+    // This means we over-query for defaults that will never be used.
+    // component_set.retain(|component| !results.components.contains_key(component));
+
+    let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
+        ctx.viewer_ctx.store_context.blueprint.store(),
+        ctx.viewer_ctx.blueprint_query,
+        ctx.defaults_path,
+        component_set.iter().copied(),
+    );
+
+    HybridRangeResults {
+        overrides,
+        results,
+        defaults,
+    }
 }
 
-/// Queries for the given `component_names` using latest-at semantics with override support.
+/// Queries for the given `component_names` using latest-at semantics with blueprint support.
 ///
-/// If the `DataResult` contains a specified override from the blueprint, that values
-/// will be used instead of the latest-at query.
+/// Data will be resolved, in order of priority:
+/// - Data overrides from the blueprint
+/// - Data from the recording
+/// - Default data from the blueprint
+/// - Fallback from the visualizer
+/// - Placeholder from the component.
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-pub fn latest_at_with_overrides<'a>(
+pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
@@ -69,12 +92,24 @@ pub fn latest_at_with_overrides<'a>(
         ctx.viewer_ctx.recording_store(),
         latest_at_query,
         &data_result.entity_path,
-        component_set,
+        component_set.iter().copied(),
+    );
+
+    // TODO(jleibs): This doesn't work when the component set contains empty results.
+    // This means we over-query for defaults that will never be used.
+    // component_set.retain(|component| !results.components.contains_key(component));
+
+    let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
+        ctx.viewer_ctx.store_context.blueprint.store(),
+        ctx.viewer_ctx.blueprint_query,
+        ctx.defaults_path,
+        component_set.iter().copied(),
     );
 
     HybridLatestAtResults {
         overrides,
         results,
+        defaults,
         ctx,
         query: latest_at_query.clone(),
         data_result,
@@ -156,7 +191,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a> {
-        latest_at_with_overrides(
+        latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,

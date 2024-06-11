@@ -3,7 +3,9 @@ use re_data_store::{LatestAtQuery, RangeQuery};
 use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_renderer::DepthOffset;
-use re_space_view::{latest_at_with_overrides, range_with_overrides, HybridResults};
+use re_space_view::{
+    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,
+};
 use re_types::Archetype;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError, ViewContext,
@@ -55,8 +57,8 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
                     timeline_cursor,
                 ),
             );
-            let results = range_with_overrides(
-                ctx.viewer_ctx,
+            let results = range_with_blueprint_resolved_data(
+                ctx,
                 None,
                 &range_query,
                 data_result,
@@ -66,7 +68,7 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
         }
         QueryRange::LatestAt => {
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
-            let results = latest_at_with_overrides(
+            let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &latest_query,

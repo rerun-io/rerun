@@ -18,6 +18,7 @@ use crate::DataResultQuery as _;
 pub struct HybridLatestAtResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: LatestAtResults,
+    pub(crate) defaults: LatestAtResults,
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
     pub data_result: &'a DataResult,
@@ -32,6 +33,7 @@ pub struct HybridLatestAtResults<'a> {
 pub struct HybridRangeResults {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: RangeResults,
+    pub(crate) defaults: LatestAtResults,
 }
 
 impl<'a> HybridLatestAtResults<'a> {
@@ -116,7 +118,10 @@ impl<'a> HybridLatestAtResults<'a> {
         self.get_instance(0)
     }
 
-    /// Utility for retrieving a single instance of a component with fallback
+    /// Utility for retrieving a single instance of a component with fallback.
+    ///
+    /// If the space view specifies a default, that will be used first, otherwise
+    /// the fallback provider will be queried.
     #[inline]
     pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
         &self,
@@ -124,6 +129,11 @@ impl<'a> HybridLatestAtResults<'a> {
     ) -> T {
         self.get(T::name())
             .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+            .or_else(|| {
+                self.defaults
+                    .get(T::name())
+                    .and_then(|r| r.try_instance::<T>(&self.resolver, 0))
+            })
             .or_else(|| {
                 self.try_fallback_raw(T::name())
                     .and_then(|raw| T::from_arrow(raw.as_ref()).ok())
@@ -353,7 +363,34 @@ impl RangeResultsExt for HybridRangeResults {
 
             Ok(data)
         } else {
-            self.results.get_or_empty_dense(resolver)
+            let data = self.results.get_or_empty_dense(resolver);
+
+            // If the data is not empty, return it.
+            if let Ok(data) = data {
+                if !data.is_empty() {
+                    return Ok(data);
+                }
+            };
+
+            // Otherwise try to use the default data.
+
+            let results = self.defaults.get_or_empty(C::name());
+            // Because this is an default from the blueprint we always re-index the data as static
+            let data =
+                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+
+            // TODO(#5607): what should happen if the promise is still pending?
+            let (front_status, back_status) = data.status();
+            match front_status {
+                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+            match back_status {
+                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+
+            Ok(data)
         }
     }
 }
@@ -402,6 +439,7 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 
         if self.overrides.contains(component_name) {
             let results = self.overrides.get_or_empty(C::name());
+
             // Because this is an override we always re-index the data as static
             let data =
                 RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
@@ -419,7 +457,34 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 
             Ok(data)
         } else {
-            self.results.get_or_empty_dense(resolver)
+            let data = self.results.get_or_empty_dense(resolver);
+
+            // If the data is not empty, return it.
+            if let Ok(data) = data {
+                if !data.is_empty() {
+                    return Ok(data);
+                }
+            };
+
+            // Otherwise try to use the default data.
+
+            let results = self.defaults.get_or_empty(C::name());
+            // Because this is an default from the blueprint we always re-index the data as static
+            let data =
+                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+
+            // TODO(#5607): what should happen if the promise is still pending?
+            let (front_status, back_status) = data.status();
+            match front_status {
+                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+            match back_status {
+                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Pending | PromiseResult::Ready(_) => {}
+            }
+
+            Ok(data)
         }
     }
 }

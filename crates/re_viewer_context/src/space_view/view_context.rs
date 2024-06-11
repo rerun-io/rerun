@@ -17,6 +17,7 @@ pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_id: SpaceViewId,
     pub view_state: &'a dyn crate::SpaceViewState,
+    pub defaults_path: &'a EntityPath,
     pub visualizer_collection: Arc<crate::VisualizerCollection>,
 }
 

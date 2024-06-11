@@ -30,8 +30,11 @@ use re_viewport_blueprint::{
     ui::show_add_space_view_or_container_modal, SpaceViewBlueprint, ViewportBlueprint,
 };
 
-use crate::override_ui::{override_ui, override_visualizer_ui};
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
+use crate::{
+    defaults_ui::defaults_ui,
+    override_ui::{override_ui, override_visualizer_ui},
+};
 use crate::{
     query_range_ui::query_range_ui_data_result, query_range_ui::query_range_ui_space_view,
     selection_history_ui::SelectionHistoryUi,
@@ -237,13 +240,13 @@ impl SelectionPanel {
         blueprint: &ViewportBlueprint,
         view_states: &mut ViewStates,
         ui: &mut Ui,
-        space_view_id: SpaceViewId,
+        view_id: SpaceViewId,
     ) {
-        if let Some(space_view) = blueprint.space_view(&space_view_id) {
+        if let Some(space_view) = blueprint.space_view(&view_id) {
             if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
                 ctx,
                 ui,
-                space_view_id,
+                view_id,
                 &space_view.contents.entity_path_filter,
                 &space_view.space_origin,
             ) {
@@ -262,7 +265,7 @@ impl SelectionPanel {
             )
             .clicked()
         {
-            if let Some(new_space_view_id) = blueprint.duplicate_space_view(&space_view_id, ctx) {
+            if let Some(new_space_view_id) = blueprint.duplicate_space_view(&view_id, ctx) {
                 ctx.selection_state()
                     .set_selection(Item::SpaceView(new_space_view_id));
                 blueprint.mark_user_interaction(ctx);
@@ -273,10 +276,10 @@ impl SelectionPanel {
         ui.full_span_separator();
         ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
-        if let Some(space_view) = blueprint.space_view(&space_view_id) {
+        if let Some(space_view) = blueprint.space_view(&view_id) {
             let class_identifier = space_view.class_identifier();
 
-            let space_view_state = view_states.get_mut(
+            let view_state = view_states.get_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
                 class_identifier,
@@ -293,7 +296,7 @@ impl SelectionPanel {
             if let Err(err) = space_view_class.selection_ui(
                 ctx,
                 ui,
-                space_view_state.view_state.as_mut(),
+                view_state.view_state.as_mut(),
                 &space_view.space_origin,
                 space_view.id,
                 &mut props,
@@ -308,6 +311,13 @@ impl SelectionPanel {
             if props_before != props {
                 space_view.save_legacy_properties(ctx, props);
             }
+
+            let view_ctx =
+                space_view.bundle_context_with_state(ctx, view_state.view_state.as_ref());
+
+            ui.large_collapsing_header("Component Defaults", true, |ui| {
+                defaults_ui(&view_ctx, space_view, ui);
+            });
         }
     }
 
