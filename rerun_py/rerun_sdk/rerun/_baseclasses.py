@@ -275,6 +275,32 @@ class ComponentBatchMixin(ComponentBatchLike):
         return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
 
 
+class ComponentMixin(ComponentBatchLike):
+    """
+    Makes components adhere to the ComponentBatchLike interface.
+
+    A single component will always map to a batch of size 1.
+
+    The class using the mixin must define the `_BATCH_TYPE` field, which should be a subclass of `BaseBatch`.
+    """
+
+    def component_name(self) -> str:
+        """
+        The name of the component.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return self._BATCH_TYPE._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
+
+    def as_arrow_array(self) -> pa.Array:
+        """
+        The component as an arrow batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined, no-any-return]
+
+
 @catch_and_log_exceptions(context="creating empty array")
 def _empty_pa_array(type: pa.DataType) -> pa.Array:
     if type == pa.null():
