@@ -18,6 +18,7 @@ use crate::DataResultQuery as _;
 pub struct HybridLatestAtResults<'a> {
     pub(crate) overrides: LatestAtResults,
     pub(crate) results: LatestAtResults,
+    pub(crate) defaults: LatestAtResults,
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
     pub data_result: &'a DataResult,
@@ -116,7 +117,10 @@ impl<'a> HybridLatestAtResults<'a> {
         self.get_instance(0)
     }
 
-    /// Utility for retrieving a single instance of a component with fallback
+    /// Utility for retrieving a single instance of a component with fallback.
+    ///
+    /// If the space view specifies a default, that will be used first, otherwise
+    /// the fallback provider will be queried.
     #[inline]
     pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
         &self,
@@ -124,6 +128,11 @@ impl<'a> HybridLatestAtResults<'a> {
     ) -> T {
         self.get(T::name())
             .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+            .or_else(|| {
+                self.defaults
+                    .get(T::name())
+                    .and_then(|r| r.try_instance::<T>(&self.resolver, 0))
+            })
             .or_else(|| {
                 self.try_fallback_raw(T::name())
                     .and_then(|raw| T::from_arrow(raw.as_ref()).ok())

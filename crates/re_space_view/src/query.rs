@@ -69,12 +69,24 @@ pub fn latest_at_with_overrides<'a>(
         ctx.viewer_ctx.recording_store(),
         latest_at_query,
         &data_result.entity_path,
-        component_set,
+        component_set.iter().copied(),
+    );
+
+    // TODO(jleibs): This doesn't work when the component set contains empty results.
+    // This means we over-query for defaults that will never be used.
+    // component_set.retain(|component| !results.components.contains_key(component));
+
+    let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
+        ctx.viewer_ctx.store_context.blueprint.store(),
+        ctx.viewer_ctx.blueprint_query,
+        &ctx.defaults_path,
+        component_set.iter().copied(),
     );
 
     HybridLatestAtResults {
         overrides,
         results,
+        defaults,
         ctx,
         query: latest_at_query.clone(),
         data_result,
