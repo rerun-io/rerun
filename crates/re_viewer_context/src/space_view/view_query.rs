@@ -429,8 +429,7 @@ impl DataResult {
     /// Shorthand for checking for visibility on data overrides.
     ///
     /// Note that this won't check if the data store has visibility logged.
-    // TODO(andreas): Should this be possible?
-    // TODO(andreas): Should the result be cached, this might be a very common operation?
+    // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
         self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
@@ -441,8 +440,7 @@ impl DataResult {
     /// Shorthand for checking for interactivity on data overrides.
     ///
     /// Note that this won't check if the data store has interactivity logged.
-    // TODO(andreas): Should this be possible?
-    // TODO(andreas): Should the result be cached, this might be a very common operation?
+    // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_interactive(&self, ctx: &ViewerContext<'_>) -> bool {
         *self
