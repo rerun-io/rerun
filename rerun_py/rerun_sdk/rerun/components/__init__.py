@@ -20,6 +20,7 @@ from .clear_is_recursive import (
     ClearIsRecursiveType,
 )
 from .color import Color, ColorBatch, ColorType
+from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, ColormapType
 from .depth_meter import DepthMeter, DepthMeterArrayLike, DepthMeterBatch, DepthMeterLike, DepthMeterType
 from .disconnected_space import (
     DisconnectedSpace,
@@ -98,6 +99,11 @@ __all__ = [
     "Color",
     "ColorBatch",
     "ColorType",
+    "Colormap",
+    "ColormapArrayLike",
+    "ColormapBatch",
+    "ColormapLike",
+    "ColormapType",
     "DepthMeter",
     "DepthMeterArrayLike",
     "DepthMeterBatch",
