@@ -94,7 +94,7 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
-    // TODO(#5067): Test property used so we don't have to continously adjust existing tests while we're dismantling `EntityProperties`.
+    // TODO(#5067): Test property used so we don't have to continuously adjust existing tests while we're dismantling `EntityProperties`.
     pub test_property: bool,
 
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?

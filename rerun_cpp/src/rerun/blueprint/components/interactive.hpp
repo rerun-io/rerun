@@ -12,7 +12,7 @@
 namespace rerun::blueprint::components {
     /// **Component**: Whether the entity can be interacted with.
     ///
-    /// Non interactive components are still visible, but mouse iteractions in the view are disabled.
+    /// Non interactive components are still visible, but mouse interactions in the view are disabled.
     struct Interactive {
         rerun::datatypes::Bool interactive;
 

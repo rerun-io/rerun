@@ -15,7 +15,7 @@ class Interactive(datatypes.Bool):
     """
     **Component**: Whether the entity can be interacted with.
 
-    Non interactive components are still visible, but mouse iteractions in the view are disabled.
+    Non interactive components are still visible, but mouse interactions in the view are disabled.
     """
 
     # You can define your own __init__ function as a member of InteractiveExt in interactive_ext.py
