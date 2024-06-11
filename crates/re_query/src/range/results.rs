@@ -341,9 +341,7 @@ impl<'a, T: 'static> RangeData<'a, T> {
     }
 
     pub fn is_empty(&self) -> bool {
-        if let Some(indices) = self.indices.as_ref() {
-            indices.is_empty()
-        } else if let Some(data) = self.data.as_ref() {
+        if let Some(data) = self.data.as_ref() {
             match data {
                 Data::Owned(data) => data.dyn_num_values() == 0,
                 Data::Cached(data) => data.num_values() == 0,
