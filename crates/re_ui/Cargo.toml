@@ -33,6 +33,7 @@ re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true # syntax-highlighting for EntityPath
+re_tracing.workspace = true
 
 egui.workspace = true
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }

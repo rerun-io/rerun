@@ -459,7 +459,7 @@ export class WebViewer {
   };
 }
 
-class LogChannel {
+export class LogChannel {
   #on_send;
   #on_close;
   #get_state;

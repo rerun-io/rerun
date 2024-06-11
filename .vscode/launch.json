@@ -60,7 +60,10 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'rerun ../data.rrd'",
@@ -81,7 +84,10 @@
             "args": [
                 "../data.rrd"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'rerun' colmap.rrd from url",

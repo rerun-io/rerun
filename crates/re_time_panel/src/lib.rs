@@ -626,7 +626,7 @@ impl TimePanel {
                         ctx,
                         &InstancePath::from(tree.path.clone()),
                     ))
-                    .exact_width(true),
+                    .truncate(false),
                 |ui| {
                     self.show_children(
                         ctx,
@@ -772,7 +772,7 @@ impl TimePanel {
                             } else {
                                 &re_ui::icons::COMPONENT_TEMPORAL
                             })
-                            .exact_width(true),
+                            .truncate(false),
                     );
 
                 context_menu_ui_for_item(
@@ -816,7 +816,7 @@ impl TimePanel {
                                         )
                                     },
                                 ))
-                                .exact_width(true)
+                                .truncate(false)
                                 .with_icon(if is_static {
                                     &re_ui::icons::COMPONENT_STATIC
                                 } else {

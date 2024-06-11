@@ -16,7 +16,7 @@ use egui::NumExt;
 ///     modal_handler.open();
 /// }
 ///
-/// modal_handler.ui(ui.ctx(), || Modal::new("Modal Window"), |_, ui, _| {
+/// modal_handler.ui(ui.ctx(), || Modal::new("Modal Window"), |ui, _| {
 ///     ui.label("Modal content");
 /// });
 /// # });

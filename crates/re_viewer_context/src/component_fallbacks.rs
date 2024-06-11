@@ -102,7 +102,7 @@ pub trait TypedComponentFallbackProvider<C: re_types::Component> {
 /// Implements the [`ComponentFallbackProvider`] trait for a given type, using a number of [`TypedComponentFallbackProvider`].
 ///
 /// Usage examples:
-/// ```no_run
+/// ```ignore
 /// impl_component_fallback_provider!(MySystem => []);              // Empty fallback provider
 /// impl_component_fallback_provider!(MySystem => [Color, Text]);   // Fallback provider handling the Color and Text components.
 /// ```

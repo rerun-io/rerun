@@ -5,6 +5,13 @@ title: "BarChartView"
 
 A bar chart view.
 
+## Properties
+
+### `plot_legend`
+Configures the legend of the plot.
+
+* `corner`: To what corner the legend is aligned.
+* `visible`: Whether the legend is shown at all.
 
 ## API reference links
  * 🐍 [Python API docs for `BarChartView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.BarChartView)

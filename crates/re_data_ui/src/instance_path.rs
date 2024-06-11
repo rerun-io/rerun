@@ -114,7 +114,7 @@ impl DataUi for InstancePath {
                         continue; // no need to show components that are unset at this point in time
                     };
 
-                    let mut content =
+                    let content =
                         re_ui::list_item::PropertyContent::new(component_name.short_name())
                             .with_icon(icon)
                             .value_fn(|ui, _| {
@@ -144,11 +144,6 @@ impl DataUi for InstancePath {
                                     );
                                 }
                             });
-
-                    // avoid the list item to max the tooltip width
-                    if ui_layout == UiLayout::Tooltip {
-                        content = content.exact_width(true);
-                    }
 
                     list_item.show_flat(ui, content)
                 };

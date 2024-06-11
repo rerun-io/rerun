@@ -133,14 +133,11 @@ impl SpaceViewBlueprint {
                 .copied(),
         );
 
-        let Some(class_identifier) =
-            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)
-        else {
-            re_log::error!(
-                "View blueprint at {id:?} is lacking the required `SpaceViewClass` component."
-            );
-            return None;
-        };
+        // This is a required component. Note that when loading space-views we crawl the subtree and so
+        // cleared empty space-views paths may exist transiently. The fact that they have an empty class_identifier
+        // is the marker that the have been cleared and not an error.
+        let class_identifier =
+            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)?;
 
         let blueprint_archetypes::SpaceViewBlueprint {
             class_identifier,

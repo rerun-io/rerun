@@ -876,20 +876,27 @@ pub trait UiExt {
             let how_on = ui.ctx().animate_bool(response.id, *on);
             let visuals = ui.style().interact(&response);
             let expanded_rect = visual_rect.expand(visuals.expansion);
-            let fg_fill = visuals.bg_fill;
-            let bg_fill = visuals.text_color();
+            let fg_fill_off = visuals.bg_fill;
+            let fg_fill_on = egui::Color32::from_rgba_premultiplied(0, 128, 255, 255);
+            let fg_fill = fg_fill_off.lerp_to_gamma(fg_fill_on, how_on);
+            let bg_fill_off = visuals.text_color();
+
             let rounding = 0.5 * expanded_rect.height();
             ui.painter()
-                .rect(expanded_rect, rounding, bg_fill, egui::Stroke::NONE);
+                .rect_filled(expanded_rect, rounding, bg_fill_off);
             let circle_x = egui::lerp(
                 (expanded_rect.left() + rounding)..=(expanded_rect.right() - rounding),
                 how_on,
             );
 
             let circle_center = egui::pos2(circle_x, expanded_rect.center().y);
-            let circle_radius = 0.3 * expanded_rect.height();
-            ui.painter()
-                .circle(circle_center, circle_radius, fg_fill, egui::Stroke::NONE);
+            let circle_radius_off = 0.3 * expanded_rect.height();
+            let circle_radius_on = 0.35 * expanded_rect.height();
+            ui.painter().circle_filled(
+                circle_center,
+                egui::lerp(circle_radius_off..=circle_radius_on, how_on),
+                fg_fill,
+            );
         }
 
         response
@@ -905,9 +912,7 @@ pub trait UiExt {
         let response = ListItem::new()
             .show_flat(
                 ui,
-                LabelContent::new(text)
-                    .with_icon(&crate::icons::EXTERNAL_LINK)
-                    .exact_width(true),
+                LabelContent::new(text).with_icon(&crate::icons::EXTERNAL_LINK),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand);
         if response.clicked() {

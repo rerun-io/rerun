@@ -8,4 +8,6 @@ namespace rerun.blueprint.views;
 table BarChartView (
     "attr.rerun.view_identifier": "BarChart"
 ) {
+    /// Configures the legend of the plot.
+    plot_legend: rerun.blueprint.archetypes.PlotLegend (order: 2000);
 }
