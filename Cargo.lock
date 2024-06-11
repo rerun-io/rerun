@@ -5187,6 +5187,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_tracing",
  "serde",
  "serde_json",
  "strum",

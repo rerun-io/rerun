@@ -18,23 +18,26 @@ pub struct LabelContent<'a> {
     buttons_fn: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
     always_show_buttons: bool,
 
-    min_desired_width: f32,
-    exact_width: bool,
+    text_wrap_mode: Option<egui::TextWrapMode>,
+    min_desired_width: Option<f32>,
 }
 
 impl<'a> LabelContent<'a> {
     pub fn new(text: impl Into<egui::WidgetText>) -> Self {
         Self {
             text: text.into(),
+
             subdued: false,
             weak: false,
             italics: false,
+
             label_style: Default::default(),
             icon_fn: None,
             buttons_fn: None,
             always_show_buttons: false,
-            min_desired_width: 0.0,
-            exact_width: false,
+
+            text_wrap_mode: None,
+            min_desired_width: None,
         }
     }
 
@@ -79,16 +82,14 @@ impl<'a> LabelContent<'a> {
         self
     }
 
-    /// Allocate the exact width required for the label.
-    ///
-    /// By default, [`LabelContent`] uses the available width. By setting `exact_width` to true,
-    /// the exact width required by the label (and the icon if any) is allocated instead. See
-    /// [`super::DesiredWidth::Exact`].
-    ///
-    /// Note that if [`Self::min_desired_width`] is set, it is used as a minimum value.
+    /// Should we truncate text if it is too long?
     #[inline]
-    pub fn exact_width(mut self, exact_width: bool) -> Self {
-        self.exact_width = exact_width;
+    pub fn truncate(mut self, truncate: bool) -> Self {
+        self.text_wrap_mode = Some(if truncate {
+            egui::TextWrapMode::Truncate
+        } else {
+            egui::TextWrapMode::Extend
+        });
         self
     }
 
@@ -97,7 +98,7 @@ impl<'a> LabelContent<'a> {
     /// This defaults to zero.
     #[inline]
     pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
-        self.min_desired_width = min_desired_width;
+        self.min_desired_width = Some(min_desired_width);
         self
     }
 
@@ -148,10 +149,22 @@ impl<'a> LabelContent<'a> {
         self.always_show_buttons = always_show_buttons;
         self
     }
+
+    fn get_text_wrap_mode(&self, ui: &egui::Ui) -> egui::TextWrapMode {
+        if let Some(text_wrap_mode) = self.text_wrap_mode {
+            text_wrap_mode
+        } else if crate::is_in_resizable_panel(ui) {
+            egui::TextWrapMode::Truncate // The user can resize the panl to see the full text
+        } else {
+            egui::TextWrapMode::Extend // Show everything
+        }
+    }
 }
 
 impl ListItemContent for LabelContent<'_> {
     fn ui(self: Box<Self>, ui: &mut Ui, context: &ContentContext<'_>) {
+        let text_wrap_mode = self.get_text_wrap_mode(ui);
+
         let Self {
             mut text,
             subdued,
@@ -161,8 +174,8 @@ impl ListItemContent for LabelContent<'_> {
             icon_fn,
             buttons_fn,
             always_show_buttons,
+            text_wrap_mode: _,
             min_desired_width: _,
-            exact_width: _,
         } = *self;
 
         let icon_rect = egui::Rect::from_center_size(
@@ -235,7 +248,7 @@ impl ListItemContent for LabelContent<'_> {
 
         let mut layout_job =
             text.into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
-        layout_job.wrap = TextWrapping::truncate_at_width(text_rect.width());
+        layout_job.wrap = TextWrapping::from_wrap_mode_and_width(text_wrap_mode, text_rect.width());
 
         let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
 
@@ -256,7 +269,9 @@ impl ListItemContent for LabelContent<'_> {
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
-        if self.exact_width {
+        let text_wrap_mode = self.get_text_wrap_mode(ui);
+
+        let measured_width = {
             //TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
             let mut text = self.text.clone();
             if self.italics || self.label_style == LabelStyle::Unnamed {
@@ -277,9 +292,20 @@ impl ListItemContent for LabelContent<'_> {
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being
             // truncated even though we allocated enough space.
-            DesiredWidth::Exact(desired_width.ceil().at_least(self.min_desired_width))
+            desired_width.ceil()
+        };
+
+        if text_wrap_mode == egui::TextWrapMode::Extend {
+            let min_desired_width = self.min_desired_width.unwrap_or(0.0);
+            DesiredWidth::Exact(measured_width.at_least(min_desired_width))
         } else {
-            DesiredWidth::AtLeast(self.min_desired_width)
+            // If the user set an explicit min-width, use it.
+            // Otherwise, show at least `default_min_width`, unless the text is even short.
+            let default_min_width = 64.0;
+            let min_desired_width = self
+                .min_desired_width
+                .unwrap_or_else(|| measured_width.min(default_min_width));
+            DesiredWidth::AtLeast(min_desired_width)
         }
     }
 }
