@@ -7,6 +7,7 @@ mod corner2d;
 mod corner2d_ext;
 mod included_content;
 mod interactive;
+mod interactive_ext;
 mod lock_range_during_zoom;
 mod panel_state;
 mod panel_state_ext;

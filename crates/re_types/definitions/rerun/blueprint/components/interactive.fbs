@@ -14,7 +14,7 @@ namespace rerun.blueprint.components;
 /// Non interactive components are still visible, but mouse iteractions in the view are disabled.
 struct Interactive (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {

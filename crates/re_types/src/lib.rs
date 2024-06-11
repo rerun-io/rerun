@@ -238,7 +238,6 @@ pub mod datatypes {
 
     #[path = "../datatypes/mod.rs"]
     mod _datatypes;
-    mod bool_ext;
 
     pub use self::_datatypes::*;
     pub use re_types_core::datatypes::*;

@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Whether the entity can be interacted with.
 ///
 /// Non interactive components are still visible, but mouse iteractions in the view are disabled.
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Interactive(pub crate::datatypes::Bool);
 
