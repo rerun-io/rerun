@@ -162,8 +162,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
             return;
         };
-        *auto_properties =
-            generate_auto_legacy_properties(ctx, ent_paths, SpatialSpaceViewKind::TwoD);
+        *auto_properties = generate_auto_legacy_properties(ctx, ent_paths);
     }
 
     fn spawn_heuristics(

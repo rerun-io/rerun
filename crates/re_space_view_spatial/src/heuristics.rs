@@ -21,19 +21,13 @@ use crate::{
 pub fn generate_auto_legacy_properties(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    spatial_kind: SpatialSpaceViewKind,
 ) -> re_entity_db::EntityPropertyMap {
     re_tracing::profile_function!();
 
     let mut auto_properties = re_entity_db::EntityPropertyMap::default();
 
     // Do pinhole properties before, since they may be used in transform3d heuristics.
-    update_depth_cloud_property_heuristics(
-        ctx,
-        per_system_entities,
-        &mut auto_properties,
-        spatial_kind,
-    );
+    update_depth_cloud_property_heuristics(ctx, per_system_entities, &mut auto_properties);
 
     auto_properties
 }
@@ -67,7 +61,6 @@ fn update_depth_cloud_property_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
     auto_properties: &mut re_entity_db::EntityPropertyMap,
-    spatial_kind: SpatialSpaceViewKind,
 ) {
     // TODO(andreas): There should be a depth cloud system
     for ent_path in per_system_entities
@@ -92,9 +85,6 @@ fn update_depth_cloud_property_heuristics(
             .map(|meter| meter.value.0);
 
         let mut properties = auto_properties.get(ent_path);
-        properties.backproject_depth = EditableAutoValue::Auto(
-            meaning == TensorDataMeaning::Depth && spatial_kind == SpatialSpaceViewKind::ThreeD,
-        );
 
         if meaning == TensorDataMeaning::Depth {
             let auto = meter.unwrap_or_else(|| {

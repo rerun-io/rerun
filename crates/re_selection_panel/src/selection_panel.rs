@@ -1416,41 +1416,21 @@ fn depth_props_ui(
         .latest_at_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
         .0;
 
-    let mut backproject_depth = *entity_props.backproject_depth;
-
-    if ui
-        .re_checkbox(&mut backproject_depth, "Backproject Depth")
-        .on_hover_text(
-            "If enabled, the depth texture will be backprojected into a point cloud rather \
-                than simply displayed as an image.",
-        )
-        .changed()
-    {
-        entity_props.backproject_depth = EditableAutoValue::UserEdited(backproject_depth);
-    }
+    ui.label("Pinhole");
+    item_ui::entity_path_button(
+        ctx.viewer_ctx,
+        &query,
+        db,
+        ui,
+        None,
+        &image_projection_ent_path,
+    )
+    .on_hover_text("The entity path of the pinhole transform being used to do the backprojection.");
     ui.end_row();
 
-    if backproject_depth {
-        ui.label("Pinhole");
-        item_ui::entity_path_button(
-            ctx.viewer_ctx,
-            &query,
-            db,
-            ui,
-            None,
-            &image_projection_ent_path,
-        )
-        .on_hover_text(
-            "The entity path of the pinhole transform being used to do the backprojection.",
-        );
-        ui.end_row();
-
-        depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
-
-        backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
-
-        colormap_props_ui(ctx, ui, data_result);
-    }
+    depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
+    backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
+    colormap_props_ui(ctx, ui, data_result);
 
     Some(())
 }
