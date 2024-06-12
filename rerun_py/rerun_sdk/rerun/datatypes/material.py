@@ -11,7 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .material_ext import MaterialExt
 
 __all__ = ["Material", "MaterialArrayLike", "MaterialBatch", "MaterialLike", "MaterialType"]

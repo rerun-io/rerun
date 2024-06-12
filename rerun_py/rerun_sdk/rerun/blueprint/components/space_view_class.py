@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["SpaceViewClass", "SpaceViewClassBatch", "SpaceViewClassType"]
 
 
-class SpaceViewClass(datatypes.Utf8):
+class SpaceViewClass(datatypes.Utf8, ComponentMixin):
     """**Component**: The class of a `SpaceView`."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SpaceViewClassExt in space_view_class_ext.py
 
     # Note: there are no fields here because SpaceViewClass delegates to datatypes.Utf8
@@ -26,3 +30,7 @@ class SpaceViewClassType(datatypes.Utf8Type):
 
 class SpaceViewClassBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = SpaceViewClassType()
+
+
+# This is patched in late to avoid circular dependencies.
+SpaceViewClass._BATCH_TYPE = SpaceViewClassBatch  # type: ignore[assignment]

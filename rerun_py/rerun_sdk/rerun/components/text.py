@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Text", "TextBatch", "TextType"]
 
 
-class Text(datatypes.Utf8):
+class Text(datatypes.Utf8, ComponentMixin):
     """**Component**: A string of text, e.g. for labels and text documents."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TextExt in text_ext.py
 
     # Note: there are no fields here because Text delegates to datatypes.Utf8
@@ -26,3 +30,7 @@ class TextType(datatypes.Utf8Type):
 
 class TextBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = TextType()
+
+
+# This is patched in late to avoid circular dependencies.
+Text._BATCH_TYPE = TextBatch  # type: ignore[assignment]

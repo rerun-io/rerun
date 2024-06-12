@@ -6,15 +6,19 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .visual_bounds2d_ext import VisualBounds2DExt
 
 __all__ = ["VisualBounds2D", "VisualBounds2DBatch", "VisualBounds2DType"]
 
 
-class VisualBounds2D(VisualBounds2DExt, datatypes.Range2D):
+class VisualBounds2D(VisualBounds2DExt, datatypes.Range2D, ComponentMixin):
     """**Component**: Visual bounds in 2D space used for `Spatial2DView`."""
 
+    _BATCH_TYPE = None
     # __init__ can be found in visual_bounds2d_ext.py
 
     # Note: there are no fields here because VisualBounds2D delegates to datatypes.Range2D
@@ -27,3 +31,7 @@ class VisualBounds2DType(datatypes.Range2DType):
 
 class VisualBounds2DBatch(datatypes.Range2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = VisualBounds2DType()
+
+
+# This is patched in late to avoid circular dependencies.
+VisualBounds2D._BATCH_TYPE = VisualBounds2DBatch  # type: ignore[assignment]

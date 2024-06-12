@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["ActiveTab", "ActiveTabBatch", "ActiveTabType"]
 
 
-class ActiveTab(datatypes.EntityPath):
+class ActiveTab(datatypes.EntityPath, ComponentMixin):
     """**Component**: The active tab in a tabbed container."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ActiveTabExt in active_tab_ext.py
 
     # Note: there are no fields here because ActiveTab delegates to datatypes.EntityPath
@@ -26,3 +30,7 @@ class ActiveTabType(datatypes.EntityPathType):
 
 class ActiveTabBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
     _ARROW_TYPE = ActiveTabType()
+
+
+# This is patched in late to avoid circular dependencies.
+ActiveTab._BATCH_TYPE = ActiveTabBatch  # type: ignore[assignment]

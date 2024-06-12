@@ -6,18 +6,22 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Interactive", "InteractiveBatch", "InteractiveType"]
 
 
-class Interactive(datatypes.Bool):
+class Interactive(datatypes.Bool, ComponentMixin):
     """
     **Component**: Whether the entity can be interacted with.
 
     Non interactive components are still visible, but mouse interactions in the view are disabled.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of InteractiveExt in interactive_ext.py
 
     # Note: there are no fields here because Interactive delegates to datatypes.Bool
@@ -30,3 +34,7 @@ class InteractiveType(datatypes.BoolType):
 
 class InteractiveBatch(datatypes.BoolBatch, ComponentBatchMixin):
     _ARROW_TYPE = InteractiveType()
+
+
+# This is patched in late to avoid circular dependencies.
+Interactive._BATCH_TYPE = InteractiveBatch  # type: ignore[assignment]

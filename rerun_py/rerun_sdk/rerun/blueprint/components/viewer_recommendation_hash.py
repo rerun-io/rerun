@@ -6,18 +6,22 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["ViewerRecommendationHash", "ViewerRecommendationHashBatch", "ViewerRecommendationHashType"]
 
 
-class ViewerRecommendationHash(datatypes.UInt64):
+class ViewerRecommendationHash(datatypes.UInt64, ComponentMixin):
     """
     **Component**: Hash of a viewer recommendation.
 
     The formation of this hash is considered an internal implementation detail of the viewer.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewerRecommendationHashExt in viewer_recommendation_hash_ext.py
 
     # Note: there are no fields here because ViewerRecommendationHash delegates to datatypes.UInt64
@@ -30,3 +34,7 @@ class ViewerRecommendationHashType(datatypes.UInt64Type):
 
 class ViewerRecommendationHashBatch(datatypes.UInt64Batch, ComponentBatchMixin):
     _ARROW_TYPE = ViewerRecommendationHashType()
+
+
+# This is patched in late to avoid circular dependencies.
+ViewerRecommendationHash._BATCH_TYPE = ViewerRecommendationHashBatch  # type: ignore[assignment]

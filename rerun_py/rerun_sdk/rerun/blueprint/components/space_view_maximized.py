@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["SpaceViewMaximized", "SpaceViewMaximizedBatch", "SpaceViewMaximizedType"]
 
 
-class SpaceViewMaximized(datatypes.Uuid):
+class SpaceViewMaximized(datatypes.Uuid, ComponentMixin):
     """**Component**: Whether a space view is maximized."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SpaceViewMaximizedExt in space_view_maximized_ext.py
 
     # Note: there are no fields here because SpaceViewMaximized delegates to datatypes.Uuid
@@ -26,3 +30,7 @@ class SpaceViewMaximizedType(datatypes.UuidType):
 
 class SpaceViewMaximizedBatch(datatypes.UuidBatch, ComponentBatchMixin):
     _ARROW_TYPE = SpaceViewMaximizedType()
+
+
+# This is patched in late to avoid circular dependencies.
+SpaceViewMaximized._BATCH_TYPE = SpaceViewMaximizedBatch  # type: ignore[assignment]

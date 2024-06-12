@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["PinholeProjection", "PinholeProjectionBatch", "PinholeProjectionType"]
 
 
-class PinholeProjection(datatypes.Mat3x3):
+class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
     """
     **Component**: Camera projection, from image coordinates to view coordinates.
 
@@ -28,6 +31,7 @@ class PinholeProjection(datatypes.Mat3x3):
 
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py
 
     # Note: there are no fields here because PinholeProjection delegates to datatypes.Mat3x3
@@ -40,3 +44,7 @@ class PinholeProjectionType(datatypes.Mat3x3Type):
 
 class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):
     _ARROW_TYPE = PinholeProjectionType()
+
+
+# This is patched in late to avoid circular dependencies.
+PinholeProjection._BATCH_TYPE = PinholeProjectionBatch  # type: ignore[assignment]

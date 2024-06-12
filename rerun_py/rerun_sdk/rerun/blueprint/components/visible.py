@@ -11,14 +11,21 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Visible", "VisibleArrayLike", "VisibleBatch", "VisibleLike", "VisibleType"]
 
 
 @define(init=False)
-class Visible:
+class Visible(ComponentMixin):
     """**Component**: Whether the container, view, entity or instance is currently visible."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, visible: VisibleLike):
         """Create a new instance of the Visible component."""
@@ -57,3 +64,7 @@ class VisibleBatch(BaseBatch[VisibleArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: VisibleArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+Visible._BATCH_TYPE = VisibleBatch  # type: ignore[assignment]

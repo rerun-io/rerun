@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Color", "ColorBatch", "ColorType"]
 
 
-class Color(datatypes.Rgba32):
+class Color(datatypes.Rgba32, ComponentMixin):
     """
     **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 
@@ -23,6 +26,7 @@ class Color(datatypes.Rgba32):
     If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ColorExt in color_ext.py
 
     # Note: there are no fields here because Color delegates to datatypes.Rgba32
@@ -35,3 +39,7 @@ class ColorType(datatypes.Rgba32Type):
 
 class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
     _ARROW_TYPE = ColorType()
+
+
+# This is patched in late to avoid circular dependencies.
+Color._BATCH_TYPE = ColorBatch  # type: ignore[assignment]

@@ -11,7 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 
 __all__ = ["Range2D", "Range2DArrayLike", "Range2DBatch", "Range2DLike", "Range2DType"]
 
