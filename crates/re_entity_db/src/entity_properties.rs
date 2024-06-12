@@ -97,11 +97,6 @@ pub struct EntityProperties {
     // TODO(#5067): Test property used so we don't have to continuously adjust existing tests while we're dismantling `EntityProperties`.
     pub test_property: bool,
 
-    /// How many depth units per world-space unit. e.g. 1000 for millimeters.
-    ///
-    /// This corresponds to `re_components::Tensor::meter`.
-    pub depth_from_world_scale: EditableAutoValue<f32>, // TODO(andreas): Just remove once we can edit meter & be able to set semi-clever defaults per visualizer.
-
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>, // TODO(andreas): should be a component on the DepthImage archetype.
 
@@ -114,7 +109,6 @@ impl Default for EntityProperties {
     fn default() -> Self {
         Self {
             test_property: true,
-            depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
             time_series_aggregator: EditableAutoValue::Auto(TimeSeriesAggregator::default()),
         }
@@ -128,10 +122,6 @@ impl EntityProperties {
         Self {
             test_property: self.test_property && child.test_property,
 
-            depth_from_world_scale: self
-                .depth_from_world_scale
-                .or(&child.depth_from_world_scale)
-                .clone(),
             backproject_radius_scale: self
                 .backproject_radius_scale
                 .or(&child.backproject_radius_scale)
@@ -155,10 +145,6 @@ impl EntityProperties {
         Self {
             test_property: other.test_property,
 
-            depth_from_world_scale: other
-                .depth_from_world_scale
-                .or(&self.depth_from_world_scale)
-                .clone(),
             backproject_radius_scale: other
                 .backproject_radius_scale
                 .or(&self.backproject_radius_scale)
@@ -175,13 +161,11 @@ impl EntityProperties {
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             test_property,
-            depth_from_world_scale,
             backproject_radius_scale,
             time_series_aggregator,
         } = self;
 
         test_property != &other.test_property
-            || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
             || time_series_aggregator.has_edits(&other.time_series_aggregator)
     }

@@ -6,11 +6,7 @@ use nohash_hasher::IntSet;
 use re_data_ui::image_meaning_for_entity;
 use re_entity_db::EditableAutoValue;
 use re_log_types::EntityPath;
-use re_types::{
-    components::{DepthMeter, TensorData},
-    tensor_data::TensorDataMeaning,
-    SpaceViewClassIdentifier,
-};
+use re_types::{tensor_data::TensorDataMeaning, SpaceViewClassIdentifier};
 use re_viewer_context::{IdentifiedViewSystem, PerSystemEntities, ViewerContext};
 
 use crate::{
@@ -67,34 +63,12 @@ fn update_depth_cloud_property_heuristics(
         .get(&ImageVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
-        // TODO(#5607): what should happen if the promise is still pending?
-        let Some(tensor) = ctx
-            .recording()
-            .latest_at_component::<TensorData>(ent_path, &ctx.current_query())
-        else {
-            continue;
-        };
-
         let meaning =
             image_meaning_for_entity(ent_path, &ctx.current_query(), ctx.recording().store());
-
-        // TODO(#5607): what should happen if the promise is still pending?
-        let meter = ctx
-            .recording()
-            .latest_at_component::<DepthMeter>(ent_path, &ctx.current_query())
-            .map(|meter| meter.value.0);
 
         let mut properties = auto_properties.get(ent_path);
 
         if meaning == TensorDataMeaning::Depth {
-            let auto = meter.unwrap_or_else(|| {
-                if tensor.dtype().is_integer() {
-                    1000.0
-                } else {
-                    1.0
-                }
-            });
-            properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
             properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
 
             auto_properties.overwrite_properties(ent_path.clone(), properties);
