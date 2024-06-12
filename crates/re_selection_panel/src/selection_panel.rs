@@ -1273,27 +1273,10 @@ fn colormap_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &Dat
     // TODO(andreas): Queries the entire image archetype for no good reason, but all of this ui is a hack anyways.
     let results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
     let colormap = results.get_mono_with_fallback::<Colormap>();
-
-    let mut re_renderer_colormap = match colormap {
-        Colormap::Grayscale => re_renderer::Colormap::Grayscale,
-        Colormap::Turbo => re_renderer::Colormap::Turbo,
-        Colormap::Viridis => re_renderer::Colormap::Viridis,
-        Colormap::Plasma => re_renderer::Colormap::Plasma,
-        Colormap::Magma => re_renderer::Colormap::Magma,
-        Colormap::Inferno => re_renderer::Colormap::Inferno,
-    };
+    let mut new_colormap = colormap;
 
     ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.viewer_ctx.render_ctx, ui, &mut re_renderer_colormap);
-
-    let new_colormap = match re_renderer_colormap {
-        re_renderer::Colormap::Grayscale => Colormap::Grayscale,
-        re_renderer::Colormap::Turbo => Colormap::Turbo,
-        re_renderer::Colormap::Viridis => Colormap::Viridis,
-        re_renderer::Colormap::Plasma => Colormap::Plasma,
-        re_renderer::Colormap::Magma => Colormap::Magma,
-        re_renderer::Colormap::Inferno => Colormap::Inferno,
-    };
+    colormap_dropdown_button_ui(ctx.viewer_ctx.render_ctx, ui, &mut new_colormap);
 
     if new_colormap != colormap {
         data_result.save_individual_override(ctx.viewer_ctx, &new_colormap);

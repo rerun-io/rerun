@@ -59,6 +59,11 @@ pub struct SpaceViewBlueprint {
 }
 
 impl SpaceViewBlueprint {
+    /// Path at which a view writes defaults for components.
+    pub fn defaults_path(view_id: SpaceViewId) -> EntityPath {
+        view_id.as_entity_path().join(&"defaults".into())
+    }
+
     /// Creates a new [`SpaceViewBlueprint`] with a single [`SpaceViewContents`].
     ///
     /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
@@ -76,7 +81,7 @@ impl SpaceViewBlueprint {
             space_origin: recommended.origin,
             contents: SpaceViewContents::new(id, space_view_class, recommended.query_filter),
             visible: true,
-            defaults_path: id.as_entity_path().join(&"defaults".into()),
+            defaults_path: Self::defaults_path(id),
             pending_writes: Default::default(),
         }
     }

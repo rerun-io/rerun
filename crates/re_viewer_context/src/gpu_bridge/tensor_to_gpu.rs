@@ -14,14 +14,16 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_types::tensor_data::DecodedTensor;
 use re_types::{
     components::ClassId,
     datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorDataMeaning,
 };
+use re_types::{components::Colormap, tensor_data::DecodedTensor};
 
-use crate::{Annotations, DefaultColor, TensorStats};
+use crate::{
+    gpu_bridge::colormap::colormap_to_re_renderer, Annotations, DefaultColor, TensorStats,
+};
 
 use super::{get_or_create_texture, try_get_or_create_texture};
 
@@ -47,6 +49,7 @@ fn generate_texture_key(row_id: RowId, usage: TextureKeyUsage) -> u64 {
 ///
 /// `tensor_stats` is used for determining the range of the texture.
 // TODO(#2341): allow user to specify the range in ui.
+#[allow(clippy::too_many_arguments)]
 pub fn tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
@@ -55,6 +58,7 @@ pub fn tensor_to_gpu(
     meaning: TensorDataMeaning,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
+    colormap: Option<Colormap>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!(format!(
         "meaning: {:?}, dtype: {}, shape: {:?}",
@@ -78,9 +82,14 @@ pub fn tensor_to_gpu(
             tensor_stats,
             annotations,
         ),
-        TensorDataMeaning::Depth => {
-            depth_tensor_to_gpu(render_ctx, debug_name, texture_key, tensor, tensor_stats)
-        }
+        TensorDataMeaning::Depth => depth_tensor_to_gpu(
+            render_ctx,
+            debug_name,
+            texture_key,
+            tensor,
+            tensor_stats,
+            colormap,
+        ),
     }
 }
 
@@ -163,6 +172,7 @@ fn color_tensor_to_gpu(
 
     let color_mapper = match shader_decoding {
         None => {
+            // TODO(andreas): support colormap property
             if texture_format.components() == 1 {
                 if decode_srgb {
                     // Leave grayscale images unmolested - don't apply a colormap to them.
@@ -287,6 +297,7 @@ fn depth_tensor_to_gpu(
     texture_key: u64,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
+    colormap: Option<Colormap>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -309,7 +320,9 @@ fn depth_tensor_to_gpu(
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
-        color_mapper: ColorMapper::Function(re_renderer::Colormap::Turbo),
+        color_mapper: ColorMapper::Function(colormap_to_re_renderer(
+            colormap.unwrap_or(Colormap::Turbo),
+        )),
         shader_decoding: None,
     })
 }

@@ -8,8 +8,8 @@ use re_space_view::suggest_space_view_for_each_entity;
 use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
-use re_renderer::Colormap;
 use re_types::{
+    components::Colormap,
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,

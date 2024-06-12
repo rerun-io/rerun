@@ -19,8 +19,9 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, QueryContext,
-    SpaceViewClass, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
+    gpu_bridge::{self, colormap_to_re_renderer},
+    ApplicableEntities, DefaultColor, IdentifiedViewSystem, QueryContext, SpaceViewClass,
+    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery, ViewerContext,
     VisualizableEntities, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
     VisualizerQueryInfo, VisualizerSystem,
@@ -65,6 +66,7 @@ fn to_textured_rect(
     tensor: &DecodedTensor,
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
+    colormap: Option<Colormap>,
 ) -> Option<re_renderer::renderer::TexturedRect> {
     let [height, width, _] = tensor.image_height_width_channels()?;
 
@@ -81,6 +83,7 @@ fn to_textured_rect(
         meaning,
         &tensor_stats,
         &ent_context.annotations,
+        colormap,
     ) {
         Ok(colormapped_texture) => {
             // TODO(emilk): let users pick texture filtering.
@@ -265,6 +268,9 @@ impl ImageVisualizer {
                 .annotation_info()
                 .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
+            // TODO(andreas): We only support colormap for depth image at this point.
+            let colormap = None;
+
             if let Some(textured_rect) = to_textured_rect(
                 ctx.viewer_ctx,
                 render_ctx,
@@ -274,6 +280,7 @@ impl ImageVisualizer {
                 &tensor,
                 meaning,
                 color.into(),
+                colormap,
             ) {
                 // Only update the bounding box if this is a 2D space view or
                 // the image_plane_distance is not auto. This is avoids a cyclic
@@ -354,6 +361,9 @@ impl ImageVisualizer {
                 .annotation_info()
                 .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
+            // TODO(andreas): colormap is only available for depth images right now.
+            let colormap = None;
+
             if let Some(textured_rect) = to_textured_rect(
                 ctx.viewer_ctx,
                 render_ctx,
@@ -363,6 +373,7 @@ impl ImageVisualizer {
                 &tensor,
                 meaning,
                 color.into(),
+                colormap,
             ) {
                 // Only update the bounding box if this is a 2D space view or
                 // the image_plane_distance is not auto. This is avoids a cyclic
@@ -446,12 +457,17 @@ impl ImageVisualizer {
                 }
             };
 
+            let colormap = data
+                .colormap
+                .copied()
+                .unwrap_or_else(|| self.fallback_for(ctx));
+
             if *ent_props.backproject_depth {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
                     // What we want are the extrinsics of the depth camera!
-                    match self.process_entity_view_as_depth_cloud(
+                    match Self::process_entity_view_as_depth_cloud(
                         ctx,
                         render_ctx,
                         transforms,
@@ -461,7 +477,7 @@ impl ImageVisualizer {
                         &tensor,
                         entity_path,
                         parent_pinhole_path,
-                        &data,
+                        colormap,
                     ) {
                         Ok(cloud) => {
                             self.data.add_bounding_box(
@@ -495,6 +511,7 @@ impl ImageVisualizer {
                 &tensor,
                 meaning,
                 color.into(),
+                Some(colormap),
             ) {
                 // Only update the bounding box if this is a 2D space view or
                 // the image_plane_distance is not auto. This is avoids a cyclic
@@ -526,7 +543,6 @@ impl ImageVisualizer {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        &self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
@@ -536,7 +552,7 @@ impl ImageVisualizer {
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
-        data: &ImageComponentData<'_>,
+        colormap: Colormap,
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
@@ -581,24 +597,12 @@ impl ImageVisualizer {
             TensorDataMeaning::Depth,
             &tensor_stats,
             &ent_context.annotations,
+            Some(colormap),
         )?;
 
         let depth_from_world_scale = *properties.depth_from_world_scale;
 
         let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
-
-        let colormap = match data
-            .colormap
-            .copied()
-            .unwrap_or_else(|| self.fallback_for(ctx))
-        {
-            Colormap::Grayscale => re_renderer::Colormap::Grayscale,
-            Colormap::Turbo => re_renderer::Colormap::Turbo,
-            Colormap::Viridis => re_renderer::Colormap::Viridis,
-            Colormap::Plasma => re_renderer::Colormap::Plasma,
-            Colormap::Magma => re_renderer::Colormap::Magma,
-            Colormap::Inferno => re_renderer::Colormap::Inferno,
-        };
 
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
@@ -616,7 +620,7 @@ impl ImageVisualizer {
             max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
             depth_dimensions: dimensions,
             depth_texture: depth_texture.texture,
-            colormap,
+            colormap: colormap_to_re_renderer(colormap),
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
         })
