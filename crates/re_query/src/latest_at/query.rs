@@ -7,10 +7,7 @@ use parking_lot::RwLock;
 
 use re_data_store::{DataStore, LatestAtQuery, TimeInt};
 use re_log_types::{EntityPath, RowId};
-use re_types::components::ClearIsRecursive;
-use re_types::Loggable;
-use re_types_core::ComponentName;
-use re_types_core::SizeBytes;
+use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _, SizeBytes};
 
 use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults, Promise};
 
