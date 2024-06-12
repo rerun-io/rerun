@@ -40,7 +40,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     image.slice_mut(s![50..150, 50..150]).fill(20000);
 ///     image.slice_mut(s![130..180, 100..280]).fill(45000);
 ///
-///     let depth_image = rerun::DepthImage::try_from(image.clone())?.with_meter(10000.0);
+///     let depth_image = rerun::DepthImage::try_from(image.clone())?
+///         .with_meter(10000.0)
+///         .with_colormap(rerun::components::Colormap::Viridis);
 ///
 ///     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
 ///     rec.log(
@@ -58,11 +60,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1200w.png">
-///   <img src="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png">
+///   <img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]

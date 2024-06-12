@@ -31,7 +31,7 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Depth to 3D example
-    /// ![image](https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png)
+    /// ![image](https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
@@ -63,7 +63,12 @@ namespace rerun::archetypes {
     ///         )
     ///     );
     ///
-    ///     rec.log("world/camera/depth", rerun::DepthImage({HEIGHT, WIDTH}, data).with_meter(10000.0));
+    ///     rec.log(
+    ///         "world/camera/depth",
+    ///         rerun::DepthImage({HEIGHT, WIDTH}, data)
+    ///             .with_meter(10000.0)
+    ///             .with_colormap(rerun::components::Colormap::Viridis)
+    ///     );
     /// }
     /// ```
     struct DepthImage {
