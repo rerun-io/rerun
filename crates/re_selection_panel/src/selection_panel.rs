@@ -7,17 +7,16 @@ use re_data_ui::{
     item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
     DataUi,
 };
-use re_entity_db::{
-    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
-};
+use re_entity_db::{EditableAutoValue, EntityPath, EntityProperties, InstancePath};
 use re_log_types::EntityPathFilter;
 use re_space_view::DataResultQuery as _;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    archetypes::{Axes3D, Pinhole},
+    archetypes::{Axes3D, DepthImage, Pinhole},
     blueprint::components::Interactive,
     components::{
-        AxisLength, ImagePlaneDistance, PinholeProjection, Transform3D, VisualizerOverrides,
+        AxisLength, Colormap, ImagePlaneDistance, PinholeProjection, Transform3D,
+        VisualizerOverrides,
     },
     tensor_data::TensorDataMeaning,
 };
@@ -1262,27 +1261,30 @@ fn entity_props_ui(
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
             pinhole_props_ui(ctx, ui, data_result);
-            depth_props_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
+            depth_props_ui(ctx, ui, data_result, entity_path, entity_props);
             transform3d_visualization_ui(ctx, ui, data_result);
         });
 }
 
-fn colormap_props_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_props: &mut EntityProperties,
-) {
-    let mut re_renderer_colormap = match *entity_props.color_mapper.get() {
-        ColorMapper::Colormap(Colormap::Grayscale) => re_renderer::Colormap::Grayscale,
-        ColorMapper::Colormap(Colormap::Turbo) => re_renderer::Colormap::Turbo,
-        ColorMapper::Colormap(Colormap::Viridis) => re_renderer::Colormap::Viridis,
-        ColorMapper::Colormap(Colormap::Plasma) => re_renderer::Colormap::Plasma,
-        ColorMapper::Colormap(Colormap::Magma) => re_renderer::Colormap::Magma,
-        ColorMapper::Colormap(Colormap::Inferno) => re_renderer::Colormap::Inferno,
+fn colormap_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
+    let (query, _store) =
+        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
+
+    // TODO(andreas): Queries the entire image archetype for no good reason, but all of this ui is a hack anyways.
+    let results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
+    let colormap = results.get_mono_with_fallback::<Colormap>();
+
+    let mut re_renderer_colormap = match colormap {
+        Colormap::Grayscale => re_renderer::Colormap::Grayscale,
+        Colormap::Turbo => re_renderer::Colormap::Turbo,
+        Colormap::Viridis => re_renderer::Colormap::Viridis,
+        Colormap::Plasma => re_renderer::Colormap::Plasma,
+        Colormap::Magma => re_renderer::Colormap::Magma,
+        Colormap::Inferno => re_renderer::Colormap::Inferno,
     };
 
     ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
+    colormap_dropdown_button_ui(ctx.viewer_ctx.render_ctx, ui, &mut re_renderer_colormap);
 
     let new_colormap = match re_renderer_colormap {
         re_renderer::Colormap::Grayscale => Colormap::Grayscale,
@@ -1292,7 +1294,10 @@ fn colormap_props_ui(
         re_renderer::Colormap::Magma => Colormap::Magma,
         re_renderer::Colormap::Inferno => Colormap::Inferno,
     };
-    entity_props.color_mapper = EditableAutoValue::UserEdited(ColorMapper::Colormap(new_colormap));
+
+    if new_colormap != colormap {
+        data_result.save_individual_override(ctx.viewer_ctx, &new_colormap);
+    }
 
     ui.end_row();
 }
@@ -1409,14 +1414,15 @@ fn transform3d_visualization_ui(
 }
 
 fn depth_props_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
+    data_result: &DataResult,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+    let (query, db) = guess_query_and_db_for_selected_entity(ctx.viewer_ctx, entity_path);
 
     let meaning = image_meaning_for_entity(entity_path, &query, db.store());
 
@@ -1443,19 +1449,24 @@ fn depth_props_ui(
 
     if backproject_depth {
         ui.label("Pinhole");
-        item_ui::entity_path_button(ctx, &query, db, ui, None, &image_projection_ent_path)
-            .on_hover_text(
-                "The entity path of the pinhole transform being used to do the backprojection.",
-            );
+        item_ui::entity_path_button(
+            ctx.viewer_ctx,
+            &query,
+            db,
+            ui,
+            None,
+            &image_projection_ent_path,
+        )
+        .on_hover_text(
+            "The entity path of the pinhole transform being used to do the backprojection.",
+        );
         ui.end_row();
 
         depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
 
         backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
 
-        // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
-        // need to get the current hardcoded colormapping out of the image cache first.
-        colormap_props_ui(ctx, ui, entity_props);
+        colormap_props_ui(ctx, ui, data_result);
     }
 
     Some(())

@@ -41,6 +41,13 @@ pub struct QueryContext<'a> {
     pub view_ctx: Option<&'a ViewContext<'a>>,
 }
 
+impl<'a> QueryContext<'a> {
+    #[inline]
+    pub fn recording(&self) -> &re_entity_db::EntityDb {
+        self.viewer_ctx.recording()
+    }
+}
+
 /// The result of executing a single data query
 #[derive(Default)]
 pub struct DataQueryResult {

@@ -6,23 +6,24 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query::range_zip_1x2;
+use re_query::range_zip_1x3;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
-    Colormap, RenderContext,
+    RenderContext,
 };
 use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
-    components::{Color, DrawOrder, TensorData, ViewCoordinates},
+    components::{Color, Colormap, DrawOrder, TensorData, ViewCoordinates},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, QueryContext,
+    SpaceViewClass, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -56,7 +57,7 @@ pub struct ViewerImage {
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
-    ctx: &ViewContext<'_>,
+    ctx: &ViewerContext<'_>,
     render_ctx: &RenderContext,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
@@ -69,7 +70,6 @@ fn to_textured_rect(
 
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
-        .viewer_ctx
         .cache
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
@@ -155,6 +155,7 @@ struct ImageComponentData<'a> {
     tensor: &'a TensorData,
     color: Option<&'a Color>,
     draw_order: Option<&'a DrawOrder>,
+    colormap: Option<&'a Colormap>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -211,7 +212,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_image_data<'a>(
         &mut self,
-        ctx: &ViewContext<'_>,
+        ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         entity_path: &EntityPath,
@@ -220,8 +221,8 @@ impl ImageVisualizer {
     ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
-        if !ctx.recording_store().entity_has_component(
-            &ctx.current_query().timeline(),
+        if !ctx.viewer_ctx.recording_store().entity_has_component(
+            &ctx.query.timeline(),
             entity_path,
             &Image::indicator().name(),
         ) {
@@ -265,7 +266,7 @@ impl ImageVisualizer {
                 .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
-                ctx,
+                ctx.viewer_ctx,
                 render_ctx,
                 entity_path,
                 ent_context,
@@ -302,7 +303,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_segmentation_image_data<'a>(
         &mut self,
-        ctx: &ViewContext<'_>,
+        ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         entity_path: &EntityPath,
@@ -311,8 +312,8 @@ impl ImageVisualizer {
     ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.recording_store().entity_has_component(
-            &ctx.current_query().timeline(),
+        if !ctx.viewer_ctx.recording_store().entity_has_component(
+            &ctx.query.timeline(),
             entity_path,
             &SegmentationImage::indicator().name(),
         ) {
@@ -354,7 +355,7 @@ impl ImageVisualizer {
                 .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
-                ctx,
+                ctx.viewer_ctx,
                 render_ctx,
                 entity_path,
                 ent_context,
@@ -394,7 +395,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_depth_image_data<'a>(
         &mut self,
-        ctx: &ViewContext<'_>,
+        ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
@@ -405,8 +406,8 @@ impl ImageVisualizer {
     ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.recording_store().entity_has_component(
-            &ctx.current_query().timeline(),
+        if !ctx.viewer_ctx.recording_store().entity_has_component(
+            &ctx.query.timeline(),
             entity_path,
             &DepthImage::indicator().name(),
         ) {
@@ -450,7 +451,7 @@ impl ImageVisualizer {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
                     // What we want are the extrinsics of the depth camera!
-                    match Self::process_entity_view_as_depth_cloud(
+                    match self.process_entity_view_as_depth_cloud(
                         ctx,
                         render_ctx,
                         transforms,
@@ -460,6 +461,7 @@ impl ImageVisualizer {
                         &tensor,
                         entity_path,
                         parent_pinhole_path,
+                        &data,
                     ) {
                         Ok(cloud) => {
                             self.data.add_bounding_box(
@@ -485,7 +487,7 @@ impl ImageVisualizer {
                 .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
-                ctx,
+                ctx.viewer_ctx,
                 render_ctx,
                 entity_path,
                 ent_context,
@@ -524,7 +526,8 @@ impl ImageVisualizer {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        ctx: &ViewContext<'_>,
+        &self,
+        ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -533,11 +536,12 @@ impl ImageVisualizer {
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
+        data: &ImageComponentData<'_>,
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
         let Some(intrinsics) =
-            query_pinhole_legacy(ctx.recording(), &ctx.current_query(), parent_pinhole_path)
+            query_pinhole_legacy(ctx.recording(), ctx.query, parent_pinhole_path)
         else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
@@ -546,7 +550,7 @@ impl ImageVisualizer {
         let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
             parent_pinhole_path,
             ctx.recording(),
-            &ctx.current_query(),
+            ctx.query,
         );
         let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
@@ -583,15 +587,17 @@ impl ImageVisualizer {
 
         let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
 
-        let colormap = match *properties.color_mapper {
-            re_entity_db::ColorMapper::Colormap(colormap) => match colormap {
-                re_entity_db::Colormap::Grayscale => Colormap::Grayscale,
-                re_entity_db::Colormap::Turbo => Colormap::Turbo,
-                re_entity_db::Colormap::Viridis => Colormap::Viridis,
-                re_entity_db::Colormap::Plasma => Colormap::Plasma,
-                re_entity_db::Colormap::Magma => Colormap::Magma,
-                re_entity_db::Colormap::Inferno => Colormap::Inferno,
-            },
+        let colormap = match data
+            .colormap
+            .copied()
+            .unwrap_or_else(|| self.fallback_for(ctx))
+        {
+            Colormap::Grayscale => re_renderer::Colormap::Grayscale,
+            Colormap::Turbo => re_renderer::Colormap::Turbo,
+            Colormap::Viridis => re_renderer::Colormap::Viridis,
+            Colormap::Plasma => re_renderer::Colormap::Plasma,
+            Colormap::Magma => re_renderer::Colormap::Magma,
+            Colormap::Inferno => re_renderer::Colormap::Inferno,
         };
 
         // We want point radius to be defined in a scale where the radius of a point
@@ -856,7 +862,7 @@ impl ImageVisualizer {
     where
         F: FnMut(
             &mut Self,
-            &ViewContext<'_>,
+            &QueryContext<'_>,
             &mut Vec<DepthCloud>,
             &TransformContext,
             &EntityProperties,
@@ -886,18 +892,21 @@ impl ImageVisualizer {
 
                 let colors = results.get_or_empty_dense(resolver)?;
                 let draw_orders = results.get_or_empty_dense(resolver)?;
+                let colormap = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x2(
+                let mut data = range_zip_1x3(
                     tensors.range_indexed(),
                     draw_orders.range_indexed(),
                     colors.range_indexed(),
+                    colormap.range_indexed(),
                 )
-                .filter_map(|(&index, tensors, draw_orders, colors)| {
+                .filter_map(|(&index, tensors, draw_orders, colors, colormap)| {
                     tensors.first().map(|tensor| ImageComponentData {
                         index,
                         tensor,
                         color: colors.and_then(|colors| colors.first()),
                         draw_order: draw_orders.and_then(|draw_orders| draw_orders.first()),
+                        colormap: colormap.and_then(|colormap| colormap.first()),
                     })
                 });
 
@@ -920,4 +929,11 @@ impl ImageVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => []);
+impl TypedComponentFallbackProvider<Colormap> for ImageVisualizer {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
+        // We anticipate depth images and turbo is well suited for that.
+        Colormap::Turbo
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap]);
