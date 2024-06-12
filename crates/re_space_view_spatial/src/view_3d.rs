@@ -12,7 +12,7 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, PerSystemEntities, PerVisualizer,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerSystemEntities, PerVisualizer,
     RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
@@ -192,9 +192,22 @@ impl SpaceViewClass for SpatialSpaceView3D {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
+        let applicable_visualizers: HashSet<&ViewSystemIdentifier> =
+            applicable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
         let available_visualizers: HashSet<&ViewSystemIdentifier> =
             visualizable_entities_per_visualizer
                 .iter()
@@ -226,7 +239,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             //  - If we have no visualizers, but [`Transform3DDetector`] indicates there is a transform here.
             //  - If we have the [`CamerasVisualizer`] active.
             if (visualizers.is_empty()
-                && available_visualizers.contains(&Transform3DDetector::identifier()))
+                && applicable_visualizers.contains(&Transform3DDetector::identifier()))
                 || visualizers.contains(&CamerasVisualizer::identifier())
             {
                 visualizers.push(Transform3DArrowsVisualizer::identifier());
