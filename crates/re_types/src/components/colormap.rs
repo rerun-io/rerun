@@ -57,7 +57,7 @@ pub enum Colormap {
     /// This is a perceptually non-uniform rainbow colormap addressing many issues of
     /// more traditional rainbow colormaps like Jet.
     /// It is more perceptually uniform without sharp transitions and is more colorblind-friendly.
-    /// Details: https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/
+    /// Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
     #[default]
     Turbo = 5,
 
