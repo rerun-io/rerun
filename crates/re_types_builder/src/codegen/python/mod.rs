@@ -784,7 +784,23 @@ fn code_for_struct(
 
     match kind {
         ObjectKind::Archetype => (),
-        ObjectKind::Datatype | ObjectKind::Component => {
+        ObjectKind::Component => {
+            code.push_indented(
+                0,
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                1,
+            );
+
+            code.push_indented(
+                0,
+                format!(
+                    "# This is patched in late to avoid circular dependencies.
+{name}._BATCH_TYPE = {name}Batch  # type: ignore[assignment]"
+                ),
+                1,
+            );
+        }
+        ObjectKind::Datatype => {
             code.push_indented(
                 0,
                 quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
@@ -1837,9 +1853,6 @@ fn quote_arrow_support_from_obj(
 
             class {extension_batch}{batch_superclass_decl}:
                 _ARROW_TYPE = {extension_type}()
-
-            # This is patched in late to avoid circular dependencies.
-            {name}._BATCH_TYPE = {extension_batch}  # type: ignore[assignment]
             "#
         ))
     }
