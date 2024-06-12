@@ -60,6 +60,10 @@ pub fn list_default_components(
             IncludedSpaceView::default().to_arrow()?,
         ),
         (
+            <Interactive as Loggable>::name(),
+            Interactive::default().to_arrow()?,
+        ),
+        (
             <LockRangeDuringZoom as Loggable>::name(),
             LockRangeDuringZoom::default().to_arrow()?,
         ),

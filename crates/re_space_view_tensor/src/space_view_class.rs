@@ -17,10 +17,10 @@ use re_types::{
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     gpu_bridge::{self, colormap_dropdown_button_ui},
-    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery, ViewerContext,
-    VisualizableEntities,
+    ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery,
+    ViewerContext, VisualizableEntities,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
@@ -107,6 +107,7 @@ impl SpaceViewClass for TensorSpaceView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {

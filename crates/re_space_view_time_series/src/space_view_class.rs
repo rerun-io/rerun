@@ -14,9 +14,9 @@ use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange, RecommendedSpaceView,
-    SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
+    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
     ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
@@ -249,6 +249,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {

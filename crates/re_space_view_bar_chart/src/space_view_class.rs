@@ -8,8 +8,8 @@ use re_types::View;
 use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
 use re_ui::list_item;
 use re_viewer_context::{
-    auto_color, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
+    auto_color, ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewerContext,
     VisualizableEntities,
 };
@@ -78,6 +78,7 @@ impl SpaceViewClass for BarChartSpaceView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {

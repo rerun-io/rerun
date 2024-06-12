@@ -9,14 +9,14 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether the container, view, entity or instance is currently visible.
-struct Visible (
-    "attr.arrow.transparent",
+/// Whether the entity can be interacted with.
+///
+/// Non interactive components are still visible, but mouse interactions in the view are disabled.
+struct Interactive (
     "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "bool",
     "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {
-    visible: bool (order: 100);
+    interactive: rerun.datatypes.Bool (order: 100);
 }

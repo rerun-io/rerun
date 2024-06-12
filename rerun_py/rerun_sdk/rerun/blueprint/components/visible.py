@@ -23,7 +23,7 @@ __all__ = ["Visible", "VisibleArrayLike", "VisibleBatch", "VisibleLike", "Visibl
 
 @define(init=False)
 class Visible(ComponentMixin):
-    """**Component**: Whether the container, space view, entity or instance is currently visible."""
+    """**Component**: Whether the container, view, entity or instance is currently visible."""
 
     _BATCH_TYPE = None
 

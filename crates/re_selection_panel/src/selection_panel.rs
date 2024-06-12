@@ -15,6 +15,7 @@ use re_space_view::DataResultQuery as _;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     archetypes::{Axes3D, Pinhole},
+    blueprint::components::Interactive,
     components::{
         AxisLength, ImagePlaneDistance, PinholeProjection, Transform3D, VisualizerOverrides,
     },
@@ -1194,33 +1195,64 @@ fn entity_props_ui(
 
     let entity_path = &data_result.entity_path;
 
-    {
-        let visible_before = data_result.is_visible(ctx.viewer_ctx);
-        let mut visible = visible_before;
+    list_item::list_item_scope(ui, "entity_props", |ui| {
+        {
+            let visible_before = data_result.is_visible(ctx.viewer_ctx);
+            let mut visible = visible_before;
 
-        let override_source =
-            data_result.component_override_source(&query_result.tree, &Visible::name());
-        let is_inherited =
-            override_source.is_some() && override_source.as_ref() != Some(entity_path);
+            let inherited_hint = if data_result.is_inherited(&query_result.tree, Visible::name()) {
+                "\n\nVisible status was inherited from a parent entity."
+            } else {
+                ""
+            };
 
-        ui.horizontal(|ui| {
-            ui.re_checkbox(&mut visible, "Visible");
-            if is_inherited {
-                ui.label("(inherited)");
+            ui.list_item()
+                .interactive(false)
+                .show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
+                )
+                .on_hover_text(format!(
+                    "If disabled, the entity won't be shown in the view.{inherited_hint}"
+                ));
+
+            if visible_before != visible {
+                data_result.save_recursive_override_or_clear_if_redundant(
+                    ctx.viewer_ctx,
+                    &query_result.tree,
+                    &Visible(visible),
+                );
             }
-        });
-
-        if visible_before != visible {
-            data_result.save_recursive_override_or_clear_if_redundant(
-                ctx.viewer_ctx,
-                &query_result.tree,
-                &Visible(visible),
-            );
         }
-    }
 
-    ui.re_checkbox(&mut entity_props.interactive, "Interactive")
-        .on_hover_text("If disabled, the entity will not react to any mouse interaction");
+        {
+            let interactive_before = data_result.is_interactive(ctx.viewer_ctx);
+            let mut interactive = interactive_before;
+
+            let inherited_hint =
+                if data_result.is_inherited(&query_result.tree, Interactive::name()) {
+                    "\n\nInteractive status was inherited from a parent entity."
+                } else {
+                    ""
+                };
+
+            ui.list_item()
+                .interactive(false)
+                .show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
+                )
+                .on_hover_text(format!("If disabled, the entity will not react to any mouse interaction.{inherited_hint}"));
+
+            if interactive_before != interactive {
+                data_result.save_recursive_override_or_clear_if_redundant(
+                    ctx.viewer_ctx,
+                    &query_result.tree,
+                    &Interactive(interactive.into()),
+                );
+            }
+        }
+    });
 
     query_range_ui_data_result(ctx.viewer_ctx, ui, data_result);
 

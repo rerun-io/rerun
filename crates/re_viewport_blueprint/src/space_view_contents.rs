@@ -18,8 +18,8 @@ use re_types::{
 };
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
+    ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
+    DataResultTree, IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
     SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
 };
 
@@ -179,6 +179,7 @@ impl SpaceViewContents {
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
         space_view: &'a SpaceViewBlueprint,
+        applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> DataQueryPropertyResolver<'a> {
@@ -192,6 +193,7 @@ impl SpaceViewContents {
             space_view,
             individual_override_root,
             recursive_override_root,
+            applicable_entities_per_visualizer,
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
         }
@@ -372,6 +374,7 @@ pub struct DataQueryPropertyResolver<'a> {
     space_view: &'a SpaceViewBlueprint,
     individual_override_root: EntityPath,
     recursive_override_root: EntityPath,
+    applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
     visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 }
@@ -495,6 +498,7 @@ impl DataQueryPropertyResolver<'_> {
                         .class(self.space_view_class_registry)
                         .choose_default_visualizers(
                             &node.data_result.entity_path,
+                            self.applicable_entities_per_visualizer,
                             self.visualizable_entities_per_visualizer,
                             self.indicated_entities_per_visualizer,
                         );
