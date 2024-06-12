@@ -83,3 +83,7 @@ class GridColumnsBatch(BaseBatch[GridColumnsArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: GridColumnsArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.uint32).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+GridColumns._BATCH_TYPE = GridColumnsBatch  # type: ignore[assignment]

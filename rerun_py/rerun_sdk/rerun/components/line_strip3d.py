@@ -84,3 +84,7 @@ class LineStrip3DBatch(BaseBatch[LineStrip3DArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: LineStrip3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return LineStrip3DExt.native_to_pa_array_override(data, data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+LineStrip3D._BATCH_TYPE = LineStrip3DBatch  # type: ignore[assignment]

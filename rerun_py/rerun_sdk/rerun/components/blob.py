@@ -68,3 +68,7 @@ class BlobBatch(BaseBatch[BlobArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
         return BlobExt.native_to_pa_array_override(data, data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+Blob._BATCH_TYPE = BlobBatch  # type: ignore[assignment]

@@ -62,3 +62,7 @@ class AffixFuzzer10Batch(BaseBatch[AffixFuzzer10ArrayLike], ComponentBatchMixin)
             array = [str(data)]
 
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+AffixFuzzer10._BATCH_TYPE = AffixFuzzer10Batch  # type: ignore[assignment]

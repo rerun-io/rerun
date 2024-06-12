@@ -103,4 +103,7 @@ class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike], ComponentBatchMi
         return ViewCoordinatesExt.native_to_pa_array_override(data, data_type)
 
 
+# This is patched in late to avoid circular dependencies.
+ViewCoordinates._BATCH_TYPE = ViewCoordinatesBatch  # type: ignore[assignment]
+
 ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

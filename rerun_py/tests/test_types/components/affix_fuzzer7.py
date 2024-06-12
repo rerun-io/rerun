@@ -97,3 +97,7 @@ class AffixFuzzer7Batch(BaseBatch[AffixFuzzer7ArrayLike], ComponentBatchMixin):
         raise NotImplementedError(
             "Arrow serialization of AffixFuzzer7 not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in affix_fuzzer7_ext.py
+
+
+# This is patched in late to avoid circular dependencies.
+AffixFuzzer7._BATCH_TYPE = AffixFuzzer7Batch  # type: ignore[assignment]

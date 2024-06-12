@@ -74,3 +74,7 @@ class EntityPropertiesComponentBatch(BaseBatch[EntityPropertiesComponentArrayLik
         raise NotImplementedError(
             "Arrow serialization of EntityPropertiesComponent not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in entity_properties_component_ext.py
+
+
+# This is patched in late to avoid circular dependencies.
+EntityPropertiesComponent._BATCH_TYPE = EntityPropertiesComponentBatch  # type: ignore[assignment]

@@ -77,3 +77,7 @@ class DrawOrderBatch(BaseBatch[DrawOrderArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: DrawOrderArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.float32).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+DrawOrder._BATCH_TYPE = DrawOrderBatch  # type: ignore[assignment]

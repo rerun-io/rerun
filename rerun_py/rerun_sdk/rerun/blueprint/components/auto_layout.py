@@ -64,3 +64,7 @@ class AutoLayoutBatch(BaseBatch[AutoLayoutArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: AutoLayoutArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+AutoLayout._BATCH_TYPE = AutoLayoutBatch  # type: ignore[assignment]

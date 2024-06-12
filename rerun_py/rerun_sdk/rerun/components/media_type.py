@@ -41,5 +41,4 @@ class MediaTypeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
 # This is patched in late to avoid circular dependencies.
 MediaType._BATCH_TYPE = MediaTypeBatch  # type: ignore[assignment]
 
-
 MediaTypeExt.deferred_patch_class(MediaType)

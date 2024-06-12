@@ -65,3 +65,7 @@ class VisualizerOverridesBatch(BaseBatch[VisualizerOverridesArrayLike], Componen
         raise NotImplementedError(
             "Arrow serialization of VisualizerOverrides not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in visualizer_overrides_ext.py
+
+
+# This is patched in late to avoid circular dependencies.
+VisualizerOverrides._BATCH_TYPE = VisualizerOverridesBatch  # type: ignore[assignment]

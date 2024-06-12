@@ -46,5 +46,4 @@ class TextLogLevelBatch(datatypes.Utf8Batch, ComponentBatchMixin):
 # This is patched in late to avoid circular dependencies.
 TextLogLevel._BATCH_TYPE = TextLogLevelBatch  # type: ignore[assignment]
 
-
 TextLogLevelExt.deferred_patch_class(TextLogLevel)
