@@ -45,7 +45,7 @@ impl std::ops::Deref for IndicatedEntities {
 ///
 /// This is a subset of [`ApplicableEntities`] and differs on a
 /// per space view instance base.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct VisualizableEntities(pub IntSet<EntityPath>);
 
 impl std::ops::Deref for VisualizableEntities {

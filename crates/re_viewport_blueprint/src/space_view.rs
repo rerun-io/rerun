@@ -537,8 +537,8 @@ mod tests {
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
-        test_context::TestContext, IndicatedEntities, OverridePath, PerVisualizer, StoreContext,
-        VisualizableEntities,
+        test_context::TestContext, ApplicableEntities, IndicatedEntities, OverridePath,
+        PerVisualizer, StoreContext, VisualizableEntities,
     };
     use std::collections::HashMap;
 
@@ -597,6 +597,14 @@ mod tests {
                     .collect(),
                 )
             });
+
+        let applicable_entities = PerVisualizer::<ApplicableEntities>(
+            visualizable_entities
+                .0
+                .iter()
+                .map(|(id, entities)| (*id, ApplicableEntities(entities.iter().cloned().collect())))
+                .collect(),
+        );
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>(
             visualizable_entities
                 .0
@@ -610,6 +618,7 @@ mod tests {
         let resolver = contents.build_resolver(
             &test_ctx.space_view_class_registry,
             &space_view,
+            &applicable_entities,
             &visualizable_entities,
             &indicated_entities_per_visualizer,
         );
@@ -761,6 +770,14 @@ mod tests {
                 .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
         }
 
+        let applicable_entities = PerVisualizer::<ApplicableEntities>(
+            visualizable_entities
+                .0
+                .iter()
+                .map(|(id, entities)| (*id, ApplicableEntities(entities.iter().cloned().collect())))
+                .collect(),
+        );
+
         // Basic blueprint - a single space view that queries everything.
         let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedSpaceView::root());
         let individual_override_root = space_view
@@ -777,6 +794,7 @@ mod tests {
         let resolver = space_view.contents.build_resolver(
             &test_ctx.space_view_class_registry,
             &space_view,
+            &applicable_entities,
             &visualizable_entities,
             &indicated_entities_per_visualizer,
         );

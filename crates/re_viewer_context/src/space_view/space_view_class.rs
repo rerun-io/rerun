@@ -135,6 +135,7 @@ pub trait SpaceViewClass: Send + Sync {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
