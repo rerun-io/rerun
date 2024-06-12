@@ -488,7 +488,7 @@ pub fn picking(
             .lookup_query_result(query.space_view_id)
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
-            .map_or(false, |result| result.accumulated_properties().interactive);
+            .map_or(false, |result| result.is_interactive(ctx));
         if !interactive {
             continue;
         }

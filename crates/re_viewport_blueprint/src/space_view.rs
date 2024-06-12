@@ -655,7 +655,7 @@ mod tests {
 
             // Now, override interactive on parent individually.
             let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
-            overrides.interactive = false;
+            overrides.test_property = false;
 
             save_override(
                 overrides,
@@ -691,10 +691,10 @@ mod tests {
                 .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
-            assert!(!parent.accumulated_properties().interactive);
+            assert!(!parent.accumulated_properties().test_property);
 
             for result in [child1, child2] {
-                assert!(result.accumulated_properties().interactive);
+                assert!(result.accumulated_properties().test_property);
             }
 
             // Override interactivity on parent recursively.
@@ -702,7 +702,7 @@ mod tests {
                 .individual_properties()
                 .cloned()
                 .unwrap_or_default();
-            overrides.interactive = false;
+            overrides.test_property = false;
 
             save_override(
                 overrides,
@@ -734,7 +734,7 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.accumulated_properties().interactive);
+                assert!(!result.accumulated_properties().test_property);
             }
         }
     }
