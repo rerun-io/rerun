@@ -37,7 +37,7 @@ class Colormap(Enum):
     """
     The Inferno colormap from Matplotlib.
 
-    This is a a perceptually uniform colormap.
+    This is a perceptually uniform colormap.
     It interpolates from black to red to bright yellow.
     """
 
