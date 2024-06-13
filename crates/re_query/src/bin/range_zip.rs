@@ -314,7 +314,7 @@ fn generate_struct(params: &Params) -> String {
 ///         let (r0_index, r0_data) = r0.next()?;
 ///         let (r1_index, r1_data) = r1.next()?;
 ///
-///         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+///         let max_index = [r0_index, r1_index].into_iter().max()?;
 ///
 ///         let mut o0_data = None;
 ///         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -444,7 +444,7 @@ fn generate_impl(params: &Params) -> String {
 
                 {next_required}
 
-                let max_index = [{required_indices}].into_iter().max().unwrap();
+                let max_index = [{required_indices}].into_iter().max()?;
 
                 {next_optional}
 
