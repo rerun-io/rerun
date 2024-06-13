@@ -3,7 +3,6 @@ use crate::{
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext,
 };
-use re_entity_db::EntityProperties;
 use re_types::SpaceViewClassIdentifier;
 
 /// A placeholder space view class that can be used when the actual class is not registered.
@@ -51,7 +50,6 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_entity_db::{
-    EditableAutoValue, EntityTree, TimeCounts, TimeHistogramPerTimeline, TimesPerTimeline,
-};
+use re_entity_db::{EntityTree, TimeCounts, TimeHistogramPerTimeline, TimesPerTimeline};
 use re_log_types::{
     Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
 };
@@ -82,12 +80,29 @@ pub enum PlayState {
     Following,
 }
 
+// TODO(andreas): This should be a blueprint property and follow the usual rules of how we determine fallbacks.
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+enum ActiveTimeline {
+    Auto(Timeline),
+    UserEdited(Timeline),
+}
+
+impl std::ops::Deref for ActiveTimeline {
+    type Target = Timeline;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Auto(t) | Self::UserEdited(t) => t,
+        }
+    }
+}
+
 /// Controls the global view and progress of the time.
 #[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct TimeControl {
     /// Name of the timeline (e.g. "log_time").
-    timeline: EditableAutoValue<Timeline>,
+    timeline: ActiveTimeline,
 
     states: BTreeMap<Timeline, TimeState>,
 
@@ -112,7 +127,7 @@ pub struct TimeControl {
 impl Default for TimeControl {
     fn default() -> Self {
         Self {
-            timeline: Default::default(),
+            timeline: ActiveTimeline::Auto(Timeline::default()),
             states: Default::default(),
             playing: true,
             following: true,
@@ -412,8 +427,10 @@ impl TimeControl {
         }
 
         // If the timeline is auto refresh it every frame, otherwise only pick a new one if invalid.
-        if self.timeline.is_auto() || !is_timeline_valid(self.timeline(), times_per_timeline) {
-            self.timeline = EditableAutoValue::Auto(
+        if matches!(self.timeline, ActiveTimeline::Auto(_))
+            || !is_timeline_valid(self.timeline(), times_per_timeline)
+        {
+            self.timeline = ActiveTimeline::Auto(
                 default_timeline(times_per_timeline.timelines()).map_or(Default::default(), |t| *t),
             );
         }
@@ -431,7 +448,7 @@ impl TimeControl {
     }
 
     pub fn set_timeline(&mut self, timeline: Timeline) {
-        self.timeline = EditableAutoValue::UserEdited(timeline);
+        self.timeline = ActiveTimeline::UserEdited(timeline);
     }
 
     /// The current time.
@@ -510,7 +527,7 @@ impl TimeControl {
     }
 
     pub fn set_timeline_and_time(&mut self, timeline: Timeline, time: impl Into<TimeReal>) {
-        self.timeline = EditableAutoValue::UserEdited(timeline);
+        self.timeline = ActiveTimeline::UserEdited(timeline);
         self.set_time(time);
     }
 

@@ -2,7 +2,7 @@ use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
-use re_entity_db::{EntityDb, EntityProperties};
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::View;
@@ -350,7 +350,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
@@ -423,7 +422,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

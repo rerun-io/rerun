@@ -1,5 +1,5 @@
 use nohash_hasher::IntSet;
-use re_entity_db::{EntityDb, EntityProperties, EntityPropertyMap};
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{ComponentName, SpaceViewClassIdentifier};
 
@@ -177,7 +177,6 @@ pub trait SpaceViewClass: Send + Sync {
         _ctx: &ViewerContext<'_>,
         _state: &mut dyn SpaceViewState,
         _ent_paths: &PerSystemEntities,
-        _entity_properties: &mut EntityPropertyMap,
     ) {
     }
 
@@ -189,7 +188,6 @@ pub trait SpaceViewClass: Send + Sync {
         _state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         Ok(())
     }
@@ -206,7 +204,6 @@ pub trait SpaceViewClass: Send + Sync {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError>;

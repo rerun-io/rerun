@@ -4,17 +4,15 @@
 //! selection panel).
 
 use ahash::HashMap;
-use once_cell::sync::Lazy;
 
-use re_entity_db::EntityPropertyMap;
 use re_log_types::external::re_types_core::SpaceViewClassIdentifier;
 
 use crate::{SpaceViewClassRegistry, SpaceViewId, SpaceViewState};
 
 // State for each `SpaceView` including both the auto properties and
 // the internal state of the space view itself.
+// TODO: simplify further
 pub struct PerViewState {
-    pub auto_properties: EntityPropertyMap,
     pub view_state: Box<dyn SpaceViewState>,
 }
 
@@ -25,8 +23,6 @@ pub struct PerViewState {
 pub struct ViewStates {
     states: HashMap<SpaceViewId, PerViewState>,
 }
-
-static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
 
 impl ViewStates {
     pub fn get(&self, space_view_id: SpaceViewId) -> Option<&PerViewState> {
@@ -40,16 +36,9 @@ impl ViewStates {
         view_class: SpaceViewClassIdentifier,
     ) -> &mut PerViewState {
         self.states.entry(view_id).or_insert_with(|| PerViewState {
-            auto_properties: Default::default(),
             view_state: view_class_registry
                 .get_class_or_log_error(view_class)
                 .new_state(),
         })
-    }
-
-    pub fn legacy_auto_properties(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {
-        self.states
-            .get(&space_view_id)
-            .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
     }
 }

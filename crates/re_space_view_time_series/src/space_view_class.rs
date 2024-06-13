@@ -11,7 +11,6 @@ use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::{list_item, UiExt as _};
-use re_viewer_context::external::re_entity_db::EntityProperties;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
     RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
@@ -143,7 +142,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
@@ -261,7 +259,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

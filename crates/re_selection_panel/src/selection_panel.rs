@@ -287,11 +287,6 @@ impl SelectionPanel {
 
             query_range_ui_space_view(ctx, ui, space_view);
 
-            // Space View don't inherit (legacy) properties.
-            let mut props =
-                space_view.legacy_properties(ctx.store_context.blueprint, ctx.blueprint_query);
-            let props_before = props.clone();
-
             let space_view_class = space_view.class(ctx.space_view_class_registry);
             if let Err(err) = space_view_class.selection_ui(
                 ctx,
@@ -299,17 +294,12 @@ impl SelectionPanel {
                 view_state.view_state.as_mut(),
                 &space_view.space_origin,
                 space_view.id,
-                &mut props,
             ) {
                 re_log::error!(
                     "Error in space view selection UI (class: {}, display name: {}): {err}",
                     space_view.class_identifier(),
                     space_view_class.display_name(),
                 );
-            }
-
-            if props_before != props {
-                space_view.save_legacy_properties(ctx, props);
             }
 
             let view_ctx =

@@ -180,7 +180,6 @@ impl<'a> Viewport<'a> {
         if let Some(render_ctx) = ctx.render_ctx {
             for space_view in self.blueprint.space_views.values() {
                 let PerViewState {
-                    auto_properties,
                     view_state: space_view_state,
                 } = view_states.get_mut(
                     ctx.space_view_class_registry,
@@ -199,7 +198,7 @@ impl<'a> Viewport<'a> {
                 .is_some()
                 {}
 
-                space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
+                space_view.on_frame_start(ctx, space_view_state.as_mut());
             }
         }
 
@@ -521,7 +520,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         });
 
         let PerViewState {
-            auto_properties: _,
             view_state: space_view_state,
         } = self.view_states.get_mut(
             self.ctx.space_view_class_registry,

@@ -5,7 +5,6 @@ include "./blueprint/components/background_kind.fbs";
 include "./blueprint/components/column_share.fbs";
 include "./blueprint/components/container_kind.fbs";
 include "./blueprint/components/corner_2d.fbs";
-include "./blueprint/components/entity_properties_component.fbs";
 include "./blueprint/components/grid_columns.fbs";
 include "./blueprint/components/included_content.fbs";
 include "./blueprint/components/included_space_view.fbs";
