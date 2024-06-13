@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-template = "template:main"
+template = "ocr:main"
 
 [tool.rerun-example]
 skip = true
