@@ -4,47 +4,44 @@ use ahash::HashMap;
 use rayon::prelude::*;
 
 use re_log_types::TimeInt;
-use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::{
-    PerSystemDataResults, SpaceViewHighlights, SpaceViewId, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    PerSystemDataResults, SpaceViewId, SpaceViewState, SystemExecutionOutput,
+    ViewContextCollection, ViewQuery, ViewStates, ViewerContext, VisualizerCollection,
 };
 
 use crate::space_view_highlights::highlights_for_space_view;
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-pub fn create_and_run_space_view_systems(
+fn run_space_view_systems(
     ctx: &ViewerContext<'_>,
-    space_view_class: SpaceViewClassIdentifier,
+    view: &SpaceViewBlueprint,
     query: &ViewQuery<'_>,
-) -> SystemExecutionOutput {
-    re_tracing::profile_function!(space_view_class.as_str());
+    view_state: &dyn SpaceViewState,
+    context_systems: &mut ViewContextCollection,
+    view_systems: &mut VisualizerCollection,
+) -> Vec<re_renderer::QueueableDrawData> {
+    re_tracing::profile_function!(view.class_identifier().as_str());
 
-    let context_systems = {
+    let view_ctx = view.bundle_context_with_state(ctx, view_state);
+
+    {
         re_tracing::profile_wait!("ViewContextSystem::execute");
-        let mut context_systems = ctx
-            .space_view_class_registry
-            .new_context_collection(space_view_class);
         context_systems
             .systems
             .par_iter_mut()
             .for_each(|(_name, system)| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", _name.as_str());
-                system.execute(ctx, query);
+                system.execute(&view_ctx, query);
             });
-        context_systems
     };
 
     re_tracing::profile_wait!("VisualizerSystem::execute");
-    let mut view_systems = ctx
-        .space_view_class_registry
-        .new_visualizer_collection(space_view_class);
-    let draw_data = view_systems
+    view_systems
         .systems
         .par_iter_mut()
         .map(|(name, part)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            match part.execute(ctx, query, &context_systems) {
+            match part.execute(&view_ctx, query, context_systems) {
                 Ok(part_draw_data) => part_draw_data,
                 Err(err) => {
                     re_log::error_once!("Error executing visualizer {name:?}: {err}");
@@ -53,57 +50,20 @@ pub fn create_and_run_space_view_systems(
             }
         })
         .flatten()
-        .collect();
-
-    SystemExecutionOutput {
-        view_systems,
-        context_systems,
-        draw_data,
-    }
-}
-
-pub fn execute_systems_for_all_space_views<'a>(
-    ctx: &'a ViewerContext<'a>,
-    tree: &egui_tiles::Tree<SpaceViewId>,
-    space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
-) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
-    let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
-        return HashMap::default();
-    };
-
-    re_tracing::profile_wait!("execute_systems");
-
-    tree.active_tiles()
-        .into_par_iter()
-        .filter_map(|tile_id| {
-            tree.tiles.get(tile_id).and_then(|tile| match tile {
-                egui_tiles::Tile::Pane(space_view_id) => {
-                    space_views.get(space_view_id).map(|space_view_blueprint| {
-                        let highlights = highlights_for_space_view(ctx, *space_view_id);
-                        let output = execute_systems_for_space_view(
-                            ctx,
-                            space_view_blueprint,
-                            time_int,
-                            highlights,
-                        );
-                        (*space_view_id, output)
-                    })
-                }
-                egui_tiles::Tile::Container(_) => None,
-            })
-        })
-        .collect::<HashMap<_, _>>()
+        .collect()
 }
 
 pub fn execute_systems_for_space_view<'a>(
     ctx: &'a ViewerContext<'_>,
-    space_view: &'a SpaceViewBlueprint,
+    view: &'a SpaceViewBlueprint,
     latest_at: TimeInt,
-    highlights: SpaceViewHighlights,
+    view_states: &ViewStates,
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
-    re_tracing::profile_function!(space_view.class_identifier().as_str());
+    re_tracing::profile_function!(view.class_identifier().as_str());
 
-    let query_result = ctx.lookup_query_result(space_view.id);
+    let highlights = highlights_for_space_view(ctx, view.id);
+
+    let query_result = ctx.lookup_query_result(view.id);
 
     let mut per_visualizer_data_results = PerSystemDataResults::default();
     {
@@ -121,16 +81,68 @@ pub fn execute_systems_for_space_view<'a>(
     }
 
     let query = re_viewer_context::ViewQuery {
-        space_view_id: space_view.id,
-        space_origin: &space_view.space_origin,
+        space_view_id: view.id,
+        space_origin: &view.space_origin,
         per_visualizer_data_results,
         timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
         latest_at,
         highlights,
     };
 
-    let system_output =
-        create_and_run_space_view_systems(ctx, *space_view.class_identifier(), &query);
+    let mut context_systems = ctx
+        .space_view_class_registry
+        .new_context_collection(view.class_identifier());
+    let mut view_systems = ctx
+        .space_view_class_registry
+        .new_visualizer_collection(view.class_identifier());
 
-    (query, system_output)
+    let draw_data = if let Some(view_state) = view_states.get(view.id) {
+        run_space_view_systems(
+            ctx,
+            view,
+            &query,
+            view_state.view_state.as_ref(),
+            &mut context_systems,
+            &mut view_systems,
+        )
+    } else {
+        re_log::error_once!("No view state found for view {}", view.id);
+        Vec::new()
+    };
+
+    (
+        query,
+        SystemExecutionOutput {
+            view_systems,
+            context_systems,
+            draw_data,
+        },
+    )
+}
+
+pub fn execute_systems_for_all_views<'a>(
+    ctx: &'a ViewerContext<'a>,
+    tree: &egui_tiles::Tree<SpaceViewId>,
+    views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+    view_states: &ViewStates,
+) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
+    let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
+        return Default::default();
+    };
+
+    re_tracing::profile_wait!("execute_systems");
+
+    tree.active_tiles()
+        .into_par_iter()
+        .filter_map(|tile_id| {
+            tree.tiles.get(tile_id).and_then(|tile| match tile {
+                egui_tiles::Tile::Pane(view_id) => views.get(view_id).map(|view| {
+                    let result = execute_systems_for_space_view(ctx, view, time_int, view_states);
+
+                    (*view_id, result)
+                }),
+                egui_tiles::Tile::Container(_) => None,
+            })
+        })
+        .collect::<HashMap<_, _>>()
 }

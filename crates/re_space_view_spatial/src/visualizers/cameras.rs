@@ -1,22 +1,23 @@
 use glam::vec3;
-use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{Transform3D, ViewCoordinates},
+    components::{ImagePlaneDistance, Transform3D, ViewCoordinates},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
     contexts::TransformContext,
     instance_hash_conversions::picking_layer_id_from_instance_path_hash, query_pinhole,
-    space_camera_3d::SpaceCamera3D, visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    space_camera_3d::SpaceCamera3D, ui::SpatialSpaceViewState,
+    visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -49,16 +50,17 @@ impl CamerasVisualizer {
         &mut self,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformContext,
-        ent_path: &EntityPath,
-        props: &EntityProperties,
+        data_result: &DataResult,
         pinhole: &Pinhole,
         transform_at_entity: Option<Transform3D>,
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
         let instance = Instance::from(0);
+        let ent_path = &data_result.entity_path;
 
-        let frustum_length = *props.pinhole_image_plane_distance;
+        // Assuming the fallback provider did the right thing, this value should always be set.
+        let frustum_length = pinhole.image_plane_distance.unwrap_or_default().into();
 
         // If the camera is our reference, there is nothing for us to display.
         if transforms.reference_path() == ent_path {
@@ -202,15 +204,15 @@ impl VisualizerSystem for CamerasVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let transforms = view_ctx.get::<TransformContext>()?;
+        let transforms = context_systems.get::<TransformContext>()?;
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -220,9 +222,7 @@ impl VisualizerSystem for CamerasVisualizer {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) =
-                query_pinhole(ctx.recording(), &time_query, &data_result.entity_path)
-            {
+            if let Some(pinhole) = query_pinhole(ctx, &time_query, data_result) {
                 let entity_highlight = query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash());
@@ -230,8 +230,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 self.visit_instance(
                     &mut line_builder,
                     transforms,
-                    &data_result.entity_path,
-                    data_result.accumulated_properties(),
+                    data_result,
                     &pinhole,
                     // TODO(#5607): what should happen if the promise is still pending?
                     ctx.recording()
@@ -253,4 +252,31 @@ impl VisualizerSystem for CamerasVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> ImagePlaneDistance {
+        let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() else {
+            return Default::default();
+        };
+
+        let scene_size = state.bounding_boxes.accumulated.size().length();
+
+        if scene_size.is_finite() && scene_size > 0.0 {
+            // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
+            scene_size * 0.02
+        } else {
+            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+            // this value works better with the default camera setup.
+            0.3
+        }
+        .into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(CamerasVisualizer => [ImagePlaneDistance]);

@@ -51,6 +51,22 @@ impl From<AffixFuzzer9> for ::re_types_core::ArrowString {
     }
 }
 
+impl std::ops::Deref for AffixFuzzer9 {
+    type Target = ::re_types_core::ArrowString;
+
+    #[inline]
+    fn deref(&self) -> &::re_types_core::ArrowString {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer9 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut ::re_types_core::ArrowString {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer9);
 
 impl ::re_types_core::Loggable for AffixFuzzer9 {

@@ -4,6 +4,7 @@ use nohash_hasher::IntMap;
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
+use re_ui::UiExt as _;
 use re_viewer_context::{DataQueryResult, SpaceViewClassExt as _, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
 
@@ -30,10 +31,9 @@ impl SpaceViewEntityPicker {
         viewport_blueprint: &ViewportBlueprint,
     ) {
         self.modal_handler.ui(
-            ctx.re_ui,
             egui_ctx,
             || re_ui::modal::Modal::new("Add/remove Entities").default_height(640.0),
-            |_, ui, open| {
+            |ui, open| {
                 let Some(space_view_id) = &self.space_view_id else {
                     *open = false;
                     return;
@@ -190,7 +190,7 @@ fn add_entities_line_ui(
             if entity_path_filter.contains_rule_for_exactly(entity_path) {
                 // Reset-button
                 // Shows when an entity is explicitly excluded or included
-                let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
+                let response = ui.small_icon_button(&re_ui::icons::RESET);
 
                 if response.clicked() {
                     space_view
@@ -206,7 +206,7 @@ fn add_entities_line_ui(
             } else if is_included {
                 // Remove-button
                 // Shows when an entity is already included (but not explicitly)
-                let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
+                let response = ui.small_icon_button(&re_ui::icons::REMOVE);
 
                 if response.clicked() {
                     space_view.contents.raw_add_entity_exclusion(
@@ -225,7 +225,7 @@ fn add_entities_line_ui(
                 let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
-                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
+                    let response = ui.small_icon_button(&re_ui::icons::ADD);
 
                     if response.clicked() {
                         space_view.contents.raw_add_entity_inclusion(
@@ -322,7 +322,7 @@ fn create_entity_add_info(
         ctx.applicable_entities_per_visualizer,
         ctx.recording(),
         &ctx.space_view_class_registry
-            .new_visualizer_collection(*space_view.class_identifier()),
+            .new_visualizer_collection(space_view.class_identifier()),
         &space_view.space_origin,
     );
 

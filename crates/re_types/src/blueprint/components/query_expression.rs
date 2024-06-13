@@ -70,6 +70,13 @@ impl std::ops::Deref for QueryExpression {
     }
 }
 
+impl std::ops::DerefMut for QueryExpression {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(QueryExpression);
 
 impl ::re_types_core::Loggable for QueryExpression {

@@ -631,7 +631,7 @@ impl StoreHub {
 
                 // TODO(jleibs): Decide a better tuning for this. Would like to save a
                 // reasonable amount of history, or incremental snapshots.
-                blueprint.gc_everything_but_the_latest_row();
+                blueprint.gc_everything_but_the_latest_row_on_non_default_timelines();
 
                 self.blueprint_last_gc
                     .insert(blueprint_id.clone(), blueprint.generation());

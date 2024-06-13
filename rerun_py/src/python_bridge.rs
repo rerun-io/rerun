@@ -208,7 +208,7 @@ fn new_recording(
         default_store_id(py, StoreKind::Recording, &application_id)
     };
 
-    let mut batcher_config = re_log_types::DataTableBatcherConfig::from_env().unwrap_or_default();
+    let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
     };
@@ -261,7 +261,7 @@ fn new_blueprint(
     // blueprint id to avoid collisions.
     let blueprint_id = StoreId::random(StoreKind::Blueprint);
 
-    let mut batcher_config = re_log_types::DataTableBatcherConfig::from_env().unwrap_or_default();
+    let mut batcher_config = re_chunk::ChunkBatcherConfig::from_env().unwrap_or_default();
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
     };
@@ -1047,13 +1047,9 @@ fn log_arrow_msg(
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
     // a deadlock.
-    let row = crate::arrow::build_data_row_from_components(
-        &entity_path,
-        components,
-        &TimePoint::default(),
-    )?;
+    let row = crate::arrow::build_row_from_components(components, &TimePoint::default())?;
 
-    recording.record_row(row, !static_);
+    recording.record_row(entity_path, row, !static_);
 
     py.allow_threads(flush_garbage_queue);
 

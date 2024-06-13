@@ -20,14 +20,14 @@ use re_types::{
 };
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
-    query_pinhole,
+    query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView2D, SpatialSpaceView3D,
@@ -56,7 +56,7 @@ pub struct ViewerImage {
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     render_ctx: &RenderContext,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
@@ -69,6 +69,7 @@ fn to_textured_rect(
 
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
+        .viewer_ctx
         .cache
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
@@ -210,10 +211,9 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_image_data<'a>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
-        ent_props: &EntityProperties,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -246,7 +246,7 @@ impl ImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
                 c.entry(tensor_data_row_id, data.tensor.0.clone())
             }) {
                 Ok(tensor) => tensor,
@@ -279,9 +279,7 @@ impl ImageVisualizer {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                    || !ent_props.pinhole_image_plane_distance.is_auto()
-                {
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
                     self.data.add_bounding_box(
                         entity_path.hash(),
                         Self::compute_bounding_box(&textured_rect),
@@ -304,10 +302,9 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_segmentation_image_data<'a>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
-        ent_props: &EntityProperties,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -338,7 +335,7 @@ impl ImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
                 c.entry(tensor_data_row_id, data.tensor.0.clone())
             }) {
                 Ok(tensor) => tensor,
@@ -372,7 +369,8 @@ impl ImageVisualizer {
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                // TODO(jleibs): Is there an equivalent for this?
+                // || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
                         entity_path.hash(),
@@ -396,7 +394,7 @@ impl ImageVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn process_depth_image_data<'a>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
@@ -435,7 +433,7 @@ impl ImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
                 c.entry(tensor_data_row_id, data.tensor.0.clone())
             }) {
                 Ok(tensor) => tensor,
@@ -502,7 +500,8 @@ impl ImageVisualizer {
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                // TODO(jleibs): Is there an equivalent for this?
+                // || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
                         entity_path.hash(),
@@ -525,7 +524,7 @@ impl ImageVisualizer {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -538,7 +537,7 @@ impl ImageVisualizer {
         re_tracing::profile_function!();
 
         let Some(intrinsics) =
-            query_pinhole(ctx.recording(), &ctx.current_query(), parent_pinhole_path)
+            query_pinhole_legacy(ctx.recording(), &ctx.current_query(), parent_pinhole_path)
         else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
@@ -567,6 +566,7 @@ impl ImageVisualizer {
 
         let debug_name = ent_path.to_string();
         let tensor_stats = ctx
+            .viewer_ctx
             .cache
             .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
         let depth_texture = re_viewer_context::gpu_bridge::tensor_to_gpu(
@@ -709,11 +709,11 @@ impl VisualizerSystem for ImageVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
@@ -722,13 +722,13 @@ impl VisualizerSystem for ImageVisualizer {
         self.process_image_archetype::<Image, _>(
             ctx,
             view_query,
-            view_ctx,
+            context_systems,
             &mut depth_clouds,
             |visualizer,
              ctx,
              _depth_clouds,
              transforms,
-             entity_props,
+             _entity_props,
              entity_path,
              spatial_ctx,
              data| {
@@ -736,7 +736,6 @@ impl VisualizerSystem for ImageVisualizer {
                     ctx,
                     render_ctx,
                     transforms,
-                    entity_props,
                     entity_path,
                     spatial_ctx,
                     data,
@@ -747,13 +746,13 @@ impl VisualizerSystem for ImageVisualizer {
         self.process_image_archetype::<SegmentationImage, _>(
             ctx,
             view_query,
-            view_ctx,
+            context_systems,
             &mut depth_clouds,
             |visualizer,
              ctx,
              _depth_clouds,
              transforms,
-             entity_props,
+             _entity_props,
              entity_path,
              spatial_ctx,
              data| {
@@ -761,7 +760,6 @@ impl VisualizerSystem for ImageVisualizer {
                     ctx,
                     render_ctx,
                     transforms,
-                    entity_props,
                     entity_path,
                     spatial_ctx,
                     data,
@@ -772,7 +770,7 @@ impl VisualizerSystem for ImageVisualizer {
         self.process_image_archetype::<DepthImage, _>(
             ctx,
             view_query,
-            view_ctx,
+            context_systems,
             &mut depth_clouds,
             |visualizer,
              ctx,
@@ -840,12 +838,16 @@ impl VisualizerSystem for ImageVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
 
 impl ImageVisualizer {
     fn process_image_archetype<A: Archetype, F>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
         depth_clouds: &mut Vec<DepthCloud>,
@@ -854,7 +856,7 @@ impl ImageVisualizer {
     where
         F: FnMut(
             &mut Self,
-            &ViewerContext<'_>,
+            &ViewContext<'_>,
             &mut Vec<DepthCloud>,
             &TransformContext,
             &EntityProperties,
@@ -873,7 +875,7 @@ impl ImageVisualizer {
             |ctx, entity_path, entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
@@ -917,3 +919,5 @@ impl ImageVisualizer {
         Ok(())
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => []);

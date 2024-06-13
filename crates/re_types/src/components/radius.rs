@@ -53,6 +53,22 @@ impl From<Radius> for f32 {
     }
 }
 
+impl std::ops::Deref for Radius {
+    type Target = f32;
+
+    #[inline]
+    fn deref(&self) -> &f32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Radius {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut f32 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Radius);
 
 impl ::re_types_core::Loggable for Radius {

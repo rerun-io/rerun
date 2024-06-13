@@ -65,7 +65,7 @@ impl Includes {
             }
         };
 
-        let typname = crate::to_snake_case(typname);
+        let typname = re_case::to_snake_case(typname);
 
         if is_testing_fqname(&self.fqname) == is_testing_fqname(included_fqname) {
             // If the type is in the same library, we use a relative path.

@@ -10,7 +10,7 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -204,11 +204,11 @@ impl VisualizerSystem for Points2DVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
@@ -225,12 +225,12 @@ impl VisualizerSystem for Points2DVisualizer {
         super::entity_iterator::process_archetype::<Self, Points2D, _>(
             ctx,
             view_query,
-            view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.points,
+            context_systems,
+            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
@@ -300,4 +300,10 @@ impl VisualizerSystem for Points2DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => []);

@@ -11,7 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .time_range_boundary_ext import TimeRangeBoundaryExt
 
 __all__ = [

@@ -147,7 +147,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.20.0
+          pixi-version: v0.23.0
           environments: wheel-test
 
       - name: Download Wheel
@@ -179,6 +179,11 @@ jobs:
 
       - name: Run e2e test
         run: pixi run -e wheel-test RUST_LOG=debug python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+
+      - name: Check for archetype roundtrip tests
+        if: ${{ inputs.FAST }}
+        # Only check that we have the archetype roundtrip tests, but don't spend time actually running them
+        run: pixi run -e wheel-test RUST_LOG=debug python tests/roundtrips.py --no-run
 
       - name: Run tests/roundtrips.py
         if: ${{ !inputs.FAST }}

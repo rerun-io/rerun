@@ -83,10 +83,10 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.AutoLayout".into(),
-            "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.RootContainer".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
+            "rerun.blueprint.components.AutoLayout".into(),
+            "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.ViewerRecommendationHash".into(),
         ]
     });
@@ -95,10 +95,10 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
-            "rerun.blueprint.components.AutoLayout".into(),
-            "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.RootContainer".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
+            "rerun.blueprint.components.AutoLayout".into(),
+            "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.ViewerRecommendationHash".into(),
         ]
     });

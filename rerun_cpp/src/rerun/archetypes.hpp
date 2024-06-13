@@ -6,6 +6,7 @@
 #include "archetypes/arrows2d.hpp"
 #include "archetypes/arrows3d.hpp"
 #include "archetypes/asset3d.hpp"
+#include "archetypes/axes3d.hpp"
 #include "archetypes/bar_chart.hpp"
 #include "archetypes/boxes2d.hpp"
 #include "archetypes/boxes3d.hpp"

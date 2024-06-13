@@ -598,7 +598,8 @@ fn gc_impl(store: &mut DataStore) {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             protect_latest: 0,
             purge_empty_tables: false,
-            dont_protect: Default::default(),
+            dont_protect_components: Default::default(),
+            dont_protect_timelines: Default::default(),
             enable_batching: false,
             time_budget: std::time::Duration::MAX,
         });
@@ -674,7 +675,8 @@ fn protected_gc_impl(store: &mut DataStore) {
         target: GarbageCollectionTarget::Everything,
         protect_latest: 1,
         purge_empty_tables: true,
-        dont_protect: Default::default(),
+        dont_protect_components: Default::default(),
+        dont_protect_timelines: Default::default(),
         enable_batching: false,
         time_budget: std::time::Duration::MAX,
     });
@@ -771,7 +773,8 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         target: GarbageCollectionTarget::Everything,
         protect_latest: 1,
         purge_empty_tables: true,
-        dont_protect: Default::default(),
+        dont_protect_components: Default::default(),
+        dont_protect_timelines: Default::default(),
         enable_batching: false,
         time_budget: std::time::Duration::MAX,
     });
@@ -817,7 +820,8 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         target: GarbageCollectionTarget::Everything,
         protect_latest: 1,
         purge_empty_tables: true,
-        dont_protect: Default::default(),
+        dont_protect_components: Default::default(),
+        dont_protect_timelines: Default::default(),
         enable_batching: false,
         time_budget: std::time::Duration::MAX,
     });

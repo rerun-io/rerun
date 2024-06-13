@@ -65,6 +65,13 @@ impl std::ops::Deref for ActiveTab {
     }
 }
 
+impl std::ops::DerefMut for ActiveTab {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(ActiveTab);
 
 impl ::re_types_core::Loggable for ActiveTab {

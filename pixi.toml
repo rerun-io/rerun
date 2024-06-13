@@ -36,9 +36,17 @@ default = ["base", "maturin-build"]
 cpp = ["cpp", "base"]
 wheel-test = ["wheel-test", "base"]
 
-# Example environment (WIP)
-examples = ["examples-common", "maturin-build"]
+# Example environments
 
+# This environment uses the dev version of the python package.
+# The package will be installed in editable mode, so changes to the python code will be reflected immediately.
+# However, any changes to do the rust bindings will require running `pixi run -e examples py-build`.
+examples = ["examples-common", "maturin-build", "python-dev"]
+examples-ocr = ["examples-ocr", "maturin-build", "python-dev"]
+
+# This environment uses the pypi-published version of the python package. This avoids the need to
+# build the package from source if you just want to try running the examples locally.
+examples-pypi = ["examples-common", "python-pypi"]
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -348,11 +356,36 @@ cxx-compiler = "1.6.0.*"
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"
 
+# PYTHON DEV ENVIRONMENT
+[feature.python-dev]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
-# EXAMPLES ENVIRONMENT (WIP)
+[feature.python-dev.activation]
+# Set up environment variables so maturin will do the right thing when
+# installing the python package.
+scripts = ["pixi/maturin_config.sh"]
 
+[feature.python-dev.target.win-64.activation]
+scripts = ["pixi/maturin_config.bat"]
+
+# Install the `rerun_py` as a package in editable mode.
+# This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
+# However, pixi doesn't know how to track the rust dependencies of the python package, so
+# you still need to `pixi run py-build` in the correct environment if you change the rust code.
+[feature.python-dev.pypi-dependencies]
+rerun-sdk = { path = "rerun_py", editable = true }
+
+# PYTHON PYPI ENVIRONMENT
+[feature.python-pypi]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.python-pypi.pypi-dependencies]
+rerun-sdk = "==0.16.1"
+
+# EXAMPLES ENVIRONMENT
 [feature.examples-common]
 platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
 
 [feature.examples-common.system-requirements]
 macos = "12.0" # needed for scipy
@@ -393,10 +426,18 @@ shared_recording = { path = "examples/python/shared_recording", editable = true 
 signed_distance_fields = { path = "examples/python/signed_distance_fields", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
-ocr = {  path = "examples/python/ocr", editable = true }
 
-# Force pixi to depend on this (fake) rerun-sdk package, as this one can be overridden with `py-build`
-rerun-sdk = { path = "examples/python/_empty_rerun_sdk" }
+# OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
+[feature.examples-ocr]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+
+[feature.examples-ocr.dependencies]
+faiss-cpu = "==1.7.2" # Dep comes from paddleclas but we want the conda version to avoid source-wheel build
+
+[feature.examples-ocr.pypi-dependencies]
+paddleclas = { version = "==2.5.2" }
+ocr = { path = "examples/python/ocr", editable = true }
 
 # TODO(ab): reactivate these examples when they no-longer trigger the pixi perma-lock-invalidate bug
 #nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }

@@ -26,29 +26,35 @@ ARCHETYPES_PATHS = [
 ]
 
 opt_out = {
-    "asset3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "bar_chart": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "scalar": ["cpp", "py", "rust"],  # TODO(jleibs)
-    "series_line": ["cpp", "py", "rust"],  # TODO(jleibs)
-    "series_point": ["cpp", "py", "rust"],  # TODO(jleibs)
+    "asset3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "axes3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "bar_chart": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "clear": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "mesh3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
+    "scalar": ["cpp", "python", "rust"],  # TODO(jleibs)
+    "series_line": ["cpp", "python", "rust"],  # TODO(jleibs)
+    "series_point": ["cpp", "python", "rust"],  # TODO(jleibs)
     #
     # Most blueprint archetypes are untested currently:
-    "background": ["cpp", "py", "rust"],
-    "container_blueprint": ["cpp", "py", "rust"],
-    "panel_blueprint": ["cpp", "py", "rust"],
-    "plot_legend": ["cpp", "py", "rust"],
-    "scalar_axis": ["cpp", "py", "rust"],
-    "space_view_blueprint": ["cpp", "py", "rust"],
-    "space_view_contents": ["cpp", "py", "rust"],
-    "viewport_blueprint": ["cpp", "py", "rust"],
-    "visual_bounds2d": ["cpp", "py", "rust"],
+    "background": ["cpp", "python", "rust"],
+    "container_blueprint": ["cpp", "python", "rust"],
+    "panel_blueprint": ["cpp", "python", "rust"],
+    "plot_legend": ["cpp", "python", "rust"],
+    "scalar_axis": ["cpp", "python", "rust"],
+    "space_view_blueprint": ["cpp", "python", "rust"],
+    "space_view_contents": ["cpp", "python", "rust"],
+    "viewport_blueprint": ["cpp", "python", "rust"],
+    "visual_bounds2d": ["cpp", "python", "rust"],
 }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run our end-to-end cross-language roundtrip tests for all SDK")
+    parser.add_argument(
+        "--no-run",
+        action="store_true",
+        help="Do not build or run anything. Only check that the roundtrip tests exists.",
+    )
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
         "--no-cpp-build",
@@ -66,6 +72,36 @@ def main() -> None:
     parser.add_argument("archetype", nargs="*", type=str, default=None, help="Run only the specified archetypes")
 
     args = parser.parse_args()
+
+    # Which archetypes to run?
+    if len(args.archetype) > 0:
+        archetypes = args.archetype
+    else:
+        files = [
+            f for archetype_path in ARCHETYPES_PATHS for f in listdir(archetype_path) if isfile(join(archetype_path, f))
+        ]
+        archetypes = [
+            filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"
+        ]
+        assert len(archetypes) > 0, "No archetypes found!"
+
+    # Check that we have a roundtrip test for each language for each archetype:
+    errors = []
+    for arch in archetypes:
+        for lang in ["cpp", "python", "rust"]:
+            if lang not in opt_out.get(arch, []):
+                dir_path = f"tests/{lang}/roundtrips/{arch}"
+                if not os.path.exists(dir_path):
+                    errors.append(f"Missing {lang} roundtrip test for archetype '{arch}' (should be in '{dir_path}')")
+    if errors:
+        print("ERROR: Missing roundtrip tests for some archetypes!")
+        for error in errors:
+            print(f"  {error}")
+        sys.exit(1)
+
+    if args.no_run:
+        print("All archetypes have roundtrip tests.")
+        sys.exit(0)
 
     build_env = os.environ.copy()
     if "RUST_LOG" in build_env:
@@ -94,17 +130,6 @@ def main() -> None:
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
 
-    files = [
-        f for archetype_path in ARCHETYPES_PATHS for f in listdir(archetype_path) if isfile(join(archetype_path, f))
-    ]
-
-    if len(args.archetype) > 0:
-        archetypes = args.archetype
-    else:
-        archetypes = [
-            filename for filename, extension in [os.path.splitext(file) for file in files] if extension == ".fbs"
-        ]
-
     print("----------------------------------------------------------")
     print(f"Building {len(archetypes)} archetypes…")
 
@@ -125,7 +150,7 @@ def main() -> None:
         jobs = []
         for arch in archetypes:
             arch_opt_out = opt_out.get(arch, [])
-            for language in ["py", "rust"]:
+            for language in ["python", "rust"]:
                 if language in arch_opt_out:
                     continue
                 job = pool.apply_async(build, (arch, language, args))
@@ -152,7 +177,7 @@ def main() -> None:
             python_output_path = f"tests/python/roundtrips/{arch}/out.rrd"
             rust_output_path = f"tests/rust/roundtrips/{arch}/out.rrd"
 
-            if "py" not in arch_opt_out:
+            if "python" not in arch_opt_out:
                 run_comparison(python_output_path, rust_output_path, args.full_dump)
 
             if "cpp" not in arch_opt_out:
@@ -169,7 +194,7 @@ def main() -> None:
 def build(arch: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
         run_roundtrip_cpp(arch, args.release)
-    elif language == "py":
+    elif language == "python":
         run_roundtrip_python(arch)
     elif language == "rust":
         run_roundtrip_rust(arch, args.release, args.target, args.target_dir)

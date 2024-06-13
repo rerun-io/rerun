@@ -96,8 +96,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.TextLogIndicator".into(),
             "rerun.components.TextLogLevel".into(),
+            "rerun.components.TextLogIndicator".into(),
         ]
     });
 
@@ -108,8 +108,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Text".into(),
-            "rerun.components.TextLogIndicator".into(),
             "rerun.components.TextLogLevel".into(),
+            "rerun.components.TextLogIndicator".into(),
             "rerun.components.Color".into(),
         ]
     });

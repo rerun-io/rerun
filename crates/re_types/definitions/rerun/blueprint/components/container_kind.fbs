@@ -16,5 +16,5 @@ enum ContainerKind: byte (
     Tabs,
     Horizontal,
     Vertical,
-    Grid,
+    Grid (default),
 }

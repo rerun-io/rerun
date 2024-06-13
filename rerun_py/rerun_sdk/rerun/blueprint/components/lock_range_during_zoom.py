@@ -6,18 +6,22 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["LockRangeDuringZoom", "LockRangeDuringZoomBatch", "LockRangeDuringZoomType"]
 
 
-class LockRangeDuringZoom(datatypes.Bool):
+class LockRangeDuringZoom(datatypes.Bool, ComponentMixin):
     """
     **Component**: Indicate whether the range should be locked when zooming in on the data.
 
     Default is `false`, i.e. zoom will change the visualized range.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of LockRangeDuringZoomExt in lock_range_during_zoom_ext.py
 
     # Note: there are no fields here because LockRangeDuringZoom delegates to datatypes.Bool
@@ -30,3 +34,7 @@ class LockRangeDuringZoomType(datatypes.BoolType):
 
 class LockRangeDuringZoomBatch(datatypes.BoolBatch, ComponentBatchMixin):
     _ARROW_TYPE = LockRangeDuringZoomType()
+
+
+# This is patched in late to avoid circular dependencies.
+LockRangeDuringZoom._BATCH_TYPE = LockRangeDuringZoomBatch  # type: ignore[assignment]

@@ -1,4 +1,12 @@
-use super::Range2D;
+use super::{Range1D, Range2D};
+
+impl Range2D {
+    /// Range that expands from negative infinity to positive infinity on both axis.
+    pub const INFINITY: Self = Self {
+        x_range: Range1D::INFINITY,
+        y_range: Range1D::INFINITY,
+    };
+}
 
 impl From<emath::Rect> for Range2D {
     #[inline]
@@ -21,8 +29,12 @@ impl std::fmt::Display for Range2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[{}, {}]×[{}, {}]",
-            self.x_range.0[0], self.x_range.0[1], self.y_range.0[0], self.y_range.0[1],
+            "[{:.prec$}, {:.prec$}]×[{:.prec$}, {:.prec$}]",
+            self.x_range.0[0],
+            self.x_range.0[1],
+            self.y_range.0[0],
+            self.y_range.0[1],
+            prec = crate::DISPLAY_PRECISION,
         )
     }
 }

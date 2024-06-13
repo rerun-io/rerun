@@ -7,13 +7,12 @@ use re_format::format_f32;
 use re_log_types::Instance;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::{
-    blueprint::archetypes::Background,
-    components::{Color, DepthMeter, TensorData, ViewCoordinates},
-};
-use re_types::{blueprint::components::BackgroundKind, tensor_data::TensorDataMeaning};
+use re_types::archetypes::Pinhole;
+use re_types::components::{DepthMeter, TensorData, ViewCoordinates};
+use re_types::tensor_data::TensorDataMeaning;
+use re_ui::UiExt as _;
 use re_viewer_context::{
-    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
+    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
     ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
@@ -67,6 +66,9 @@ pub struct SpatialSpaceViewState {
 
     /// Size of automatically sized objects. None if it wasn't configured.
     auto_size_config: re_renderer::AutoSizeConfig,
+
+    /// Pinhole component logged at the origin if any.
+    pub pinhole_at_origin: Option<Pinhole>,
 }
 
 impl SpaceViewState for SpatialSpaceViewState {
@@ -91,14 +93,8 @@ impl SpatialSpaceViewState {
         config
     }
 
-    pub fn bounding_box_ui(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spatial_kind: SpatialSpaceViewKind,
-    ) {
-        ctx.re_ui
-            .grid_left_hand_label(ui, "Bounding box")
+    pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
+        ui.grid_left_hand_label("Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -113,17 +109,16 @@ impl SpatialSpaceViewState {
     }
 
     /// Default sizes of points and lines.
-    pub fn default_sizes_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn default_sizes_ui(&mut self, ui: &mut egui::Ui) {
         let auto_size_world =
             auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
 
-        ctx.re_ui.grid_left_hand_label(ui, "Default size");
+        ui.grid_left_hand_label("Default size");
 
         egui::Grid::new("default_sizes")
             .num_columns(2)
             .show(ui, |ui| {
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Point radius")
+                ui.grid_left_hand_label("Point radius")
                     .on_hover_text("Point radius used whenever not explicitly specified");
                 ui.push_id("points", |ui| {
                     size_ui(
@@ -135,8 +130,7 @@ impl SpatialSpaceViewState {
                 });
                 ui.end_row();
 
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Line radius")
+                ui.grid_left_hand_label("Line radius")
                     .on_hover_text("Line radius used whenever not explicitly specified");
                 size_ui(
                     ui,
@@ -153,7 +147,6 @@ impl SpatialSpaceViewState {
     // Say the name out loud. It is fun!
     pub fn view_eye_ui(
         &mut self,
-        re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
         scene_view_coordinates: Option<ViewCoordinates>,
     ) {
@@ -171,8 +164,8 @@ impl SpatialSpaceViewState {
 
         {
             let mut spin = self.state_3d.spin();
-            if re_ui
-                .checkbox(ui, &mut spin, "Spin")
+            if ui
+                .re_checkbox(&mut spin, "Spin")
                 .on_hover_text("Spin camera around the orbit center")
                 .changed()
             {
@@ -495,7 +488,7 @@ pub fn picking(
             .lookup_query_result(query.space_view_id)
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
-            .map_or(false, |result| result.accumulated_properties().interactive);
+            .map_or(false, |result| result.is_interactive(ctx));
         if !interactive {
             continue;
         }
@@ -773,74 +766,5 @@ pub fn format_vector(v: glam::Vec3) -> String {
         "-Z".to_owned()
     } else {
         format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
-    }
-}
-
-pub fn background_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    space_view_id: SpaceViewId,
-    default_background: Background,
-) {
-    let blueprint_db = ctx.store_context.blueprint;
-    let blueprint_query = ctx.blueprint_query;
-    let (archetype, blueprint_path) =
-        re_viewport_blueprint::query_view_property(space_view_id, blueprint_db, blueprint_query);
-
-    let Background { color, mut kind } = archetype.ok().flatten().unwrap_or(default_background);
-
-    ctx.re_ui.grid_left_hand_label(ui, "Background");
-
-    ui.vertical(|ui| {
-        let kind_before = kind;
-        egui::ComboBox::from_id_source("background")
-            .selected_text(background_color_text(kind))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut kind,
-                    BackgroundKind::GradientDark,
-                    background_color_text(BackgroundKind::GradientDark),
-                );
-                ui.selectable_value(
-                    &mut kind,
-                    BackgroundKind::GradientBright,
-                    background_color_text(BackgroundKind::GradientBright),
-                );
-                ui.selectable_value(
-                    &mut kind,
-                    BackgroundKind::SolidColor,
-                    background_color_text(BackgroundKind::SolidColor),
-                );
-            });
-        if kind_before != kind {
-            ctx.save_blueprint_component(&blueprint_path, &kind);
-        }
-
-        if kind == BackgroundKind::SolidColor {
-            let current_color = color
-                .or(default_background.color)
-                .unwrap_or(Color::BLACK)
-                .into();
-            let mut edit_color = current_color;
-            egui::color_picker::color_edit_button_srgba(
-                ui,
-                &mut edit_color,
-                egui::color_picker::Alpha::Opaque,
-            );
-            if edit_color != current_color {
-                ctx.save_blueprint_component(&blueprint_path, &BackgroundKind::SolidColor);
-                ctx.save_blueprint_component(&blueprint_path, &Color::from(edit_color));
-            }
-        }
-    });
-
-    ui.end_row();
-}
-
-fn background_color_text(kind: BackgroundKind) -> &'static str {
-    match kind {
-        BackgroundKind::GradientDark => "Dark gradient",
-        BackgroundKind::GradientBright => "Bright gradient",
-        BackgroundKind::SolidColor => "Solid color",
     }
 }

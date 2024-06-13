@@ -9,7 +9,11 @@ from typing import Literal, Sequence, Union
 
 import pyarrow as pa
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+)
 
 __all__ = ["Corner2D", "Corner2DArrayLike", "Corner2DBatch", "Corner2DLike", "Corner2DType"]
 

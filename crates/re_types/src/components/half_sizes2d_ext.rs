@@ -64,3 +64,10 @@ impl From<HalfSizes2D> for mint::Vector2<f32> {
         }
     }
 }
+
+impl Default for HalfSizes2D {
+    #[inline]
+    fn default() -> Self {
+        Self(Vec2D::ONE)
+    }
+}

@@ -44,7 +44,7 @@ impl ViewContextSystem for PrimitiveCounter {
 
     fn execute(
         &mut self,
-        _ctx: &re_viewer_context::ViewerContext<'_>,
+        _ctx: &re_viewer_context::ViewContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
     ) {
     }

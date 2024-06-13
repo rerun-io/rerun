@@ -3,16 +3,15 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, Union
 
 __all__ = ["Spatial2DView"]
 
 
 from ... import datatypes
-from ..._baseclasses import AsComponents
+from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from .. import archetypes as blueprint_archetypes
-from .. import components as blueprint_components
+from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -75,6 +74,7 @@ class Spatial2DView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
+        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
@@ -103,6 +103,10 @@ class Spatial2DView(SpaceView):
             Whether this view is visible.
 
             Defaults to true if not specified.
+        defaults:
+            List of default components or component batches to add to the space view. When an archetype
+            in the view is missing a component included in this set, the value of default will be used
+            instead of the normal fallback for the visualizer.
         background:
             Configuration for the background of the view.
         visual_bounds:
@@ -135,5 +139,11 @@ class Spatial2DView(SpaceView):
             properties["VisibleTimeRanges"] = time_ranges
 
         super().__init__(
-            class_identifier="2D", origin=origin, contents=contents, name=name, visible=visible, properties=properties
+            class_identifier="2D",
+            origin=origin,
+            contents=contents,
+            name=name,
+            visible=visible,
+            properties=properties,
+            defaults=defaults,
         )

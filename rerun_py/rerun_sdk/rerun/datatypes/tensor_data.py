@@ -12,7 +12,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .tensor_data_ext import TensorDataExt
 
 __all__ = ["TensorData", "TensorDataArrayLike", "TensorDataBatch", "TensorDataLike", "TensorDataType"]

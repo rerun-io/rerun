@@ -1,6 +1,7 @@
 use std::{ops::ControlFlow, sync::Arc};
 
 use anyhow::Context as _;
+use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 
 use re_log::ResultExt as _;
@@ -11,7 +12,17 @@ use re_viewer_context::CommandSender;
 /// Useful in error handlers
 #[allow(clippy::needless_pass_by_value)]
 pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
-    s.as_string().unwrap_or(format!("{s:#?}"))
+    // it's already a string
+    if let Some(s) = s.as_string() {
+        return s;
+    }
+
+    // it's an Error, call `toString` instead
+    if let Some(s) = s.dyn_ref::<js_sys::Error>() {
+        return format!("{}", s.to_string());
+    }
+
+    format!("{s:#?}")
 }
 
 pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_bindgen::JsValue> {

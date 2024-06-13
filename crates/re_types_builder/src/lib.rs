@@ -104,7 +104,7 @@
 #![allow(clippy::unwrap_used)]
 
 // NOTE: Official generated code from flatbuffers; ignore _everything_.
-mod casing;
+
 #[allow(
     warnings,
     unused,
@@ -116,8 +116,6 @@ mod casing;
     clippy::all
 )]
 mod reflection;
-
-use casing::{to_human_case, to_pascal_case, to_snake_case};
 
 use std::collections::{BTreeMap, BTreeSet};
 

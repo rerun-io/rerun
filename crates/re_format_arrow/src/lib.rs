@@ -1,12 +1,12 @@
 //! Formatting for tables of Arrow arrays
 
-use std::fmt::Formatter;
+use std::{borrow::Borrow, fmt::Formatter};
 
 use arrow2::{
     array::{get_display, Array, ListArray},
-    datatypes::{DataType, IntervalUnit, TimeUnit},
+    datatypes::{DataType, Field, IntervalUnit, Metadata, TimeUnit},
 };
-use comfy_table::{presets, Cell, Table};
+use comfy_table::{presets, Cell, Row, Table};
 
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
@@ -21,7 +21,6 @@ use re_types_core::Loggable as _;
 type CustomFormatter<'a, F> = Box<dyn Fn(&mut F, usize) -> std::fmt::Result + 'a>;
 
 fn get_custom_display<'a, F: std::fmt::Write + 'a>(
-    _column_name: &'a str,
     array: &'a dyn Array,
     null: &'static str,
 ) -> CustomFormatter<'a, F> {
@@ -107,9 +106,9 @@ impl std::fmt::Display for DisplayIntervalUnit {
 
 //TODO(john) move this and the Display impl upstream into arrow2
 #[repr(transparent)]
-struct DisplayDataType(DataType);
+struct DisplayDatatype<'a>(&'a DataType);
 
-impl std::fmt::Display for DisplayDataType {
+impl std::fmt::Display for DisplayDatatype<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match &self.0 {
             DataType::Null => "null",
@@ -157,84 +156,141 @@ impl std::fmt::Display for DisplayDataType {
             DataType::Utf8 => "str",
             DataType::LargeUtf8 => "large-string",
             DataType::List(ref field) => {
-                let s = format!("list[{}]", Self(field.data_type().clone()));
+                let s = format!("list[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::FixedSizeList(field, len) => {
-                let s = format!("fixed-list[{}; {len}]", Self(field.data_type().clone()));
+                let s = format!("fixed-list[{}; {len}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::LargeList(field) => {
-                let s = format!("large-list[{}]", Self(field.data_type().clone()));
+                let s = format!("large-list[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }
             DataType::Struct(fields) => return write!(f, "struct[{}]", fields.len()),
             DataType::Union(fields, _, _) => return write!(f, "union[{}]", fields.len()),
-            DataType::Map(field, _) => {
-                return write!(f, "map[{}]", Self(field.data_type().clone()))
-            }
+            DataType::Map(field, _) => return write!(f, "map[{}]", Self(field.data_type())),
             DataType::Dictionary(_, _, _) => "dict",
             DataType::Decimal(_, _) => "decimal",
             DataType::Decimal256(_, _) => "decimal256",
-            DataType::Extension(name, data_type, _) => {
-                let s = format!("extension<{name}>[{}]", Self((**data_type).clone()));
-                return f.write_str(&s);
+            DataType::Extension(name, _, _) => {
+                return f.write_str(trim_name(name));
             }
         };
         f.write_str(s)
     }
 }
 
-/// Format `columns` into a [`Table`] using `names` as headers.
-pub fn format_table<A, Ia, N, In>(columns: Ia, names: In) -> Table
+struct DisplayMetadata<'a>(&'a Metadata, &'a str);
+
+impl<'a> std::fmt::Display for DisplayMetadata<'a> {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let Self(metadata, prefix) = self;
+        f.write_str(
+            &metadata
+                .iter()
+                .map(|(key, value)| format!("{prefix}{}: {value:?}", trim_name(key)))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        )
+    }
+}
+
+fn trim_name(name: &str) -> &str {
+    name.trim_start_matches("rerun.archetypes.")
+        .trim_start_matches("rerun.components.")
+        .trim_start_matches("rerun.datatypes.")
+        .trim_start_matches("rerun.controls.")
+        .trim_start_matches("rerun.blueprint.archetypes.")
+        .trim_start_matches("rerun.blueprint.components.")
+        .trim_start_matches("rerun.blueprint.datatypes.")
+        .trim_start_matches("rerun.field.")
+        .trim_start_matches("rerun.chunk.")
+        .trim_start_matches("rerun.")
+}
+
+pub fn format_dataframe<F, C>(
+    metadata: impl Borrow<Metadata>,
+    fields: impl IntoIterator<Item = F>,
+    columns: impl IntoIterator<Item = C>,
+) -> Table
 where
-    A: AsRef<dyn Array>,
-    Ia: IntoIterator<Item = A>,
-    N: AsRef<str>,
-    In: IntoIterator<Item = N>,
+    F: Borrow<Field>,
+    C: Borrow<dyn Array>,
 {
+    let metadata = metadata.borrow();
+
+    let fields = fields.into_iter().collect::<Vec<_>>();
+    let fields = fields
+        .iter()
+        .map(|field| field.borrow())
+        .collect::<Vec<_>>();
+
+    let columns = columns.into_iter().collect::<Vec<_>>();
+    let columns = columns
+        .iter()
+        .map(|column| column.borrow())
+        .collect::<Vec<_>>();
+
+    const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
+
+    let mut outer_table = Table::new();
+    outer_table.load_preset(presets::UTF8_FULL);
+
     let mut table = Table::new();
     table.load_preset(presets::UTF8_FULL);
 
-    const WIDTH_UPPER_BOUNDARY: u16 = 100;
+    outer_table.add_row({
+        let mut row = Row::new();
+        row.add_cell({
+            let cell = Cell::new(format!(
+                "CHUNK METADATA:\n{}",
+                DisplayMetadata(metadata, "* ")
+            ));
 
-    let names = names
-        .into_iter()
-        .map(|name| name.as_ref().to_owned())
-        .collect::<Vec<_>>();
-    let arrays = columns.into_iter().collect::<Vec<_>>();
+            #[cfg(not(target_arch = "wasm32"))] // requires TTY
+            {
+                cell.add_attribute(comfy_table::Attribute::Italic)
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                cell
+            }
+        });
+        row
+    });
 
-    let (displayers, lengths): (Vec<_>, Vec<_>) = arrays
+    let header = fields.iter().map(|field| {
+        if field.metadata.is_empty() {
+            Cell::new(format!(
+                "{}\n---\ntype: \"{}\"", // NOLINT
+                trim_name(&field.name),
+                DisplayDatatype(field.data_type()),
+            ))
+        } else {
+            Cell::new(format!(
+                "{}\n---\ntype: \"{}\"\n{}", // NOLINT
+                trim_name(&field.name),
+                DisplayDatatype(field.data_type()),
+                DisplayMetadata(&field.metadata, ""),
+            ))
+        }
+    });
+    table.set_header(header);
+
+    let displays = columns
         .iter()
-        .zip(names.iter())
-        .map(|(array, name)| {
-            let formatter = get_custom_display(name, array.as_ref(), "-");
-            (formatter, array.as_ref().len())
-        })
-        .unzip();
+        .map(|array| get_custom_display(&**array, "-"))
+        .collect::<Vec<_>>();
+    let num_rows = columns.first().map_or(0, |list_array| list_array.len());
 
-    if displayers.is_empty() {
+    if displays.is_empty() || num_rows == 0 {
         return table;
     }
 
-    let header = names
-        .iter()
-        .zip(arrays.iter().map(|array| array.as_ref().data_type()))
-        .map(|(name, data_type)| {
-            Cell::new(format!(
-                "{}\n---\n{}",
-                name.trim_start_matches("rerun.archetypes.")
-                    .trim_start_matches("rerun.components.")
-                    .trim_start_matches("rerun.datatypes.")
-                    .trim_start_matches("rerun.controls.")
-                    .trim_start_matches("rerun."),
-                DisplayDataType(data_type.clone())
-            ))
-        });
-    table.set_header(header);
-
-    for row in 0..lengths[0] {
-        let cells: Vec<_> = displayers
+    for row in 0..num_rows {
+        let cells: Vec<_> = displays
             .iter()
             .map(|disp| {
                 let mut string = String::new();
@@ -243,11 +299,11 @@ where
                     string.clear();
                 }
                 let chars: Vec<_> = string.chars().collect();
-                if chars.len() > WIDTH_UPPER_BOUNDARY as usize {
+                if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
                     Cell::new(
                         chars
                             .into_iter()
-                            .take(WIDTH_UPPER_BOUNDARY.saturating_sub(1).into())
+                            .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
                             .chain(['…'])
                             .collect::<String>(),
                     )
@@ -259,16 +315,21 @@ where
         table.add_row(cells);
     }
 
-    table.set_content_arrangement(comfy_table::ContentArrangement::DynamicFullWidth);
+    table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
     // NOTE: `Percentage` only works for terminals that report their sizes.
-    let width = if table.width().is_some() {
-        comfy_table::Width::Percentage((100.0 / arrays.len() as f32) as u16)
-    } else {
-        comfy_table::Width::Fixed(WIDTH_UPPER_BOUNDARY)
-    };
-    table.set_constraints(
-        std::iter::repeat(comfy_table::ColumnConstraint::UpperBoundary(width)).take(arrays.len()),
+    if table.width().is_some() {
+        let percentage = comfy_table::Width::Percentage((100.0 / columns.len() as f32) as u16);
+        table.set_constraints(
+            std::iter::repeat(comfy_table::ColumnConstraint::UpperBoundary(percentage))
+                .take(columns.len()),
+        );
+    }
+
+    outer_table.add_row(vec![table.trim_fmt()]);
+    outer_table.set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
+    outer_table.set_constraints(
+        std::iter::repeat(comfy_table::ColumnConstraint::ContentWidth).take(columns.len()),
     );
 
-    table
+    outer_table
 }

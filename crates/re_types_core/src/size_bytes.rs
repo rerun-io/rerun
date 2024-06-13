@@ -182,6 +182,13 @@ impl<T: SizeBytes> SizeBytes for Arc<T> {
     }
 }
 
+impl<T: SizeBytes> SizeBytes for Box<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        T::total_size_bytes(&**self)
+    }
+}
+
 // TODO(rust-lang/rust#31844): `impl<T: bytemuck::Pod> SizeBytesExt for T {}` would be nice but
 // violates orphan rules.
 macro_rules! impl_size_bytes_pod {
@@ -327,8 +334,16 @@ impl SizeBytes for Field {
 }
 
 impl SizeBytes for dyn Array {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         estimated_bytes_size(self) as _
+    }
+}
+
+impl SizeBytes for Box<dyn Array> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        estimated_bytes_size(&**self as _) as _
     }
 }
 

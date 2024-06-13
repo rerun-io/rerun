@@ -29,6 +29,7 @@ serde = ["dep:serde", "re_string_interner/serde"]
 
 [dependencies]
 # Rerun
+re_case.workspace = true
 re_error.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true

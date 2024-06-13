@@ -51,6 +51,22 @@ impl From<AffixFuzzer12> for Vec<::re_types_core::ArrowString> {
     }
 }
 
+impl std::ops::Deref for AffixFuzzer12 {
+    type Target = Vec<::re_types_core::ArrowString>;
+
+    #[inline]
+    fn deref(&self) -> &Vec<::re_types_core::ArrowString> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer12 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Vec<::re_types_core::ArrowString> {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer12);
 
 impl ::re_types_core::Loggable for AffixFuzzer12 {

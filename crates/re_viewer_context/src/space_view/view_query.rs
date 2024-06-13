@@ -11,8 +11,8 @@ use re_log_types::StoreKind;
 use re_types::ComponentName;
 
 use crate::{
-    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier,
-    ViewerContext,
+    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewContext,
+    ViewSystemIdentifier, ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
@@ -196,6 +196,30 @@ impl DataResult {
         ctx.save_blueprint_component(recursive_override_path, desired_override);
     }
 
+    /// Saves a recursive override, does not take into current or default values.
+    ///
+    /// Ignores individual overrides and current value.
+    pub fn save_individual_override<C: re_types::Component>(
+        &self,
+        ctx: &ViewerContext<'_>,
+        desired_override: &C,
+    ) {
+        re_tracing::profile_function!();
+
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(override_path) = self.individual_override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        ctx.save_blueprint_component(override_path, desired_override);
+    }
+
     /// Clears the recursive override for a given component
     pub fn clear_recursive_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
         // TODO(jleibs): Make it impossible for this to happen with different type structure
@@ -210,6 +234,22 @@ impl DataResult {
         };
 
         ctx.save_empty_blueprint_component::<C>(recursive_override_path);
+    }
+
+    /// Clears the recursive override for a given component
+    pub fn clear_individual_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(individual_override_path) = self.individual_override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        ctx.save_empty_blueprint_component::<C>(individual_override_path);
     }
 
     /// Write the [`EntityProperties`] for this result back to the Blueprint store on the recursive override.
@@ -337,11 +377,10 @@ impl DataResult {
     ///
     /// Returns None if there was no override at all.
     /// Note that if this returns the current path, the override might be either an individual or recursive override.
-    #[inline]
     pub fn component_override_source(
         &self,
         result_tree: &DataResultTree,
-        component_name: &ComponentName,
+        component_name: ComponentName,
     ) -> Option<EntityPath> {
         re_tracing::profile_function!();
 
@@ -349,7 +388,7 @@ impl DataResult {
         let active_override = self
             .property_overrides
             .as_ref()
-            .and_then(|p| p.resolved_component_overrides.get(component_name))?;
+            .and_then(|p| p.resolved_component_overrides.get(&component_name))?;
 
         // Walk up the tree to find the highest ancestor which has a matching override.
         // This must be the ancestor we inherited the override from. Note that `active_override`
@@ -364,7 +403,7 @@ impl DataResult {
                     //                This should access `recursive_component_overrides` instead.
                     property_overrides
                         .resolved_component_overrides
-                        .get(component_name)
+                        .get(&component_name)
                         != Some(active_override)
                 })
             {
@@ -377,14 +416,35 @@ impl DataResult {
         Some(override_source)
     }
 
+    /// Returns true if the current component's value was inherited from a parent entity.
+    pub fn is_inherited(
+        &self,
+        result_tree: &DataResultTree,
+        component_name: ComponentName,
+    ) -> bool {
+        let override_source = self.component_override_source(result_tree, component_name);
+        override_source.is_some() && override_source.as_ref() != Some(&self.entity_path)
+    }
+
     /// Shorthand for checking for visibility on data overrides.
     ///
     /// Note that this won't check if the data store has visibility logged.
-    // TODO(andreas): Should this be possible?
-    // TODO(andreas): Should the result be cached, this might be a very common operation?
+    // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
         self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
+            .unwrap_or_default()
+            .0
+    }
+
+    /// Shorthand for checking for interactivity on data overrides.
+    ///
+    /// Note that this won't check if the data store has interactivity logged.
+    // TODO(#6541): Check the datastore.
+    #[inline]
+    pub fn is_interactive(&self, ctx: &ViewerContext<'_>) -> bool {
+        *self
+            .lookup_override::<re_types::blueprint::components::Interactive>(ctx)
             .unwrap_or_default()
             .0
     }
@@ -428,7 +488,7 @@ impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
     pub fn iter_visible_data_results<'a>(
         &'a self,
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a ViewContext<'a>,
         visualizer: ViewSystemIdentifier,
     ) -> impl Iterator<Item = &DataResult>
     where
@@ -440,7 +500,7 @@ impl<'s> ViewQuery<'s> {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .filter(|result| result.is_visible(ctx))
+                        .filter(|result| result.is_visible(ctx.viewer_ctx))
                         .copied(),
                 )
             },

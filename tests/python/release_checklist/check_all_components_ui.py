@@ -89,6 +89,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             ),
         )
     ]),
+    "AxisLengthBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "BlobBatch": TestCase(
         alternatives=[
             b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09",
@@ -103,6 +104,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "DrawOrderBatch": TestCase(100.0),
     "HalfSizes2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSizes3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
+    "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "KeypointIdBatch": TestCase(batch=[5, 6, 7]),
     "LineStrip2DBatch": TestCase(batch=[((0, 0), (1, 1), (2, 2)), ((3, 3), (4, 4), (5, 5)), ((6, 6), (7, 7), (8, 8))]),
     "LineStrip3DBatch": TestCase(
@@ -137,7 +139,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
         ]
     ),
     "ScalarBatch": TestCase(3),
-    "ScalarScatteringBatch": TestCase(True),
     "StrokeWidthBatch": TestCase(2.0),
     "TensorDataBatch": TestCase(
         alternatives=[

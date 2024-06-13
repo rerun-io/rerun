@@ -81,7 +81,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &re_ui::icons::SPACE_VIEW_GENERIC
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
         "A demo space view that shows colors as coordinates on a 2D plane.".into()
     }
 

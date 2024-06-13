@@ -6,13 +6,16 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .media_type_ext import MediaTypeExt
 
 __all__ = ["MediaType", "MediaTypeBatch", "MediaTypeType"]
 
 
-class MediaType(MediaTypeExt, datatypes.Utf8):
+class MediaType(MediaTypeExt, datatypes.Utf8, ComponentMixin):
     """
     **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
 
@@ -20,6 +23,7 @@ class MediaType(MediaTypeExt, datatypes.Utf8):
     consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of MediaTypeExt in media_type_ext.py
 
     # Note: there are no fields here because MediaType delegates to datatypes.Utf8
@@ -33,5 +37,8 @@ class MediaTypeType(datatypes.Utf8Type):
 class MediaTypeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = MediaTypeType()
 
+
+# This is patched in late to avoid circular dependencies.
+MediaType._BATCH_TYPE = MediaTypeBatch  # type: ignore[assignment]
 
 MediaTypeExt.deferred_patch_class(MediaType)

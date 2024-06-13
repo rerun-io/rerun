@@ -11,7 +11,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .annotation_context_ext import AnnotationContextExt
 
 __all__ = [
@@ -24,7 +29,7 @@ __all__ = [
 
 
 @define(init=False)
-class AnnotationContext(AnnotationContextExt):
+class AnnotationContext(AnnotationContextExt, ComponentMixin):
     """
     **Component**: The `AnnotationContext` provides additional information on how to display entities.
 
@@ -34,6 +39,8 @@ class AnnotationContext(AnnotationContextExt):
     path-hierarchy when searching up through the ancestors of a given entity
     path.
     """
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, class_map: AnnotationContextLike):
         """
@@ -146,3 +153,7 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
         return AnnotationContextExt.native_to_pa_array_override(data, data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+AnnotationContext._BATCH_TYPE = AnnotationContextBatch  # type: ignore[assignment]

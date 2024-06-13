@@ -668,6 +668,10 @@ fn assert_recursive_histogram<'a>(
         let histo = db.time_histogram(timeline);
 
         if let Some(expected) = expected_times {
+            if expected.is_empty() {
+                assert!(histo.is_none());
+                continue;
+            }
             let histo = histo.unwrap();
             let ranges = histo.range(i64::MIN.., 0).collect::<Vec<_>>();
             let expected: Vec<_> = expected.to_vec();
@@ -692,9 +696,13 @@ fn assert_histogram_for_component<'a>(
             .and_then(|tree| tree.time_histogram_for_component(timeline, component_name));
 
         if let Some(expected) = expected_times {
+            let expected: Vec<_> = expected.to_vec();
+            if expected.is_empty() {
+                assert!(histo.is_none());
+                continue;
+            }
             let histo = histo.unwrap();
             let ranges = histo.range(i64::MIN.., 0).collect::<Vec<_>>();
-            let expected: Vec<_> = expected.to_vec();
             similar_asserts::assert_eq!(expected, ranges);
         } else {
             assert!(histo.is_none());

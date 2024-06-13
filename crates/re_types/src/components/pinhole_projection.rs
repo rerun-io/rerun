@@ -70,6 +70,13 @@ impl std::ops::Deref for PinholeProjection {
     }
 }
 
+impl std::ops::DerefMut for PinholeProjection {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(PinholeProjection);
 
 impl ::re_types_core::Loggable for PinholeProjection {

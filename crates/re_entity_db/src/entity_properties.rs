@@ -94,15 +94,11 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
-    pub interactive: bool, // TODO(andreas): similar to `visible`, needs to become a regular (slightly special - doesn't show up in archetypes) component.
+    // TODO(#5067): Test property used so we don't have to continuously adjust existing tests while we're dismantling `EntityProperties`.
+    pub test_property: bool,
 
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
     pub color_mapper: EditableAutoValue<ColorMapper>, // TODO(andreas): should become a component and be part of the DepthImage and regular Images (with limitation to mono channel image).
-
-    /// Distance of the projection plane (frustum far plane).
-    ///
-    /// Only applies to pinhole cameras when in a spatial view, using 3D navigation.
-    pub pinhole_image_plane_distance: EditableAutoValue<f32>, // TODO(#6084): should be a regular component on the Pinhole archetype.
 
     /// Should the depth texture be backprojected into a point cloud?
     ///
@@ -119,26 +115,6 @@ pub struct EntityProperties {
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>, // TODO(andreas): should be a component on the DepthImage archetype.
 
-    /// Whether to show the 3D transform visualization at all.
-    // TODO(andreas): should go away once we can disable visualizer. Revisit how to collectively enable/disable these on an entire view.
-    // To consider: Make a TransformAxis archetype whose indicator is what enables the visualizer
-    // -> size etc. are now part of this archetype, not the `Transform` archetype
-    // -> `TransformAxis` itself doesn't have a required component, but the visualizer has. Just like in SeriesLines & Scalar.
-    // TODO(andreas)/TODO(jleibs): There's a pattern here that we should capture & formalize in the API / codegen / definitions.
-    pub transform_3d_visible: EditableAutoValue<bool>,
-
-    /// The length of the arrows in the entity's own coordinate system (space).
-    pub transform_3d_size: EditableAutoValue<f32>, // TODO(andreas): should be a component on the Transform3D/TransformAxis archetype.
-
-    /// Should the legend be shown (for plot space views).
-    pub show_legend: EditableAutoValue<bool>, // TODO(andreas): BarChart is still using it, we already have the legend archteype!
-
-    /// The location of the legend (for plot space views).
-    ///
-    /// This is an Option instead of an EditableAutoValue to let each space view class decide on
-    /// what's the best default.
-    pub legend_location: Option<LegendCorner>, // TODO(andreas): BarChart is still using it, we already have the legend archteype!
-
     /// What kind of data aggregation to perform (for plot space views).
     pub time_series_aggregator: EditableAutoValue<TimeSeriesAggregator>, // TODO(andreas): Should be a component probably on SeriesLine, but today it would become a view property.
 }
@@ -147,16 +123,11 @@ pub struct EntityProperties {
 impl Default for EntityProperties {
     fn default() -> Self {
         Self {
-            interactive: true,
+            test_property: true,
             color_mapper: EditableAutoValue::default(),
-            pinhole_image_plane_distance: EditableAutoValue::Auto(1.0),
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
-            transform_3d_visible: EditableAutoValue::Auto(false),
-            transform_3d_size: EditableAutoValue::Auto(1.0),
-            show_legend: EditableAutoValue::Auto(true),
-            legend_location: None,
             time_series_aggregator: EditableAutoValue::Auto(TimeSeriesAggregator::default()),
         }
     }
@@ -167,14 +138,9 @@ impl EntityProperties {
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
-            interactive: self.interactive && child.interactive,
+            test_property: self.test_property && child.test_property,
 
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
-
-            pinhole_image_plane_distance: self
-                .pinhole_image_plane_distance
-                .or(&child.pinhole_image_plane_distance)
-                .clone(),
 
             backproject_depth: self.backproject_depth.or(&child.backproject_depth).clone(),
             depth_from_world_scale: self
@@ -186,14 +152,6 @@ impl EntityProperties {
                 .or(&child.backproject_radius_scale)
                 .clone(),
 
-            transform_3d_visible: self
-                .transform_3d_visible
-                .or(&child.transform_3d_visible)
-                .clone(),
-            transform_3d_size: self.transform_3d_size.or(&child.transform_3d_size).clone(),
-
-            show_legend: self.show_legend.or(&child.show_legend).clone(),
-            legend_location: self.legend_location.or(child.legend_location),
             time_series_aggregator: self
                 .time_series_aggregator
                 .or(&child.time_series_aggregator)
@@ -210,14 +168,9 @@ impl EntityProperties {
     /// loaded from the Blueprint store where the Auto values are not up-to-date.
     pub fn merge_with(&self, other: &Self) -> Self {
         Self {
-            interactive: other.interactive,
+            test_property: other.test_property,
 
             color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
-
-            pinhole_image_plane_distance: other
-                .pinhole_image_plane_distance
-                .or(&self.pinhole_image_plane_distance)
-                .clone(),
 
             backproject_depth: other.backproject_depth.or(&self.backproject_depth).clone(),
             depth_from_world_scale: other
@@ -229,14 +182,6 @@ impl EntityProperties {
                 .or(&self.backproject_radius_scale)
                 .clone(),
 
-            transform_3d_visible: other
-                .transform_3d_visible
-                .or(&self.transform_3d_visible)
-                .clone(),
-            transform_3d_size: self.transform_3d_size.or(&other.transform_3d_size).clone(),
-
-            show_legend: other.show_legend.or(&self.show_legend).clone(),
-            legend_location: other.legend_location.or(self.legend_location),
             time_series_aggregator: other
                 .time_series_aggregator
                 .or(&self.time_series_aggregator)
@@ -247,29 +192,19 @@ impl EntityProperties {
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
-            interactive,
+            test_property,
             color_mapper,
-            pinhole_image_plane_distance,
             backproject_depth,
             depth_from_world_scale,
             backproject_radius_scale,
-            transform_3d_visible,
-            transform_3d_size,
-            show_legend,
-            legend_location,
             time_series_aggregator,
         } = self;
 
-        interactive != &other.interactive
+        test_property != &other.test_property
             || color_mapper.has_edits(&other.color_mapper)
-            || pinhole_image_plane_distance.has_edits(&other.pinhole_image_plane_distance)
             || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
-            || transform_3d_visible.has_edits(&other.transform_3d_visible)
-            || transform_3d_size.has_edits(&other.transform_3d_size)
-            || show_legend.has_edits(&other.show_legend)
-            || *legend_location != other.legend_location
             || time_series_aggregator.has_edits(&other.time_series_aggregator)
     }
 }

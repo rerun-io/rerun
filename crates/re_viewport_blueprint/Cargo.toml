@@ -39,3 +39,4 @@ once_cell.workspace = true
 parking_lot.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
+thiserror.workspace = true

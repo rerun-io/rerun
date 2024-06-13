@@ -12,14 +12,21 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["StrokeWidth", "StrokeWidthArrayLike", "StrokeWidthBatch", "StrokeWidthLike", "StrokeWidthType"]
 
 
 @define(init=False)
-class StrokeWidth:
+class StrokeWidth(ComponentMixin):
     """**Component**: The width of a stroke specified in UI points."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, width: StrokeWidthLike):
         """Create a new instance of the StrokeWidth component."""
@@ -62,3 +69,7 @@ class StrokeWidthBatch(BaseBatch[StrokeWidthArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: StrokeWidthArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.float32).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+StrokeWidth._BATCH_TYPE = StrokeWidthBatch  # type: ignore[assignment]

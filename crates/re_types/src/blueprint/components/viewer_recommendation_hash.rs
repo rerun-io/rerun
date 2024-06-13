@@ -63,6 +63,13 @@ impl std::ops::Deref for ViewerRecommendationHash {
     }
 }
 
+impl std::ops::DerefMut for ViewerRecommendationHash {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(ViewerRecommendationHash);
 
 impl ::re_types_core::Loggable for ViewerRecommendationHash {

@@ -27,17 +27,9 @@ from .common_arrays import (
     labels_expected,
     radii_arrays,
     radii_expected,
-)
-from .common_arrays import (
     vec2ds_arrays as centers_arrays,
-)
-from .common_arrays import (
     vec2ds_arrays as half_sizes_arrays,
-)
-from .common_arrays import (
     vec2ds_expected as centers_expected,
-)
-from .common_arrays import (
     vec2ds_expected as half_sizes_expected,
 )
 

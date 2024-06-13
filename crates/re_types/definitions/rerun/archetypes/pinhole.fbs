@@ -34,6 +34,7 @@ table Pinhole (
 
   // --- Optional ---
 
+
   /// Sets the view coordinates for the camera.
   ///
   /// All common values are available as constants on the `components.ViewCoordinates` class.
@@ -63,4 +64,9 @@ table Pinhole (
   /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
   // TODO(#2641): This should specify a default-value of `RDF`
   camera_xyz: rerun.components.ViewCoordinates ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+  ///
+  /// This is only used for visualization purposes, and does not affect the projection itself.
+  image_plane_distance: rerun.components.ImagePlaneDistance ("attr.rerun.component_optional", nullable, order: 4000);
 }

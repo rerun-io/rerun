@@ -13,16 +13,13 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
-mod results_ext;
 mod spatial_view_visualizer;
 mod transform3d_arrows;
 
 pub use cameras::CamerasVisualizer;
 pub use images::{ImageVisualizer, ViewerImage};
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
-pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
-
-pub(crate) use self::results_ext::RangeResultsExt;
+pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer, Transform3DDetector};
 
 // ---
 
@@ -39,8 +36,8 @@ use re_viewer_context::{
     VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
 };
 
-use crate::space_view_2d::VisualizableFilterContext2D;
-use crate::space_view_3d::VisualizableFilterContext3D;
+use crate::view_2d::VisualizableFilterContext2D;
+use crate::view_3d::VisualizableFilterContext3D;
 
 use super::contexts::SpatialSceneEntityContext;
 
@@ -68,6 +65,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
 }
 
@@ -87,6 +85,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
 }
 

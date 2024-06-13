@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(4);
+        cells.reserve(5);
 
         {
             auto result = DataCell::from_loggable(archetype.image_from_camera);
@@ -28,6 +28,11 @@ namespace rerun {
         }
         if (archetype.camera_xyz.has_value()) {
             auto result = DataCell::from_loggable(archetype.camera_xyz.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.image_plane_distance.has_value()) {
+            auto result = DataCell::from_loggable(archetype.image_plane_distance.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

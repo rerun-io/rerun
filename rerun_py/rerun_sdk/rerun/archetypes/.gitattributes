@@ -6,6 +6,7 @@ annotation_context.py linguist-generated=true
 arrows2d.py linguist-generated=true
 arrows3d.py linguist-generated=true
 asset3d.py linguist-generated=true
+axes3d.py linguist-generated=true
 bar_chart.py linguist-generated=true
 boxes2d.py linguist-generated=true
 boxes3d.py linguist-generated=true

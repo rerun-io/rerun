@@ -29,7 +29,9 @@ def main() -> None:
         blueprint = Blueprint(
             Grid(
                 Spatial2DView(name="Rect 0", origin="/", contents=["image", "rect/0"]),
-                Spatial2DView(name="Rect 1", origin="/", contents=["image", "rect/1"]),
+                Spatial2DView(
+                    name="Rect 1", origin="/", contents=["image", "rect/1"], defaults=[rr.components.Radius(2)]
+                ),
             ),
             BlueprintPanel(state="collapsed"),
             SelectionPanel(state="collapsed"),

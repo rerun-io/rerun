@@ -12,7 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .time_int_ext import TimeIntExt
 
 __all__ = ["TimeInt", "TimeIntArrayLike", "TimeIntBatch", "TimeIntLike", "TimeIntType"]
