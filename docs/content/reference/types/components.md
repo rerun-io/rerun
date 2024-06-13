@@ -24,6 +24,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`DepthMeter`](components/depth_meter.md): A component indicating how long a meter is, expressed in native units.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order used for the display order of 2D elements.
+* [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`HalfSizes2D`](components/half_sizes2d.md): Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
 * [`HalfSizes3D`](components/half_sizes3d.md): Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.

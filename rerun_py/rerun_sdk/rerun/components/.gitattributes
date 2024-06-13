@@ -13,6 +13,7 @@ colormap.py linguist-generated=true
 depth_meter.py linguist-generated=true
 disconnected_space.py linguist-generated=true
 draw_order.py linguist-generated=true
+fill_ratio.py linguist-generated=true
 half_sizes2d.py linguist-generated=true
 half_sizes3d.py linguist-generated=true
 image_plane_distance.py linguist-generated=true
