@@ -195,6 +195,7 @@ impl<'a, T: 'static> std::ops::Deref for Data<'a, T> {
             Data::Owned(data) => {
                 // Unwrap: only way to instantiate a `Data` is via the `From` impl below which we
                 // fully control.
+                #[allow(clippy::unwrap_used)]
                 data.as_any().downcast_ref().unwrap()
             }
             Data::Cached(data) => data,
@@ -461,6 +462,7 @@ impl RangeComponentResults {
                 let resolved_data = FlatVecDeque::from_vecs(resolved_data);
                 // Unwraps: the deque is created when entering this function -- we know it's there
                 // and we know its type.
+                #[allow(clippy::unwrap_used)]
                 let cached_dense = results
                     .cached_dense
                     .as_mut()
@@ -524,6 +526,7 @@ impl RangeComponentResults {
                 let resolved_data = FlatVecDeque::from_vecs(resolved_data);
                 // Unwraps: the deque is created when entering this function -- we know it's there
                 // and we know its type.
+                #[allow(clippy::unwrap_used)]
                 let cached_dense = results
                     .cached_dense
                     .as_mut()
@@ -602,6 +605,7 @@ impl RangeComponentResults {
         let data = RwLockReadGuard::map(self.inner.read_recursive(), |results| {
             // Unwraps: the data is created when entering this function -- we know it's there
             // and we know its type.
+            #[allow(clippy::unwrap_used)]
             results
                 .cached_dense
                 .as_ref()
@@ -703,8 +707,8 @@ impl std::fmt::Debug for RangeComponentResultsInner {
             f.write_str("<empty>")
         } else {
             // Unwrap: checked above.
-            let index_start = indices.front().unwrap();
-            let index_end = indices.back().unwrap();
+            #[allow(clippy::unwrap_used)]
+            let (index_start, index_end) = (indices.front().unwrap(), indices.back().unwrap());
             f.write_fmt(format_args!(
                 "[{:?}#{} .. {:?}#{}] {}",
                 index_start.0,
