@@ -7,7 +7,7 @@ import argparse
 
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
-from paddleocr import PaddleOCR, PPStructure
+from paddleocr import PPStructure
 from paddleocr.ppstructure.recovery.recovery_to_doc import sorted_layout_boxes
 import cv2 as cv2
 import pandas as pd
@@ -154,7 +154,7 @@ class Layout:
         if layout_type in LayoutType:
             return self.counts[layout_type]
         else:
-            logging.warning(f"Invalid layout type")
+            logging.warning("Invalid layout type")
 
     def get_records(self):
         return self.records
@@ -255,7 +255,7 @@ def process_layout_records(layout):
                 zoom_paths_texts
             )
 
-    return paths, detections_paths, zoom_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts
+    return paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts
 
 
 def log_detections(
@@ -322,7 +322,7 @@ def update_zoom_paths(
 
 
 def generate_blueprint(layout):
-    paths, detections_paths, zoom_paths, zoom_paths_figures, \
+    paths, detections_paths, zoom_paths_figures, \
         zoom_paths_tables, zoom_paths_texts = process_layout_records(layout)
 
     tabs = []
@@ -373,7 +373,7 @@ def detect_and_log_layout(img_path):
     logging.info("Start detection... (It usually takes more than 10-20 seconds)")
     ocr_model_pp = PPStructure(show_log=False, recovery=True)
     result_pp = ocr_model_pp(coloured_image)
-    h, w, _ = img.shape
+    _, w, _ = img.shape
     result_pp = sorted_layout_boxes(result_pp, w)
     logging.info("Detection finished...")
 
