@@ -8,7 +8,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Optional, Iterable
+from typing import Any, Final, Iterable, Optional
 
 import cv2 as cv2
 import pandas as pd
