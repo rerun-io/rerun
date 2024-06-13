@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "components/aggregation_policy.hpp"
 #include "components/annotation_context.hpp"
 #include "components/axis_length.hpp"
 #include "components/blob.hpp"
@@ -37,7 +38,6 @@
 #include "components/texcoord2d.hpp"
 #include "components/text.hpp"
 #include "components/text_log_level.hpp"
-#include "components/time_series_aggregator.hpp"
 #include "components/transform3d.hpp"
 #include "components/triangle_indices.hpp"
 #include "components/vector2d.hpp"

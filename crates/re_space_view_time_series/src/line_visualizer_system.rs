@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use re_query::{PromiseResult, QueryError};
 use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
-use re_types::components::TimeSeriesAggregator;
+use re_types::components::AggregationPolicy;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
@@ -196,7 +196,7 @@ impl SeriesLineSystem {
                     Color::name(),
                     StrokeWidth::name(),
                     Name::name(),
-                    TimeSeriesAggregator::name(),
+                    AggregationPolicy::name(),
                 ],
             );
 
@@ -333,7 +333,7 @@ impl SeriesLineSystem {
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
-                .get_or_empty_dense::<TimeSeriesAggregator>(resolver)
+                .get_or_empty_dense::<AggregationPolicy>(resolver)
                 .ok()
                 .and_then(|result| {
                     result

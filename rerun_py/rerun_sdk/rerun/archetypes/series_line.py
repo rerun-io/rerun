@@ -70,7 +70,7 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: components.StrokeWidthLike | None = None,
         name: datatypes.Utf8Like | None = None,
-        aggregator: components.TimeSeriesAggregatorLike | None = None,
+        aggregator: components.AggregationPolicyLike | None = None,
     ):
         """
         Create a new instance of the SeriesLine archetype.
@@ -145,10 +145,10 @@ class SeriesLine(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    aggregator: components.TimeSeriesAggregatorBatch | None = field(
+    aggregator: components.AggregationPolicyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.TimeSeriesAggregatorBatch._optional,  # type: ignore[misc]
+        converter=components.AggregationPolicyBatch._optional,  # type: ignore[misc]
     )
     # Configures the zoom-dependent scalar aggregation.
     #

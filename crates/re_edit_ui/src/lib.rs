@@ -13,8 +13,8 @@ use datatype_editors::edit_enum;
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
     components::{
-        AxisLength, Color, ImagePlaneDistance, MarkerSize, Name, Radius, StrokeWidth, Text,
-        TimeSeriesAggregator,
+        AggregationPolicy, AxisLength, Color, ImagePlaneDistance, MarkerSize, Name, Radius,
+        StrokeWidth, Text,
     },
 };
 use re_viewer_context::ViewerContext;
@@ -65,7 +65,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL)
     });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "tseriesaggregator", value, &TimeSeriesAggregator::ALL)
+        edit_enum(ui, "tseriesaggregator", value, &AggregationPolicy::ALL)
     });
 
     registry.add_multiline_editor_ui(visual_bounds2d::multiline_edit_visual_bounds2d);

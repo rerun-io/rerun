@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
-use re_types::components::TimeSeriesAggregator;
+use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::external::re_entity_db::EntityProperties;
@@ -366,7 +366,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
                 let y_value = re_format::format_f64(value.y);
 
-                if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
+                if aggregator == AggregationPolicy::Off || aggregation_factor <= 1.0 {
                     format!("{timeline_name}: {label}\n{name}: {y_value}")
                 } else {
                     format!(

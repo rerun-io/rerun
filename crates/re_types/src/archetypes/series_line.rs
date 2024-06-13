@@ -93,7 +93,7 @@ pub struct SeriesLine {
     /// This is done only if steps on the X axis go below a single pixel,
     /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
     /// (and readability) in such situations as it prevents overdraw.
-    pub aggregator: Option<crate::components::TimeSeriesAggregator>,
+    pub aggregator: Option<crate::components::AggregationPolicy>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesLine {
@@ -110,7 +110,7 @@ impl ::re_types_core::SizeBytes for SeriesLine {
         <Option<crate::components::Color>>::is_pod()
             && <Option<crate::components::StrokeWidth>>::is_pod()
             && <Option<crate::components::Name>>::is_pod()
-            && <Option<crate::components::TimeSeriesAggregator>>::is_pod()
+            && <Option<crate::components::AggregationPolicy>>::is_pod()
     }
 }
 
@@ -126,7 +126,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
             "rerun.components.Color".into(),
             "rerun.components.StrokeWidth".into(),
             "rerun.components.Name".into(),
-            "rerun.components.TimeSeriesAggregator".into(),
+            "rerun.components.AggregationPolicy".into(),
         ]
     });
 
@@ -137,7 +137,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
             "rerun.components.Color".into(),
             "rerun.components.StrokeWidth".into(),
             "rerun.components.Name".into(),
-            "rerun.components.TimeSeriesAggregator".into(),
+            "rerun.components.AggregationPolicy".into(),
         ]
     });
 
@@ -226,8 +226,8 @@ impl ::re_types_core::Archetype for SeriesLine {
             None
         };
         let aggregator =
-            if let Some(array) = arrays_by_name.get("rerun.components.TimeSeriesAggregator") {
-                <crate::components::TimeSeriesAggregator>::from_arrow_opt(&**array)
+            if let Some(array) = arrays_by_name.get("rerun.components.AggregationPolicy") {
+                <crate::components::AggregationPolicy>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.SeriesLine#aggregator")?
                     .into_iter()
                     .next()
@@ -312,7 +312,7 @@ impl SeriesLine {
     #[inline]
     pub fn with_aggregator(
         mut self,
-        aggregator: impl Into<crate::components::TimeSeriesAggregator>,
+        aggregator: impl Into<crate::components::AggregationPolicy>,
     ) -> Self {
         self.aggregator = Some(aggregator.into());
         self

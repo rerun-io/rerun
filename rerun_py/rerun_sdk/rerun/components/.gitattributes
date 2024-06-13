@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+aggregation_policy.py linguist-generated=true
 annotation_context.py linguist-generated=true
 axis_length.py linguist-generated=true
 blob.py linguist-generated=true
@@ -37,7 +38,6 @@ tensor_data.py linguist-generated=true
 texcoord2d.py linguist-generated=true
 text.py linguist-generated=true
 text_log_level.py linguist-generated=true
-time_series_aggregator.py linguist-generated=true
 transform3d.py linguist-generated=true
 triangle_indices.py linguist-generated=true
 vector2d.py linguist-generated=true

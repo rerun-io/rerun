@@ -44,5 +44,5 @@ table SeriesLine (
     /// This is done only if steps on the X axis go below a single pixel,
     /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
     /// (and readability) in such situations as it prevents overdraw.
-    aggregator: rerun.components.TimeSeriesAggregator ("attr.rerun.component_optional", nullable, order: 4000);
+    aggregator: rerun.components.AggregationPolicy ("attr.rerun.component_optional", nullable, order: 4000);
 }

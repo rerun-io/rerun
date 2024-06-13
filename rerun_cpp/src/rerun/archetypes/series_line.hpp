@@ -5,10 +5,10 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
 #include "../components/name.hpp"
 #include "../components/stroke_width.hpp"
-#include "../components/time_series_aggregator.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -81,7 +81,7 @@ namespace rerun::archetypes {
         /// This is done only if steps on the X axis go below a single pixel,
         /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
         /// (and readability) in such situations as it prevents overdraw.
-        std::optional<rerun::components::TimeSeriesAggregator> aggregator;
+        std::optional<rerun::components::AggregationPolicy> aggregator;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -122,7 +122,7 @@ namespace rerun::archetypes {
         /// This is done only if steps on the X axis go below a single pixel,
         /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
         /// (and readability) in such situations as it prevents overdraw.
-        SeriesLine with_aggregator(rerun::components::TimeSeriesAggregator _aggregator) && {
+        SeriesLine with_aggregator(rerun::components::AggregationPolicy _aggregator) && {
             aggregator = std::move(_aggregator);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

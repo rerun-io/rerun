@@ -334,7 +334,7 @@ impl SeriesPointSystem {
                     view_query,
                     series_name,
                     // Aggregation for points is not supported.
-                    re_types::components::TimeSeriesAggregator::Off,
+                    re_types::components::AggregationPolicy::Off,
                     &mut self.all_series,
                 );
             }

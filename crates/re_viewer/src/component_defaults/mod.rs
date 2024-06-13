@@ -112,6 +112,10 @@ pub fn list_default_components(
             VisualBounds2D::default().to_arrow()?,
         ),
         (
+            <AggregationPolicy as Loggable>::name(),
+            AggregationPolicy::default().to_arrow()?,
+        ),
+        (
             <AnnotationContext as Loggable>::name(),
             AnnotationContext::default().to_arrow()?,
         ),
@@ -232,10 +236,6 @@ pub fn list_default_components(
         (
             <TextLogLevel as Loggable>::name(),
             TextLogLevel::default().to_arrow()?,
-        ),
-        (
-            <TimeSeriesAggregator as Loggable>::name(),
-            TimeSeriesAggregator::default().to_arrow()?,
         ),
         (
             <Transform3D as Loggable>::name(),

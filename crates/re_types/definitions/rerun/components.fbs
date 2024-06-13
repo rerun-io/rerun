@@ -1,3 +1,4 @@
+include "./components/aggregation_policy.fbs";
 include "./components/annotation_context.fbs";
 include "./components/axis_length.fbs";
 include "./components/blob.fbs";
@@ -33,7 +34,6 @@ include "./components/tensor_data.fbs";
 include "./components/texcoord2d.fbs";
 include "./components/text_log_level.fbs";
 include "./components/text.fbs";
-include "./components/time_series_aggregator.fbs";
 include "./components/transform3d.fbs";
 include "./components/triangle_indices.fbs";
 include "./components/vector2d.fbs";

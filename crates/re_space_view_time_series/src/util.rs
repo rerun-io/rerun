@@ -1,6 +1,6 @@
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types::{
-    components::TimeSeriesAggregator,
+    components::AggregationPolicy,
     datatypes::{TimeRange, TimeRangeBoundary, Utf8},
 };
 use re_viewer_context::{ViewQuery, ViewerContext};
@@ -86,7 +86,7 @@ pub fn points_to_series(
     store: &re_data_store::DataStore,
     query: &ViewQuery<'_>,
     series_name: Option<Utf8>,
-    aggregator: TimeSeriesAggregator,
+    aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
     re_tracing::profile_scope!("secondary", &entity_path.to_string());
@@ -139,7 +139,7 @@ pub fn points_to_series(
 
 /// Apply the given aggregation to the provided points.
 pub fn apply_aggregation(
-    aggregator: TimeSeriesAggregator,
+    aggregator: AggregationPolicy,
     time_per_pixel: f64,
     points: Vec<PlotPoint>,
     query: &ViewQuery<'_>,
@@ -159,7 +159,7 @@ pub fn apply_aggregation(
     // no matter what the aggregation duration (=zoom level) is.
     let multiple_values_per_time_stamp = || points.windows(2).any(|w| w[0].time == w[1].time);
 
-    let should_aggregate = aggregator != TimeSeriesAggregator::Off
+    let should_aggregate = aggregator != AggregationPolicy::Off
         && (2.0 <= aggregation_duration || multiple_values_per_time_stamp());
 
     let points = if should_aggregate {
@@ -167,20 +167,20 @@ pub fn apply_aggregation(
 
         #[allow(clippy::match_same_arms)] // readability
         match aggregator {
-            TimeSeriesAggregator::Off => points,
-            TimeSeriesAggregator::Average => {
+            AggregationPolicy::Off => points,
+            AggregationPolicy::Average => {
                 AverageAggregator::aggregate(aggregation_duration, &points)
             }
-            TimeSeriesAggregator::Min => {
+            AggregationPolicy::Min => {
                 MinMaxAggregator::Min.aggregate(aggregation_duration, &points)
             }
-            TimeSeriesAggregator::Max => {
+            AggregationPolicy::Max => {
                 MinMaxAggregator::Max.aggregate(aggregation_duration, &points)
             }
-            TimeSeriesAggregator::MinMax => {
+            AggregationPolicy::MinMax => {
                 MinMaxAggregator::MinMax.aggregate(aggregation_duration, &points)
             }
-            TimeSeriesAggregator::MinMaxAverage => {
+            AggregationPolicy::MinMaxAverage => {
                 MinMaxAggregator::MinMaxAverage.aggregate(aggregation_duration, &points)
             }
         }
@@ -208,7 +208,7 @@ fn add_series_runs(
     series_label: &Utf8,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
-    aggregator: TimeSeriesAggregator,
+    aggregator: AggregationPolicy,
     aggregation_factor: f64,
     min_time: i64,
     all_series: &mut Vec<PlotSeries>,

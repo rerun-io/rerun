@@ -14,7 +14,7 @@ mod util;
 
 use re_log_types::EntityPath;
 use re_types::{
-    components::{MarkerShape, TimeSeriesAggregator},
+    components::{MarkerShape, AggregationPolicy},
     datatypes::Utf8,
 };
 pub use space_view_class::TimeSeriesSpaceView;
@@ -90,7 +90,7 @@ pub struct PlotSeries {
     pub min_time: i64,
 
     /// What kind of aggregation was used to compute the graph?
-    pub aggregator: TimeSeriesAggregator,
+    pub aggregator: AggregationPolicy,
 
     /// `1.0` for raw data.
     ///
