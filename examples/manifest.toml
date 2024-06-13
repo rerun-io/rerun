@@ -74,6 +74,7 @@ examples = [
   "face_tracking",
   "human_pose_tracking",
   "gesture_detection",
+  "ocr",
   "live_camera_edge_detection",
   "segment_anything_model",
   "tapir",
