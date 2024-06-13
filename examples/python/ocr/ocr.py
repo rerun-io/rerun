@@ -118,14 +118,7 @@ class Layout:
         self.recovery = """"""
         self.show_unknown = show_unknown
 
-    def add(
-        self,
-        layout_type: LayoutType,
-        bounding_box: list[int],
-        detections: Optional[list[dict[str, Any]]] = None,
-        table: Optional[str] = None,
-        figure: Optional[dict[str, Any]] = None,
-    ) -> None:
+    def add(self, layout_type: LayoutType, bounding_box: list[int], detections: Optional[list[dict[str, Any]]] = None, table: Optional[str] = None, figure: Optional[dict[str, Any]] = None) -> None:
         if layout_type in LayoutType:
             self.counts[layout_type] += 1
             name = f"{layout_type}{self.counts[layout_type]}"
@@ -212,9 +205,7 @@ class Layout:
             return f"Error processing the table: {str(e)}"
 
 
-def process_layout_records(
-    layout: Layout,
-) -> tuple[list[str], list[str], list[rrb.Spatial2DView], list[rrb.Spatial2DView], list[rrb.Spatial2DView]]:
+def process_layout_records(layout: Layout) -> tuple[list[str], list[str], list[rrb.Spatial2DView], list[rrb.Spatial2DView], list[rrb.Spatial2DView]]:
     paths, detections_paths, zoom_paths = [], [], []
     zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = [], [], []
 
@@ -275,7 +266,7 @@ def update_zoom_paths(
     zoom_paths: list[rrb.Spatial2DView],
     zoom_paths_figures: list[rrb.Spatial2DView],
     zoom_paths_tables: list[rrb.Spatial2DView],
-    zoom_paths_texts: list[rrb.Spatial2DView],
+    zoom_paths_texts: list[rrb.Spatial2DView]
 ) -> None:
     if layout_type in [LayoutType.FIGURE, LayoutType.TABLE, LayoutType.TEXT]:
         current_paths = paths.copy()
