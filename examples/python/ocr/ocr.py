@@ -449,13 +449,6 @@ def main() -> None:
     )
     rr.script_teardown(args)
 
-    rr.send_blueprint(rrb.Blueprint(
-        rrb.Vertical(
-            rrb.Spatial2DView(name="Input", contents=["Image/**"]),
-        ),
-        collapse_panels=True
-    ))
-
     logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))
     logging.getLogger().setLevel(-1)
 

@@ -13,9 +13,6 @@ dependencies = [
     "opencv-python",
     "requests",
     "pandas",
-    "enum",
-    "pathlib",
-    "typing",
     "tqdm"
 ]
 
