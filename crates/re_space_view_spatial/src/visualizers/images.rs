@@ -405,6 +405,7 @@ impl ImageVisualizer {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_depth_image_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
