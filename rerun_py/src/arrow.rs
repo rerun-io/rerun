@@ -4,6 +4,7 @@ use arrow2::{
     array::{Array, ListArray, PrimitiveArray},
     datatypes::Field,
     ffi,
+    offset::Offsets,
 };
 use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
@@ -92,6 +93,8 @@ pub fn build_chunk_from_components(
     // Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     let chunk_id = ChunkId::new();
 
+    let mut expected_length = None;
+
     // Extract the timeline data
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         timelines.iter().map(|(name, array)| {
@@ -112,13 +115,16 @@ pub fn build_chunk_from_components(
                 }
                 _ => None,
             }?;
-            Some((
-                timeline,
-                value
-                    .as_any()
-                    .downcast_ref::<PrimitiveArray<i64>>()?
-                    .clone(),
-            ))
+            let timeline_data = value
+                .as_any()
+                .downcast_ref::<PrimitiveArray<i64>>()?
+                .clone();
+            if expected_length.is_none() {
+                expected_length = Some(timeline_data.len());
+            } else if expected_length != Some(timeline_data.len()) {
+                return None;
+            }
+            Some((timeline, timeline_data))
         })
         .collect();
 
@@ -141,10 +147,18 @@ pub fn build_chunk_from_components(
         .into_iter()
         .zip(fields)
         .map(|(value, field)| {
-            Some((
-                field.name.into(),
-                value.as_any().downcast_ref::<ListArray<i32>>()?.clone(),
-            ))
+            let batch = if let Some(batch) = value.as_any().downcast_ref::<ListArray<i32>>() {
+                Some(batch.clone())
+            } else if Some(value.len()) == expected_length {
+                let offsets =
+                    Offsets::try_from_lengths(std::iter::repeat(1).take(value.len())).ok()?;
+                let data_type = ListArray::<i32>::default_datatype(value.data_type().clone());
+                ListArray::<i32>::try_new(data_type, offsets.into(), value, None).ok()
+            } else {
+                None
+            };
+
+            Some((field.name.into(), batch?))
         })
         .collect();
 
