@@ -97,13 +97,6 @@ pub struct EntityProperties {
     // TODO(#5067): Test property used so we don't have to continuously adjust existing tests while we're dismantling `EntityProperties`.
     pub test_property: bool,
 
-    /// Should the depth texture be backprojected into a point cloud?
-    ///
-    /// Only applies to tensors with meaning=depth that are affected by a pinhole transform.
-    ///
-    /// The default for 3D views is `true`, but for 2D views it is `false`.
-    pub backproject_depth: EditableAutoValue<bool>, // TODO(andreas): should be a component on the DepthImage archetype.
-
     /// How many depth units per world-space unit. e.g. 1000 for millimeters.
     ///
     /// This corresponds to `re_components::Tensor::meter`.
@@ -121,7 +114,6 @@ impl Default for EntityProperties {
     fn default() -> Self {
         Self {
             test_property: true,
-            backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
             time_series_aggregator: EditableAutoValue::Auto(TimeSeriesAggregator::default()),
@@ -136,7 +128,6 @@ impl EntityProperties {
         Self {
             test_property: self.test_property && child.test_property,
 
-            backproject_depth: self.backproject_depth.or(&child.backproject_depth).clone(),
             depth_from_world_scale: self
                 .depth_from_world_scale
                 .or(&child.depth_from_world_scale)
@@ -164,7 +155,6 @@ impl EntityProperties {
         Self {
             test_property: other.test_property,
 
-            backproject_depth: other.backproject_depth.or(&self.backproject_depth).clone(),
             depth_from_world_scale: other
                 .depth_from_world_scale
                 .or(&self.depth_from_world_scale)
@@ -185,14 +175,12 @@ impl EntityProperties {
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             test_property,
-            backproject_depth,
             depth_from_world_scale,
             backproject_radius_scale,
             time_series_aggregator,
         } = self;
 
         test_property != &other.test_property
-            || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
             || time_series_aggregator.has_edits(&other.time_series_aggregator)

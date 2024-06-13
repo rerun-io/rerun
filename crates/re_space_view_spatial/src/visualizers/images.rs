@@ -425,13 +425,15 @@ impl ImageVisualizer {
             return;
         }
 
+        let is_3d_view =
+            ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
+
         // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
-                transforms.parent_pinhole(entity_path)
-            } else {
-                None
-            };
+        let parent_pinhole_path = if is_3d_view {
+            transforms.parent_pinhole(entity_path)
+        } else {
+            None
+        };
 
         let meaning = TensorDataMeaning::Depth;
 
@@ -462,7 +464,7 @@ impl ImageVisualizer {
                 .copied()
                 .unwrap_or_else(|| self.fallback_for(ctx));
 
-            if *ent_props.backproject_depth {
+            if is_3d_view {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.

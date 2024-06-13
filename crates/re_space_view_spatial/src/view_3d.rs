@@ -355,8 +355,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
             return;
         };
-        *auto_properties =
-            generate_auto_legacy_properties(ctx, ent_paths, SpatialSpaceViewKind::ThreeD);
+        *auto_properties = generate_auto_legacy_properties(ctx, ent_paths);
     }
 
     fn selection_ui(
