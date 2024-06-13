@@ -41,7 +41,7 @@ class Color:
 
 """
 LayoutType:
-    Defines an enumeration for different types of document layout elements, each associated with a unique number, name, 
+    Defines an enumeration for different types of document layout elements, each associated with a unique number, name,
     and color. Types:
     - UNKNOWN: Default type for undefined or unrecognized elements, represented by purple.
     - TITLE: Represents the title of a document, represented by red.
@@ -107,7 +107,7 @@ Layout Class:
     The main purpose of this class is to:
     1. Keep track of the layout types (including type, numbering)
     2. Save the detections for each layout (text, img or table)
-    3. Save the bounding box of each detected layout 
+    3. Save the bounding box of each detected layout
     4. Generate the recovery text document
 """
 

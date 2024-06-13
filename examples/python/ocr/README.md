@@ -23,7 +23,7 @@ This example visualizes layout analysis and text detection of documents.
 This example demonstrates the ability to visualize and verify the document layout analysis and text detection using the [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR).
 [PP-Structure](https://github.com/PaddlePaddle/PaddleOCR/tree/main/ppstructure) used for this task, which is an intelligent document analysis system developed by the PaddleOCR team, which aims to help developers better complete tasks related to document understanding such as layout analysis and table recognition.
 In the layout analysis task, the image first goes through the layout analysis model to divide the image into different areas such as text, table, figure and more, and then analyze these areas separately.
-The classification of layouts and the text detection (including confidence levels) are visualized in the Rerun viewer. 
+The classification of layouts and the text detection (including confidence levels) are visualized in the Rerun viewer.
 Finally, the recovery text document section presents the restored document with sorted order. By clicking on the restored text, the text area will be highlighted.
 
 ## Logging and visualizing with Rerun
@@ -35,7 +35,7 @@ The input document is logged as [`Image`](https://www.rerun.io/docs/reference/ty
 rr.log("Image", rr.Image(coloured_image))
 ```
 
-#### Label mapping 
+### Label mapping
 
 An annotation context is logged with a class ID and a color assigned per layout type using [`AnnotationContext`](https://rerun.io/docs/reference/types/archetypes/annotation_context).
 
@@ -50,7 +50,7 @@ class LayoutType(Enum):
     TABLE_CAPTION = (6, "table_caption", Color.Magenta)
     REFERENCE = (7, "reference", Color.Purple)
     FOOTER = (7, "footer", Color.Orange)
-    
+
     @property
     def number(self):
         return self.value[0]  # Returns the numerical identifier
@@ -62,7 +62,7 @@ class LayoutType(Enum):
     @property
     def color(self):
         return self.value[2]  # Returns the color
-    
+
     @classmethod
     def get_annotation(cls):
         return [(layout.number, layout.type, layout.color) for layout in cls]
