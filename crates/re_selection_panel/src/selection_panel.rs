@@ -15,7 +15,7 @@ use re_types::{
     archetypes::{Axes3D, DepthImage, Pinhole},
     blueprint::components::Interactive,
     components::{
-        AxisLength, Colormap, ImagePlaneDistance, PinholeProjection, Transform3D,
+        AxisLength, Colormap, DepthMeter, ImagePlaneDistance, PinholeProjection, Transform3D,
         VisualizerOverrides,
     },
     tensor_data::TensorDataMeaning,
@@ -1428,16 +1428,23 @@ fn depth_props_ui(
     .on_hover_text("The entity path of the pinhole transform being used to do the backprojection.");
     ui.end_row();
 
-    depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
+    depth_from_world_scale_ui(ctx, ui, data_result);
     backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
     colormap_props_ui(ctx, ui, data_result);
 
     Some(())
 }
 
-fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+fn depth_from_world_scale_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
+    let (query, _store) =
+        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
+
+    // TODO(andreas): Queries the entire image archetype for no good reason, but all of this ui is a hack anyways.
+    let results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
+    let depth_meter = results.get_mono_with_fallback::<DepthMeter>();
+
     ui.label("Backproject meter");
-    let mut value = *property.get();
+    let mut value = *depth_meter;
     let speed = (value * 0.05).at_least(0.01);
     let response = ui
         .add(
@@ -1448,12 +1455,12 @@ fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue
         .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
                     Double-click to reset.");
     if response.double_clicked() {
-        // reset to auto - the exact value will be restored somewhere else
-        *property = EditableAutoValue::Auto(value);
+        data_result.clear_individual_override::<DepthMeter>(ctx.viewer_ctx);
         response.surrender_focus();
     } else if response.changed() {
-        *property = EditableAutoValue::UserEdited(value);
+        data_result.save_individual_override(ctx.viewer_ctx, &DepthMeter(value));
     }
+
     ui.end_row();
 }
 

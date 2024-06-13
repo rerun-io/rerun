@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query::range_zip_1x3;
+use re_query::range_zip_1x4;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     RenderContext,
@@ -14,7 +14,7 @@ use re_renderer::{
 use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
-    components::{Color, Colormap, DrawOrder, TensorData, ViewCoordinates},
+    components::{Color, Colormap, DepthMeter, DrawOrder, TensorData, ViewCoordinates},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype, ComponentNameSet,
 };
@@ -159,6 +159,7 @@ struct ImageComponentData<'a> {
     color: Option<&'a Color>,
     draw_order: Option<&'a DrawOrder>,
     colormap: Option<&'a Colormap>,
+    depth_meter: Option<&'a DepthMeter>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -466,6 +467,11 @@ impl ImageVisualizer {
 
             if is_3d_view {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
+                    let depth_meter = data
+                        .depth_meter
+                        .copied()
+                        .unwrap_or_else(|| self.fallback_for(ctx));
+
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
                     // What we want are the extrinsics of the depth camera!
@@ -480,6 +486,7 @@ impl ImageVisualizer {
                         entity_path,
                         parent_pinhole_path,
                         colormap,
+                        depth_meter,
                     ) {
                         Ok(cloud) => {
                             self.data.add_bounding_box(
@@ -555,6 +562,7 @@ impl ImageVisualizer {
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
         colormap: Colormap,
+        depth_meter: DepthMeter,
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
@@ -602,9 +610,7 @@ impl ImageVisualizer {
             Some(colormap),
         )?;
 
-        let depth_from_world_scale = *properties.depth_from_world_scale;
-
-        let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
+        let world_depth_from_texture_depth = 1.0 / depth_meter.0;
 
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
@@ -899,22 +905,27 @@ impl ImageVisualizer {
                 let colors = results.get_or_empty_dense(resolver)?;
                 let draw_orders = results.get_or_empty_dense(resolver)?;
                 let colormap = results.get_or_empty_dense(resolver)?;
+                let depth_meter = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x3(
+                let mut data = range_zip_1x4(
                     tensors.range_indexed(),
                     draw_orders.range_indexed(),
                     colors.range_indexed(),
                     colormap.range_indexed(),
+                    depth_meter.range_indexed(),
                 )
-                .filter_map(|(&index, tensors, draw_orders, colors, colormap)| {
-                    tensors.first().map(|tensor| ImageComponentData {
-                        index,
-                        tensor,
-                        color: colors.and_then(|colors| colors.first()),
-                        draw_order: draw_orders.and_then(|draw_orders| draw_orders.first()),
-                        colormap: colormap.and_then(|colormap| colormap.first()),
-                    })
-                });
+                .filter_map(
+                    |(&index, tensors, draw_orders, colors, colormap, depth_meter)| {
+                        tensors.first().map(|tensor| ImageComponentData {
+                            index,
+                            tensor,
+                            color: colors.and_then(|colors| colors.first()),
+                            draw_order: draw_orders.and_then(|draw_orders| draw_orders.first()),
+                            colormap: colormap.and_then(|colormap| colormap.first()),
+                            depth_meter: depth_meter.and_then(|depth_meter| depth_meter.first()),
+                        })
+                    },
+                );
 
                 f(
                     self,
@@ -942,4 +953,15 @@ impl TypedComponentFallbackProvider<Colormap> for ImageVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap]);
+impl TypedComponentFallbackProvider<DepthMeter> for ImageVisualizer {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> DepthMeter {
+        let is_integer_tensor = ctx
+            .recording()
+            .latest_at_component::<TensorData>(ctx.target_entity_path, ctx.query)
+            .map_or(false, |tensor| tensor.dtype().is_integer());
+
+        if is_integer_tensor { 1000.0 } else { 1.0 }.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap, DepthMeter]);
