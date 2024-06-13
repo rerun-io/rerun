@@ -22,12 +22,6 @@ use re_viewer_context::{
 
 use crate::{SpaceViewBlueprint, ViewProperty};
 
-// TODO: simplify further
-pub struct EntityOverrideContext {
-    /// Query range that data results should fall back to if they don't specify their own.
-    pub default_query_range: QueryRange,
-}
-
 /// Data to be added to a space view, built from a [`blueprint_archetypes::SpaceViewContents`].
 ///
 /// During execution, it will walk an [`EntityTree`] and return a [`DataResultTree`]
@@ -373,35 +367,6 @@ pub struct DataQueryPropertyResolver<'a> {
 }
 
 impl DataQueryPropertyResolver<'_> {
-    /// Helper function to build the [`EntityOverrideContext`].
-    ///
-    /// The context is made up of 3 parts:
-    ///  - The root properties are build by merging a stack of paths from the Blueprint Tree. This
-    ///  may include properties from the `SpaceView` or `DataQuery`.
-    ///  - The individual overrides are found by walking an override subtree under the `data_query/<id>/individual_overrides`
-    ///  - The recursive overrides are found by walking an override subtree under the `data_query/<id>/recursive_overrides`
-    fn build_override_context(
-        &self,
-        blueprint: &EntityDb,
-        blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
-        space_view_class_registry: &SpaceViewClassRegistry,
-    ) -> EntityOverrideContext {
-        re_tracing::profile_function!();
-
-        let default_query_range = self.space_view.query_range(
-            blueprint,
-            blueprint_query,
-            active_timeline,
-            space_view_class_registry,
-        );
-
-        // TODO(#4194): Once supported, default entity properties should be passe through here.
-        EntityOverrideContext {
-            default_query_range,
-        }
-    }
-
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
     ///
     /// This will accumulate the recursive properties at each step down the tree, and then merge
@@ -413,7 +378,7 @@ impl DataQueryPropertyResolver<'_> {
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         query_result: &mut DataQueryResult,
-        override_context: &EntityOverrideContext,
+        default_query_range: &QueryRange,
         recursive_property_overrides: &IntMap<ComponentName, OverridePath>,
         handle: DataResultHandle,
     ) {
@@ -525,7 +490,7 @@ impl DataQueryPropertyResolver<'_> {
                         .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
                 });
                 let query_range = time_range.map_or_else(
-                    || override_context.default_query_range.clone(),
+                    || default_query_range.clone(),
                     |time_range| QueryRange::TimeRange(time_range.0.range.clone()),
                 );
 
@@ -545,7 +510,7 @@ impl DataQueryPropertyResolver<'_> {
                     blueprint_query,
                     active_timeline,
                     query_result,
-                    override_context,
+                    default_query_range,
                     &recursive_property_overrides,
                     child,
                 );
@@ -563,22 +528,23 @@ impl DataQueryPropertyResolver<'_> {
         query_result: &mut DataQueryResult,
     ) {
         re_tracing::profile_function!();
-        let override_context = self.build_override_context(
-            blueprint,
-            blueprint_query,
-            active_timeline,
-            space_view_class_registry,
-        );
 
         if let Some(root) = query_result.tree.root_handle() {
             let recursive_property_overrides = Default::default();
+
+            let default_query_range = self.space_view.query_range(
+                blueprint,
+                blueprint_query,
+                active_timeline,
+                space_view_class_registry,
+            );
 
             self.update_overrides_recursive(
                 blueprint,
                 blueprint_query,
                 active_timeline,
                 query_result,
-                &override_context,
+                &default_query_range,
                 &recursive_property_overrides,
                 root,
             );
