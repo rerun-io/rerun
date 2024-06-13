@@ -9,24 +9,16 @@ use re_log_types::external::re_types_core::SpaceViewClassIdentifier;
 
 use crate::{SpaceViewClassRegistry, SpaceViewId, SpaceViewState};
 
-// State for each `SpaceView` including both the auto properties and
-// the internal state of the space view itself.
-// TODO: simplify further
-pub struct PerViewState {
-    pub view_state: Box<dyn SpaceViewState>,
-}
-
-// ----------------------------------------------------------------------------
 /// State for the `SpaceView`s that persists across frames but otherwise
 /// is not saved.
 #[derive(Default)]
 pub struct ViewStates {
-    states: HashMap<SpaceViewId, PerViewState>,
+    states: HashMap<SpaceViewId, Box<dyn SpaceViewState>>,
 }
 
 impl ViewStates {
-    pub fn get(&self, space_view_id: SpaceViewId) -> Option<&PerViewState> {
-        self.states.get(&space_view_id)
+    pub fn get(&self, space_view_id: SpaceViewId) -> Option<&dyn SpaceViewState> {
+        self.states.get(&space_view_id).map(|s| s.as_ref())
     }
 
     pub fn get_mut(
@@ -34,11 +26,14 @@ impl ViewStates {
         view_class_registry: &SpaceViewClassRegistry,
         view_id: SpaceViewId,
         view_class: SpaceViewClassIdentifier,
-    ) -> &mut PerViewState {
-        self.states.entry(view_id).or_insert_with(|| PerViewState {
-            view_state: view_class_registry
-                .get_class_or_log_error(view_class)
-                .new_state(),
-        })
+    ) -> &mut dyn SpaceViewState {
+        self.states
+            .entry(view_id)
+            .or_insert_with(|| {
+                view_class_registry
+                    .get_class_or_log_error(view_class)
+                    .new_state()
+            })
+            .as_mut()
     }
 }

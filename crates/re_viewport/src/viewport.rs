@@ -9,7 +9,7 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item, PerViewState,
+    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
     ViewerContext,
 };
@@ -179,14 +179,6 @@ impl<'a> Viewport<'a> {
 
         if let Some(render_ctx) = ctx.render_ctx {
             for space_view in self.blueprint.space_views.values() {
-                let PerViewState {
-                    view_state: space_view_state,
-                } = view_states.get_mut(
-                    ctx.space_view_class_registry,
-                    space_view.id,
-                    space_view.class_identifier(),
-                );
-
                 #[allow(clippy::blocks_in_conditions)]
                 while ScreenshotProcessor::next_readback_result(
                     render_ctx,
@@ -198,7 +190,12 @@ impl<'a> Viewport<'a> {
                 .is_some()
                 {}
 
-                space_view.on_frame_start(ctx, space_view_state.as_mut());
+                let view_state = view_states.get_mut(
+                    ctx.space_view_class_registry,
+                    space_view.id,
+                    space_view.class_identifier(),
+                );
+                space_view.on_frame_start(ctx, view_state);
             }
         }
 
@@ -519,21 +516,12 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             }
         });
 
-        let PerViewState {
-            view_state: space_view_state,
-        } = self.view_states.get_mut(
+        let view_state = self.view_states.get_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
             space_view_blueprint.class_identifier(),
         );
-
-        space_view_blueprint.scene_ui(
-            space_view_state.as_mut(),
-            self.ctx,
-            ui,
-            &query,
-            system_output,
-        );
+        space_view_blueprint.scene_ui(view_state, self.ctx, ui, &query, system_output);
 
         Default::default()
     }

@@ -291,7 +291,7 @@ impl SelectionPanel {
             if let Err(err) = space_view_class.selection_ui(
                 ctx,
                 ui,
-                view_state.view_state.as_mut(),
+                view_state,
                 &space_view.space_origin,
                 space_view.id,
             ) {
@@ -302,8 +302,7 @@ impl SelectionPanel {
                 );
             }
 
-            let view_ctx =
-                space_view.bundle_context_with_state(ctx, view_state.view_state.as_ref());
+            let view_ctx = space_view.bundle_context_with_state(ctx, view_state);
 
             ui.large_collapsing_header("Component Defaults", true, |ui| {
                 defaults_ui(&view_ctx, space_view, ui);

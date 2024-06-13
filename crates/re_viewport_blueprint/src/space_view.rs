@@ -448,14 +448,11 @@ impl SpaceViewBlueprint {
         ctx: &'a ViewerContext<'a>,
         view_states: &'a mut ViewStates,
     ) -> ViewContext<'a> {
-        let view_state = view_states
-            .get_mut(
-                ctx.space_view_class_registry,
-                self.id,
-                self.class_identifier(),
-            )
-            .view_state
-            .as_ref();
+        let view_state = view_states.get_mut(
+            ctx.space_view_class_registry,
+            self.id,
+            self.class_identifier(),
+        );
 
         ViewContext {
             viewer_ctx: ctx,

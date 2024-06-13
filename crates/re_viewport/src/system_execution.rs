@@ -101,7 +101,7 @@ pub fn execute_systems_for_space_view<'a>(
             ctx,
             view,
             &query,
-            view_state.view_state.as_ref(),
+            view_state,
             &mut context_systems,
             &mut view_systems,
         )
