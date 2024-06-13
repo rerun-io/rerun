@@ -81,7 +81,7 @@ class LayoutType(Enum):
         return self.value[2]  # Returns the color
 
     @staticmethod
-    def get_class_id(text) -> int:
+    def get_class_id(text: str) -> int:
         try:
             return LayoutType[text.upper()].number
         except KeyError:
@@ -89,7 +89,7 @@ class LayoutType(Enum):
             return 0
 
     @staticmethod
-    def get_type(text) -> LayoutType:
+    def get_type(text: str) -> LayoutType:
         try:
             return LayoutType[text.upper()]
         except KeyError:
@@ -97,7 +97,7 @@ class LayoutType(Enum):
             return LayoutType.UNKNOWN
 
     @classmethod
-    def get_annotation(cls) -> []:
+    def get_annotation(cls) -> list[tuple[int, str, tuple[int, int, int]]]:
         return [(layout.number, layout.type, layout.color) for layout in cls]
 
 
@@ -144,18 +144,18 @@ class Layout:
                 if layout_type == LayoutType.TABLE:
                     if table:
                         self.recovery += table  # Log details (table)
-                else:
+                elif detections:
                     for index, detection in enumerate(detections):
                         path_text = f"recording://Image/{layout_type.type.title()}/{name.title()}/Detections/{index}"
                         self.recovery += f' [{detection["text"]}]({path_text})'  # Log details (text)
         else:
             logging.warning(f"Invalid layout type detected: {layout_type}")
 
-    def get_count(self, layout_type: LayoutType):
+    def get_count(self, layout_type: LayoutType) -> int:
         if layout_type in LayoutType:
             return self.counts[layout_type]
         else:
-            logging.warning("Invalid layout type")
+            raise ValueError("Invalid layout type")
 
     def get_records(self) -> dict[LayoutType, list[dict[str, Any]]]:
         return self.records
@@ -184,14 +184,15 @@ class Layout:
     def get_detections(line: dict[str, Any]) -> list[dict[str, Any]]:
         detections = []
         results = line.get("res")
-        for i, result in enumerate(results):
-            text = result.get("text")
-            confidence = result.get("confidence")
-            box = result.get("text_region")
-            x_min, y_min = box[0]
-            x_max, y_max = box[2]
-            new_box = [x_min, y_min, x_max, y_max]
-            detections.append({"id": i, "text": text, "confidence": confidence, "box": new_box})
+        if results is not None:
+            for i, result in enumerate(results):
+                text = result.get("text")
+                confidence = result.get("confidence")
+                box = result.get("text_region")
+                x_min, y_min = box[0]
+                x_max, y_max = box[2]
+                new_box = [x_min, y_min, x_max, y_max]
+                detections.append({"id": i, "text": text, "confidence": confidence, "box": new_box})
         return detections
 
     # Safely attempt to extract the HTML table from the results
@@ -207,7 +208,7 @@ class Layout:
                 return "No data extracted from the table."
 
             markdown_table = dataframes[0].to_markdown()
-            return markdown_table
+            return markdown_table  # type: ignore[no-any-return]
 
         except Exception as e:
             return f"Error processing the table: {str(e)}"
@@ -216,8 +217,11 @@ class Layout:
 def process_layout_records(
     layout: Layout,
 ) -> tuple[list[str], list[str], list[rrb.Spatial2DView], list[rrb.Spatial2DView], list[rrb.Spatial2DView]]:
-    paths, detections_paths, zoom_paths = [], [], []
-    zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = [], [], []
+    paths, detections_paths = [], []
+    zoom_paths: list[rrb.Spatial2DView] = []
+    zoom_paths_figures: list[rrb.Spatial2DView] = []
+    zoom_paths_tables: list[rrb.Spatial2DView] = []
+    zoom_paths_texts: list[rrb.Spatial2DView] = []
 
     for layout_type in LayoutType:
         for record in layout.records[layout_type]:
@@ -305,11 +309,15 @@ def generate_blueprint(layout: Layout) -> rrb.Blueprint:
     paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = process_layout_records(layout)
 
     tabs = []
-    content_data = [(zoom_paths_figures, "Figures"), (zoom_paths_tables, "Tables"), (zoom_paths_texts, "Texts")]
+    content_data: dict[str, Any] = {
+        "Figures": zoom_paths_figures,
+        "Tables": zoom_paths_tables,
+        "Texts": zoom_paths_texts,
+    }
 
-    for paths, name in content_data:
+    for name, paths in content_data.items():
         if paths:
-            tabs.append(rrb.Tabs(name=name, *paths))
+            tabs.append(rrb.Tabs(*paths, name=name))  # type: ignore[arg-type]
 
     return rrb.Blueprint(
         rrb.Vertical(
