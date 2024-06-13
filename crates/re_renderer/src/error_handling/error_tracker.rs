@@ -102,6 +102,8 @@ impl ErrorTracker {
     /// Since errors are reported on the `device timeline`, not the `content timeline`,
     /// this may not be the currently active frame index!
     pub fn handle_error(&self, error: wgpu::Error, frame_index: u64) {
+        let is_internal_error = matches!(error, wgpu::Error::Internal { .. });
+
         match error {
             wgpu::Error::OutOfMemory { source: _ } => {
                 re_log::error!("A wgpu operation caused out-of-memory: {error}");
@@ -118,16 +120,19 @@ impl ErrorTracker {
                     last_occurred_frame_index: frame_index,
                     description: description.clone(),
                 };
-
                 cfg_if::cfg_if! {
-                    if #[cfg(webgpu)] {
+                    if #[cfg(web)] {
                         if self.errors.lock().insert(
                             WrappedContextError(description.clone()),
                             entry
                         ).is_none() {
-                            re_log::error!(
-                                "WGPU error in frame {}: {}", frame_index, description
-                            );
+                            let base_description = if is_internal_error {
+                                "Internal wgpu/webgpu error"
+                            } else {
+                                "Wgpu/webgpu validation error"
+                            };
+
+                            re_log::error!("{base_description} {frame_index}: {description}");
                         }
                     } else {
                         match _source.downcast::<wgpu_core::error::ContextError>() {
@@ -144,12 +149,19 @@ impl ErrorTracker {
 
                                 let ctx_err = WrappedContextError(ctx_err);
                                 if self.errors.lock().insert(ctx_err, entry).is_none() {
-                                    re_log::error!(
-                                        "WGPU error in frame {}: {}", frame_index, description
-                                    );
+                                    let base_description = if is_internal_error {
+                                        "Internal wgpu error"
+                                    } else {
+                                        "Wgpu validation error"
+                                    };
+                                    re_log::error!("{base_description} {frame_index}: {description}");
                                 }
                             }
-                            Err(err) => re_log::error!("Wgpu operation failed: {err}"),
+                            Err(_) => if is_internal_error {
+                                re_log::error!("Unknown internal wgpu error {frame_index}: {description}");
+                            } else {
+                                re_log::error!("Unknown wgpu validation error {frame_index}: {description}");
+                            },
                         }
                     }
                 }
