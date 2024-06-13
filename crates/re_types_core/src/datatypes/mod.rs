@@ -2,6 +2,7 @@
 
 mod entity_path;
 mod float32;
+mod float32_ext;
 mod time_int;
 mod time_int_ext;
 mod time_range;

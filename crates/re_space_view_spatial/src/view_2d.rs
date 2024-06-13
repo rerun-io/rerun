@@ -12,16 +12,14 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{
-        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
-    },
+    heuristics::default_visualized_entities_for_visualizer_kind,
     max_image_dimension_subscriber::{ImageDimensions, MaxImageDimensions},
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialSpaceViewState,
@@ -150,19 +148,6 @@ impl SpaceViewClass for SpatialSpaceView2D {
         });
 
         Box::new(context.unwrap_or_default())
-    }
-
-    fn on_frame_start(
-        &self,
-        ctx: &ViewerContext<'_>,
-        state: &mut dyn SpaceViewState,
-        ent_paths: &PerSystemEntities,
-        auto_properties: &mut re_entity_db::EntityPropertyMap,
-    ) {
-        let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
-            return;
-        };
-        *auto_properties = generate_auto_legacy_properties(ctx, ent_paths);
     }
 
     fn spawn_heuristics(

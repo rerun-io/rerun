@@ -33,7 +33,7 @@ impl OverridePath {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PropertyOverrides {
     /// The accumulated properties (including any hierarchical flattening) to apply.
     // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
@@ -74,7 +74,7 @@ pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 ///
 /// It contains everything necessary to properly use this data in the context of the
 /// `ViewSystem`s that it is a part of.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct DataResult {
     /// Where to retrieve the data from.
     // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
