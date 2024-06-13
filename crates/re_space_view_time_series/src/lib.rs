@@ -13,8 +13,10 @@ mod space_view_class;
 mod util;
 
 use re_log_types::EntityPath;
-use re_types::{components::MarkerShape, datatypes::Utf8};
-use re_viewer_context::external::re_entity_db::TimeSeriesAggregator;
+use re_types::{
+    components::{MarkerShape, TimeSeriesAggregator},
+    datatypes::Utf8,
+};
 pub use space_view_class::TimeSeriesSpaceView;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the space view

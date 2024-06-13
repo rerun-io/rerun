@@ -327,12 +327,14 @@ impl SeriesPointSystem {
 
                 // Now convert the `PlotPoints` into `Vec<PlotSeries>`
                 points_to_series(
-                    data_result,
+                    &data_result.entity_path,
                     time_per_pixel,
                     points,
                     ctx.recording_store(),
                     view_query,
                     series_name,
+                    // Aggregation for points is not supported.
+                    re_types::components::TimeSeriesAggregator::Off,
                     &mut self.all_series,
                 );
             }

@@ -11,7 +11,7 @@ the `Scalar` archetype.
 
 ## Components
 
-**Optional**: [`Color`](../components/color.md), [`StrokeWidth`](../components/stroke_width.md), [`Name`](../components/name.md)
+**Optional**: [`Color`](../components/color.md), [`StrokeWidth`](../components/stroke_width.md), [`Name`](../components/name.md), [`TimeSeriesAggregator`](../components/time_series_aggregator.md)
 
 ## Shown in
 * [TimeSeriesView](../views/time_series_view.md)

@@ -1,6 +1,9 @@
 use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types::datatypes::{TimeRange, TimeRangeBoundary, Utf8};
-use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
+use re_types::{
+    components::TimeSeriesAggregator,
+    datatypes::{TimeRange, TimeRangeBoundary, Utf8},
+};
+use re_viewer_context::{ViewQuery, ViewerContext};
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
@@ -75,27 +78,25 @@ pub fn determine_time_range(
 // We have a bunch of raw points, and now we need to group them into individual series.
 // A series is a continuous run of points with identical attributes: each time
 // we notice a change in attributes, we need a new series.
+#[allow(clippy::too_many_arguments)]
 pub fn points_to_series(
-    data_result: &re_viewer_context::DataResult,
+    entity_path: &EntityPath,
     time_per_pixel: f64,
     points: Vec<PlotPoint>,
     store: &re_data_store::DataStore,
     query: &ViewQuery<'_>,
     series_name: Option<Utf8>,
+    aggregator: TimeSeriesAggregator,
     all_series: &mut Vec<PlotSeries>,
 ) {
-    re_tracing::profile_scope!("secondary", &data_result.entity_path.to_string());
+    re_tracing::profile_scope!("secondary", &entity_path.to_string());
     if points.is_empty() {
         return;
     }
 
-    let aggregator = *data_result
-        .accumulated_properties()
-        .time_series_aggregator
-        .get();
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
     let min_time = store
-        .entity_min_time(&query.timeline, &data_result.entity_path)
+        .entity_min_time(&query.timeline, entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
     let series_label = series_name.unwrap_or_else(|| {
@@ -103,7 +104,7 @@ pub fn points_to_series(
             let label = points[0].attrs.label.as_ref()?;
             (points.iter().all(|p| p.attrs.label.as_ref() == Some(label))).then(|| label.clone())
         };
-        same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string().into())
+        same_label(&points).unwrap_or_else(|| entity_path.to_string().into())
     });
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter
@@ -118,7 +119,7 @@ pub fn points_to_series(
             width: 2.0 * points[0].attrs.marker_size,
             kind,
             points: vec![(points[0].time, points[0].value)],
-            entity_path: data_result.entity_path.clone(),
+            entity_path: entity_path.clone(),
             aggregator,
             aggregation_factor,
             min_time,
@@ -127,7 +128,7 @@ pub fn points_to_series(
         add_series_runs(
             &series_label,
             points,
-            &data_result.entity_path,
+            entity_path,
             aggregator,
             aggregation_factor,
             min_time,

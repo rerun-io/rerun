@@ -2,6 +2,7 @@ use itertools::Itertools as _;
 use re_query::{PromiseResult, QueryError};
 use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
+use re_types::components::TimeSeriesAggregator;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
@@ -152,15 +153,8 @@ impl SeriesLineSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
-        let fallback_color =
-            re_viewer_context::TypedComponentFallbackProvider::<Color>::fallback_for(
-                self, &query_ctx,
-            );
-
-        let fallback_stroke =
-            re_viewer_context::TypedComponentFallbackProvider::<StrokeWidth>::fallback_for(
-                self, &query_ctx,
-            );
+        let fallback_color: Color = self.fallback_for(&query_ctx);
+        let fallback_stroke: StrokeWidth = self.fallback_for(&query_ctx);
 
         // All the default values for a `PlotPoint`, accounting for both overrides and default
         // values.
@@ -202,6 +196,7 @@ impl SeriesLineSystem {
                     Color::name(),
                     StrokeWidth::name(),
                     Name::name(),
+                    TimeSeriesAggregator::name(),
                 ],
             );
 
@@ -337,13 +332,26 @@ impl SeriesLineSystem {
             }
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            let aggregator = results
+                .get_or_empty_dense::<TimeSeriesAggregator>(resolver)
+                .ok()
+                .and_then(|result| {
+                    result
+                        .range_data(all_scalars_entry_range.clone())
+                        .next()
+                        .and_then(|aggregator| aggregator.first().copied())
+                })
+                // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
+                //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
+                .unwrap_or_default();
             points_to_series(
-                data_result,
+                &data_result.entity_path,
                 time_per_pixel,
                 points,
                 ctx.recording_store(),
                 view_query,
                 series_name,
+                aggregator,
                 all_series,
             );
         }

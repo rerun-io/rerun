@@ -1,5 +1,3 @@
-use std::fmt::Formatter;
-
 #[cfg(feature = "serde")]
 use re_log_types::EntityPath;
 
@@ -99,9 +97,6 @@ pub struct EntityProperties {
 
     /// Used to scale the radii of the points in the resulting point cloud.
     pub backproject_radius_scale: EditableAutoValue<f32>, // TODO(andreas): should be a component on the DepthImage archetype.
-
-    /// What kind of data aggregation to perform (for plot space views).
-    pub time_series_aggregator: EditableAutoValue<TimeSeriesAggregator>, // TODO(andreas): Should be a component probably on SeriesLine, but today it would become a view property.
 }
 
 #[cfg(feature = "serde")]
@@ -110,7 +105,6 @@ impl Default for EntityProperties {
         Self {
             test_property: true,
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
-            time_series_aggregator: EditableAutoValue::Auto(TimeSeriesAggregator::default()),
         }
     }
 }
@@ -125,11 +119,6 @@ impl EntityProperties {
             backproject_radius_scale: self
                 .backproject_radius_scale
                 .or(&child.backproject_radius_scale)
-                .clone(),
-
-            time_series_aggregator: self
-                .time_series_aggregator
-                .or(&child.time_series_aggregator)
                 .clone(),
         }
     }
@@ -149,11 +138,6 @@ impl EntityProperties {
                 .backproject_radius_scale
                 .or(&self.backproject_radius_scale)
                 .clone(),
-
-            time_series_aggregator: other
-                .time_series_aggregator
-                .or(&self.time_series_aggregator)
-                .clone(),
         }
     }
 
@@ -162,91 +146,9 @@ impl EntityProperties {
         let Self {
             test_property,
             backproject_radius_scale,
-            time_series_aggregator,
         } = self;
 
         test_property != &other.test_property
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
-            || time_series_aggregator.has_edits(&other.time_series_aggregator)
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?
-///
-/// Aggregation affects the points' values and radii.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum TimeSeriesAggregator {
-    /// No aggregation.
-    Off,
-
-    /// Average all points in the range together.
-    Average,
-
-    /// Keep only the maximum values in the range.
-    Max,
-
-    /// Keep only the minimum values in the range.
-    Min,
-
-    /// Keep both the minimum and maximum values in the range.
-    ///
-    /// This will yield two aggregated points instead of one, effectively creating a vertical line.
-    #[default]
-    MinMax,
-
-    /// Find both the minimum and maximum values in the range, then use the average of those.
-    MinMaxAverage,
-}
-
-impl std::fmt::Display for TimeSeriesAggregator {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Off => write!(f, "Off"),
-            Self::Average => write!(f, "Average"),
-            Self::Max => write!(f, "Max"),
-            Self::Min => write!(f, "Min"),
-            Self::MinMax => write!(f, "MinMax"),
-            Self::MinMaxAverage => write!(f, "MinMaxAverage"),
-        }
-    }
-}
-
-impl TimeSeriesAggregator {
-    #[inline]
-    pub fn variants() -> [Self; 6] {
-        // Just making sure this method won't compile if the enum gets modified.
-        #[allow(clippy::match_same_arms)]
-        match Self::default() {
-            Self::Off => {}
-            Self::Average => {}
-            Self::Max => {}
-            Self::Min => {}
-            Self::MinMax => {}
-            Self::MinMaxAverage => {}
-        }
-
-        [
-            Self::Off,
-            Self::Average,
-            Self::Max,
-            Self::Min,
-            Self::MinMax,
-            Self::MinMaxAverage,
-        ]
-    }
-
-    #[inline]
-    pub fn description(&self) -> &'static str {
-        match self {
-            Self::Off => "No aggregation.",
-            Self::Average => "Average all points in the range together.",
-            Self::Max => "Keep only the maximum values in the range.",
-            Self::Min => "Keep only the minimum values in the range.",
-            Self::MinMax => "Keep both the minimum and maximum values in the range.\nThis will yield two aggregated points instead of one, effectively creating a vertical line.",
-            Self::MinMaxAverage => "Find both the minimum and maximum values in the range, then use the average of those",
-        }
     }
 }

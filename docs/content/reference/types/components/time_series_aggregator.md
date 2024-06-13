@@ -20,3 +20,6 @@ What kind of aggregation should be performed when the zoom-level on the X axis g
  * 🦀 [Rust API docs for `TimeSeriesAggregator`](https://docs.rs/rerun/latest/rerun/components/enum.TimeSeriesAggregator.html?speculative-link)
 
 
+## Used by
+
+* [`SeriesLine`](../archetypes/series_line.md)
