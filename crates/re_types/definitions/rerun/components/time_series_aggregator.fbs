@@ -1,0 +1,28 @@
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+/// What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?
+enum TimeSeriesAggregator: byte (
+    "attr.docs.unreleased"
+) {
+    /// No aggregation.
+    Off,
+
+    /// Average all points in the range together.
+    Average,
+
+    /// Keep only the maximum values in the range.
+    Max,
+
+    /// Keep only the minimum values in the range.
+    Min,
+
+    /// Keep both the minimum and maximum values in the range.
+    ///
+    /// This will yield two aggregated points instead of one, effectively creating a vertical line.
+    MinMax (default),
+
+    /// Find both the minimum and maximum values in the range, then use the average of those.
+    MinMaxAverage,
+}

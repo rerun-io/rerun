@@ -55,6 +55,13 @@ from .tensor_data import TensorData, TensorDataBatch, TensorDataType
 from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
+from .time_series_aggregator import (
+    TimeSeriesAggregator,
+    TimeSeriesAggregatorArrayLike,
+    TimeSeriesAggregatorBatch,
+    TimeSeriesAggregatorLike,
+    TimeSeriesAggregatorType,
+)
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
@@ -208,6 +215,11 @@ __all__ = [
     "TextLogLevelBatch",
     "TextLogLevelType",
     "TextType",
+    "TimeSeriesAggregator",
+    "TimeSeriesAggregatorArrayLike",
+    "TimeSeriesAggregatorBatch",
+    "TimeSeriesAggregatorLike",
+    "TimeSeriesAggregatorType",
     "Transform3D",
     "Transform3DBatch",
     "Transform3DType",

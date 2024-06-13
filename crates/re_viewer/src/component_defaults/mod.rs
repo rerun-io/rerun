@@ -234,6 +234,10 @@ pub fn list_default_components(
             TextLogLevel::default().to_arrow()?,
         ),
         (
+            <TimeSeriesAggregator as Loggable>::name(),
+            TimeSeriesAggregator::default().to_arrow()?,
+        ),
+        (
             <Transform3D as Loggable>::name(),
             Transform3D::default().to_arrow()?,
         ),

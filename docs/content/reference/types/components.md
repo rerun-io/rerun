@@ -48,6 +48,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
+* [`TimeSeriesAggregator`](components/time_series_aggregator.md): What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?
 * [`Transform3D`](components/transform3d.md): An affine transform between two 3D spaces, represented in a given direction.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
