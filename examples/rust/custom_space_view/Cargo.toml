@@ -14,7 +14,6 @@ analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
 
 [dependencies]
 re_crash_handler = { path = "../../../crates/re_crash_handler" }
-re_query = { path = "../../../crates/re_query" }
 re_viewer = { path = "../../../crates/re_viewer", default-features = false }
 
 # We need re_sdk_comms to receive log events from and SDK:
