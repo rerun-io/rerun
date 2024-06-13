@@ -21,8 +21,7 @@ use re_types_core::Archetype as _;
 use re_viewer_context::{
     ContentsName, PerSystemEntities, QueryRange, RecommendedSpaceView, SpaceViewClass,
     SpaceViewClassRegistry, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
-    SystemCommandSender as _, SystemExecutionOutput, ViewContext, ViewQuery, ViewStates,
-    ViewerContext, VisualizerCollection,
+    SystemCommandSender as _, ViewContext, ViewStates, ViewerContext, VisualizerCollection,
 };
 
 /// A view of a space.
@@ -350,7 +349,7 @@ impl SpaceViewBlueprint {
         space_view_class_registry.get_class_or_log_error(self.class_identifier)
     }
 
-    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>, view_state: &mut dyn SpaceViewState) {
+    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>, view_states: &mut ViewStates) {
         let query_result = ctx.lookup_query_result(self.id).clone();
 
         let mut per_system_entities = PerSystemEntities::default();
@@ -368,37 +367,9 @@ impl SpaceViewBlueprint {
             });
         }
 
-        self.class(ctx.space_view_class_registry).on_frame_start(
-            ctx,
-            view_state,
-            &per_system_entities,
-        );
-    }
-
-    // TODO: simplify further?
-    pub fn scene_ui(
-        &self,
-        view_state: &mut dyn SpaceViewState,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        query: &ViewQuery<'_>,
-        system_output: SystemExecutionOutput,
-    ) {
-        re_tracing::profile_function!();
-
         let class = self.class(ctx.space_view_class_registry);
-
-        ui.scope(|ui| {
-            class
-                .ui(ctx, ui, view_state, query, system_output)
-                .unwrap_or_else(|err| {
-                    re_log::error!(
-                        "Error in space view UI (class: {}, display name: {}): {err}",
-                        self.class_identifier,
-                        class.display_name(),
-                    );
-                });
-        });
+        let view_state = view_states.get_mut_or_create(self.id, class);
+        class.on_frame_start(ctx, view_state, &per_system_entities);
     }
 
     #[inline]
@@ -448,11 +419,10 @@ impl SpaceViewBlueprint {
         ctx: &'a ViewerContext<'a>,
         view_states: &'a mut ViewStates,
     ) -> ViewContext<'a> {
-        let view_state = view_states.get_mut(
-            ctx.space_view_class_registry,
-            self.id,
-            self.class_identifier(),
-        );
+        let class = ctx
+            .space_view_class_registry
+            .get_class_or_log_error(self.class_identifier());
+        let view_state = view_states.get_mut_or_create(self.id, class);
 
         ViewContext {
             viewer_ctx: ctx,

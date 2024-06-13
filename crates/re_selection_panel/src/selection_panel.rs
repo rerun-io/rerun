@@ -276,36 +276,26 @@ impl SelectionPanel {
         ui.full_span_separator();
         ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
-        if let Some(space_view) = blueprint.space_view(&view_id) {
-            let class_identifier = space_view.class_identifier();
+        if let Some(view) = blueprint.space_view(&view_id) {
+            query_range_ui_space_view(ctx, ui, view);
 
-            let view_state = view_states.get_mut(
-                ctx.space_view_class_registry,
-                space_view.id,
-                class_identifier,
-            );
+            let view_class = view.class(ctx.space_view_class_registry);
+            let view_state = view_states.get_mut_or_create(view.id, view_class);
 
-            query_range_ui_space_view(ctx, ui, space_view);
-
-            let space_view_class = space_view.class(ctx.space_view_class_registry);
-            if let Err(err) = space_view_class.selection_ui(
-                ctx,
-                ui,
-                view_state,
-                &space_view.space_origin,
-                space_view.id,
-            ) {
+            if let Err(err) =
+                view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
+            {
                 re_log::error!(
                     "Error in space view selection UI (class: {}, display name: {}): {err}",
-                    space_view.class_identifier(),
-                    space_view_class.display_name(),
+                    view.class_identifier(),
+                    view_class.display_name(),
                 );
             }
 
-            let view_ctx = space_view.bundle_context_with_state(ctx, view_state);
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
             ui.large_collapsing_header("Component Defaults", true, |ui| {
-                defaults_ui(&view_ctx, space_view, ui);
+                defaults_ui(&view_ctx, view, ui);
             });
         }
     }

@@ -5,9 +5,7 @@
 
 use ahash::HashMap;
 
-use re_log_types::external::re_types_core::SpaceViewClassIdentifier;
-
-use crate::{SpaceViewClassRegistry, SpaceViewId, SpaceViewState};
+use crate::{SpaceViewClass, SpaceViewId, SpaceViewState};
 
 /// State for the `SpaceView`s that persists across frames but otherwise
 /// is not saved.
@@ -21,19 +19,14 @@ impl ViewStates {
         self.states.get(&space_view_id).map(|s| s.as_ref())
     }
 
-    pub fn get_mut(
+    pub fn get_mut_or_create(
         &mut self,
-        view_class_registry: &SpaceViewClassRegistry,
         view_id: SpaceViewId,
-        view_class: SpaceViewClassIdentifier,
+        view_class: &dyn SpaceViewClass,
     ) -> &mut dyn SpaceViewState {
         self.states
             .entry(view_id)
-            .or_insert_with(|| {
-                view_class_registry
-                    .get_class_or_log_error(view_class)
-                    .new_state()
-            })
+            .or_insert_with(|| view_class.new_state())
             .as_mut()
     }
 }
