@@ -51,7 +51,7 @@ class DepthImage(DepthImageExt, Archetype):
     )
 
     # Log the tensor.
-    rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0, colormap="viridis"))
+    rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0, backproject_radius_scale=0.2))
     ```
     <center>
     <picture>
@@ -72,7 +72,7 @@ class DepthImage(DepthImageExt, Archetype):
         meter: components.DepthMeterLike | None = None,
         draw_order: components.DrawOrderLike | None = None,
         colormap: components.ColormapLike | None = None,
-        backproject_radius_scale: datatypes.Float32Like | None = None,
+        point_fill_ratio: datatypes.Float32Like | None = None,
     ):
         """
         Create a new instance of the DepthImage archetype.
@@ -94,7 +94,7 @@ class DepthImage(DepthImageExt, Archetype):
             Colormap to use for rendering the depth image.
 
             If not set, the depth image will be rendered using the Turbo colormap.
-        backproject_radius_scale:
+        point_fill_ratio:
             Scale the radii of the points in the point cloud generated from this image.
 
             A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
@@ -106,11 +106,7 @@ class DepthImage(DepthImageExt, Archetype):
         # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                data=data,
-                meter=meter,
-                draw_order=draw_order,
-                colormap=colormap,
-                backproject_radius_scale=backproject_radius_scale,
+                data=data, meter=meter, draw_order=draw_order, colormap=colormap, point_fill_ratio=point_fill_ratio
             )
             return
         self.__attrs_clear__()
@@ -122,7 +118,7 @@ class DepthImage(DepthImageExt, Archetype):
             meter=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
-            backproject_radius_scale=None,  # type: ignore[arg-type]
+            point_fill_ratio=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -174,7 +170,7 @@ class DepthImage(DepthImageExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    backproject_radius_scale: components.FillRatioBatch | None = field(
+    point_fill_ratio: components.FillRatioBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.FillRatioBatch._optional,  # type: ignore[misc]

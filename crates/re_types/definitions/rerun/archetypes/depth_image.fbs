@@ -51,5 +51,5 @@ table DepthImage (
   /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
   /// if it is at the same depth, leaving no gaps.
   /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
-  backproject_radius_scale: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3400);
+  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3400);
 }

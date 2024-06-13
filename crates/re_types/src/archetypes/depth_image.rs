@@ -93,7 +93,7 @@ pub struct DepthImage {
     /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
     /// if it is at the same depth, leaving no gaps.
     /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
-    pub backproject_radius_scale: Option<crate::components::FillRatio>,
+    pub point_fill_ratio: Option<crate::components::FillRatio>,
 }
 
 impl ::re_types_core::SizeBytes for DepthImage {
@@ -103,7 +103,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
             + self.meter.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
             + self.colormap.heap_size_bytes()
-            + self.backproject_radius_scale.heap_size_bytes()
+            + self.point_fill_ratio.heap_size_bytes()
     }
 
     #[inline]
@@ -241,22 +241,22 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
-        let backproject_radius_scale =
-            if let Some(array) = arrays_by_name.get("rerun.components.FillRatio") {
-                <crate::components::FillRatio>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.DepthImage#backproject_radius_scale")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let point_fill_ratio = if let Some(array) = arrays_by_name.get("rerun.components.FillRatio")
+        {
+            <crate::components::FillRatio>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#point_fill_ratio")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             data,
             meter,
             draw_order,
             colormap,
-            backproject_radius_scale,
+            point_fill_ratio,
         })
     }
 }
@@ -277,7 +277,7 @@ impl ::re_types_core::AsComponents for DepthImage {
             self.colormap
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.backproject_radius_scale
+            self.point_fill_ratio
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -296,7 +296,7 @@ impl DepthImage {
             meter: None,
             draw_order: None,
             colormap: None,
-            backproject_radius_scale: None,
+            point_fill_ratio: None,
         }
     }
 
@@ -334,11 +334,11 @@ impl DepthImage {
     /// if it is at the same depth, leaving no gaps.
     /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
     #[inline]
-    pub fn with_backproject_radius_scale(
+    pub fn with_point_fill_ratio(
         mut self,
-        backproject_radius_scale: impl Into<crate::components::FillRatio>,
+        point_fill_ratio: impl Into<crate::components::FillRatio>,
     ) -> Self {
-        self.backproject_radius_scale = Some(backproject_radius_scale.into());
+        self.point_fill_ratio = Some(point_fill_ratio.into());
         self
     }
 }

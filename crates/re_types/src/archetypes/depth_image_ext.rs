@@ -35,7 +35,7 @@ impl DepthImage {
             draw_order: None,
             meter: None,
             colormap: None,
-            backproject_radius_scale: None,
+            point_fill_ratio: None,
         })
     }
 }
