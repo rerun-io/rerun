@@ -22,7 +22,11 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?
+/// **Component**: Configures the zoom-dependent scalar aggregation.
+///
+/// This is done only if steps on the X axis go below a single pixel,
+/// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+/// (and readability) in such situations as it prevents overdraw.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum TimeSeriesAggregator {
     /// No aggregation.

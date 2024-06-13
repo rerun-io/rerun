@@ -28,7 +28,13 @@ from enum import Enum
 
 
 class TimeSeriesAggregator(Enum):
-    """**Component**: What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?."""
+    """
+    **Component**: Configures the zoom-dependent scalar aggregation.
+
+    This is done only if steps on the X axis go below a single pixel,
+    i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+    (and readability) in such situations as it prevents overdraw.
+    """
 
     Off = 1
     """No aggregation."""
