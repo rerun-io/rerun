@@ -5,7 +5,7 @@ use re_ui::list_item;
 fn colormap_preview_ui(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    colormap: re_renderer::Colormap,
+    colormap: re_types::components::Colormap,
 ) -> anyhow::Result<egui::Response> {
     re_tracing::profile_function!();
 
@@ -44,7 +44,9 @@ fn colormap_preview_ui(
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
         shader_decoding: None,
-        color_mapper: re_renderer::renderer::ColorMapper::Function(colormap),
+        color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
+            colormap,
+        )),
     };
 
     let debug_name = format!("colormap_{colormap}");
@@ -63,11 +65,11 @@ fn colormap_preview_ui(
 pub fn colormap_dropdown_button_ui(
     render_ctx: Option<&re_renderer::RenderContext>,
     ui: &mut egui::Ui,
-    map: &mut re_renderer::Colormap,
+    map: &mut re_types::components::Colormap,
 ) {
     let selected_text = map.to_string();
     let content_ui = |ui: &mut egui::Ui| {
-        for option in re_renderer::Colormap::ALL {
+        for option in re_types::components::Colormap::ALL {
             let list_item = list_item::ListItem::new().selected(&option == map);
 
             let response = if let Some(render_ctx) = render_ctx {
@@ -94,4 +96,15 @@ pub fn colormap_dropdown_button_ui(
         .show_ui(ui, |ui| {
             list_item::list_item_scope(ui, "inner_scope", content_ui);
         });
+}
+
+pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_renderer::Colormap {
+    match colormap {
+        re_types::components::Colormap::Grayscale => re_renderer::Colormap::Grayscale,
+        re_types::components::Colormap::Inferno => re_renderer::Colormap::Inferno,
+        re_types::components::Colormap::Magma => re_renderer::Colormap::Magma,
+        re_types::components::Colormap::Plasma => re_renderer::Colormap::Plasma,
+        re_types::components::Colormap::Turbo => re_renderer::Colormap::Turbo,
+        re_types::components::Colormap::Viridis => re_renderer::Colormap::Viridis,
+    }
 }

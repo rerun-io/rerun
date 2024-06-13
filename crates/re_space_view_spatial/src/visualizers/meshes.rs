@@ -11,8 +11,8 @@ use re_types::{
     },
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -57,7 +57,7 @@ struct Mesh3DComponentData<'a> {
 impl Mesh3DVisualizer {
     fn process_data<'a>(
         &mut self,
-        ctx: &ViewContext<'_>,
+        ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         entity_path: &EntityPath,

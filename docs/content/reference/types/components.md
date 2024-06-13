@@ -19,6 +19,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+* [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
 * [`DepthMeter`](components/depth_meter.md): A component indicating how long a meter is, expressed in native units.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order used for the display order of 2D elements.

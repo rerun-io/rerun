@@ -445,6 +445,9 @@ impl SpatialSpaceView3D {
             draw_data,
         } = system_output;
 
+        // Wrap view systems collection in an Arc for later use in ViewContext.
+        let parts = std::sync::Arc::new(parts);
+
         let highlights = &query.highlights;
         let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
         // TODO(#5607): what should happen if the promise is still pending?

@@ -97,9 +97,6 @@ pub struct EntityProperties {
     // TODO(#5067): Test property used so we don't have to continuously adjust existing tests while we're dismantling `EntityProperties`.
     pub test_property: bool,
 
-    /// What kind of color mapping should be applied (none, map, texture, transfer..)?
-    pub color_mapper: EditableAutoValue<ColorMapper>, // TODO(andreas): should become a component and be part of the DepthImage and regular Images (with limitation to mono channel image).
-
     /// Should the depth texture be backprojected into a point cloud?
     ///
     /// Only applies to tensors with meaning=depth that are affected by a pinhole transform.
@@ -124,7 +121,6 @@ impl Default for EntityProperties {
     fn default() -> Self {
         Self {
             test_property: true,
-            color_mapper: EditableAutoValue::default(),
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
@@ -139,8 +135,6 @@ impl EntityProperties {
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
             test_property: self.test_property && child.test_property,
-
-            color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
 
             backproject_depth: self.backproject_depth.or(&child.backproject_depth).clone(),
             depth_from_world_scale: self
@@ -170,8 +164,6 @@ impl EntityProperties {
         Self {
             test_property: other.test_property,
 
-            color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
-
             backproject_depth: other.backproject_depth.or(&self.backproject_depth).clone(),
             depth_from_world_scale: other
                 .depth_from_world_scale
@@ -193,7 +185,6 @@ impl EntityProperties {
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             test_property,
-            color_mapper,
             backproject_depth,
             depth_from_world_scale,
             backproject_radius_scale,
@@ -201,89 +192,10 @@ impl EntityProperties {
         } = self;
 
         test_property != &other.test_property
-            || color_mapper.has_edits(&other.color_mapper)
             || backproject_depth.has_edits(&other.backproject_depth)
             || depth_from_world_scale.has_edits(&other.depth_from_world_scale)
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
             || time_series_aggregator.has_edits(&other.time_series_aggregator)
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum Colormap {
-    /// sRGB gray gradient = perceptually even
-    Grayscale,
-
-    Inferno,
-    Magma,
-    Plasma,
-    #[default]
-    Turbo,
-    Viridis,
-}
-
-impl std::fmt::Display for Colormap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::Grayscale => "Grayscale",
-            Self::Inferno => "Inferno",
-            Self::Magma => "Magma",
-            Self::Plasma => "Plasma",
-            Self::Turbo => "Turbo",
-            Self::Viridis => "Viridis",
-        })
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum ColorMapper {
-    /// Use a well-known color map, pre-implemented as a wgsl module.
-    Colormap(Colormap),
-    // TODO(cmc): support textures.
-    // TODO(cmc): support custom transfer functions.
-}
-
-impl std::fmt::Display for ColorMapper {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Colormap(colormap) => colormap.fmt(f),
-        }
-    }
-}
-
-impl Default for ColorMapper {
-    #[inline]
-    fn default() -> Self {
-        Self::Colormap(Colormap::default())
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Where to put the legend?
-///
-/// This type duplicates `egui_plot::Corner` to add serialization support.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum LegendCorner {
-    LeftTop,
-    RightTop,
-    LeftBottom,
-    RightBottom,
-}
-
-impl std::fmt::Display for LegendCorner {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::LeftTop => write!(f, "Top Left"),
-            Self::RightTop => write!(f, "Top Right"),
-            Self::LeftBottom => write!(f, "Bottom Left"),
-            Self::RightBottom => write!(f, "Bottom Right"),
-        }
     }
 }
 

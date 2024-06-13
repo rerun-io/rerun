@@ -130,6 +130,10 @@ pub fn list_default_components(
         ),
         (<Color as Loggable>::name(), Color::default().to_arrow()?),
         (
+            <Colormap as Loggable>::name(),
+            Colormap::default().to_arrow()?,
+        ),
+        (
             <DepthMeter as Loggable>::name(),
             DepthMeter::default().to_arrow()?,
         ),
