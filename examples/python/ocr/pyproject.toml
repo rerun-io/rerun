@@ -3,15 +3,15 @@ name = "ocr"
 version = "0.1.0"
 readme = "README.md"
 dependencies = [
-    "rerun-sdk",
-    "paddleocr",
-    "paddlepaddle",
-    "paddleclas",
-    "tabulate",
-    "opencv-python",
-    "requests",
-    "pandas",
-    "tqdm"
+  "rerun-sdk",
+  "paddleocr",
+  "paddlepaddle",
+  "paddleclas",
+  "tabulate",
+  "opencv-python",
+  "requests",
+  "pandas",
+  "tqdm",
 ]
 
 [project.scripts]
