@@ -53,6 +53,22 @@ impl From<Blob> for ::re_types_core::ArrowBuffer<u8> {
     }
 }
 
+impl std::ops::Deref for Blob {
+    type Target = ::re_types_core::ArrowBuffer<u8>;
+
+    #[inline]
+    fn deref(&self) -> &::re_types_core::ArrowBuffer<u8> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Blob {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut ::re_types_core::ArrowBuffer<u8> {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Blob);
 
 impl ::re_types_core::Loggable for Blob {

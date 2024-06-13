@@ -1,18 +1,23 @@
 use egui::Color32;
 use re_log_types::{EntityPath, Instance};
-use re_types::components::Transform3D;
+use re_space_view::DataResultQuery;
+use re_types::{
+    archetypes::{Axes3D, Pinhole, Transform3D},
+    components::{AxisLength, ImagePlaneDistance},
+};
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::TransformContext, view_kind::SpatialSpaceViewKind,
+    contexts::TransformContext, ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
     visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -32,7 +37,7 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
 
 impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<re_types::archetypes::Transform3D>()
+        VisualizerQueryInfo::from_archetype::<Axes3D>()
     }
 
     fn filter_visualizable_entities(
@@ -45,15 +50,15 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let transforms = view_ctx.get::<TransformContext>()?;
+        let transforms = context_systems.get::<TransformContext>()?;
 
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
@@ -63,18 +68,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            if !*data_result.accumulated_properties().transform_3d_visible {
-                continue;
-            }
-
-            if ctx
-                .recording()
-                .latest_at_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
-                .is_none()
-            {
-                continue;
-            }
-
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(world_from_obj) = transforms.reference_from_entity_ignoring_pinhole(
                 &data_result.entity_path,
@@ -91,11 +84,14 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 world_from_obj,
             );
 
+            let results = data_result.latest_at_with_overrides::<Axes3D>(ctx, &latest_at_query);
+            let axis_length = results.get_mono_with_fallback::<AxisLength>().into();
+
             add_axis_arrows(
                 &mut line_builder,
                 world_from_obj,
                 Some(&data_result.entity_path),
-                *data_result.accumulated_properties().transform_3d_size,
+                axis_length,
                 query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash())
@@ -111,6 +107,10 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
@@ -162,3 +162,100 @@ pub fn add_axis_arrows(
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
 }
+
+impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> AxisLength {
+        if let Some(view_ctx) = ctx.view_ctx {
+            let query_result = ctx.viewer_ctx.lookup_query_result(view_ctx.view_id);
+
+            // If there is a camera in the scene and it has a pinhole, use the image plane distance to determine the axis length.
+            if let Some(length) = query_result
+                .tree
+                .lookup_result_by_path(ctx.target_entity_path)
+                .cloned()
+                .and_then(|data_result| {
+                    if data_result
+                        .visualizers
+                        .contains(&CamerasVisualizer::identifier())
+                    {
+                        let results =
+                            data_result.latest_at_with_overrides::<Pinhole>(view_ctx, ctx.query);
+
+                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>())
+                    } else {
+                        None
+                    }
+                })
+            {
+                let length: f32 = length.into();
+                return (length * 0.5).into();
+            }
+        }
+
+        // If there is a finite bounding box, use the scene size to determine the axis length.
+        if let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() {
+            let scene_size = state.bounding_boxes.accumulated.size().length();
+
+            if scene_size.is_finite() && scene_size > 0.0 {
+                return (scene_size * 0.05).into();
+            };
+        }
+
+        // Otherwise 0.3 is a reasonable default.
+
+        // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+        // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+        // this value works better with the default camera setup.
+        0.3.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer => [AxisLength]);
+
+/// The `Transform3DDetector` doesn't actually visualize anything, but it allows us to detect
+/// when a transform should otherwise be visualized.
+///
+/// See the logic in [`crate::SpatialSpaceView3D`]`::choose_default_visualizers`.
+#[derive(Default)]
+pub struct Transform3DDetector();
+
+impl IdentifiedViewSystem for Transform3DDetector {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
+        "Transform3DDetector".into()
+    }
+}
+
+impl VisualizerSystem for Transform3DDetector {
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Transform3D>()
+    }
+
+    fn execute(
+        &mut self,
+        _ctx: &ViewContext<'_>,
+        _query: &ViewQuery<'_>,
+        _context_systems: &ViewContextCollection,
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        Ok(vec![])
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
+
+    #[inline]
+    fn filter_visualizable_entities(
+        &self,
+        _entities: ApplicableEntities,
+        _context: &dyn VisualizableFilterContext,
+    ) -> VisualizableEntities {
+        // Never actually visualize this detector
+        Default::default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Transform3DDetector => []);

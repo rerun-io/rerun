@@ -63,7 +63,7 @@ pub trait SpaceViewClass: Send + Sync {
     }
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText;
 
     /// Called once upon registration of the class
     ///
@@ -135,6 +135,7 @@ pub trait SpaceViewClass: Send + Sync {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
@@ -255,7 +256,7 @@ impl<'a> SpaceViewClassExt<'a> for dyn SpaceViewClass + 'a {}
 /// For any state that should be persisted, use the Blueprint!
 /// This state is used for transient state, such as animation or uncommitted ui state like dragging a camera.
 /// (on mouse release, the camera would be committed to the blueprint).
-pub trait SpaceViewState: std::any::Any {
+pub trait SpaceViewState: std::any::Any + Sync + Send {
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
 

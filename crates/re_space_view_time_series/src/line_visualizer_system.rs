@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
 use re_query::{PromiseResult, QueryError};
+use re_space_view::range_with_blueprint_resolved_data;
 use re_types::archetypes;
 use re_types::{
     archetypes::SeriesLine,
@@ -7,11 +8,11 @@ use re_types::{
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewContext, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::overrides::initial_override_color;
+use crate::overrides::fallback_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
@@ -20,7 +21,6 @@ use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 /// The system for rendering [`SeriesLine`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesLineSystem {
-    pub annotation_map: AnnotationMap,
     pub all_series: Vec<PlotSeries>,
 }
 
@@ -46,19 +46,11 @@ impl VisualizerSystem for SeriesLineSystem {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
-
-        self.annotation_map.load(
-            ctx,
-            &query.latest_at_query(),
-            query
-                .iter_visible_data_results(ctx, Self::identifier())
-                .map(|data| &data.entity_path),
-        );
 
         match self.load_scalars(ctx, query) {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => Ok(Vec::new()),
@@ -70,33 +62,35 @@ impl VisualizerSystem for SeriesLineSystem {
         self
     }
 
-    fn initial_override_value(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
-        entity_path: &re_log_types::EntityPath,
-        component: &re_types::ComponentName,
-    ) -> Option<re_log_types::DataCell> {
-        if *component == Color::name() {
-            Some([initial_override_color(entity_path)].into())
-        } else if *component == StrokeWidth::name() {
-            Some([StrokeWidth(DEFAULT_STROKE_WIDTH)].into())
-        } else {
-            None
-        }
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
     }
 }
+
+impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        fallback_color(ctx.target_entity_path)
+    }
+}
+
+impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
+        StrokeWidth(DEFAULT_STROKE_WIDTH)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth]);
 
 impl SeriesLineSystem {
     fn load_scalars(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
+        let (plot_bounds, time_per_pixel) =
+            determine_plot_bounds_and_time_per_pixel(ctx.viewer_ctx, query);
 
         let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
@@ -108,14 +102,12 @@ impl SeriesLineSystem {
                 .collect_vec()
                 .par_iter()
                 .map(|data_result| -> Result<Vec<PlotSeries>, QueryError> {
-                    let annotations = self.annotation_map.find(&data_result.entity_path);
                     let mut series = vec![];
-                    load_series(
+                    self.load_series(
                         ctx,
                         query,
                         plot_bounds,
                         time_per_pixel,
-                        &annotations,
                         data_result,
                         &mut series,
                     )?;
@@ -126,137 +118,148 @@ impl SeriesLineSystem {
                 self.all_series.append(&mut one_series?);
             }
         } else {
+            let mut series = vec![];
             for data_result in data_results {
-                let annotations = self.annotation_map.find(&data_result.entity_path);
-                load_series(
+                self.load_series(
                     ctx,
                     query,
                     plot_bounds,
                     time_per_pixel,
-                    &annotations,
                     data_result,
-                    &mut self.all_series,
+                    &mut series,
                 )?;
             }
+            self.all_series = series;
         }
 
         Ok(())
     }
-}
 
-fn load_series(
-    ctx: &ViewerContext<'_>,
-    query: &ViewQuery<'_>,
-    plot_bounds: Option<egui_plot::PlotBounds>,
-    time_per_pixel: f64,
-    annotations: &re_viewer_context::Annotations,
-    data_result: &re_viewer_context::DataResult,
-    all_series: &mut Vec<PlotSeries>,
-) -> Result<(), QueryError> {
-    re_tracing::profile_function!();
+    #[allow(clippy::too_many_arguments)]
+    fn load_series(
+        &self,
+        ctx: &ViewContext<'_>,
+        view_query: &ViewQuery<'_>,
+        plot_bounds: Option<egui_plot::PlotBounds>,
+        time_per_pixel: f64,
+        data_result: &re_viewer_context::DataResult,
+        all_series: &mut Vec<PlotSeries>,
+    ) -> Result<(), QueryError> {
+        re_tracing::profile_function!();
 
-    let resolver = ctx.recording().resolver();
+        let resolver = ctx.recording().resolver();
 
-    let annotation_info = annotations
-        .resolved_class_description(None)
-        .annotation_info();
-    let default_color = DefaultColor::EntityPath(&data_result.entity_path);
-    let override_color = data_result
-        .lookup_override::<Color>(ctx)
-        .map(|c| c.to_array());
-    let override_series_name = data_result.lookup_override::<Name>(ctx).map(|t| t.0);
-    let override_stroke_width = data_result.lookup_override::<StrokeWidth>(ctx).map(|r| r.0);
+        let current_query = ctx.current_query();
+        let query_ctx = ctx.query_context(data_result, &current_query);
 
-    // All the default values for a `PlotPoint`, accounting for both overrides and default
-    // values.
-    let default_point = PlotPoint {
-        time: 0,
-        value: 0.0,
-        attrs: PlotPointAttrs {
-            label: None,
-            color: annotation_info.color(override_color, default_color),
-            marker_size: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
-            kind: PlotSeriesKind::Continuous,
-        },
-    };
+        let fallback_color =
+            re_viewer_context::TypedComponentFallbackProvider::<Color>::fallback_for(
+                self, &query_ctx,
+            );
 
-    let mut points;
+        let fallback_stroke =
+            re_viewer_context::TypedComponentFallbackProvider::<StrokeWidth>::fallback_for(
+                self, &query_ctx,
+            );
 
-    let time_range = determine_time_range(
-        query.latest_at,
-        data_result,
-        plot_bounds,
-        ctx.app_options.experimental_plot_query_clamping,
-    );
-    {
-        re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
+        // All the default values for a `PlotPoint`, accounting for both overrides and default
+        // values.
+        let default_point = PlotPoint {
+            time: 0,
+            value: 0.0,
+            attrs: PlotPointAttrs {
+                label: None,
+                color: fallback_color.into(),
+                marker_size: fallback_stroke.into(),
+                kind: PlotSeriesKind::Continuous,
+            },
+        };
 
-        let entity_path = &data_result.entity_path;
-        let query = re_data_store::RangeQuery::new(query.timeline, time_range);
+        let mut points;
+        let mut series_name = Default::default();
 
-        let results = ctx.recording().query_caches().range(
-            ctx.recording_store(),
-            &query,
-            entity_path,
-            [Scalar::name(), Color::name(), StrokeWidth::name()],
+        let time_range = determine_time_range(
+            view_query.latest_at,
+            data_result,
+            plot_bounds,
+            ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
         );
+        {
+            use re_space_view::RangeResultsExt as _;
 
-        let all_scalars = results
-            .get_required(Scalar::name())?
-            .to_dense::<Scalar>(resolver);
-        let all_scalars_entry_range = all_scalars.entry_range();
+            re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
-        if !matches!(
-            all_scalars.status(),
-            (PromiseResult::Ready(()), PromiseResult::Ready(()))
-        ) {
-            // TODO(#5607): what should happen if the promise is still pending?
-        }
+            let entity_path = &data_result.entity_path;
+            let query = re_data_store::RangeQuery::new(view_query.timeline, time_range);
 
-        // Allocate all points.
-        points = all_scalars
-            .range_indices(all_scalars_entry_range.clone())
-            .map(|(data_time, _)| PlotPoint {
-                time: data_time.as_i64(),
-                ..default_point.clone()
-            })
-            .collect_vec();
+            let results = range_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &query,
+                data_result,
+                [
+                    Scalar::name(),
+                    Color::name(),
+                    StrokeWidth::name(),
+                    Name::name(),
+                ],
+            );
 
-        if cfg!(debug_assertions) {
-            for ps in points.windows(2) {
-                assert!(
+            // If we have no scalars, we can't do anything.
+            let Some(all_scalars) = results.get_dense::<Scalar>(resolver) else {
+                return Ok(());
+            };
+
+            let all_scalars = all_scalars?;
+
+            let all_scalars_entry_range = all_scalars.entry_range();
+
+            if !matches!(
+                all_scalars.status(),
+                (PromiseResult::Ready(()), PromiseResult::Ready(()))
+            ) {
+                // TODO(#5607): what should happen if the promise is still pending?
+            }
+
+            // Allocate all points.
+            points = all_scalars
+                .range_indices(all_scalars_entry_range.clone())
+                .map(|(data_time, _)| PlotPoint {
+                    time: data_time.as_i64(),
+                    ..default_point.clone()
+                })
+                .collect_vec();
+
+            if cfg!(debug_assertions) {
+                for ps in points.windows(2) {
+                    assert!(
                     ps[0].time <= ps[1].time,
                     "scalars should be sorted already when extracted from the cache, got p0 at {} and p1 at {}\n{:?}",
                     ps[0].time, ps[1].time,
                     points.iter().map(|p| p.time).collect_vec(),
                 );
+                }
             }
-        }
 
-        // Fill in values.
-        for (i, scalars) in all_scalars
-            .range_data(all_scalars_entry_range.clone())
-            .enumerate()
-        {
-            if scalars.len() > 1 {
-                re_log::warn_once!(
-                    "found a scalar batch in {entity_path:?} -- those have no effect"
-                );
-            } else if scalars.is_empty() {
-                points[i].attrs.kind = PlotSeriesKind::Clear;
-            } else {
-                points[i].value = scalars.first().map_or(0.0, |s| s.0);
+            // Fill in values.
+            for (i, scalars) in all_scalars
+                .range_data(all_scalars_entry_range.clone())
+                .enumerate()
+            {
+                if scalars.len() > 1 {
+                    re_log::warn_once!(
+                        "found a scalar batch in {entity_path:?} -- those have no effect"
+                    );
+                } else if scalars.is_empty() {
+                    points[i].attrs.kind = PlotSeriesKind::Clear;
+                } else {
+                    points[i].value = scalars.first().map_or(0.0, |s| s.0);
+                }
             }
-        }
 
-        // Make it as clear as possible to the optimizer that some parameters
-        // go completely unused as soon as overrides have been defined.
-
-        // Fill in colors -- if available _and_ not overridden.
-        if override_color.is_none() {
-            if let Some(all_colors) = results.get(Color::name()) {
-                let all_colors = all_colors.to_dense::<Color>(resolver);
-
+            // Fill in colors.
+            // TODO(jleibs): Handle Err values.
+            if let Ok(all_colors) = results.get_or_empty_dense::<Color>(resolver) {
                 if !matches!(
                     all_colors.status(),
                     (PromiseResult::Ready(()), PromiseResult::Ready(()))
@@ -288,13 +291,10 @@ fn load_series(
                     }
                 }
             }
-        }
 
-        // Fill in stroke widths -- if available _and_ not overridden.
-        if override_stroke_width.is_none() {
-            if let Some(all_stroke_widths) = results.get(StrokeWidth::name()) {
-                let all_stroke_widths = all_stroke_widths.to_dense::<StrokeWidth>(resolver);
-
+            // Fill in stroke widths
+            // TODO(jleibs): Handle Err values.
+            if let Ok(all_stroke_widths) = results.get_or_empty_dense::<StrokeWidth>(resolver) {
                 if !matches!(
                     all_stroke_widths.status(),
                     (PromiseResult::Ready(()), PromiseResult::Ready(()))
@@ -318,31 +318,36 @@ fn load_series(
                     }
                 }
             }
+
+            // Extract the series name
+            // TODO(jleibs): Handle Err values.
+            if let Ok(all_series_name) = results.get_or_empty_dense::<Name>(resolver) {
+                if !matches!(
+                    all_series_name.status(),
+                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                ) {
+                    // TODO(#5607): what should happen if the promise is still pending?
+                }
+
+                series_name = all_series_name
+                    .range_data(all_scalars_entry_range.clone())
+                    .next()
+                    .and_then(|name| name.first())
+                    .map(|name| name.0.clone());
+            }
+
+            // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            points_to_series(
+                data_result,
+                time_per_pixel,
+                points,
+                ctx.recording_store(),
+                view_query,
+                series_name,
+                all_series,
+            );
         }
+
+        Ok(())
     }
-
-    // Check for an explicit label if any.
-    // We're using a separate latest-at query for this since the semantics for labels changing over time are a
-    // a bit unclear.
-    // Sidestepping the cache here shouldn't be a problem since we do so only once per entity.
-    let series_name = if let Some(override_name) = override_series_name {
-        Some(override_name)
-    } else {
-        // TODO(#5607): what should happen if the promise is still pending?
-        ctx.recording()
-            .latest_at_component::<Name>(&data_result.entity_path, &ctx.current_query())
-            .map(|name| name.value.0)
-    };
-
-    // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-    points_to_series(
-        data_result,
-        time_per_pixel,
-        points,
-        ctx.recording_store(),
-        query,
-        series_name,
-        all_series,
-    );
-    Ok(())
 }

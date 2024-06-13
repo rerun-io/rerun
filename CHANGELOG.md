@@ -2,6 +2,13 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.16.1](https://github.com/rerun-io/rerun/compare/0.16.0...0.16.1) - Bug fix - 2024-05-29
+- Don't log warnings when unknown clients connect over TCP [#6368](https://github.com/rerun-io/rerun/pull/6368)
+- Fix not being able to set time series' Y axis ranges from the UI [#6384](https://github.com/rerun-io/rerun/pull/6384)
+- Fix error when logging segmentation image [#6449](https://github.com/rerun-io/rerun/pull/6449)
+- Fix broken example source links in Viewer example list [#6451](https://github.com/rerun-io/rerun/pull/6451)
+
+
 ## [0.16.0](https://github.com/rerun-io/rerun/compare/0.15.1...0.16.0) - First configurable views - 2024-05-16
 
 ### ✨ Overview & highlights

@@ -3,8 +3,7 @@ use re_log_types::LogMsg;
 /// Used by `eframe` to decide where to store the app state.
 pub const APP_ID: &str = "rerun";
 
-type AppCreator =
-    Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
+type AppCreator = Box<dyn FnOnce(&eframe::CreationContext<'_>) -> Box<dyn eframe::App>>;
 
 // NOTE: the name of this function is hard-coded in `crates/rerun/src/crash_handler.rs`!
 pub fn run_native_app(
@@ -18,8 +17,8 @@ pub fn run_native_app(
         window_title,
         native_options,
         Box::new(move |cc| {
-            let re_ui = crate::customize_eframe_and_setup_renderer(cc);
-            app_creator(cc, re_ui)
+            crate::customize_eframe_and_setup_renderer(cc)?;
+            Ok(app_creator(cc))
         }),
     )
 }
@@ -98,8 +97,14 @@ pub fn run_native_viewer_with_messages(
 
     let force_wgpu_backend = startup_options.force_wgpu_backend.clone();
     run_native_app(
-        Box::new(move |cc, re_ui| {
-            let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+        Box::new(move |cc| {
+            let mut app = crate::App::new(
+                build_info,
+                &app_env,
+                startup_options,
+                cc.egui_ctx.clone(),
+                cc.storage,
+            );
             app.add_receiver(rx);
             Box::new(app)
         }),

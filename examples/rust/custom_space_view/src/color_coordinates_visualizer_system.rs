@@ -1,11 +1,12 @@
 use re_viewer::external::{
     egui,
     re_log_types::{EntityPath, Instance},
-    re_query, re_renderer,
+    re_renderer,
     re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
-        IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-        ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+        self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
+        ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
+        VisualizerSystem,
     },
 };
 
@@ -38,16 +39,6 @@ impl re_types::Archetype for ColorArchetype {
     }
 }
 
-impl re_query::ToArchetype<ColorArchetype> for re_query::LatestAtResults {
-    #[inline]
-    fn to_archetype(
-        &self,
-        _resolver: &re_query::PromiseResolver,
-    ) -> re_query::PromiseResult<re_query::Result<ColorArchetype>> {
-        re_query::PromiseResult::Ready(Ok(ColorArchetype))
-    }
-}
-
 impl IdentifiedViewSystem for InstanceColorSystem {
     fn identifier() -> ViewSystemIdentifier {
         "InstanceColor".into()
@@ -62,9 +53,9 @@ impl VisualizerSystem for InstanceColorSystem {
     /// Populates the scene part with data from the store.
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        _view_ctx: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         // For each entity in the space view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
@@ -109,4 +100,12 @@ impl VisualizerSystem for InstanceColorSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+// Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
+// It is left empty here but could be used to provides fallback values for optional components in case they're missing.
+re_viewer_context::impl_component_fallback_provider!(InstanceColorSystem => []);

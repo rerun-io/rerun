@@ -30,14 +30,14 @@ pub struct ScalarAxis {
     /// If unset, the range well be automatically determined based on the queried data.
     pub range: Option<crate::components::Range1D>,
 
-    /// Whether to lock the range of the axis during zoom.
-    pub lock_range_during_zoom: Option<crate::blueprint::components::LockRangeDuringZoom>,
+    /// If enabled, the Y axis range will remain locked to the specified range when zooming.
+    pub zoom_lock: Option<crate::blueprint::components::LockRangeDuringZoom>,
 }
 
 impl ::re_types_core::SizeBytes for ScalarAxis {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.range.heap_size_bytes() + self.lock_range_during_zoom.heap_size_bytes()
+        self.range.heap_size_bytes() + self.zoom_lock.heap_size_bytes()
     }
 
     #[inline]
@@ -56,8 +56,8 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.LockRangeDuringZoom".into(),
             "rerun.components.Range1D".into(),
+            "rerun.blueprint.components.LockRangeDuringZoom".into(),
         ]
     });
 
@@ -65,9 +65,25 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ScalarAxisIndicator".into(),
-            "rerun.blueprint.components.LockRangeDuringZoom".into(),
             "rerun.components.Range1D".into(),
+            "rerun.blueprint.components.LockRangeDuringZoom".into(),
         ]
+    });
+
+static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+        ::re_types_core::ArchetypeFieldInfo {
+            display_name: "Range",
+            documentation: "The range of the axis.\n\nIf unset, the range well be automatically determined based on the queried data.",
+            component_name: "rerun.components.Range1D".into(),
+        },
+        ::re_types_core::ArchetypeFieldInfo {
+            display_name: "Zoom lock",
+            documentation: "If enabled, the Y axis range will remain locked to the specified range when zooming.",
+            component_name: "rerun.blueprint.components.LockRangeDuringZoom".into(),
+        },
+    ]
     });
 
 impl ScalarAxis {
@@ -118,6 +134,11 @@ impl ::re_types_core::Archetype for ScalarAxis {
     }
 
     #[inline]
+    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
+        Some(FIELD_INFOS.as_slice().into())
+    }
+
+    #[inline]
     fn from_arrow_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
@@ -136,21 +157,18 @@ impl ::re_types_core::Archetype for ScalarAxis {
         } else {
             None
         };
-        let lock_range_during_zoom = if let Some(array) =
+        let zoom_lock = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.LockRangeDuringZoom")
         {
             <crate::blueprint::components::LockRangeDuringZoom>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ScalarAxis#lock_range_during_zoom")?
+                .with_context("rerun.blueprint.archetypes.ScalarAxis#zoom_lock")?
                 .into_iter()
                 .next()
                 .flatten()
         } else {
             None
         };
-        Ok(Self {
-            range,
-            lock_range_during_zoom,
-        })
+        Ok(Self { range, zoom_lock })
     }
 }
 
@@ -163,7 +181,7 @@ impl ::re_types_core::AsComponents for ScalarAxis {
             self.range
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.lock_range_during_zoom
+            self.zoom_lock
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -179,7 +197,7 @@ impl ScalarAxis {
     pub fn new() -> Self {
         Self {
             range: None,
-            lock_range_during_zoom: None,
+            zoom_lock: None,
         }
     }
 
@@ -192,13 +210,13 @@ impl ScalarAxis {
         self
     }
 
-    /// Whether to lock the range of the axis during zoom.
+    /// If enabled, the Y axis range will remain locked to the specified range when zooming.
     #[inline]
-    pub fn with_lock_range_during_zoom(
+    pub fn with_zoom_lock(
         mut self,
-        lock_range_during_zoom: impl Into<crate::blueprint::components::LockRangeDuringZoom>,
+        zoom_lock: impl Into<crate::blueprint::components::LockRangeDuringZoom>,
     ) -> Self {
-        self.lock_range_during_zoom = Some(lock_range_during_zoom.into());
+        self.zoom_lock = Some(zoom_lock.into());
         self
     }
 }

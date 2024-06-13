@@ -10,7 +10,9 @@ from typing import Any
 from attrs import define, field
 
 from .. import components, datatypes
-from .._baseclasses import Archetype
+from .._baseclasses import (
+    Archetype,
+)
 from ..error_utils import catch_and_log_exceptions
 from .depth_image_ext import DepthImageExt
 
@@ -49,15 +51,15 @@ class DepthImage(DepthImageExt, Archetype):
     )
 
     # Log the tensor.
-    rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0))
+    rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0, colormap="viridis"))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1200w.png">
-      <img src="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png">
+      <img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png" width="640">
     </picture>
     </center>
 
@@ -69,6 +71,7 @@ class DepthImage(DepthImageExt, Archetype):
         *,
         meter: components.DepthMeterLike | None = None,
         draw_order: components.DrawOrderLike | None = None,
+        colormap: components.ColormapLike | None = None,
     ):
         """
         Create a new instance of the DepthImage archetype.
@@ -86,12 +89,16 @@ class DepthImage(DepthImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+        colormap:
+            Colormap to use for rendering the depth image.
+
+            If not set, the depth image will be rendered using the Turbo colormap.
 
         """
 
         # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(data=data, meter=meter, draw_order=draw_order)
+            self.__attrs_init__(data=data, meter=meter, draw_order=draw_order, colormap=colormap)
             return
         self.__attrs_clear__()
 
@@ -101,6 +108,7 @@ class DepthImage(DepthImageExt, Archetype):
             data=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
+            colormap=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -138,6 +146,17 @@ class DepthImage(DepthImageExt, Archetype):
     # An optional floating point value that specifies the 2D drawing order.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    colormap: components.ColormapBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ColormapBatch._optional,  # type: ignore[misc]
+    )
+    # Colormap to use for rendering the depth image.
+    #
+    # If not set, the depth image will be rendered using the Turbo colormap.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -9,7 +9,12 @@ from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from rerun._converters import (
     str_or_none,
 )
@@ -18,7 +23,9 @@ __all__ = ["AffixFuzzer10", "AffixFuzzer10ArrayLike", "AffixFuzzer10Batch", "Aff
 
 
 @define(init=False)
-class AffixFuzzer10:
+class AffixFuzzer10(ComponentMixin):
+    _BATCH_TYPE = None
+
     def __init__(self: Any, single_string_optional: str | None = None):
         """Create a new instance of the AffixFuzzer10 component."""
 
@@ -55,3 +62,7 @@ class AffixFuzzer10Batch(BaseBatch[AffixFuzzer10ArrayLike], ComponentBatchMixin)
             array = [str(data)]
 
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+AffixFuzzer10._BATCH_TYPE = AffixFuzzer10Batch  # type: ignore[assignment]

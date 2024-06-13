@@ -11,7 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .rotation3d_ext import Rotation3DExt
 
 __all__ = ["Rotation3D", "Rotation3DArrayLike", "Rotation3DBatch", "Rotation3DLike", "Rotation3DType"]

@@ -1,9 +1,10 @@
 use egui::NumExt as _;
 use itertools::Itertools;
+
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::UICommand;
+use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
 use crate::{app_blueprint::AppBlueprint, App};
@@ -19,8 +20,8 @@ pub fn top_panel(
     re_tracing::profile_function!();
 
     let style_like_web = app.is_screenshotting();
-    let top_bar_style = app.re_ui().top_bar_style(style_like_web);
-    let top_panel_frame = app.re_ui().top_panel_frame();
+    let top_bar_style = ui.ctx().top_bar_style(style_like_web);
+    let top_panel_frame = re_ui::DesignTokens::top_panel_frame();
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
@@ -98,7 +99,7 @@ fn top_bar_ui(
         if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
             ui.add_space(8.0);
             #[cfg(not(target_arch = "wasm32"))]
-            re_ui::native_window_buttons_ui(ui);
+            ui.native_window_buttons_ui();
             ui.separator();
         } else {
             // Make the first button the same distance form the side as from the top,
@@ -241,53 +242,67 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+    #[cfg(target_arch = "wasm32")]
+    if app.is_fullscreen_allowed() {
+        let icon = if app.is_fullscreen_mode() {
+            &re_ui::icons::MINIMIZE
+        } else {
+            &re_ui::icons::MAXIMIZE
+        };
+
+        if ui
+            .medium_icon_toggle_button(icon, &mut true)
+            .on_hover_text("Toggle fullscreen")
+            .clicked()
+        {
+            app.toggle_fullscreen();
+        }
+    }
+
     // selection panel
-    if app
-        .re_ui()
-        .medium_icon_toggle_button(
-            ui,
-            &re_ui::icons::RIGHT_PANEL_TOGGLE,
-            &mut app_blueprint.selection_panel_state().is_expanded(),
-        )
-        .on_hover_text(format!(
-            "Toggle Selection View{}",
-            UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-        ))
-        .clicked()
+    if !app_blueprint.selection_panel_overridden()
+        && ui
+            .medium_icon_toggle_button(
+                &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                &mut app_blueprint.selection_panel_state().is_expanded(),
+            )
+            .on_hover_text(format!(
+                "Toggle Selection View{}",
+                UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
     {
         app_blueprint.toggle_selection_panel(&app.command_sender);
     }
 
     // time panel
-    if app
-        .re_ui()
-        .medium_icon_toggle_button(
-            ui,
-            &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-            &mut app_blueprint.time_panel_state().is_expanded(),
-        )
-        .on_hover_text(format!(
-            "Toggle Timeline View{}",
-            UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-        ))
-        .clicked()
+    if !app_blueprint.time_panel_overridden()
+        && ui
+            .medium_icon_toggle_button(
+                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                &mut app_blueprint.time_panel_state().is_expanded(),
+            )
+            .on_hover_text(format!(
+                "Toggle Timeline View{}",
+                UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
     {
         app_blueprint.toggle_time_panel(&app.command_sender);
     }
 
     // blueprint panel
-    if app
-        .re_ui()
-        .medium_icon_toggle_button(
-            ui,
-            &re_ui::icons::LEFT_PANEL_TOGGLE,
-            &mut app_blueprint.blueprint_panel_state().is_expanded(),
-        )
-        .on_hover_text(format!(
-            "Toggle blueprint view{}",
-            UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-        ))
-        .clicked()
+    if !app_blueprint.blueprint_panel_overridden()
+        && ui
+            .medium_icon_toggle_button(
+                &re_ui::icons::LEFT_PANEL_TOGGLE,
+                &mut app_blueprint.blueprint_panel_state().is_expanded(),
+            )
+            .on_hover_text(format!(
+                "Toggle blueprint view{}",
+                UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
+            ))
+            .clicked()
     {
         app_blueprint.toggle_blueprint_panel(&app.command_sender);
     }
@@ -498,7 +513,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
             if latency_sec < app.app_options().warn_latency {
                 ui.weak(text).on_hover_text(hover_text);
             } else {
-                ui.label(app.re_ui().warning_text(text))
+                ui.label(ui.ctx().warning_text(text))
                     .on_hover_text(hover_text);
             }
         } else {

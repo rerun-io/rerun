@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use re_log_types::ComponentPath;
+use re_ui::ContextExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -44,7 +45,7 @@ impl DataUi for ComponentPath {
                 }
             } else {
                 ui.label(
-                    ctx.re_ui
+                    ui.ctx()
                         .error_text(format!("Unknown component path: {self}")),
                 );
             }

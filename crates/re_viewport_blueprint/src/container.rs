@@ -2,18 +2,18 @@ use ahash::HashMap;
 use egui_tiles::TileId;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query::PromiseResult, EntityDb};
+use re_entity_db::EntityDb;
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
-use re_types::blueprint::components::Visible;
 use re_types::components::Name;
+use re_types::{blueprint::components::Visible, Archetype as _};
+use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
+use re_types_blueprint::blueprint::components::{ContainerKind, GridColumns};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     ContainerId, Contents, ContentsName, SpaceViewId, SystemCommand, SystemCommandSender as _,
     ViewerContext,
 };
-
-use re_types_blueprint::blueprint::components::GridColumns;
 
 /// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
@@ -45,7 +45,24 @@ impl ContainerBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let re_types_blueprint::blueprint::archetypes::ContainerBlueprint {
+        // ----
+
+        let resolver = blueprint_db.resolver();
+        let results = blueprint_db.query_caches().latest_at(
+            blueprint_db.store(),
+            query,
+            &id.as_entity_path(),
+            blueprint_archetypes::ContainerBlueprint::all_components()
+                .iter()
+                .copied(),
+        );
+
+        // This is a required component. Note that when loading containers we crawl the subtree and so
+        // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
+        // is the marker that the have been cleared and not an error.
+        let container_kind = results.get_instance::<ContainerKind>(resolver, 0)?;
+
+        let blueprint_archetypes::ContainerBlueprint {
             container_kind,
             display_name,
             contents,
@@ -54,42 +71,31 @@ impl ContainerBlueprint {
             active_tab,
             visible,
             grid_columns,
-        } = match blueprint_db.latest_at_archetype(&id.as_entity_path(), query) {
-            PromiseResult::Pending => {
-                // TODO(#5607): what should happen if the promise is still pending?
-                None
-            }
-            PromiseResult::Ready(arch) => arch.map(|(_, arch)| arch),
-            PromiseResult::Error(err) => {
-                if cfg!(debug_assertions) {
-                    re_log::error!("Failed to load container blueprint: {err}.");
-                } else {
-                    re_log::debug!("Failed to load container blueprint: {err}.");
-                }
-                None
-            }
-        }?;
+        } = blueprint_archetypes::ContainerBlueprint {
+            container_kind,
+            display_name: results.get_instance(resolver, 0),
+            contents: results.get_vec(resolver),
+            col_shares: results.get_vec(resolver),
+            row_shares: results.get_vec(resolver),
+            active_tab: results.get_instance(resolver, 0),
+            visible: results.get_instance(resolver, 0),
+            grid_columns: results.get_instance(resolver, 0),
+        };
+
+        // ----
 
         let container_kind = crate::container_kind_to_egui(container_kind);
         let display_name = display_name.map(|v| v.0.to_string());
 
         let contents = contents
             .unwrap_or_default()
-            .into_iter()
-            .filter_map(|id| Contents::try_from(&id.0.into()))
+            .iter()
+            .filter_map(|id| Contents::try_from(&id.0.clone().into()))
             .collect();
 
-        let col_shares = col_shares
-            .unwrap_or_default()
-            .into_iter()
-            .map(|v| v.into())
-            .collect();
+        let col_shares = col_shares.unwrap_or_default().iter().map(|v| v.0).collect();
 
-        let row_shares = row_shares
-            .unwrap_or_default()
-            .into_iter()
-            .map(|v| v.into())
-            .collect();
+        let row_shares = row_shares.unwrap_or_default().iter().map(|v| v.0).collect();
 
         let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 

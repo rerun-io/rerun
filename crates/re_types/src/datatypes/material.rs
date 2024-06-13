@@ -65,6 +65,13 @@ impl std::ops::Deref for Material {
     }
 }
 
+impl std::ops::DerefMut for Material {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<crate::datatypes::Rgba32> {
+        &mut self.albedo_factor
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Material);
 
 impl ::re_types_core::Loggable for Material {

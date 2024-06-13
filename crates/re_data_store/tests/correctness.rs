@@ -439,7 +439,8 @@ fn gc_metadata_size() -> anyhow::Result<()> {
                 target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
                 protect_latest: 1,
                 purge_empty_tables: false,
-                dont_protect: Default::default(),
+                dont_protect_components: Default::default(),
+                dont_protect_timelines: Default::default(),
                 enable_batching,
                 time_budget: std::time::Duration::MAX,
             });
@@ -447,7 +448,8 @@ fn gc_metadata_size() -> anyhow::Result<()> {
                 target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
                 protect_latest: 1,
                 purge_empty_tables: false,
-                dont_protect: Default::default(),
+                dont_protect_components: Default::default(),
+                dont_protect_timelines: Default::default(),
                 enable_batching,
                 time_budget: std::time::Duration::MAX,
             });

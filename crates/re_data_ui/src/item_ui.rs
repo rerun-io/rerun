@@ -4,7 +4,7 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
-use re_ui::{icons, list_item, SyntaxHighlighting};
+use re_ui::{icons, list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -222,8 +222,7 @@ fn instance_path_button_to_ex(
     };
 
     let response = if with_icon {
-        ctx.re_ui.selectable_label_with_icon(
-            ui,
+        ui.selectable_label_with_icon(
             instance_path_icon(&query.timeline(), db, instance_path),
             text,
             ctx.selection().contains_item(&item),
@@ -400,8 +399,7 @@ pub fn component_path_button_to(
     } else {
         &icons::COMPONENT_TEMPORAL
     };
-    let response = ctx.re_ui.selectable_label_with_icon(
-        ui,
+    let response = ui.selectable_label_with_icon(
         icon,
         text,
         ctx.selection().contains_item(&item),
@@ -409,30 +407,27 @@ pub fn component_path_button_to(
     );
 
     let response = response.on_hover_ui(|ui| {
-        // TODO(egui#4471): better tooltip size management
-        ui.set_max_width(250.0);
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // Make tooltip as wide as needed
 
-        // wrap lone item
         list_item::list_item_scope(ui, "component_path_tooltip", |ui| {
-            list_item::ListItem::new(ctx.re_ui)
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::LabelContent::new(if is_static {
-                        "Static component"
-                    } else {
-                        "Temporal component"
-                    })
-                    .with_icon(icon)
-                    .exact_width(true),
-                );
-        });
+            ui.list_item().interactive(false).show_flat(
+                ui,
+                list_item::LabelContent::new(if is_static {
+                    "Static component"
+                } else {
+                    "Temporal component"
+                })
+                .with_icon(icon),
+            );
 
-        ui.label(format!(
-            "Full name: {}",
-            component_path.component_name.full_name()
-        ));
+            let component_name = component_path.component_name;
+
+            ui.label(format!("Full name: {}", component_name.full_name()));
+
+            if let Some(url) = component_name.doc_url() {
+                ui.re_hyperlink("Documentation", url);
+            }
+        });
     });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -585,8 +580,7 @@ pub fn app_id_button_ui(
 ) -> egui::Response {
     let item = Item::AppId(app_id.clone());
 
-    let response = ctx.re_ui.selectable_label_with_icon(
-        ui,
+    let response = ui.selectable_label_with_icon(
         &icons::APPLICATION,
         app_id.to_string(),
         ctx.selection().contains_item(&item),
@@ -613,8 +607,7 @@ pub fn data_source_button_ui(
 ) -> egui::Response {
     let item = Item::DataSource(data_source.clone());
 
-    let response = ctx.re_ui.selectable_label_with_icon(
-        ui,
+    let response = ui.selectable_label_with_icon(
         &icons::DATA_SOURCE,
         data_source.to_string(),
         ctx.selection().contains_item(&item),
@@ -691,7 +684,7 @@ pub fn entity_db_button_ui(
     };
 
     let item_content = list_item::LabelContent::new(title)
-        .with_icon_fn(|_re_ui, ui, rect, visuals| {
+        .with_icon_fn(|ui, rect, visuals| {
             // Color icon based on whether this is the active recording or not:
             let color = if ctx.store_context.is_active(&store_id) {
                 visuals.fg_stroke.color
@@ -700,19 +693,18 @@ pub fn entity_db_button_ui(
             };
             icon.as_image().tint(color).paint_at(ui, rect);
         })
-        .with_buttons(|re_ui, ui| {
+        .with_buttons(|ui| {
             // Close-button:
-            let resp =
-                re_ui
-                    .small_icon_button(ui, &icons::REMOVE)
-                    .on_hover_text(match store_id.kind {
-                        re_log_types::StoreKind::Recording => {
-                            "Close this recording (unsaved data will be lost)"
-                        }
-                        re_log_types::StoreKind::Blueprint => {
-                            "Close this blueprint (unsaved data will be lost)"
-                        }
-                    });
+            let resp = ui
+                .small_icon_button(&icons::REMOVE)
+                .on_hover_text(match store_id.kind {
+                    re_log_types::StoreKind::Recording => {
+                        "Close this recording (unsaved data will be lost)"
+                    }
+                    re_log_types::StoreKind::Blueprint => {
+                        "Close this blueprint (unsaved data will be lost)"
+                    }
+                });
             if resp.clicked() {
                 ctx.command_sender
                     .send_system(SystemCommand::CloseStore(store_id.clone()));
@@ -720,8 +712,9 @@ pub fn entity_db_button_ui(
             resp
         });
 
-    let mut list_item =
-        list_item::ListItem::new(ctx.re_ui).selected(ctx.selection().contains_item(&item));
+    let mut list_item = ui
+        .list_item()
+        .selected(ctx.selection().contains_item(&item));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);

@@ -1,20 +1,25 @@
 use egui::{ahash::HashMap, util::hash};
-use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
+use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
-use re_space_view::{controls, suggest_space_view_for_each_entity};
+use re_space_view::{controls, suggest_space_view_for_each_entity, view_property_ui};
+use re_types::blueprint::archetypes::PlotLegend;
+use re_types::blueprint::components::{Corner2D, Visible};
+use re_types::View;
 use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
+use re_ui::list_item;
 use re_viewer_context::{
-    auto_color, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewQuery, ViewerContext, VisualizableEntities,
+    auto_color, ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewerContext,
+    VisualizableEntities,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use super::visualizer_system::BarChartVisualizerSystem;
 
 #[derive(Default)]
 pub struct BarChartSpaceView;
 
-use re_types::View;
 type ViewType = re_types::blueprint::views::BarChartView;
 
 impl SpaceViewClass for BarChartSpaceView {
@@ -34,8 +39,8 @@ impl SpaceViewClass for BarChartSpaceView {
         Box::<()>::default()
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
         layout.add("Pan by dragging, or scroll (+ ");
         layout.add(controls::HORIZONTAL_SCROLL_MODIFIER);
@@ -73,6 +78,7 @@ impl SpaceViewClass for BarChartSpaceView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
@@ -107,59 +113,14 @@ impl SpaceViewClass for BarChartSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-        root_entity_properties: &mut EntityProperties,
+        space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        ctx.re_ui
-            .selection_grid(ui, "bar_chart_selection_ui")
-            .show(ui, |ui| {
-                ctx.re_ui.grid_left_hand_label(ui, "Legend");
-
-                ui.vertical(|ui| {
-                    let mut selected = *root_entity_properties.show_legend.get();
-                    if ctx.re_ui.checkbox(ui, &mut selected, "Visible").changed() {
-                        root_entity_properties.show_legend =
-                            EditableAutoValue::UserEdited(selected);
-                    }
-
-                    let mut corner = root_entity_properties
-                        .legend_location
-                        .unwrap_or(LegendCorner::RightTop);
-
-                    egui::ComboBox::from_id_source("legend_corner")
-                        .selected_text(corner.to_string())
-                        .show_ui(ui, |ui| {
-                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                            ui.set_min_width(64.0);
-
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::LeftTop,
-                                LegendCorner::LeftTop.to_string(),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::RightTop,
-                                LegendCorner::RightTop.to_string(),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::LeftBottom,
-                                LegendCorner::LeftBottom.to_string(),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                LegendCorner::RightBottom,
-                                LegendCorner::RightBottom.to_string(),
-                            );
-                        });
-
-                    root_entity_properties.legend_location = Some(corner);
-                });
-                ui.end_row();
-            });
+        list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
+            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
+        });
 
         Ok(())
     }
@@ -168,12 +129,17 @@ impl SpaceViewClass for BarChartSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
-        root_entity_properties: &EntityProperties,
+        state: &mut dyn SpaceViewState,
+        _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         use egui_plot::{Bar, BarChart, Legend, Plot};
+
+        let state = state.downcast_mut::<()>()?;
+
+        let blueprint_db = ctx.blueprint_db();
+        let view_id = query.space_view_id;
 
         let charts = &system_output
             .view_systems
@@ -182,19 +148,18 @@ impl SpaceViewClass for BarChartSpaceView {
 
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
+        let plot_legend =
+            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
+
         ui.scope(|ui| {
             let mut plot = Plot::new("bar_chart_plot")
                 .clamp_grid(true)
                 .allow_zoom([true, zoom_both_axis]);
 
-            if *root_entity_properties.show_legend {
-                plot = plot.legend(
-                    Legend::default().position(to_egui_plot_corner(
-                        root_entity_properties
-                            .legend_location
-                            .unwrap_or(LegendCorner::RightTop),
-                    )),
-                );
+            if *legend_visible {
+                plot = plot.legend(Legend::default().position(legend_corner.into()));
             }
 
             let mut plot_item_id_to_entity_path = HashMap::default();
@@ -316,11 +281,12 @@ impl SpaceViewClass for BarChartSpaceView {
     }
 }
 
-fn to_egui_plot_corner(value: LegendCorner) -> egui_plot::Corner {
-    match value {
-        LegendCorner::LeftTop => egui_plot::Corner::LeftTop,
-        LegendCorner::RightTop => egui_plot::Corner::RightTop,
-        LegendCorner::LeftBottom => egui_plot::Corner::LeftBottom,
-        LegendCorner::RightBottom => egui_plot::Corner::RightBottom,
+impl TypedComponentFallbackProvider<Corner2D> for BarChartSpaceView {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
+        // Explicitly pick RightCorner2D::RightTop, we don't want to make this dependent on the (arbitrary)
+        // default of Corner2D
+        Corner2D::RightTop
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(BarChartSpaceView => [Corner2D]);

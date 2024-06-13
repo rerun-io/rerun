@@ -4,7 +4,7 @@ use re_data_ui::{item_ui::entity_db_button_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::icons;
+use re_ui::{icons, UiExt as _};
 use re_viewer_context::{
     Item, StoreHub, SystemCommand, SystemCommandSender, UiLayout, ViewerContext,
 };
@@ -19,9 +19,8 @@ pub fn recordings_panel_ui(
     ui: &mut egui::Ui,
     welcome_screen_state: &WelcomeScreenState,
 ) {
-    ctx.re_ui.panel_content(ui, |re_ui, ui| {
-        re_ui.panel_title_bar_with_buttons(
-            ui,
+    ui.panel_content(|ui| {
+        ui.panel_title_bar_with_buttons(
             "Recordings",
             Some(
                 "These are the Recordings currently loaded in the Viewer, organized by application",
@@ -37,7 +36,7 @@ pub fn recordings_panel_ui(
         .auto_shrink([false, true])
         .max_height(300.)
         .show(ui, |ui| {
-            ctx.re_ui.panel_content(ui, |_re_ui, ui| {
+            ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
                     recording_list_ui(ctx, ui, welcome_screen_state);
 
@@ -80,11 +79,11 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
         // but it is possible to send multiple recordings over the same channel.
         if !sources_with_stores.contains(&source) {
             // never more than one level deep
-            let response = ctx.re_ui.list_item().show_flat(
+            let response = ui.list_item().show_flat(
                 ui,
-                re_ui::list_item::LabelContent::new(string).with_buttons(|re_ui, ui| {
-                    let resp = re_ui
-                        .small_icon_button(ui, &re_ui::icons::REMOVE)
+                re_ui::list_item::LabelContent::new(string).with_buttons(|ui| {
+                    let resp = ui
+                        .small_icon_button(&re_ui::icons::REMOVE)
                         .on_hover_text("Disconnect from this source");
                     if resp.clicked() {
                         rx.remove(&source);
@@ -145,7 +144,7 @@ fn recording_list_ui(
     }
 
     if entity_dbs_map.is_empty() && welcome_screen_state.hide {
-        ctx.re_ui.list_item().interactive(false).show_flat(
+        ui.list_item().interactive(false).show_flat(
             ui,
             re_ui::list_item::LabelContent::new("No recordings loaded")
                 .weak(true)
@@ -169,9 +168,9 @@ fn app_and_its_recordings_ui(
     let app_item = Item::AppId(app_id.clone());
     let selected = ctx.selection().contains_item(&app_item);
 
-    let app_list_item = ctx.re_ui.list_item().selected(selected);
+    let app_list_item = ui.list_item().selected(selected);
     let app_list_item_content = re_ui::list_item::LabelContent::new(app_id.to_string())
-        .with_icon_fn(|_re_ui, ui, rect, visuals| {
+        .with_icon_fn(|ui, rect, visuals| {
             // Color icon based on whether this is the active application or not:
             let color = if &ctx.store_context.app_id == app_id {
                 visuals.fg_stroke.color
@@ -191,9 +190,9 @@ fn app_and_its_recordings_ui(
     } else {
         // Normal application
         let id = ui.make_persistent_id(app_id);
-        let app_list_item_content = app_list_item_content.with_buttons(|re_ui, ui| {
+        let app_list_item_content = app_list_item_content.with_buttons(|ui| {
             // Close-button:
-            let resp = re_ui.small_icon_button(ui, &icons::REMOVE).on_hover_text(
+            let resp = ui.small_icon_button(&icons::REMOVE).on_hover_text(
                 "Close this application and all its recordings. This cannot be undone.",
             );
             if resp.clicked() {
@@ -203,7 +202,7 @@ fn app_and_its_recordings_ui(
             resp
         });
         app_list_item
-            .show_hierarchical_with_children(ui, id, true, app_list_item_content, |_, ui| {
+            .show_hierarchical_with_children(ui, id, true, app_list_item_content, |ui| {
                 // Show all the recordings for this application:
                 if entity_dbs.is_empty() {
                     ui.weak("(no recordings)").on_hover_ui(|ui| {
@@ -243,9 +242,8 @@ fn app_and_its_recordings_ui(
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     use re_ui::UICommandSender;
 
-    if ctx
-        .re_ui
-        .small_icon_button(ui, &re_ui::icons::ADD)
+    if ui
+        .small_icon_button(&re_ui::icons::ADD)
         .on_hover_text(re_ui::UICommand::Open.tooltip_with_shortcut(ui.ctx()))
         .clicked()
     {

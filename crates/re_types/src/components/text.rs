@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A string of text, e.g. for labels and text documents.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Text(pub crate::datatypes::Utf8);
 
@@ -58,6 +58,13 @@ impl std::ops::Deref for Text {
     #[inline]
     fn deref(&self) -> &crate::datatypes::Utf8 {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for Text {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+        &mut self.0
     }
 }
 

@@ -8,8 +8,8 @@ use re_types::{
     Component, Loggable as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
+    ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]
@@ -47,9 +47,9 @@ impl VisualizerSystem for TextLogSystem {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        _view_ctx: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let resolver = ctx.recording().resolver();
         let query =
@@ -124,7 +124,13 @@ impl VisualizerSystem for TextLogSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);
 
 // TODO(#5607): what should happen if the promise is still pending?
 #[inline]

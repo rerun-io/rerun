@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Material properties of a mesh.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Material(pub crate::datatypes::Material);
 
 impl ::re_types_core::SizeBytes for Material {
@@ -57,6 +57,13 @@ impl std::ops::Deref for Material {
     #[inline]
     fn deref(&self) -> &crate::datatypes::Material {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for Material {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Material {
+        &mut self.0
     }
 }
 

@@ -139,6 +139,14 @@ impl<L: Loggable<Name = DatatypeName>> Datatype for L {}
 ///
 /// Any [`Loggable`] with a [`Loggable::Name`] set to [`ComponentName`] automatically implements
 /// [`Component`].
+///
+/// All built-in components should implement the [`Default`] trait, so that the Viewer has a placeholder
+/// value that it can display for ui editors in absence of a value.
+/// In absence of an obvious default value, they should be implemented such that they are versatile
+/// and informative for the user when using the viewer.
+///
+/// This is not enforced via a trait bound, since it's only necessary for components known to the Rerun Viewer.
+/// It is not a hard requirement for custom components that are only used on the SDK side.
 pub trait Component: Loggable<Name = ComponentName> {}
 
 impl<L: Loggable<Name = ComponentName>> Component for L {}
@@ -197,6 +205,30 @@ impl ComponentName {
             }
         }
         None
+    }
+
+    /// Web URL to the Rerun documentation for this component.
+    pub fn doc_url(&self) -> Option<String> {
+        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype() {
+            // Link indicator components to their archetype.
+            // This code should be correct as long as this url passes our link checker:
+            // https://rerun.io/docs/reference/types/archetypes/line_strips3d
+
+            let archetype_name_snake_case = re_case::to_snake_case(&archetype_name_pascal_case);
+            let base_url = "https://rerun.io/docs/reference/types/archetypes";
+            Some(format!("{base_url}/{archetype_name_snake_case}"))
+        } else if let Some(component_name_pascal_case) =
+            self.full_name().strip_prefix("rerun.components.")
+        {
+            // This code should be correct as long as this url passes our link checker:
+            // https://rerun.io/docs/reference/types/components/half_sizes2d
+
+            let component_name_snake_case = re_case::to_snake_case(component_name_pascal_case);
+            let base_url = "https://rerun.io/docs/reference/types/components";
+            Some(format!("{base_url}/{component_name_snake_case}"))
+        } else {
+            None // A user component
+        }
     }
 }
 

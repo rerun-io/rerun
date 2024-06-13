@@ -28,7 +28,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
 #[derive(
-    Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable,
+    Clone,
+    Debug,
+    Default,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
 )]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
@@ -65,6 +75,13 @@ impl std::ops::Deref for KeypointId {
     #[inline]
     fn deref(&self) -> &crate::datatypes::KeypointId {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for KeypointId {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::KeypointId {
+        &mut self.0
     }
 }
 

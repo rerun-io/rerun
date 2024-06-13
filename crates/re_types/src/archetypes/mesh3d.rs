@@ -120,20 +120,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Mesh3DIndicator".into(),
             "rerun.components.TriangleIndices".into(),
             "rerun.components.Vector3D".into(),
+            "rerun.components.Mesh3DIndicator".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
+            "rerun.components.Texcoord2D".into(),
             "rerun.components.Material".into(),
             "rerun.components.TensorData".into(),
-            "rerun.components.Texcoord2D".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 
@@ -141,14 +141,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
-            "rerun.components.Mesh3DIndicator".into(),
             "rerun.components.TriangleIndices".into(),
             "rerun.components.Vector3D".into(),
-            "rerun.components.ClassId".into(),
+            "rerun.components.Mesh3DIndicator".into(),
             "rerun.components.Color".into(),
+            "rerun.components.Texcoord2D".into(),
             "rerun.components.Material".into(),
             "rerun.components.TensorData".into(),
-            "rerun.components.Texcoord2D".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 

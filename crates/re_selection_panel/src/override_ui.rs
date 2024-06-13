@@ -4,23 +4,24 @@ use itertools::Itertools;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{DataRow, RowId, StoreKind};
+use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    DataResult, OverridePath, SpaceViewClassExt as _, SystemCommand, SystemCommandSender as _,
-    UiLayout, ViewSystemIdentifier, ViewerContext,
+    ComponentUiTypes, DataResult, OverridePath, SpaceViewClassExt as _, SystemCommand,
+    SystemCommandSender as _, ViewContext, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 pub fn override_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     space_view: &SpaceViewBlueprint,
     instance_path: &InstancePath,
     ui: &mut egui::Ui,
 ) {
     let InstancePath {
         entity_path,
-        instance,
+        instance: _, // Override ui only works on the first instance of an entity.
     } = instance_path;
 
     // Because of how overrides are implemented the overridden-data must be an entity
@@ -35,7 +36,7 @@ pub fn override_ui(
         .lookup_result_by_path(entity_path)
         .cloned()
     else {
-        ui.label(ctx.re_ui.error_text("Entity not found in view."));
+        ui.label(ui.ctx().error_text("Entity not found in view."));
         return;
     };
 
@@ -45,20 +46,17 @@ pub fn override_ui(
         .map(|props| props.resolved_component_overrides.keys().copied().collect())
         .unwrap_or_default();
 
-    let view_systems = ctx
-        .space_view_class_registry
-        .new_visualizer_collection(*space_view.class_identifier());
-
     let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
 
     // Accumulate the components across all visualizers and track which visualizer
-    // each component came from so we can use it for defaults later.
+    // each component came from so we can use it for fallbacks later.
     //
     // If two visualizers have the same component, the first one wins.
     // TODO(jleibs): We can do something fancier in the future such as presenting both
     // options once we have a motivating use-case.
     for vis in &data_result.visualizers {
-        let Some(queried) = view_systems
+        let Some(queried) = ctx
+            .visualizer_collection
             .get_by_identifier(*vis)
             .ok()
             .map(|vis| vis.visualizer_query_info().queried)
@@ -76,21 +74,23 @@ pub fn override_ui(
         &query,
         ctx.recording(),
         ui,
-        &view_systems,
         &component_to_vis,
         &active_overrides,
         &data_result,
     );
 
-    let Some(overrides) = data_result.property_overrides else {
+    // TODO(jleibs): This clone is annoying, but required because QueryContext wants
+    // a reference to the EntityPath. We could probably refactor this to avoid the clone.
+    let Some(overrides) = data_result.property_overrides.clone() else {
         return;
     };
 
-    let components = overrides
+    let sorted_overrides = overrides
         .resolved_component_overrides
         .into_iter()
-        .sorted_by_key(|(c, _)| *c)
-        .filter(|(c, _)| component_to_vis.contains_key(c));
+        .sorted_by_key(|(c, _)| *c);
+
+    let query_context = ctx.query_context(&data_result, &query);
 
     re_ui::list_item::list_item_scope(ui, "overrides", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -100,48 +100,49 @@ pub fn override_ui(
                 ref store_kind,
                 path: ref entity_path_overridden,
             },
-        ) in components
+        ) in sorted_overrides
         {
+            let Some(visualizer_identifier) = component_to_vis.get(component_name) else {
+                continue;
+            };
+            let Ok(visualizer) = ctx
+                .visualizer_collection
+                .get_by_identifier(*visualizer_identifier)
+            else {
+                re_log::warn!(
+                    "Failed to resolve visualizer identifier {visualizer_identifier}, to a visualizer implementation"
+                );
+                continue;
+            };
+
             let value_fn = |ui: &mut egui::Ui| {
-                let component_data = match store_kind {
+                let (origin_db, query) = match store_kind {
                     StoreKind::Blueprint => {
-                        let store = ctx.store_context.blueprint.store();
-                        let query = ctx.blueprint_query;
-                        ctx.store_context
-                            .blueprint
-                            .query_caches()
-                            .latest_at(store, query, entity_path_overridden, [*component_name])
-                            .components
-                            .get(component_name)
-                            .cloned() /* arc */
+                        (ctx.blueprint_db(), ctx.viewer_ctx.blueprint_query.clone())
                     }
-                    StoreKind::Recording => {
-                        ctx.recording()
-                            .query_caches()
-                            .latest_at(
-                                ctx.recording_store(),
-                                &query,
-                                entity_path_overridden,
-                                [*component_name],
-                            )
-                            .components
-                            .get(component_name)
-                            .cloned() /* arc */
-                    }
+                    StoreKind::Recording => (ctx.recording(), ctx.current_query()),
                 };
+                let component_data = origin_db
+                    .query_caches()
+                    .latest_at(
+                        origin_db.store(),
+                        &query,
+                        entity_path_overridden,
+                        [*component_name],
+                    )
+                    .components
+                    .get(component_name)
+                    .cloned(); /* arc */
 
                 if let Some(results) = component_data {
-                    ctx.component_ui_registry.edit_ui(
-                        ctx,
+                    ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(
+                        &query_context,
                         ui,
-                        UiLayout::List,
-                        &query,
-                        ctx.recording(),
+                        origin_db,
                         entity_path_overridden,
-                        &overrides.individual_override_path,
+                        *component_name,
                         &results,
-                        component_name,
-                        instance,
+                        visualizer.as_fallback_provider(),
                     );
                 } else {
                     // TODO(jleibs): Is it possible to set an override to empty and not confuse
@@ -150,8 +151,7 @@ pub fn override_ui(
                 }
             };
 
-            ctx.re_ui
-                .list_item()
+            ui.list_item()
                 .interactive(false)
                 .show_flat(
                     ui,
@@ -163,7 +163,7 @@ pub fn override_ui(
                                 *component_name,
                             );
                         })
-                        .value_fn(|_, ui, _| value_fn(ui)),
+                        .value_fn(|ui, _| value_fn(ui)),
                 )
                 .on_hover_text(component_name.full_name());
         }
@@ -172,11 +172,10 @@ pub fn override_ui(
 
 #[allow(clippy::too_many_arguments)]
 pub fn add_new_override(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     query: &LatestAtQuery,
     db: &EntityDb,
     ui: &mut egui::Ui,
-    view_systems: &re_viewer_context::VisualizerCollection,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
     active_overrides: &BTreeSet<ComponentName>,
     data_result: &DataResult,
@@ -195,6 +194,8 @@ pub fn add_new_override(
                 opened = true;
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
+                let query_context = ctx.query_context(data_result, query);
+
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.
                 for (component, viz) in component_to_vis {
@@ -211,7 +212,13 @@ pub fn add_new_override(
                     };
 
                     // If there is no registered editor, don't let the user create an override
-                    if !ctx.component_ui_registry.has_registered_editor(component) {
+                    // TODO(andreas): Can only handle single line editors right now.
+                    if !ctx
+                        .viewer_ctx
+                        .component_ui_registry
+                        .registered_ui_types(*component)
+                        .contains(ComponentUiTypes::SingleLineEditor)
+                    {
                         continue;
                     }
 
@@ -228,24 +235,16 @@ pub fn add_new_override(
                             .latest_at(query, &data_result.entity_path, *component, &components)
                             .and_then(|result| result.2[0].clone())
                             .or_else(|| {
-                                view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
-                                    sys.initial_override_value(
-                                        ctx,
-                                        query,
-                                        db.store(),
-                                        &data_result.entity_path,
-                                        component,
-                                    )
-                                })
-                            })
-                            .or_else(|| {
-                                ctx.component_ui_registry.default_value(
-                                    ctx,
-                                    query,
-                                    db,
-                                    &data_result.entity_path,
-                                    component,
-                                )
+                                ctx.visualizer_collection
+                                    .get_by_identifier(*viz)
+                                    .ok()
+                                    .and_then(|sys| {
+                                        sys.fallback_for(&query_context, *component)
+                                            .map(|fallback| {
+                                                DataCell::from_arrow(*component, fallback)
+                                            })
+                                            .ok()
+                                    })
                             })
                         else {
                             re_log::warn!("Could not identify an initial value for: {}", component);
@@ -256,16 +255,17 @@ pub fn add_new_override(
 
                         match DataRow::from_cells(
                             RowId::new(),
-                            ctx.store_context.blueprint_timepoint_for_writes(),
+                            ctx.blueprint_timepoint_for_writes(),
                             override_path.clone(),
                             [initial_data],
                         ) {
                             Ok(row) => {
-                                ctx.command_sender
-                                    .send_system(SystemCommand::UpdateBlueprint(
-                                        ctx.store_context.blueprint.store_id().clone(),
+                                ctx.viewer_ctx.command_sender.send_system(
+                                    SystemCommand::UpdateBlueprint(
+                                        ctx.blueprint_db().store_id().clone(),
                                         vec![row],
-                                    ));
+                                    ),
+                                );
                             }
                             Err(err) => {
                                 re_log::warn!(
@@ -309,7 +309,7 @@ pub fn override_visualizer_ui(
             .lookup_result_by_path(entity_path)
             .cloned()
         else {
-            ui.label(ctx.re_ui.error_text("Entity not found in view."));
+            ui.label(ui.ctx().error_text("Entity not found in view."));
             return;
         };
 
@@ -335,12 +335,12 @@ pub fn override_visualizer_ui(
             ui.spacing_mut().item_spacing.y = 0.0;
 
             for viz_name in &active_visualizers {
-                ctx.re_ui.list_item().interactive(false).show_flat(
+                ui.list_item().interactive(false).show_flat(
                     ui,
                     re_ui::list_item::LabelContent::new(viz_name.as_str())
                         .min_desired_width(150.0)
-                        .with_buttons(|re_ui, ui| {
-                            let response = re_ui.small_icon_button(ui, &re_ui::icons::CLOSE);
+                        .with_buttons(|ui| {
+                            let response = ui.small_icon_button(&re_ui::icons::CLOSE);
                             if response.clicked() {
                                 let component = VisualizerOverrides::from(
                                     active_visualizers
@@ -390,7 +390,7 @@ pub fn add_new_visualizer(
             &applicable_entities_per_visualizer,
             entity_db,
             &ctx.space_view_class_registry
-                .new_visualizer_collection(*space_view.class_identifier()),
+                .new_visualizer_collection(space_view.class_identifier()),
             &space_view.space_origin,
         );
 

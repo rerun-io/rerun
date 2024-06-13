@@ -1,5 +1,6 @@
 use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_types::datatypes::TensorDimension;
+use re_ui::UiExt as _;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {
@@ -90,7 +91,6 @@ fn tensor_dimension_ui(
 }
 
 pub fn dimension_mapping_ui(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     dim_mapping: &mut DimensionMapping,
     shape: &[TensorDimension],
@@ -159,7 +159,7 @@ pub fn dimension_mapping_ui(
                             &mut drop_target,
                         );
 
-                        let response = re_ui.visibility_toggle_button(ui, &mut selector.visible);
+                        let response = ui.visibility_toggle_button(&mut selector.visible);
                         if selector.visible {
                             response.on_hover_text("Hide dimension slider")
                         } else {

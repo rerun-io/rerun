@@ -1,17 +1,19 @@
 use egui::Ui;
 
+use re_ui::UiExt as _;
+
 #[derive(Debug, Default, Clone, Copy)]
 struct TextSize(egui::Vec2);
 
 /// Show a minimal welcome section.
 pub fn no_data_ui(ui: &mut egui::Ui) {
-    re_ui::ReUi::center(ui, "no_data_ui_contents", |ui| {
+    ui.center("no_data_ui_contents", |ui| {
         ui.add(
             egui::Label::new(
                 egui::RichText::new(super::welcome_section::WELCOME_SCREEN_TITLE)
                     .weak()
                     .line_height(Some(36.0))
-                    .text_style(re_ui::ReUi::welcome_screen_h2()),
+                    .text_style(re_ui::DesignTokens::welcome_screen_h2()),
             )
             .wrap(),
         );
@@ -21,13 +23,13 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
         let bullet_text = |ui: &mut Ui, text: &str| {
             ui.horizontal(|ui| {
                 ui.add_space(1.0);
-                re_ui::ReUi::bullet(ui, ui.visuals().weak_text_color());
+                ui.bullet(ui.visuals().weak_text_color());
                 ui.add_space(5.0);
                 ui.add(
                     egui::Label::new(
                         egui::RichText::new(text)
                             .color(ui.visuals().weak_text_color())
-                            .text_style(re_ui::ReUi::welcome_screen_body()),
+                            .text_style(re_ui::DesignTokens::welcome_screen_body()),
                     )
                     .wrap(),
                 );
@@ -44,7 +46,7 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
             .button(
                 egui::RichText::new("Go to documentation →")
                     .weak()
-                    .text_style(re_ui::ReUi::welcome_screen_body()),
+                    .text_style(re_ui::DesignTokens::welcome_screen_body()),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()

@@ -21,8 +21,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.lock_range_during_zoom.has_value()) {
-            auto result = DataCell::from_loggable(archetype.lock_range_during_zoom.value());
+        if (archetype.zoom_lock.has_value()) {
+            auto result = DataCell::from_loggable(archetype.zoom_lock.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

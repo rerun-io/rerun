@@ -1,28 +1,30 @@
 use egui::ahash::{HashMap, HashSet};
-use egui::NumExt as _;
+
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};
-use re_types::blueprint::archetypes::PlotLegend;
+use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
+use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
-use re_ui::list_item;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange, RecommendedSpaceView,
-    SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
-    ViewerContext, VisualizableEntities,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
+    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
+    ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
-use re_viewport_blueprint::query_view_property_or_default;
+use re_viewport_blueprint::ViewProperty;
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
+use crate::util::next_up_f64;
 use crate::PlotSeriesKind;
 
 // ---
@@ -38,14 +40,8 @@ pub struct TimeSeriesSpaceViewState {
     /// State of egui_plot's auto bounds before the user started dragging the time cursor.
     saved_auto_bounds: egui::Vec2b,
 
-    /// State of egui_plot's bounds.
-    saved_y_axis_range: [f64; 2],
-
-    /// To track when the range has been edited.
-    last_y_range: Option<Range1D>,
-
-    /// To track when the range lock has been enabled/disabled.
-    last_y_lock_range_during_zoom: bool,
+    /// The range of the scalar values currently on screen.
+    scalar_range: Range1D,
 }
 
 impl Default for TimeSeriesSpaceViewState {
@@ -54,9 +50,7 @@ impl Default for TimeSeriesSpaceViewState {
             is_dragging_time_cursor: false,
             was_dragging_time_cursor: false,
             saved_auto_bounds: Default::default(),
-            saved_y_axis_range: [0.0, 1.0],
-            last_y_range: None,
-            last_y_lock_range_during_zoom: false,
+            scalar_range: [0.0, 0.0].into(),
         }
     }
 }
@@ -89,8 +83,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &re_ui::icons::SPACE_VIEW_TIMESERIES
     }
 
-    fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+        let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
         layout.add("Pan by dragging, or scroll (+ ");
         layout.add(controls::HORIZONTAL_SCROLL_MODIFIER);
@@ -155,19 +149,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            list_item::ListItem::new(ctx.re_ui)
+            ui.list_item()
                 .interactive(false)
                 .show_hierarchical(
                     ui,
-                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|ui, _| {
                         let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
                         egui::ComboBox::from_id_source("aggregation_mode")
                             .selected_text(agg_mode.to_string())
                             .show_ui(ui, |ui| {
-                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                                ui.set_min_width(64.0);
-
                                 for variant in TimeSeriesAggregator::variants() {
                                     ui.selectable_value(
                                         &mut agg_mode,
@@ -189,8 +180,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                      (and readability) in such situations as it prevents overdraw.",
                 );
 
-            view_property_ui::<PlotLegend>(ctx, space_view_id, ui);
-            axis_ui(ctx, space_view_id, ui, state);
+            view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<ScalarAxis>(ctx, ui, space_view_id, self, state);
         });
 
         Ok(())
@@ -258,6 +249,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
@@ -309,24 +301,20 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
-        let blueprint_db = ctx.store_context.blueprint;
-        let blueprint_query = ctx.blueprint_query;
+        let blueprint_db = ctx.blueprint_db();
+        let view_id = query.space_view_id;
 
-        let (
-            re_types::blueprint::archetypes::PlotLegend {
-                visible: legend_visible,
-                corner: legend_corner,
-            },
-            _,
-        ) = query_view_property_or_default(query.space_view_id, blueprint_db, blueprint_query);
+        let plot_legend =
+            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
 
-        let (
-            re_types::blueprint::archetypes::ScalarAxis {
-                range: y_range,
-                lock_range_during_zoom: y_lock_range_during_zoom,
-            },
-            _,
-        ) = query_view_property_or_default(query.space_view_id, blueprint_db, blueprint_query);
+        let scalar_axis =
+            ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_zoom_lock =
+            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
+        let y_zoom_lock = y_zoom_lock.0 .0;
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
@@ -377,11 +365,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let y_lock_range_during_zoom = y_lock_range_during_zoom.map_or(false, |v| (*v).0);
-        let lock_y_during_zoom = y_lock_range_during_zoom
-            || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
-
-        let auto_y = y_range.is_none();
+        let lock_y_during_zoom =
+            y_zoom_lock || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
         // We don't want to allow vertical when y is locked or else the view "bounces" when we scroll and
         // then reset to the locked range.
@@ -389,15 +374,12 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             ui.input_mut(|i| i.smooth_scroll_delta.y = 0.0);
         }
 
-        // TODO(jleibs): Would be nice to disable vertical drag instead of just resetting.
-
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let time_zone_for_timestamps = ctx.app_options.time_zone;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
-            .auto_bounds([true, auto_y].into())
+            .auto_bounds([true, false].into()) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
-            .allow_drag([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -426,9 +408,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             });
 
-        if legend_visible.unwrap_or(true.into()).0 {
-            plot =
-                plot.legend(Legend::default().position(legend_corner.unwrap_or_default().into()));
+        if *legend_visible {
+            plot = plot.legend(Legend::default().position(legend_corner.into()));
         }
 
         if timeline.typ() == TimeType::Time {
@@ -456,51 +437,40 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 time_ctrl_write.pause();
             }
 
-            let range_was_edited = state.last_y_range != y_range;
-            state.last_y_range = y_range;
-
-            let locked_y_range_was_enabled =
-                y_lock_range_during_zoom && !state.last_y_lock_range_during_zoom;
-            state.last_y_lock_range_during_zoom = y_lock_range_during_zoom;
-
             is_resetting = plot_ui.response().double_clicked();
+
+            let current_bounds = plot_ui.plot_bounds();
+            plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
+                [current_bounds.min()[0], y_range.start()],
+                [current_bounds.max()[0], y_range.end()],
+            ));
+
             let current_auto = plot_ui.auto_bounds();
+            plot_ui.set_auto_bounds(
+                [
+                    current_auto[0] || is_resetting,
+                    is_resetting && !y_zoom_lock,
+                ]
+                .into(),
+            );
 
-            if let Some(y_range) = y_range {
-                // If we have a y_range, there are a few cases where we want to adjust the bounds.
-                // - The range was just edited
-                // - The locking behavior was just set to true
-                // - The zoom behavior is in LockToRange
-                // - The user double-clicked
-                if range_was_edited
-                    || locked_y_range_was_enabled
-                    || lock_y_during_zoom
-                    || is_resetting
-                {
-                    let current_bounds = plot_ui.plot_bounds();
-                    let mut min = current_bounds.min();
-                    let mut max = current_bounds.max();
-
-                    if range_was_edited || is_resetting || locked_y_range_was_enabled {
-                        min[1] = y_range.start();
-                        max[1] = y_range.end();
-                    }
-
-                    let new_bounds = egui_plot::PlotBounds::from_min_max(min, max);
-                    plot_ui.set_plot_bounds(new_bounds);
-                    // If we are resetting, we still want the X value to be auto for
-                    // this frame.
-                    plot_ui.set_auto_bounds([current_auto[0] || is_resetting, false].into());
-                }
-            } else if lock_y_during_zoom || range_was_edited {
-                plot_ui.set_auto_bounds([current_auto[0] || is_resetting, is_resetting].into());
-            }
+            *state.scalar_range.start_mut() = f64::INFINITY;
+            *state.scalar_range.end_mut() = f64::NEG_INFINITY;
 
             for series in all_plot_series {
                 let points = series
                     .points
                     .iter()
-                    .map(|p| [(p.0 - time_offset) as _, p.1])
+                    .map(|p| {
+                        if p.1 < state.scalar_range.start() {
+                            *state.scalar_range.start_mut() = p.1;
+                        }
+                        if p.1 > state.scalar_range.end() {
+                            *state.scalar_range.end_mut() = p.1;
+                        }
+
+                        [(p.0 - time_offset) as _, p.1]
+                    })
                     .collect::<Vec<_>>();
 
                 let color = series.color;
@@ -540,9 +510,15 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             }
 
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
-            let bounds = plot_ui.plot_bounds().range_y();
-            state.saved_y_axis_range = [*bounds.start(), *bounds.end()];
         });
+
+        // Write new y_range if it has changed.
+        let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
+        if is_resetting {
+            scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+        } else if new_y_range != y_range {
+            scalar_axis.save_blueprint_component(ctx, &new_y_range);
+        }
 
         // Decide if the time cursor should be displayed, and if so where:
         let time_x = current_time
@@ -602,133 +578,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             }
 
-            ctx.re_ui.paint_time_cursor(
-                ui,
-                ui.painter(),
-                &response,
-                time_x,
-                response.rect.y_range(),
-            );
+            ui.paint_time_cursor(ui.painter(), &response, time_x, response.rect.y_range());
         }
 
         Ok(())
     }
-}
-
-fn axis_ui(
-    ctx: &ViewerContext<'_>,
-    space_view_id: SpaceViewId,
-    ui: &mut egui::Ui,
-    state: &TimeSeriesSpaceViewState,
-) {
-    let (
-        re_types::blueprint::archetypes::ScalarAxis {
-            range: y_range,
-            lock_range_during_zoom: y_lock_range_during_zoom,
-        },
-        blueprint_path,
-    ) = query_view_property_or_default(
-        space_view_id,
-        ctx.store_context.blueprint,
-        ctx.blueprint_query,
-    );
-
-    let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
-
-    let sub_prop_ui = |re_ui: &re_ui::ReUi, ui: &mut egui::Ui| {
-        //
-        // Range auto?
-        //
-
-        let mut auto_range = y_range.is_none();
-        list_item::ListItem::new(re_ui)
-            .interactive(false)
-            .show_flat(
-                ui,
-                list_item::PropertyContent::new("Default range").value_fn(|_, ui, _| {
-                    ui.horizontal(|ui| {
-                        ctx.re_ui.radio_value(ui, &mut auto_range, true, "Auto");
-                        ctx.re_ui.radio_value(ui, &mut auto_range, false, "Manual");
-                    });
-                }),
-            )
-            .on_hover_text(
-                "The default range is applied when double-clicking on the space \
-             view. In auto mode, the Y axis range is based on the data. In manual mode, the \
-             provided values are used instead.",
-            );
-
-        //
-        // Manual range
-        //
-
-        if !auto_range {
-            list_item::ListItem::new(re_ui)
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::PropertyContent::new("").value_fn(|_, ui, _| {
-                        let mut range_edit = y_range
-                            .unwrap_or_else(|| y_range.unwrap_or(state.saved_y_axis_range.into()));
-
-                        ui.horizontal(|ui| {
-                            // Max < Min is not supported.
-                            // Also, egui_plot doesn't handle min==max (it ends up picking a default range instead then)
-                            let prev_min = crate::util::next_up_f64(range_edit.start());
-                            let prev_max = range_edit.end();
-                            // Scale the speed to the size of the range
-                            let speed = ((prev_max - prev_min) * 0.01).at_least(0.001);
-                            ui.label("Min");
-                            ui.add(
-                                egui::DragValue::new(range_edit.start_mut())
-                                    .speed(speed)
-                                    .clamp_range(std::f64::MIN..=prev_max),
-                            );
-                            ui.label("Max");
-                            ui.add(
-                                egui::DragValue::new(range_edit.end_mut())
-                                    .speed(speed)
-                                    .clamp_range(prev_min..=std::f64::MAX),
-                            );
-                        });
-
-                        if y_range != Some(range_edit) {
-                            ctx.save_blueprint_component(&blueprint_path, &range_edit);
-                        }
-                    }),
-                );
-        } else if y_range.is_some() {
-            ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
-        }
-
-        //
-        // Lock range
-        //
-
-        let mut edit_locked = y_lock_zoom;
-        list_item::ListItem::new(re_ui)
-            .interactive(false)
-            .show_flat(
-                ui,
-                list_item::PropertyContent::new("Zoom lock").value_bool_mut(&mut edit_locked.0 .0),
-            )
-            .on_hover_text(
-                "If enabled, the Y axis range will remain locked to the specified range when zooming.",
-            );
-        if y_lock_zoom != edit_locked {
-            ctx.save_blueprint_component(&blueprint_path, &edit_locked);
-        }
-    };
-
-    list_item::ListItem::new(ctx.re_ui)
-        .interactive(false)
-        .show_hierarchical_with_children(
-            ui,
-            ui.make_persistent_id("time_series_selection_ui_y_axis"),
-            true,
-            list_item::LabelContent::new("Y axis"),
-            sub_prop_ui,
-        );
 }
 
 fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: TimeZone) -> String {
@@ -805,3 +659,39 @@ fn round_ns_to_start_of_day(ns: i64) -> i64 {
     let ns_per_day = 24 * 60 * 60 * 1_000_000_000;
     (ns + ns_per_day / 2) / ns_per_day * ns_per_day
 }
+
+impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesSpaceView {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Corner2D {
+        // Explicitly pick RightCorner2D::RightBottom, we don't want to make this dependent on the (arbitrary)
+        // default of Corner2D
+        Corner2D::RightBottom
+    }
+}
+
+impl TypedComponentFallbackProvider<Range1D> for TimeSeriesSpaceView {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Range1D {
+        ctx.view_state
+            .as_any()
+            .downcast_ref::<TimeSeriesSpaceViewState>()
+            .map(|s| {
+                let mut range = s.scalar_range;
+
+                // egui_plot can't handle a zero or negative range.
+                // Enforce a minimum range.
+                if !range.start().is_normal() {
+                    *range.start_mut() = -1.0;
+                }
+                if !range.end().is_normal() {
+                    *range.end_mut() = 1.0;
+                }
+                if range.start() >= range.end() {
+                    *range.start_mut() = next_up_f64(range.end());
+                }
+
+                range
+            })
+            .unwrap_or_default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(TimeSeriesSpaceView => [Corner2D, Range1D]);

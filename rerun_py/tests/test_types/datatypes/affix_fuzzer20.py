@@ -9,7 +9,10 @@ from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import BaseBatch, BaseExtensionType
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 
 from .. import datatypes
 

@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+from typing import Union
+
 __all__ = ["TextLogView"]
 
 
-from ..._baseclasses import AsComponents
+from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
@@ -57,6 +59,7 @@ class TextLogView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
+        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
     ) -> None:
         """
         Construct a blueprint for a new TextLogView view.
@@ -76,6 +79,10 @@ class TextLogView(SpaceView):
             Whether this view is visible.
 
             Defaults to true if not specified.
+        defaults:
+            List of default components or component batches to add to the space view. When an archetype
+            in the view is missing a component included in this set, the value of default will be used
+            instead of the normal fallback for the visualizer.
 
         """
 
@@ -87,4 +94,5 @@ class TextLogView(SpaceView):
             name=name,
             visible=visible,
             properties=properties,
+            defaults=defaults,
         )

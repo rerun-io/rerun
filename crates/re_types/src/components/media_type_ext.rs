@@ -164,3 +164,12 @@ impl std::fmt::Display for MediaType {
         self.0.fmt(f)
     }
 }
+
+impl Default for MediaType {
+    #[inline]
+    fn default() -> Self {
+        // https://www.rfc-editor.org/rfc/rfc2046.txt
+        // "The "octet-stream" subtype is used to indicate that a body contains arbitrary binary data."
+        Self("application/octet-stream".into())
+    }
+}

@@ -34,7 +34,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.20.0
+          pixi-version: v0.23.0
 
       - name: Check PR checkboxes
         run: |

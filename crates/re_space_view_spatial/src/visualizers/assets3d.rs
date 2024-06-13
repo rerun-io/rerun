@@ -8,9 +8,9 @@ use re_types::{
     components::{Blob, MediaType, OutOfTreeTransform3D},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -44,7 +44,7 @@ struct Asset3DComponentData<'a> {
 impl Asset3DVisualizer {
     fn process_data<'a>(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         entity_path: &EntityPath,
@@ -66,7 +66,7 @@ impl Asset3DVisualizer {
 
             // TODO(#5974): this is subtly wrong, the key should actually be a hash of everything that got
             // cached, which includes the media type…
-            let mesh = ctx.cache.entry(|c: &mut MeshCache| {
+            let mesh = ctx.viewer_ctx.cache.entry(|c: &mut MeshCache| {
                 c.entry(
                     &entity_path.to_string(),
                     MeshCacheKey {
@@ -131,11 +131,11 @@ impl VisualizerSystem for Asset3DVisualizer {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        view_ctx: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let Some(render_ctx) = ctx.render_ctx else {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
@@ -144,12 +144,12 @@ impl VisualizerSystem for Asset3DVisualizer {
         super::entity_iterator::process_archetype::<Self, Asset3D, _>(
             ctx,
             view_query,
-            view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.points,
+            context_systems,
+            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
@@ -203,4 +203,10 @@ impl VisualizerSystem for Asset3DVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(Asset3DVisualizer => []);

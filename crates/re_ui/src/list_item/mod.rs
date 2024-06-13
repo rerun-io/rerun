@@ -34,7 +34,7 @@ pub struct ContentContext<'a> {
     pub response: &'a egui::Response,
 
     /// The current list item.
-    pub list_item: &'a ListItem<'a>,
+    pub list_item: &'a ListItem,
 
     /// Layout information to use for rendering.
     pub layout_info: LayoutInfo,
@@ -69,10 +69,10 @@ pub trait ListItemContent {
     /// If the content has some interactive elements, it should return its response. In particular,
     /// if the response is hovered, the list item will show a dimmer background highlight.
     //TODO(ab): could the return type be just a bool meaning "inner interactive widget was hovered"?
-    fn ui(self: Box<Self>, re_ui: &crate::ReUi, ui: &mut egui::Ui, context: &ContentContext<'_>);
+    fn ui(self: Box<Self>, ui: &mut egui::Ui, context: &ContentContext<'_>);
 
     /// The desired width of the content.
-    fn desired_width(&self, _re_ui: &crate::ReUi, _ui: &egui::Ui) -> DesiredWidth {
+    fn desired_width(&self, _ui: &egui::Ui) -> DesiredWidth {
         DesiredWidth::AtLeast(0.0)
     }
 }

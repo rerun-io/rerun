@@ -14,18 +14,34 @@ use re_renderer::{
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_types::tensor_data::DecodedTensor;
 use re_types::{
     components::ClassId,
     datatypes::{TensorBuffer, TensorData},
     tensor_data::TensorDataMeaning,
 };
+use re_types::{components::Colormap, tensor_data::DecodedTensor};
 
-use crate::{Annotations, DefaultColor, TensorStats};
+use crate::{
+    gpu_bridge::colormap::colormap_to_re_renderer, Annotations, DefaultColor, TensorStats,
+};
 
 use super::{get_or_create_texture, try_get_or_create_texture};
 
 // ----------------------------------------------------------------------------
+
+#[derive(Copy, Clone, Hash)]
+enum TextureKeyUsage {
+    AnnotationContextColormap,
+    TensorData(TensorDataMeaning),
+}
+
+/// Returns a texture key for a given row id & usage.
+///
+/// Several textures may be created from the same row.
+/// This makes sure that they all get different keys!
+fn generate_texture_key(row_id: RowId, usage: TextureKeyUsage) -> u64 {
+    hash((row_id, usage))
+}
 
 /// Set up tensor for rendering on the GPU.
 ///
@@ -33,6 +49,7 @@ use super::{get_or_create_texture, try_get_or_create_texture};
 ///
 /// `tensor_stats` is used for determining the range of the texture.
 // TODO(#2341): allow user to specify the range in ui.
+#[allow(clippy::too_many_arguments)]
 pub fn tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
@@ -41,6 +58,7 @@ pub fn tensor_to_gpu(
     meaning: TensorDataMeaning,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
+    colormap: Option<Colormap>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!(format!(
         "meaning: {:?}, dtype: {}, shape: {:?}",
@@ -49,18 +67,17 @@ pub fn tensor_to_gpu(
         tensor.shape()
     ));
 
+    let texture_key =
+        generate_texture_key(tensor_data_row_id, TextureKeyUsage::TensorData(meaning));
+
     match meaning {
-        TensorDataMeaning::Unknown => color_tensor_to_gpu(
-            render_ctx,
-            debug_name,
-            tensor_data_row_id,
-            tensor,
-            tensor_stats,
-        ),
+        TensorDataMeaning::Unknown => {
+            color_tensor_to_gpu(render_ctx, debug_name, texture_key, tensor, tensor_stats)
+        }
         TensorDataMeaning::ClassId => class_id_tensor_to_gpu(
             render_ctx,
             debug_name,
-            tensor_data_row_id,
+            texture_key,
             tensor,
             tensor_stats,
             annotations,
@@ -68,9 +85,10 @@ pub fn tensor_to_gpu(
         TensorDataMeaning::Depth => depth_tensor_to_gpu(
             render_ctx,
             debug_name,
-            tensor_data_row_id,
+            texture_key,
             tensor,
             tensor_stats,
+            colormap,
         ),
     }
 }
@@ -78,14 +96,13 @@ pub fn tensor_to_gpu(
 // ----------------------------------------------------------------------------
 // Color textures:
 
-pub fn color_tensor_to_gpu(
+fn color_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    tensor_data_row_id: RowId,
+    texture_key: u64,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    let texture_key = hash(tensor_data_row_id);
     let [height, width, depth] = texture_height_width_channels(tensor)?;
 
     let texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
@@ -155,6 +172,7 @@ pub fn color_tensor_to_gpu(
 
     let color_mapper = match shader_decoding {
         None => {
+            // TODO(andreas): support colormap property
             if texture_format.components() == 1 {
                 if decode_srgb {
                     // Leave grayscale images unmolested - don't apply a colormap to them.
@@ -197,16 +215,20 @@ pub fn color_tensor_to_gpu(
 // ----------------------------------------------------------------------------
 // Textures with class_id annotations:
 
-pub fn class_id_tensor_to_gpu(
+fn class_id_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    tensor_data_row_id: RowId,
+    texture_key: u64,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
-    let texture_key = hash(tensor_data_row_id);
+
+    let colormap_key = generate_texture_key(
+        annotations.row_id(),
+        TextureKeyUsage::AnnotationContextColormap,
+    );
 
     let [_height, _width, depth] = texture_height_width_channels(tensor)?;
     anyhow::ensure!(
@@ -229,27 +251,26 @@ pub fn class_id_tensor_to_gpu(
     let colormap_width = 256;
     let colormap_height = (num_colors + colormap_width - 1) / colormap_width;
 
-    let colormap_texture_handle =
-        get_or_create_texture(render_ctx, hash(annotations.row_id()), || {
-            let data: Vec<u8> = (0..(colormap_width * colormap_height))
-                .flat_map(|id| {
-                    let color = annotations
-                        .resolved_class_description(Some(ClassId::from(id as u16)))
-                        .annotation_info()
-                        .color(None, DefaultColor::TransparentBlack);
-                    color.to_array() // premultiplied!
-                })
-                .collect();
+    let colormap_texture_handle = get_or_create_texture(render_ctx, colormap_key, || {
+        let data: Vec<u8> = (0..(colormap_width * colormap_height))
+            .flat_map(|id| {
+                let color = annotations
+                    .resolved_class_description(Some(ClassId::from(id as u16)))
+                    .annotation_info()
+                    .color(None, DefaultColor::TransparentBlack);
+                color.to_array() // premultiplied!
+            })
+            .collect();
 
-            Texture2DCreationDesc {
-                label: "class_id_colormap".into(),
-                data: data.into(),
-                format: TextureFormat::Rgba8UnormSrgb,
-                width: colormap_width as u32,
-                height: colormap_height as u32,
-            }
-        })
-        .context("Failed to create class_id_colormap.")?;
+        Texture2DCreationDesc {
+            label: "class_id_colormap".into(),
+            data: data.into(),
+            format: TextureFormat::Rgba8UnormSrgb,
+            width: colormap_width as u32,
+            height: colormap_height as u32,
+        }
+    })
+    .context("Failed to create class_id_colormap.")?;
 
     let main_texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
@@ -270,15 +291,15 @@ pub fn class_id_tensor_to_gpu(
 // ----------------------------------------------------------------------------
 // Depth textures:
 
-pub fn depth_tensor_to_gpu(
+fn depth_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    tensor_data_row_id: RowId,
+    texture_key: u64,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
+    colormap: Option<Colormap>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
-    let texture_key = hash(tensor_data_row_id);
 
     let [_height, _width, depth] = texture_height_width_channels(tensor)?;
     anyhow::ensure!(
@@ -299,7 +320,9 @@ pub fn depth_tensor_to_gpu(
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
-        color_mapper: ColorMapper::Function(re_renderer::Colormap::Turbo),
+        color_mapper: ColorMapper::Function(colormap_to_re_renderer(
+            colormap.unwrap_or(Colormap::Turbo),
+        )),
         shader_decoding: None,
     })
 }

@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A vector in 3D space.
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Vector3D(pub crate::datatypes::Vec3D);
 
@@ -58,6 +58,13 @@ impl std::ops::Deref for Vector3D {
     #[inline]
     fn deref(&self) -> &crate::datatypes::Vec3D {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for Vector3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
+        &mut self.0
     }
 }
 

@@ -61,6 +61,13 @@ impl std::ops::Deref for TriangleIndices {
     }
 }
 
+impl std::ops::DerefMut for TriangleIndices {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::UVec3D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(TriangleIndices);
 
 impl ::re_types_core::Loggable for TriangleIndices {

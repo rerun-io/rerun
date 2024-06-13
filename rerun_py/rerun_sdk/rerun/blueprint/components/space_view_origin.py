@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["SpaceViewOrigin", "SpaceViewOriginBatch", "SpaceViewOriginType"]
 
 
-class SpaceViewOrigin(datatypes.EntityPath):
+class SpaceViewOrigin(datatypes.EntityPath, ComponentMixin):
     """**Component**: The origin of a `SpaceView`."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SpaceViewOriginExt in space_view_origin_ext.py
 
     # Note: there are no fields here because SpaceViewOrigin delegates to datatypes.EntityPath
@@ -26,3 +30,7 @@ class SpaceViewOriginType(datatypes.EntityPathType):
 
 class SpaceViewOriginBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
     _ARROW_TYPE = SpaceViewOriginType()
+
+
+# This is patched in late to avoid circular dependencies.
+SpaceViewOrigin._BATCH_TYPE = SpaceViewOriginBatch  # type: ignore[assignment]

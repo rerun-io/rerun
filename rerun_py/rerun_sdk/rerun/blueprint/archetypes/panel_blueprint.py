@@ -9,7 +9,9 @@ from typing import Any
 
 from attrs import define, field
 
-from ..._baseclasses import Archetype
+from ..._baseclasses import (
+    Archetype,
+)
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 

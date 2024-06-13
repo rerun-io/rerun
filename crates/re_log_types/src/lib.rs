@@ -32,9 +32,6 @@ mod time;
 mod time_real;
 mod vec_deque_ext;
 
-#[cfg(not(target_arch = "wasm32"))]
-mod data_table_batcher;
-
 use std::sync::Arc;
 
 use re_build_info::CrateVersion;
@@ -59,11 +56,6 @@ pub use self::time_point::{
 };
 pub use self::time_real::TimeReal;
 pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::data_table_batcher::{
-    DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
-};
 
 pub mod external {
     pub use arrow2;

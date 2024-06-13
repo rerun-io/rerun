@@ -1,15 +1,19 @@
+use std::sync::Arc;
+
+use ahash::HashMap;
 use itertools::{FoldWhile, Itertools};
-use re_entity_db::{external::re_query::PromiseResult, EntityProperties};
+use parking_lot::Mutex;
+use re_entity_db::EntityProperties;
 use re_types::SpaceViewClassIdentifier;
 
-use crate::SpaceViewContents;
+use crate::{SpaceViewContents, ViewProperty};
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
 use re_log_types::{DataRow, EntityPathSubs, RowId, Timeline};
 use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
-        components::{SpaceViewOrigin, Visible},
+        components::{self as blueprint_components, SpaceViewOrigin, Visible},
     },
     components::Name,
 };
@@ -18,7 +22,8 @@ use re_types_core::Archetype as _;
 use re_viewer_context::{
     ContentsName, DataResult, PerSystemEntities, QueryRange, RecommendedSpaceView, SpaceViewClass,
     SpaceViewClassRegistry, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
-    SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SystemCommandSender as _, SystemExecutionOutput, ViewContext, ViewQuery, ViewStates,
+    ViewerContext, VisualizerCollection,
 };
 
 /// A view of a space.
@@ -46,11 +51,19 @@ pub struct SpaceViewBlueprint {
     /// True if this space view is visible in the UI.
     pub visible: bool,
 
+    /// Path where these space_views defaults can be found.
+    pub defaults_path: EntityPath,
+
     /// Pending blueprint writes for nested components from duplicate.
     pending_writes: Vec<DataRow>,
 }
 
 impl SpaceViewBlueprint {
+    /// Path at which a view writes defaults for components.
+    pub fn defaults_path(view_id: SpaceViewId) -> EntityPath {
+        view_id.as_entity_path().join(&"defaults".into())
+    }
+
     /// Creates a new [`SpaceViewBlueprint`] with a single [`SpaceViewContents`].
     ///
     /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
@@ -68,6 +81,7 @@ impl SpaceViewBlueprint {
             space_origin: recommended.origin,
             contents: SpaceViewContents::new(id, space_view_class, recommended.query_filter),
             visible: true,
+            defaults_path: Self::defaults_path(id),
             pending_writes: Default::default(),
         }
     }
@@ -118,26 +132,33 @@ impl SpaceViewBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
+        let resolver = blueprint_db.resolver();
+        let results = blueprint_db.query_caches().latest_at(
+            blueprint_db.store(),
+            query,
+            &id.as_entity_path(),
+            blueprint_archetypes::SpaceViewBlueprint::all_components()
+                .iter()
+                .copied(),
+        );
+
+        // This is a required component. Note that when loading space-views we crawl the subtree and so
+        // cleared empty space-views paths may exist transiently. The fact that they have an empty class_identifier
+        // is the marker that the have been cleared and not an error.
+        let class_identifier =
+            results.get_instance::<blueprint_components::SpaceViewClass>(resolver, 0)?;
+
         let blueprint_archetypes::SpaceViewBlueprint {
-            display_name,
             class_identifier,
+            display_name,
             space_origin,
             visible,
-        } = match blueprint_db.latest_at_archetype(&id.as_entity_path(), query) {
-            PromiseResult::Pending => {
-                // TODO(#5607): what should happen if the promise is still pending?
-                None
-            }
-            PromiseResult::Ready(arch) => arch.map(|(_, arch)| arch),
-            PromiseResult::Error(err) => {
-                if cfg!(debug_assertions) {
-                    re_log::error!("Failed to load SpaceView blueprint: {err}.");
-                } else {
-                    re_log::debug!("Failed to load SpaceView blueprint: {err}.");
-                }
-                None
-            }
-        }?;
+        } = blueprint_archetypes::SpaceViewBlueprint {
+            class_identifier,
+            display_name: results.get_instance::<Name>(resolver, 0),
+            space_origin: results.get_instance::<SpaceViewOrigin>(resolver, 0),
+            visible: results.get_instance::<Visible>(resolver, 0),
+        };
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
@@ -153,6 +174,7 @@ impl SpaceViewBlueprint {
             &space_env,
         );
         let visible = visible.map_or(true, |v| v.0);
+        let defaults_path = id.as_entity_path().join(&"defaults".into());
 
         Some(Self {
             id,
@@ -161,6 +183,7 @@ impl SpaceViewBlueprint {
             space_origin,
             contents: content,
             visible,
+            defaults_path,
             pending_writes: Default::default(),
         })
     }
@@ -181,6 +204,7 @@ impl SpaceViewBlueprint {
             space_origin,
             contents,
             visible,
+            defaults_path: _,
             pending_writes,
         } = self;
 
@@ -275,6 +299,7 @@ impl SpaceViewBlueprint {
             space_origin: self.space_origin.clone(),
             contents,
             visible: self.visible,
+            defaults_path: self.defaults_path.clone(),
             pending_writes,
         }
     }
@@ -315,15 +340,15 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn class_identifier(&self) -> &SpaceViewClassIdentifier {
-        &self.class_identifier
+    pub fn class_identifier(&self) -> SpaceViewClassIdentifier {
+        self.class_identifier
     }
 
     pub fn class<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a dyn SpaceViewClass {
-        space_view_class_registry.get_class_or_log_error(&self.class_identifier)
+        space_view_class_registry.get_class_or_log_error(self.class_identifier)
     }
 
     pub fn on_frame_start(
@@ -428,23 +453,83 @@ impl SpaceViewBlueprint {
         // * default does not vary per visualizer
         // * can't be specified in the data store
         // Here, we query the visual time range that serves as the default for all entities in this space.
-        let (visible_time_range_archetype, _) = crate::query_view_property::<
-            blueprint_archetypes::VisibleTimeRanges,
-        >(self.id, blueprint, blueprint_query);
 
-        let visible_time_range_archetype = visible_time_range_archetype.ok().flatten();
+        let property = ViewProperty::from_archetype::<blueprint_archetypes::VisibleTimeRanges>(
+            blueprint,
+            blueprint_query,
+            self.id,
+        );
+        let ranges = property.component_array();
 
-        let time_range = visible_time_range_archetype
-            .as_ref()
-            .and_then(|arch| arch.range_for_timeline(active_timeline.name().as_str()));
+        let time_range = ranges.and_then(|ranges| {
+            ranges.ok().and_then(|ranges| {
+                blueprint_archetypes::VisibleTimeRanges { ranges }
+                    .range_for_timeline(active_timeline.name().as_str())
+                    .cloned()
+            })
+        });
         time_range.map_or_else(
             || {
                 let space_view_class =
-                    space_view_class_registry.get_class_or_log_error(&self.class_identifier);
+                    space_view_class_registry.get_class_or_log_error(self.class_identifier);
                 space_view_class.default_query_range()
             },
             |time_range| QueryRange::TimeRange(time_range.clone()),
         )
+    }
+
+    pub fn bundle_context_with_states<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'a>,
+        view_states: &'a mut ViewStates,
+    ) -> ViewContext<'a> {
+        let view_state = view_states
+            .get_mut(
+                ctx.space_view_class_registry,
+                self.id,
+                self.class_identifier(),
+            )
+            .view_state
+            .as_ref();
+
+        ViewContext {
+            viewer_ctx: ctx,
+            view_id: self.id,
+            view_state,
+            defaults_path: &self.defaults_path,
+            visualizer_collection: self.visualizer_collection(ctx),
+        }
+    }
+
+    pub fn bundle_context_with_state<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'a>,
+        view_state: &'a dyn SpaceViewState,
+    ) -> ViewContext<'a> {
+        ViewContext {
+            viewer_ctx: ctx,
+            view_id: self.id,
+            view_state,
+            defaults_path: &self.defaults_path,
+            visualizer_collection: self.visualizer_collection(ctx),
+        }
+    }
+
+    fn visualizer_collection(&self, ctx: &ViewerContext<'_>) -> Arc<VisualizerCollection> {
+        static VISUALIZER_FOR_CONTEXT: once_cell::sync::Lazy<
+            Mutex<HashMap<SpaceViewClassIdentifier, Arc<VisualizerCollection>>>,
+        > = once_cell::sync::Lazy::new(Default::default);
+
+        VISUALIZER_FOR_CONTEXT
+            .lock()
+            .entry(self.class_identifier())
+            .or_insert_with(|| {
+                Arc::new(
+                    ctx.space_view_class_registry
+                        .new_visualizer_collection(self.class_identifier()),
+                )
+            })
+            .clone()
     }
 }
 
@@ -457,10 +542,12 @@ mod tests {
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
-        blueprint_timeline, IndicatedEntities, OverridePath, PerVisualizer, SpaceViewClassRegistry,
-        StoreContext, VisualizableEntities,
+        test_context::TestContext, ApplicableEntities, IndicatedEntities, OverridePath,
+        PerVisualizer, StoreContext, VisualizableEntities,
     };
     use std::collections::HashMap;
+
+    use crate::space_view_contents::DataQueryPropertyResolver;
 
     use super::*;
 
@@ -479,10 +566,7 @@ mod tests {
 
     #[test]
     fn test_entity_properties() {
-        let space_view_class_registry = SpaceViewClassRegistry::default();
-        let timeline = Timeline::new("time", re_log_types::TimeType::Time);
-        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut test_ctx = TestContext::default();
         let legacy_auto_properties = EntityPropertyMap::default();
 
         let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
@@ -494,7 +578,7 @@ mod tests {
         ] {
             let row =
                 DataRow::from_archetype(RowId::new(), TimePoint::default(), path, &points).unwrap();
-            recording.add_data_row(row).ok();
+            test_ctx.recording_store.add_data_row(row).ok();
         }
 
         let recommended = RecommendedSpaceView::new(
@@ -518,6 +602,14 @@ mod tests {
                     .collect(),
                 )
             });
+
+        let applicable_entities = PerVisualizer::<ApplicableEntities>(
+            visualizable_entities
+                .0
+                .iter()
+                .map(|(id, entities)| (*id, ApplicableEntities(entities.iter().cloned().collect())))
+                .collect(),
+        );
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>(
             visualizable_entities
                 .0
@@ -526,35 +618,24 @@ mod tests {
                 .collect(),
         );
 
-        let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
         let contents = &space_view.contents;
 
         let resolver = contents.build_resolver(
-            &space_view_class_registry,
+            &test_ctx.space_view_class_registry,
             &space_view,
+            &applicable_entities,
             &visualizable_entities,
             &indicated_entities_per_visualizer,
         );
 
         // No overrides set. Everybody has default values.
         {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
 
             let parent = query_result
@@ -579,34 +660,23 @@ mod tests {
 
             // Now, override interactive on parent individually.
             let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
-            overrides.interactive = false;
+            overrides.test_property = false;
 
             save_override(
                 overrides,
                 parent.individual_override_path().unwrap(),
-                &mut blueprint,
+                &mut test_ctx.blueprint_store,
             );
         }
 
         // Parent is not interactive, but children are
         {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
 
             let parent_group = query_result
@@ -626,10 +696,10 @@ mod tests {
                 .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
-            assert!(!parent.accumulated_properties().interactive);
+            assert!(!parent.accumulated_properties().test_property);
 
             for result in [child1, child2] {
-                assert!(result.accumulated_properties().interactive);
+                assert!(result.accumulated_properties().test_property);
             }
 
             // Override interactivity on parent recursively.
@@ -637,36 +707,24 @@ mod tests {
                 .individual_properties()
                 .cloned()
                 .unwrap_or_default();
-            overrides.interactive = false;
+            overrides.test_property = false;
 
             save_override(
                 overrides,
                 parent_group.recursive_override_path().unwrap(),
-                &mut blueprint,
+                &mut test_ctx.blueprint_store,
             );
         }
 
         // Nobody is interactive
         {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
-
             let parent = query_result
                 .tree
                 .lookup_result_by_path(&EntityPath::from("parent"))
@@ -681,19 +739,16 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.accumulated_properties().interactive);
+                assert!(!result.accumulated_properties().test_property);
             }
         }
     }
 
     #[test]
     fn test_component_overrides() {
-        let space_view_class_registry = SpaceViewClassRegistry::default();
-        let timeline = Timeline::new("time", re_log_types::TimeType::Time);
         let legacy_auto_properties = EntityPropertyMap::default();
-        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let mut visualizable_entities_per_visualizer =
-            PerVisualizer::<VisualizableEntities>::default();
+        let mut test_ctx = TestContext::default();
+        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
 
         // Set up a store DB with some entities.
         {
@@ -710,15 +765,23 @@ mod tests {
                     [&[MyPoint::new(1.0, 2.0)] as _],
                 )
                 .unwrap();
-                recording.add_data_row(row).unwrap();
+                test_ctx.recording_store.add_data_row(row).unwrap();
             }
 
             // All of them are visualizable with some arbitrary visualizer.
-            visualizable_entities_per_visualizer
+            visualizable_entities
                 .0
                 .entry("Points3D".into())
                 .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
         }
+
+        let applicable_entities = PerVisualizer::<ApplicableEntities>(
+            visualizable_entities
+                .0
+                .iter()
+                .map(|(id, entities)| (*id, ApplicableEntities(entities.iter().cloned().collect())))
+                .collect(),
+        );
 
         // Basic blueprint - a single space view that queries everything.
         let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedSpaceView::root());
@@ -734,9 +797,10 @@ mod tests {
         // Things needed to resolve properties:
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
         let resolver = space_view.contents.build_resolver(
-            &space_view_class_registry,
+            &test_ctx.space_view_class_registry,
             &space_view,
-            &visualizable_entities_per_visualizer,
+            &applicable_entities,
+            &visualizable_entities,
             &indicated_entities_per_visualizer,
         );
 
@@ -908,7 +972,9 @@ mod tests {
             },
         ) in scenarios.into_iter().enumerate()
         {
-            let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+            // Reset blueprint store for each scenario.
+            test_ctx.blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
+
             let mut add_to_blueprint = |path: &EntityPath, batch: &dyn ComponentBatch| {
                 let row = DataRow::from_component_batches(
                     RowId::new(),
@@ -917,7 +983,7 @@ mod tests {
                     std::iter::once(batch),
                 )
                 .unwrap();
-                blueprint.add_data_row(row).unwrap();
+                test_ctx.blueprint_store.add_data_row(row).unwrap();
             };
 
             // log individual and override components as instructed.
@@ -929,25 +995,12 @@ mod tests {
             }
 
             // Set up a store query and update the overrides.
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                default_blueprint: None,
-                recording: &recording,
-                bundle: &Default::default(),
-                hub: &re_viewer_context::StoreHub::test_hub(),
-            };
-            let mut query_result = space_view
-                .contents
-                .execute_query(&ctx, &visualizable_entities_per_visualizer);
-            let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
-            resolver.update_overrides(
-                &blueprint,
-                &blueprint_query,
-                &timeline,
-                &space_view_class_registry,
+            let query_result = update_overrides(
+                &test_ctx,
+                &space_view.contents,
+                &visualizable_entities,
+                &resolver,
                 &legacy_auto_properties,
-                &mut query_result,
             );
 
             // Extract component overrides for testing.
@@ -975,5 +1028,37 @@ mod tests {
 
             assert_eq!(visited, expected_overrides, "Scenario {i}");
         }
+    }
+
+    fn update_overrides(
+        test_ctx: &TestContext,
+        contents: &SpaceViewContents,
+        visualizable_entities: &PerVisualizer<VisualizableEntities>,
+        resolver: &DataQueryPropertyResolver<'_>,
+        legacy_auto_properties: &EntityPropertyMap,
+    ) -> re_viewer_context::DataQueryResult {
+        let store_ctx = StoreContext {
+            app_id: re_log_types::ApplicationId::unknown(),
+            blueprint: &test_ctx.blueprint_store,
+            default_blueprint: None,
+            recording: &test_ctx.recording_store,
+            bundle: &Default::default(),
+            hub: &re_viewer_context::StoreHub::test_hub(),
+        };
+
+        let mut query_result = contents.execute_query(&store_ctx, visualizable_entities);
+
+        test_ctx.run(|ctx, _ui| {
+            resolver.update_overrides(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                &test_ctx.active_timeline,
+                ctx.space_view_class_registry,
+                legacy_auto_properties,
+                &mut query_result,
+            );
+        });
+
+        query_result
     }
 }

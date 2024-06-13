@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use egui::{Key, NumExt as _, Ui};
 
 use re_log_types::EntityPath;
-use re_ui::{list_item, ReUi, SyntaxHighlighting};
+use re_ui::{list_item, SyntaxHighlighting, UiExt as _};
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::{default_created_space_views, SpaceViewBlueprint};
 
@@ -183,7 +183,8 @@ fn space_view_space_origin_widget_editing_ui(
 
     let suggestions_ui = |ui: &mut egui::Ui| {
         for (idx, suggested_space_view) in filtered_space_view_suggestions.iter().enumerate() {
-            let response = list_item::ListItem::new(ctx.re_ui)
+            let response = ui
+                .list_item()
                 .force_hovered(state.selected_suggestion == Some(idx))
                 .show_flat(
                     ui,
@@ -205,18 +206,16 @@ fn space_view_space_origin_widget_editing_ui(
 
         let excluded_count = space_view_suggestions.len() - filtered_space_view_suggestions.len();
         if excluded_count > 0 {
-            list_item::ListItem::new(ctx.re_ui)
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))
-                        .weak(true)
-                        .italics(true),
-                );
+            ui.list_item().interactive(false).show_flat(
+                ui,
+                list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))
+                    .weak(true)
+                    .italics(true),
+            );
         }
     };
 
-    ReUi::list_item_popup(ui, popup_id, &output.response, 4.0, suggestions_ui);
+    ui.list_item_popup(popup_id, &output.response, 4.0, suggestions_ui);
 
     if control_flow.is_continue() && !ui.memory(|mem| mem.is_popup_open(popup_id)) {
         control_flow = ControlFlow::Break(None);

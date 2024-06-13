@@ -57,14 +57,13 @@ impl WebHandle {
             default_theme: eframe::Theme::Dark,
             wgpu_options: crate::wgpu_options(app_options.render_backend.clone()),
             depth_buffer: 0,
-            ..Default::default()
         };
 
         self.runner
             .start(
                 &canvas_id,
                 web_options,
-                Box::new(move |cc| Box::new(create_app(cc, app_options))),
+                Box::new(move |cc| Ok(Box::new(create_app(cc, app_options)?))),
             )
             .await?;
 
@@ -74,12 +73,18 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn toggle_panel_overrides(&self) {
+    pub fn toggle_panel_overrides(&self, value: Option<bool>) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        app.panel_state_overrides_active ^= true;
+        match value {
+            Some(value) => app.panel_state_overrides_active = value,
+            None => app.panel_state_overrides_active ^= true,
+        }
+
+        // request repaint, because the overrides may cause panels to expand/collapse
+        app.egui_ctx.request_repaint();
     }
 
     #[wasm_bindgen]
@@ -109,7 +114,7 @@ impl WebHandle {
         }
 
         // request repaint, because the overrides may cause panels to expand/collapse
-        app.re_ui.egui_ctx.request_repaint();
+        app.egui_ctx.request_repaint();
 
         Ok(())
     }
@@ -148,7 +153,7 @@ impl WebHandle {
             return;
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
-        let rx = url_to_receiver(app.re_ui.egui_ctx.clone(), follow_if_http, url);
+        let rx = url_to_receiver(app.egui_ctx.clone(), follow_if_http, url);
         if let Some(rx) = rx.ok_or_log_error() {
             app.add_receiver(rx);
         }
@@ -204,8 +209,7 @@ impl WebHandle {
         }
 
         // Request a repaint since closing the channel may update the top bar.
-        app.re_ui
-            .egui_ctx
+        app.egui_ctx
             .request_repaint_after(std::time::Duration::from_millis(10));
     }
 
@@ -220,7 +224,7 @@ impl WebHandle {
         if let Some(tx) = self.tx_channels.get(id).cloned() {
             let data: Vec<u8> = data.to_vec();
 
-            let egui_ctx = app.re_ui.egui_ctx.clone();
+            let egui_ctx = app.egui_ctx.clone();
 
             let ui_waker = Box::new(move || {
                 // Spend a few more milliseconds decoding incoming messages,
@@ -297,6 +301,17 @@ pub struct AppOptions {
     render_backend: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
+    fullscreen: Option<FullscreenOptions>,
+}
+
+// Keep in sync with the `FullscreenOptions` typedef in `rerun_js/web-viewer/index.js`
+#[derive(Clone, Deserialize)]
+pub struct FullscreenOptions {
+    /// This returns the current fullscreen state, which is a boolean representing on/off.
+    pub get_state: Callback,
+
+    /// This calls the JS version of "toggle fullscreen".
+    pub on_toggle: Callback,
 }
 
 #[derive(Clone, Default, Deserialize)]
@@ -321,9 +336,18 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 // Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
 #[derive(Clone, Deserialize)]
 #[repr(transparent)]
-struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
+pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
 
-fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crate::App {
+impl Callback {
+    pub fn call(&self) -> Result<JsValue, JsValue> {
+        self.0.call0(&web_sys::window().unwrap())
+    }
+}
+
+fn create_app(
+    cc: &eframe::CreationContext<'_>,
+    app_options: AppOptions,
+) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
@@ -339,11 +363,18 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
         expect_data_soon: None,
         force_wgpu_backend: None,
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
+        fullscreen_options: app_options.fullscreen.clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
     };
-    let re_ui = crate::customize_eframe_and_setup_renderer(cc);
+    crate::customize_eframe_and_setup_renderer(cc)?;
 
-    let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+    let mut app = crate::App::new(
+        build_info,
+        &app_env,
+        startup_options,
+        cc.egui_ctx.clone(),
+        cc.storage,
+    );
 
     let query_map = &cc.integration_info.web_info.location.query_map;
 
@@ -368,7 +399,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, app_options: AppOptions) -> crat
 
     install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone());
 
-    app
+    Ok(app)
 }
 
 /// Listen for `popstate` event, which comes when the user hits the back/forward buttons.

@@ -1,6 +1,7 @@
 use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
 use macaw::{BoundingBox, Quat, Vec3};
+use re_viewport_blueprint::ViewProperty;
 use web_time::Instant;
 
 use re_log_types::EntityPath;
@@ -29,6 +30,7 @@ use crate::{
         collect_ui_labels, image_view_coordinates, CamerasVisualizer,
         SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
     },
+    SpatialSpaceView3D,
 };
 
 use super::eye::{Eye, ViewEye};
@@ -382,8 +384,8 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
-    let mut layout = re_ui::LayoutJobBuilder::new(re_ui);
+pub fn help_text(egui_ctx: &egui::Context) -> egui::WidgetText {
+    let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
 
     layout.add("Click and drag ");
     layout.add(ROTATE3D_BUTTON);
@@ -409,7 +411,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.add_button_text("QE");
     layout.add(".\n");
 
-    layout.add(RuntimeModifiers::slow_down(&re_ui.egui_ctx.os()));
+    layout.add(RuntimeModifiers::slow_down(&egui_ctx.os()));
     layout.add(" slows down, ");
     layout.add(SPEED_UP_3D_MODIFIER);
     layout.add(" speeds up\n\n");
@@ -426,272 +428,280 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
-pub fn view_3d(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &mut SpatialSpaceViewState,
-    query: &ViewQuery<'_>,
-    system_output: re_viewer_context::SystemExecutionOutput,
-) -> Result<(), SpaceViewSystemExecutionError> {
-    re_tracing::profile_function!();
+impl SpatialSpaceView3D {
+    pub fn view_3d(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut SpatialSpaceViewState,
+        query: &ViewQuery<'_>,
+        system_output: re_viewer_context::SystemExecutionOutput,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        re_tracing::profile_function!();
 
-    let SystemExecutionOutput {
-        view_systems: parts,
-        context_systems: view_ctx,
-        draw_data,
-    } = system_output;
+        let SystemExecutionOutput {
+            view_systems: parts,
+            context_systems: view_ctx,
+            draw_data,
+        } = system_output;
 
-    let highlights = &query.highlights;
-    let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
-    // TODO(#5607): what should happen if the promise is still pending?
-    let scene_view_coordinates = ctx
-        .recording()
-        // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
-        // See https://github.com/rerun-io/rerun/issues/3538
-        .latest_at_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
-        .map(|(_, c)| c.value);
+        // Wrap view systems collection in an Arc for later use in ViewContext.
+        let parts = std::sync::Arc::new(parts);
 
-    let (rect, mut response) =
-        ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
+        let highlights = &query.highlights;
+        let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
+        // TODO(#5607): what should happen if the promise is still pending?
+        let scene_view_coordinates = ctx
+            .recording()
+            // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
+            // See https://github.com/rerun-io/rerun/issues/3538
+            .latest_at_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
+            .map(|(_, c)| c.value);
 
-    if !rect.is_positive() {
-        return Ok(()); // protect against problems with zero-sized views
-    }
+        let (rect, mut response) =
+            ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-    let view_eye = state.state_3d.update_eye(
-        &response,
-        &state.bounding_boxes,
-        space_cameras,
-        scene_view_coordinates,
-    );
-    let eye = view_eye.to_eye();
+        if !rect.is_positive() {
+            return Ok(()); // protect against problems with zero-sized views
+        }
 
-    // Determine view port resolution and position.
-    let resolution_in_pixel =
-        gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
-    if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-        return Ok(());
-    }
+        let view_eye = state.state_3d.update_eye(
+            &response,
+            &state.bounding_boxes,
+            space_cameras,
+            scene_view_coordinates,
+        );
+        let eye = view_eye.to_eye();
 
-    let target_config = TargetConfiguration {
-        name: query.space_origin.to_string().into(),
+        // Determine view port resolution and position.
+        let resolution_in_pixel =
+            gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
+        if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
+            return Ok(());
+        }
 
-        resolution_in_pixel,
+        let target_config = TargetConfiguration {
+            name: query.space_origin.to_string().into(),
 
-        view_from_world: eye.world_from_rub_view.inverse(),
-        projection_from_view: Projection::Perspective {
-            vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
-            near_plane_distance: eye.near(),
-            aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
-        },
-        viewport_transformation: re_renderer::RectTransform::IDENTITY,
+            resolution_in_pixel,
 
-        pixels_per_point: ui.ctx().pixels_per_point(),
-        auto_size_config: state.auto_size_config(),
+            view_from_world: eye.world_from_rub_view.inverse(),
+            projection_from_view: Projection::Perspective {
+                vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
+                near_plane_distance: eye.near(),
+                aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
+            },
+            viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
-        outline_config: query
-            .highlights
-            .any_outlines()
-            .then(|| outline_config(ui.ctx())),
-    };
+            pixels_per_point: ui.ctx().pixels_per_point(),
+            auto_size_config: state.auto_size_config(),
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(SpaceViewSystemExecutionError::NoRenderContextError);
-    };
+            outline_config: query
+                .highlights
+                .any_outlines()
+                .then(|| outline_config(ui.ctx())),
+        };
 
-    // Various ui interactions draw additional lines.
-    let mut line_builder = LineDrawableBuilder::new(render_ctx);
-    line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
-    // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
-    line_builder.reserve_strips(32)?;
-    line_builder.reserve_vertices(64)?;
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
 
-    // Origin gizmo if requested.
-    // TODO(andreas): Move this to the transform3d_arrow scene part.
-    //              As of #2522 state is now longer accessible there, move the property to a context?
-    if state.state_3d.show_axes {
-        let axis_length = 1.0; // The axes are also a measuring stick
-        crate::visualizers::add_axis_arrows(
-            &mut line_builder,
-            macaw::Affine3A::IDENTITY,
-            None,
-            axis_length,
-            re_renderer::OutlineMaskPreference::NONE,
+        // Various ui interactions draw additional lines.
+        let mut line_builder = LineDrawableBuilder::new(render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
+        line_builder.reserve_strips(32)?;
+        line_builder.reserve_vertices(64)?;
+
+        // Origin gizmo if requested.
+        // TODO(andreas): Move this to the transform3d_arrow scene part.
+        //              As of #2522 state is now longer accessible there, move the property to a context?
+        if state.state_3d.show_axes {
+            let axis_length = 1.0; // The axes are also a measuring stick
+            crate::visualizers::add_axis_arrows(
+                &mut line_builder,
+                macaw::Affine3A::IDENTITY,
+                None,
+                axis_length,
+                re_renderer::OutlineMaskPreference::NONE,
+            );
+
+            // If we are showing the axes for the space, then add the space origin to the bounding box.
+            state.bounding_boxes.current.extend(glam::Vec3::ZERO);
+        }
+
+        let mut view_builder = ViewBuilder::new(render_ctx, target_config);
+
+        // Create labels now since their shapes participate are added to scene.ui for picking.
+        let (label_shapes, ui_rects) = create_labels(
+            collect_ui_labels(&parts),
+            RectTransform::from_to(rect, rect),
+            &eye,
+            ui,
+            highlights,
+            SpatialSpaceViewKind::ThreeD,
         );
 
-        // If we are showing the axes for the space, then add the space origin to the bounding box.
-        state.bounding_boxes.current.extend(glam::Vec3::ZERO);
-    }
+        if ui.ctx().dragged_id().is_none() {
+            response = picking(
+                ctx,
+                response,
+                RectTransform::from_to(rect, rect),
+                rect,
+                ui,
+                eye,
+                &mut view_builder,
+                state,
+                &view_ctx,
+                &parts,
+                &ui_rects,
+                query,
+                SpatialSpaceViewKind::ThreeD,
+            )?;
+        }
 
-    let mut view_builder = ViewBuilder::new(render_ctx, target_config);
-
-    // Create labels now since their shapes participate are added to scene.ui for picking.
-    let (label_shapes, ui_rects) = create_labels(
-        collect_ui_labels(&parts),
-        RectTransform::from_to(rect, rect),
-        &eye,
-        ui,
-        highlights,
-        SpatialSpaceViewKind::ThreeD,
-    );
-
-    if ui.ctx().dragged_id().is_none() {
-        response = picking(
-            ctx,
-            response,
-            RectTransform::from_to(rect, rect),
-            rect,
-            ui,
-            eye,
-            &mut view_builder,
-            state,
-            &view_ctx,
-            &parts,
-            &ui_rects,
-            query,
-            SpatialSpaceViewKind::ThreeD,
-        )?;
-    }
-
-    // Track focused entity if any.
-    if let Some(focused_item) = ctx.focused_item {
-        let focused_entity = match focused_item {
-            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::Container(_) => None,
-
-            Item::SpaceView(space_view_id) => {
-                if space_view_id == &query.space_view_id {
-                    state
-                        .state_3d
-                        .reset_camera(&state.bounding_boxes, scene_view_coordinates);
-                }
-                None
-            }
-
-            Item::ComponentPath(component_path) => Some(&component_path.entity_path),
-
-            Item::InstancePath(instance_path) => Some(&instance_path.entity_path),
-
-            Item::DataResult(space_view_id, instance_path) => {
-                if *space_view_id == query.space_view_id {
-                    Some(&instance_path.entity_path)
-                } else {
+        // Track focused entity if any.
+        if let Some(focused_item) = ctx.focused_item {
+            let focused_entity = match focused_item {
+                Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::Container(_) => {
                     None
                 }
-            }
-        };
-        if let Some(entity_path) = focused_entity {
-            state.state_3d.last_eye_interaction = Some(Instant::now());
 
-            // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
-            if find_camera(space_cameras, entity_path).is_some() {
+                Item::SpaceView(space_view_id) => {
+                    if space_view_id == &query.space_view_id {
+                        state
+                            .state_3d
+                            .reset_camera(&state.bounding_boxes, scene_view_coordinates);
+                    }
+                    None
+                }
+
+                Item::ComponentPath(component_path) => Some(&component_path.entity_path),
+
+                Item::InstancePath(instance_path) => Some(&instance_path.entity_path),
+
+                Item::DataResult(space_view_id, instance_path) => {
+                    if *space_view_id == query.space_view_id {
+                        Some(&instance_path.entity_path)
+                    } else {
+                        None
+                    }
+                }
+            };
+            if let Some(entity_path) = focused_entity {
+                state.state_3d.last_eye_interaction = Some(Instant::now());
+
+                // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
+                if find_camera(space_cameras, entity_path).is_some() {
+                    state
+                        .state_3d
+                        .track_entity(entity_path, &state.bounding_boxes, space_cameras);
+                } else {
+                    state.state_3d.interpolate_eye_to_entity(
+                        entity_path,
+                        &state.bounding_boxes,
+                        space_cameras,
+                    );
+                }
+            }
+
+            // Make sure focus consequences happen in the next frames.
+            ui.ctx().request_repaint();
+        }
+
+        // Allow to restore the camera state with escape if a camera was tracked before.
+        if response.hovered() && ui.input(|i| i.key_pressed(TRACKED_OBJECT_RESTORE_KEY)) {
+            if let Some(camera_before_tracked_entity) = state.state_3d.camera_before_tracked_entity
+            {
                 state
                     .state_3d
-                    .track_entity(entity_path, &state.bounding_boxes, space_cameras);
-            } else {
-                state.state_3d.interpolate_eye_to_entity(
-                    entity_path,
-                    &state.bounding_boxes,
-                    space_cameras,
-                );
+                    .interpolate_to_eye(camera_before_tracked_entity);
+                state.state_3d.camera_before_tracked_entity = None;
+                state.state_3d.tracked_entity = None;
             }
         }
 
-        // Make sure focus consequences happen in the next frames.
-        ui.ctx().request_repaint();
-    }
-
-    // Allow to restore the camera state with escape if a camera was tracked before.
-    if response.hovered() && ui.input(|i| i.key_pressed(TRACKED_OBJECT_RESTORE_KEY)) {
-        if let Some(camera_before_tracked_entity) = state.state_3d.camera_before_tracked_entity {
-            state
-                .state_3d
-                .interpolate_to_eye(camera_before_tracked_entity);
-            state.state_3d.camera_before_tracked_entity = None;
-            state.state_3d.tracked_entity = None;
+        // Screenshot context menu.
+        if let Some(mode) = screenshot_context_menu(ctx, &response) {
+            view_builder
+                .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
+                .ok();
         }
-    }
 
-    // Screenshot context menu.
-    if let Some(mode) = screenshot_context_menu(ctx, &response) {
-        view_builder
-            .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
-            .ok();
-    }
+        for selected_context in ctx.selection_state().selection_space_contexts() {
+            show_projections_from_2d_space(
+                &mut line_builder,
+                space_cameras,
+                state,
+                selected_context,
+                ui.style().visuals.selection.bg_fill,
+            );
+        }
+        if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+            show_projections_from_2d_space(
+                &mut line_builder,
+                space_cameras,
+                state,
+                hovered_context,
+                egui::Color32::WHITE,
+            );
+        }
 
-    for selected_context in ctx.selection_state().selection_space_contexts() {
-        show_projections_from_2d_space(
+        if state.state_3d.show_bbox {
+            line_builder
+                .batch("scene_bbox_current")
+                .add_box_outline(&state.bounding_boxes.current)
+                .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
+        }
+        if state.state_3d.show_accumulated_bbox {
+            line_builder
+                .batch("scene_bbox_accumulated")
+                .add_box_outline(&state.bounding_boxes.accumulated)
+                .map(|lines| {
+                    lines
+                        .radius(Size::AUTO)
+                        .color(egui::Color32::from_gray(170))
+                });
+        }
+
+        show_orbit_eye_center(
+            ui.ctx(),
+            &mut state.state_3d,
             &mut line_builder,
-            space_cameras,
-            state,
-            selected_context,
-            ui.style().visuals.selection.bg_fill,
+            &view_eye,
+            scene_view_coordinates,
         );
-    }
-    if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
-        show_projections_from_2d_space(
-            &mut line_builder,
-            space_cameras,
-            state,
-            hovered_context,
-            egui::Color32::WHITE,
+
+        for draw_data in draw_data {
+            view_builder.queue_draw(draw_data);
+        }
+
+        // Commit ui induced lines.
+        view_builder.queue_draw(line_builder.into_draw_data()?);
+
+        let background = ViewProperty::from_archetype::<Background>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
         );
+        let (background_drawable, clear_color) =
+            crate::configure_background(ctx, &background, render_ctx, self, state)?;
+        if let Some(background_drawable) = background_drawable {
+            view_builder.queue_draw(background_drawable);
+        }
+
+        ui.painter().add(gpu_bridge::new_renderer_callback(
+            view_builder,
+            rect,
+            clear_color,
+        ));
+
+        // Add egui driven labels on top of re_renderer content.
+        let painter = ui.painter().with_clip_rect(ui.max_rect());
+        painter.extend(label_shapes);
+
+        Ok(())
     }
-
-    if state.state_3d.show_bbox {
-        line_builder
-            .batch("scene_bbox_current")
-            .add_box_outline(&state.bounding_boxes.current)
-            .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
-    }
-    if state.state_3d.show_accumulated_bbox {
-        line_builder
-            .batch("scene_bbox_accumulated")
-            .add_box_outline(&state.bounding_boxes.accumulated)
-            .map(|lines| {
-                lines
-                    .radius(Size::AUTO)
-                    .color(egui::Color32::from_gray(170))
-            });
-    }
-
-    show_orbit_eye_center(
-        ui.ctx(),
-        &mut state.state_3d,
-        &mut line_builder,
-        &view_eye,
-        scene_view_coordinates,
-    );
-
-    for draw_data in draw_data {
-        view_builder.queue_draw(draw_data);
-    }
-
-    // Commit ui induced lines.
-    view_builder.queue_draw(line_builder.into_draw_data()?);
-
-    let background = re_viewport_blueprint::view_property::<Background>(ctx, query.space_view_id)
-        .unwrap_or(Background::DEFAULT_3D);
-    let (background_drawable, clear_color) = crate::configure_background(
-        render_ctx,
-        background.kind,
-        background.color.unwrap_or(Background::DEFAULT_COLOR_3D),
-    );
-
-    if let Some(background_drawable) = background_drawable {
-        view_builder.queue_draw(background_drawable);
-    }
-
-    ui.painter().add(gpu_bridge::new_renderer_callback(
-        view_builder,
-        rect,
-        clear_color,
-    ));
-
-    // Add egui driven labels on top of re_renderer content.
-    let painter = ui.painter().with_clip_rect(ui.max_rect());
-    painter.extend(label_shapes);
-
-    Ok(())
 }
 
 /// Show center of orbit camera when interacting with camera (it's quite helpful).
@@ -899,14 +909,15 @@ fn default_eye(
     scene_view_coordinates: Option<ViewCoordinates>,
 ) -> ViewEye {
     // Defaults to RFU.
+    let scene_view_coordinates = scene_view_coordinates.unwrap_or_default();
     let scene_right = scene_view_coordinates
-        .and_then(|vc| vc.right())
+        .right()
         .unwrap_or(SignedAxis3::POSITIVE_X);
     let scene_forward = scene_view_coordinates
-        .and_then(|vc| vc.right())
+        .forward()
         .unwrap_or(SignedAxis3::POSITIVE_Y);
     let scene_up = scene_view_coordinates
-        .and_then(|vc| vc.up())
+        .up()
         .unwrap_or(SignedAxis3::POSITIVE_Z);
 
     let mut center = bounding_box.center();

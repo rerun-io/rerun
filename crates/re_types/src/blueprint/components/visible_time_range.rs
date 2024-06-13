@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The range of values on a given timeline that will be included in a view's query.
 ///
 /// Refer to `VisibleTimeRanges` archetype for more information.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);
 
@@ -60,6 +60,13 @@ impl std::ops::Deref for VisibleTimeRange {
     #[inline]
     fn deref(&self) -> &crate::datatypes::VisibleTimeRange {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for VisibleTimeRange {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::VisibleTimeRange {
+        &mut self.0
     }
 }
 

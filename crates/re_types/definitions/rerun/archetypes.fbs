@@ -2,6 +2,7 @@ include "./archetypes/annotation_context.fbs";
 include "./archetypes/arrows2d.fbs";
 include "./archetypes/arrows3d.fbs";
 include "./archetypes/asset3d.fbs";
+include "./archetypes/axes3d.fbs";
 include "./archetypes/bar_chart.fbs";
 include "./archetypes/boxes2d.fbs";
 include "./archetypes/boxes3d.fbs";

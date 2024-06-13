@@ -11,7 +11,12 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from rerun._converters import (
     to_np_float32,
 )
@@ -20,7 +25,9 @@ __all__ = ["AffixFuzzer11", "AffixFuzzer11ArrayLike", "AffixFuzzer11Batch", "Aff
 
 
 @define(init=False)
-class AffixFuzzer11:
+class AffixFuzzer11(ComponentMixin):
+    _BATCH_TYPE = None
+
     def __init__(self: Any, many_floats_optional: npt.ArrayLike | None = None):
         """Create a new instance of the AffixFuzzer11 component."""
 
@@ -58,3 +65,7 @@ class AffixFuzzer11Batch(BaseBatch[AffixFuzzer11ArrayLike], ComponentBatchMixin)
         raise NotImplementedError(
             "Arrow serialization of AffixFuzzer11 not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in affix_fuzzer11_ext.py
+
+
+# This is patched in late to avoid circular dependencies.
+AffixFuzzer11._BATCH_TYPE = AffixFuzzer11Batch  # type: ignore[assignment]

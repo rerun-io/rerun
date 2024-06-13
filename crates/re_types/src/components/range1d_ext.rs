@@ -47,3 +47,10 @@ impl Display for Range1D {
         write!(f, "[{}, {}]", self.start(), self.end(),)
     }
 }
+
+impl Default for Range1D {
+    #[inline]
+    fn default() -> Self {
+        Self::new(0.0, 1.0)
+    }
+}

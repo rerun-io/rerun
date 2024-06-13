@@ -11,7 +11,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 **Recommended**: [`Resolution`](../components/resolution.md)
 
-**Optional**: [`ViewCoordinates`](../components/view_coordinates.md)
+**Optional**: [`ViewCoordinates`](../components/view_coordinates.md), [`ImagePlaneDistance`](../components/image_plane_distance.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

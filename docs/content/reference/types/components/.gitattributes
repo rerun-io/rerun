@@ -2,15 +2,18 @@
 
 .gitattributes linguist-generated=true
 annotation_context.md linguist-generated=true
+axis_length.md linguist-generated=true
 blob.md linguist-generated=true
 class_id.md linguist-generated=true
 clear_is_recursive.md linguist-generated=true
 color.md linguist-generated=true
+colormap.md linguist-generated=true
 depth_meter.md linguist-generated=true
 disconnected_space.md linguist-generated=true
 draw_order.md linguist-generated=true
 half_sizes2d.md linguist-generated=true
 half_sizes3d.md linguist-generated=true
+image_plane_distance.md linguist-generated=true
 keypoint_id.md linguist-generated=true
 line_strip2d.md linguist-generated=true
 line_strip3d.md linguist-generated=true
@@ -28,7 +31,6 @@ range1d.md linguist-generated=true
 resolution.md linguist-generated=true
 rotation3d.md linguist-generated=true
 scalar.md linguist-generated=true
-scalar_scattering.md linguist-generated=true
 stroke_width.md linguist-generated=true
 tensor_data.md linguist-generated=true
 texcoord2d.md linguist-generated=true

@@ -81,7 +81,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &re_ui::icons::SPACE_VIEW_GENERIC
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
+    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
         "A demo space view that shows colors as coordinates on a 2D plane.".into()
     }
 
@@ -138,9 +138,6 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
             egui::ComboBox::from_id_source("color_coordinates_mode")
                 .selected_text(state.mode.to_string())
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                    ui.set_min_width(64.0);
-
                     for mode in &ColorCoordinatesMode::ALL {
                         ui.selectable_value(&mut state.mode, *mode, mode.to_string());
                     }

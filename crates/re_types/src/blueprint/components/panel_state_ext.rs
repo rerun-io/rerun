@@ -7,7 +7,7 @@ impl PanelState {
         self == &Self::Expanded
     }
 
-    /// Returns `true` if self is [`PanelState::Expanded`]
+    /// Returns `true` if self is [`PanelState::Hidden`]
     #[inline]
     pub fn is_hidden(&self) -> bool {
         self == &Self::Hidden

@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 from ... import datatypes
-from ..._baseclasses import ComponentBatchMixin
+from ..._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["QueryExpression", "QueryExpressionBatch", "QueryExpressionType"]
 
 
-class QueryExpression(datatypes.Utf8):
+class QueryExpression(datatypes.Utf8, ComponentMixin):
     """
     **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
 
@@ -25,6 +28,7 @@ class QueryExpression(datatypes.Utf8):
     Other uses of `*` are not (yet) supported.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of QueryExpressionExt in query_expression_ext.py
 
     # Note: there are no fields here because QueryExpression delegates to datatypes.Utf8
@@ -37,3 +41,7 @@ class QueryExpressionType(datatypes.Utf8Type):
 
 class QueryExpressionBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = QueryExpressionType()
+
+
+# This is patched in late to avoid circular dependencies.
+QueryExpression._BATCH_TYPE = QueryExpressionBatch  # type: ignore[assignment]

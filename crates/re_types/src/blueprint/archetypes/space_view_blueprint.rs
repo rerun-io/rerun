@@ -75,9 +75,9 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.Name".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.Name".into(),
         ]
     });
 
@@ -86,9 +86,9 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         [
             "rerun.blueprint.components.SpaceViewClass".into(),
             "rerun.blueprint.components.SpaceViewBlueprintIndicator".into(),
+            "rerun.components.Name".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.Name".into(),
         ]
     });
 

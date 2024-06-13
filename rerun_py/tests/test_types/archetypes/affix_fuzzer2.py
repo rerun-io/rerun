@@ -8,7 +8,9 @@ from __future__ import annotations
 from typing import Any
 
 from attrs import define, field
-from rerun._baseclasses import Archetype
+from rerun._baseclasses import (
+    Archetype,
+)
 from rerun.error_utils import catch_and_log_exceptions
 
 from .. import components, datatypes

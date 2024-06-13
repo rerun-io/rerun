@@ -1,11 +1,11 @@
 use crate::gpu_bridge::{get_or_create_texture, render_image};
-use re_ui::{full_span, list_item};
+use re_ui::list_item;
 
 /// Show the given colormap as a horizontal bar.
 fn colormap_preview_ui(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    colormap: re_renderer::Colormap,
+    colormap: re_types::components::Colormap,
 ) -> anyhow::Result<egui::Response> {
     re_tracing::profile_function!();
 
@@ -44,7 +44,9 @@ fn colormap_preview_ui(
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
         shader_decoding: None,
-        color_mapper: re_renderer::renderer::ColorMapper::Function(colormap),
+        color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
+            colormap,
+        )),
     };
 
     let debug_name = format!("colormap_{colormap}");
@@ -62,19 +64,18 @@ fn colormap_preview_ui(
 
 pub fn colormap_dropdown_button_ui(
     render_ctx: Option<&re_renderer::RenderContext>,
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    map: &mut re_renderer::Colormap,
+    map: &mut re_types::components::Colormap,
 ) {
     let selected_text = map.to_string();
     let content_ui = |ui: &mut egui::Ui| {
-        for option in re_renderer::Colormap::ALL {
-            let list_item = list_item::ListItem::new(re_ui).selected(&option == map);
+        for option in re_types::components::Colormap::ALL {
+            let list_item = list_item::ListItem::new().selected(&option == map);
 
             let response = if let Some(render_ctx) = render_ctx {
                 list_item.show_flat(
                     ui,
-                    list_item::PropertyContent::new(option.to_string()).value_fn(|_, ui, _| {
+                    list_item::PropertyContent::new(option.to_string()).value_fn(|ui, _| {
                         if let Err(err) = colormap_preview_ui(render_ctx, ui, option) {
                             re_log::error_once!("Failed to paint colormap preview: {err}");
                         }
@@ -93,12 +94,17 @@ pub fn colormap_dropdown_button_ui(
     egui::ComboBox::from_id_source("color map select")
         .selected_text(selected_text)
         .show_ui(ui, |ui| {
-            ui.set_width(200.0);
-
-            let background_x_range = (ui.max_rect() + ui.spacing().menu_margin).x_range();
-
-            list_item::list_item_scope(ui, "inner_scope", |ui| {
-                full_span::full_span_scope(ui, background_x_range, content_ui);
-            });
+            list_item::list_item_scope(ui, "inner_scope", content_ui);
         });
+}
+
+pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_renderer::Colormap {
+    match colormap {
+        re_types::components::Colormap::Grayscale => re_renderer::Colormap::Grayscale,
+        re_types::components::Colormap::Inferno => re_renderer::Colormap::Inferno,
+        re_types::components::Colormap::Magma => re_renderer::Colormap::Magma,
+        re_types::components::Colormap::Plasma => re_renderer::Colormap::Plasma,
+        re_types::components::Colormap::Turbo => re_renderer::Colormap::Turbo,
+        re_types::components::Colormap::Viridis => re_renderer::Colormap::Viridis,
+    }
 }

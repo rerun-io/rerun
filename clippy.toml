@@ -40,6 +40,8 @@ disallowed-macros = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
+  { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
+  { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
   { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
@@ -58,8 +60,8 @@ disallowed-names = []
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
+  { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
-
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
   { path = "std::sync::Mutex", reason = "Use parking_lot instead" },
   { path = "std::sync::RwLock", reason = "Use parking_lot instead" },

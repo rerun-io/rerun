@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A vector in 2D space.
-#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Vector2D(pub crate::datatypes::Vec2D);
 
@@ -58,6 +58,13 @@ impl std::ops::Deref for Vector2D {
     #[inline]
     fn deref(&self) -> &crate::datatypes::Vec2D {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for Vector2D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
+        &mut self.0
     }
 }
 

@@ -8,7 +8,11 @@ from __future__ import annotations
 from typing import Literal, Sequence, Union
 
 import pyarrow as pa
-from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+)
 
 __all__ = ["EnumTest", "EnumTestArrayLike", "EnumTestBatch", "EnumTestLike", "EnumTestType"]
 

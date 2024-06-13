@@ -33,7 +33,7 @@ pub struct RangeResults {
 
 impl RangeResults {
     #[inline]
-    pub(crate) fn new(query: RangeQuery) -> Self {
+    pub fn new(query: RangeQuery) -> Self {
         Self {
             query,
             components: Default::default(),
@@ -338,6 +338,17 @@ impl<'a, T: 'static> RangeData<'a, T> {
         });
 
         start_index..end_index
+    }
+
+    pub fn is_empty(&self) -> bool {
+        if let Some(data) = self.data.as_ref() {
+            match data {
+                Data::Owned(data) => data.dyn_num_values() == 0,
+                Data::Cached(data) => data.num_values() == 0,
+            }
+        } else {
+            true
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -33,7 +33,6 @@ use crate::{
 use super::{
     arrow::quote_fqname_as_type_path,
     blueprint_validation::generate_blueprint_validation,
-    to_archetype::generate_to_archetype_impls,
     util::{string_from_quoted, SIMPLE_COMMENT_PREFIX},
 };
 
@@ -69,8 +68,8 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
+        generate_component_defaults(reporter, objects, &mut files_to_write);
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
-        generate_to_archetype_impls(reporter, objects, &mut files_to_write);
 
         files_to_write
     }
@@ -107,7 +106,7 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
+            let mut code = generate_object_file(reporter, objects, arrow_registry, obj, &filepath);
 
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
@@ -142,6 +141,7 @@ fn generate_object_file(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
+    target_file: &Utf8Path,
 ) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
@@ -175,8 +175,6 @@ fn generate_object_file(
     code.push_str("use ::re_types_core::ComponentName;\n");
     code.push_str("use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};\n");
 
-    let mut acc = TokenStream::new();
-
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
     // random spacing into doc comments that look like code!
@@ -187,12 +185,23 @@ fn generate_object_file(
         crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
+    append_tokens(reporter, code, quoted_obj, target_file)
+}
+
+fn append_tokens(
+    reporter: &Reporter,
+    mut code: String,
+    quoted_obj: TokenStream,
+    target_file: &Utf8Path,
+) -> String {
+    let mut acc = TokenStream::new();
+
     let mut tokens = quoted_obj.into_iter();
     while let Some(token) = tokens.next() {
         match &token {
             // If this is a doc-comment block, be smart about it.
             proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                code.push_indented(0, string_from_quoted(&acc), 1);
+                code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
                 acc = TokenStream::new();
 
                 acc.extend([token, tokens.next().unwrap()]);
@@ -205,7 +214,7 @@ fn generate_object_file(
         }
     }
 
-    code.push_indented(0, string_from_quoted(&acc), 1);
+    code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
 
     replace_doc_attrb_with_doc_comment(&code)
 }
@@ -234,7 +243,7 @@ fn generate_mod_file(
         }
     }
 
-    code += "\n\n";
+    code.push_str("\n\n");
 
     // Non-deprecated first.
     for obj in objects
@@ -261,6 +270,62 @@ fn generate_mod_file(
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
 
+    files_to_write.insert(path, code);
+}
+
+/// Generate module with a function that lists all components with their serialized default values.
+fn generate_component_defaults(
+    reporter: &Reporter,
+    objects: &Objects,
+    files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+) {
+    let mut quoted_fallbacks = Vec::new();
+    let mut component_namespaces = HashSet::new();
+    for component in objects.ordered_objects(Some(ObjectKind::Component)) {
+        if component.is_testing() {
+            continue;
+        }
+
+        if let Some(scope) = component.scope() {
+            component_namespaces.insert(format!("{}::{scope}", component.crate_name()));
+        } else {
+            component_namespaces.insert(component.crate_name());
+        }
+
+        let type_name = format_ident!("{}", component.name);
+        quoted_fallbacks.push(quote! {
+            (<#type_name as Loggable>::name(), #type_name::default().to_arrow()?)
+        });
+    }
+
+    let mut code = String::new();
+    code.push_str("#![allow(unused_imports)]\n");
+    code.push_str("#![allow(clippy::wildcard_imports)]\n");
+    code.push_str("\n\n");
+    for namespace in component_namespaces {
+        code.push_str(&format!("use {namespace}::components::*;\n"));
+    }
+
+    let docs = quote_doc_line("Calls `default` for each component type in this module and serializes it to arrow. This is useful as a base fallback value when displaying ui.");
+    let tokens = quote! {
+        use re_types_core::{external::arrow2, ComponentName, SerializationError};
+
+        #docs
+        pub fn list_default_components() -> Result<impl Iterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>, SerializationError> {
+            use ::re_types_core::{Loggable, LoggableBatch as _};
+
+            re_tracing::profile_function!();
+            Ok([
+                #(#quoted_fallbacks,)*
+            ].into_iter())
+        }
+    };
+
+    // Put into its own subfolder since codegen is set up in a way that it thinks that everything
+    // inside the folder is either generated or an extension to the generated code.
+    // This way we don't have to build an exception just for this file.
+    let path = Utf8PathBuf::from("crates/re_viewer/src/component_defaults/mod.rs");
+    let code = append_tokens(reporter, code, tokens, &path);
     files_to_write.insert(path, code);
 }
 
@@ -529,7 +594,7 @@ fn quote_union(
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let quoted_fields = fields.iter().map(|obj_field| {
-        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+        let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
 
         let quoted_doc = quote_field_docs(reporter, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj_field);
@@ -558,7 +623,7 @@ fn quote_union(
         quote!()
     } else {
         let quoted_matches = fields.iter().map(|obj_field| {
-            let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+            let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
 
             if obj_field.typ == Type::Unit {
                 quote!(Self::#name => 0)
@@ -1020,7 +1085,7 @@ fn quote_trait_impls_from_obj(
         fqname, name, kind, ..
     } = obj;
 
-    let display_name = crate::to_human_case(name);
+    let display_name = re_case::to_human_case(name);
     let name = format_ident!("{name}");
 
     match kind {
@@ -1142,7 +1207,8 @@ fn quote_trait_impls_from_obj(
             ) -> (usize, TokenStream) {
                 let components = iter_archetype_components(obj, attr)
                     .chain(extras)
-                    .collect::<BTreeSet<_>>();
+                    // Do *not* sort again, we want to preserve the order given by the datatype definition
+                    .collect::<Vec<_>>();
 
                 let num_components = components.len();
                 let quoted_components = quote!(#(#components.into(),)*);
@@ -1283,7 +1349,7 @@ fn quote_trait_impls_from_obj(
                 .is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
             {
                 let field_infos = obj.fields.iter().map(|field| {
-                    let display_name = crate::to_human_case(&field.name);
+                    let display_name = re_case::to_human_case(&field.name);
                     let documentation = field
                         .docs
                         .lines_with_tag_matching(|tag| tag.is_empty())
@@ -1458,6 +1524,31 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
     let quoted_obj_name = format_ident!("{}", obj.name);
     let quoted_obj_field_name = format_ident!("{}", obj_field.name);
 
+    let quoted_type = quote_field_type_from_object_field(obj_field);
+
+    let self_field_access = if obj_is_tuple_struct {
+        quote!(self.0)
+    } else {
+        quote!(self.#quoted_obj_field_name )
+    };
+    let deref_impl = quote! {
+        impl std::ops::Deref for #quoted_obj_name {
+            type Target = #quoted_type;
+
+            #[inline]
+            fn deref(&self) -> &#quoted_type {
+                &#self_field_access
+            }
+        }
+
+        impl std::ops::DerefMut for #quoted_obj_name {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut #quoted_type {
+                &mut #self_field_access
+            }
+        }
+    };
+
     if obj_field.typ.fqname().is_some() {
         if let Some(inner) = obj_field.typ.vector_inner() {
             if obj_field.is_nullable {
@@ -1490,18 +1581,10 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 }
             }
         } else {
-            let quoted_type = quote_field_type_from_object_field(obj_field);
-
             let quoted_binding = if obj_is_tuple_struct {
                 quote!(Self(v.into()))
             } else {
                 quote!(Self { #quoted_obj_field_name: v.into() })
-            };
-
-            let quoted_borrow_deref_impl = if obj_is_tuple_struct {
-                quote!(&self.0)
-            } else {
-                quote!( &self.#quoted_obj_field_name )
             };
 
             quote! {
@@ -1514,24 +1597,14 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 impl std::borrow::Borrow<#quoted_type> for #quoted_obj_name {
                     #[inline]
                     fn borrow(&self) -> &#quoted_type {
-                        #quoted_borrow_deref_impl
+                        &#self_field_access
                     }
                 }
 
-                impl std::ops::Deref for #quoted_obj_name {
-                    type Target = #quoted_type;
-
-                    #[inline]
-                    fn deref(&self) -> &#quoted_type {
-                        #quoted_borrow_deref_impl
-                    }
-                }
+                #deref_impl
             }
         }
     } else {
-        let quoted_type = quote_field_type_from_object_field(obj_field);
-        let quoted_obj_field_name = format_ident!("{}", obj_field.name);
-
         let (quoted_binding, quoted_read) = if obj_is_tuple_struct {
             (quote!(Self(#quoted_obj_field_name)), quote!(value.0))
         } else {
@@ -1539,6 +1612,15 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                 quote!(Self { #quoted_obj_field_name }),
                 quote!(value.#quoted_obj_field_name),
             )
+        };
+
+        // If the field is not a custom datatype, emit `Deref`/`DerefMut` only for components.
+        // (in the long run all components are implemented with custom data types, making it so that we don't hit this path anymore)
+        // For ObjectKind::Datatype we sometimes have custom implementations for `Deref`, e.g. `Utf8String` derefs to `&str` instead of `ArrowString`.
+        let deref_impl = if obj.kind == ObjectKind::Component {
+            deref_impl
+        } else {
+            quote!()
         };
 
         quote! {
@@ -1555,6 +1637,8 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
                     #quoted_read
                 }
             }
+
+            #deref_impl
         }
     }
 }

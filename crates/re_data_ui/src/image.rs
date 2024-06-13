@@ -3,16 +3,16 @@ use itertools::Itertools as _;
 
 use re_log_types::{EntityPath, RowId};
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::{ClassId, DepthMeter};
+use re_types::components::{ClassId, Colormap, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
-use re_ui::ReUi;
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
 };
 
-use crate::{image_meaning_for_entity, label_for_ui_layout};
+use crate::image_meaning_for_entity;
 
 use super::EntityDataUi;
 
@@ -85,7 +85,7 @@ impl EntityDataUi for re_types::components::TensorData {
                 );
             }
             Err(err) => {
-                label_for_ui_layout(ui, ui_layout, ctx.re_ui.error_text(err.to_string()));
+                ui_layout.label(ui, ui.ctx().error_text(err.to_string()));
             }
         }
     }
@@ -113,13 +113,18 @@ pub fn tensor_ui(
 
     let meaning = image_meaning_for_entity(entity_path, query, db.store());
 
-    let meter = if meaning == TensorDataMeaning::Depth {
+    let (meter, colormap) = if meaning == TensorDataMeaning::Depth {
         // TODO(#5607): what should happen if the promise is still pending?
-        ctx.recording()
-            .latest_at_component::<DepthMeter>(entity_path, query)
-            .map(|meter| meter.value.0)
+        (
+            ctx.recording()
+                .latest_at_component::<DepthMeter>(entity_path, query)
+                .map(|meter| meter.value.0),
+            ctx.recording()
+                .latest_at_component::<Colormap>(entity_path, query)
+                .map(|colormap| colormap.value),
+        )
     } else {
-        None
+        (None, None)
     };
 
     let Some(render_ctx) = ctx.render_ctx else {
@@ -134,6 +139,7 @@ pub fn tensor_ui(
         meaning,
         &tensor_stats,
         annotations,
+        colormap,
     )
     .ok();
 
@@ -150,26 +156,27 @@ pub fn tensor_ui(
                         |ui| {
                             ui.set_min_size(preview_size);
 
-                            show_image_preview(
+                            match show_image_preview(
                                 render_ctx,
-                                ctx.re_ui,
                                 ui,
                                 texture.clone(),
                                 &debug_name,
                                 preview_size,
-                            )
-                            .on_hover_ui(|ui| {
-                                // Show larger image on hover.
-                                let preview_size = Vec2::splat(400.0);
-                                show_image_preview(
-                                    render_ctx,
-                                    ctx.re_ui,
-                                    ui,
-                                    texture.clone(),
-                                    &debug_name,
-                                    preview_size,
-                                );
-                            });
+                            ) {
+                                Ok(response) => response.on_hover_ui(|ui| {
+                                    // Show larger image on hover.
+                                    let preview_size = Vec2::splat(400.0);
+                                    show_image_preview(
+                                        render_ctx,
+                                        ui,
+                                        texture.clone(),
+                                        &debug_name,
+                                        preview_size,
+                                    )
+                                    .ok();
+                                }),
+                                Err((response, err)) => response.on_hover_text(err.to_string()),
+                            }
                         },
                     );
                 }
@@ -187,16 +194,8 @@ pub fn tensor_ui(
                     original_tensor.dtype(),
                     format_tensor_shape_single_line(&shape)
                 );
-                label_for_ui_layout(ui, ui_layout, text).on_hover_ui(|ui| {
-                    tensor_summary_ui(
-                        ctx.re_ui,
-                        ui,
-                        original_tensor,
-                        tensor,
-                        meaning,
-                        meter,
-                        &tensor_stats,
-                    );
+                ui_layout.label(ui, text).on_hover_ui(|ui| {
+                    tensor_summary_ui(ui, original_tensor, tensor, meaning, meter, &tensor_stats);
                 });
             });
         }
@@ -204,29 +203,23 @@ pub fn tensor_ui(
         UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight | UiLayout::Tooltip => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
-                tensor_summary_ui(
-                    ctx.re_ui,
-                    ui,
-                    original_tensor,
-                    tensor,
-                    meaning,
-                    meter,
-                    &tensor_stats,
-                );
+                tensor_summary_ui(ui, original_tensor, tensor, meaning, meter, &tensor_stats);
 
                 if let Some(texture) = &texture_result {
                     let preview_size = ui
                         .available_size()
                         .min(texture_size(texture))
                         .min(egui::vec2(150.0, 300.0));
-                    let response = show_image_preview(
+                    let response = match show_image_preview(
                         render_ctx,
-                        ctx.re_ui,
                         ui,
                         texture.clone(),
                         &debug_name,
                         preview_size,
-                    );
+                    ) {
+                        Ok(response) => response,
+                        Err((response, err)) => response.on_hover_text(err.to_string()),
+                    };
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                         let image_rect = response.rect;
@@ -243,6 +236,7 @@ pub fn tensor_ui(
                             &debug_name,
                             image_rect,
                             pointer_pos,
+                            colormap,
                         );
                     }
 
@@ -283,14 +277,15 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
 ///
 /// Extremely small images will be stretched on their thin axis to make them visible.
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
+///
+/// Returns error if the image could not be rendered.
 fn show_image_preview(
     render_ctx: &re_renderer::RenderContext,
-    re_ui: &ReUi,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,
     debug_name: &str,
     desired_size: egui::Vec2,
-) -> egui::Response {
+) -> Result<egui::Response, (egui::Response, anyhow::Error)> {
     const MIN_SIZE: f32 = 2.0;
 
     let texture_size = texture_size(&colormapped_texture);
@@ -313,10 +308,17 @@ fn show_image_preview(
         egui::TextureOptions::LINEAR,
         debug_name,
     ) {
-        let label_response = ui.label(re_ui.error_text(err.to_string()));
-        response.union(label_response)
+        let color = ui.visuals().error_fg_color;
+        painter.text(
+            response.rect.left_top(),
+            egui::Align2::LEFT_TOP,
+            "🚫",
+            egui::FontId::default(),
+            color,
+        );
+        Err((response, err))
     } else {
-        response
+        Ok(response)
     }
 }
 
@@ -331,7 +333,6 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
 }
 
 pub fn tensor_summary_ui_grid_contents(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     original_tensor: &TensorData,
     tensor: &DecodedTensor,
@@ -341,14 +342,12 @@ pub fn tensor_summary_ui_grid_contents(
 ) {
     let TensorData { shape, buffer: _ } = tensor.inner();
 
-    re_ui
-        .grid_left_hand_label(ui, "Data type")
+    ui.grid_left_hand_label("Data type")
         .on_hover_text("Data type used for all individual elements within the tensor");
     ui.label(tensor.dtype().to_string());
     ui.end_row();
 
-    re_ui
-        .grid_left_hand_label(ui, "Shape")
+    ui.grid_left_hand_label("Shape")
         .on_hover_text("Extent of every dimension");
     ui.vertical(|ui| {
         // For unnamed tensor dimension more than a single line usually doesn't make sense!
@@ -365,7 +364,7 @@ pub fn tensor_summary_ui_grid_contents(
     ui.end_row();
 
     if meaning != TensorDataMeaning::Unknown {
-        re_ui.grid_left_hand_label(ui, "Meaning");
+        ui.grid_left_hand_label("Meaning");
         ui.label(match meaning {
             TensorDataMeaning::Unknown => "",
             TensorDataMeaning::ClassId => "Class ID",
@@ -375,8 +374,7 @@ pub fn tensor_summary_ui_grid_contents(
     }
 
     if let Some(meter) = meter {
-        re_ui
-            .grid_left_hand_label(ui, "Meter")
+        ui.grid_left_hand_label("Meter")
             .on_hover_text(format!("{meter} depth units equals one world unit"));
         ui.label(meter.to_string());
         ui.end_row();
@@ -395,7 +393,7 @@ pub fn tensor_summary_ui_grid_contents(
         | TensorBuffer::F32(_)
         | TensorBuffer::F64(_) => {}
         TensorBuffer::Jpeg(jpeg_bytes) => {
-            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.grid_left_hand_label("Encoding");
             ui.label(format!(
                 "{} JPEG",
                 re_format::format_bytes(jpeg_bytes.size_in_bytes() as _),
@@ -403,12 +401,12 @@ pub fn tensor_summary_ui_grid_contents(
             ui.end_row();
         }
         TensorBuffer::Nv12(_) => {
-            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.grid_left_hand_label("Encoding");
             ui.label("NV12");
             ui.end_row();
         }
         TensorBuffer::Yuy2(_) => {
-            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.grid_left_hand_label("Encoding");
             ui.label("YUY2");
             ui.end_row();
         }
@@ -444,7 +442,6 @@ pub fn tensor_summary_ui_grid_contents(
 }
 
 pub fn tensor_summary_ui(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     original_tensor: &TensorData,
     tensor: &DecodedTensor,
@@ -456,7 +453,6 @@ pub fn tensor_summary_ui(
         .num_columns(2)
         .show(ui, |ui| {
             tensor_summary_ui_grid_contents(
-                re_ui,
                 ui,
                 original_tensor,
                 tensor,
@@ -481,6 +477,7 @@ fn show_zoomed_image_region_tooltip(
     debug_name: &str,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
+    colormap: Option<Colormap>,
 ) -> egui::Response {
     let response_rect = response.rect;
     response
@@ -513,6 +510,7 @@ fn show_zoomed_image_region_tooltip(
                         meter,
                         debug_name,
                         center_texel,
+                        colormap,
                     );
                 }
             });
@@ -571,6 +569,7 @@ pub fn show_zoomed_image_region(
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
+    colormap: Option<Colormap>,
 ) {
     if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
@@ -583,6 +582,7 @@ pub fn show_zoomed_image_region(
         meter,
         debug_name,
         center_texel,
+        colormap,
     ) {
         ui.label(format!("Error: {err}"));
     }
@@ -601,6 +601,7 @@ fn try_show_zoomed_image_region(
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
+    colormap: Option<Colormap>,
 ) -> anyhow::Result<()> {
     let Some([height, width, _]) = tensor.image_height_width_channels() else {
         return Ok(());
@@ -614,6 +615,7 @@ fn try_show_zoomed_image_region(
         meaning,
         tensor_stats,
         annotations,
+        colormap,
     )?;
 
     const POINTS_PER_TEXEL: f32 = 5.0;

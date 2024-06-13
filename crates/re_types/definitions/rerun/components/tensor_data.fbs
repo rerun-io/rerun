@@ -24,7 +24,7 @@ namespace rerun.components;
 /// the shape has to be the shape of the decoded image.
 table TensorData (
   "attr.arrow.transparent",
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "Default, PartialEq",
   "attr.rust.repr": "transparent"
 ) {
   data: rerun.datatypes.TensorData (order: 100);
