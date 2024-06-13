@@ -157,6 +157,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+    m.add_function(wrap_pyfunction!(log_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
@@ -1079,6 +1080,48 @@ fn log_arrow_msg(
     let row = crate::arrow::build_row_from_components(components, &TimePoint::default())?;
 
     recording.record_row(entity_path, row, !static_);
+
+    py.allow_threads(flush_garbage_queue);
+
+    Ok(())
+}
+
+/// Directly log an arrow chunk to the recording stream.
+///
+/// Params
+/// ------
+/// entity_path: str
+///     The entity path to log the chunk to.
+/// timelines: Dict[str, ArrowPrimitiveArray<i64>]
+///     A dictionary mapping timeline names to their values.
+/// components: Dict[str, ArrowListArray<i32>]
+///     A dictionary mapping component names to their values.
+#[pyfunction]
+#[pyo3(signature = (
+    entity_path,
+    timelines,
+    components,
+    recording=None,
+))]
+fn log_arrow_chunk(
+    py: Python<'_>,
+    entity_path: &str,
+    timelines: &PyDict,
+    components: &PyDict,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    let entity_path = EntityPath::parse_forgiving(entity_path);
+
+    // It's important that we don't hold the session lock while building our arrow component.
+    // the API we call to back through pyarrow temporarily releases the GIL, which can cause
+    // a deadlock.
+    let chunk = crate::arrow::build_chunk_from_components(entity_path, timelines, components)?;
+
+    recording.record_chunk(chunk);
 
     py.allow_threads(flush_garbage_queue);
 

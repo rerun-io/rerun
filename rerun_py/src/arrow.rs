@@ -1,12 +1,20 @@
 //! Methods for handling Arrow datamodel log ingest
 
-use arrow2::{array::Array, datatypes::Field, ffi};
+use arrow2::{
+    array::{Array, ListArray, PrimitiveArray},
+    datatypes::Field,
+    ffi,
+};
 use pyo3::{
-    exceptions::PyValueError, ffi::Py_uintptr_t, types::PyDict, types::PyString, PyAny, PyResult,
+    exceptions::{PyRuntimeError, PyValueError},
+    ffi::Py_uintptr_t,
+    types::{PyDict, PyString},
+    PyAny, PyResult,
 };
 
-use re_chunk::{PendingRow, RowId};
+use re_chunk::{Chunk, ChunkId, ChunkTimeline, PendingRow, RowId};
 use re_log_types::TimePoint;
+use re_sdk::{EntityPath, Timeline};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -73,4 +81,80 @@ pub fn build_row_from_components(
         timepoint: time_point.clone(),
         components,
     })
+}
+
+/// Build a [`Chunk`] given a '**kwargs'-style dictionary of component arrays.
+pub fn build_chunk_from_components(
+    entity_path: EntityPath,
+    timelines: &PyDict,
+    components: &PyDict,
+) -> PyResult<Chunk> {
+    // Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+    let chunk_id = ChunkId::new();
+
+    // Extract the timeline data
+    let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
+        timelines.iter().map(|(name, array)| {
+            let name = name.downcast::<PyString>()?.to_str()?;
+            array_to_rust(array, Some(name))
+        }),
+        |iter| iter.unzip(),
+    )?;
+
+    let timelines: Option<Vec<_>> = arrays
+        .into_iter()
+        .zip(fields)
+        .map(|(value, field)| {
+            let timeline = match field.data_type() {
+                arrow2::datatypes::DataType::Int64 => Some(Timeline::new_sequence(field.name)),
+                arrow2::datatypes::DataType::Timestamp(_, _) => {
+                    Some(Timeline::new_temporal(field.name))
+                }
+                _ => None,
+            }?;
+            Some((
+                timeline,
+                value
+                    .as_any()
+                    .downcast_ref::<PrimitiveArray<i64>>()?
+                    .clone(),
+            ))
+        })
+        .collect();
+
+    let timelines = timelines
+        .ok_or_else(|| PyRuntimeError::new_err("Invalid arrow type"))?
+        .into_iter()
+        .map(|(timeline, value)| (timeline, ChunkTimeline::new(None, timeline, value)))
+        .collect();
+
+    // Extract the component data
+    let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
+        components.iter().map(|(name, array)| {
+            let name = name.downcast::<PyString>()?.to_str()?;
+            array_to_rust(array, Some(name))
+        }),
+        |iter| iter.unzip(),
+    )?;
+
+    let components: Option<Vec<_>> = arrays
+        .into_iter()
+        .zip(fields)
+        .map(|(value, field)| {
+            Some((
+                field.name.into(),
+                value.as_any().downcast_ref::<ListArray<i32>>()?.clone(),
+            ))
+        })
+        .collect();
+
+    let components = components
+        .ok_or_else(|| PyRuntimeError::new_err("Invalid arrow type"))?
+        .into_iter()
+        .collect();
+
+    let chunk = Chunk::from_auto_row_ids(chunk_id, entity_path, timelines, components)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    Ok(chunk)
 }
