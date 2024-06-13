@@ -18,7 +18,7 @@ from .. import archetypes as blueprint_archetypes
 from .. import components as blueprint_components
 from ... import datatypes
 from ... import components
-from ..._baseclasses import AsComponents
+from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
 from ..api import SpaceView, SpaceViewContentsLike
 ",
@@ -41,6 +41,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     contents: SpaceViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
     visible: blueprint_components.VisibleLike | None = None,
+    defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
     "#
     .to_owned();
 
@@ -109,6 +110,12 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
 Defaults to true if not specified."
                 .to_owned(),
         ),
+        (
+            "defaults",
+            "List of default components or component batches to add to the space view. When an archetype
+in the view is missing a component included in this set, the value of default will be used
+instead of the normal fallback for the visualizer.".to_owned(),
+        )
     ];
     for field in &obj.fields {
         let doc_content = field.docs.doc_lines_for_untagged_and("py");
@@ -174,7 +181,7 @@ Defaults to true if not specified."
     }
     code.push_indented(
         1,
-        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties)"#),
+        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties, defaults=defaults)"#),
         1,
     );
 

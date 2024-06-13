@@ -55,6 +55,22 @@ impl From<Scalar> for f64 {
     }
 }
 
+impl std::ops::Deref for Scalar {
+    type Target = f64;
+
+    #[inline]
+    fn deref(&self) -> &f64 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Scalar {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut f64 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Scalar);
 
 impl ::re_types_core::Loggable for Scalar {

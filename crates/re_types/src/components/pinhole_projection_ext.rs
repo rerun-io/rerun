@@ -73,6 +73,15 @@ impl PinholeProjection {
     }
 }
 
+impl Default for PinholeProjection {
+    #[inline]
+    fn default() -> Self {
+        // There's no good default for this, but we need a fallback for the viewer
+        // so center at 100x100 with a focal length of 100.
+        Self::from_focal_length_and_principal_point([100.0, 100.0], [100.0, 100.0])
+    }
+}
+
 #[test]
 #[cfg(feature = "glam")]
 fn test_pinhole() {

@@ -61,6 +61,13 @@ impl std::ops::Deref for Name {
     }
 }
 
+impl std::ops::DerefMut for Name {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Name);
 
 impl ::re_types_core::Loggable for Name {

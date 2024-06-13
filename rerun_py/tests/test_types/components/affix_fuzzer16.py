@@ -9,7 +9,12 @@ from typing import Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 from .. import datatypes
 
@@ -17,7 +22,9 @@ __all__ = ["AffixFuzzer16", "AffixFuzzer16ArrayLike", "AffixFuzzer16Batch", "Aff
 
 
 @define(init=False)
-class AffixFuzzer16:
+class AffixFuzzer16(ComponentMixin):
+    _BATCH_TYPE = None
+
     def __init__(self: Any, many_required_unions: AffixFuzzer16Like):
         """Create a new instance of the AffixFuzzer16 component."""
 
@@ -113,3 +120,7 @@ class AffixFuzzer16Batch(BaseBatch[AffixFuzzer16ArrayLike], ComponentBatchMixin)
         raise NotImplementedError(
             "Arrow serialization of AffixFuzzer16 not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in affix_fuzzer16_ext.py
+
+
+# This is patched in late to avoid circular dependencies.
+AffixFuzzer16._BATCH_TYPE = AffixFuzzer16Batch  # type: ignore[assignment]

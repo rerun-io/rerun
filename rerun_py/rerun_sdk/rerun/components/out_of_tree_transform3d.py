@@ -6,18 +6,22 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["OutOfTreeTransform3D", "OutOfTreeTransform3DBatch", "OutOfTreeTransform3DType"]
 
 
-class OutOfTreeTransform3D(datatypes.Transform3D):
+class OutOfTreeTransform3D(datatypes.Transform3D, ComponentMixin):
     """
     **Component**: An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 
     "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of OutOfTreeTransform3DExt in out_of_tree_transform3d_ext.py
 
     # Note: there are no fields here because OutOfTreeTransform3D delegates to datatypes.Transform3D
@@ -30,3 +34,7 @@ class OutOfTreeTransform3DType(datatypes.Transform3DType):
 
 class OutOfTreeTransform3DBatch(datatypes.Transform3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = OutOfTreeTransform3DType()
+
+
+# This is patched in late to avoid circular dependencies.
+OutOfTreeTransform3D._BATCH_TYPE = OutOfTreeTransform3DBatch  # type: ignore[assignment]

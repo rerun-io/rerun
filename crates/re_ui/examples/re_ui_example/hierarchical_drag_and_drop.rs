@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use egui::NumExt;
 
-use re_ui::{list_item, ReUi};
+use re_ui::{list_item, DesignTokens};
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
@@ -235,9 +235,9 @@ impl HierarchicalDragAndDrop {
 // UI stuff
 //
 impl HierarchicalDragAndDrop {
-    pub fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
         if let Some(top_level_items) = self.container(self.root_id) {
-            self.container_children_ui(re_ui, ui, top_level_items);
+            self.container_children_ui(ui, top_level_items);
         }
 
         // always reset the target container
@@ -269,18 +269,12 @@ impl HierarchicalDragAndDrop {
         }
     }
 
-    fn container_ui(
-        &self,
-        re_ui: &crate::ReUi,
-        ui: &mut egui::Ui,
-        item_id: ItemId,
-        children: &Vec<ItemId>,
-    ) {
+    fn container_ui(&self, ui: &mut egui::Ui, item_id: ItemId, children: &Vec<ItemId>) {
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
         let id = egui::Id::new(item_id);
 
-        let response = list_item::ListItem::new(re_ui)
+        let response = list_item::ListItem::new()
             .selected(self.selected(item_id))
             .draggable(true)
             .drop_target_style(self.target_container == Some(item_id))
@@ -289,8 +283,8 @@ impl HierarchicalDragAndDrop {
                 id,
                 true,
                 list_item::LabelContent::new(format!("Container {item_id:?}")).subdued(true),
-                |re_ui, ui| {
-                    self.container_children_ui(re_ui, ui, children);
+                |ui| {
+                    self.container_children_ui(ui, children);
                 },
             );
 
@@ -303,27 +297,22 @@ impl HierarchicalDragAndDrop {
         );
     }
 
-    fn container_children_ui(
-        &self,
-        re_ui: &crate::ReUi,
-        ui: &mut egui::Ui,
-        children: &Vec<ItemId>,
-    ) {
+    fn container_children_ui(&self, ui: &mut egui::Ui, children: &Vec<ItemId>) {
         for child_id in children {
             match self.items.get(child_id) {
                 Some(Item::Container(children)) => {
-                    self.container_ui(re_ui, ui, *child_id, children);
+                    self.container_ui(ui, *child_id, children);
                 }
                 Some(Item::Leaf(label)) => {
-                    self.leaf_ui(re_ui, ui, *child_id, label);
+                    self.leaf_ui(ui, *child_id, label);
                 }
                 None => {}
             }
         }
     }
 
-    fn leaf_ui(&self, re_ui: &crate::ReUi, ui: &mut egui::Ui, item_id: ItemId, label: &str) {
-        let response = list_item::ListItem::new(re_ui)
+    fn leaf_ui(&self, ui: &mut egui::Ui, item_id: ItemId, label: &str) {
+        let response = list_item::ListItem::new()
             .selected(self.selected(item_id))
             .draggable(true)
             .show_hierarchical(ui, list_item::LabelContent::new(label));
@@ -410,7 +399,7 @@ impl HierarchicalDragAndDrop {
             &item_desc,
             response.rect,
             body_response.map(|r| r.rect),
-            ReUi::list_item_height(),
+            DesignTokens::list_item_height(),
         );
 
         if let Some(drop_target) = drop_target {

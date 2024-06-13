@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["TensorData", "TensorDataBatch", "TensorDataType"]
 
 
-class TensorData(datatypes.TensorData):
+class TensorData(datatypes.TensorData, ComponentMixin):
     """
     **Component**: A multi-dimensional `Tensor` of data.
 
@@ -28,6 +31,7 @@ class TensorData(datatypes.TensorData):
     the shape has to be the shape of the decoded image.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TensorDataExt in tensor_data_ext.py
 
     # Note: there are no fields here because TensorData delegates to datatypes.TensorData
@@ -40,3 +44,7 @@ class TensorDataType(datatypes.TensorDataType):
 
 class TensorDataBatch(datatypes.TensorDataBatch, ComponentBatchMixin):
     _ARROW_TYPE = TensorDataType()
+
+
+# This is patched in late to avoid circular dependencies.
+TensorData._BATCH_TYPE = TensorDataBatch  # type: ignore[assignment]

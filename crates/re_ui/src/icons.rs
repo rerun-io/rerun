@@ -147,7 +147,10 @@ pub const ENTITY_EMPTY: Icon = Icon::new(
     "entity_empty",
     include_bytes!("../data/icons/entity_empty.png"),
 );
-pub const LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
+
+/// Link within the viewer
+pub const INTERNAL_LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
+
 pub const COMPONENT_TEMPORAL: Icon =
     Icon::new("component", include_bytes!("../data/icons/component.png"));
 pub const COMPONENT_STATIC: Icon = Icon::new(

@@ -100,8 +100,8 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Asset3DIndicator".into(),
             "rerun.components.MediaType".into(),
+            "rerun.components.Asset3DIndicator".into(),
         ]
     });
 
@@ -112,8 +112,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
-            "rerun.components.Asset3DIndicator".into(),
             "rerun.components.MediaType".into(),
+            "rerun.components.Asset3DIndicator".into(),
             "rerun.components.OutOfTreeTransform3D".into(),
         ]
     });

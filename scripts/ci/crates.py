@@ -35,8 +35,7 @@ from typing import Any, Generator
 import git
 import requests
 import tomlkit
-from colorama import Fore
-from colorama import init as colorama_init
+from colorama import Fore, init as colorama_init
 from dag import DAG, RateLimiter
 from semver import VersionInfo
 

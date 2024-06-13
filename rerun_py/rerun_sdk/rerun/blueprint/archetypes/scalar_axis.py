@@ -10,7 +10,9 @@ from typing import Any
 from attrs import define, field
 
 from ... import components, datatypes
-from ..._baseclasses import Archetype
+from ..._baseclasses import (
+    Archetype,
+)
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
@@ -21,12 +23,7 @@ __all__ = ["ScalarAxis"]
 class ScalarAxis(Archetype):
     """**Archetype**: Configuration for the scalar axis of a plot."""
 
-    def __init__(
-        self: Any,
-        *,
-        range: datatypes.Range1DLike | None = None,
-        lock_range_during_zoom: datatypes.BoolLike | None = None,
-    ):
+    def __init__(self: Any, *, range: datatypes.Range1DLike | None = None, zoom_lock: datatypes.BoolLike | None = None):
         """
         Create a new instance of the ScalarAxis archetype.
 
@@ -36,14 +33,14 @@ class ScalarAxis(Archetype):
             The range of the axis.
 
             If unset, the range well be automatically determined based on the queried data.
-        lock_range_during_zoom:
-            Whether to lock the range of the axis during zoom.
+        zoom_lock:
+            If enabled, the Y axis range will remain locked to the specified range when zooming.
 
         """
 
         # You can define your own __init__ function as a member of ScalarAxisExt in scalar_axis_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(range=range, lock_range_during_zoom=lock_range_during_zoom)
+            self.__attrs_init__(range=range, zoom_lock=zoom_lock)
             return
         self.__attrs_clear__()
 
@@ -51,7 +48,7 @@ class ScalarAxis(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             range=None,  # type: ignore[arg-type]
-            lock_range_during_zoom=None,  # type: ignore[arg-type]
+            zoom_lock=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -72,12 +69,12 @@ class ScalarAxis(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    lock_range_during_zoom: blueprint_components.LockRangeDuringZoomBatch | None = field(
+    zoom_lock: blueprint_components.LockRangeDuringZoomBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=blueprint_components.LockRangeDuringZoomBatch._optional,  # type: ignore[misc]
     )
-    # Whether to lock the range of the axis during zoom.
+    # If enabled, the Y axis range will remain locked to the specified range when zooming.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

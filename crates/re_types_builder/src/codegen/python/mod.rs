@@ -390,7 +390,8 @@ impl PythonCodeGenerator {
                 Archetype,
                 BaseExtensionType,
                 BaseBatch,
-                ComponentBatchMixin
+                ComponentBatchMixin,
+                ComponentMixin,
             )
             from {rerun_path}_converters import (
                 int_or_none,
@@ -612,6 +613,10 @@ fn code_for_struct(
         ));
     }
 
+    if *kind == ObjectKind::Component {
+        superclasses.push("ComponentMixin".to_owned());
+    }
+
     if let Some(deprecation_notice) = obj.deprecation_notice() {
         code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
     }
@@ -633,6 +638,10 @@ fn code_for_struct(
     code.push_unindented(format!("class {name}{superclass_decl}:"), 1);
 
     code.push_indented(1, quote_obj_docs(obj), 0);
+
+    if *kind == ObjectKind::Component {
+        code.push_indented(1, "_BATCH_TYPE = None", 1);
+    }
 
     if ext_class.has_init {
         code.push_indented(
@@ -775,7 +784,23 @@ fn code_for_struct(
 
     match kind {
         ObjectKind::Archetype => (),
-        ObjectKind::Datatype | ObjectKind::Component => {
+        ObjectKind::Component => {
+            code.push_indented(
+                0,
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                1,
+            );
+
+            code.push_indented(
+                0,
+                format!(
+                    "# This is patched in late to avoid circular dependencies.
+{name}._BATCH_TYPE = {name}Batch  # type: ignore[assignment]"
+                ),
+                1,
+            );
+        }
+        ObjectKind::Datatype => {
             code.push_indented(
                 0,
                 quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),

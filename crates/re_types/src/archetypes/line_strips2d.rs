@@ -109,18 +109,18 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.Radius".into(),
             "rerun.components.Color".into(),
             "rerun.components.LineStrips2DIndicator".into(),
-            "rerun.components.Radius".into(),
         ]
     });
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ClassId".into(),
-            "rerun.components.DrawOrder".into(),
             "rerun.components.Text".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 
@@ -128,12 +128,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.LineStrip2D".into(),
+            "rerun.components.Radius".into(),
             "rerun.components.Color".into(),
             "rerun.components.LineStrips2DIndicator".into(),
-            "rerun.components.Radius".into(),
-            "rerun.components.ClassId".into(),
-            "rerun.components.DrawOrder".into(),
             "rerun.components.Text".into(),
+            "rerun.components.DrawOrder".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 

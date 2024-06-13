@@ -12,7 +12,6 @@ use re_log_types::{
     EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF, RowId, SetStoreInfo, StoreId,
     StoreInfo, StoreKind, TimePoint, Timeline,
 };
-use re_query::PromiseResult;
 use re_types_core::{Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
@@ -196,49 +195,6 @@ impl EntityDb {
     #[inline]
     pub fn resolver(&self) -> &re_query::PromiseResolver {
         &self.resolver
-    }
-
-    /// Returns `Ok(None)` if any of the required components are missing.
-    #[inline]
-    pub fn latest_at_archetype<A: re_types_core::Archetype>(
-        &self,
-        entity_path: &EntityPath,
-        query: &re_data_store::LatestAtQuery,
-    ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
-    where
-        re_query::LatestAtResults: re_query::ToArchetype<A>,
-    {
-        let results = self.query_caches().latest_at(
-            self.store(),
-            query,
-            entity_path,
-            A::all_components().iter().copied(), // no generics!
-        );
-
-        use re_query::ToArchetype as _;
-        match results.to_archetype(self.resolver()).flatten() {
-            PromiseResult::Pending => PromiseResult::Pending,
-            PromiseResult::Error(err) => {
-                // Primary component has never been logged.
-                if let Some(err) = err.downcast_ref::<re_query::QueryError>() {
-                    if matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
-                        return PromiseResult::Ready(None);
-                    }
-                }
-
-                // Primary component has been cleared.
-                if let Some(err) = err.downcast_ref::<re_types_core::DeserializationError>() {
-                    if matches!(err, re_types_core::DeserializationError::MissingData { .. }) {
-                        return PromiseResult::Ready(None);
-                    }
-                }
-
-                PromiseResult::Error(err)
-            }
-            PromiseResult::Ready(arch) => {
-                PromiseResult::Ready(Some((results.compound_index, arch)))
-            }
-        }
     }
 
     /// Queries for the given `component_names` using latest-at semantics.
@@ -618,19 +574,22 @@ impl EntityDb {
         self.set_store_info = Some(store_info);
     }
 
-    pub fn gc_everything_but_the_latest_row(&mut self) {
+    pub fn gc_everything_but_the_latest_row_on_non_default_timelines(&mut self) {
         re_tracing::profile_function!();
 
         self.gc(&GarbageCollectionOptions {
             target: re_data_store::GarbageCollectionTarget::Everything,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
-            dont_protect: [
+            dont_protect_components: [
                 re_types_core::components::ClearIsRecursive::name(),
                 re_types_core::archetypes::Clear::indicator().name(),
             ]
             .into_iter()
             .collect(),
+            dont_protect_timelines: [Timeline::log_tick(), Timeline::log_time()]
+                .into_iter()
+                .collect(),
             enable_batching: false,
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });
@@ -647,7 +606,8 @@ impl EntityDb {
             ),
             protect_latest: 1,
             purge_empty_tables: false,
-            dont_protect: Default::default(),
+            dont_protect_components: Default::default(),
+            dont_protect_timelines: Default::default(),
             enable_batching: false,
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });

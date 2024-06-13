@@ -12,7 +12,12 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = [
@@ -25,7 +30,7 @@ __all__ = [
 
 
 @define(init=False)
-class ViewCoordinates(ViewCoordinatesExt):
+class ViewCoordinates(ViewCoordinatesExt, ComponentMixin):
     """
     **Component**: How we interpret the coordinate system of an entity/space.
 
@@ -44,6 +49,8 @@ class ViewCoordinates(ViewCoordinatesExt):
      * Forward = 5
      * Back = 6
     """
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, coordinates: ViewCoordinatesLike):
         """
@@ -95,5 +102,8 @@ class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike], ComponentBatchMi
     def _native_to_pa_array(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:
         return ViewCoordinatesExt.native_to_pa_array_override(data, data_type)
 
+
+# This is patched in late to avoid circular dependencies.
+ViewCoordinates._BATCH_TYPE = ViewCoordinatesBatch  # type: ignore[assignment]
 
 ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

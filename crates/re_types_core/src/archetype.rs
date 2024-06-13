@@ -23,6 +23,14 @@ pub struct ArchetypeFieldInfo {
     pub component_name: ComponentName,
 }
 
+/// Utility struct containing all archetype meta information.
+pub struct ArchetypeInfo {
+    pub name: ArchetypeName,
+    pub display_name: &'static str,
+    pub component_names: std::borrow::Cow<'static, [ComponentName]>,
+    pub field_infos: Option<std::borrow::Cow<'static, [ArchetypeFieldInfo]>>,
+}
+
 /// An archetype is a high-level construct that represents a set of [`Component`]s that usually
 /// play well with each other (i.e. they compose nicely).
 ///
@@ -57,6 +65,16 @@ pub trait Archetype {
 
     /// Readable name for displaying in ui.
     fn display_name() -> &'static str;
+
+    /// Returns a struct with various meta information about this archetype.
+    fn info() -> ArchetypeInfo {
+        ArchetypeInfo {
+            name: Self::name(),
+            display_name: Self::display_name(),
+            component_names: Self::all_components(),
+            field_infos: Self::field_infos(),
+        }
+    }
 
     // ---
 

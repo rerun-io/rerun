@@ -5,6 +5,7 @@ annotation_context.rs linguist-generated=true
 arrows2d.rs linguist-generated=true
 arrows3d.rs linguist-generated=true
 asset3d.rs linguist-generated=true
+axes3d.rs linguist-generated=true
 bar_chart.rs linguist-generated=true
 boxes2d.rs linguist-generated=true
 boxes3d.rs linguist-generated=true

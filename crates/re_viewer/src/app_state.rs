@@ -5,6 +5,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
+use re_ui::ContextExt as _;
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
@@ -125,12 +126,12 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
-        re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
+        component_placeholders: &re_viewer_context::ComponentPlaceholders,
     ) {
         re_tracing::profile_function!();
 
@@ -222,7 +223,7 @@ impl AppState {
                             &applicable_entities_per_visualizer,
                             recording,
                             &space_view_class_registry
-                                .new_visualizer_collection(*space_view.class_identifier()),
+                                .new_visualizer_collection(space_view.class_identifier()),
                             &space_view.space_origin,
                         );
 
@@ -238,7 +239,7 @@ impl AppState {
 
         let rec_cfg =
             recording_config_entry(recording_configs, recording.store_id().clone(), recording);
-
+        let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             app_options,
             cache,
@@ -252,10 +253,11 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            re_ui,
+            egui_ctx: &egui_ctx,
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
+            component_placeholders,
         };
 
         // First update the viewport and thus all active space views.
@@ -277,13 +279,14 @@ impl AppState {
                             &applicable_entities_per_visualizer,
                             recording,
                             &space_view_class_registry
-                                .new_visualizer_collection(*space_view.class_identifier()),
+                                .new_visualizer_collection(space_view.class_identifier()),
                             &space_view.space_origin,
                         );
 
                     let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,
                         space_view,
+                        &applicable_entities_per_visualizer,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
                     );
@@ -315,10 +318,11 @@ impl AppState {
             blueprint_cfg,
             selection_state,
             blueprint_query: &blueprint_query,
-            re_ui,
+            egui_ctx: &egui_ctx,
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
+            component_placeholders,
         };
 
         //
@@ -399,23 +403,21 @@ impl AppState {
                 );
                 ui.set_clip_rect(max_rect);
 
-                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-                    // ListItem don't need vertical spacing so we disable it, but restore it
-                    // before drawing the blueprint panel.
-                    ui.spacing_mut().item_spacing.y = 0.0;
+                // ListItem don't need vertical spacing so we disable it, but restore it
+                // before drawing the blueprint panel.
+                ui.spacing_mut().item_spacing.y = 0.0;
 
-                    let pre_cursor = ui.cursor();
-                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                    let any_recording_shows = pre_cursor == ui.cursor();
+                let pre_cursor = ui.cursor();
+                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                let any_recording_shows = pre_cursor == ui.cursor();
 
-                    if any_recording_shows {
-                        ui.add_space(4.0);
-                    }
+                if any_recording_shows {
+                    ui.add_space(4.0);
+                }
 
-                    if !show_welcome {
-                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
-                    }
-                });
+                if !show_welcome {
+                    blueprint_tree.show(&ctx, &viewport_blueprint, ui);
+                }
             },
         );
 
@@ -432,7 +434,7 @@ impl AppState {
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
                 if show_welcome {
-                    welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_state);
+                    welcome_screen.ui(ui, command_sender, welcome_screen_state);
                 } else {
                     viewport.viewport_ui(ui, &ctx, view_states);
                 }
@@ -483,11 +485,11 @@ impl AppState {
         }
 
         if WATERMARK {
-            re_ui.paint_watermark();
+            ui.ctx().paint_watermark();
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&re_ui.egui_ctx, ctx.selection_state);
+        check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
 
         // Reset the focused item.
         *focused_item = None;

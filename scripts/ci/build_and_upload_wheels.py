@@ -18,8 +18,7 @@ import platform
 import subprocess
 from enum import Enum
 
-from google.cloud.storage import Bucket
-from google.cloud.storage import Client as Gcs
+from google.cloud.storage import Bucket, Client as Gcs
 
 
 def run(

@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 ///
 /// "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct OutOfTreeTransform3D(
     /// Representation of the transform.
     pub crate::datatypes::Transform3D,
@@ -62,6 +62,13 @@ impl std::ops::Deref for OutOfTreeTransform3D {
     #[inline]
     fn deref(&self) -> &crate::datatypes::Transform3D {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for OutOfTreeTransform3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Transform3D {
+        &mut self.0
     }
 }
 

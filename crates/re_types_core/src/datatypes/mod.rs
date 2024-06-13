@@ -13,6 +13,7 @@ mod uint64;
 mod utf8;
 mod utf8_ext;
 mod visible_time_range;
+mod visible_time_range_ext;
 
 pub use self::entity_path::EntityPath;
 pub use self::float32::Float32;

@@ -67,7 +67,7 @@ impl Promise {
 // ---
 
 /// Resolves and keeps track of [`Promise`]s.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PromiseResolver {}
 
 impl PromiseResolver {

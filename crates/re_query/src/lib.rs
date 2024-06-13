@@ -83,20 +83,6 @@ pub type Result<T> = std::result::Result<T, QueryError>;
 
 // ---
 
-/// Helper extension trait to convert query results into [`re_types_core::Archetype`]s.
-pub trait ToArchetype<A: re_types_core::Archetype> {
-    /// Converts the result into an [`re_types_core::Archetype`].
-    ///
-    /// Automatically handles all aspects of the query process: deserialization, caching, promise
-    /// resolution, etc.
-    fn to_archetype(
-        &self,
-        resolver: &crate::PromiseResolver,
-    ) -> crate::PromiseResult<crate::Result<A>>;
-}
-
-// ---
-
 use re_data_store::{LatestAtQuery, RangeQuery};
 
 #[derive(Debug)]
@@ -129,32 +115,8 @@ pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
     use std::sync::OnceLock;
     static NOT_CACHEABLE: OnceLock<re_types_core::ComponentNameSet> = OnceLock::new();
 
-    #[cfg(feature = "to_archetype")]
-    let component_names = {
-        // Make sure to break if these names change, so people know to update the fallback path below.
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(
-                re_types::components::TensorData::name(),
-                "rerun.components.TensorData"
-            );
-            assert_eq!(re_types::components::Blob::name(), "rerun.components.Blob");
-        }
-
-        use re_types_core::Loggable as _;
-        [
-            // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
-            // want yet another copy.
-            re_types::components::TensorData::name(),
-            // TODO(#5974): blobs are used for assets, which are themselves already cached in
-            // the ad-hoc mesh cache -- we don't want yet another copy.
-            re_types::components::Blob::name(),
-        ]
-    };
-
-    // Horrible hack so we can still make this work when features are disabled.
-    // Not great, but this all a hack anyhow.
-    #[cfg(not(feature = "to_archetype"))]
+    // Horrible hack so we can make this work without depending on re_types.
+    // We have a dev dependency on re_types only, so we test this in the tests below against the "symbolic" names.
     let component_names = [
         "rerun.components.TensorData".into(),
         "rerun.components.Blob".into(),
@@ -163,4 +125,20 @@ pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
     let not_cacheable = NOT_CACHEABLE.get_or_init(|| component_names.into());
 
     !component_name.is_indicator_component() && !not_cacheable.contains(&component_name)
+}
+
+#[cfg(test)]
+mod tests {
+    use re_types::{
+        components::{Blob, TensorData},
+        Loggable as _,
+    };
+
+    use super::*;
+
+    #[test]
+    fn test_cacheable() {
+        assert!(!cacheable(TensorData::name()));
+        assert!(!cacheable(Blob::name()));
+    }
 }

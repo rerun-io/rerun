@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Whether the container, space view, entity or instance is currently visible.
+/// **Component**: Whether the container, view, entity or instance is currently visible.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Visible(pub bool);
@@ -50,6 +50,22 @@ impl From<Visible> for bool {
     #[inline]
     fn from(value: Visible) -> Self {
         value.0
+    }
+}
+
+impl std::ops::Deref for Visible {
+    type Target = bool;
+
+    #[inline]
+    fn deref(&self) -> &bool {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Visible {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut bool {
+        &mut self.0
     }
 }
 

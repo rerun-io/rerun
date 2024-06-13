@@ -5,8 +5,8 @@ use re_entity_db::EntityPath;
 use re_space_view::diff_component_filter;
 use re_types::{archetypes::BarChart, components::Color, datatypes::TensorData};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
+    ViewQuery, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -42,9 +42,9 @@ impl VisualizerSystem for BarChartVisualizerSystem {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-        _view_ctx: &ViewContextCollection,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
@@ -83,4 +83,10 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        self
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => []);

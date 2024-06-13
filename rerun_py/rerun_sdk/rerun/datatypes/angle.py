@@ -10,7 +10,10 @@ from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .angle_ext import AngleExt
 
 __all__ = ["Angle", "AngleArrayLike", "AngleBatch", "AngleLike", "AngleType"]

@@ -10,7 +10,12 @@ from typing import Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = [
     "VisualizerOverrides",
@@ -22,8 +27,10 @@ __all__ = [
 
 
 @define(init=False)
-class VisualizerOverrides:
+class VisualizerOverrides(ComponentMixin):
     """**Component**: The name of a visualizer."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, value: VisualizerOverridesLike):
         """Create a new instance of the VisualizerOverrides component."""
@@ -58,3 +65,7 @@ class VisualizerOverridesBatch(BaseBatch[VisualizerOverridesArrayLike], Componen
         raise NotImplementedError(
             "Arrow serialization of VisualizerOverrides not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in visualizer_overrides_ext.py
+
+
+# This is patched in late to avoid circular dependencies.
+VisualizerOverrides._BATCH_TYPE = VisualizerOverridesBatch  # type: ignore[assignment]

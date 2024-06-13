@@ -11,14 +11,21 @@ import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["AutoLayout", "AutoLayoutArrayLike", "AutoLayoutBatch", "AutoLayoutLike", "AutoLayoutType"]
 
 
 @define(init=False)
-class AutoLayout:
+class AutoLayout(ComponentMixin):
     """**Component**: Whether the viewport layout is determined automatically."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, auto_layout: AutoLayoutLike):
         """Create a new instance of the AutoLayout component."""
@@ -57,3 +64,7 @@ class AutoLayoutBatch(BaseBatch[AutoLayoutArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: AutoLayoutArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+AutoLayout._BATCH_TYPE = AutoLayoutBatch  # type: ignore[assignment]

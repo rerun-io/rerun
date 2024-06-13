@@ -61,6 +61,13 @@ impl std::ops::Deref for Range1D {
     }
 }
 
+impl std::ops::DerefMut for Range1D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Range1D {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Range1D);
 
 impl ::re_types_core::Loggable for Range1D {

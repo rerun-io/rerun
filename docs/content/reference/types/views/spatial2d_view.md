@@ -10,8 +10,8 @@ For viewing spatial 2D data.
 ### `background`
 Configuration for the background of the view.
 
-* `kind`: The type of the background. Defaults to BackgroundKind.GradientDark.
-* `color`: Color used for BackgroundKind.SolidColor.
+* `kind`: The type of the background.
+* `color`: Color used for the `SolidColor` background type.
 ### `visual_bounds`
 The visible parts of the scene, in the coordinate space of the scene.
 
@@ -57,6 +57,7 @@ snippet: views/spatial2d
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`Arrows3D`](../archetypes/arrows3d.md) (if logged above active projection)
 * [`Asset3D`](../archetypes/asset3d.md) (if logged above active projection)
+* [`Axes3D`](../archetypes/axes3d.md) (if logged above active projection)
 * [`Boxes3D`](../archetypes/boxes3d.md) (if logged above active projection)
 * [`LineStrips3D`](../archetypes/line_strips3d.md) (if logged above active projection)
 * [`Mesh3D`](../archetypes/mesh3d.md) (if logged above active projection)

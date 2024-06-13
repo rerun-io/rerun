@@ -6,13 +6,16 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .text_log_level_ext import TextLogLevelExt
 
 __all__ = ["TextLogLevel", "TextLogLevelBatch", "TextLogLevelType"]
 
 
-class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
+class TextLogLevel(TextLogLevelExt, datatypes.Utf8, ComponentMixin):
     """
     **Component**: The severity level of a text log message.
 
@@ -25,6 +28,7 @@ class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     * `"TRACE"`
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TextLogLevelExt in text_log_level_ext.py
 
     # Note: there are no fields here because TextLogLevel delegates to datatypes.Utf8
@@ -38,5 +42,8 @@ class TextLogLevelType(datatypes.Utf8Type):
 class TextLogLevelBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = TextLogLevelType()
 
+
+# This is patched in late to avoid circular dependencies.
+TextLogLevel._BATCH_TYPE = TextLogLevelBatch  # type: ignore[assignment]
 
 TextLogLevelExt.deferred_patch_class(TextLogLevel)

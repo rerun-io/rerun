@@ -10,6 +10,7 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+mod component_defaults;
 pub mod env_vars;
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
@@ -199,7 +200,7 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
 /// Customize eframe and egui to suit the rerun viewer.
 pub fn customize_eframe_and_setup_renderer(
     cc: &eframe::CreationContext<'_>,
-) -> Result<re_ui::ReUi, re_renderer::RenderContextError> {
+) -> Result<(), re_renderer::RenderContextError> {
     re_tracing::profile_function!();
 
     if let Some(render_state) = &cc.wgpu_render_state {
@@ -220,7 +221,8 @@ pub fn customize_eframe_and_setup_renderer(
         paint_callback_resources.insert(render_ctx);
     }
 
-    Ok(re_ui::ReUi::load_and_apply(&cc.egui_ctx))
+    re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

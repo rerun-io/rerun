@@ -51,6 +51,22 @@ impl From<AffixFuzzer11> for Option<::re_types_core::ArrowBuffer<f32>> {
     }
 }
 
+impl std::ops::Deref for AffixFuzzer11 {
+    type Target = Option<::re_types_core::ArrowBuffer<f32>>;
+
+    #[inline]
+    fn deref(&self) -> &Option<::re_types_core::ArrowBuffer<f32>> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer11 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<::re_types_core::ArrowBuffer<f32>> {
+        &mut self.0
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer11);
 
 impl ::re_types_core::Loggable for AffixFuzzer11 {

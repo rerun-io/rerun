@@ -12,7 +12,12 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .disconnected_space_ext import DisconnectedSpaceExt
 
 __all__ = [
@@ -25,7 +30,7 @@ __all__ = [
 
 
 @define(init=False)
-class DisconnectedSpace(DisconnectedSpaceExt):
+class DisconnectedSpace(DisconnectedSpaceExt, ComponentMixin):
     """
     **Component**: Spatially disconnect this entity from its parent.
 
@@ -35,6 +40,7 @@ class DisconnectedSpace(DisconnectedSpaceExt):
     This is useful for specifying that a subgraph is independent of the rest of the scene.
     """
 
+    _BATCH_TYPE = None
     # __init__ can be found in disconnected_space_ext.py
 
     def __bool__(self) -> bool:
@@ -71,3 +77,7 @@ class DisconnectedSpaceBatch(BaseBatch[DisconnectedSpaceArrayLike], ComponentBat
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+DisconnectedSpace._BATCH_TYPE = DisconnectedSpaceBatch  # type: ignore[assignment]

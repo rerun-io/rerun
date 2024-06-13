@@ -6,12 +6,13 @@ use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{ClassId, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
 };
 
-use crate::{image_meaning_for_entity, label_for_ui_layout};
+use crate::image_meaning_for_entity;
 
 use super::EntityDataUi;
 
@@ -84,7 +85,7 @@ impl EntityDataUi for re_types::components::TensorData {
                 );
             }
             Err(err) => {
-                label_for_ui_layout(ui, ui_layout, ctx.re_ui.error_text(err.to_string()));
+                ui_layout.label(ui, ui.ctx().error_text(err.to_string()));
             }
         }
     }
@@ -187,16 +188,8 @@ pub fn tensor_ui(
                     original_tensor.dtype(),
                     format_tensor_shape_single_line(&shape)
                 );
-                label_for_ui_layout(ui, ui_layout, text).on_hover_ui(|ui| {
-                    tensor_summary_ui(
-                        ctx.re_ui,
-                        ui,
-                        original_tensor,
-                        tensor,
-                        meaning,
-                        meter,
-                        &tensor_stats,
-                    );
+                ui_layout.label(ui, text).on_hover_ui(|ui| {
+                    tensor_summary_ui(ui, original_tensor, tensor, meaning, meter, &tensor_stats);
                 });
             });
         }
@@ -204,15 +197,7 @@ pub fn tensor_ui(
         UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight | UiLayout::Tooltip => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
-                tensor_summary_ui(
-                    ctx.re_ui,
-                    ui,
-                    original_tensor,
-                    tensor,
-                    meaning,
-                    meter,
-                    &tensor_stats,
-                );
+                tensor_summary_ui(ui, original_tensor, tensor, meaning, meter, &tensor_stats);
 
                 if let Some(texture) = &texture_result {
                     let preview_size = ui
@@ -341,7 +326,6 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
 }
 
 pub fn tensor_summary_ui_grid_contents(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     original_tensor: &TensorData,
     tensor: &DecodedTensor,
@@ -351,14 +335,12 @@ pub fn tensor_summary_ui_grid_contents(
 ) {
     let TensorData { shape, buffer: _ } = tensor.inner();
 
-    re_ui
-        .grid_left_hand_label(ui, "Data type")
+    ui.grid_left_hand_label("Data type")
         .on_hover_text("Data type used for all individual elements within the tensor");
     ui.label(tensor.dtype().to_string());
     ui.end_row();
 
-    re_ui
-        .grid_left_hand_label(ui, "Shape")
+    ui.grid_left_hand_label("Shape")
         .on_hover_text("Extent of every dimension");
     ui.vertical(|ui| {
         // For unnamed tensor dimension more than a single line usually doesn't make sense!
@@ -375,7 +357,7 @@ pub fn tensor_summary_ui_grid_contents(
     ui.end_row();
 
     if meaning != TensorDataMeaning::Unknown {
-        re_ui.grid_left_hand_label(ui, "Meaning");
+        ui.grid_left_hand_label("Meaning");
         ui.label(match meaning {
             TensorDataMeaning::Unknown => "",
             TensorDataMeaning::ClassId => "Class ID",
@@ -385,8 +367,7 @@ pub fn tensor_summary_ui_grid_contents(
     }
 
     if let Some(meter) = meter {
-        re_ui
-            .grid_left_hand_label(ui, "Meter")
+        ui.grid_left_hand_label("Meter")
             .on_hover_text(format!("{meter} depth units equals one world unit"));
         ui.label(meter.to_string());
         ui.end_row();
@@ -405,7 +386,7 @@ pub fn tensor_summary_ui_grid_contents(
         | TensorBuffer::F32(_)
         | TensorBuffer::F64(_) => {}
         TensorBuffer::Jpeg(jpeg_bytes) => {
-            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.grid_left_hand_label("Encoding");
             ui.label(format!(
                 "{} JPEG",
                 re_format::format_bytes(jpeg_bytes.size_in_bytes() as _),
@@ -413,12 +394,12 @@ pub fn tensor_summary_ui_grid_contents(
             ui.end_row();
         }
         TensorBuffer::Nv12(_) => {
-            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.grid_left_hand_label("Encoding");
             ui.label("NV12");
             ui.end_row();
         }
         TensorBuffer::Yuy2(_) => {
-            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.grid_left_hand_label("Encoding");
             ui.label("YUY2");
             ui.end_row();
         }
@@ -454,7 +435,6 @@ pub fn tensor_summary_ui_grid_contents(
 }
 
 pub fn tensor_summary_ui(
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     original_tensor: &TensorData,
     tensor: &DecodedTensor,
@@ -466,7 +446,6 @@ pub fn tensor_summary_ui(
         .num_columns(2)
         .show(ui, |ui| {
             tensor_summary_ui_grid_contents(
-                re_ui,
                 ui,
                 original_tensor,
                 tensor,

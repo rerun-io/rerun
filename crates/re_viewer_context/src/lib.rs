@@ -9,6 +9,7 @@ mod blueprint_id;
 mod caches;
 mod collapsed_id;
 mod command_sender;
+mod component_fallbacks;
 mod component_ui_registry;
 mod contents;
 mod item;
@@ -41,10 +42,16 @@ pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
-pub use component_ui_registry::{ComponentUiRegistry, UiLayout};
+pub use component_fallbacks::{
+    ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
+    ComponentPlaceholders, TypedComponentFallbackProvider,
+};
+pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
 pub use item::Item;
-pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
+pub use query_context::{
+    DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
+};
 pub use query_range::QueryRange;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
@@ -57,7 +64,7 @@ pub use space_view::{
     SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContext,
     ViewContextCollection, ViewContextSystem, ViewQuery, ViewStates, ViewSystemIdentifier,
     VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
     VisualizerQueryInfo, VisualizerSystem,

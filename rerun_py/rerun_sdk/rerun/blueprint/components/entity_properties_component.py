@@ -12,7 +12,12 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from ..._converters import (
     to_np_uint8,
 )
@@ -27,8 +32,10 @@ __all__ = [
 
 
 @define(init=False)
-class EntityPropertiesComponent:
+class EntityPropertiesComponent(ComponentMixin):
     """**Component**: The configurable set of overridable properties."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, props: EntityPropertiesComponentLike):
         """Create a new instance of the EntityPropertiesComponent component."""
@@ -67,3 +74,7 @@ class EntityPropertiesComponentBatch(BaseBatch[EntityPropertiesComponentArrayLik
         raise NotImplementedError(
             "Arrow serialization of EntityPropertiesComponent not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in entity_properties_component_ext.py
+
+
+# This is patched in late to avoid circular dependencies.
+EntityPropertiesComponent._BATCH_TYPE = EntityPropertiesComponentBatch  # type: ignore[assignment]

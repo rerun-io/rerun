@@ -42,18 +42,6 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@rerun-io/web-viewer-react@file:/home/jp/rerun-io/rerun/rerun_js/web-viewer-react":
-  version "0.13.0"
-  resolved "file:web-viewer-react"
-  dependencies:
-    "@rerun-io/web-viewer" "0.13.0"
-    "@types/react" "^18.2.33"
-    react "^18.2.0"
-
-"@rerun-io/web-viewer@0.13.0", "@rerun-io/web-viewer@file:/home/jp/rerun-io/rerun/rerun_js/web-viewer":
-  version "0.13.0"
-  resolved "file:web-viewer"
-
 "@types/prop-types@*":
   version "15.7.11"
   resolved "https://registry.npmjs.org/@types/prop-types/-/prop-types-15.7.11.tgz"
@@ -164,7 +152,7 @@ ts-api-utils@^1.0.3:
   resolved "https://registry.npmjs.org/ts-api-utils/-/ts-api-utils-1.2.1.tgz"
   integrity sha512-RIYA36cJn2WiH9Hy77hdF9r7oEwxAtB/TS9/S4Qd90Ap4z5FSiin5zEiTL44OII1Y3IIlEvxwxFUVgrHSZ/UpA==
 
-typescript@^5.2.2, typescript@>=4.2.0, "typescript@>=5.0.4 <5.3":
+typescript@^5.2.2:
   version "5.3.3"
   resolved "https://registry.npmjs.org/typescript/-/typescript-5.3.3.tgz"
   integrity sha512-pXWcraxM0uxAS+tN0AG/BF2TyqmHO014Z070UsJ+pFvYuRSq8KH8DmWpnbXe0pEPDHXZV3FcAbJkijJ5oNEnWw==

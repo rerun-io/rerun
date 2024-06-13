@@ -239,7 +239,6 @@ enum {
     _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
     RR_ERROR_CODE_ARROW_FFI_SCHEMA_IMPORT_ERROR,
     RR_ERROR_CODE_ARROW_FFI_ARRAY_IMPORT_ERROR,
-    RR_ERROR_CODE_ARROW_DATA_CELL_ERROR,
 
     // Generic errors.
     RR_ERROR_CODE_UNKNOWN,
@@ -267,7 +266,7 @@ typedef struct rr_error {
 ///
 /// This should match the string returned by `rr_version_string`.
 /// If not, the SDK's binary and the C header are out of sync.
-#define RERUN_SDK_HEADER_VERSION "0.16.0"
+#define RERUN_SDK_HEADER_VERSION "0.17.0-alpha.3"
 
 /// Returns a human-readable version string of the Rerun C SDK.
 ///

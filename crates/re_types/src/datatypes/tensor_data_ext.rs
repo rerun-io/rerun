@@ -343,6 +343,16 @@ impl TensorData {
     }
 }
 
+impl Default for TensorData {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            shape: Vec::new(),
+            buffer: TensorBuffer::U8(Vec::new().into()),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 macro_rules! ndarray_from_tensor {

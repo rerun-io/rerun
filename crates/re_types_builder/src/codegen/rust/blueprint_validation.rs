@@ -12,7 +12,7 @@ use crate::{
 use super::util::string_from_quoted;
 
 pub(crate) fn generate_blueprint_validation(
-    _reporter: &Reporter,
+    reporter: &Reporter,
     objects: &Objects,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
@@ -53,12 +53,14 @@ pub(crate) fn generate_blueprint_validation(
         }
     };
 
-    code.push_indented(0, string_from_quoted(&is_valid_blueprint), 1);
-
-    files_to_write.insert(
-        Utf8PathBuf::from("crates/re_viewer/src/blueprint/validation_gen/mod.rs"),
-        code,
+    let path = Utf8PathBuf::from("crates/re_viewer/src/blueprint/validation_gen/mod.rs");
+    code.push_indented(
+        0,
+        string_from_quoted(reporter, &is_valid_blueprint, &path),
+        1,
     );
+
+    files_to_write.insert(path, code);
 }
 
 fn quote_component_validation(obj: &Object, first: bool) -> TokenStream {

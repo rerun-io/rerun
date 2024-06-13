@@ -12,7 +12,10 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .rgba32_ext import Rgba32Ext
 
 __all__ = ["Rgba32", "Rgba32ArrayLike", "Rgba32Batch", "Rgba32Like", "Rgba32Type"]

@@ -1,13 +1,15 @@
 use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_entity_db::{EntityDb, EntityProperties};
+use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_query::Results;
 use re_renderer::DepthOffset;
+use re_space_view::{
+    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,
+};
 use re_types::Archetype;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError, ViewContext,
+    ViewContextCollection, ViewQuery,
 };
 
 use crate::{
@@ -39,16 +41,13 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
 
 // --- Cached APIs ---
 
-pub fn query_archetype_with_history<A: Archetype>(
-    entity_db: &EntityDb,
+pub fn query_archetype_with_history<'a, A: Archetype>(
+    ctx: &'a ViewContext<'a>,
     timeline: &Timeline,
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
-    entity_path: &EntityPath,
-) -> Results {
-    let store = entity_db.store();
-    let caches = entity_db.query_caches();
-
+    data_result: &'a re_viewer_context::DataResult,
+) -> HybridResults<'a> {
     match query_range {
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
@@ -58,20 +57,22 @@ pub fn query_archetype_with_history<A: Archetype>(
                     timeline_cursor,
                 ),
             );
-            let results = caches.range(
-                store,
+            let results = range_with_blueprint_resolved_data(
+                ctx,
+                None,
                 &range_query,
-                entity_path,
+                data_result,
                 A::all_components().iter().copied(),
             );
             (range_query, results).into()
         }
         QueryRange::LatestAt => {
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
-            let results = caches.latest_at(
-                store,
+            let results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
                 &latest_query,
-                entity_path,
+                data_result,
                 A::all_components().iter().copied(),
             );
             (latest_query, results).into()
@@ -84,7 +85,7 @@ pub fn query_archetype_with_history<A: Archetype>(
 /// The callback passed in gets passed along an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
     default_depth_offset: DepthOffset,
@@ -93,11 +94,11 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
 where
     A: Archetype,
     F: FnMut(
-        &ViewerContext<'_>,
+        &ViewContext<'_>,
         &EntityPath,
         &EntityProperties,
         &SpatialSceneEntityContext<'_>,
-        &Results,
+        &HybridResults<'_>,
     ) -> Result<(), SpaceViewSystemExecutionError>,
 {
     let transforms = view_ctx.get::<TransformContext>()?;
@@ -135,11 +136,11 @@ where
         };
 
         let results = query_archetype_with_history::<A>(
-            ctx.recording(),
+            ctx,
             &query.timeline,
             query.latest_at,
             data_result.query_range(),
-            &data_result.entity_path,
+            data_result,
         );
 
         // NOTE: We used to compute the number of primitives across the entire scene here, but that
