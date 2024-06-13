@@ -8,7 +8,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, Iterable
 
 import cv2 as cv2
 import pandas as pd
@@ -65,23 +65,23 @@ class LayoutType(Enum):
     REFERENCE = (7, "reference", Color.Purple)
     FOOTER = (7, "footer", Color.Orange)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value[1])  # Returns the string part (type)
 
     @property
-    def number(self):
+    def number(self) -> int:
         return self.value[0]  # Returns the numerical identifier
 
     @property
-    def type(self):
+    def type(self) -> str:
         return self.value[1]  # Returns the type
 
     @property
-    def color(self):
+    def color(self) -> tuple[int, int, int]:
         return self.value[2]  # Returns the color
 
     @staticmethod
-    def get_class_id(text):
+    def get_class_id(text) -> int:
         try:
             return LayoutType[text.upper()].number
         except KeyError:
@@ -89,7 +89,7 @@ class LayoutType(Enum):
             return 0
 
     @staticmethod
-    def get_type(text):
+    def get_type(text) -> LayoutType:
         try:
             return LayoutType[text.upper()]
         except KeyError:
@@ -97,7 +97,7 @@ class LayoutType(Enum):
             return LayoutType.UNKNOWN
 
     @classmethod
-    def get_annotation(cls):
+    def get_annotation(cls) -> []:
         return [(layout.number, layout.type, layout.color) for layout in cls]
 
 
@@ -114,7 +114,7 @@ Layout Class:
 class Layout:
     def __init__(self, show_unknown: bool = False):
         self.counts = {layout_type: 0 for layout_type in LayoutType}
-        self.records = {layout_type: [] for layout_type in LayoutType}
+        self.records: dict[LayoutType, Any] = {layout_type: [] for layout_type in LayoutType}
         self.recovery = """"""
         self.show_unknown = show_unknown
 
@@ -122,7 +122,7 @@ class Layout:
         self,
         layout_type: LayoutType,
         bounding_box: list[int],
-        detections: Optional[list[dict[str, Any]]] = None,
+        detections: Optional[Iterable[dict[str, Any]]] = None,
         table: Optional[str] = None,
         figure: Optional[dict[str, Any]] = None,
     ) -> None:
@@ -142,7 +142,8 @@ class Layout:
                 self.recovery += f"\n\n## [{name.title()}]({path})\n\n"  # Log Type as Heading
                 # Enhancement - Logged image for Figure type TODO(#6517)
                 if layout_type == LayoutType.TABLE:
-                    self.recovery += table  # Log details (table)
+                    if table:
+                        self.recovery += table  # Log details (table)
                 else:
                     for index, detection in enumerate(detections):
                         path_text = f"recording://Image/{layout_type.type.title()}/{name.title()}/Detections/{index}"
