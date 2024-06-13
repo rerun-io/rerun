@@ -355,11 +355,37 @@ impl ComponentUiRegistry {
 
         re_tracing::profile_function!(component_name.full_name());
 
-        let ui_callback = self
-            .component_uis
-            .get(&component_name)
-            .unwrap_or(&self.fallback_ui);
-        (*ui_callback)(
+        // Use the ui callback if there is one.
+        if let Some(ui_callback) = self.component_uis.get(&component_name) {
+            (*ui_callback)(
+                ctx,
+                ui,
+                ui_layout,
+                query,
+                db,
+                entity_path,
+                component,
+                instance,
+            );
+            return;
+        }
+
+        // If there is none but we have a singleline edit_ui and only a single value, use a disabled edit ui.
+        if instance.is_specific() {
+            if let Some(edit_ui) = self.component_singleline_editors.get(&component_name) {
+                if let Some(raw_component) =
+                    component.instance_raw(db.resolver(), component_name, instance.get() as _)
+                {
+                    ui.scope(|ui| {
+                        ui.disable();
+                        (*edit_ui)(ctx, ui, raw_component.as_ref());
+                    });
+                    return;
+                }
+            }
+        }
+
+        (*self.fallback_ui)(
             ctx,
             ui,
             ui_layout,
