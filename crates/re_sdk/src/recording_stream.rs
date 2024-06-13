@@ -9,7 +9,10 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 
+use arrow2::array::ListArray as ArrowListArray;
 use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
+
+use re_chunk::{ChunkError, ChunkId, ChunkTimeline, ComponentName};
 use re_log_types::{
     ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
@@ -49,6 +52,10 @@ pub enum RecordingStreamError {
     /// Error within the underlying file sink.
     #[error("Failed to create the underlying file sink: {0}")]
     FileSink(#[from] re_log_encoding::FileSinkError),
+
+    /// Error within the underlying chunk batcher.
+    #[error("Failed to convert data to a valid chunk: {0}")]
+    Chunk(#[from] ChunkError),
 
     /// Error within the underlying chunk batcher.
     #[error("Failed to spawn the underlying batcher: {0}")]
@@ -883,6 +890,23 @@ impl RecordingStream {
         self.log_with_static(ent_path, false, arch)
     }
 
+    #[inline]
+    /// TODO
+    pub fn log_temporal_batch(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timelines: BTreeMap<Timeline, ChunkTimeline>,
+        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+    ) -> RecordingStreamResult<()> {
+        let id = ChunkId::new();
+
+        let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
+
+        self.record_chunk(chunk);
+
+        Ok(())
+    }
+
     #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
     #[doc(hidden)]
     #[inline]
@@ -1369,6 +1393,21 @@ impl RecordingStream {
 
         if self.with(f).is_none() {
             re_log::warn_once!("Recording disabled - call to record_row() ignored");
+        }
+    }
+
+    /// Records a single [`Chunk`].
+    ///
+    /// Internally, incoming [`PendingRow`]s are automatically coalesced into larger [`Chunk`]s to
+    /// optimize for transport.
+    #[inline]
+    pub fn record_chunk(&self, chunk: Chunk) {
+        let f = move |inner: &RecordingStreamInner| {
+            inner.batcher.push_chunk(chunk);
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to record_chunk() ignored");
         }
     }
 

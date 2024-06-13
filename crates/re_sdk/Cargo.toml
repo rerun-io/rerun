@@ -50,6 +50,7 @@ web_viewer = [
 
 
 [dependencies]
+arrow2.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
