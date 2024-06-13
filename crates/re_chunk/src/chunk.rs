@@ -372,6 +372,39 @@ impl Chunk {
         Self::new(id, entity_path, is_sorted, row_ids, timelines, components)
     }
 
+    /// Creates a new [`Chunk`].
+    ///
+    /// This will fail if the passed in data is malformed in any way -- see [`Self::sanity_check`]
+    /// for details.
+    ///
+    /// Iff you know for sure whether the data is already appropriately sorted or not, specify `is_sorted`.
+    /// When left unspecified (`None`), it will be computed in O(n) time.
+    pub fn from_auto_row_ids(
+        id: ChunkId,
+        entity_path: EntityPath,
+        timelines: BTreeMap<Timeline, ChunkTimeline>,
+        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+    ) -> ChunkResult<Self> {
+        let count = components
+            .iter()
+            .next()
+            .map_or(0, |(_, components)| components.len());
+
+        let row_ids = std::iter::from_fn({
+            let tuid: re_tuid::Tuid = *id;
+            let mut row_id = RowId::from_tuid(tuid.next());
+            move || {
+                let yielded = row_id;
+                row_id = row_id.next();
+                Some(yielded)
+            }
+        })
+        .take(count)
+        .collect_vec();
+
+        Self::from_native_row_ids(id, entity_path, Some(true), &row_ids, timelines, components)
+    }
+
     /// Simple helper for [`Self::new`] for static data.
     ///
     /// For a row-oriented constructor, see [`Self::builder`].
