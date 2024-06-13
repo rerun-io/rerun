@@ -8,7 +8,7 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Final
+from typing import Any, Dict, List, Optional, Tuple, Final
 
 import cv2 as cv2
 import pandas as pd
@@ -112,13 +112,13 @@ Layout Class:
 
 
 class Layout:
-    def __init__(self, show_unknown=False):
+    def __init__(self, show_unknown: bool = False):
         self.counts = {layout_type: 0 for layout_type in LayoutType}
         self.records = {layout_type: [] for layout_type in LayoutType}
         self.recovery = """"""
         self.show_unknown = show_unknown
 
-    def add(self, layout_type, bounding_box, detections=None, table=None, figure=None):
+    def add(self, layout_type: LayoutType, bounding_box: List[int], detections: Optional[List[Dict[str, Any]]] = None, table: Optional[str] = None, figure: Optional[Dict[str, Any]] = None) -> None:
         if layout_type in LayoutType:
             self.counts[layout_type] += 1
             name = f"{layout_type}{self.counts[layout_type]}"
@@ -143,22 +143,22 @@ class Layout:
         else:
             logging.warning(f"Invalid layout type detected: {layout_type}")
 
-    def get_count(self, layout_type):
+    def get_count(self, layout_type: LayoutType):
         if layout_type in LayoutType:
             return self.counts[layout_type]
         else:
             logging.warning("Invalid layout type")
 
-    def get_records(self):
+    def get_records(self) -> Dict[LayoutType, List[Dict[str, Any]]]:
         return self.records
 
-    def save_all_layouts(self, results):
+    def save_all_layouts(self, results: List[Dict[str, Any]]) -> None:
         for line in results:
             self.save_layout_data(line)
         for layout_type in LayoutType:
             logging.info(f"Number of detections for type {layout_type}: {self.counts[layout_type]}")
 
-    def save_layout_data(self, line):
+    def save_layout_data(self, line: Dict[str, Any]) -> None:
         type = line.get("type", "empty")
         box = line.get("bbox", [0, 0, 0, 0])
         layout_type = LayoutType.get_type(type)
@@ -173,7 +173,7 @@ class Layout:
         self.add(layout_type, box, detections=detections, table=table, figure=img)
 
     @staticmethod
-    def get_detections(line):
+    def get_detections(line: Dict[str, Any]) -> List[Dict[str, Any]]:
         detections = []
         results = line.get("res")
         for i, result in enumerate(results):
@@ -188,7 +188,7 @@ class Layout:
 
     # Safely attempt to extract the HTML table from the results
     @staticmethod
-    def get_table_markdown(line):
+    def get_table_markdown(line: Dict[str, Any]) -> str:
         try:
             html_table = line.get("res", {}).get("html")
             if not html_table:
@@ -205,7 +205,7 @@ class Layout:
             return f"Error processing the table: {str(e)}"
 
 
-def process_layout_records(layout):
+def process_layout_records(layout: Layout) -> Tuple[List[str], List[str], List[rrb.Spatial2DView], List[rrb.Spatial2DView], List[rrb.Spatial2DView]]:
     paths, detections_paths, zoom_paths = [], [], []
     zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = [], [], []
 
@@ -239,7 +239,7 @@ def process_layout_records(layout):
     return paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts
 
 
-def log_detections(layout_type, record, base_path):
+def log_detections(layout_type: LayoutType, record: Dict[str, Any], base_path: str) -> None:
     if layout_type == LayoutType.TABLE:
         rr.log(
             f"Extracted{record['name']}",
@@ -259,8 +259,15 @@ def log_detections(layout_type, record, base_path):
 
 
 def update_zoom_paths(
-    layout, layout_type, record, paths, zoom_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts
-):
+    layout: Layout,
+    layout_type: LayoutType,
+    record: Dict[str, Any],
+    paths: List[str],
+    zoom_paths: List[rrb.Spatial2DView],
+    zoom_paths_figures: List[rrb.Spatial2DView],
+    zoom_paths_tables: List[rrb.Spatial2DView],
+    zoom_paths_texts: List[rrb.Spatial2DView]
+) -> None:
     if layout_type in [LayoutType.FIGURE, LayoutType.TABLE, LayoutType.TEXT]:
         current_paths = paths.copy()
         current_paths.remove(f"-Image/{layout_type.type.title()}/{record['name'].title()}/**")
@@ -284,7 +291,7 @@ def update_zoom_paths(
             zoom_paths_texts.append(view)
 
 
-def generate_blueprint(layout):
+def generate_blueprint(layout: Layout) -> rrb.Blueprint:
     paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = process_layout_records(layout)
 
     tabs = []
@@ -308,7 +315,7 @@ def generate_blueprint(layout):
     )
 
 
-def detect_and_log_layout(img_path):
+def detect_and_log_layout(img_path: str) -> None:
     # Layout Object - This will contain the detected layouts and their detections
     layout = Layout()
 
@@ -353,6 +360,9 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
     if destination_path.exists():
         logging.info("%s already exists. No need to download", destination_path)
         return str(destination_path)
+    else:
+        logging.warning("Problem on image downloading")
+        return ""
 
 
 def download_file(url: str, path: Path) -> None:
