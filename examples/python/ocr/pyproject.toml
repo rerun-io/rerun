@@ -3,13 +3,20 @@ name = "template"
 version = "0.1.0"
 # requires-python = "<3.12"  # any python constraints for this example, beyond the Rerun supported versions
 readme = "README.md"
+
 dependencies = [
     "rerun-sdk",
     "paddleocr",
     "paddlepaddle",
     "paddleclas",
     "tabulate",
-    "opencv-python"
+    "opencv-python",
+    "requests",
+    "pandas",
+    "enum",
+    "pathlib",
+    "typing",
+    "tqdm"
 ]
 
 [project.scripts]

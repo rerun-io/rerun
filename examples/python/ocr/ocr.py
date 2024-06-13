@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Example template."""
+"""OCR template."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import pandas as pd
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Final, Iterable
+from typing import Final
 import requests
 import tqdm
 import os
@@ -23,10 +23,8 @@ EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 
 SAMPLE_IMAGE_URLs = [
-    "https://storage.googleapis.com/mediapipe-tasks/gesture_recognizer/victory.jpg",
-    "https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppstructure/docs/table/1.png?raw=true"
+    "https://storage.googleapis.com/rerun-example-datasets/ocr/paper.png"
 ]
-
 
 # Supportive Classes
 
@@ -53,6 +51,7 @@ LayoutType:
     - TABLE: Represents tabular data, represented by cyan.
     - TABLE_CAPTION: Represents captions for tables, represented by magenta.
     - REFERENCE: Represents citation references within the document, also represented by purple.
+    - Footer: Represents footer of the document, represented as orange.
 """
 
 
@@ -198,13 +197,6 @@ class Layout:
                 'box': new_box
             })
         return detections
-
-    # def get_table_markdown(line):
-    #     html_table = line.get("res").get("html")
-    #     html_data = pd.read_html(html_table)
-    #     df = pd.DataFrame(html_data[0])
-    #     markdown_table = df.to_markdown()
-    #     return markdown_table
 
     # Safely attempt to extract the HTML table from the results
     @staticmethod
@@ -432,8 +424,8 @@ def main() -> None:
     parser.add_argument(
         "--demo-image",
         type=str,
-        default="test1",
-        choices=["test1", "test2", "layout"],
+        default="paper",
+        choices=["paper"],
         help="Run on a demo image automatically downloaded",
     )
     parser.add_argument(

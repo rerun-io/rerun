@@ -1,18 +1,20 @@
 <!--[metadata]
 title = "OCR"
 tags = ["Text", "OCR", "2D", "Blueprint"]
-thumbnail = "https://static.rerun.io/template/f53a939567970272cf7c740f1efe5c72f20de7ab/480w.png"
+thumbnail = "https://static.rerun.io/ocr/259ba16f4d034a00baa6ecc0060849f7c13506b9/480w.png"
 thumbnail_dimensions = [480, 359]
 # Channel = "main" # uncomment if this example can be run fast an easily
 -->
 
 This example visualizes layout analysis and text detection of documents.
 
-<!--
-Place a screenshot in place of this comment
-Use `pixi run upload-image --help` for instructions.
-Make sure to also update the `thumbnail` section in the metadata.
--->
+<picture>
+  <img src="https://static.rerun.io/ocr/259ba16f4d034a00baa6ecc0060849f7c13506b9/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ocr/259ba16f4d034a00baa6ecc0060849f7c13506b9/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ocr/259ba16f4d034a00baa6ecc0060849f7c13506b9/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ocr/259ba16f4d034a00baa6ecc0060849f7c13506b9/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ocr/259ba16f4d034a00baa6ecc0060849f7c13506b9/1200w.png">
+</picture>
 
 ## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://rerun.io/docs/reference/types/archetypes/text_document), [`Boxes2D`](https://rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://rerun.io/docs/reference/types/archetypes/annotation_context)
