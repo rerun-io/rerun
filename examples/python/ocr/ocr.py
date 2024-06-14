@@ -341,6 +341,7 @@ def detect_and_log_layout(img_path: str) -> None:
         "Image",
         # The annotation is defined in the Layout class based on its properties
         rr.AnnotationContext(LayoutType.get_annotation()),
+        static=True,
     )
 
     # Paddle Model - Getting Predictions

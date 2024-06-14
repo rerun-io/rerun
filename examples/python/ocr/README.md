@@ -73,7 +73,8 @@ def detect_and_log_layout(img_path):
     rr.log(
         "Image",
         # The annotation is defined in the Layout class based on its properties
-        rr.AnnotationContext(LayoutType.get_annotation())
+        rr.AnnotationContext(LayoutType.get_annotation()),
+        static=True,
     )
 ```
 
