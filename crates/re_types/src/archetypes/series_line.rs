@@ -93,7 +93,7 @@ pub struct SeriesLine {
     /// This is done only if steps on the X axis go below a single pixel,
     /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
     /// (and readability) in such situations as it prevents overdraw.
-    pub aggregator: Option<crate::components::AggregationPolicy>,
+    pub aggregation_policy: Option<crate::components::AggregationPolicy>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesLine {
@@ -102,7 +102,7 @@ impl ::re_types_core::SizeBytes for SeriesLine {
         self.color.heap_size_bytes()
             + self.width.heap_size_bytes()
             + self.name.heap_size_bytes()
-            + self.aggregator.heap_size_bytes()
+            + self.aggregation_policy.heap_size_bytes()
     }
 
     #[inline]
@@ -225,10 +225,10 @@ impl ::re_types_core::Archetype for SeriesLine {
         } else {
             None
         };
-        let aggregator =
+        let aggregation_policy =
             if let Some(array) = arrays_by_name.get("rerun.components.AggregationPolicy") {
                 <crate::components::AggregationPolicy>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.SeriesLine#aggregator")?
+                    .with_context("rerun.archetypes.SeriesLine#aggregation_policy")?
                     .into_iter()
                     .next()
                     .flatten()
@@ -239,7 +239,7 @@ impl ::re_types_core::Archetype for SeriesLine {
             color,
             width,
             name,
-            aggregator,
+            aggregation_policy,
         })
     }
 }
@@ -259,7 +259,7 @@ impl ::re_types_core::AsComponents for SeriesLine {
             self.name
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.aggregator
+            self.aggregation_policy
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -277,7 +277,7 @@ impl SeriesLine {
             color: None,
             width: None,
             name: None,
-            aggregator: None,
+            aggregation_policy: None,
         }
     }
 
@@ -310,11 +310,11 @@ impl SeriesLine {
     /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
     /// (and readability) in such situations as it prevents overdraw.
     #[inline]
-    pub fn with_aggregator(
+    pub fn with_aggregation_policy(
         mut self,
-        aggregator: impl Into<crate::components::AggregationPolicy>,
+        aggregation_policy: impl Into<crate::components::AggregationPolicy>,
     ) -> Self {
-        self.aggregator = Some(aggregator.into());
+        self.aggregation_policy = Some(aggregation_policy.into());
         self
     }
 }

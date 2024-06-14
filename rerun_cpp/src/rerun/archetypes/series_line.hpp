@@ -81,7 +81,7 @@ namespace rerun::archetypes {
         /// This is done only if steps on the X axis go below a single pixel,
         /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
         /// (and readability) in such situations as it prevents overdraw.
-        std::optional<rerun::components::AggregationPolicy> aggregator;
+        std::optional<rerun::components::AggregationPolicy> aggregation_policy;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -122,8 +122,9 @@ namespace rerun::archetypes {
         /// This is done only if steps on the X axis go below a single pixel,
         /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
         /// (and readability) in such situations as it prevents overdraw.
-        SeriesLine with_aggregator(rerun::components::AggregationPolicy _aggregator) && {
-            aggregator = std::move(_aggregator);
+        SeriesLine with_aggregation_policy(rerun::components::AggregationPolicy _aggregation_policy
+        ) && {
+            aggregation_policy = std::move(_aggregation_policy);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

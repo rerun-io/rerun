@@ -31,8 +31,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.aggregator.has_value()) {
-            auto result = DataCell::from_loggable(archetype.aggregator.value());
+        if (archetype.aggregation_policy.has_value()) {
+            auto result = DataCell::from_loggable(archetype.aggregation_policy.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
