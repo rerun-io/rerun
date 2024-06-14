@@ -90,6 +90,7 @@ enum ActiveTimeline {
 impl std::ops::Deref for ActiveTimeline {
     type Target = Timeline;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Auto(t) | Self::UserEdited(t) => t,
