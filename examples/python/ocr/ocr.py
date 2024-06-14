@@ -63,7 +63,7 @@ class LayoutType(Enum):
     TABLE = (5, "table", Color.Cyan)
     TABLE_CAPTION = (6, "table_caption", Color.Magenta)
     REFERENCE = (7, "reference", Color.Purple)
-    FOOTER = (7, "footer", Color.Orange)
+    FOOTER = (8, "footer", Color.Orange)
 
     def __str__(self) -> str:
         return str(self.value[1])  # Returns the string part (type)
