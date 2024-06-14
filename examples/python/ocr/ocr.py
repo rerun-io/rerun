@@ -239,8 +239,7 @@ def process_layout_records(
                     labels=[str(layout_type.type)],
                     class_ids=[str(layout_type.number)],
                 ),
-                rr.AnyValues(name=record_name),
-                timeless=True,
+                rr.AnyValues(name=record_name)
             )
 
             log_detections(layout_type, record, base_path)
@@ -257,8 +256,7 @@ def log_detections(layout_type: LayoutType, record: dict[str, Any], base_path: s
     if layout_type == LayoutType.TABLE:
         rr.log(
             f"Extracted{record['name']}",
-            rr.TextDocument(record["table"], media_type=rr.MediaType.MARKDOWN),
-            timeless=True,
+            rr.TextDocument(record["table"], media_type=rr.MediaType.MARKDOWN)
         )
     else:
         for detection in record.get("detections", []):
@@ -267,8 +265,7 @@ def log_detections(layout_type: LayoutType, record: dict[str, Any], base_path: s
                 rr.Boxes2D(
                     array=detection["box"], array_format=rr.Box2DFormat.XYXY, class_ids=[str(layout_type.number)]
                 ),
-                rr.AnyValues(DetectionID=detection["id"], Text=detection["text"], Confidence=detection["confidence"]),
-                timeless=True,
+                rr.AnyValues(DetectionID=detection["id"], Text=detection["text"], Confidence=detection["confidence"])
             )
 
 
@@ -346,8 +343,7 @@ def detect_and_log_layout(img_path: str) -> None:
     rr.log(
         "Image",
         # The annotation is defined in the Layout class based on its properties
-        rr.AnnotationContext(LayoutType.get_annotation()),
-        timeless=True,
+        rr.AnnotationContext(LayoutType.get_annotation())
     )
 
     # Paddle Model - Getting Predictions
@@ -363,7 +359,7 @@ def detect_and_log_layout(img_path: str) -> None:
     logging.info("All results are saved...")
 
     # Recovery Text Document for the detected text
-    rr.log("Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))
 
     # Generate and send a blueprint based on the detected layouts
     logging.info("Sending blueprint...")
@@ -399,7 +395,7 @@ def download_file(url: str, path: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="OCR Example - Layout Analysis and Text Detections")
+    parser = argparse.ArgumentParser(description="OCR Example - Layout Analysis and Text Detections. It automatically downloads the PaddleOCR libraries and models.")
 
     parser.add_argument(
         "--demo-image",

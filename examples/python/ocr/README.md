@@ -73,8 +73,7 @@ def detect_and_log_layout(img_path):
     rr.log(
         "Image",
         # The annotation is defined in the Layout class based on its properties
-        rr.AnnotationContext(LayoutType.get_annotation()),
-        timeless=True
+        rr.AnnotationContext(LayoutType.get_annotation())
     )
 ```
 
@@ -90,8 +89,7 @@ rr.log(
         labels=[str(layout_type.type)],
         class_ids=[str(layout_type.number)]
     ),
-    rr.AnyValues(name=record_name),
-    timeless=True
+    rr.AnyValues(name=record_name)
 )
 ```
 Additionally, in the detection of the text, the detection id and the confidence are specified.
@@ -107,12 +105,14 @@ rr.log(
         DetectionID=detection['id'],
         Text=detection['text'],
         Confidence=detection['confidence']
-    ),
-    timeless=True
+    )
 )
 ```
 
 ### Setting up the blueprint
+
+[Blueprint](https://rerun.io/docs/concepts/blueprint) sets up the Rerun Viewer's layout. In this example, we set the layout for the layout classification, the Detections for the text detection and the Recovery for the restored detections, which includes both layout analysis and text detections.
+We dynamically set the tabs, as there will be different tabs for figures, tables and text detection.
 
 The blueprint for this example is created by the following code:
 
@@ -141,3 +141,16 @@ pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
 git checkout latest  # Check out the commit matching the latest SDK release
+```
+Install the necessary libraries specified in the requirements file:
+```bash
+pip install -e examples/python/ocr
+```
+To experiment with the provided example, simply execute the main Python script:
+```bash
+pixi run -e examples-ocr ocr  # run the example
+```
+If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
+```bash
+pixi run -e examples-ocr ocr  --help
+```
