@@ -4,8 +4,6 @@
 #![doc = document_features::document_features!()]
 //!
 
-#![allow(unused_imports)] // TODO(andreas): temporary until entity_properties is removed.
-
 pub mod entity_db;
 pub mod entity_properties;
 pub mod entity_tree;
@@ -20,9 +18,11 @@ pub mod blueprint;
 #[cfg(feature = "serde")]
 mod editable_auto_value;
 
+#[cfg(feature = "serde")]
+pub use self::entity_properties::*;
+
 pub use self::{
     entity_db::EntityDb,
-    entity_properties::*,
     entity_tree::EntityTree,
     instance_path::{InstancePath, InstancePathHash},
     store_bundle::{StoreBundle, StoreLoadError},
