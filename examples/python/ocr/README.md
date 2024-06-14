@@ -1,12 +1,12 @@
 <!--[metadata]
-title = "OCR"
+title = "PaddleOCR"
 tags = ["Text", "OCR", "2D", "Blueprint"]
 thumbnail = "https://static.rerun.io/ocr1/54b3a9d0706fd4a3a3dcbf878046ae34a7a6feec/480w.png"
 thumbnail_dimensions = [480, 259]
 # Channel = "main" # uncomment if this example can be run fast an easily
 -->
 
-This example visualizes layout analysis and text detection of documents.
+This example visualizes layout analysis and text detection of documents using PaddleOCR.
 
 <picture>
   <img src="https://static.rerun.io/ocr1/54b3a9d0706fd4a3a3dcbf878046ae34a7a6feec/full.png" alt="">
