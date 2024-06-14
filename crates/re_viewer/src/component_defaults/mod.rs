@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 #![allow(clippy::wildcard_imports)]
 
-use re_entity_db::blueprint::components::*;
 use re_types::blueprint::components::*;
 use re_types::components::*;
 use re_types_blueprint::blueprint::components::*;
@@ -42,10 +41,6 @@ pub fn list_default_components(
         (
             <Corner2D as Loggable>::name(),
             Corner2D::default().to_arrow()?,
-        ),
-        (
-            <EntityPropertiesComponent as Loggable>::name(),
-            EntityPropertiesComponent::default().to_arrow()?,
         ),
         (
             <GridColumns as Loggable>::name(),

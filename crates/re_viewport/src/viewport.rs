@@ -9,7 +9,7 @@ use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item, PerViewState,
+    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
     ViewerContext,
 };
@@ -179,15 +179,6 @@ impl<'a> Viewport<'a> {
 
         if let Some(render_ctx) = ctx.render_ctx {
             for space_view in self.blueprint.space_views.values() {
-                let PerViewState {
-                    auto_properties,
-                    view_state: space_view_state,
-                } = view_states.get_mut(
-                    ctx.space_view_class_registry,
-                    space_view.id,
-                    space_view.class_identifier(),
-                );
-
                 #[allow(clippy::blocks_in_conditions)]
                 while ScreenshotProcessor::next_readback_result(
                     render_ctx,
@@ -199,7 +190,7 @@ impl<'a> Viewport<'a> {
                 .is_some()
                 {}
 
-                space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
+                space_view.on_frame_start(ctx, view_states);
             }
         }
 
@@ -459,12 +450,11 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         &mut self,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
-        space_view_id: &mut SpaceViewId,
+        view_id: &mut SpaceViewId,
     ) -> egui_tiles::UiResponse {
         re_tracing::profile_function!();
 
-        let Some(space_view_blueprint) = self.viewport_blueprint.space_views.get(space_view_id)
-        else {
+        let Some(space_view_blueprint) = self.viewport_blueprint.space_views.get(view_id) else {
             return Default::default();
         };
 
@@ -481,7 +471,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         };
 
         let (query, system_output) =
-            self.executed_systems_per_space_view.remove(space_view_id).unwrap_or_else(|| {
+            self.executed_systems_per_space_view.remove(view_id).unwrap_or_else(|| {
             // The space view's systems haven't been executed.
             // This may indicate that the egui_tiles tree is not in sync
             // with the blueprint tree.
@@ -520,22 +510,20 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             }
         });
 
-        let PerViewState {
-            auto_properties: _,
-            view_state: space_view_state,
-        } = self.view_states.get_mut(
-            self.ctx.space_view_class_registry,
-            space_view_blueprint.id,
-            space_view_blueprint.class_identifier(),
-        );
+        let class = space_view_blueprint.class(self.ctx.space_view_class_registry);
+        let view_state = self.view_states.get_mut_or_create(*view_id, class);
 
-        space_view_blueprint.scene_ui(
-            space_view_state.as_mut(),
-            self.ctx,
-            ui,
-            &query,
-            system_output,
-        );
+        ui.scope(|ui| {
+            class
+                .ui(self.ctx, ui, view_state, &query, system_output)
+                .unwrap_or_else(|err| {
+                    re_log::error!(
+                        "Error in space view UI (class: {}, display name: {}): {err}",
+                        space_view_blueprint.class_identifier(),
+                        class.display_name(),
+                    );
+                });
+        });
 
         Default::default()
     }

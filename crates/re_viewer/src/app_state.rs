@@ -296,7 +296,6 @@ impl AppState {
                         &blueprint_query,
                         rec_cfg.time_ctrl.read().timeline(),
                         space_view_class_registry,
-                        view_states.legacy_auto_properties(space_view.id),
                         query_result,
                     );
                 }

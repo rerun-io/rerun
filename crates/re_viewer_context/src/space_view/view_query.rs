@@ -2,11 +2,10 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use once_cell::sync::Lazy;
 use smallvec::SmallVec;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
+use re_entity_db::{EntityPath, TimeInt, Timeline};
 use re_log_types::StoreKind;
 use re_types::ComponentName;
 
@@ -35,17 +34,6 @@ impl OverridePath {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PropertyOverrides {
-    /// The accumulated properties (including any hierarchical flattening) to apply.
-    // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
-    // For now, bundling this here acts as a good proxy for that future data-override mechanism.
-    pub accumulated_properties: EntityProperties,
-
-    /// The individual property set in this `DataResult`, if any.
-    pub individual_properties: Option<EntityProperties>,
-
-    /// The recursive property set in this `DataResult`, if any.
-    pub recursive_properties: Option<EntityProperties>,
-
     /// An alternative store and entity path to use for the specified component.
     ///
     /// These are resolved overrides, i.e. the result of recursive override propagation + individual overrides.
@@ -93,8 +81,6 @@ pub struct DataResult {
     /// The accumulated property overrides for this `DataResult`.
     pub property_overrides: Option<PropertyOverrides>,
 }
-
-static DEFAULT_PROPS: Lazy<EntityProperties> = Lazy::<EntityProperties>::new(Default::default);
 
 impl DataResult {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
@@ -250,106 +236,6 @@ impl DataResult {
         };
 
         ctx.save_empty_blueprint_component::<C>(individual_override_path);
-    }
-
-    /// Write the [`EntityProperties`] for this result back to the Blueprint store on the recursive override.
-    ///
-    /// Setting `new_recursive_props` to `None` will always clear the override.
-    /// Otherwise, writes only if the recursive properties aren't already the same value.
-    /// (does *not* take into account what the accumulated properties are which are a combination of recursive and individual overwrites)
-    pub fn save_recursive_override_properties(
-        &self,
-        ctx: &ViewerContext<'_>,
-        new_recursive_props: Option<EntityProperties>,
-    ) {
-        self.save_override_properties_internal(
-            ctx,
-            new_recursive_props,
-            self.recursive_override_path(),
-            self.recursive_properties(),
-        );
-    }
-
-    /// Write the [`EntityProperties`] for this result back to the Blueprint store on the individual override.
-    ///
-    /// Setting `new_individual_props` to `None` will always clear the override.
-    /// Otherwise, writes only if the individual properties aren't already the same value.
-    /// (does *not* take into account what the accumulated properties are which are a combination of recursive and individual overwrites)
-    pub fn save_individual_override_properties(
-        &self,
-        ctx: &ViewerContext<'_>,
-        new_individual_props: Option<EntityProperties>,
-    ) {
-        self.save_override_properties_internal(
-            ctx,
-            new_individual_props,
-            self.individual_override_path(),
-            self.individual_properties(),
-        );
-    }
-
-    fn save_override_properties_internal(
-        &self,
-        ctx: &ViewerContext<'_>,
-        new_individual_props: Option<EntityProperties>,
-        override_path: Option<&EntityPath>,
-        properties: Option<&EntityProperties>,
-    ) {
-        // TODO(jleibs): Make it impossible for this to happen with different type structure
-        // This should never happen unless we're doing something with a partially processed
-        // query.
-        let Some(override_path) = override_path else {
-            re_log::warn!(
-                "Tried to save override for {:?} but it has no override path",
-                self.entity_path
-            );
-            return;
-        };
-
-        match new_individual_props {
-            None => {
-                ctx.save_empty_blueprint_component::<EntityPropertiesComponent>(override_path);
-            }
-            Some(props) => {
-                // A value of `None` in the data store means "use the default value", so if
-                // the properties are `None`, we only must save if `props` is different
-                // from the default.
-                if props.has_edits(properties.unwrap_or(&DEFAULT_PROPS)) {
-                    let component = EntityPropertiesComponent(props);
-                    ctx.save_blueprint_component(override_path, &component);
-                }
-            }
-        };
-    }
-
-    #[inline]
-    pub fn accumulated_properties(&self) -> &EntityProperties {
-        // TODO(jleibs): Make it impossible for this to happen with different type structure
-        // This should never happen unless we're doing something with a partially processed
-        // query.
-        let Some(property_overrides) = &self.property_overrides else {
-            re_log::warn!(
-                "Tried to get accumulated properties for {:?} but it has no property overrides",
-                self.entity_path
-            );
-            return &DEFAULT_PROPS;
-        };
-
-        &property_overrides.accumulated_properties
-    }
-
-    #[inline]
-    pub fn recursive_properties(&self) -> Option<&EntityProperties> {
-        self.property_overrides
-            .as_ref()
-            .and_then(|p| p.recursive_properties.as_ref())
-    }
-
-    #[inline]
-    pub fn individual_properties(&self) -> Option<&EntityProperties> {
-        self.property_overrides
-            .as_ref()
-            .and_then(|p| p.individual_properties.as_ref())
     }
 
     #[inline]

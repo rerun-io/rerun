@@ -27,13 +27,6 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .entity_properties_component import (
-    EntityPropertiesComponent,
-    EntityPropertiesComponentArrayLike,
-    EntityPropertiesComponentBatch,
-    EntityPropertiesComponentLike,
-    EntityPropertiesComponentType,
-)
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
@@ -89,11 +82,6 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "EntityPropertiesComponent",
-    "EntityPropertiesComponentArrayLike",
-    "EntityPropertiesComponentBatch",
-    "EntityPropertiesComponentLike",
-    "EntityPropertiesComponentType",
     "GridColumns",
     "GridColumnsArrayLike",
     "GridColumnsBatch",

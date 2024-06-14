@@ -1,6 +1,5 @@
 use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_renderer::DepthOffset;
 use re_space_view::{
@@ -96,7 +95,6 @@ where
     F: FnMut(
         &QueryContext<'_>,
         &EntityPath,
-        &EntityProperties,
         &SpatialSceneEntityContext<'_>,
         &HybridResults<'_>,
     ) -> Result<(), SpaceViewSystemExecutionError>,
@@ -159,7 +157,6 @@ where
         fun(
             &query_ctx,
             &data_result.entity_path,
-            data_result.accumulated_properties(),
             &entity_context,
             &results,
         )?;

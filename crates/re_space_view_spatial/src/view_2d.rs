@@ -1,7 +1,7 @@
 use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_entity_db::{EntityDb, EntityProperties, EntityTree};
+use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::View;
@@ -221,7 +221,6 @@ impl SpaceViewClass for SpatialSpaceView2D {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         // TODO(andreas): list_item'ify the rest
@@ -243,7 +242,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
