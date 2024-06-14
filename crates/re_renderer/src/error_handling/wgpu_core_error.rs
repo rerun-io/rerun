@@ -160,9 +160,9 @@ impl DedupableError for wgpu_core::pipeline::CreateShaderModuleError {
 ///
 /// Used for deduplication purposes.
 #[derive(Debug)]
-pub struct WrappedContextError(pub Box<wgpu_core::error::ContextError>);
+pub struct WgpuCoreWrappedContextError(pub Box<wgpu_core::error::ContextError>);
 
-impl std::hash::Hash for WrappedContextError {
+impl std::hash::Hash for WgpuCoreWrappedContextError {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // If we haven't set a debug label ourselves, the label is typically not stable across frames,
         // Since wgc fills in the generation counter.
@@ -185,7 +185,7 @@ impl std::hash::Hash for WrappedContextError {
     }
 }
 
-impl PartialEq for WrappedContextError {
+impl PartialEq for WgpuCoreWrappedContextError {
     fn eq(&self, rhs: &Self) -> bool {
         let mut is_eq = self.0.label.eq(&rhs.0.label)
             && self.0.label_key.eq(rhs.0.label_key)
@@ -205,4 +205,4 @@ impl PartialEq for WrappedContextError {
     }
 }
 
-impl Eq for WrappedContextError {}
+impl Eq for WgpuCoreWrappedContextError {}
