@@ -4,6 +4,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+#![allow(unused_imports)] // TODO(andreas): temporary until entity_properties is removed.
+
 pub mod entity_db;
 pub mod entity_properties;
 pub mod entity_tree;
