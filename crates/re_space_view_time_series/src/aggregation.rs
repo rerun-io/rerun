@@ -1,7 +1,6 @@
 use crate::{PlotPoint, PlotPointAttrs};
 
-/// Implements aggregation behaviors corresponding to [`AggregationPolicy`][re_viewer_context::external::re_entity_db::AggregationPolicy]:
-/// `Average`
+/// Implements aggregation behaviors for `Average`.
 pub struct AverageAggregator;
 
 impl AverageAggregator {
@@ -76,8 +75,7 @@ impl AverageAggregator {
     }
 }
 
-/// Implements aggregation behaviors corresponding to [`AggregationPolicy`][re_viewer_context::external::re_entity_db::AggregationPolicy]:
-/// `Min`, `Max`, `MinMax`, and `MinMaxAverage`.
+/// Implements aggregation behaviors for `Min`, `Max`, `MinMax`, and `MinMaxAverage`.
 pub enum MinMaxAggregator {
     /// Keep only the maximum values in the range.
     Max,
