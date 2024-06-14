@@ -8,7 +8,7 @@ use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
 use re_types::{
-    blueprint::archetypes::TensorColormapping,
+    blueprint::archetypes::ScalarColormap,
     components::{Colormap, GammaCorrection},
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
@@ -149,7 +149,7 @@ impl SpaceViewClass for TensorSpaceView {
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            view_property_ui::<TensorColormapping>(ctx, ui, view_id, self, state);
+            view_property_ui::<ScalarColormap>(ctx, ui, view_id, self, state);
         });
 
         if let Some((_, tensor)) = &state.tensor {
@@ -326,7 +326,7 @@ impl TensorSpaceView {
     ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
         re_tracing::profile_function!();
 
-        let colormapping = ViewProperty::from_archetype::<TensorColormapping>(
+        let colormapping = ViewProperty::from_archetype::<ScalarColormap>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             view_id,

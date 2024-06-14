@@ -8,4 +8,6 @@ namespace rerun.blueprint.views;
 table TensorView (
     "attr.rerun.view_identifier": "Tensor"
 ) {
+    /// Configures how scalars are mapped to color.
+    colormap: rerun.blueprint.archetypes.ScalarColormap (order: 1000);
 }

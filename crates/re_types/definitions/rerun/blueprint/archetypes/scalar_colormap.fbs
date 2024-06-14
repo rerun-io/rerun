@@ -1,7 +1,7 @@
 namespace rerun.blueprint.archetypes;
 
 /// Configures the tensor view's color mapping.1
-table TensorColormapping (
+table ScalarColormap (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
     "attr.rust.generate_field_info"
