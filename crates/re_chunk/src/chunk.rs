@@ -438,6 +438,13 @@ impl Chunk {
             components: Default::default(),
         }
     }
+
+    #[inline]
+    pub fn add_timeline(&mut self, chunk_timeline: ChunkTimeline) -> ChunkResult<()> {
+        self.timelines
+            .insert(chunk_timeline.timeline, chunk_timeline);
+        self.sanity_check()
+    }
 }
 
 impl ChunkTimeline {

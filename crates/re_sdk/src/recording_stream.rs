@@ -9,7 +9,7 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 
-use arrow2::array::ListArray as ArrowListArray;
+use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray};
 use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
 
 use re_chunk::{ChunkError, ChunkId, ChunkTimeline, ComponentName};
@@ -1398,11 +1398,44 @@ impl RecordingStream {
 
     /// Records a single [`Chunk`].
     ///
-    /// Internally, incoming [`PendingRow`]s are automatically coalesced into larger [`Chunk`]s to
-    /// optimize for transport.
+    /// Will inject `log_tick` and `log_time` timeline columns into the chunk.
     #[inline]
-    pub fn record_chunk(&self, chunk: Chunk) {
+    pub fn record_chunk(&self, mut chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
+            // TODO(cmc): Repeating these values is pretty wasteful. Would be nice to have a way of
+            // indicting these are fixed across the whole chunk.
+            // Inject the log time
+            {
+                let time_timeline = Timeline::log_time();
+                let time = Time::now().try_into().unwrap_or(TimeInt::MIN);
+
+                let repeated_time = ArrowPrimitiveArray::<i64>::from_values(
+                    std::iter::repeat(time.as_i64()).take(chunk.num_rows()),
+                )
+                .to(time_timeline.datatype());
+
+                let time_chunk = ChunkTimeline::new(Some(true), time_timeline, repeated_time);
+                // TODO(jleibs): Where should the error go if this fails?
+                chunk.add_timeline(time_chunk).ok();
+            }
+            // Inject the log tick
+            {
+                let tick_timeline = Timeline::log_tick();
+
+                let tick = inner
+                    .tick
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+                let repeated_tick = ArrowPrimitiveArray::<i64>::from_values(
+                    std::iter::repeat(tick).take(chunk.num_rows()),
+                )
+                .to(tick_timeline.datatype());
+
+                let tick_chunk = ChunkTimeline::new(Some(true), tick_timeline, repeated_tick);
+                // TODO(jleibs): Where should the error go if this fails?
+                chunk.add_timeline(tick_chunk).ok();
+            }
+
             inner.batcher.push_chunk(chunk);
         };
 
