@@ -13,15 +13,18 @@ For more information on the relationship between **archetypes** and **components
 on [Entities and Components](../../concepts/entity-component.md).
 
 
+* [`AggregationPolicy`](components/aggregation_policy.md): Configures a policy for aggregation of values.
 * [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+* [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
 * [`DepthMeter`](components/depth_meter.md): A component indicating how long a meter is, expressed in native units.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order used for the display order of 2D elements.
+* [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`HalfSizes2D`](components/half_sizes2d.md): Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
 * [`HalfSizes3D`](components/half_sizes3d.md): Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.

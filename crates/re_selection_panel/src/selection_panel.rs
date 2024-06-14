@@ -7,16 +7,16 @@ use re_data_ui::{
     item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
     DataUi,
 };
-use re_entity_db::{
-    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
-};
+use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
-use re_space_view::DataResultQuery as _;
+use re_space_view::{DataResultQuery as _, HybridLatestAtResults};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    archetypes::{Axes3D, Pinhole},
+    archetypes::{Axes3D, DepthImage, Pinhole},
+    blueprint::components::Interactive,
     components::{
-        AxisLength, ImagePlaneDistance, PinholeProjection, Transform3D, VisualizerOverrides,
+        AxisLength, Colormap, DepthMeter, FillRatio, ImagePlaneDistance, PinholeProjection,
+        Transform3D, VisualizerOverrides,
     },
     tensor_data::TensorDataMeaning,
 };
@@ -276,47 +276,26 @@ impl SelectionPanel {
         ui.full_span_separator();
         ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
-        if let Some(space_view) = blueprint.space_view(&view_id) {
-            let class_identifier = space_view.class_identifier();
+        if let Some(view) = blueprint.space_view(&view_id) {
+            query_range_ui_space_view(ctx, ui, view);
 
-            let view_state = view_states.get_mut(
-                ctx.space_view_class_registry,
-                space_view.id,
-                class_identifier,
-            );
+            let view_class = view.class(ctx.space_view_class_registry);
+            let view_state = view_states.get_mut_or_create(view.id, view_class);
 
-            query_range_ui_space_view(ctx, ui, space_view);
-
-            // Space View don't inherit (legacy) properties.
-            let mut props =
-                space_view.legacy_properties(ctx.store_context.blueprint, ctx.blueprint_query);
-            let props_before = props.clone();
-
-            let space_view_class = space_view.class(ctx.space_view_class_registry);
-            if let Err(err) = space_view_class.selection_ui(
-                ctx,
-                ui,
-                view_state.view_state.as_mut(),
-                &space_view.space_origin,
-                space_view.id,
-                &mut props,
-            ) {
+            if let Err(err) =
+                view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
+            {
                 re_log::error!(
                     "Error in space view selection UI (class: {}, display name: {}): {err}",
-                    space_view.class_identifier(),
-                    space_view_class.display_name(),
+                    view.class_identifier(),
+                    view_class.display_name(),
                 );
             }
 
-            if props_before != props {
-                space_view.save_legacy_properties(ctx, props);
-            }
-
-            let view_ctx =
-                space_view.bundle_context_with_state(ctx, view_state.view_state.as_ref());
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
             ui.large_collapsing_header("Component Defaults", true, |ui| {
-                defaults_ui(&view_ctx, space_view, ui);
+                defaults_ui(&view_ctx, view, ui);
             });
         }
     }
@@ -1162,22 +1141,12 @@ fn blueprint_ui_for_data_result(
             .lookup_result_by_path(entity_path)
             .cloned()
         {
-            let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
-            let accumulated_legacy_props_before = accumulated_legacy_props.clone();
-
             entity_props_ui(
                 ctx,
                 ui,
                 ctx.lookup_query_result(space_view_id),
                 &data_result,
-                &mut accumulated_legacy_props,
             );
-            if accumulated_legacy_props != accumulated_legacy_props_before {
-                data_result.save_individual_override_properties(
-                    ctx.viewer_ctx,
-                    Some(accumulated_legacy_props),
-                );
-            }
         }
     }
 }
@@ -1187,40 +1156,70 @@ fn entity_props_ui(
     ui: &mut egui::Ui,
     query_result: &DataQueryResult,
     data_result: &DataResult,
-    entity_props: &mut EntityProperties,
 ) {
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
 
     let entity_path = &data_result.entity_path;
 
-    {
-        let visible_before = data_result.is_visible(ctx.viewer_ctx);
-        let mut visible = visible_before;
+    list_item::list_item_scope(ui, "entity_props", |ui| {
+        {
+            let visible_before = data_result.is_visible(ctx.viewer_ctx);
+            let mut visible = visible_before;
 
-        let override_source =
-            data_result.component_override_source(&query_result.tree, &Visible::name());
-        let is_inherited =
-            override_source.is_some() && override_source.as_ref() != Some(entity_path);
+            let inherited_hint = if data_result.is_inherited(&query_result.tree, Visible::name()) {
+                "\n\nVisible status was inherited from a parent entity."
+            } else {
+                ""
+            };
 
-        ui.horizontal(|ui| {
-            ui.re_checkbox(&mut visible, "Visible");
-            if is_inherited {
-                ui.label("(inherited)");
+            ui.list_item()
+                .interactive(false)
+                .show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
+                )
+                .on_hover_text(format!(
+                    "If disabled, the entity won't be shown in the view.{inherited_hint}"
+                ));
+
+            if visible_before != visible {
+                data_result.save_recursive_override_or_clear_if_redundant(
+                    ctx.viewer_ctx,
+                    &query_result.tree,
+                    &Visible(visible),
+                );
             }
-        });
-
-        if visible_before != visible {
-            data_result.save_recursive_override_or_clear_if_redundant(
-                ctx.viewer_ctx,
-                &query_result.tree,
-                &Visible(visible),
-            );
         }
-    }
 
-    ui.re_checkbox(&mut entity_props.interactive, "Interactive")
-        .on_hover_text("If disabled, the entity will not react to any mouse interaction");
+        {
+            let interactive_before = data_result.is_interactive(ctx.viewer_ctx);
+            let mut interactive = interactive_before;
+
+            let inherited_hint =
+                if data_result.is_inherited(&query_result.tree, Interactive::name()) {
+                    "\n\nInteractive status was inherited from a parent entity."
+                } else {
+                    ""
+                };
+
+            ui.list_item()
+                .interactive(false)
+                .show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
+                )
+                .on_hover_text(format!("If disabled, the entity will not react to any mouse interaction.{inherited_hint}"));
+
+            if interactive_before != interactive {
+                data_result.save_recursive_override_or_clear_if_redundant(
+                    ctx.viewer_ctx,
+                    &query_result.tree,
+                    &Interactive(interactive.into()),
+                );
+            }
+        }
+    });
 
     query_range_ui_data_result(ctx.viewer_ctx, ui, data_result);
 
@@ -1230,37 +1229,26 @@ fn entity_props_ui(
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
             pinhole_props_ui(ctx, ui, data_result);
-            depth_props_ui(ctx.viewer_ctx, ui, entity_path, entity_props);
+            depth_props_ui(ctx, ui, data_result, entity_path);
             transform3d_visualization_ui(ctx, ui, data_result);
         });
 }
 
 fn colormap_props_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    entity_props: &mut EntityProperties,
+    data_result: &DataResult,
+    depth_image_results: &HybridLatestAtResults<'_>,
 ) {
-    let mut re_renderer_colormap = match *entity_props.color_mapper.get() {
-        ColorMapper::Colormap(Colormap::Grayscale) => re_renderer::Colormap::Grayscale,
-        ColorMapper::Colormap(Colormap::Turbo) => re_renderer::Colormap::Turbo,
-        ColorMapper::Colormap(Colormap::Viridis) => re_renderer::Colormap::Viridis,
-        ColorMapper::Colormap(Colormap::Plasma) => re_renderer::Colormap::Plasma,
-        ColorMapper::Colormap(Colormap::Magma) => re_renderer::Colormap::Magma,
-        ColorMapper::Colormap(Colormap::Inferno) => re_renderer::Colormap::Inferno,
-    };
+    let colormap = depth_image_results.get_mono_with_fallback::<Colormap>();
+    let mut new_colormap = colormap;
 
     ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
+    colormap_dropdown_button_ui(ctx.viewer_ctx.render_ctx, ui, &mut new_colormap);
 
-    let new_colormap = match re_renderer_colormap {
-        re_renderer::Colormap::Grayscale => Colormap::Grayscale,
-        re_renderer::Colormap::Turbo => Colormap::Turbo,
-        re_renderer::Colormap::Viridis => Colormap::Viridis,
-        re_renderer::Colormap::Plasma => Colormap::Plasma,
-        re_renderer::Colormap::Magma => Colormap::Magma,
-        re_renderer::Colormap::Inferno => Colormap::Inferno,
-    };
-    entity_props.color_mapper = EditableAutoValue::UserEdited(ColorMapper::Colormap(new_colormap));
+    if new_colormap != colormap {
+        data_result.save_individual_override(ctx.viewer_ctx, &new_colormap);
+    }
 
     ui.end_row();
 }
@@ -1377,14 +1365,14 @@ fn transform3d_visualization_ui(
 }
 
 fn depth_props_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
+    data_result: &DataResult,
     entity_path: &EntityPath,
-    entity_props: &mut EntityProperties,
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+    let (query, db) = guess_query_and_db_for_selected_entity(ctx.viewer_ctx, entity_path);
 
     let meaning = image_meaning_for_entity(entity_path, &query, db.store());
 
@@ -1395,43 +1383,39 @@ fn depth_props_ui(
         .latest_at_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
         .0;
 
-    let mut backproject_depth = *entity_props.backproject_depth;
-
-    if ui
-        .re_checkbox(&mut backproject_depth, "Backproject Depth")
-        .on_hover_text(
-            "If enabled, the depth texture will be backprojected into a point cloud rather \
-                than simply displayed as an image.",
-        )
-        .changed()
-    {
-        entity_props.backproject_depth = EditableAutoValue::UserEdited(backproject_depth);
-    }
+    ui.label("Pinhole");
+    item_ui::entity_path_button(
+        ctx.viewer_ctx,
+        &query,
+        db,
+        ui,
+        None,
+        &image_projection_ent_path,
+    )
+    .on_hover_text("The entity path of the pinhole transform being used to do the backprojection.");
     ui.end_row();
 
-    if backproject_depth {
-        ui.label("Pinhole");
-        item_ui::entity_path_button(ctx, &query, db, ui, None, &image_projection_ent_path)
-            .on_hover_text(
-                "The entity path of the pinhole transform being used to do the backprojection.",
-            );
-        ui.end_row();
+    let (query, _store) =
+        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
+    let depth_image_results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
 
-        depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
-
-        backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
-
-        // TODO(cmc): This should apply to the depth map entity as a whole, but for that we
-        // need to get the current hardcoded colormapping out of the image cache first.
-        colormap_props_ui(ctx, ui, entity_props);
-    }
+    depth_from_world_scale_ui(ctx, ui, data_result, &depth_image_results);
+    backproject_radius_scale_ui(ctx, ui, data_result, &depth_image_results);
+    colormap_props_ui(ctx, ui, data_result, &depth_image_results);
 
     Some(())
 }
 
-fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+fn depth_from_world_scale_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+    depth_image_results: &HybridLatestAtResults<'_>,
+) {
+    let depth_meter = depth_image_results.get_mono_with_fallback::<DepthMeter>();
+
     ui.label("Backproject meter");
-    let mut value = *property.get();
+    let mut value = *depth_meter;
     let speed = (value * 0.05).at_least(0.01);
     let response = ui
         .add(
@@ -1442,18 +1426,25 @@ fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue
         .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
                     Double-click to reset.");
     if response.double_clicked() {
-        // reset to auto - the exact value will be restored somewhere else
-        *property = EditableAutoValue::Auto(value);
+        data_result.clear_individual_override::<DepthMeter>(ctx.viewer_ctx);
         response.surrender_focus();
     } else if response.changed() {
-        *property = EditableAutoValue::UserEdited(value);
+        data_result.save_individual_override(ctx.viewer_ctx, &DepthMeter(value));
     }
+
     ui.end_row();
 }
 
-fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+fn backproject_radius_scale_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+    depth_image_results: &HybridLatestAtResults<'_>,
+) {
+    let radius_scale = depth_image_results.get_mono_with_fallback::<FillRatio>();
+
     ui.label("Backproject radius scale");
-    let mut value = *property.get();
+    let mut value = *radius_scale.0;
     let speed = (value * 0.01).at_least(0.001);
     let response = ui
         .add(
@@ -1468,10 +1459,10 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
             Double-click to reset.",
         );
     if response.double_clicked() {
-        *property = EditableAutoValue::Auto(2.0);
+        data_result.clear_individual_override::<FillRatio>(ctx.viewer_ctx);
         response.surrender_focus();
     } else if response.changed() {
-        *property = EditableAutoValue::UserEdited(value);
+        data_result.save_individual_override(ctx.viewer_ctx, &FillRatio(value.into()));
     }
     ui.end_row();
 }

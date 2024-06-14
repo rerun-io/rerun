@@ -12,18 +12,25 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["Scalar", "ScalarArrayLike", "ScalarBatch", "ScalarLike", "ScalarType"]
 
 
 @define(init=False)
-class Scalar:
+class Scalar(ComponentMixin):
     """
     **Component**: A double-precision scalar.
 
     Used for time series plots.
     """
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, value: ScalarLike):
         """Create a new instance of the Scalar component."""
@@ -66,3 +73,7 @@ class ScalarBatch(BaseBatch[ScalarArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: ScalarArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.float64).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+Scalar._BATCH_TYPE = ScalarBatch  # type: ignore[assignment]

@@ -4,7 +4,7 @@ use egui_extras::Column;
 
 use re_data_store::{DataStore, LatestAtQuery};
 use re_data_ui::item_ui::instance_path_button;
-use re_entity_db::{EntityProperties, InstancePath};
+use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, Instance, Timeline};
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
@@ -69,7 +69,7 @@ impl SpaceViewClass for DataframeSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

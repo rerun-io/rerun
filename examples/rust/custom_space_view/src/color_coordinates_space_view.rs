@@ -1,7 +1,7 @@
 use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
-    re_entity_db::{EntityProperties, InstancePath},
+    re_entity_db::InstancePath,
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
     re_ui,
@@ -129,7 +129,6 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
 
@@ -155,7 +154,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

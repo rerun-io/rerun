@@ -1,21 +1,29 @@
+use std::sync::Arc;
+
 use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
-use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
-use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
+use re_data_ui::{
+    image_meaning_for_entity, item_ui, show_zoomed_image_region,
+    show_zoomed_image_region_area_outline, DataUi,
+};
 use re_format::format_f32;
 use re_log_types::Instance;
 use re_renderer::OutlineConfig;
-use re_space_view::ScreenshotMode;
-use re_types::archetypes::Pinhole;
-use re_types::components::{DepthMeter, TensorData, ViewCoordinates};
-use re_types::tensor_data::TensorDataMeaning;
+use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
+use re_types::{
+    archetypes::Pinhole,
+    components::{Colormap, DepthMeter, TensorData, ViewCoordinates},
+    tensor_data::TensorDataMeaning,
+    Loggable as _,
+};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
+    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
+use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
@@ -413,7 +421,7 @@ pub fn picking(
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
     view_ctx: &ViewContextCollection,
-    visualizers: &VisualizerCollection,
+    visualizers: &Arc<VisualizerCollection>,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,
@@ -471,6 +479,16 @@ pub fn picking(
 
     let mut hovered_items = Vec::new();
 
+    // TODO(andreas): Should defaults path be always created on the fly?
+    let defaults_path = SpaceViewBlueprint::defaults_path(query.space_view_id);
+    let view_ctx = ViewContext {
+        viewer_ctx: ctx,
+        view_id: query.space_view_id,
+        view_state: state,
+        defaults_path: &defaults_path,
+        visualizer_collection: visualizers.clone(),
+    };
+
     // Depth at pointer used for projecting rays from a hovered 2D view to corresponding 3D view(s).
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
@@ -484,12 +502,15 @@ pub fn picking(
             instance_path.instance = Instance::ALL;
         }
 
-        let interactive = ctx
-            .lookup_query_result(query.space_view_id)
+        let query_result = ctx.lookup_query_result(query.space_view_id);
+        let Some(data_result) = query_result
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
-            .map_or(false, |result| result.accumulated_properties().interactive);
-        if !interactive {
+        else {
+            continue; // No data result for this entity, meaning it's no longer on screen.
+        };
+
+        if !data_result.is_interactive(ctx) {
             continue;
         }
 
@@ -499,62 +520,81 @@ pub fn picking(
         let is_depth_cloud = images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
-        let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
-            || is_depth_cloud
-        {
+
+        struct PickedImageInfo {
+            row_id: re_log_types::RowId,
+            tensor: TensorData,
+            meaning: TensorDataMeaning,
+            coordinates: [u32; 2],
+            colormap: Colormap,
+            depth_meter: Option<DepthMeter>,
+        }
+
+        let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
             let meaning = image_meaning_for_entity(
                 &instance_path.entity_path,
                 &query.latest_at_query(),
                 store,
             );
 
-            // TODO(#5607): what should happen if the promise is still pending?
-            ctx.recording()
-                .latest_at_component::<TensorData>(&instance_path.entity_path, &ctx.current_query())
-                .and_then(|tensor| {
-                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                    // (the back-projection property may be true despite this not being a depth image!)
-                    if hit.hit_type != PickingHitType::TexturedRect
-                        && is_depth_cloud
-                        && meaning != TensorDataMeaning::Depth
-                    {
-                        None
-                    } else {
-                        let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id());
-                        tensor.image_height_width_channels().map(|[_, w, _]| {
-                            let coordinates =
-                                hit.instance_path_hash.instance.to_2d_image_coordinate(w);
-                            (tensor_path_hash, tensor, meaning, coordinates)
-                        })
-                    }
-                })
+            let results = latest_at_with_blueprint_resolved_data(
+                &view_ctx,
+                None,
+                &ctx.current_query(),
+                data_result,
+                [TensorData::name(), Colormap::name(), DepthMeter::name()],
+            );
+
+            // TODO(andreas): Just calling `results.get_mono::<TensorData>` would be a lot more elegant.
+            // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
+            results.get(TensorData::name()).and_then(|tensor_untyped| {
+                tensor_untyped
+                    .mono::<TensorData>(&results.resolver)
+                    .and_then(|tensor| {
+                        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                        // (the back-projection property may be true despite this not being a depth image!)
+                        if hit.hit_type != PickingHitType::TexturedRect
+                            && is_depth_cloud
+                            && meaning != TensorDataMeaning::Depth
+                        {
+                            None
+                        } else {
+                            tensor.image_height_width_channels().map(|[_, w, _]| {
+                                let (_, row_id) = *tensor_untyped.index();
+                                let coordinates =
+                                    hit.instance_path_hash.instance.to_2d_image_coordinate(w);
+
+                                PickedImageInfo {
+                                    row_id,
+                                    tensor,
+                                    meaning,
+                                    coordinates,
+                                    colormap: results.get_mono_with_fallback::<Colormap>(),
+                                    depth_meter: results.get_mono::<DepthMeter>(),
+                                }
+                            })
+                        }
+                    })
+            })
         } else {
             None
         };
-        if picked_image_with_coords.is_some() {
+        if picked_image.is_some() {
             // We don't support selecting pixels yet.
             instance_path.instance = Instance::ALL;
         }
 
         hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));
 
-        response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
-            picked_image_with_coords
-        {
-            // TODO(#5607): what should happen if the promise is still pending?
-            let meter = ctx
-                .recording()
-                .latest_at_component::<DepthMeter>(&instance_path.entity_path, &ctx.current_query())
-                .map(|meter| meter.value.0);
-
+        response = if let Some(image_info) = picked_image {
             // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
             // thing as an up-front archetype query somewhere.
-            if meaning == TensorDataMeaning::Depth {
-                if let Some(meter) = meter {
-                    let [x, y] = coords;
-                    if let Some(raw_value) = tensor.get(&[y as _, x as _]) {
+            if image_info.meaning == TensorDataMeaning::Depth {
+                if let Some(meter) = image_info.depth_meter {
+                    let [x, y] = image_info.coordinates;
+                    if let Some(raw_value) = image_info.tensor.get(&[y as _, x as _]) {
                         let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / meter as f64;
+                        let depth_in_meters = raw_value / meter.0 as f64;
                         depth_at_pointer = Some(depth_in_meters as f32);
                     }
                 }
@@ -569,15 +609,16 @@ pub fn picking(
                             ui,
                             &instance_path,
                             ctx,
-                            tensor.value,
+                            image_info.tensor,
                             spatial_kind,
                             ui_clip_rect,
-                            coords,
+                            image_info.coordinates,
                             space_from_ui,
-                            tensor_path_hash.row_id,
+                            image_info.row_id,
                             annotations,
-                            meaning,
-                            meter,
+                            image_info.meaning,
+                            image_info.depth_meter.map(|d| d.0),
+                            Some(image_info.colormap),
                         );
                     });
                 })
@@ -666,6 +707,7 @@ fn image_hover_ui(
     annotations: &AnnotationSceneContext,
     meaning: TensorDataMeaning,
     meter: Option<f32>,
+    colormap: Option<Colormap>,
 ) {
     ui.label(instance_path.to_string());
     if true {
@@ -731,6 +773,7 @@ fn image_hover_ui(
                             meter,
                             &tensor_name,
                             [coords[0] as _, coords[1] as _],
+                            colormap,
                         );
                     }
                 }

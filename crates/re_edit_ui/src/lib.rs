@@ -13,7 +13,8 @@ use datatype_editors::edit_enum;
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
     components::{
-        AxisLength, Color, ImagePlaneDistance, MarkerSize, Name, Radius, StrokeWidth, Text,
+        AggregationPolicy, AxisLength, Color, Colormap, FillRatio, ImagePlaneDistance, MarkerSize,
+        Name, Radius, StrokeWidth, Text,
     },
 };
 use re_viewer_context::ViewerContext;
@@ -44,8 +45,9 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui(marker_shape::edit_marker_shape_ui);
     registry.add_singleline_editor_ui(range1d::edit_range1d);
 
-    registry.add_singleline_editor_ui::<ImagePlaneDistance>(datatype_editors::edit_f32_zero_to_inf);
     registry.add_singleline_editor_ui::<AxisLength>(datatype_editors::edit_f32_zero_to_inf);
+    registry.add_singleline_editor_ui::<FillRatio>(datatype_editors::edit_f32_zero_to_inf);
+    registry.add_singleline_editor_ui::<ImagePlaneDistance>(datatype_editors::edit_f32_zero_to_inf);
 
     registry.add_singleline_editor_ui::<Visible>(datatype_editors::edit_bool_raw);
     registry.add_singleline_editor_ui::<LockRangeDuringZoom>(datatype_editors::edit_bool);
@@ -53,15 +55,21 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui::<Text>(datatype_editors::edit_singleline_string);
     registry.add_singleline_editor_ui::<Name>(datatype_editors::edit_singleline_string);
 
-    registry.add_singleline_editor_ui::<Radius>(datatype_editors::edit_f32_zero_to_inf_raw);
     registry.add_singleline_editor_ui::<MarkerSize>(datatype_editors::edit_f32_zero_to_inf_raw);
+    registry.add_singleline_editor_ui::<Radius>(datatype_editors::edit_f32_zero_to_inf_raw);
     registry.add_singleline_editor_ui::<StrokeWidth>(datatype_editors::edit_f32_zero_to_inf_raw);
 
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL)
+    });
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum(ui, "colormap", value, &Colormap::ALL)
+    });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
         edit_enum(ui, "corner2d", value, &Corner2D::ALL)
     });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL)
+        edit_enum(ui, "tseriesaggregator", value, &AggregationPolicy::ALL)
     });
 
     registry.add_multiline_editor_ui(visual_bounds2d::multiline_edit_visual_bounds2d);

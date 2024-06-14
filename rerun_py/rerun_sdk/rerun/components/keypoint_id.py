@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["KeypointId", "KeypointIdBatch", "KeypointIdType"]
 
 
-class KeypointId(datatypes.KeypointId):
+class KeypointId(datatypes.KeypointId, ComponentMixin):
     """
     **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 
@@ -21,6 +24,7 @@ class KeypointId(datatypes.KeypointId):
     [`rerun.components.AnnotationContext`].
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of KeypointIdExt in keypoint_id_ext.py
 
     # Note: there are no fields here because KeypointId delegates to datatypes.KeypointId
@@ -33,3 +37,7 @@ class KeypointIdType(datatypes.KeypointIdType):
 
 class KeypointIdBatch(datatypes.KeypointIdBatch, ComponentBatchMixin):
     _ARROW_TYPE = KeypointIdType()
+
+
+# This is patched in late to avoid circular dependencies.
+KeypointId._BATCH_TYPE = KeypointIdBatch  # type: ignore[assignment]

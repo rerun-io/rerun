@@ -11,7 +11,10 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from .scale3d_ext import Scale3DExt
 
 __all__ = ["Scale3D", "Scale3DArrayLike", "Scale3DBatch", "Scale3DLike", "Scale3DType"]

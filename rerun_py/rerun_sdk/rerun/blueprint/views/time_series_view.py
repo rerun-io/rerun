@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, Union
 
 __all__ = ["TimeSeriesView"]
 
 
 from ... import datatypes
-from ..._baseclasses import AsComponents
+from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
@@ -89,6 +89,7 @@ class TimeSeriesView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
+        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
@@ -114,6 +115,10 @@ class TimeSeriesView(SpaceView):
             Whether this view is visible.
 
             Defaults to true if not specified.
+        defaults:
+            List of default components or component batches to add to the space view. When an archetype
+            in the view is missing a component included in this set, the value of default will be used
+            instead of the normal fallback for the visualizer.
         axis_y:
             Configures the vertical axis of the plot.
         plot_legend:
@@ -149,4 +154,5 @@ class TimeSeriesView(SpaceView):
             name=name,
             visible=visible,
             properties=properties,
+            defaults=defaults,
         )

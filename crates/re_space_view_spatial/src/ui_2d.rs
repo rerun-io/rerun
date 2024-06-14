@@ -159,6 +159,9 @@ impl SpatialSpaceView2D {
             draw_data,
         } = system_output;
 
+        // Wrap view systems collection in an Arc for later use in ViewContext.
+        let parts = std::sync::Arc::new(parts);
+
         if ui.available_size().min_elem() <= 0.0 {
             return Ok(());
         }

@@ -71,7 +71,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -157,7 +157,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -262,7 +262,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -397,7 +397,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -560,7 +560,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -746,7 +746,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -953,7 +953,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -1240,7 +1240,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -1577,7 +1577,7 @@ where
 
         let (r0_index, r0_data) = r0.next()?;
 
-        let max_index = [r0_index].into_iter().max().unwrap();
+        let max_index = [r0_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -1719,7 +1719,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -1814,7 +1814,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -1939,7 +1939,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -2084,7 +2084,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -2260,7 +2260,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -2457,7 +2457,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -2734,7 +2734,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -3061,7 +3061,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
@@ -3417,7 +3417,7 @@ where
         let (r0_index, r0_data) = r0.next()?;
         let (r1_index, r1_data) = r1.next()?;
 
-        let max_index = [r0_index, r1_index].into_iter().max().unwrap();
+        let max_index = [r0_index, r1_index].into_iter().max()?;
 
         let mut o0_data = None;
         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {

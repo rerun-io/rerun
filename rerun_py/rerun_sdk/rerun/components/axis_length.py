@@ -6,14 +6,18 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["AxisLength", "AxisLengthBatch", "AxisLengthType"]
 
 
-class AxisLength(datatypes.Float32):
+class AxisLength(datatypes.Float32, ComponentMixin):
     """**Component**: The length of an axis in local units of the space."""
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AxisLengthExt in axis_length_ext.py
 
     # Note: there are no fields here because AxisLength delegates to datatypes.Float32
@@ -26,3 +30,7 @@ class AxisLengthType(datatypes.Float32Type):
 
 class AxisLengthBatch(datatypes.Float32Batch, ComponentBatchMixin):
     _ARROW_TYPE = AxisLengthType()
+
+
+# This is patched in late to avoid circular dependencies.
+AxisLength._BATCH_TYPE = AxisLengthBatch  # type: ignore[assignment]

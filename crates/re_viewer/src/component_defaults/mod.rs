@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 #![allow(clippy::wildcard_imports)]
 
-use re_entity_db::blueprint::components::*;
 use re_types::blueprint::components::*;
 use re_types::components::*;
 use re_types_blueprint::blueprint::components::*;
@@ -44,10 +43,6 @@ pub fn list_default_components(
             Corner2D::default().to_arrow()?,
         ),
         (
-            <EntityPropertiesComponent as Loggable>::name(),
-            EntityPropertiesComponent::default().to_arrow()?,
-        ),
-        (
             <GridColumns as Loggable>::name(),
             GridColumns::default().to_arrow()?,
         ),
@@ -58,6 +53,10 @@ pub fn list_default_components(
         (
             <IncludedSpaceView as Loggable>::name(),
             IncludedSpaceView::default().to_arrow()?,
+        ),
+        (
+            <Interactive as Loggable>::name(),
+            Interactive::default().to_arrow()?,
         ),
         (
             <LockRangeDuringZoom as Loggable>::name(),
@@ -108,6 +107,10 @@ pub fn list_default_components(
             VisualBounds2D::default().to_arrow()?,
         ),
         (
+            <AggregationPolicy as Loggable>::name(),
+            AggregationPolicy::default().to_arrow()?,
+        ),
+        (
             <AnnotationContext as Loggable>::name(),
             AnnotationContext::default().to_arrow()?,
         ),
@@ -126,6 +129,10 @@ pub fn list_default_components(
         ),
         (<Color as Loggable>::name(), Color::default().to_arrow()?),
         (
+            <Colormap as Loggable>::name(),
+            Colormap::default().to_arrow()?,
+        ),
+        (
             <DepthMeter as Loggable>::name(),
             DepthMeter::default().to_arrow()?,
         ),
@@ -136,6 +143,10 @@ pub fn list_default_components(
         (
             <DrawOrder as Loggable>::name(),
             DrawOrder::default().to_arrow()?,
+        ),
+        (
+            <FillRatio as Loggable>::name(),
+            FillRatio::default().to_arrow()?,
         ),
         (
             <HalfSizes2D as Loggable>::name(),

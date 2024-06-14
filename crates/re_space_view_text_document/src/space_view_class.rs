@@ -4,7 +4,7 @@ use re_space_view::suggest_space_view_for_each_entity;
 use re_types::SpaceViewClassIdentifier;
 use re_types::View;
 use re_ui::UiExt as _;
-use re_viewer_context::external::re_entity_db::EntityProperties;
+
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery,
@@ -89,7 +89,6 @@ impl SpaceViewClass for TextDocumentSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TextDocumentSpaceViewState>()?;
 
@@ -120,7 +119,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

@@ -16,7 +16,7 @@ namespace rerun.archetypes;
 /// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
 ///
 /// \example archetypes/depth_image_simple !api title="Simple example" image="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/1200w.png"
-/// \example archetypes/depth_image_3d title="Depth to 3D example" image="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1200w.png"
+/// \example archetypes/depth_image_3d title="Depth to 3D example" image="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png"
 table DepthImage (
   "attr.rust.derive": "PartialEq",
   "attr.cpp.no_field_ctors",
@@ -40,4 +40,16 @@ table DepthImage (
   ///
   /// Objects with higher values are drawn on top of those with lower values.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Colormap to use for rendering the depth image.
+  ///
+  /// If not set, the depth image will be rendered using the Turbo colormap.
+  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 3300);
+
+  /// Scale the radii of the points in the point cloud generated from this image.
+  ///
+  /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+  /// if it is at the same depth, leaving no gaps.
+  /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3400);
 }

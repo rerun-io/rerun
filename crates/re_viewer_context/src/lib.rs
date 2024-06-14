@@ -60,14 +60,14 @@ pub use selection_state::{
 };
 pub use space_view::{
     DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
-    PerViewState, PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass,
-    SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContext,
-    ViewContextCollection, ViewContextSystem, ViewQuery, ViewStates, ViewSystemIdentifier,
-    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
-    VisualizerQueryInfo, VisualizerSystem,
+    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt,
+    SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewContext, ViewContextCollection, ViewContextSystem, ViewQuery,
+    ViewStates, ViewSystemIdentifier, VisualizableFilterContext,
+    VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 pub use store_context::StoreContext;
 pub use store_hub::StoreHub;

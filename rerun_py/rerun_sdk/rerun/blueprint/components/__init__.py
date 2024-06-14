@@ -27,16 +27,10 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .entity_properties_component import (
-    EntityPropertiesComponent,
-    EntityPropertiesComponentArrayLike,
-    EntityPropertiesComponentBatch,
-    EntityPropertiesComponentLike,
-    EntityPropertiesComponentType,
-)
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
+from .interactive import Interactive, InteractiveBatch, InteractiveType
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
@@ -88,11 +82,6 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "EntityPropertiesComponent",
-    "EntityPropertiesComponentArrayLike",
-    "EntityPropertiesComponentBatch",
-    "EntityPropertiesComponentLike",
-    "EntityPropertiesComponentType",
     "GridColumns",
     "GridColumnsArrayLike",
     "GridColumnsBatch",
@@ -104,6 +93,9 @@ __all__ = [
     "IncludedSpaceView",
     "IncludedSpaceViewBatch",
     "IncludedSpaceViewType",
+    "Interactive",
+    "InteractiveBatch",
+    "InteractiveType",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",

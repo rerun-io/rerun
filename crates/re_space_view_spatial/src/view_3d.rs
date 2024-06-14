@@ -2,7 +2,7 @@ use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
-use re_entity_db::{EntityDb, EntityProperties};
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::View;
@@ -12,7 +12,7 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerSystemEntities, PerVisualizer,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer,
     RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
@@ -22,9 +22,7 @@ use re_viewer_context::{
 use crate::visualizers::{CamerasVisualizer, Transform3DArrowsVisualizer, Transform3DDetector};
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{
-        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
-    },
+    heuristics::default_visualized_entities_for_visualizer_kind,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::{format_vector, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
@@ -345,20 +343,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
         .unwrap_or_default()
     }
 
-    fn on_frame_start(
-        &self,
-        ctx: &ViewerContext<'_>,
-        state: &mut dyn SpaceViewState,
-        ent_paths: &PerSystemEntities,
-        auto_properties: &mut re_entity_db::EntityPropertyMap,
-    ) {
-        let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
-            return;
-        };
-        *auto_properties =
-            generate_auto_legacy_properties(ctx, ent_paths, SpatialSpaceViewKind::ThreeD);
-    }
-
     fn selection_ui(
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
@@ -366,7 +350,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
@@ -439,7 +422,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

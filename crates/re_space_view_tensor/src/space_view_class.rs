@@ -2,14 +2,13 @@ use std::{collections::BTreeMap, fmt::Display};
 
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
-use re_entity_db::EntityProperties;
 use re_space_view::suggest_space_view_for_each_entity;
 
 use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
-use re_renderer::Colormap;
 use re_types::{
+    components::Colormap,
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,
@@ -133,7 +132,6 @@ impl SpaceViewClass for TensorSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
 
@@ -190,7 +188,7 @@ impl SpaceViewClass for TensorSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

@@ -1,6 +1,5 @@
 use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_renderer::DepthOffset;
 use re_space_view::{
@@ -8,8 +7,8 @@ use re_space_view::{
 };
 use re_types::Archetype;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery,
+    IdentifiedViewSystem, QueryContext, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery,
 };
 
 use crate::{
@@ -94,9 +93,8 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
 where
     A: Archetype,
     F: FnMut(
-        &ViewContext<'_>,
+        &QueryContext<'_>,
         &EntityPath,
-        &EntityProperties,
         &SpatialSceneEntityContext<'_>,
         &HybridResults<'_>,
     ) -> Result<(), SpaceViewSystemExecutionError>,
@@ -105,6 +103,8 @@ where
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
+
+    let latest_at = query.latest_at_query();
 
     for data_result in query.iter_visible_data_results(ctx, System::identifier()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
@@ -115,7 +115,7 @@ where
                 transforms.reference_from_entity_ignoring_pinhole(
                     &data_result.entity_path,
                     ctx.recording(),
-                    &query.latest_at_query(),
+                    &latest_at,
                 )
             };
 
@@ -151,10 +151,12 @@ where
         // We'll see how things evolve.
         _ = counter;
 
+        let mut query_ctx = ctx.query_context(data_result, &latest_at);
+        query_ctx.archetype_name = Some(A::name());
+
         fun(
-            ctx,
+            &query_ctx,
             &data_result.entity_path,
-            data_result.accumulated_properties(),
             &entity_context,
             &results,
         )?;

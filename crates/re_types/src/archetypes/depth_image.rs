@@ -40,7 +40,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     image.slice_mut(s![50..150, 50..150]).fill(20000);
 ///     image.slice_mut(s![130..180, 100..280]).fill(45000);
 ///
-///     let depth_image = rerun::DepthImage::try_from(image.clone())?.with_meter(10000.0);
+///     let depth_image = rerun::DepthImage::try_from(image.clone())?
+///         .with_meter(10000.0)
+///         .with_colormap(rerun::components::Colormap::Viridis);
 ///
 ///     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
 ///     rec.log(
@@ -58,11 +60,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/1200w.png">
-///   <img src="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png">
+///   <img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
@@ -80,6 +82,18 @@ pub struct DepthImage {
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
+
+    /// Colormap to use for rendering the depth image.
+    ///
+    /// If not set, the depth image will be rendered using the Turbo colormap.
+    pub colormap: Option<crate::components::Colormap>,
+
+    /// Scale the radii of the points in the point cloud generated from this image.
+    ///
+    /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+    /// if it is at the same depth, leaving no gaps.
+    /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+    pub point_fill_ratio: Option<crate::components::FillRatio>,
 }
 
 impl ::re_types_core::SizeBytes for DepthImage {
@@ -88,6 +102,8 @@ impl ::re_types_core::SizeBytes for DepthImage {
         self.data.heap_size_bytes()
             + self.meter.heap_size_bytes()
             + self.draw_order.heap_size_bytes()
+            + self.colormap.heap_size_bytes()
+            + self.point_fill_ratio.heap_size_bytes()
     }
 
     #[inline]
@@ -95,6 +111,8 @@ impl ::re_types_core::SizeBytes for DepthImage {
         <crate::components::TensorData>::is_pod()
             && <Option<crate::components::DepthMeter>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
+            && <Option<crate::components::Colormap>>::is_pod()
+            && <Option<crate::components::FillRatio>>::is_pod()
     }
 }
 
@@ -104,27 +122,31 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DepthImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.DepthMeter".into(),
             "rerun.components.DrawOrder".into(),
+            "rerun.components.Colormap".into(),
+            "rerun.components.FillRatio".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
             "rerun.components.DrawOrder".into(),
+            "rerun.components.Colormap".into(),
+            "rerun.components.FillRatio".into(),
         ]
     });
 
 impl DepthImage {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`DepthImage`] [`::re_types_core::Archetype`]
@@ -210,10 +232,31 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
+        let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
+            <crate::components::Colormap>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#colormap")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let point_fill_ratio = if let Some(array) = arrays_by_name.get("rerun.components.FillRatio")
+        {
+            <crate::components::FillRatio>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#point_fill_ratio")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             data,
             meter,
             draw_order,
+            colormap,
+            point_fill_ratio,
         })
     }
 }
@@ -231,6 +274,12 @@ impl ::re_types_core::AsComponents for DepthImage {
             self.draw_order
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.colormap
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.point_fill_ratio
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -246,6 +295,8 @@ impl DepthImage {
             data: data.into(),
             meter: None,
             draw_order: None,
+            colormap: None,
+            point_fill_ratio: None,
         }
     }
 
@@ -265,6 +316,29 @@ impl DepthImage {
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
+        self
+    }
+
+    /// Colormap to use for rendering the depth image.
+    ///
+    /// If not set, the depth image will be rendered using the Turbo colormap.
+    #[inline]
+    pub fn with_colormap(mut self, colormap: impl Into<crate::components::Colormap>) -> Self {
+        self.colormap = Some(colormap.into());
+        self
+    }
+
+    /// Scale the radii of the points in the point cloud generated from this image.
+    ///
+    /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+    /// if it is at the same depth, leaving no gaps.
+    /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+    #[inline]
+    pub fn with_point_fill_ratio(
+        mut self,
+        point_fill_ratio: impl Into<crate::components::FillRatio>,
+    ) -> Self {
+        self.point_fill_ratio = Some(point_fill_ratio.into());
         self
     }
 }

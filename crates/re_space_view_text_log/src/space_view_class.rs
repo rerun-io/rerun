@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_types::View;
 use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
@@ -105,7 +104,6 @@ impl SpaceViewClass for TextSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TextSpaceViewState>()?;
 
@@ -151,7 +149,7 @@ impl SpaceViewClass for TextSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

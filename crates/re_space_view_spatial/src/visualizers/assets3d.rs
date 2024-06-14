@@ -8,8 +8,8 @@ use re_types::{
     components::{Blob, MediaType, OutOfTreeTransform3D},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -44,7 +44,7 @@ struct Asset3DComponentData<'a> {
 impl Asset3DVisualizer {
     fn process_data<'a>(
         &mut self,
-        ctx: &ViewContext<'_>,
+        ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
         entity_path: &EntityPath,
@@ -146,7 +146,7 @@ impl VisualizerSystem for Asset3DVisualizer {
             view_query,
             context_systems,
             context_systems.get::<EntityDepthOffsets>()?.points,
-            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+            |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
                 use re_space_view::RangeResultsExt as _;

@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from .aggregation_policy import (
+    AggregationPolicy,
+    AggregationPolicyArrayLike,
+    AggregationPolicyBatch,
+    AggregationPolicyLike,
+    AggregationPolicyType,
+)
 from .annotation_context import (
     AnnotationContext,
     AnnotationContextArrayLike,
@@ -20,6 +27,7 @@ from .clear_is_recursive import (
     ClearIsRecursiveType,
 )
 from .color import Color, ColorBatch, ColorType
+from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, ColormapType
 from .depth_meter import DepthMeter, DepthMeterArrayLike, DepthMeterBatch, DepthMeterLike, DepthMeterType
 from .disconnected_space import (
     DisconnectedSpace,
@@ -29,6 +37,7 @@ from .disconnected_space import (
     DisconnectedSpaceType,
 )
 from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
+from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .half_sizes2d import HalfSizes2D, HalfSizes2DBatch, HalfSizes2DType
 from .half_sizes3d import HalfSizes3D, HalfSizes3DBatch, HalfSizes3DType
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch, ImagePlaneDistanceType
@@ -74,6 +83,11 @@ from .visualizer_overrides import (
 )
 
 __all__ = [
+    "AggregationPolicy",
+    "AggregationPolicyArrayLike",
+    "AggregationPolicyBatch",
+    "AggregationPolicyLike",
+    "AggregationPolicyType",
     "AnnotationContext",
     "AnnotationContextArrayLike",
     "AnnotationContextBatch",
@@ -98,6 +112,11 @@ __all__ = [
     "Color",
     "ColorBatch",
     "ColorType",
+    "Colormap",
+    "ColormapArrayLike",
+    "ColormapBatch",
+    "ColormapLike",
+    "ColormapType",
     "DepthMeter",
     "DepthMeterArrayLike",
     "DepthMeterBatch",
@@ -113,6 +132,9 @@ __all__ = [
     "DrawOrderBatch",
     "DrawOrderLike",
     "DrawOrderType",
+    "FillRatio",
+    "FillRatioBatch",
+    "FillRatioType",
     "HalfSizes2D",
     "HalfSizes2DBatch",
     "HalfSizes2DType",

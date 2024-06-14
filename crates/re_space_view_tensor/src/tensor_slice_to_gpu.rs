@@ -8,7 +8,7 @@ use re_types::{
     tensor_data::{DecodedTensor, TensorCastError, TensorDataType},
 };
 use re_viewer_context::{
-    gpu_bridge::{self, tensor_data_range_heuristic, RangeError},
+    gpu_bridge::{self, colormap_to_re_renderer, tensor_data_range_heuristic, RangeError},
     TensorStats,
 };
 
@@ -46,7 +46,9 @@ pub fn colormapped_texture(
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: state.color_mapping.gamma,
-        color_mapper: re_renderer::renderer::ColorMapper::Function(state.color_mapping.map),
+        color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
+            state.color_mapping.map,
+        )),
         shader_decoding: match tensor.buffer {
             TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
             TensorBuffer::Yuy2(_) => Some(ShaderDecoding::Yuy2),
