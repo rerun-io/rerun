@@ -11,9 +11,9 @@ table ScalarColormap (
     /// How scalar values map to colors.
     colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 1000);
 
-    /// Gamma curve applied to normalized scalar before mapping to color.
+    /// Gamma exponent applied to normalized values before mapping to color.
     ///
-    /// Raiuses the normalized values to the power of this value before mapping to color.
+    /// Raises the normalized values to the power of this value before mapping to color.
     /// Acts like an inverse brightness. Defaults to 1.0.
     gamma: rerun.components.GammaCorrection ("attr.rerun.component_optional", nullable, order: 1100);
 

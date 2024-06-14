@@ -28,9 +28,9 @@ pub struct ScalarColormap {
     /// How scalar values map to colors.
     pub colormap: Option<crate::components::Colormap>,
 
-    /// Gamma curve applied to normalized scalar before mapping to color.
+    /// Gamma exponent applied to normalized values before mapping to color.
     ///
-    /// Raiuses the normalized values to the power of this value before mapping to color.
+    /// Raises the normalized values to the power of this value before mapping to color.
     /// Acts like an inverse brightness. Defaults to 1.0.
     pub gamma: Option<crate::components::GammaCorrection>,
 }
@@ -81,7 +81,7 @@ static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Gamma",
-            documentation: "Gamma curve applied to normalized scalar before mapping to color.\n\nRaiuses the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.",
+            documentation: "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.",
             component_name: "rerun.components.GammaCorrection".into(),
         },
     ]
@@ -207,9 +207,9 @@ impl ScalarColormap {
         self
     }
 
-    /// Gamma curve applied to normalized scalar before mapping to color.
+    /// Gamma exponent applied to normalized values before mapping to color.
     ///
-    /// Raiuses the normalized values to the power of this value before mapping to color.
+    /// Raises the normalized values to the power of this value before mapping to color.
     /// Acts like an inverse brightness. Defaults to 1.0.
     #[inline]
     pub fn with_gamma(mut self, gamma: impl Into<crate::components::GammaCorrection>) -> Self {

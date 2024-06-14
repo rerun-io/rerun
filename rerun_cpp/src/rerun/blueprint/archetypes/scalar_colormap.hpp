@@ -22,9 +22,9 @@ namespace rerun::blueprint::archetypes {
         /// How scalar values map to colors.
         std::optional<rerun::components::Colormap> colormap;
 
-        /// Gamma curve applied to normalized scalar before mapping to color.
+        /// Gamma exponent applied to normalized values before mapping to color.
         ///
-        /// Raiuses the normalized values to the power of this value before mapping to color.
+        /// Raises the normalized values to the power of this value before mapping to color.
         /// Acts like an inverse brightness. Defaults to 1.0.
         std::optional<rerun::components::GammaCorrection> gamma;
 
@@ -46,9 +46,9 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Gamma curve applied to normalized scalar before mapping to color.
+        /// Gamma exponent applied to normalized values before mapping to color.
         ///
-        /// Raiuses the normalized values to the power of this value before mapping to color.
+        /// Raises the normalized values to the power of this value before mapping to color.
         /// Acts like an inverse brightness. Defaults to 1.0.
         ScalarColormap with_gamma(rerun::components::GammaCorrection _gamma) && {
             gamma = std::move(_gamma);

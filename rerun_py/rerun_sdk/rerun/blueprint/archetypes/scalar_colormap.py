@@ -33,9 +33,9 @@ class ScalarColormap(Archetype):
         colormap:
             How scalar values map to colors.
         gamma:
-            Gamma curve applied to normalized scalar before mapping to color.
+            Gamma exponent applied to normalized values before mapping to color.
 
-            Raiuses the normalized values to the power of this value before mapping to color.
+            Raises the normalized values to the power of this value before mapping to color.
             Acts like an inverse brightness. Defaults to 1.0.
 
         """
@@ -74,9 +74,9 @@ class ScalarColormap(Archetype):
         default=None,
         converter=components.GammaCorrectionBatch._optional,  # type: ignore[misc]
     )
-    # Gamma curve applied to normalized scalar before mapping to color.
+    # Gamma exponent applied to normalized values before mapping to color.
     #
-    # Raiuses the normalized values to the power of this value before mapping to color.
+    # Raises the normalized values to the power of this value before mapping to color.
     # Acts like an inverse brightness. Defaults to 1.0.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

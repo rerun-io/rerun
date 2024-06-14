@@ -41,6 +41,7 @@ opt_out = {
     "panel_blueprint": ["cpp", "python", "rust"],
     "plot_legend": ["cpp", "python", "rust"],
     "scalar_axis": ["cpp", "python", "rust"],
+    "scalar_colormap": ["cpp", "python", "rust"],
     "space_view_blueprint": ["cpp", "python", "rust"],
     "space_view_contents": ["cpp", "python", "rust"],
     "viewport_blueprint": ["cpp", "python", "rust"],

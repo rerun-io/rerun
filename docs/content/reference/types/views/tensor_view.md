@@ -11,7 +11,7 @@ A view on a tensor of any dimensionality.
 Configures how scalars are mapped to color.
 
 * `colormap`: How scalar values map to colors.
-* `gamma`: Gamma curve applied to normalized scalar before mapping to color.
+* `gamma`: Gamma exponent applied to normalized values before mapping to color.
 
 ## API reference links
  * 🐍 [Python API docs for `TensorView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TensorView)
