@@ -140,7 +140,6 @@ To run this example, make sure you have the Rerun repository checked out and the
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
-git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
@@ -148,9 +147,16 @@ pip install -e examples/python/ocr
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-pixi run -e examples-ocr ocr  # run the example
+python -m ocr  # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-pixi run -e examples-ocr ocr  --help
+python -m ocr --help
+```
+
+Depending on your system, pip may grab suboptimal packages, causing slow runtimes.
+Installing with [pixi](https://pixi.sh/) has been observed to run significantly faster in this case.
+To do so, simply run this command after checking out the repository and installing pixi:
+```bash
+pixi run -e examples-ocr ocr
 ```
