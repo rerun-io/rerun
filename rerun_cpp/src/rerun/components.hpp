@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "components/aggregation_policy.hpp"
 #include "components/annotation_context.hpp"
 #include "components/axis_length.hpp"
 #include "components/blob.hpp"

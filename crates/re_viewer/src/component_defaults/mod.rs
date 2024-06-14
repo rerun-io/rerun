@@ -112,6 +112,10 @@ pub fn list_default_components(
             VisualBounds2D::default().to_arrow()?,
         ),
         (
+            <AggregationPolicy as Loggable>::name(),
+            AggregationPolicy::default().to_arrow()?,
+        ),
+        (
             <AnnotationContext as Loggable>::name(),
             AnnotationContext::default().to_arrow()?,
         ),

@@ -13,6 +13,7 @@ For more information on the relationship between **archetypes** and **components
 on [Entities and Components](../../concepts/entity-component.md).
 
 
+* [`AggregationPolicy`](components/aggregation_policy.md): Configures a policy for aggregation of values.
 * [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.

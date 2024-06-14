@@ -1,3 +1,4 @@
+include "./components/aggregation_policy.fbs";
 include "./components/annotation_context.fbs";
 include "./components/axis_length.fbs";
 include "./components/blob.fbs";

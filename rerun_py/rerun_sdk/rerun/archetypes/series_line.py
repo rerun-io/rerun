@@ -70,6 +70,7 @@ class SeriesLine(Archetype):
         color: datatypes.Rgba32Like | None = None,
         width: components.StrokeWidthLike | None = None,
         name: datatypes.Utf8Like | None = None,
+        aggregation_policy: components.AggregationPolicyLike | None = None,
     ):
         """
         Create a new instance of the SeriesLine archetype.
@@ -84,12 +85,18 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+        aggregation_policy:
+            Configures the zoom-dependent scalar aggregation.
+
+            This is done only if steps on the X axis go below a single pixel,
+            i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+            (and readability) in such situations as it prevents overdraw.
 
         """
 
         # You can define your own __init__ function as a member of SeriesLineExt in series_line_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color, width=width, name=name)
+            self.__attrs_init__(color=color, width=width, name=name, aggregation_policy=aggregation_policy)
             return
         self.__attrs_clear__()
 
@@ -99,6 +106,7 @@ class SeriesLine(Archetype):
             color=None,  # type: ignore[arg-type]
             width=None,  # type: ignore[arg-type]
             name=None,  # type: ignore[arg-type]
+            aggregation_policy=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -134,6 +142,19 @@ class SeriesLine(Archetype):
     # Display name of the series.
     #
     # Used in the legend.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    aggregation_policy: components.AggregationPolicyBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.AggregationPolicyBatch._optional,  # type: ignore[misc]
+    )
+    # Configures the zoom-dependent scalar aggregation.
+    #
+    # This is done only if steps on the X axis go below a single pixel,
+    # i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+    # (and readability) in such situations as it prevents overdraw.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

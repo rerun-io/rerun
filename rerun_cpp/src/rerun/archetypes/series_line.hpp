@@ -5,6 +5,7 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
 #include "../components/name.hpp"
 #include "../components/stroke_width.hpp"
@@ -75,6 +76,13 @@ namespace rerun::archetypes {
         /// Used in the legend.
         std::optional<rerun::components::Name> name;
 
+        /// Configures the zoom-dependent scalar aggregation.
+        ///
+        /// This is done only if steps on the X axis go below a single pixel,
+        /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+        /// (and readability) in such situations as it prevents overdraw.
+        std::optional<rerun::components::AggregationPolicy> aggregation_policy;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.components.SeriesLineIndicator";
@@ -105,6 +113,18 @@ namespace rerun::archetypes {
         /// Used in the legend.
         SeriesLine with_name(rerun::components::Name _name) && {
             name = std::move(_name);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Configures the zoom-dependent scalar aggregation.
+        ///
+        /// This is done only if steps on the X axis go below a single pixel,
+        /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+        /// (and readability) in such situations as it prevents overdraw.
+        SeriesLine with_aggregation_policy(rerun::components::AggregationPolicy _aggregation_policy
+        ) && {
+            aggregation_policy = std::move(_aggregation_policy);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
