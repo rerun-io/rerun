@@ -239,7 +239,7 @@ def process_layout_records(
                     labels=[str(layout_type.type)],
                     class_ids=[str(layout_type.number)],
                 ),
-                rr.AnyValues(name=record_name)
+                rr.AnyValues(name=record_name),
             )
 
             log_detections(layout_type, record, base_path)
@@ -254,10 +254,7 @@ def process_layout_records(
 
 def log_detections(layout_type: LayoutType, record: dict[str, Any], base_path: str) -> None:
     if layout_type == LayoutType.TABLE:
-        rr.log(
-            f"Extracted{record['name']}",
-            rr.TextDocument(record["table"], media_type=rr.MediaType.MARKDOWN)
-        )
+        rr.log(f"Extracted{record['name']}", rr.TextDocument(record["table"], media_type=rr.MediaType.MARKDOWN))
     else:
         for detection in record.get("detections", []):
             rr.log(
@@ -265,7 +262,7 @@ def log_detections(layout_type: LayoutType, record: dict[str, Any], base_path: s
                 rr.Boxes2D(
                     array=detection["box"], array_format=rr.Box2DFormat.XYXY, class_ids=[str(layout_type.number)]
                 ),
-                rr.AnyValues(DetectionID=detection["id"], Text=detection["text"], Confidence=detection["confidence"])
+                rr.AnyValues(DetectionID=detection["id"], Text=detection["text"], Confidence=detection["confidence"]),
             )
 
 
@@ -343,7 +340,7 @@ def detect_and_log_layout(img_path: str) -> None:
     rr.log(
         "Image",
         # The annotation is defined in the Layout class based on its properties
-        rr.AnnotationContext(LayoutType.get_annotation())
+        rr.AnnotationContext(LayoutType.get_annotation()),
     )
 
     # Paddle Model - Getting Predictions
@@ -395,7 +392,9 @@ def download_file(url: str, path: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="OCR Example - Layout Analysis and Text Detections. It automatically downloads the PaddleOCR libraries and models.")
+    parser = argparse.ArgumentParser(
+        description="OCR Example - Layout Analysis and Text Detections. It automatically downloads the PaddleOCR libraries and models."
+    )
 
     parser.add_argument(
         "--demo-image",
