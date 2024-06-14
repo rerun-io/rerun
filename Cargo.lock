@@ -6480,7 +6480,7 @@ dependencies = [
 
 [[package]]
 name = "test_temporal_batch"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.8"
 dependencies = [
  "re_arrow2",
  "re_chunk",
