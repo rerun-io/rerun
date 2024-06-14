@@ -23,7 +23,7 @@ all-features = true
 default = []
 
 ## Enable loading data from an .rrd file.
-decoder = ["dep:rmp-serde", "dep:lz4_flex"]
+decoder = ["dep:rmp-serde", "dep:lz4_flex", "re_log_types/serde"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
 encoder = ["dep:rmp-serde", "dep:lz4_flex"]
