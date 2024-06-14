@@ -14,7 +14,7 @@ mod util;
 
 use re_log_types::EntityPath;
 use re_types::{
-    components::{MarkerShape, AggregationPolicy},
+    components::{AggregationPolicy, MarkerShape},
     datatypes::Utf8,
 };
 pub use space_view_class::TimeSeriesSpaceView;
