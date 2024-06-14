@@ -4937,6 +4937,7 @@ dependencies = [
  "re_types",
  "re_ui",
  "re_viewer_context",
+ "re_viewport_blueprint",
  "serde",
  "thiserror",
  "wgpu",

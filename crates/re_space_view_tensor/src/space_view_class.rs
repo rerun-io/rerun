@@ -2,25 +2,26 @@ use std::{collections::BTreeMap, fmt::Display};
 
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
-use re_space_view::suggest_space_view_for_each_entity;
+use re_space_view::{suggest_space_view_for_each_entity, view_property_ui};
 
 use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
 use re_types::{
-    components::Colormap,
+    blueprint::archetypes::TensorColormapping,
+    components::{Colormap, GammaCorrection},
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,
 };
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::{list_item, ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge::{self, colormap_dropdown_button_ui},
-    ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    gpu_bridge, ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery,
-    ViewerContext, VisualizableEntities,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
+    TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizableEntities,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
 
@@ -35,9 +36,6 @@ pub struct ViewTensorState {
     ///
     /// This get automatically reset if/when the current tensor shape changes.
     pub(crate) slice: SliceSelection,
-
-    /// How we map values to colors.
-    pub(crate) color_mapping: ColorMapping,
 
     /// Scaling, filtering, aspect ratio, etc for the rendered texture.
     texture_settings: TextureSettings,
@@ -131,7 +129,7 @@ impl SpaceViewClass for TensorSpaceView {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
 
@@ -148,9 +146,10 @@ impl SpaceViewClass for TensorSpaceView {
             }
 
             state.texture_settings.ui(ui);
-            if let Some(render_ctx) = ctx.render_ctx {
-                state.color_mapping.ui(render_ctx, ui);
-            }
+        });
+
+        list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
+            view_property_ui::<TensorColormapping>(ctx, ui, view_id, self, state);
         });
 
         if let Some((_, tensor)) = &state.tensor {
@@ -188,8 +187,7 @@ impl SpaceViewClass for TensorSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -213,7 +211,14 @@ impl SpaceViewClass for TensorSpaceView {
             });
         } else if let Some((tensor_data_row_id, tensor)) = tensors.first() {
             state.tensor = Some((*tensor_data_row_id, tensor.clone()));
-            view_tensor(ctx, ui, state, *tensor_data_row_id, tensor);
+            self.view_tensor(
+                ctx,
+                ui,
+                state,
+                query.space_view_id,
+                *tensor_data_row_id,
+                tensor,
+            );
         } else {
             state.tensor = None;
             ui.centered_and_justified(|ui| ui.label("(empty)"));
@@ -223,169 +228,160 @@ impl SpaceViewClass for TensorSpaceView {
     }
 }
 
-fn view_tensor(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &mut ViewTensorState,
-    tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
-) {
-    re_tracing::profile_function!();
+impl TensorSpaceView {
+    fn view_tensor(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut ViewTensorState,
+        view_id: SpaceViewId,
+        tensor_data_row_id: RowId,
+        tensor: &DecodedTensor,
+    ) {
+        re_tracing::profile_function!();
 
-    if !state.slice.dim_mapping.is_valid(tensor.num_dim()) {
-        state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
-    }
-
-    let default_item_spacing = ui.spacing_mut().item_spacing;
-    ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
-
-    if state
-        .slice
-        .dim_mapping
-        .selectors
-        .iter()
-        .any(|selector| selector.visible)
-    {
-        egui::Frame {
-            inner_margin: egui::Margin::symmetric(16.0, 8.0),
-            ..Default::default()
+        if !state.slice.dim_mapping.is_valid(tensor.num_dim()) {
+            state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
         }
-        .show(ui, |ui| {
-            ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
-            selectors_ui(ui, state, tensor);
+
+        let default_item_spacing = ui.spacing_mut().item_spacing;
+        ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
+
+        if state
+            .slice
+            .dim_mapping
+            .selectors
+            .iter()
+            .any(|selector| selector.visible)
+        {
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(16.0, 8.0),
+                ..Default::default()
+            }
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
+                selectors_ui(ui, state, tensor);
+            });
+        }
+
+        let dimension_labels = {
+            let dm = &state.slice.dim_mapping;
+            [
+                (
+                    dimension_name(&tensor.shape, dm.width.unwrap_or_default()),
+                    dm.invert_width,
+                ),
+                (
+                    dimension_name(&tensor.shape, dm.height.unwrap_or_default()),
+                    dm.invert_height,
+                ),
+            ]
+        };
+
+        egui::ScrollArea::both().show(ui, |ui| {
+            if let Err(err) = self.tensor_slice_ui(
+                ctx,
+                ui,
+                state,
+                view_id,
+                tensor_data_row_id,
+                tensor,
+                dimension_labels,
+            ) {
+                ui.label(ui.ctx().error_text(err.to_string()));
+            }
         });
     }
 
-    let dimension_labels = {
-        let dm = &state.slice.dim_mapping;
-        [
-            (
-                dimension_name(&tensor.shape, dm.width.unwrap_or_default()),
-                dm.invert_width,
-            ),
-            (
-                dimension_name(&tensor.shape, dm.height.unwrap_or_default()),
-                dm.invert_height,
-            ),
-        ]
-    };
+    #[allow(clippy::too_many_arguments)]
+    fn tensor_slice_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &ViewTensorState,
+        view_id: SpaceViewId,
+        tensor_data_row_id: RowId,
+        tensor: &DecodedTensor,
+        dimension_labels: [(String, bool); 2],
+    ) -> anyhow::Result<()> {
+        let (response, painter, image_rect) =
+            self.paint_tensor_slice(ctx, ui, state, view_id, tensor_data_row_id, tensor)?;
 
-    egui::ScrollArea::both().show(ui, |ui| {
-        if let Err(err) =
-            tensor_slice_ui(ctx, ui, state, tensor_data_row_id, tensor, dimension_labels)
-        {
-            ui.label(ui.ctx().error_text(err.to_string()));
+        if !response.hovered() {
+            let font_id = egui::TextStyle::Body.resolve(ui.style());
+            paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
         }
-    });
-}
 
-fn tensor_slice_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &ViewTensorState,
-    tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
-    dimension_labels: [(String, bool); 2],
-) -> anyhow::Result<()> {
-    let (response, painter, image_rect) =
-        paint_tensor_slice(ctx, ui, state, tensor_data_row_id, tensor)?;
-
-    if !response.hovered() {
-        let font_id = egui::TextStyle::Body.resolve(ui.style());
-        paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
+        Ok(())
     }
 
-    Ok(())
-}
+    fn paint_tensor_slice(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &ViewTensorState,
+        view_id: SpaceViewId,
+        tensor_data_row_id: RowId,
+        tensor: &DecodedTensor,
+    ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
+        re_tracing::profile_function!();
 
-fn paint_tensor_slice(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    state: &ViewTensorState,
-    tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
-) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
-    re_tracing::profile_function!();
+        let colormapping = ViewProperty::from_archetype::<TensorColormapping>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        );
+        let colormap = colormapping.component_or_fallback::<Colormap>(ctx, self, state)?;
+        let gamma = colormapping.component_or_fallback::<GammaCorrection>(ctx, self, state)?;
 
-    let Some(render_ctx) = ctx.render_ctx else {
-        return Err(anyhow::Error::msg("No render context available."));
-    };
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(anyhow::Error::msg("No render context available."));
+        };
 
-    let tensor_stats = ctx
-        .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
-    let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-        render_ctx,
-        tensor_data_row_id,
-        tensor,
-        &tensor_stats,
-        state,
-    )?;
-    let [width, height] = colormapped_texture.width_height();
+        let tensor_stats = ctx
+            .cache
+            .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
+        let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
+            render_ctx,
+            tensor_data_row_id,
+            tensor,
+            &tensor_stats,
+            state,
+            colormap,
+            gamma,
+        )?;
+        let [width, height] = colormapped_texture.width_height();
 
-    let img_size = egui::vec2(width as _, height as _);
-    let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
-    let desired_size = match state.texture_settings.scaling {
-        TextureScaling::Original => img_size,
-        TextureScaling::Fill => {
-            let desired_size = ui.available_size();
-            if state.texture_settings.keep_aspect_ratio {
-                let scale = (desired_size / img_size).min_elem();
-                img_size * scale
-            } else {
-                desired_size
+        let img_size = egui::vec2(width as _, height as _);
+        let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
+        let desired_size = match state.texture_settings.scaling {
+            TextureScaling::Original => img_size,
+            TextureScaling::Fill => {
+                let desired_size = ui.available_size();
+                if state.texture_settings.keep_aspect_ratio {
+                    let scale = (desired_size / img_size).min_elem();
+                    img_size * scale
+                } else {
+                    desired_size
+                }
             }
-        }
-    };
+        };
 
-    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-    let rect = response.rect;
-    let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
+        let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+        let rect = response.rect;
+        let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
 
-    let debug_name = "tensor_slice";
-    gpu_bridge::render_image(
-        render_ctx,
-        &painter,
-        image_rect,
-        colormapped_texture,
-        state.texture_settings.options,
-        debug_name,
-    )?;
+        let debug_name = "tensor_slice";
+        gpu_bridge::render_image(
+            render_ctx,
+            &painter,
+            image_rect,
+            colormapped_texture,
+            state.texture_settings.options,
+            debug_name,
+        )?;
 
-    Ok((response, painter, image_rect))
-}
-
-// ----------------------------------------------------------------------------
-
-/// How we map values to colors.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct ColorMapping {
-    pub map: Colormap,
-    pub gamma: f32,
-}
-
-impl Default for ColorMapping {
-    fn default() -> Self {
-        Self {
-            map: Colormap::Viridis,
-            gamma: 1.0,
-        }
-    }
-}
-
-impl ColorMapping {
-    fn ui(&mut self, render_ctx: &re_renderer::RenderContext, ui: &mut egui::Ui) {
-        let Self { map, gamma } = self;
-
-        ui.grid_left_hand_label("Color map");
-        colormap_dropdown_button_ui(Some(render_ctx), ui, map);
-        ui.end_row();
-
-        ui.grid_left_hand_label("Brightness");
-        let mut brightness = 1.0 / *gamma;
-        ui.add(egui::Slider::new(&mut brightness, 0.1..=10.0).logarithmic(true));
-        *gamma = 1.0 / brightness;
-        ui.end_row();
+        Ok((response, painter, image_rect))
     }
 }
 
@@ -739,3 +735,12 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &TensorD
         }
     }
 }
+
+impl TypedComponentFallbackProvider<Colormap> for TensorSpaceView {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
+        // Viridis is a better fallback than Turbo for arbitrary tensors.
+        Colormap::Viridis
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(TensorSpaceView => [Colormap]);
