@@ -7,16 +7,16 @@ use re_data_ui::{
     item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
     DataUi,
 };
-use re_entity_db::{EditableAutoValue, EntityPath, EntityProperties, InstancePath};
+use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
-use re_space_view::DataResultQuery as _;
+use re_space_view::{DataResultQuery as _, HybridLatestAtResults};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     archetypes::{Axes3D, DepthImage, Pinhole},
     blueprint::components::Interactive,
     components::{
-        AxisLength, Colormap, DepthMeter, ImagePlaneDistance, PinholeProjection, Transform3D,
-        VisualizerOverrides,
+        AxisLength, Colormap, DepthMeter, FillRatio, ImagePlaneDistance, PinholeProjection,
+        Transform3D, VisualizerOverrides,
     },
     tensor_data::TensorDataMeaning,
 };
@@ -1162,22 +1162,12 @@ fn blueprint_ui_for_data_result(
             .lookup_result_by_path(entity_path)
             .cloned()
         {
-            let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
-            let accumulated_legacy_props_before = accumulated_legacy_props.clone();
-
             entity_props_ui(
                 ctx,
                 ui,
                 ctx.lookup_query_result(space_view_id),
                 &data_result,
-                &mut accumulated_legacy_props,
             );
-            if accumulated_legacy_props != accumulated_legacy_props_before {
-                data_result.save_individual_override_properties(
-                    ctx.viewer_ctx,
-                    Some(accumulated_legacy_props),
-                );
-            }
         }
     }
 }
@@ -1187,7 +1177,6 @@ fn entity_props_ui(
     ui: &mut egui::Ui,
     query_result: &DataQueryResult,
     data_result: &DataResult,
-    entity_props: &mut EntityProperties,
 ) {
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
@@ -1261,18 +1250,18 @@ fn entity_props_ui(
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
             pinhole_props_ui(ctx, ui, data_result);
-            depth_props_ui(ctx, ui, data_result, entity_path, entity_props);
+            depth_props_ui(ctx, ui, data_result, entity_path);
             transform3d_visualization_ui(ctx, ui, data_result);
         });
 }
 
-fn colormap_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
-    let (query, _store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-
-    // TODO(andreas): Queries the entire image archetype for no good reason, but all of this ui is a hack anyways.
-    let results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
-    let colormap = results.get_mono_with_fallback::<Colormap>();
+fn colormap_props_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+    depth_image_results: &HybridLatestAtResults<'_>,
+) {
+    let colormap = depth_image_results.get_mono_with_fallback::<Colormap>();
     let mut new_colormap = colormap;
 
     ui.label("Color map");
@@ -1401,7 +1390,6 @@ fn depth_props_ui(
     ui: &mut egui::Ui,
     data_result: &DataResult,
     entity_path: &EntityPath,
-    entity_props: &mut EntityProperties,
 ) -> Option<()> {
     re_tracing::profile_function!();
 
@@ -1428,20 +1416,24 @@ fn depth_props_ui(
     .on_hover_text("The entity path of the pinhole transform being used to do the backprojection.");
     ui.end_row();
 
-    depth_from_world_scale_ui(ctx, ui, data_result);
-    backproject_radius_scale_ui(ui, &mut entity_props.backproject_radius_scale);
-    colormap_props_ui(ctx, ui, data_result);
+    let (query, _store) =
+        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
+    let depth_image_results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
+
+    depth_from_world_scale_ui(ctx, ui, data_result, &depth_image_results);
+    backproject_radius_scale_ui(ctx, ui, data_result, &depth_image_results);
+    colormap_props_ui(ctx, ui, data_result, &depth_image_results);
 
     Some(())
 }
 
-fn depth_from_world_scale_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
-    let (query, _store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-
-    // TODO(andreas): Queries the entire image archetype for no good reason, but all of this ui is a hack anyways.
-    let results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
-    let depth_meter = results.get_mono_with_fallback::<DepthMeter>();
+fn depth_from_world_scale_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+    depth_image_results: &HybridLatestAtResults<'_>,
+) {
+    let depth_meter = depth_image_results.get_mono_with_fallback::<DepthMeter>();
 
     ui.label("Backproject meter");
     let mut value = *depth_meter;
@@ -1464,9 +1456,16 @@ fn depth_from_world_scale_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_resu
     ui.end_row();
 }
 
-fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue<f32>) {
+fn backproject_radius_scale_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+    depth_image_results: &HybridLatestAtResults<'_>,
+) {
+    let radius_scale = depth_image_results.get_mono_with_fallback::<FillRatio>();
+
     ui.label("Backproject radius scale");
-    let mut value = *property.get();
+    let mut value = *radius_scale.0;
     let speed = (value * 0.01).at_least(0.001);
     let response = ui
         .add(
@@ -1481,10 +1480,10 @@ fn backproject_radius_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoVal
             Double-click to reset.",
         );
     if response.double_clicked() {
-        *property = EditableAutoValue::Auto(2.0);
+        data_result.clear_individual_override::<FillRatio>(ctx.viewer_ctx);
         response.surrender_focus();
     } else if response.changed() {
-        *property = EditableAutoValue::UserEdited(value);
+        data_result.save_individual_override(ctx.viewer_ctx, &FillRatio(value.into()));
     }
     ui.end_row();
 }

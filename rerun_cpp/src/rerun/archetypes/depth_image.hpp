@@ -8,6 +8,7 @@
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/fill_ratio.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -91,6 +92,13 @@ namespace rerun::archetypes {
         /// If not set, the depth image will be rendered using the Turbo colormap.
         std::optional<rerun::components::Colormap> colormap;
 
+        /// Scale the radii of the points in the point cloud generated from this image.
+        ///
+        /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+        /// if it is at the same depth, leaving no gaps.
+        /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+        std::optional<rerun::components::FillRatio> point_fill_ratio;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.components.DepthImageIndicator";
@@ -160,6 +168,17 @@ namespace rerun::archetypes {
         /// If not set, the depth image will be rendered using the Turbo colormap.
         DepthImage with_colormap(rerun::components::Colormap _colormap) && {
             colormap = std::move(_colormap);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Scale the radii of the points in the point cloud generated from this image.
+        ///
+        /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
+        /// if it is at the same depth, leaving no gaps.
+        /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+        DepthImage with_point_fill_ratio(rerun::components::FillRatio _point_fill_ratio) && {
+            point_fill_ratio = std::move(_point_fill_ratio);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -5137,6 +5137,7 @@ version = "0.17.0-alpha.4"
 dependencies = [
  "anyhow",
  "backtrace",
+ "bytemuck",
  "criterion",
  "document-features",
  "itertools 0.13.0",

@@ -29,6 +29,7 @@ fn depth_image_roundtrip() {
         meter: Some(DepthMeter(1000.0)),
         draw_order: None,
         colormap: None,
+        point_fill_ratio: None,
     }];
 
     let all_arch_serialized = [

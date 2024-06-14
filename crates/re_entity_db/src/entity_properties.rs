@@ -1,14 +1,11 @@
 #[cfg(feature = "serde")]
 use re_log_types::EntityPath;
 
-#[cfg(feature = "serde")]
-use crate::EditableAutoValue;
-
 // ----------------------------------------------------------------------------
 
 /// Properties for a collection of entities.
 #[cfg(feature = "serde")]
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPropertyMap {
     props: nohash_hasher::IntMap<EntityPath, EntityProperties>,
@@ -88,15 +85,12 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 // ----------------------------------------------------------------------------
 
 #[cfg(feature = "serde")]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
     // TODO(#5067): Test property used so we don't have to continuously adjust existing tests while we're dismantling `EntityProperties`.
     pub test_property: bool,
-
-    /// Used to scale the radii of the points in the resulting point cloud.
-    pub backproject_radius_scale: EditableAutoValue<f32>, // TODO(andreas): should be a component on the DepthImage archetype.
 }
 
 #[cfg(feature = "serde")]
@@ -104,7 +98,6 @@ impl Default for EntityProperties {
     fn default() -> Self {
         Self {
             test_property: true,
-            backproject_radius_scale: EditableAutoValue::Auto(1.0),
         }
     }
 }
@@ -115,11 +108,6 @@ impl EntityProperties {
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
             test_property: self.test_property && child.test_property,
-
-            backproject_radius_scale: self
-                .backproject_radius_scale
-                .or(&child.backproject_radius_scale)
-                .clone(),
         }
     }
 
@@ -130,25 +118,17 @@ impl EntityProperties {
     ///
     /// This is important to combine the base-layer of up-to-date auto-values with values
     /// loaded from the Blueprint store where the Auto values are not up-to-date.
+    #[allow(clippy::unused_self)] // TODO(andreas): we're on the way out anyways :)
     pub fn merge_with(&self, other: &Self) -> Self {
         Self {
             test_property: other.test_property,
-
-            backproject_radius_scale: other
-                .backproject_radius_scale
-                .or(&self.backproject_radius_scale)
-                .clone(),
         }
     }
 
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
     pub fn has_edits(&self, other: &Self) -> bool {
-        let Self {
-            test_property,
-            backproject_radius_scale,
-        } = self;
+        let Self { test_property } = self;
 
         test_property != &other.test_property
-            || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
     }
 }

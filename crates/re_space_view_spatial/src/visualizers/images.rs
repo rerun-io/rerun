@@ -4,9 +4,9 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_entity_db::{EntityPath, EntityProperties};
+use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query::range_zip_1x4;
+use re_query::range_zip_1x5;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     RenderContext,
@@ -14,7 +14,7 @@ use re_renderer::{
 use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
-    components::{Color, Colormap, DepthMeter, DrawOrder, TensorData, ViewCoordinates},
+    components::{Color, Colormap, DepthMeter, DrawOrder, FillRatio, TensorData, ViewCoordinates},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype, ComponentNameSet,
 };
@@ -160,6 +160,7 @@ struct ImageComponentData<'a> {
     draw_order: Option<&'a DrawOrder>,
     colormap: Option<&'a Colormap>,
     depth_meter: Option<&'a DepthMeter>,
+    fill_ratio: Option<&'a FillRatio>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -411,7 +412,6 @@ impl ImageVisualizer {
         render_ctx: &RenderContext,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
-        ent_props: &EntityProperties,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -439,10 +439,6 @@ impl ImageVisualizer {
         let meaning = TensorDataMeaning::Depth;
 
         for data in data {
-            // NOTE: we ignore the `DepthMeter` component here because we get it from
-            // `EntityProperties::depth_from_world_scale` instead, which is initialized to the
-            // same value, but the user may have edited it.
-
             if !data.tensor.is_shaped_like_an_image() {
                 continue;
             }
@@ -471,6 +467,7 @@ impl ImageVisualizer {
                         .depth_meter
                         .copied()
                         .unwrap_or_else(|| self.fallback_for(ctx));
+                    let fill_ratio = data.fill_ratio.copied().unwrap_or_default();
 
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
@@ -480,13 +477,13 @@ impl ImageVisualizer {
                         render_ctx,
                         transforms,
                         ent_context,
-                        ent_props,
                         tensor_data_row_id,
                         &tensor,
                         entity_path,
                         parent_pinhole_path,
                         colormap,
                         depth_meter,
+                        fill_ratio,
                     ) {
                         Ok(cloud) => {
                             self.data.add_bounding_box(
@@ -556,13 +553,13 @@ impl ImageVisualizer {
         render_ctx: &RenderContext,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
-        properties: &EntityProperties,
         tensor_data_row_id: RowId,
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
         colormap: Colormap,
         depth_meter: DepthMeter,
+        radius_scale: FillRatio,
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
@@ -613,12 +610,10 @@ impl ImageVisualizer {
         let world_depth_from_texture_depth = 1.0 / depth_meter.0;
 
         // We want point radius to be defined in a scale where the radius of a point
-        // is a factor (`backproject_radius_scale`) of the diameter of a pixel projected
-        // at that distance.
+        // is a factor of the diameter of a pixel projected at that distance.
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
         let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * height as f32);
-        let radius_scale = *properties.backproject_radius_scale;
-        let point_radius_from_world_depth = radius_scale * pixel_width_from_depth;
+        let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
         Ok(DepthCloud {
             world_from_rdf,
@@ -742,14 +737,7 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &mut depth_clouds,
-            |visualizer,
-             ctx,
-             _depth_clouds,
-             transforms,
-             _entity_props,
-             entity_path,
-             spatial_ctx,
-             data| {
+            |visualizer, ctx, _depth_clouds, transforms, entity_path, spatial_ctx, data| {
                 visualizer.process_image_data(
                     ctx,
                     render_ctx,
@@ -766,14 +754,7 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &mut depth_clouds,
-            |visualizer,
-             ctx,
-             _depth_clouds,
-             transforms,
-             _entity_props,
-             entity_path,
-             spatial_ctx,
-             data| {
+            |visualizer, ctx, _depth_clouds, transforms, entity_path, spatial_ctx, data| {
                 visualizer.process_segmentation_image_data(
                     ctx,
                     render_ctx,
@@ -790,20 +771,12 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &mut depth_clouds,
-            |visualizer,
-             ctx,
-             depth_clouds,
-             transforms,
-             entity_props,
-             entity_path,
-             spatial_ctx,
-             data| {
+            |visualizer, ctx, depth_clouds, transforms, entity_path, spatial_ctx, data| {
                 visualizer.process_depth_image_data(
                     ctx,
                     render_ctx,
                     depth_clouds,
                     transforms,
-                    entity_props,
                     entity_path,
                     spatial_ctx,
                     data,
@@ -877,7 +850,6 @@ impl ImageVisualizer {
             &QueryContext<'_>,
             &mut Vec<DepthCloud>,
             &TransformContext,
-            &EntityProperties,
             &EntityPath,
             &SpatialSceneEntityContext<'_>,
             &mut dyn Iterator<Item = ImageComponentData<'_>>,
@@ -890,7 +862,7 @@ impl ImageVisualizer {
             view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.image,
-            |ctx, entity_path, entity_props, spatial_ctx, results| {
+            |ctx, entity_path, _entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
                 use re_space_view::RangeResultsExt as _;
@@ -906,16 +878,18 @@ impl ImageVisualizer {
                 let draw_orders = results.get_or_empty_dense(resolver)?;
                 let colormap = results.get_or_empty_dense(resolver)?;
                 let depth_meter = results.get_or_empty_dense(resolver)?;
+                let fill_ratio = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x4(
+                let mut data = range_zip_1x5(
                     tensors.range_indexed(),
                     draw_orders.range_indexed(),
                     colors.range_indexed(),
                     colormap.range_indexed(),
                     depth_meter.range_indexed(),
+                    fill_ratio.range_indexed(),
                 )
                 .filter_map(
-                    |(&index, tensors, draw_orders, colors, colormap, depth_meter)| {
+                    |(&index, tensors, draw_orders, colors, colormap, depth_meter, fill_ratio)| {
                         tensors.first().map(|tensor| ImageComponentData {
                             index,
                             tensor,
@@ -923,6 +897,7 @@ impl ImageVisualizer {
                             draw_order: draw_orders.and_then(|draw_orders| draw_orders.first()),
                             colormap: colormap.and_then(|colormap| colormap.first()),
                             depth_meter: depth_meter.and_then(|depth_meter| depth_meter.first()),
+                            fill_ratio: fill_ratio.and_then(|fill_ratio| fill_ratio.first()),
                         })
                     },
                 );
@@ -932,7 +907,6 @@ impl ImageVisualizer {
                     ctx,
                     depth_clouds,
                     transforms,
-                    entity_props,
                     entity_path,
                     spatial_ctx,
                     &mut data,

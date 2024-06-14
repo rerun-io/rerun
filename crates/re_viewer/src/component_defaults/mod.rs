@@ -150,6 +150,10 @@ pub fn list_default_components(
             DrawOrder::default().to_arrow()?,
         ),
         (
+            <FillRatio as Loggable>::name(),
+            FillRatio::default().to_arrow()?,
+        ),
+        (
             <HalfSizes2D as Loggable>::name(),
             HalfSizes2D::default().to_arrow()?,
         ),
