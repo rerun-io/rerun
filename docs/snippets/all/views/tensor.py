@@ -9,5 +9,13 @@ rr.init("rerun_example_tensor", spawn=True)
 tensor = np.random.randint(0, 256, (8, 6, 3, 5), dtype=np.uint8)
 rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "channel", "batch")))
 
-blueprint = rrb.Blueprint(rrb.TensorView(origin="tensor", name="Tensor"), collapse_panels=True)
+blueprint = rrb.Blueprint(
+    rrb.TensorView(
+        origin="tensor",
+        name="Tensor",
+        # Set a custom colormap & gamma. See `rr.components.Colormap` for which colormaps are available.
+        colormap=rrb.ScalarColormap(colormap="turbo", gamma=1.5),
+    ),
+    collapse_panels=True,
+)
 rr.send_blueprint(blueprint)
