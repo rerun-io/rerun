@@ -51,7 +51,7 @@ class DepthImage(DepthImageExt, Archetype):
     )
 
     # Log the tensor.
-    rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0, backproject_radius_scale=0.2))
+    rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0, colormap="viridis"))
     ```
     <center>
     <picture>
