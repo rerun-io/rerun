@@ -10,6 +10,7 @@ include "./components/depth_meter.fbs";
 include "./components/disconnected_space.fbs";
 include "./components/draw_order.fbs";
 include "./components/fill_ratio.fbs";
+include "./components/gamma_correction.fbs";
 include "./components/half_sizes2d.fbs";
 include "./components/half_sizes3d.fbs";
 include "./components/image_plane_distance.fbs";

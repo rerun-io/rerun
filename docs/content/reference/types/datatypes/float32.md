@@ -19,4 +19,5 @@ A single-precision 32-bit IEEE 754 floating point number.
 
 * [`AxisLength`](../components/axis_length.md?speculative-link)
 * [`FillRatio`](../components/fill_ratio.md?speculative-link)
+* [`GammaCorrection`](../components/gamma_correction.md?speculative-link)
 * [`ImagePlaneDistance`](../components/image_plane_distance.md?speculative-link)

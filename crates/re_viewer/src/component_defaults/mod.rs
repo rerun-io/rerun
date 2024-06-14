@@ -149,6 +149,10 @@ pub fn list_default_components(
             FillRatio::default().to_arrow()?,
         ),
         (
+            <GammaCorrection as Loggable>::name(),
+            GammaCorrection::default().to_arrow()?,
+        ),
+        (
             <HalfSizes2D as Loggable>::name(),
             HalfSizes2D::default().to_arrow()?,
         ),

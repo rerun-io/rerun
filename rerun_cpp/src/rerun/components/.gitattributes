@@ -21,6 +21,7 @@ disconnected_space.hpp linguist-generated=true
 draw_order.cpp linguist-generated=true
 draw_order.hpp linguist-generated=true
 fill_ratio.hpp linguist-generated=true
+gamma_correction.hpp linguist-generated=true
 half_sizes2d.hpp linguist-generated=true
 half_sizes3d.hpp linguist-generated=true
 image_plane_distance.hpp linguist-generated=true

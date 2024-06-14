@@ -38,6 +38,7 @@ from .disconnected_space import (
 )
 from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
+from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
 from .half_sizes2d import HalfSizes2D, HalfSizes2DBatch, HalfSizes2DType
 from .half_sizes3d import HalfSizes3D, HalfSizes3DBatch, HalfSizes3DType
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch, ImagePlaneDistanceType
@@ -135,6 +136,9 @@ __all__ = [
     "FillRatio",
     "FillRatioBatch",
     "FillRatioType",
+    "GammaCorrection",
+    "GammaCorrectionBatch",
+    "GammaCorrectionType",
     "HalfSizes2D",
     "HalfSizes2DBatch",
     "HalfSizes2DType",
