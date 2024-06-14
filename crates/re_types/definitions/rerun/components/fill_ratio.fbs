@@ -15,6 +15,7 @@ namespace rerun.components;
 /// Valid range is from 0 to max float although typically values above 1.0 are not useful
 /// Defaults to 1.0.
 struct FillRatio (
+  "attr.docs.unreleased",
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
