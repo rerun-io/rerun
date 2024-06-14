@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rerun-notebook"
+version = "0.17.0-alpha.4"
+dependencies = ["anywidget"]
+readme = "README.md"
+
+[project.optional-dependencies]
+dev = ["watchfiles", "jupyterlab", "hatch"]
+
+# automatically add the dev feature to the default env (e.g., hatch shell)
+[tool.hatch.envs.default]
+features = ["dev"]
+
+
+[tool.hatch.build]
+only-packages = true
+artifacts = ["src/rerun_notebook/static/*"]
+
+[tool.hatch.build.hooks.jupyter-builder]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = ["src/rerun_notebook/static/widget.js"]
+skip-if-exists = ["src/rerun_notebook/static/widget.js"]
+dependencies = ["hatch-jupyter-builder>=0.5.0"]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+npm = "npm"
+build_cmd = "build"

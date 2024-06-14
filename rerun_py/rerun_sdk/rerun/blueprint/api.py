@@ -9,7 +9,6 @@ from .._baseclasses import AsComponents
 from .._spawn import _spawn_viewer
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
-from ..notebook import as_html
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, PanelState, PanelStateLike, RowShareArrayLike, VisibleLike
@@ -118,10 +117,6 @@ class SpaceView:
 
         for prop_name, prop in self.properties.items():
             stream.log(f"{self.blueprint_path()}/{prop_name}", prop, recording=stream)  # type: ignore[attr-defined]
-
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
 
 
 class Container:
@@ -236,10 +231,6 @@ class Container:
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
-
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
 
 
 def _to_state(expanded: bool | None, state: PanelStateLike | None) -> PanelStateLike | None:
@@ -524,10 +515,6 @@ class Blueprint:
             self.time_panel._log_to_stream(stream)
         elif self.collapse_panels:
             TimePanel(state="collapsed")._log_to_stream(stream)
-
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
 
     def connect(
         self,
