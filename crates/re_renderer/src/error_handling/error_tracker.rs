@@ -3,14 +3,14 @@ use parking_lot::Mutex;
 
 use crate::config::WgpuBackendType;
 
-use super::handle_async_error;
+use super::{handle_async_error, wgpu_core_error::WgpuCoreWrappedContextError};
 
-#[cfg(not(webgpu))]
-use super::wgpu_core_error::WrappedContextError;
-
-#[cfg(webgpu)]
-#[derive(Hash, PartialEq, Eq, Debug)]
-pub struct WrappedContextError(pub String);
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub enum ContextError {
+    WgpuCoreError(WgpuCoreWrappedContextError),
+    #[cfg(web)]
+    WebGpuError(String),
+}
 
 pub struct ErrorEntry {
     /// Frame index for frame on which this error was last logged.
@@ -32,7 +32,7 @@ pub struct ErrorEntry {
 /// TODO(#4507): Users should be able to create their own scopes feeding into separate trackers.
 #[derive(Default)]
 pub struct ErrorTracker {
-    pub errors: Mutex<HashMap<WrappedContextError, ErrorEntry>>,
+    pub errors: Mutex<HashMap<ContextError, ErrorEntry>>,
 }
 
 impl ErrorTracker {
@@ -120,50 +120,42 @@ impl ErrorTracker {
                     last_occurred_frame_index: frame_index,
                     description: description.clone(),
                 };
-                cfg_if::cfg_if! {
-                    if #[cfg(web)] {
-                        if self.errors.lock().insert(
-                            WrappedContextError(description.clone()),
-                            entry
-                        ).is_none() {
-                            let base_description = if is_internal_error {
-                                "Internal wgpu/webgpu error"
-                            } else {
-                                "Wgpu/webgpu validation error"
-                            };
 
-                            re_log::error!("{base_description} {frame_index}: {description}");
+                let should_log = match _source.downcast::<wgpu_core::error::ContextError>() {
+                    Ok(ctx_err) => {
+                        if ctx_err
+                            .cause
+                            .downcast_ref::<wgpu_core::command::CommandEncoderError>()
+                            .is_some()
+                        {
+                            // Actual command encoder errors never carry any meaningful
+                            // information: ignore them.
+                            return;
                         }
-                    } else {
-                        match _source.downcast::<wgpu_core::error::ContextError>() {
-                            Ok(ctx_err) => {
-                                if ctx_err
-                                    .cause
-                                    .downcast_ref::<wgpu_core::command::CommandEncoderError>()
-                                    .is_some()
-                                {
-                                    // Actual command encoder errors never carry any meaningful
-                                    // information: ignore them.
-                                    return;
-                                }
 
-                                let ctx_err = WrappedContextError(ctx_err);
-                                if self.errors.lock().insert(ctx_err, entry).is_none() {
-                                    let base_description = if is_internal_error {
-                                        "Internal wgpu error"
-                                    } else {
-                                        "Wgpu validation error"
-                                    };
-                                    re_log::error!("{base_description} {frame_index}: {description}");
-                                }
-                            }
-                            Err(_) => if is_internal_error {
-                                re_log::error!("Unknown internal wgpu error {frame_index}: {description}");
-                            } else {
-                                re_log::error!("Unknown wgpu validation error {frame_index}: {description}");
-                            },
-                        }
+                        let ctx_err =
+                            ContextError::WgpuCoreError(WgpuCoreWrappedContextError(ctx_err));
+                        self.errors.lock().insert(ctx_err, entry).is_none()
                     }
+
+                    #[cfg(not(web))]
+                    Err(_) => true,
+
+                    // We might be running with WebGPU on the web and therefore don't have a wgpu_core type.
+                    #[cfg(web)]
+                    Err(_) => {
+                        let ctx_err = ContextError::WebGpuError(description.clone());
+                        self.errors.lock().insert(ctx_err, entry).is_none()
+                    }
+                };
+
+                if should_log {
+                    let base_description = if is_internal_error {
+                        "Internal wgpu error"
+                    } else {
+                        "Wgpu validation error"
+                    };
+                    re_log::error!("{base_description} {frame_index}: {description}");
                 }
             }
         }
