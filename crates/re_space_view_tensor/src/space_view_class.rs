@@ -356,14 +356,10 @@ impl TensorSpaceView {
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
         let desired_size = match state.texture_settings.scaling {
             TextureScaling::Original => img_size,
-            TextureScaling::Fill => {
-                let desired_size = ui.available_size();
-                if state.texture_settings.keep_aspect_ratio {
-                    let scale = (desired_size / img_size).min_elem();
-                    img_size * scale
-                } else {
-                    desired_size
-                }
+            TextureScaling::Fill => ui.available_size(),
+            TextureScaling::FillKeepAspectRatio => {
+                let scale = (ui.available_size() / img_size).min_elem();
+                img_size * scale
             }
         };
 
@@ -395,6 +391,9 @@ enum TextureScaling {
 
     /// Scale the texture for the largest possible fit in the UI container.
     Fill,
+
+    /// Scale the texture for the largest possible fit in the UI container, but keep the original aspect ratio.
+    FillKeepAspectRatio,
 }
 
 impl Default for TextureScaling {
@@ -408,6 +407,7 @@ impl Display for TextureScaling {
         match self {
             Self::Original => "Original".fmt(f),
             Self::Fill => "Fill".fmt(f),
+            Self::FillKeepAspectRatio => "Fill Keep Aspect Ratio".fmt(f),
         }
     }
 }
@@ -415,9 +415,6 @@ impl Display for TextureScaling {
 /// Scaling, filtering, aspect ratio, etc for the rendered texture.
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct TextureSettings {
-    /// Should the aspect ratio of the tensor be kept when scaling?
-    keep_aspect_ratio: bool,
-
     /// Should we scale the texture when rendering?
     scaling: TextureScaling,
 
@@ -428,7 +425,6 @@ struct TextureSettings {
 impl Default for TextureSettings {
     fn default() -> Self {
         Self {
-            keep_aspect_ratio: true,
             scaling: TextureScaling::default(),
             options: egui::TextureOptions {
                 // This is best for low-res depth-images and the like
@@ -443,11 +439,7 @@ impl Default for TextureSettings {
 // ui
 impl TextureSettings {
     fn ui(&mut self, ui: &mut egui::Ui) {
-        let Self {
-            keep_aspect_ratio,
-            scaling,
-            options,
-        } = self;
+        let Self { scaling, options } = self;
 
         ui.grid_left_hand_label("Scale");
         ui.vertical(|ui| {
@@ -458,10 +450,8 @@ impl TextureSettings {
                         |ui: &mut egui::Ui, e| ui.selectable_value(scaling, e, e.to_string());
                     selectable_value(ui, TextureScaling::Original);
                     selectable_value(ui, TextureScaling::Fill);
+                    selectable_value(ui, TextureScaling::FillKeepAspectRatio);
                 });
-            if *scaling == TextureScaling::Fill {
-                ui.re_checkbox(keep_aspect_ratio, "Keep aspect ratio");
-            }
         });
         ui.end_row();
 
