@@ -6479,6 +6479,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_temporal_batch"
+version = "0.17.0-alpha.4"
+dependencies = [
+ "re_arrow2",
+ "re_chunk",
+ "rerun",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
