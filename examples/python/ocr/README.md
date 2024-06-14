@@ -94,7 +94,7 @@ rr.log(
     timeless=True
 )
 ```
-In the detection of the text, the detection id and the confidence are given supplementary.
+Additionally, in the detection of the text, the detection id and the confidence are specified.
 ```python
 rr.log(
     f"{base_path}/Detections/{detection['id']}",
