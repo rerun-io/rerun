@@ -332,11 +332,17 @@ fn clears() -> anyhow::Result<()> {
     Ok(())
 }
 
-// TODO: this cannot work as-is with read-time clears.
-#[cfg(TODO)]
-/// Test for GC behavior following clear. This functionality is expected by blueprints.
 #[test]
 fn clear_and_gc() -> anyhow::Result<()> {
+    use re_data_store::DataStoreStats;
+
+    if true {
+        // TODO(#6552): Keeping this around for now so we don't forget about it, but this cannot work with
+        // read-time clears.
+        // We will replace this with a dedicated store API to remove an entity path in its entirety.
+        return Ok(());
+    }
+
     re_log::setup_logging();
 
     let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
