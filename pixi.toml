@@ -222,7 +222,9 @@ js-setup = "npm i -g yarn"
 js-install = { cmd = "yarn install --cwd rerun_js", depends_on = ["js-setup"] }
 
 # Build JS packages
-js-build = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = ["js-install"] }
+js-build = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = [
+  "js-install",
+] }
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
