@@ -63,7 +63,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 def log_temporal_batch(
     entity_path: str,
     times: Iterable[TimeBatchLike],
-    components: Iterable[ComponentBatchLike | Iterable[ComponentBatchLike]],
+    components: Iterable[ComponentBatchLike],
 ) -> None:
     """
     Log a temporal batch of data.
@@ -82,13 +82,16 @@ def log_temporal_batch(
 
     timelines_args = {}
     for t in times:
+        timeline_name = t.timeline_name()
         temporal_batch = t.as_arrow_array()
         if expected_length is None:
             expected_length = len(temporal_batch)
         elif len(temporal_batch) != expected_length:
-            raise ValueError("All times and components in a batch must have the same length.")
+            raise ValueError(
+                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(temporal_batch)} for timeline: {timeline_name}"
+            )
 
-        timelines_args[t.timeline_name()] = temporal_batch
+        timelines_args[timeline_name] = temporal_batch
 
     indicators = []
 
@@ -97,39 +100,16 @@ def log_temporal_batch(
         if isinstance(c, IndicatorComponentBatch):
             indicators.append(c)
             continue
-        if hasattr(c, "component_name"):
-            temporal_batch = c.as_arrow_array()  # type: ignore[union-attr]
-            if expected_length is None:
-                expected_length = len(temporal_batch)
-            elif len(temporal_batch) != expected_length:
-                raise ValueError("All times and components in a batch must have the same length.")
+        component_name = c.component_name()
+        temporal_batch = c.as_arrow_array()  # type: ignore[union-attr]
+        if expected_length is None:
+            expected_length = len(temporal_batch)
+        elif len(temporal_batch) != expected_length:
+            raise ValueError(
+                f"All times and components in a batch must have the same length. Expected length: {expected_length} but got: {len(temporal_batch)} for component: {component_name}"
+            )
 
-            components_args[c.component_name()] = temporal_batch
-        else:
-            # TODO(jleibs): We can probably code-gen some helpers to make this more efficient.
-            # Would be better to extend an existing array than produce a new one.
-            component_name = None
-            arrays = []
-            offsets = []
-            accum = 0
-            offsets.append(accum)
-            for cc in c:
-                if component_name is None:
-                    component_name = cc.component_name()
-                elif component_name != cc.component_name():
-                    raise ValueError("All components in a batch must have the same component name.")
-                arrays.append(cc.as_arrow_array())
-                accum += len(arrays[-1])
-                offsets.append(accum)
-            if component_name is None:
-                raise ValueError("Empty batch of components.")
-            if expected_length is None:
-                expected_length = len(arrays)
-            elif len(arrays) != expected_length:
-                raise ValueError("All times and components in a batch must have the same length.")
-            temporal_batch = pa.concat_arrays(arrays)
-
-            components_args[component_name] = pa.ListArray.from_arrays(offsets=offsets, values=temporal_batch)
+        components_args[component_name] = temporal_batch
 
     for i in indicators:
         if expected_length is None:
