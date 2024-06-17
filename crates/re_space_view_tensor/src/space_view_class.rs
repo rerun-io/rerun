@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt::Display};
+use std::collections::BTreeMap;
 
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
@@ -8,8 +8,8 @@ use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
 use re_types::{
-    blueprint::archetypes::ScalarColormap,
-    components::{Colormap, GammaCorrection},
+    blueprint::archetypes::{ScalarColormap, TensorSliceFilter},
+    components::{Colormap, GammaCorrection, ImageScalingMode, MagnificationFilter},
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,
@@ -36,9 +36,6 @@ pub struct ViewTensorState {
     ///
     /// This get automatically reset if/when the current tensor shape changes.
     pub(crate) slice: SliceSelection,
-
-    /// Scaling, filtering, aspect ratio, etc for the rendered texture.
-    texture_settings: TextureSettings,
 
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
@@ -133,6 +130,7 @@ impl SpaceViewClass for TensorSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
 
+        // TODO(andreas): Listitemify
         ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
             if let Some((tensor_data_row_id, tensor)) = &state.tensor {
                 let tensor_stats = ctx
@@ -144,12 +142,11 @@ impl SpaceViewClass for TensorSpaceView {
                 let meter = None;
                 tensor_summary_ui_grid_contents(ui, tensor, tensor, meaning, meter, &tensor_stats);
             }
-
-            state.texture_settings.ui(ui);
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
             view_property_ui::<ScalarColormap>(ctx, ui, view_id, self, state);
+            view_property_ui::<TensorSliceFilter>(ctx, ui, view_id, self, state);
         });
 
         if let Some((_, tensor)) = &state.tensor {
@@ -331,8 +328,8 @@ impl TensorSpaceView {
             ctx.blueprint_query,
             view_id,
         );
-        let colormap = colormapping.component_or_fallback::<Colormap>(ctx, self, state)?;
-        let gamma = colormapping.component_or_fallback::<GammaCorrection>(ctx, self, state)?;
+        let colormap: Colormap = colormapping.component_or_fallback(ctx, self, state)?;
+        let gamma: GammaCorrection = colormapping.component_or_fallback(ctx, self, state)?;
 
         let Some(render_ctx) = ctx.render_ctx else {
             return Err(anyhow::Error::msg("No render context available."));
@@ -352,12 +349,19 @@ impl TensorSpaceView {
         )?;
         let [width, height] = colormapped_texture.width_height();
 
+        let slice_filter = ViewProperty::from_archetype::<TensorSliceFilter>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        );
+        let scaling: ImageScalingMode = slice_filter.component_or_fallback(ctx, self, state)?;
+
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
-        let desired_size = match state.texture_settings.scaling {
-            TextureScaling::Original => img_size,
-            TextureScaling::Fill => ui.available_size(),
-            TextureScaling::FillKeepAspectRatio => {
+        let desired_size = match scaling {
+            ImageScalingMode::Original => img_size,
+            ImageScalingMode::Fill => ui.available_size(),
+            ImageScalingMode::FillKeepAspectRatio => {
                 let scale = (ui.available_size() / img_size).min_elem();
                 img_size * scale
             }
@@ -367,113 +371,28 @@ impl TensorSpaceView {
         let rect = response.rect;
         let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
 
+        let mag_filter: MagnificationFilter =
+            slice_filter.component_or_fallback(ctx, self, state)?;
+        let texture_options = egui::TextureOptions {
+            magnification: match mag_filter {
+                MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
+                MagnificationFilter::Linear => egui::TextureFilter::Linear,
+            },
+            minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
+            wrap_mode: egui::TextureWrapMode::ClampToEdge,
+        };
+
         let debug_name = "tensor_slice";
         gpu_bridge::render_image(
             render_ctx,
             &painter,
             image_rect,
             colormapped_texture,
-            state.texture_settings.options,
+            texture_options,
             debug_name,
         )?;
 
         Ok((response, painter, image_rect))
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Should we scale the rendered texture, and if so, how?
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum TextureScaling {
-    /// No scaling, texture size will match the tensor's width/height dimensions.
-    Original,
-
-    /// Scale the texture for the largest possible fit in the UI container.
-    Fill,
-
-    /// Scale the texture for the largest possible fit in the UI container, but keep the original aspect ratio.
-    FillKeepAspectRatio,
-}
-
-impl Default for TextureScaling {
-    fn default() -> Self {
-        Self::Fill
-    }
-}
-
-impl Display for TextureScaling {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Original => "Original".fmt(f),
-            Self::Fill => "Fill".fmt(f),
-            Self::FillKeepAspectRatio => "Fill Keep Aspect Ratio".fmt(f),
-        }
-    }
-}
-
-/// Scaling, filtering, aspect ratio, etc for the rendered texture.
-#[derive(Copy, Clone, Debug, PartialEq)]
-struct TextureSettings {
-    /// Should we scale the texture when rendering?
-    scaling: TextureScaling,
-
-    /// Specifies the sampling filter used to render the texture.
-    options: egui::TextureOptions,
-}
-
-impl Default for TextureSettings {
-    fn default() -> Self {
-        Self {
-            scaling: TextureScaling::default(),
-            options: egui::TextureOptions {
-                // This is best for low-res depth-images and the like
-                magnification: egui::TextureFilter::Nearest,
-                minification: egui::TextureFilter::Linear,
-                wrap_mode: egui::TextureWrapMode::ClampToEdge,
-            },
-        }
-    }
-}
-
-// ui
-impl TextureSettings {
-    fn ui(&mut self, ui: &mut egui::Ui) {
-        let Self { scaling, options } = self;
-
-        ui.grid_left_hand_label("Scale");
-        ui.vertical(|ui| {
-            egui::ComboBox::from_id_source("texture_scaling")
-                .selected_text(scaling.to_string())
-                .show_ui(ui, |ui| {
-                    let mut selectable_value =
-                        |ui: &mut egui::Ui, e| ui.selectable_value(scaling, e, e.to_string());
-                    selectable_value(ui, TextureScaling::Original);
-                    selectable_value(ui, TextureScaling::Fill);
-                    selectable_value(ui, TextureScaling::FillKeepAspectRatio);
-                });
-        });
-        ui.end_row();
-
-        ui.grid_left_hand_label("Filtering")
-            .on_hover_text("Filtering to use when magnifying");
-
-        fn tf_to_string(tf: egui::TextureFilter) -> &'static str {
-            match tf {
-                egui::TextureFilter::Nearest => "Nearest",
-                egui::TextureFilter::Linear => "Linear",
-            }
-        }
-        egui::ComboBox::from_id_source("texture_filter")
-            .selected_text(tf_to_string(options.magnification))
-            .show_ui(ui, |ui| {
-                let mut selectable_value = |ui: &mut egui::Ui, e| {
-                    ui.selectable_value(&mut options.magnification, e, tf_to_string(e))
-                };
-                selectable_value(ui, egui::TextureFilter::Nearest);
-                selectable_value(ui, egui::TextureFilter::Linear);
-            });
-        ui.end_row();
     }
 }
 
