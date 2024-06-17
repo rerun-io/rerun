@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .memory import memory_recording
 
@@ -17,10 +17,11 @@ from .recording_stream import RecordingStream, get_application_id
 DEFAULT_WIDTH = 950
 DEFAULT_HEIGHT = 712
 
-try:
-    from rerun_notebook import Viewer
-except ImportError:
-    logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
+if TYPE_CHECKING:
+    try:
+        from rerun_notebook import Viewer
+    except ImportError:
+        pass
 
 
 def notebook_show(
@@ -48,6 +49,13 @@ def notebook_show(
 
     """
 
+    try:
+        from rerun_notebook import Viewer
+    except ImportError:
+        logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
+        hack: Any = None
+        return hack
+
     application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
@@ -72,7 +80,7 @@ def notebook_show(
     output_memory = output_stream.memory_recording()  # type: ignore[attr-defined]
 
     data = output_memory.storage.concat_as_bytes(data_memory.storage)
-    return Viewer(  # type: ignore
+    return Viewer(
         width=width,
         height=height,
         recording=data,
