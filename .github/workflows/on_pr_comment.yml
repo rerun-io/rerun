@@ -30,8 +30,7 @@ jobs:
         id: parse
         env:
           GITHUB_COMMENT_BODY: "${{ github.event.comment.body }}"
-        run: |
-          python ./scripts/ci/parse_bot_pr_comment.py >> "$GITHUB_OUTPUT"
+        run: python ./scripts/ci/parse_bot_pr_comment.py
 
   full-check:
     needs: [parse-command]
