@@ -377,8 +377,8 @@ impl Chunk {
     /// This will fail if the passed in data is malformed in any way -- see [`Self::sanity_check`]
     /// for details.
     ///
-    /// Iff you know for sure whether the data is already appropriately sorted or not, specify `is_sorted`.
-    /// When left unspecified (`None`), it will be computed in O(n) time.
+    /// The data is assumed to be sorted in row-order. Sequential row-ids will be generate for each
+    /// row in the chunk.
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
