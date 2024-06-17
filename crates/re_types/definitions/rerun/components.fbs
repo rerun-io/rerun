@@ -14,7 +14,6 @@ include "./components/gamma_correction.fbs";
 include "./components/half_sizes2d.fbs";
 include "./components/half_sizes3d.fbs";
 include "./components/image_plane_distance.fbs";
-include "./components/image_scaling_mode.fbs";
 include "./components/keypoint_id.fbs";
 include "./components/line_strip2d.fbs";
 include "./components/line_strip3d.fbs";

@@ -8,8 +8,11 @@ use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
 use re_types::{
-    blueprint::archetypes::{ScalarColormap, TensorSliceFilter},
-    components::{Colormap, GammaCorrection, ImageScalingMode, MagnificationFilter},
+    blueprint::{
+        archetypes::{TensorScalarMapping, TensorViewFit},
+        components::ViewFit,
+    },
+    components::{Colormap, GammaCorrection, MagnificationFilter},
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,
@@ -145,8 +148,8 @@ impl SpaceViewClass for TensorSpaceView {
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            view_property_ui::<ScalarColormap>(ctx, ui, view_id, self, state);
-            view_property_ui::<TensorSliceFilter>(ctx, ui, view_id, self, state);
+            view_property_ui::<TensorScalarMapping>(ctx, ui, view_id, self, state);
+            view_property_ui::<TensorViewFit>(ctx, ui, view_id, self, state);
         });
 
         if let Some((_, tensor)) = &state.tensor {
@@ -323,13 +326,15 @@ impl TensorSpaceView {
     ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
         re_tracing::profile_function!();
 
-        let colormapping = ViewProperty::from_archetype::<ScalarColormap>(
+        let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             view_id,
         );
-        let colormap: Colormap = colormapping.component_or_fallback(ctx, self, state)?;
-        let gamma: GammaCorrection = colormapping.component_or_fallback(ctx, self, state)?;
+        let colormap: Colormap = scalar_mapping.component_or_fallback(ctx, self, state)?;
+        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(ctx, self, state)?;
+        let mag_filter: MagnificationFilter =
+            scalar_mapping.component_or_fallback(ctx, self, state)?;
 
         let Some(render_ctx) = ctx.render_ctx else {
             return Err(anyhow::Error::msg("No render context available."));
@@ -349,19 +354,19 @@ impl TensorSpaceView {
         )?;
         let [width, height] = colormapped_texture.width_height();
 
-        let slice_filter = ViewProperty::from_archetype::<TensorSliceFilter>(
+        let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             view_id,
-        );
-        let scaling: ImageScalingMode = slice_filter.component_or_fallback(ctx, self, state)?;
+        )
+        .component_or_fallback(ctx, self, state)?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
-        let desired_size = match scaling {
-            ImageScalingMode::Original => img_size,
-            ImageScalingMode::Fill => ui.available_size(),
-            ImageScalingMode::FillKeepAspectRatio => {
+        let desired_size = match view_fit {
+            ViewFit::Original => img_size,
+            ViewFit::Fill => ui.available_size(),
+            ViewFit::FillKeepAspectRatio => {
                 let scale = (ui.available_size() / img_size).min_elem();
                 img_size * scale
             }
@@ -370,9 +375,6 @@ impl TensorSpaceView {
         let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
         let rect = response.rect;
         let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
-
-        let mag_filter: MagnificationFilter =
-            slice_filter.component_or_fallback(ctx, self, state)?;
         let texture_options = egui::TextureOptions {
             magnification: match mag_filter {
                 MagnificationFilter::Nearest => egui::TextureFilter::Nearest,

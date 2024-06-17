@@ -35,8 +35,10 @@ class TensorView(SpaceView):
         rrb.TensorView(
             origin="tensor",
             name="Tensor",
-            # Set a custom colormap & gamma. See `rr.components.Colormap` for which colormaps are available.
-            colormap=rrb.ScalarColormap(colormap="turbo", gamma=1.5),
+            # Set a scalar mapping with a custom colormap, gamma and magnification filter.
+            scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
+            # Change sizing mode to keep aspect ratio
+            view_fit="FillKeepAspectRatio",
         ),
         collapse_panels=True,
     )
@@ -62,8 +64,8 @@ class TensorView(SpaceView):
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        colormap: blueprint_archetypes.ScalarColormap | None = None,
-        filter: blueprint_archetypes.TensorSliceFilter | None = None,
+        view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,
+        scalar_mapping: blueprint_archetypes.TensorScalarMapping | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TensorView view.
@@ -87,23 +89,23 @@ class TensorView(SpaceView):
             List of default components or component batches to add to the space view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
-        colormap:
+        view_fit:
+            Configures how the selected slice should fit into the view.
+        scalar_mapping:
             Configures how scalars are mapped to color.
-        filter:
-            Configures how the selected slice is displayed.
 
         """
 
         properties: dict[str, AsComponents] = {}
-        if colormap is not None:
-            if not isinstance(colormap, blueprint_archetypes.ScalarColormap):
-                colormap = blueprint_archetypes.ScalarColormap(colormap)
-            properties["ScalarColormap"] = colormap
+        if view_fit is not None:
+            if not isinstance(view_fit, blueprint_archetypes.TensorViewFit):
+                view_fit = blueprint_archetypes.TensorViewFit(view_fit)
+            properties["TensorViewFit"] = view_fit
 
-        if filter is not None:
-            if not isinstance(filter, blueprint_archetypes.TensorSliceFilter):
-                filter = blueprint_archetypes.TensorSliceFilter(filter)
-            properties["TensorSliceFilter"] = filter
+        if scalar_mapping is not None:
+            if not isinstance(scalar_mapping, blueprint_archetypes.TensorScalarMapping):
+                scalar_mapping = blueprint_archetypes.TensorScalarMapping(scalar_mapping)
+            properties["TensorScalarMapping"] = scalar_mapping
 
         super().__init__(
             class_identifier="Tensor",

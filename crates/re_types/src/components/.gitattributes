@@ -16,7 +16,6 @@ gamma_correction.rs linguist-generated=true
 half_sizes2d.rs linguist-generated=true
 half_sizes3d.rs linguist-generated=true
 image_plane_distance.rs linguist-generated=true
-image_scaling_mode.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 line_strip2d.rs linguist-generated=true
 line_strip3d.rs linguist-generated=true

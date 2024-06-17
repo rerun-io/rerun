@@ -13,10 +13,10 @@ blueprint = rrb.Blueprint(
     rrb.TensorView(
         origin="tensor",
         name="Tensor",
-        # Set a custom colormap & gamma. See `rr.components.Colormap` for which colormaps are available.
-        colormap=rrb.ScalarColormap(colormap="turbo", gamma=1.5),
-        # Change texture-filter & scaling.
-        filter=rrb.TensorSliceFilter(scaling="FillKeepAspectRatio", mag_filter="linear"),
+        # Set a scalar mapping with a custom colormap, gamma and magnification filter.
+        scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
+        # Change sizing mode to keep aspect ratio.
+        view_fit="FillKeepAspectRatio",
     ),
     collapse_panels=True,
 )

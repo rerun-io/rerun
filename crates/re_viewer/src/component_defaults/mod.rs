@@ -91,6 +91,10 @@ pub fn list_default_components(
             SpaceViewOrigin::default().to_arrow()?,
         ),
         (
+            <ViewFit as Loggable>::name(),
+            ViewFit::default().to_arrow()?,
+        ),
+        (
             <ViewerRecommendationHash as Loggable>::name(),
             ViewerRecommendationHash::default().to_arrow()?,
         ),
@@ -163,10 +167,6 @@ pub fn list_default_components(
         (
             <ImagePlaneDistance as Loggable>::name(),
             ImagePlaneDistance::default().to_arrow()?,
-        ),
-        (
-            <ImageScalingMode as Loggable>::name(),
-            ImageScalingMode::default().to_arrow()?,
         ),
         (
             <KeypointId as Loggable>::name(),

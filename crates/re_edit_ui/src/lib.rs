@@ -14,11 +14,10 @@ use datatype_editors::{
     edit_f32_zero_to_max_float_raw, edit_singleline_string,
 };
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
+    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
         AggregationPolicy, AxisLength, Color, Colormap, FillRatio, GammaCorrection,
-        ImagePlaneDistance, ImageScalingMode, MagnificationFilter, MarkerSize, Name, Radius,
-        StrokeWidth, Text,
+        ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Radius, StrokeWidth, Text,
     },
 };
 use re_viewer_context::ViewerContext;
@@ -74,14 +73,13 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_enum(ui, "corner2d", value, &Corner2D::ALL)
     });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "imagescalingmode", value, &ImageScalingMode::ALL)
-    });
-    registry.add_singleline_editor_ui(|_ctx, ui, value| {
         edit_enum(ui, "magnificationfilter", value, &MagnificationFilter::ALL)
     });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
         edit_enum(ui, "tseriesaggregator", value, &AggregationPolicy::ALL)
     });
+    registry
+        .add_singleline_editor_ui(|_ctx, ui, value| edit_enum(ui, "viewfit", value, &ViewFit::ALL));
 
     registry.add_multiline_editor_ui(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_editor_ui(visual_bounds2d::singleline_edit_visual_bounds2d);

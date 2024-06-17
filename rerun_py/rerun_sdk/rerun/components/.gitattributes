@@ -18,7 +18,6 @@ gamma_correction.py linguist-generated=true
 half_sizes2d.py linguist-generated=true
 half_sizes3d.py linguist-generated=true
 image_plane_distance.py linguist-generated=true
-image_scaling_mode.py linguist-generated=true
 keypoint_id.py linguist-generated=true
 line_strip2d.py linguist-generated=true
 line_strip3d.py linguist-generated=true
