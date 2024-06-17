@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Log a scalar scalar batch."""
 
+from __future__ import annotations
+
 import numpy as np
 import rerun as rr
-import rerun.blueprint as rrb
 
 rr.init("rerun_example_temporal_batch", spawn=True)
 

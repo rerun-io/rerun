@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Generic, Iterable, Protocol, TypeVar
 
-import numpy.typing as npt
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, fields
 
