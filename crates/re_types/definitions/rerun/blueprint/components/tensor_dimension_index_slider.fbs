@@ -1,0 +1,12 @@
+namespace rerun.blueprint.components;
+
+/// Specifies a concrete index on a tensor dimension.
+struct TensorDimensionIndexSlider (
+    "attr.docs.unreleased",
+    "attr.arrow.transparent",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Hash, PartialEq, Eq, Default",
+    "attr.rust.repr": "transparent"
+) {
+    selection: rerun.blueprint.datatypes.TensorDimensionIndexSlider (order: 100);
+}

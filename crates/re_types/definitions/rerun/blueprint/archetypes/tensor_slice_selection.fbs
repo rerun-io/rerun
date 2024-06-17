@@ -1,0 +1,31 @@
+namespace rerun.blueprint.archetypes;
+
+/// Determines which slice of a tensor is shown.
+table TensorSliceSelection (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default, Hash",
+    "attr.rust.generate_field_info"
+) {
+    /// Which dimension to map to width.
+    ///
+    /// If not specified, the height will be determined automatically based on the name and index of the dimension.
+    width: rerun.components.TensorWidthDimension ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// Which dimension to map to height.
+    ///
+    /// If not specified, the height will be determined automatically based on the name and index of the dimension.
+    height: rerun.components.TensorHeightDimension ("attr.rerun.component_optional", nullable, order: 1100);
+
+    /// Selected indices for all other dimensions.
+    ///
+    /// TODO: describe fallbacks & fillins.
+    indices: [rerun.components.TensorDimensionIndexSelection] ("attr.rerun.component_optional", order: 1200);
+
+    /// Any dimension that listed here, will show a slider in the view.
+    ///
+    /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    /// TODO: describe fallbacks & fillins.
+    slider: [rerun.blueprint.components.TensorDimensionIndexSlider] ("attr.rerun.component_optional", order: 1300);
+}
+

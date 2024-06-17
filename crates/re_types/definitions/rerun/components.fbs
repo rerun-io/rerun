@@ -34,6 +34,7 @@ include "./components/rotation3d.fbs";
 include "./components/scalar.fbs";
 include "./components/stroke_width.fbs";
 include "./components/tensor_data.fbs";
+include "./components/tensor_dimension_selection.fbs";
 include "./components/texcoord2d.fbs";
 include "./components/text_log_level.fbs";
 include "./components/text.fbs";

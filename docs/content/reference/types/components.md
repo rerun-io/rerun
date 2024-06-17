@@ -49,6 +49,9 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Scalar`](components/scalar.md): A double-precision scalar.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): A multi-dimensional `Tensor` of data.
+* [`TensorDimensionIndexSelection`](components/tensor_dimension_index_selection.md): Specifies a concrete index on a tensor dimension.
+* [`TensorHeightDimension`](components/tensor_height_dimension.md): Specifies which dimension to use for height.
+* [`TensorWidthDimension`](components/tensor_width_dimension.md): Specifies which dimension to use for width.
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.

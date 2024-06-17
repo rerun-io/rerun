@@ -91,6 +91,10 @@ pub fn list_default_components(
             SpaceViewOrigin::default().to_arrow()?,
         ),
         (
+            <TensorDimensionIndexSlider as Loggable>::name(),
+            TensorDimensionIndexSlider::default().to_arrow()?,
+        ),
+        (
             <ViewFit as Loggable>::name(),
             ViewFit::default().to_arrow()?,
         ),
@@ -238,6 +242,18 @@ pub fn list_default_components(
         (
             <TensorData as Loggable>::name(),
             TensorData::default().to_arrow()?,
+        ),
+        (
+            <TensorDimensionIndexSelection as Loggable>::name(),
+            TensorDimensionIndexSelection::default().to_arrow()?,
+        ),
+        (
+            <TensorHeightDimension as Loggable>::name(),
+            TensorHeightDimension::default().to_arrow()?,
+        ),
+        (
+            <TensorWidthDimension as Loggable>::name(),
+            TensorWidthDimension::default().to_arrow()?,
         ),
         (
             <Texcoord2D as Loggable>::name(),

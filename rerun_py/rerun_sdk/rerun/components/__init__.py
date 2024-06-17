@@ -68,6 +68,13 @@ from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
 from .stroke_width import StrokeWidth, StrokeWidthArrayLike, StrokeWidthBatch, StrokeWidthLike, StrokeWidthType
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
+from .tensor_dimension_index_selection import (
+    TensorDimensionIndexSelection,
+    TensorDimensionIndexSelectionBatch,
+    TensorDimensionIndexSelectionType,
+)
+from .tensor_height_dimension import TensorHeightDimension, TensorHeightDimensionBatch, TensorHeightDimensionType
+from .tensor_width_dimension import TensorWidthDimension, TensorWidthDimensionBatch, TensorWidthDimensionType
 from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
@@ -231,6 +238,15 @@ __all__ = [
     "TensorData",
     "TensorDataBatch",
     "TensorDataType",
+    "TensorDimensionIndexSelection",
+    "TensorDimensionIndexSelectionBatch",
+    "TensorDimensionIndexSelectionType",
+    "TensorHeightDimension",
+    "TensorHeightDimensionBatch",
+    "TensorHeightDimensionType",
+    "TensorWidthDimension",
+    "TensorWidthDimensionBatch",
+    "TensorWidthDimensionType",
     "Texcoord2D",
     "Texcoord2DBatch",
     "Texcoord2DType",

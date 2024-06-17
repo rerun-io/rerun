@@ -1,0 +1,17 @@
+namespace rerun.blueprint.datatypes;
+
+/// Selection of a single tensor dimension.
+struct TensorDimensionIndexSlider (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
+) {
+    /// The index of the dimension to select for height.
+    dimension: uint (order: 100);
+
+    // TODO(andreas):
+    // Range of the slider.
+    //
+    // Full Range if not specified.
+    //range: [uint: 2] (order: 200, nullable);
+}
