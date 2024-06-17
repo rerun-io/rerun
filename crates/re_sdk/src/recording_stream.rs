@@ -891,7 +891,12 @@ impl RecordingStream {
     }
 
     #[inline]
-    /// TODO
+    /// Lower-level logging API to provide data spanning multiple timepoints.
+    ///
+    /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+    /// in a columnar form. The lengths of all of the [`ChunkTimeline`] and the [`ArrowListArray`]s
+    /// must match. All data that occurs at the same index across the different time and components
+    /// arrays will act as a single logical row.
     pub fn log_temporal_batch(
         &self,
         ent_path: impl Into<EntityPath>,
