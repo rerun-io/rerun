@@ -37,7 +37,7 @@ class TensorView(SpaceView):
             name="Tensor",
             # Set a scalar mapping with a custom colormap, gamma and magnification filter.
             scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
-            # Change sizing mode to keep aspect ratio
+            # Change sizing mode to keep aspect ratio.
             view_fit="FillKeepAspectRatio",
         ),
         collapse_panels=True,
