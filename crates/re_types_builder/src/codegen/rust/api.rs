@@ -500,14 +500,7 @@ fn quote_struct(
 
     let quoted_builder = quote_builder_from_obj(reporter, obj);
 
-    let quoted_heap_size_bytes = if obj
-        .fields
-        .iter()
-        .any(|field| field.has_attr(crate::ATTR_RUST_SERDE_TYPE))
-    {
-        // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
-        quote!()
-    } else {
+    let quoted_heap_size_bytes = {
         let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
             quote!(self.0.heap_size_bytes())
         } else if obj.fields.is_empty() {
@@ -614,14 +607,7 @@ fn quote_union(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
-    let quoted_heap_size_bytes = if obj
-        .fields
-        .iter()
-        .any(|field| field.has_attr(crate::ATTR_RUST_SERDE_TYPE))
-    {
-        // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
-        quote!()
-    } else {
+    let quoted_heap_size_bytes = {
         let quoted_matches = fields.iter().map(|obj_field| {
             let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
 
@@ -964,21 +950,8 @@ fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
 }
 
 fn quote_field_type_from_object_field(obj_field: &ObjectField) -> TokenStream {
-    let serde_type = obj_field.try_get_attr::<String>(crate::ATTR_RUST_SERDE_TYPE);
-    let quoted_type = if let Some(serde_type) = serde_type {
-        assert_eq!(
-            &obj_field.typ,
-            &Type::Vector {
-                elem_type: ElementType::UInt8
-            },
-            "`attr.rust.serde_type` may only be used on fields of type `[ubyte]`",
-        );
+    let (quoted_type, _) = quote_field_type_from_typ(&obj_field.typ, false);
 
-        let quoted_serde_type: syn::TypePath = syn::parse_str(&serde_type).unwrap();
-        quote!(#quoted_serde_type)
-    } else {
-        quote_field_type_from_typ(&obj_field.typ, false).0
-    };
     if obj_field.is_nullable {
         quote!(Option<#quoted_type>)
     } else {

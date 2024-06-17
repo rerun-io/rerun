@@ -23,7 +23,7 @@ all-features = true
 default = []
 
 ## Enable loading data from an .rrd file.
-decoder = ["dep:rmp-serde", "dep:lz4_flex"]
+decoder = ["dep:rmp-serde", "dep:lz4_flex", "re_log_types/serde"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
 encoder = ["dep:rmp-serde", "dep:lz4_flex"]
@@ -43,7 +43,7 @@ stream_from_http = [
 
 # Rerun:
 re_build_info.workspace = true
-re_log_types = { workspace = true, features = ["serde"] }
+re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
@@ -66,7 +66,7 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window"] }
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["serde"] }
+re_types.workspace = true
 
 criterion.workspace = true
 mimalloc.workspace = true

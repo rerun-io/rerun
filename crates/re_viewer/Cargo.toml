@@ -45,7 +45,7 @@ re_data_source.workspace = true
 re_data_store.workspace = true
 re_data_ui.workspace = true
 re_edit_ui.workspace = true
-re_entity_db = { workspace = true, features = ["serde"] }
+re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
@@ -106,9 +106,6 @@ ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
-static_assertions.workspace = true
-strum.workspace = true
-strum_macros.workspace = true
 thiserror.workspace = true
 time = { workspace = true, features = ["formatting"] }
 web-time.workspace = true
@@ -117,8 +114,10 @@ wgpu.workspace = true
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys.workspace = true
-wasm-bindgen.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
 wasm-bindgen-futures.workspace = true
+wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [
   "History",
   "Location",

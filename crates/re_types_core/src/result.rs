@@ -22,12 +22,6 @@ pub enum SerializationError {
         backtrace: _Backtrace,
     },
 
-    #[error("serde-based serialization (`attr.rust.serde_type`) failed: {reason}")]
-    SerdeFailure {
-        reason: String,
-        backtrace: _Backtrace,
-    },
-
     #[error("{fqname} doesn't support Serialization: {reason}")]
     NotImplemented {
         fqname: String,
@@ -66,14 +60,6 @@ impl SerializationError {
     }
 
     #[inline]
-    pub fn serde_failure(reason: impl AsRef<str>) -> Self {
-        Self::SerdeFailure {
-            reason: reason.as_ref().into(),
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
-        }
-    }
-
-    #[inline]
     pub fn not_implemented(fqname: impl AsRef<str>, reason: impl AsRef<str>) -> Self {
         Self::NotImplemented {
             fqname: fqname.as_ref().into(),
@@ -88,7 +74,6 @@ impl SerializationError {
     pub fn backtrace(&self) -> Option<_Backtrace> {
         match self {
             Self::MissingExtensionMetadata { backtrace, .. }
-            | Self::SerdeFailure { backtrace, .. }
             | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
             Self::ArrowError { .. } | Self::Context { .. } => None,
         }
@@ -211,12 +196,6 @@ pub enum DeserializationError {
     #[error("Downcast to {to} failed")]
     DowncastError { to: String, backtrace: _Backtrace },
 
-    #[error("serde-based deserialization (`attr.rust.serde_type`) failed: {reason}")]
-    SerdeFailure {
-        reason: String,
-        backtrace: _Backtrace,
-    },
-
     #[error("Datacell deserialization Failed: {0}")]
     DataCellError(String),
 
@@ -329,14 +308,6 @@ impl DeserializationError {
         }
     }
 
-    #[inline]
-    pub fn serde_failure(reason: impl AsRef<str>) -> Self {
-        Self::SerdeFailure {
-            reason: reason.as_ref().into(),
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
-        }
-    }
-
     /// Returns the _unresolved_ backtrace associated with this error, if it exists.
     ///
     /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
@@ -356,8 +327,7 @@ impl DeserializationError {
             | Self::DatatypeMismatch { backtrace, .. }
             | Self::OffsetOutOfBounds { backtrace, .. }
             | Self::OffsetSliceOutOfBounds { backtrace, .. }
-            | Self::DowncastError { backtrace, .. }
-            | Self::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
+            | Self::DowncastError { backtrace, .. } => Some(backtrace.clone()),
             Self::DataCellError(_) | Self::ValidationError(_) => None,
         }
     }

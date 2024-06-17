@@ -42,6 +42,7 @@ wheel-test = ["wheel-test", "base"]
 # The package will be installed in editable mode, so changes to the python code will be reflected immediately.
 # However, any changes to do the rust bindings will require running `pixi run -e examples py-build`.
 examples = ["examples-common", "maturin-build", "python-dev"]
+examples-ocr = ["examples-ocr", "maturin-build", "python-dev"]
 
 # This environment uses the pypi-published version of the python package. This avoids the need to
 # build the package from source if you just want to try running the examples locally.
@@ -425,6 +426,20 @@ shared_recording = { path = "examples/python/shared_recording", editable = true 
 signed_distance_fields = { path = "examples/python/signed_distance_fields", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
+
+# OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
+[feature.examples-ocr]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.examples-ocr.system-requirements]
+macos = "12.0" # needed for scipy
+
+[feature.examples-ocr.dependencies]
+faiss-cpu = "==1.7.2" # Dep comes from paddleclas but we want the conda version to avoid source-wheel build
+
+[feature.examples-ocr.pypi-dependencies]
+paddleclas = { version = "==2.5.2" }
+ocr = { path = "examples/python/ocr", editable = true }
 
 # TODO(ab): reactivate these examples when they no-longer trigger the pixi perma-lock-invalidate bug
 #nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
