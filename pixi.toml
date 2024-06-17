@@ -215,6 +215,15 @@ py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 # Lint markdown
 mdlint = "python scripts/ci/mdlint.py"
 
+# Setup JS tools
+js-setup = "npm i -g yarn"
+
+# Install JS package dependencies
+js-install = { cmd = "yarn install --cwd rerun_js", depends_on = ["js-setup"] }
+
+# Build JS packages
+js-build = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = ["js-install"] }
+
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
