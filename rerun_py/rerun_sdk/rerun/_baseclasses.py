@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Generic, Iterable, Protocol, TypeVar
 
+import numpy.typing as npt
+import numpy as np
 import pyarrow as pa
 from attrs import define, fields
 
@@ -265,6 +267,48 @@ class BaseBatch(Generic[T]):
         return self.pa_array
 
 
+class PartitionedComponentBatch(ComponentBatchLike):
+    """
+    A ComponentBatch array that has been repartitioned into multiple segments.
+
+    This is useful for reinterpreting a single contiguous batch as multiple sub-batches
+    to use with the `log_temporal_batch` API.
+    """
+
+    def __init__(self, component_batch: ComponentBatchLike, lengths: npt.ArrayLike):
+        """
+        Construct a new partitioned component batch.
+
+        Parameters
+        ----------
+        component_batch : ComponentBatchLike
+            The component batch to partition.
+        lengths : npt.ArrayLike
+            The lengths of the partitions.
+
+        """
+        self.component_batch = component_batch
+        self.lengths = lengths
+
+    def component_name(self) -> str:
+        """
+        The name of the component.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return self.component_batch.component_name()
+
+    def as_arrow_array(self) -> pa.Array:
+        """
+        The component as an arrow batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        array = self.component_batch.as_arrow_array()
+        offsets = np.concatenate((np.array([0], dtype="int32"), np.cumsum(self.lengths, dtype="int32")))
+        return pa.ListArray.from_arrays(offsets, array)
+
+
 class ComponentBatchMixin(ComponentBatchLike):
     def component_name(self) -> str:
         """
@@ -273,6 +317,25 @@ class ComponentBatchMixin(ComponentBatchLike):
         Part of the `ComponentBatchLike` logging interface.
         """
         return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
+
+    def partition(self, offsets: npt.ArrayLike) -> PartitionedComponentBatch:
+        """
+        Partitions the component into multiple sub-batches. This wraps the inner arrow
+        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+
+        Lengths must sum to the total length of the component batch.
+
+        Parameters
+        ----------
+        offsets : npt.ArrayLike
+            The offsets to partition the component at.
+
+        Returns
+        -------
+        The partitioned component.
+
+        """  # noqa: D205
+        return PartitionedComponentBatch(self, offsets)
 
 
 class ComponentMixin(ComponentBatchLike):

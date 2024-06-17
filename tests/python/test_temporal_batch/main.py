@@ -2,17 +2,35 @@
 """Log a scalar scalar batch."""
 
 import numpy as np
-import pyarrow as pa
 import rerun as rr
+import rerun.blueprint as rrb
 
 rr.init("rerun_example_temporal_batch", spawn=True)
 
-times = np.arange(0, 64, 1)
+times = np.arange(0, 64)
 scalars = np.sin(times / 10.0)
 
-times = pa.array(times, type=pa.int64())
-scalars = pa.array(scalars, type=pa.float64())
+rr.log_temporal_batch(
+    "scalars",
+    times=[rr.TimeSequenceBatch("step", times)],
+    components=[rr.components.ScalarBatch(scalars)],
+)
 
-rr.bindings.log_arrow_chunk(
-    "scalars", timelines={"step": times}, components={rr.components.Scalar.component_name(): scalars}
+
+rng = np.random.default_rng(12345)
+
+times = np.arange(0, 10)
+positions = rng.uniform(-5, 5, size=[100, 3])
+colors = rng.uniform(0, 255, size=[100, 3])
+radii = rng.uniform(0, 1, size=[100])
+
+rr.log_temporal_batch(
+    "points",
+    times=[rr.TimeSequenceBatch("step", times)],
+    components=[
+        rr.Points3D.indicator(),
+        rr.components.Position3DBatch(positions).partition([10] * 10),
+        rr.components.ColorBatch(colors).partition([10] * 10),
+        rr.components.RadiusBatch(radii).partition([10] * 10),
+    ],
 )
