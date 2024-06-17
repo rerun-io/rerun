@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Iterable, Optional, Union
+from typing import Iterable, Optional, Union
 
 import rerun_bindings as bindings
 

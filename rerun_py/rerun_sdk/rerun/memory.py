@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
-
 from rerun import bindings
 
 from .recording_stream import RecordingStream
