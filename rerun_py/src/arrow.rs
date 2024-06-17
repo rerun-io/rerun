@@ -13,7 +13,7 @@ use pyo3::{
     PyAny, PyResult,
 };
 
-use re_chunk::{Chunk, ChunkId, ChunkTimeline, PendingRow, RowId};
+use re_chunk::{Chunk, ChunkError, ChunkId, ChunkTimeline, PendingRow, RowId};
 use re_log_types::TimePoint;
 use re_sdk::{EntityPath, Timeline};
 
@@ -104,32 +104,41 @@ pub fn build_chunk_from_components(
         |iter| iter.unzip(),
     )?;
 
-    let timelines: Option<Vec<_>> = arrays
+    let timelines: Result<Vec<_>, ChunkError> = arrays
         .into_iter()
         .zip(fields)
         .map(|(value, field)| {
             let timeline = match field.data_type() {
-                arrow2::datatypes::DataType::Int64 => Some(Timeline::new_sequence(field.name)),
-                arrow2::datatypes::DataType::Timestamp(_, _) => {
-                    Some(Timeline::new_temporal(field.name))
+                arrow2::datatypes::DataType::Int64 => {
+                    Ok(Timeline::new_sequence(field.name.clone()))
                 }
-                _ => None,
+                arrow2::datatypes::DataType::Timestamp(_, _) => {
+                    Ok(Timeline::new_temporal(field.name.clone()))
+                }
+                _ => Err(ChunkError::Malformed {
+                    reason: format!("Invalid data_type for timeline: {}", field.name),
+                }),
             }?;
             let timeline_data = value
                 .as_any()
-                .downcast_ref::<PrimitiveArray<i64>>()?
+                .downcast_ref::<PrimitiveArray<i64>>()
+                .ok_or_else(|| ChunkError::Malformed {
+                    reason: format!("Invalid primitive array for timeline: {}", field.name),
+                })?
                 .clone();
             if expected_length.is_none() {
                 expected_length = Some(timeline_data.len());
             } else if expected_length != Some(timeline_data.len()) {
-                return None;
+                return Err(ChunkError::Malformed {
+                    reason: format!("Incorrect length time timeline: {}", field.name),
+                });
             }
-            Some((timeline, timeline_data))
+            Ok((timeline, timeline_data))
         })
         .collect();
 
     let timelines = timelines
-        .ok_or_else(|| PyRuntimeError::new_err("Invalid arrow type"))?
+        .map_err(|err| PyRuntimeError::new_err(format!("Invalid arrow type: {err}")))?
         .into_iter()
         .map(|(timeline, value)| (timeline, ChunkTimeline::new(None, timeline, value)))
         .collect();
@@ -143,27 +152,35 @@ pub fn build_chunk_from_components(
         |iter| iter.unzip(),
     )?;
 
-    let components: Option<Vec<_>> = arrays
+    let components: Result<Vec<_>, ChunkError> = arrays
         .into_iter()
         .zip(fields)
         .map(|(value, field)| {
             let batch = if let Some(batch) = value.as_any().downcast_ref::<ListArray<i32>>() {
-                Some(batch.clone())
+                batch.clone()
             } else if Some(value.len()) == expected_length {
-                let offsets =
-                    Offsets::try_from_lengths(std::iter::repeat(1).take(value.len())).ok()?;
+                let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(value.len()))
+                    .map_err(|err| ChunkError::Malformed {
+                        reason: format!("Failed to create offsets: {err}"),
+                    })?;
                 let data_type = ListArray::<i32>::default_datatype(value.data_type().clone());
-                ListArray::<i32>::try_new(data_type, offsets.into(), value, None).ok()
+                ListArray::<i32>::try_new(data_type, offsets.into(), value, None).map_err(
+                    |err| ChunkError::Malformed {
+                        reason: format!("Failed to wrap in List array: {err}"),
+                    },
+                )?
             } else {
-                None
+                return Err(ChunkError::Malformed {
+                    reason: format!("Invalid data_type for component: {}", field.name),
+                });
             };
 
-            Some((field.name.into(), batch?))
+            Ok((field.name.into(), batch))
         })
         .collect();
 
     let components = components
-        .ok_or_else(|| PyRuntimeError::new_err("Invalid arrow type"))?
+        .map_err(|err| PyRuntimeError::new_err(format!("Invalid arrow type: {err}")))?
         .into_iter()
         .collect();
 
