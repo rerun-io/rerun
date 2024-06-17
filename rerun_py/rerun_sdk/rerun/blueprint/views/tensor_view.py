@@ -63,6 +63,7 @@ class TensorView(SpaceView):
         visible: blueprint_components.VisibleLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         colormap: blueprint_archetypes.ScalarColormap | None = None,
+        filter: blueprint_archetypes.TensorSliceFilter | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TensorView view.
@@ -88,6 +89,8 @@ class TensorView(SpaceView):
             instead of the normal fallback for the visualizer.
         colormap:
             Configures how scalars are mapped to color.
+        filter:
+            Configures how the selected slice is displayed.
 
         """
 
@@ -96,6 +99,11 @@ class TensorView(SpaceView):
             if not isinstance(colormap, blueprint_archetypes.ScalarColormap):
                 colormap = blueprint_archetypes.ScalarColormap(colormap)
             properties["ScalarColormap"] = colormap
+
+        if filter is not None:
+            if not isinstance(filter, blueprint_archetypes.TensorSliceFilter):
+                filter = blueprint_archetypes.TensorSliceFilter(filter)
+            properties["TensorSliceFilter"] = filter
 
         super().__init__(
             class_identifier="Tensor",

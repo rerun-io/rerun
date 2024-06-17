@@ -10,4 +10,7 @@ table TensorView (
 ) {
     /// Configures how scalars are mapped to color.
     colormap: rerun.blueprint.archetypes.ScalarColormap (order: 1000);
+
+    /// Configures how the selected slice is displayed.
+    filter: rerun.blueprint.archetypes.TensorSliceFilter (order: 2000);
 }

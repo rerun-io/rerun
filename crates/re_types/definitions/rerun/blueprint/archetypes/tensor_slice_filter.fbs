@@ -1,0 +1,14 @@
+namespace rerun.blueprint.archetypes;
+
+/// Configures how a selected tensor slice is shown on screen.
+table TensorSliceFilter (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default",
+    "attr.rust.generate_field_info"
+) {
+    /// How the image is scaled to fit the view.
+    scaling: rerun.components.ImageScalingMode ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// Filter used when zooming in on the tensor.
+    mag_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 1100);
+}

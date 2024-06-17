@@ -12,6 +12,11 @@ Configures how scalars are mapped to color.
 
 * `colormap`: How scalar values map to colors.
 * `gamma`: Gamma exponent applied to normalized values before mapping to color.
+### `filter`
+Configures how the selected slice is displayed.
+
+* `scaling`: How the image is scaled to fit the view.
+* `mag_filter`: Filter used when zooming in on the tensor.
 
 ## API reference links
  * 🐍 [Python API docs for `TensorView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TensorView)

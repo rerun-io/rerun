@@ -165,6 +165,10 @@ pub fn list_default_components(
             ImagePlaneDistance::default().to_arrow()?,
         ),
         (
+            <ImageScalingMode as Loggable>::name(),
+            ImageScalingMode::default().to_arrow()?,
+        ),
+        (
             <KeypointId as Loggable>::name(),
             KeypointId::default().to_arrow()?,
         ),
@@ -175,6 +179,10 @@ pub fn list_default_components(
         (
             <LineStrip3D as Loggable>::name(),
             LineStrip3D::default().to_arrow()?,
+        ),
+        (
+            <MagnificationFilter as Loggable>::name(),
+            MagnificationFilter::default().to_arrow()?,
         ),
         (
             <MarkerShape as Loggable>::name(),

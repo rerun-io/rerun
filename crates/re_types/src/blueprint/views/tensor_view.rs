@@ -27,46 +27,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct TensorView {
     /// Configures how scalars are mapped to color.
     pub colormap: crate::blueprint::archetypes::ScalarColormap,
+
+    /// Configures how the selected slice is displayed.
+    pub filter: crate::blueprint::archetypes::TensorSliceFilter,
 }
 
 impl ::re_types_core::SizeBytes for TensorView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.colormap.heap_size_bytes()
+        self.colormap.heap_size_bytes() + self.filter.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::ScalarColormap>::is_pod()
-    }
-}
-
-impl<T: Into<crate::blueprint::archetypes::ScalarColormap>> From<T> for TensorView {
-    fn from(v: T) -> Self {
-        Self { colormap: v.into() }
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::archetypes::ScalarColormap> for TensorView {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::archetypes::ScalarColormap {
-        &self.colormap
-    }
-}
-
-impl std::ops::Deref for TensorView {
-    type Target = crate::blueprint::archetypes::ScalarColormap;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::archetypes::ScalarColormap {
-        &self.colormap
-    }
-}
-
-impl std::ops::DerefMut for TensorView {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::ScalarColormap {
-        &mut self.colormap
+            && <crate::blueprint::archetypes::TensorSliceFilter>::is_pod()
     }
 }
 

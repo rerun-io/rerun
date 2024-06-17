@@ -10,6 +10,7 @@
 #include "blueprint/archetypes/scalar_colormap.hpp"
 #include "blueprint/archetypes/space_view_blueprint.hpp"
 #include "blueprint/archetypes/space_view_contents.hpp"
+#include "blueprint/archetypes/tensor_slice_filter.hpp"
 #include "blueprint/archetypes/viewport_blueprint.hpp"
 #include "blueprint/archetypes/visible_time_ranges.hpp"
 #include "blueprint/archetypes/visual_bounds2d.hpp"

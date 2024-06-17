@@ -10,6 +10,7 @@ from .scalar_axis import ScalarAxis
 from .scalar_colormap import ScalarColormap
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
+from .tensor_slice_filter import TensorSliceFilter
 from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
 from .visual_bounds2d import VisualBounds2D
@@ -23,6 +24,7 @@ __all__ = [
     "ScalarColormap",
     "SpaceViewBlueprint",
     "SpaceViewContents",
+    "TensorSliceFilter",
     "ViewportBlueprint",
     "VisibleTimeRanges",
     "VisualBounds2D",
