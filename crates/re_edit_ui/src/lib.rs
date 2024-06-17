@@ -9,12 +9,15 @@ mod range1d;
 mod response_utils;
 mod visual_bounds2d;
 
-use datatype_editors::edit_enum;
+use datatype_editors::{
+    edit_bool, edit_bool_raw, edit_enum, edit_f32_zero_to_max_float,
+    edit_f32_zero_to_max_float_raw, edit_singleline_string,
+};
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
+    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Color, Colormap, FillRatio, ImagePlaneDistance, MarkerSize,
-        Name, Radius, StrokeWidth, Text,
+        AggregationPolicy, AxisLength, Color, Colormap, FillRatio, GammaCorrection,
+        ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Radius, StrokeWidth, Text,
     },
 };
 use re_viewer_context::ViewerContext;
@@ -45,19 +48,20 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui(marker_shape::edit_marker_shape_ui);
     registry.add_singleline_editor_ui(range1d::edit_range1d);
 
-    registry.add_singleline_editor_ui::<AxisLength>(datatype_editors::edit_f32_zero_to_inf);
-    registry.add_singleline_editor_ui::<FillRatio>(datatype_editors::edit_f32_zero_to_inf);
-    registry.add_singleline_editor_ui::<ImagePlaneDistance>(datatype_editors::edit_f32_zero_to_inf);
+    registry.add_singleline_editor_ui::<AxisLength>(edit_f32_zero_to_max_float);
+    registry.add_singleline_editor_ui::<FillRatio>(edit_f32_zero_to_max_float);
+    registry.add_singleline_editor_ui::<ImagePlaneDistance>(edit_f32_zero_to_max_float);
+    registry.add_singleline_editor_ui::<GammaCorrection>(edit_f32_zero_to_max_float);
 
-    registry.add_singleline_editor_ui::<Visible>(datatype_editors::edit_bool_raw);
-    registry.add_singleline_editor_ui::<LockRangeDuringZoom>(datatype_editors::edit_bool);
+    registry.add_singleline_editor_ui::<Visible>(edit_bool_raw);
+    registry.add_singleline_editor_ui::<LockRangeDuringZoom>(edit_bool);
 
-    registry.add_singleline_editor_ui::<Text>(datatype_editors::edit_singleline_string);
-    registry.add_singleline_editor_ui::<Name>(datatype_editors::edit_singleline_string);
+    registry.add_singleline_editor_ui::<Text>(edit_singleline_string);
+    registry.add_singleline_editor_ui::<Name>(edit_singleline_string);
 
-    registry.add_singleline_editor_ui::<MarkerSize>(datatype_editors::edit_f32_zero_to_inf_raw);
-    registry.add_singleline_editor_ui::<Radius>(datatype_editors::edit_f32_zero_to_inf_raw);
-    registry.add_singleline_editor_ui::<StrokeWidth>(datatype_editors::edit_f32_zero_to_inf_raw);
+    registry.add_singleline_editor_ui::<MarkerSize>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_editor_ui::<Radius>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_editor_ui::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
 
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
         edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL)
@@ -69,8 +73,13 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_enum(ui, "corner2d", value, &Corner2D::ALL)
     });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum(ui, "magnificationfilter", value, &MagnificationFilter::ALL)
+    });
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
         edit_enum(ui, "tseriesaggregator", value, &AggregationPolicy::ALL)
     });
+    registry
+        .add_singleline_editor_ui(|_ctx, ui, value| edit_enum(ui, "viewfit", value, &ViewFit::ALL));
 
     registry.add_multiline_editor_ui(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_editor_ui(visual_bounds2d::singleline_edit_visual_bounds2d);
