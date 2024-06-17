@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Log a scalar scalar batch."""
+"""Log different temporal batches of data."""
 
 from __future__ import annotations
 
