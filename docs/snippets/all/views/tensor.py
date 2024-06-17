@@ -15,6 +15,8 @@ blueprint = rrb.Blueprint(
         name="Tensor",
         # Set a custom colormap & gamma. See `rr.components.Colormap` for which colormaps are available.
         colormap=rrb.ScalarColormap(colormap="turbo", gamma=1.5),
+        # Change texture-filter & scaling.
+        filter=rrb.TensorSliceFilter(scaling="FillKeepAspectRatio", mag_filter="linear"),
     ),
     collapse_panels=True,
 )

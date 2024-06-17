@@ -17,7 +17,8 @@ use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, Visible},
     components::{
         AggregationPolicy, AxisLength, Color, Colormap, FillRatio, GammaCorrection,
-        ImagePlaneDistance, MarkerSize, Name, Radius, StrokeWidth, Text,
+        ImagePlaneDistance, ImageScalingMode, MagnificationFilter, MarkerSize, Name, Radius,
+        StrokeWidth, Text,
     },
 };
 use re_viewer_context::ViewerContext;
@@ -71,6 +72,12 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
         edit_enum(ui, "corner2d", value, &Corner2D::ALL)
+    });
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum(ui, "imagescalingmode", value, &ImageScalingMode::ALL)
+    });
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum(ui, "magnificationfilter", value, &MagnificationFilter::ALL)
     });
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
         edit_enum(ui, "tseriesaggregator", value, &AggregationPolicy::ALL)
