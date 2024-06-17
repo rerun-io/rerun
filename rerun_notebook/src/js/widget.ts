@@ -8,8 +8,12 @@ const PANELS = ["top", "blueprint", "selection", "time"] as const;
 
 /* Specifies attributes defined with traitlets in ../rerun_notebook/__init__.py */
 interface WidgetModel {
+  width?: number;
+  height?: number;
+
   _url?: string;
   _panel_states?: PanelStates;
+  _data?: DataView;
 }
 
 type Opt<T> = T | null | undefined;
@@ -23,19 +27,33 @@ class ViewerWidget {
   channel: LogChannel | null = null;
 
   constructor(model: AnyModel<WidgetModel>) {
-    this.url = model.get("_url");
-    this.panel_states = model.get("_panel_states");
+    // TODO: use `width`/`height` to set canvas size if present
 
+    this.url = model.get("_url");
     model.on("change:_url", this.on_change_url);
+
+    this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
-    model.on("msg:custom", this.handle_custom_msg);
+
+    // Buffer data until the viewer is ready
+    const queue: Uint8Array[] = [];
+    const push = (data?: Opt<DataView>) =>
+      data && queue.push(new Uint8Array(data.buffer));
+
+    push(model.get("_data"));
+    model.on("change:_data", (_, data) => push(data));
 
     this.viewer.on("ready", () => {
-      console.log("Viewer ready");
-      model.send("ready");
-
-      // TODO(jprochazk): be smarter about opening channels
       this.channel = this.viewer.open_channel("temp");
+
+      // Send buffered data
+      for (const data of queue) {
+        this.channel.send_rrd(data);
+      }
+      // Any subsequent data will be sent immediately
+      model.on("change:_data", this.on_change_data);
+
+      model.send("ready");
     });
   }
 
@@ -67,26 +85,14 @@ class ViewerWidget {
     this.panel_states = new_panel_states;
   };
 
-  handle_custom_msg = (msg: any, buffers: DataView[]) => {
-    console.log(msg, buffers);
-    switch (msg?.type) {
-      case "rrd": {
-        this.on_recv_rrd(new Uint8Array(buffers[0].buffer));
-        return;
-      }
-      default:
-        console.error("Unknown custom event type", msg?.type);
-        return;
+  on_change_data = (_: unknown, data?: Opt<DataView>) => {
+    if (data && this.channel) {
+      this.channel.send_rrd(new Uint8Array(data.buffer));
     }
   };
-
-  on_recv_rrd(buffer: Uint8Array) {
-    this.channel?.send_rrd(buffer);
-  }
 }
 
 const render: Render<WidgetModel> = ({ model, el }) => {
-  console.log("test log", model, el);
   el.classList.add("rerun_notebook");
 
   let widget = new ViewerWidget(model);
