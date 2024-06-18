@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -16,6 +16,7 @@ from ..._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .tensor_dimension_index_slider_ext import TensorDimensionIndexSliderExt
 
 __all__ = [
     "TensorDimensionIndexSlider",
@@ -27,7 +28,7 @@ __all__ = [
 
 
 @define(init=False)
-class TensorDimensionIndexSlider:
+class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
     """**Datatype**: Selection of a single tensor dimension."""
 
     def __init__(self: Any, dimension: TensorDimensionIndexSliderLike):
@@ -60,10 +61,13 @@ class TensorDimensionIndexSlider:
         return hash(self.dimension)
 
 
-TensorDimensionIndexSliderLike = TensorDimensionIndexSlider
+if TYPE_CHECKING:
+    TensorDimensionIndexSliderLike = Union[TensorDimensionIndexSlider, int]
+else:
+    TensorDimensionIndexSliderLike = Any
+
 TensorDimensionIndexSliderArrayLike = Union[
-    TensorDimensionIndexSlider,
-    Sequence[TensorDimensionIndexSliderLike],
+    TensorDimensionIndexSlider, Sequence[TensorDimensionIndexSliderLike], npt.ArrayLike
 ]
 
 
@@ -81,6 +85,4 @@ class TensorDimensionIndexSliderBatch(BaseBatch[TensorDimensionIndexSliderArrayL
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionIndexSliderArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TensorDimensionIndexSlider not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in tensor_dimension_index_slider_ext.py
+        return TensorDimensionIndexSliderExt.native_to_pa_array_override(data, data_type)

@@ -107,8 +107,8 @@ class Range2DBatch(BaseBatch[Range2DArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                Range1DBatch([x.x_range for x in data]).as_arrow_array().storage,
-                Range1DBatch([x.y_range for x in data]).as_arrow_array().storage,
+                Range1DBatch([x.x_range for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Range1DBatch([x.y_range for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

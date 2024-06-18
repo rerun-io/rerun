@@ -15,6 +15,8 @@ struct TensorDimensionIndexSelection (
 /// Selection of a single tensor dimension.
 struct TensorDimensionSelection (
     "attr.docs.unreleased",
+    "attr.python.aliases": "int",
+    "attr.python.array_aliases": "npt.ArrayLike",
     "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
 ) {
     /// The index of the dimension to select for height.

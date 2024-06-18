@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
+import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
@@ -168,6 +169,17 @@ class TranslationRotationScale3DBatch(BaseBatch[TranslationRotationScale3DArrayL
 
     @staticmethod
     def _native_to_pa_array(data: TranslationRotationScale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TranslationRotationScale3D not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in translation_rotation_scale3d_ext.py
+        from rerun.datatypes import Rotation3DBatch, Scale3DBatch, Vec3DBatch
+
+        if isinstance(data, TranslationRotationScale3D):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                Vec3DBatch([x.translation for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Rotation3DBatch([x.rotation for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Scale3DBatch([x.scale for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                pa.array(np.asarray([x.from_parent for x in data], dtype=np.bool_)),
+            ],
+            fields=list(data_type),
+        )

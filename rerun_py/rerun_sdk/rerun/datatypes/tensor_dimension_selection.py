@@ -5,8 +5,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -14,6 +15,7 @@ from .._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .tensor_dimension_selection_ext import TensorDimensionSelectionExt
 
 __all__ = [
     "TensorDimensionSelection",
@@ -25,24 +27,10 @@ __all__ = [
 
 
 @define(init=False)
-class TensorDimensionSelection:
+class TensorDimensionSelection(TensorDimensionSelectionExt):
     """**Datatype**: Selection of a single tensor dimension."""
 
-    def __init__(self: Any, dimension: int, invert: bool):
-        """
-        Create a new instance of the TensorDimensionSelection datatype.
-
-        Parameters
-        ----------
-        dimension:
-            The index of the dimension to select for height.
-        invert:
-            Invert the direction of the dimension.
-
-        """
-
-        # You can define your own __init__ function as a member of TensorDimensionSelectionExt in tensor_dimension_selection_ext.py
-        self.__attrs_init__(dimension=dimension, invert=invert)
+    # __init__ can be found in tensor_dimension_selection_ext.py
 
     dimension: int = field(converter=int)
     # The index of the dimension to select for height.
@@ -55,10 +43,13 @@ class TensorDimensionSelection:
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
-TensorDimensionSelectionLike = TensorDimensionSelection
+if TYPE_CHECKING:
+    TensorDimensionSelectionLike = Union[TensorDimensionSelection, int]
+else:
+    TensorDimensionSelectionLike = Any
+
 TensorDimensionSelectionArrayLike = Union[
-    TensorDimensionSelection,
-    Sequence[TensorDimensionSelectionLike],
+    TensorDimensionSelection, Sequence[TensorDimensionSelectionLike], npt.ArrayLike
 ]
 
 
@@ -81,6 +72,4 @@ class TensorDimensionSelectionBatch(BaseBatch[TensorDimensionSelectionArrayLike]
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionSelectionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TensorDimensionSelection not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in tensor_dimension_selection_ext.py
+        return TensorDimensionSelectionExt.native_to_pa_array_override(data, data_type)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence, Union
 
+import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
@@ -81,6 +82,13 @@ class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelection
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionIndexSelectionArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TensorDimensionIndexSelection not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in tensor_dimension_index_selection_ext.py
+        if isinstance(data, TensorDimensionIndexSelection):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                pa.array(np.asarray([x.dimension for x in data], dtype=np.uint32)),
+                pa.array(np.asarray([x.index for x in data], dtype=np.uint64)),
+            ],
+            fields=list(data_type),
+        )
