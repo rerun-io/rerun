@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from threading import Thread
+from time import sleep
 from typing import TYPE_CHECKING, Any
 
 from .memory import memory_recording
@@ -17,11 +19,62 @@ from .recording_stream import RecordingStream, get_application_id
 DEFAULT_WIDTH = 950
 DEFAULT_HEIGHT = 712
 
-if TYPE_CHECKING:
-    try:
-        from rerun_notebook import Viewer
-    except ImportError:
-        pass
+
+class Viewer:
+    def __init__(
+        self,
+        *,
+        width: int = DEFAULT_WIDTH,
+        height: int = DEFAULT_HEIGHT,
+        recording: RecordingStream | None = None,
+    ):
+        try:
+            from rerun_notebook import Viewer as _Viewer
+        except ImportError:
+            logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
+            hack: Any = None
+            return hack
+
+        self._recording = recording
+        self._memory_recording = memory_recording(self._recording)
+        self._viewer = _Viewer(
+            width=width,
+            height=height,
+        )
+
+    def __enter__(self) -> Viewer:
+        from IPython.display import display
+
+        display(self._viewer)
+
+        self._running = True
+        self._thread_handle = Thread(target=self._flush_thread)
+        self._thread_handle.start()
+
+        return self
+
+    def _flush_thread(self):
+        while self._running:
+            self._flush()
+            sleep(0.1)
+
+        self._flush()
+
+    def _flush(self):
+        num_msgs = self._memory_recording.num_msgs()
+        if num_msgs > 0:
+            data = self._memory_recording.drain_as_bytes()
+            self._viewer.send_rrd(data)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._running = False
+        self._thread_handle.join()
+
+    def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:
+        return self._viewer._repr_mimebundle_(**kwargs)
+
+    def _repr_keys(self):
+        return self._viewer._repr_keys()
 
 
 def notebook_show(
@@ -49,39 +102,48 @@ def notebook_show(
 
     """
 
-    try:
-        from rerun_notebook import Viewer
-    except ImportError:
-        logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
-        hack: Any = None
-        return hack
-
-    application_id = get_application_id(recording)
-    if application_id is None:
-        raise ValueError(
-            "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording."
-        )
-
-    # we want the blueprint to come first in the stream,
-    # so we create a new stream, send a blueprint to it,
-    # then prepend its output to the existing recording data
-    output_stream = RecordingStream(
-        bindings.new_recording(
-            application_id=application_id,
-            make_default=False,
-            make_thread_default=False,
-            default_enabled=True,
-        )
-    )
-    if blueprint is not None:
-        output_stream.send_blueprint(blueprint, make_active=True)  # type: ignore[attr-defined]
-
-    data_memory = memory_recording(recording=recording)
-    output_memory = output_stream.memory_recording()  # type: ignore[attr-defined]
-
-    data = output_memory.storage.concat_as_bytes(data_memory.storage)
     return Viewer(
         width=width,
         height=height,
-        recording=data,
+        recording=recording,
     )
+
+
+"""
+try:
+    from rerun_notebook import Viewer as _Viewer
+except ImportError:
+    logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
+    hack: Any = None
+    return hack
+
+application_id = get_application_id(recording)
+if application_id is None:
+    raise ValueError(
+        "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording."
+    )
+
+# we want the blueprint to come first in the stream,
+# so we create a new stream, send a blueprint to it,
+# then prepend its output to the existing recording data
+output_stream = RecordingStream(
+    bindings.new_recording(
+        application_id=application_id,
+        make_default=False,
+        make_thread_default=False,
+        default_enabled=True,
+    )
+)
+if blueprint is not None:
+    output_stream.send_blueprint(blueprint, make_active=True)  # type: ignore[attr-defined]
+
+data_memory = memory_recording(recording=recording)
+output_memory = output_stream.memory_recording()  # type: ignore[attr-defined]
+
+data = output_memory.storage.concat_as_bytes(data_memory.storage)
+return Viewer(
+    width=width,
+    height=height,
+    recording=data,
+)
+"""

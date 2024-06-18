@@ -13,7 +13,6 @@ interface WidgetModel {
 
   _url?: string;
   _panel_states?: PanelStates;
-  _data?: DataView;
 }
 
 type Opt<T> = T | null | undefined;
@@ -35,24 +34,10 @@ class ViewerWidget {
     this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
 
-    // Buffer data until the viewer is ready
-    const queue: Uint8Array[] = [];
-    const push = (data?: Opt<DataView>) =>
-      data && queue.push(new Uint8Array(data.buffer));
-
-    push(model.get("_data"));
-    model.on("change:_data", (_, data) => push(data));
+    model.on("msg:custom", this.on_custom_message);
 
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");
-
-      // Send buffered data
-      for (const data of queue) {
-        this.channel.send_rrd(data);
-      }
-      // Any subsequent data will be sent immediately
-      model.on("change:_data", this.on_change_data);
-
       model.send("ready");
     });
   }
@@ -85,9 +70,13 @@ class ViewerWidget {
     this.panel_states = new_panel_states;
   };
 
-  on_change_data = (_: unknown, data?: Opt<DataView>) => {
-    if (data && this.channel) {
-      this.channel.send_rrd(new Uint8Array(data.buffer));
+  on_custom_message = (msg: any, buffers: DataView[]) => {
+    if (msg?.type === "rrd") {
+      if (!this.channel)
+        throw new Error("on_custom_message called before channel init");
+      this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
+    } else {
+      console.log("unknown message type", msg, buffers);
     }
   };
 }

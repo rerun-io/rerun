@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib.metadata
 import pathlib
-from typing import Literal
+from typing import Any, Literal
 
 import anywidget
 import traitlets
@@ -38,7 +38,10 @@ class Viewer(anywidget.AnyWidget):
         allow_none=True,
     ).tag(sync=True)
 
-    _data = traitlets.Bytes(allow_none=True).tag(sync=True)
+    # _data = traitlets.Bytes(allow_none=True).tag(sync=True)
+
+    _ready = False
+    _data_queue: list[bytes] = []
 
     def __init__(
         self,
@@ -47,7 +50,6 @@ class Viewer(anywidget.AnyWidget):
         height: int | None = None,
         url: str | None = None,
         panel_states: dict[Panel, PanelState] | None = None,
-        recording: bytes | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -56,15 +58,23 @@ class Viewer(anywidget.AnyWidget):
         self._height = height
         self._url = url
         self._panel_states = panel_states
-        self._data = recording
 
-        """ def handle_msg(widget: Viewer, content: Any, buffers: list[bytes]) -> None:
+        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
-                widget._on_ready()
+                self._on_ready()
 
-        self.on_msg(handle_msg) """
+        self.on_msg(handle_msg)
+
+    def _on_ready(self):
+        self._ready = True
+        for data in self._data_queue:
+            self.send_rrd(data)
 
     def send_rrd(self, data: bytes) -> None:
         """Send a recording to the viewer."""
 
-        self._data = data
+        if not self._ready:
+            self._data_queue.append(data)
+            return
+
+        self.send({"type": "rrd"}, buffers=[data])
