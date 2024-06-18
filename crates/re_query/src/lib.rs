@@ -1,11 +1,15 @@
 //! Caching datastructures for `re_query`.
 
+// TODO: we should specify that we don't guarantee the output of range is sorted?
+
 mod cache;
 mod cache_stats;
 mod flat_vec_deque;
 mod latest_at;
+mod latest_at2;
 mod promise;
 mod range;
+mod range2;
 
 pub mod clamped_zip;
 pub mod range_zip;
@@ -15,12 +19,15 @@ pub use self::cache_stats::{CachedComponentStats, CachesStats};
 pub use self::clamped_zip::*;
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
 pub use self::latest_at::{LatestAtComponentResults, LatestAtMonoResult, LatestAtResults};
+pub use self::latest_at2::{QueryResults, QueryResultsKind};
 pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
 pub use self::range::{RangeComponentResults, RangeData, RangeResults};
 pub use self::range_zip::*;
 
 pub(crate) use self::latest_at::{latest_at, LatestAtCache};
+pub(crate) use self::latest_at2::{latest_at2, LatestAtCache2};
 pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};
+pub(crate) use self::range2::{range2, RangeCache2};
 
 pub mod external {
     pub use paste;

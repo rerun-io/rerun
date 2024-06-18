@@ -13,6 +13,8 @@ use crate::DataResultQuery as _;
 
 // ---
 
+// TODO: ok somehow we're gonna need a new version of these too
+
 /// Wrapper that contains the results of a latest-at query with possible overrides.
 ///
 /// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait

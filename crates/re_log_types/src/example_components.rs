@@ -40,10 +40,19 @@ impl re_types_core::Archetype for MyPoints {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq)]
 pub struct MyPoint {
     pub x: f32,
     pub y: f32,
+}
+
+impl std::fmt::Debug for MyPoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("MyPoint")
+            .field(&self.x)
+            .field(&self.y)
+            .finish()
+    }
 }
 
 impl MyPoint {
@@ -148,10 +157,19 @@ impl Loggable for MyPoint {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq)]
 pub struct MyPoint64 {
     pub x: f64,
     pub y: f64,
+}
+
+impl std::fmt::Debug for MyPoint64 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("MyPoint64")
+            .field(&self.x)
+            .field(&self.y)
+            .finish()
+    }
 }
 
 impl MyPoint64 {
@@ -256,10 +274,18 @@ impl Loggable for MyPoint64 {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(transparent)]
 pub struct MyColor(pub u32);
+
+impl std::fmt::Debug for MyColor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("MyColor")
+            .field(&format!("0x{:X}", self.0))
+            .finish()
+    }
+}
 
 impl MyColor {
     #[allow(clippy::should_implement_trait)]

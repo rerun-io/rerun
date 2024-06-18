@@ -37,6 +37,7 @@ serde = [
 
 # Rerun
 re_build_info.workspace = true
+re_error.workspace = true
 re_format.workspace = true
 re_format_arrow.workspace = true
 re_log.workspace = true
@@ -74,6 +75,8 @@ crossbeam.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
+
 criterion.workspace = true
 mimalloc.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true

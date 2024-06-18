@@ -3,9 +3,12 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use arrow2::array::{
-    Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-    StructArray as ArrowStructArray,
+use arrow2::{
+    array::{
+        Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+        StructArray as ArrowStructArray,
+    },
+    Either,
 };
 
 use itertools::{izip, Itertools};
@@ -535,6 +538,23 @@ impl Chunk {
             RowId::from_u128((time_min as u128) << 64 | (counter_min as u128)),
             RowId::from_u128((time_max as u128) << 64 | (counter_max as u128)),
         ))
+    }
+
+    // TODO
+    #[inline]
+    pub fn indices(
+        &self,
+        timeline: &Timeline,
+    ) -> Option<impl Iterator<Item = (TimeInt, RowId)> + '_> {
+        if self.is_static() {
+            Some(Either::Left(izip!(
+                std::iter::repeat(TimeInt::STATIC),
+                self.row_ids()
+            )))
+        } else {
+            let time_chunk = self.timelines.get(timeline)?;
+            Some(Either::Right(izip!(time_chunk.times(), self.row_ids())))
+        }
     }
 
     #[inline]

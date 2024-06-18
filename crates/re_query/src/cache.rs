@@ -10,7 +10,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubs
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
 use re_types_core::ComponentName;
 
-use crate::{LatestAtCache, RangeCache};
+use crate::{LatestAtCache, LatestAtCache2, RangeCache, RangeCache2};
 
 // ---
 
@@ -73,8 +73,14 @@ pub struct Caches {
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) latest_at_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
 
+    // TODO
+    pub(crate) latest_at_per_cache_key2: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache2>>>>,
+
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) range_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache>>>>,
+
+    // TODO
+    pub(crate) range_per_cache_key2: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache2>>>>,
 }
 
 impl std::fmt::Debug for Caches {
@@ -82,7 +88,9 @@ impl std::fmt::Debug for Caches {
         let Self {
             store_id,
             latest_at_per_cache_key,
+            latest_at_per_cache_key2,
             range_per_cache_key,
+            range_per_cache_key2,
         } = self;
 
         let mut strings = Vec::new();
@@ -90,6 +98,23 @@ impl std::fmt::Debug for Caches {
         strings.push(format!("[LatestAt @ {store_id}]"));
         {
             let latest_at_per_cache_key = latest_at_per_cache_key.read();
+            let latest_at_per_cache_key: BTreeMap<_, _> = latest_at_per_cache_key.iter().collect();
+
+            for (cache_key, cache) in &latest_at_per_cache_key {
+                let cache = cache.read();
+                strings.push(format!(
+                    "  [{cache_key:?} (pending_invalidation_min={:?})]",
+                    cache.pending_invalidations.first().map(|&t| cache_key
+                        .timeline
+                        .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
+                ));
+                strings.push(indent::indent_all_by(4, format!("{cache:?}")));
+            }
+        }
+
+        strings.push(format!("[LatestAt2 @ {store_id}]"));
+        {
+            let latest_at_per_cache_key = latest_at_per_cache_key2.read();
             let latest_at_per_cache_key: BTreeMap<_, _> = latest_at_per_cache_key.iter().collect();
 
             for (cache_key, cache) in &latest_at_per_cache_key {
@@ -121,6 +146,23 @@ impl std::fmt::Debug for Caches {
             }
         }
 
+        strings.push(format!("[Range2 @ {store_id}]"));
+        {
+            let range_per_cache_key = range_per_cache_key2.read();
+            let range_per_cache_key: BTreeMap<_, _> = range_per_cache_key.iter().collect();
+
+            for (cache_key, cache) in &range_per_cache_key {
+                let cache = cache.read();
+                strings.push(format!(
+                    "  [{cache_key:?} (pending_invalidation_min={:?})]",
+                    cache.pending_invalidation.map(|t| cache_key
+                        .timeline
+                        .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
+                ));
+                strings.push(indent::indent_all_by(4, format!("{cache:?}")));
+            }
+        }
+
         f.write_str(&strings.join("\n").replace("\n\n", "\n"))
     }
 }
@@ -131,7 +173,9 @@ impl Caches {
         Self {
             store_id: store.id().clone(),
             latest_at_per_cache_key: Default::default(),
+            latest_at_per_cache_key2: Default::default(),
             range_per_cache_key: Default::default(),
+            range_per_cache_key2: Default::default(),
         }
     }
 
@@ -140,11 +184,15 @@ impl Caches {
         let Self {
             store_id: _,
             latest_at_per_cache_key,
+            latest_at_per_cache_key2,
             range_per_cache_key,
+            range_per_cache_key2,
         } = self;
 
         latest_at_per_cache_key.write().clear();
+        latest_at_per_cache_key2.write().clear();
         range_per_cache_key.write().clear();
+        range_per_cache_key2.write().clear();
     }
 }
 
@@ -222,8 +270,18 @@ impl ChunkStoreSubscriber for Caches {
             }
         }
 
-        let caches_latest_at = self.latest_at_per_cache_key.write();
-        let caches_range = self.range_per_cache_key.write();
+        let Self {
+            store_id: _,
+            latest_at_per_cache_key,
+            latest_at_per_cache_key2,
+            range_per_cache_key,
+            range_per_cache_key2,
+        } = self;
+
+        let caches_latest_at = latest_at_per_cache_key.write();
+        let caches_latest_at2 = latest_at_per_cache_key2.write();
+        let caches_range = range_per_cache_key.write();
+        let caches_range2 = range_per_cache_key2.write();
         // NOTE: Don't release the top-level locks -- even though this cannot happen yet with
         // our current macro-architecture, we want to prevent queries from concurrently
         // running while we're updating the invalidation flags.
@@ -242,7 +300,19 @@ impl ChunkStoreSubscriber for Caches {
                     }
                 }
 
+                for (key, cache) in caches_latest_at2.iter() {
+                    if key.entity_path == entity_path && key.component_name == component_name {
+                        cache.write().pending_invalidations.insert(TimeInt::STATIC);
+                    }
+                }
+
                 for (key, cache) in caches_range.iter() {
+                    if key.entity_path == entity_path && key.component_name == component_name {
+                        cache.write().pending_invalidation = Some(TimeInt::STATIC);
+                    }
+                }
+
+                for (key, cache) in caches_range2.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
                         cache.write().pending_invalidation = Some(TimeInt::STATIC);
                     }
@@ -261,7 +331,21 @@ impl ChunkStoreSubscriber for Caches {
                         .extend(times.iter().copied());
                 }
 
+                if let Some(cache) = caches_latest_at2.get(&key) {
+                    cache
+                        .write()
+                        .pending_invalidations
+                        .extend(times.iter().copied());
+                }
+
                 if let Some(cache) = caches_range.get(&key) {
+                    let pending_invalidation = &mut cache.write().pending_invalidation;
+                    let min_time = times.first().copied();
+                    *pending_invalidation =
+                        Option::min(*pending_invalidation, min_time).or(min_time);
+                }
+
+                if let Some(cache) = caches_range2.get(&key) {
                     let pending_invalidation = &mut cache.write().pending_invalidation;
                     let min_time = times.first().copied();
                     *pending_invalidation =
