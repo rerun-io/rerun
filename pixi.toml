@@ -325,7 +325,7 @@ mypy = "1.8.0"
 ninja = "1.11.1"
 numpy = ">=1.23,<2"
 packaging = ">=24.0,<25"          # For `publish_wheels.py`
-prettier = "2.8.8.*"
+prettier = "3.2.5.*"
 pyarrow = "14.0.2"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
@@ -338,6 +338,7 @@ tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility s
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
+nodejs = ">=20.12"
 
 [feature.base.pypi-dependencies]
 cryptography = "==38.0.4"        # For `upload_image.py`
