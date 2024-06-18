@@ -8,9 +8,12 @@ namespace rerun.blueprint.views;
 table TensorView (
     "attr.rerun.view_identifier": "Tensor"
 ) {
+    /// How to select the slice of the tensor to show.
+    slice_selection: rerun.blueprint.archetypes.TensorSliceSelection (order: 1000);
+
     /// Configures how scalars are mapped to color.
     scalar_mapping: rerun.blueprint.archetypes.TensorScalarMapping (order: 2000);
 
     /// Configures how the selected slice should fit into the view.
-    view_fit: rerun.blueprint.archetypes.TensorViewFit (order: 1000);
+    view_fit: rerun.blueprint.archetypes.TensorViewFit (order: 3000);
 }

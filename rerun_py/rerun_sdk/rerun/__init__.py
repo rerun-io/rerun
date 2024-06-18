@@ -76,6 +76,7 @@ from .components import (
     MediaType as MediaType,
     OutOfTreeTransform3D as OutOfTreeTransform3D,
     OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
+    TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
 )
 from .datatypes import (
@@ -85,6 +86,7 @@ from .datatypes import (
     RotationAxisAngle as RotationAxisAngle,
     Scale3D as Scale3D,
     TensorData as TensorData,
+    TensorDimensionSelection as TensorDimensionSelection,
     TimeInt as TimeInt,
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,

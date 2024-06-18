@@ -27,13 +27,13 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = DataCell::from_loggable(archetype.indices);
+        if (archetype.indices.has_value()) {
+            auto result = DataCell::from_loggable(archetype.indices.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = DataCell::from_loggable(archetype.slider);
+        if (archetype.slider.has_value()) {
+            auto result = DataCell::from_loggable(archetype.slider.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

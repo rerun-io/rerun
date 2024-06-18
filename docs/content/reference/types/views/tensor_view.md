@@ -7,14 +7,21 @@ A view on a tensor of any dimensionality.
 
 ## Properties
 
-### `view_fit`
-Configures how the selected slice should fit into the view.
+### `slice_selection`
+How to select the slice of the tensor to show.
+
+* `width`: Which dimension to map to width.
+* `height`: Which dimension to map to height.
+* `indices`: Selected indices for all other dimensions.
+* `slider`: Any dimension that listed here, will show a slider in the view.
 ### `scalar_mapping`
 Configures how scalars are mapped to color.
 
 * `mag_filter`: Filter used when zooming in on the tensor.
 * `colormap`: How scalar values map to colors.
 * `gamma`: Gamma exponent applied to normalized values before mapping to color.
+### `view_fit`
+Configures how the selected slice should fit into the view.
 
 ## API reference links
  * 🐍 [Python API docs for `TensorView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TensorView)

@@ -38,13 +38,13 @@ pub struct TensorSliceSelection {
     /// Selected indices for all other dimensions.
     ///
     /// Any dimension not mentioned here or in width/height will be set to its center index.
-    pub indices: Vec<crate::components::TensorDimensionIndexSelection>,
+    pub indices: Option<Vec<crate::components::TensorDimensionIndexSelection>>,
 
     /// Any dimension that listed here, will show a slider in the view.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
     /// If not specified, adds slides for any dimension in `indices`.
-    pub slider: Vec<crate::blueprint::components::TensorDimensionIndexSlider>,
+    pub slider: Option<Vec<crate::blueprint::components::TensorDimensionIndexSlider>>,
 }
 
 impl ::re_types_core::SizeBytes for TensorSliceSelection {
@@ -60,8 +60,8 @@ impl ::re_types_core::SizeBytes for TensorSliceSelection {
     fn is_pod() -> bool {
         <Option<crate::components::TensorWidthDimension>>::is_pod()
             && <Option<crate::components::TensorHeightDimension>>::is_pod()
-            && <Vec<crate::components::TensorDimensionIndexSelection>>::is_pod()
-            && <Vec<crate::blueprint::components::TensorDimensionIndexSlider>>::is_pod()
+            && <Option<Vec<crate::components::TensorDimensionIndexSelection>>>::is_pod()
+            && <Option<Vec<crate::blueprint::components::TensorDimensionIndexSlider>>>::is_pod()
     }
 }
 
@@ -204,29 +204,33 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
             } else {
                 None
             };
-        let indices = {
-            let array = arrays_by_name
-                .get("rerun.components.TensorDimensionIndexSelection")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?;
-            <crate::components::TensorDimensionIndexSelection>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
+        let indices = if let Some(array) =
+            arrays_by_name.get("rerun.components.TensorDimensionIndexSelection")
+        {
+            Some({
+                <crate::components::TensorDimensionIndexSelection>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#indices")?
+            })
+        } else {
+            None
         };
-        let slider = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.TensorDimensionIndexSlider")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?;
-            <crate::blueprint::components::TensorDimensionIndexSlider>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
+        let slider = if let Some(array) =
+            arrays_by_name.get("rerun.blueprint.components.TensorDimensionIndexSlider")
+        {
+            Some({
+                <crate::blueprint::components::TensorDimensionIndexSlider>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.blueprint.archetypes.TensorSliceSelection#slider")?
+            })
+        } else {
+            None
         };
         Ok(Self {
             width,
@@ -249,8 +253,12 @@ impl ::re_types_core::AsComponents for TensorSliceSelection {
             self.height
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            Some((&self.indices as &dyn ComponentBatch).into()),
-            Some((&self.slider as &dyn ComponentBatch).into()),
+            self.indices
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.slider
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -261,17 +269,12 @@ impl ::re_types_core::AsComponents for TensorSliceSelection {
 impl TensorSliceSelection {
     /// Create a new `TensorSliceSelection`.
     #[inline]
-    pub fn new(
-        indices: impl IntoIterator<Item = impl Into<crate::components::TensorDimensionIndexSelection>>,
-        slider: impl IntoIterator<
-            Item = impl Into<crate::blueprint::components::TensorDimensionIndexSlider>,
-        >,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            indices: indices.into_iter().map(Into::into).collect(),
-            slider: slider.into_iter().map(Into::into).collect(),
             width: None,
             height: None,
+            indices: None,
+            slider: None,
         }
     }
 
@@ -293,6 +296,33 @@ impl TensorSliceSelection {
         height: impl Into<crate::components::TensorHeightDimension>,
     ) -> Self {
         self.height = Some(height.into());
+        self
+    }
+
+    /// Selected indices for all other dimensions.
+    ///
+    /// Any dimension not mentioned here or in width/height will be set to its center index.
+    #[inline]
+    pub fn with_indices(
+        mut self,
+        indices: impl IntoIterator<Item = impl Into<crate::components::TensorDimensionIndexSelection>>,
+    ) -> Self {
+        self.indices = Some(indices.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Any dimension that listed here, will show a slider in the view.
+    ///
+    /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    /// If not specified, adds slides for any dimension in `indices`.
+    #[inline]
+    pub fn with_slider(
+        mut self,
+        slider: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::TensorDimensionIndexSlider>,
+        >,
+    ) -> Self {
+        self.slider = Some(slider.into_iter().map(Into::into).collect());
         self
     }
 }

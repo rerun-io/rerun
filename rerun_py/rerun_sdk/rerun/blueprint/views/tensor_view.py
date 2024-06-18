@@ -28,13 +28,27 @@ class TensorView(SpaceView):
 
     rr.init("rerun_example_tensor", spawn=True)
 
-    tensor = np.random.randint(0, 256, (8, 6, 3, 5), dtype=np.uint8)
+    tensor = np.random.randint(0, 256, (8, 10, 12, 14), dtype=np.uint8)
     rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "channel", "batch")))
 
     blueprint = rrb.Blueprint(
         rrb.TensorView(
             origin="tensor",
             name="Tensor",
+            # Explicitly pick which dimensions to show.
+            slice_selection=rrb.TensorSliceSelection(
+                # Use the first dimension as width.
+                width=0,
+                # Use the second dimension as height and invert it.
+                height=rr.TensorDimensionSelection(dimension=1, invert=True),
+                # Set which indices to show for the other dimensions.
+                indices=[
+                    rr.TensorDimensionIndexSelection(dimension=2, index=4),
+                    rr.TensorDimensionIndexSelection(dimension=3, index=5),
+                ],
+                # Show a slider for dimension 2 only. If not specified, all dimensions in `indices` will have sliders.
+                slider=[2],
+            ),
             # Set a scalar mapping with a custom colormap, gamma and magnification filter.
             scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
             # Change sizing mode to keep aspect ratio.
@@ -64,8 +78,9 @@ class TensorView(SpaceView):
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
-        view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,
+        slice_selection: blueprint_archetypes.TensorSliceSelection | None = None,
         scalar_mapping: blueprint_archetypes.TensorScalarMapping | None = None,
+        view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TensorView view.
@@ -89,23 +104,30 @@ class TensorView(SpaceView):
             List of default components or component batches to add to the space view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
-        view_fit:
-            Configures how the selected slice should fit into the view.
+        slice_selection:
+            How to select the slice of the tensor to show.
         scalar_mapping:
             Configures how scalars are mapped to color.
+        view_fit:
+            Configures how the selected slice should fit into the view.
 
         """
 
         properties: dict[str, AsComponents] = {}
-        if view_fit is not None:
-            if not isinstance(view_fit, blueprint_archetypes.TensorViewFit):
-                view_fit = blueprint_archetypes.TensorViewFit(view_fit)
-            properties["TensorViewFit"] = view_fit
+        if slice_selection is not None:
+            if not isinstance(slice_selection, blueprint_archetypes.TensorSliceSelection):
+                slice_selection = blueprint_archetypes.TensorSliceSelection(slice_selection)
+            properties["TensorSliceSelection"] = slice_selection
 
         if scalar_mapping is not None:
             if not isinstance(scalar_mapping, blueprint_archetypes.TensorScalarMapping):
                 scalar_mapping = blueprint_archetypes.TensorScalarMapping(scalar_mapping)
             properties["TensorScalarMapping"] = scalar_mapping
+
+        if view_fit is not None:
+            if not isinstance(view_fit, blueprint_archetypes.TensorViewFit):
+                view_fit = blueprint_archetypes.TensorViewFit(view_fit)
+            properties["TensorViewFit"] = view_fit
 
         super().__init__(
             class_identifier="Tensor",

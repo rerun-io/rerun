@@ -39,7 +39,10 @@ impl DragDropAddress {
                     dimension: h.dimension,
                     index: shape[h.dimension as usize].size / 2, // Select middle if this becomes index fixed.
                 }),
-            Self::Selector(selector_idx) => Some(slice_selection.indices[*selector_idx].0),
+            #[allow(clippy::unwrap_used)]
+            Self::Selector(selector_idx) => {
+                Some(slice_selection.indices.as_ref().unwrap()[*selector_idx].0)
+            }
             Self::NewSelector => None,
         }
     }
@@ -70,8 +73,8 @@ impl DragDropAddress {
                 slice_property.save_blueprint_component(ctx, &height);
             }
             Self::Selector(selector_idx) => {
-                let mut indices = slice_selection.indices.clone();
-                let mut slider = slice_selection.slider.clone();
+                let mut indices = slice_selection.indices.clone().unwrap_or_default();
+                let mut slider = slice_selection.slider.clone().unwrap_or_default();
                 if let Some(new_selection) = new_selection {
                     indices[*selector_idx] = new_selection.into();
                     slider.push(new_selection.dimension.into()); // Enable slider by default.
@@ -86,8 +89,8 @@ impl DragDropAddress {
             Self::NewSelector => {
                 // NewSelector can only be a drop *target*, therefore dim_idx can't be None!
                 if let Some(new_selection) = new_selection {
-                    let mut indices = slice_selection.indices.clone();
-                    let mut slider = slice_selection.slider.clone();
+                    let mut indices = slice_selection.indices.clone().unwrap_or_default();
+                    let mut slider = slice_selection.slider.clone().unwrap_or_default();
                     indices.push(new_selection.into());
                     slider.push(new_selection.dimension.into()); // Enable slider by default.
                     slice_property.save_blueprint_component(ctx, &indices);
@@ -201,11 +204,16 @@ pub fn dimension_mapping_ui(
 
         ui.vertical(|ui| {
             ui.strong("Selectors");
+
+            let Some(indices) = &slice_selection.indices else {
+                return;
+            };
+
             // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
                 .num_columns(2)
                 .show(ui, |ui| {
-                    for (selector_idx, selector) in slice_selection.indices.iter().enumerate() {
+                    for (selector_idx, selector) in indices.iter().enumerate() {
                         tensor_dimension_ui(
                             ui,
                             drag_context_id,
@@ -216,10 +224,12 @@ pub fn dimension_mapping_ui(
                             &mut drop_target,
                         );
 
-                        let mut has_slider = slice_selection
-                            .slider
-                            .iter()
-                            .any(|slider| slider.dimension == selector.dimension);
+                        let mut has_slider =
+                            slice_selection.slider.as_ref().map_or(false, |slider| {
+                                slider
+                                    .iter()
+                                    .any(|slider| slider.dimension == selector.dimension)
+                            });
 
                         let response = ui.visibility_toggle_button(&mut has_slider);
                         let response = if has_slider {
@@ -228,7 +238,7 @@ pub fn dimension_mapping_ui(
                             response.on_hover_text("Show dimension slider")
                         };
                         if response.changed() {
-                            let mut slider = slice_selection.slider.clone();
+                            let mut slider = slice_selection.slider.clone().unwrap_or_default();
                             if has_slider {
                                 slider.push(selector.dimension.into());
                             } else {

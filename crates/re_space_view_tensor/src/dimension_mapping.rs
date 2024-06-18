@@ -123,8 +123,8 @@ pub fn load_tensor_slice_selection_and_make_valid(
     Ok(TensorSliceSelection {
         width,
         height,
-        indices,
-        slider,
+        indices: Some(indices),
+        slider: Some(slider),
     })
 }
 

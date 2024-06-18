@@ -34,13 +34,13 @@ namespace rerun::blueprint::archetypes {
         /// Selected indices for all other dimensions.
         ///
         /// Any dimension not mentioned here or in width/height will be set to its center index.
-        Collection<rerun::components::TensorDimensionIndexSelection> indices;
+        std::optional<Collection<rerun::components::TensorDimensionIndexSelection>> indices;
 
         /// Any dimension that listed here, will show a slider in the view.
         ///
         /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
         /// If not specified, adds slides for any dimension in `indices`.
-        Collection<rerun::blueprint::components::TensorDimensionIndexSlider> slider;
+        std::optional<Collection<rerun::blueprint::components::TensorDimensionIndexSlider>> slider;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -52,12 +52,6 @@ namespace rerun::blueprint::archetypes {
       public:
         TensorSliceSelection() = default;
         TensorSliceSelection(TensorSliceSelection&& other) = default;
-
-        explicit TensorSliceSelection(
-            Collection<rerun::components::TensorDimensionIndexSelection> _indices,
-            Collection<rerun::blueprint::components::TensorDimensionIndexSlider> _slider
-        )
-            : indices(std::move(_indices)), slider(std::move(_slider)) {}
 
         /// Which dimension to map to width.
         ///
@@ -73,6 +67,29 @@ namespace rerun::blueprint::archetypes {
         /// If not specified, the height will be determined automatically based on the name and index of the dimension.
         TensorSliceSelection with_height(rerun::components::TensorHeightDimension _height) && {
             height = std::move(_height);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Selected indices for all other dimensions.
+        ///
+        /// Any dimension not mentioned here or in width/height will be set to its center index.
+        TensorSliceSelection with_indices(
+            Collection<rerun::components::TensorDimensionIndexSelection> _indices
+        ) && {
+            indices = std::move(_indices);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Any dimension that listed here, will show a slider in the view.
+        ///
+        /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+        /// If not specified, adds slides for any dimension in `indices`.
+        TensorSliceSelection with_slider(
+            Collection<rerun::blueprint::components::TensorDimensionIndexSlider> _slider
+        ) && {
+            slider = std::move(_slider);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -31,6 +31,7 @@ from .archetypes import (
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,
+    TensorSliceSelection as TensorSliceSelection,
     # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
     VisualBounds2D as VisualBounds2D,
 )

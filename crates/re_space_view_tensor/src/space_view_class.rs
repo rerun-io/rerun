@@ -223,7 +223,11 @@ impl TensorSpaceView {
         let default_item_spacing = ui.spacing_mut().item_spacing;
         ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
 
-        if !slice_selection.slider.is_empty() {
+        if slice_selection
+            .slider
+            .as_ref()
+            .map_or(true, |s| !s.is_empty())
+        {
             egui::Frame {
                 inner_margin: egui::Margin::symmetric(16.0, 8.0),
                 ..Default::default()
@@ -375,6 +379,9 @@ pub fn selected_tensor_slice<'a, T: Copy>(
         indices,
         slider: _,
     } = slice_selection;
+
+    let empty_indices = Vec::new();
+    let indices = indices.as_ref().unwrap_or(&empty_indices);
 
     let (dwidth, dheight) = if let (Some(width), Some(height)) = (width, height) {
         (width.dimension, height.dimension)
@@ -556,11 +563,15 @@ fn selectors_ui(
     slice_selection: &TensorSliceSelection,
     slice_property: &ViewProperty<'_>,
 ) {
-    let mut changed_indices = false;
-    let mut indices = slice_selection.indices.clone();
+    let Some(slider) = &slice_selection.slider else {
+        return;
+    };
 
-    for selector in &slice_selection.slider {
-        let dim = &shape[selector.dimension as usize];
+    let mut changed_indices = false;
+    let mut indices = slice_selection.indices.clone().unwrap_or_default();
+
+    for index_slider in slider {
+        let dim = &shape[index_slider.dimension as usize];
         let size = dim.size;
         if size <= 1 {
             continue;
@@ -568,7 +579,7 @@ fn selectors_ui(
 
         let Some(selector_index) = indices
             .iter_mut()
-            .find(|i| i.dimension == selector.dimension)
+            .find(|i| i.dimension == index_slider.dimension)
         else {
             // There should be an entry already via `load_tensor_slice_selection_and_make_valid`
             continue;
@@ -576,10 +587,10 @@ fn selectors_ui(
         let selector_value = &mut selector_index.index;
 
         ui.horizontal(|ui| {
-            let name = dim
-                .name
-                .clone()
-                .map_or_else(|| selector.dimension.to_string(), |name| name.to_string());
+            let name = dim.name.clone().map_or_else(
+                || index_slider.dimension.to_string(),
+                |name| name.to_string(),
+            );
 
             let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
             ui.label(&name).on_hover_text(&slider_tooltip);

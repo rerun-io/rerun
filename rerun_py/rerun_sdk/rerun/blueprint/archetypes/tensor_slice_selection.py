@@ -25,11 +25,11 @@ class TensorSliceSelection(Archetype):
 
     def __init__(
         self: Any,
-        indices: datatypes.TensorDimensionIndexSelectionArrayLike,
-        slider: blueprint_datatypes.TensorDimensionIndexSliderArrayLike,
         *,
         width: datatypes.TensorDimensionSelectionLike | None = None,
         height: datatypes.TensorDimensionSelectionLike | None = None,
+        indices: datatypes.TensorDimensionIndexSelectionArrayLike | None = None,
+        slider: blueprint_datatypes.TensorDimensionIndexSliderArrayLike | None = None,
     ):
         """
         Create a new instance of the TensorSliceSelection archetype.
@@ -78,27 +78,6 @@ class TensorSliceSelection(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    indices: components.TensorDimensionIndexSelectionBatch = field(
-        metadata={"component": "required"},
-        converter=components.TensorDimensionIndexSelectionBatch._required,  # type: ignore[misc]
-    )
-    # Selected indices for all other dimensions.
-    #
-    # Any dimension not mentioned here or in width/height will be set to its center index.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    slider: blueprint_components.TensorDimensionIndexSliderBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.TensorDimensionIndexSliderBatch._required,  # type: ignore[misc]
-    )
-    # Any dimension that listed here, will show a slider in the view.
-    #
-    # Edits to the sliders will directly manipulate dimensions on the `indices` list.
-    # If not specified, adds slides for any dimension in `indices`.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
     width: components.TensorWidthDimensionBatch | None = field(
         metadata={"component": "optional"},
         default=None,
@@ -118,6 +97,29 @@ class TensorSliceSelection(Archetype):
     # Which dimension to map to height.
     #
     # If not specified, the height will be determined automatically based on the name and index of the dimension.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    indices: components.TensorDimensionIndexSelectionBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.TensorDimensionIndexSelectionBatch._optional,  # type: ignore[misc]
+    )
+    # Selected indices for all other dimensions.
+    #
+    # Any dimension not mentioned here or in width/height will be set to its center index.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    slider: blueprint_components.TensorDimensionIndexSliderBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.TensorDimensionIndexSliderBatch._optional,  # type: ignore[misc]
+    )
+    # Any dimension that listed here, will show a slider in the view.
+    #
+    # Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    # If not specified, adds slides for any dimension in `indices`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
