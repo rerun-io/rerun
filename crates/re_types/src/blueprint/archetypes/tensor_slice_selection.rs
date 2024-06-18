@@ -37,12 +37,14 @@ pub struct TensorSliceSelection {
 
     /// Selected indices for all other dimensions.
     ///
+    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
     /// Any dimension not mentioned here or in width/height will be set to its center index.
     pub indices: Option<Vec<crate::components::TensorDimensionIndexSelection>>,
 
     /// Any dimension that listed here, will show a slider in the view.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
     /// If not specified, adds slides for any dimension in `indices`.
     pub slider: Option<Vec<crate::blueprint::components::TensorDimensionIndexSlider>>,
 }
@@ -109,12 +111,12 @@ static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Indices",
-            documentation: "Selected indices for all other dimensions.\n\nAny dimension not mentioned here or in width/height will be set to its center index.",
+            documentation: "Selected indices for all other dimensions.\n\nIf any of the here listed dimensions is equal to width or height, it will be ignored.\nAny dimension not mentioned here or in width/height will be set to its center index.",
             component_name: "rerun.components.TensorDimensionIndexSelection".into(),
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Slider",
-            documentation: "Any dimension that listed here, will show a slider in the view.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf not specified, adds slides for any dimension in `indices`.",
+            documentation: "Any dimension that listed here, will show a slider in the view.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf any of the here listed dimensions is equal to width or height, it will be ignored.\nIf not specified, adds slides for any dimension in `indices`.",
             component_name: "rerun.blueprint.components.TensorDimensionIndexSlider"
                 .into(),
         },
@@ -301,6 +303,7 @@ impl TensorSliceSelection {
 
     /// Selected indices for all other dimensions.
     ///
+    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
     /// Any dimension not mentioned here or in width/height will be set to its center index.
     #[inline]
     pub fn with_indices(
@@ -314,6 +317,7 @@ impl TensorSliceSelection {
     /// Any dimension that listed here, will show a slider in the view.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
     /// If not specified, adds slides for any dimension in `indices`.
     #[inline]
     pub fn with_slider(

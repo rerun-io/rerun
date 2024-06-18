@@ -47,11 +47,13 @@ class TensorSliceSelection(Archetype):
         indices:
             Selected indices for all other dimensions.
 
+            If any of the here listed dimensions is equal to width or height, it will be ignored.
             Any dimension not mentioned here or in width/height will be set to its center index.
         slider:
             Any dimension that listed here, will show a slider in the view.
 
             Edits to the sliders will directly manipulate dimensions on the `indices` list.
+            If any of the here listed dimensions is equal to width or height, it will be ignored.
             If not specified, adds slides for any dimension in `indices`.
 
         """
@@ -107,6 +109,7 @@ class TensorSliceSelection(Archetype):
     )
     # Selected indices for all other dimensions.
     #
+    # If any of the here listed dimensions is equal to width or height, it will be ignored.
     # Any dimension not mentioned here or in width/height will be set to its center index.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -119,6 +122,7 @@ class TensorSliceSelection(Archetype):
     # Any dimension that listed here, will show a slider in the view.
     #
     # Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    # If any of the here listed dimensions is equal to width or height, it will be ignored.
     # If not specified, adds slides for any dimension in `indices`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

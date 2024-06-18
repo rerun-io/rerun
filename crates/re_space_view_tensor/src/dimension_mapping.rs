@@ -63,6 +63,16 @@ pub fn load_tensor_slice_selection_and_make_valid(
             );
         }
     }
+    // If there's one dimension, force at least with or height to be set.
+    else if shape.len() == 1 && width.is_none() && height.is_none() {
+        width = Some(
+            TensorDimensionSelection {
+                dimension: 0,
+                invert: false,
+            }
+            .into(),
+        );
+    }
 
     let width_dim = width.map_or(u32::MAX, |w| w.0.dimension);
     let height_dim = height.map_or(u32::MAX, |h| h.0.dimension);

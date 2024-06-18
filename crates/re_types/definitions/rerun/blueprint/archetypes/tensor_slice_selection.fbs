@@ -19,12 +19,14 @@ table TensorSliceSelection (
 
     /// Selected indices for all other dimensions.
     ///
+    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
     /// Any dimension not mentioned here or in width/height will be set to its center index.
     indices: [rerun.components.TensorDimensionIndexSelection] ("attr.rerun.component_optional", nullable, order: 1200);
 
     /// Any dimension that listed here, will show a slider in the view.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
     /// If not specified, adds slides for any dimension in `indices`.
     slider: [rerun.blueprint.components.TensorDimensionIndexSlider] ("attr.rerun.component_optional", nullable, order: 1300);
 }

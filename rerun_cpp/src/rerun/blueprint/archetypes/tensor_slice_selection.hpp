@@ -33,12 +33,14 @@ namespace rerun::blueprint::archetypes {
 
         /// Selected indices for all other dimensions.
         ///
+        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
         /// Any dimension not mentioned here or in width/height will be set to its center index.
         std::optional<Collection<rerun::components::TensorDimensionIndexSelection>> indices;
 
         /// Any dimension that listed here, will show a slider in the view.
         ///
         /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
         /// If not specified, adds slides for any dimension in `indices`.
         std::optional<Collection<rerun::blueprint::components::TensorDimensionIndexSlider>> slider;
 
@@ -73,6 +75,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Selected indices for all other dimensions.
         ///
+        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
         /// Any dimension not mentioned here or in width/height will be set to its center index.
         TensorSliceSelection with_indices(
             Collection<rerun::components::TensorDimensionIndexSelection> _indices
@@ -85,6 +88,7 @@ namespace rerun::blueprint::archetypes {
         /// Any dimension that listed here, will show a slider in the view.
         ///
         /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
         /// If not specified, adds slides for any dimension in `indices`.
         TensorSliceSelection with_slider(
             Collection<rerun::blueprint::components::TensorDimensionIndexSlider> _slider

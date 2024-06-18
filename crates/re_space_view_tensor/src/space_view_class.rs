@@ -261,17 +261,17 @@ impl TensorSpaceView {
             });
         }
 
-        let dimension_labels = {
-            let width = slice_selection.width.unwrap_or_default();
-            let height = slice_selection.height.unwrap_or_default();
-            [
+        let dimension_labels = [
+            slice_selection
+                .width
+                .map(|width| (dimension_name(&tensor.shape, width.dimension), width.invert)),
+            slice_selection.height.map(|height| {
                 (
                     dimension_name(&tensor.shape, height.dimension),
                     height.invert,
-                ),
-                (dimension_name(&tensor.shape, width.dimension), width.invert),
-            ]
-        };
+                )
+            }),
+        ];
 
         egui::ScrollArea::both().show(ui, |ui| {
             if let Err(err) =
@@ -290,7 +290,7 @@ impl TensorSpaceView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: SpaceViewId,
-        dimension_labels: [(String, bool); 2],
+        dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
         let (response, painter, image_rect) =
@@ -465,10 +465,14 @@ fn paint_axis_names(
     painter: &egui::Painter,
     rect: egui::Rect,
     font_id: egui::FontId,
-    dimension_labels: [(String, bool); 2],
+    dimension_labels: [Option<(String, bool)>; 2],
 ) {
-    // Show axis names etc:
-    let [(width_name, invert_width), (height_name, invert_height)] = dimension_labels;
+    let [width, height] = dimension_labels;
+    let (width_name, invert_width) =
+        width.map_or((None, false), |(label, invert)| (Some(label), invert));
+    let (height_name, invert_height) =
+        height.map_or((None, false), |(label, invert)| (Some(label), invert));
+
     let text_color = ui.visuals().text_color();
 
     let rounding = re_ui::DesignTokens::normal_rounding();
@@ -505,7 +509,7 @@ fn paint_axis_names(
     };
 
     // Label for X axis:
-    {
+    if let Some(width_name) = width_name {
         let text_background = painter.add(egui::Shape::Noop);
         let text_rect = if invert_width {
             // On left, pointing left:
@@ -540,7 +544,7 @@ fn paint_axis_names(
     }
 
     // Label for Y axis:
-    {
+    if let Some(height_name) = height_name {
         let text_background = painter.add(egui::Shape::Noop);
         let text_rect = if invert_height {
             // On top, pointing up:
