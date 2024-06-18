@@ -24,17 +24,24 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A view on a tensor of any dimensionality.
 #[derive(Clone, Debug)]
-pub struct TensorView {}
+pub struct TensorView {
+    /// Configures how the selected slice should fit into the view.
+    pub view_fit: crate::blueprint::archetypes::TensorViewFit,
+
+    /// Configures how scalars are mapped to color.
+    pub scalar_mapping: crate::blueprint::archetypes::TensorScalarMapping,
+}
 
 impl ::re_types_core::SizeBytes for TensorView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        self.view_fit.heap_size_bytes() + self.scalar_mapping.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        true
+        <crate::blueprint::archetypes::TensorViewFit>::is_pod()
+            && <crate::blueprint::archetypes::TensorScalarMapping>::is_pod()
     }
 }
 

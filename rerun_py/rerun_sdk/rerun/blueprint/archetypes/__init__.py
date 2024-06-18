@@ -9,6 +9,8 @@ from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
+from .tensor_scalar_mapping import TensorScalarMapping
+from .tensor_view_fit import TensorViewFit
 from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
 from .visual_bounds2d import VisualBounds2D
@@ -21,6 +23,8 @@ __all__ = [
     "ScalarAxis",
     "SpaceViewBlueprint",
     "SpaceViewContents",
+    "TensorScalarMapping",
+    "TensorViewFit",
     "ViewportBlueprint",
     "VisibleTimeRanges",
     "VisualBounds2D",

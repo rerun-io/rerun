@@ -91,6 +91,10 @@ pub fn list_default_components(
             SpaceViewOrigin::default().to_arrow()?,
         ),
         (
+            <ViewFit as Loggable>::name(),
+            ViewFit::default().to_arrow()?,
+        ),
+        (
             <ViewerRecommendationHash as Loggable>::name(),
             ViewerRecommendationHash::default().to_arrow()?,
         ),
@@ -149,6 +153,10 @@ pub fn list_default_components(
             FillRatio::default().to_arrow()?,
         ),
         (
+            <GammaCorrection as Loggable>::name(),
+            GammaCorrection::default().to_arrow()?,
+        ),
+        (
             <HalfSizes2D as Loggable>::name(),
             HalfSizes2D::default().to_arrow()?,
         ),
@@ -171,6 +179,10 @@ pub fn list_default_components(
         (
             <LineStrip3D as Loggable>::name(),
             LineStrip3D::default().to_arrow()?,
+        ),
+        (
+            <MagnificationFilter as Loggable>::name(),
+            MagnificationFilter::default().to_arrow()?,
         ),
         (
             <MarkerShape as Loggable>::name(),
