@@ -157,7 +157,7 @@ pub fn dimension_mapping_ui(
 
     ui.vertical(|ui| {
         ui.vertical(|ui| {
-            ui.strong("Image");
+            ui.label("Image");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
                 tensor_dimension_ui(
                     ui,
@@ -203,7 +203,7 @@ pub fn dimension_mapping_ui(
         ui.add_space(4.0);
 
         ui.vertical(|ui| {
-            ui.strong("Selectors");
+            ui.label("Selectors");
 
             let Some(indices) = &slice_selection.indices else {
                 return;

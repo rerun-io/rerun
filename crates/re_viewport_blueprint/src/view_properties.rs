@@ -177,6 +177,32 @@ impl<'a> ViewProperty<'a> {
         ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, C::name());
     }
 
+    /// Resets all components the values they had in the default blueprint.
+    pub fn reset_all_components(&self, ctx: &'a ViewerContext<'a>) {
+        for &component_name in self.query_results.components.keys() {
+            ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, component_name);
+        }
+    }
+
+    /// Resets all components to empty values, i.e. the fallback.
+    pub fn reset_all_components_to_empty(&self, ctx: &'a ViewerContext<'a>) {
+        for &component_name in self.query_results.components.keys() {
+            ctx.save_empty_blueprint_component_by_name(&self.blueprint_store_path, component_name);
+        }
+    }
+
+    /// Returns whether any property is non-empty.
+    pub fn any_non_empty(&self) -> bool {
+        for &component_name in self.query_results.components.keys() {
+            if let Some(raw) = self.component_raw(component_name) {
+                if raw.len() > 0 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     fn query_context(
         &self,
         viewer_ctx: &'a ViewerContext<'a>,

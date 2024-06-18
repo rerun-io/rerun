@@ -137,6 +137,7 @@ impl SpaceViewClass for TensorSpaceView {
             view_property_ui::<TensorViewFit>(ctx, ui, view_id, self, state);
         });
 
+        // TODO(andreas): Listitemify
         if let Some((_, tensor)) = &state.tensor {
             let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
                 ctx.blueprint_db(),
@@ -149,7 +150,29 @@ impl SpaceViewClass for TensorSpaceView {
             ui.separator();
             ui.strong("Dimension Mapping");
             dimension_mapping_ui(ctx, ui, tensor.shape(), &slice_selection, &slice_property);
-            // TODO: there used to be a reset to default button here, we need to bring this back in a blueprinty way
+
+            // TODO(andreas): this is a bit too inconsistent with the other UIs.
+            if ui
+                .button("Reset to default blueprint")
+                .on_hover_text("Reset dimension mapping to the previously set default blueprint")
+                .clicked()
+            {
+                slice_property.reset_all_components(ctx);
+            }
+
+            if ui
+                .add_enabled_ui(slice_property.any_non_empty(), |ui| {
+                    ui.button("Reset to default")
+                        .on_hover_text(
+                            "Reset dimension mapping to the default, i.e. as if never set",
+                        )
+                        .on_disabled_hover_text("No custom dimension mapping set")
+                })
+                .inner
+                .clicked()
+            {
+                slice_property.reset_all_components_to_empty(ctx);
+            }
         }
 
         Ok(())
