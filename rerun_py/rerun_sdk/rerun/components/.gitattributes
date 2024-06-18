@@ -2,21 +2,26 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+aggregation_policy.py linguist-generated=true
 annotation_context.py linguist-generated=true
 axis_length.py linguist-generated=true
 blob.py linguist-generated=true
 class_id.py linguist-generated=true
 clear_is_recursive.py linguist-generated=true
 color.py linguist-generated=true
+colormap.py linguist-generated=true
 depth_meter.py linguist-generated=true
 disconnected_space.py linguist-generated=true
 draw_order.py linguist-generated=true
+fill_ratio.py linguist-generated=true
+gamma_correction.py linguist-generated=true
 half_sizes2d.py linguist-generated=true
 half_sizes3d.py linguist-generated=true
 image_plane_distance.py linguist-generated=true
 keypoint_id.py linguist-generated=true
 line_strip2d.py linguist-generated=true
 line_strip3d.py linguist-generated=true
+magnification_filter.py linguist-generated=true
 marker_shape.py linguist-generated=true
 marker_size.py linguist-generated=true
 material.py linguist-generated=true

@@ -13,14 +13,19 @@ import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .line_strip2d_ext import LineStrip2DExt
 
 __all__ = ["LineStrip2D", "LineStrip2DArrayLike", "LineStrip2DBatch", "LineStrip2DLike", "LineStrip2DType"]
 
 
 @define(init=False)
-class LineStrip2D(LineStrip2DExt):
+class LineStrip2D(LineStrip2DExt, ComponentMixin):
     r"""
     **Component**: A line strip in 2D space.
 
@@ -35,6 +40,8 @@ class LineStrip2D(LineStrip2DExt):
                      4
     ```
     """
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, points: LineStrip2DLike):
         """Create a new instance of the LineStrip2D component."""
@@ -77,3 +84,7 @@ class LineStrip2DBatch(BaseBatch[LineStrip2DArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:
         return LineStrip2DExt.native_to_pa_array_override(data, data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+LineStrip2D._BATCH_TYPE = LineStrip2DBatch  # type: ignore[assignment]

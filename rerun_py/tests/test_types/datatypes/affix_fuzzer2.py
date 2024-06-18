@@ -11,7 +11,10 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
-from rerun._baseclasses import BaseBatch, BaseExtensionType
+from rerun._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+)
 from rerun._converters import (
     float_or_none,
 )

@@ -1,5 +1,4 @@
 use egui::{ahash::HashMap, util::hash};
-use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
 use re_space_view::{controls, suggest_space_view_for_each_entity, view_property_ui};
 use re_types::blueprint::archetypes::PlotLegend;
@@ -8,8 +7,8 @@ use re_types::View;
 use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
 use re_ui::list_item;
 use re_viewer_context::{
-    auto_color, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
+    auto_color, ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewerContext,
     VisualizableEntities,
 };
@@ -78,6 +77,7 @@ impl SpaceViewClass for BarChartSpaceView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
@@ -115,7 +115,6 @@ impl SpaceViewClass for BarChartSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
             view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
@@ -129,7 +128,7 @@ impl SpaceViewClass for BarChartSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

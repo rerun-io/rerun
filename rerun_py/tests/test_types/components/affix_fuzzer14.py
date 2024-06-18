@@ -5,14 +5,18 @@
 
 from __future__ import annotations
 
-from rerun._baseclasses import ComponentBatchMixin
+from rerun._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 from .. import datatypes
 
 __all__ = ["AffixFuzzer14", "AffixFuzzer14Batch", "AffixFuzzer14Type"]
 
 
-class AffixFuzzer14(datatypes.AffixFuzzer3):
+class AffixFuzzer14(datatypes.AffixFuzzer3, ComponentMixin):
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AffixFuzzer14Ext in affix_fuzzer14_ext.py
 
     # Note: there are no fields here because AffixFuzzer14 delegates to datatypes.AffixFuzzer3
@@ -25,3 +29,7 @@ class AffixFuzzer14Type(datatypes.AffixFuzzer3Type):
 
 class AffixFuzzer14Batch(datatypes.AffixFuzzer3Batch, ComponentBatchMixin):
     _ARROW_TYPE = AffixFuzzer14Type()
+
+
+# This is patched in late to avoid circular dependencies.
+AffixFuzzer14._BATCH_TYPE = AffixFuzzer14Batch  # type: ignore[assignment]

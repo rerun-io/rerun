@@ -13,8 +13,10 @@ mod space_view_class;
 mod util;
 
 use re_log_types::EntityPath;
-use re_types::{components::MarkerShape, datatypes::Utf8};
-use re_viewer_context::external::re_entity_db::TimeSeriesAggregator;
+use re_types::{
+    components::{AggregationPolicy, MarkerShape},
+    datatypes::Utf8,
+};
 pub use space_view_class::TimeSeriesSpaceView;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the space view
@@ -88,7 +90,7 @@ pub struct PlotSeries {
     pub min_time: i64,
 
     /// What kind of aggregation was used to compute the graph?
-    pub aggregator: TimeSeriesAggregator,
+    pub aggregator: AggregationPolicy,
 
     /// `1.0` for raw data.
     ///

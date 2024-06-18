@@ -7,7 +7,9 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from ..._baseclasses import Archetype
+from ..._baseclasses import (
+    Archetype,
+)
 from ...blueprint import components as blueprint_components
 from .visual_bounds2d_ext import VisualBounds2DExt
 

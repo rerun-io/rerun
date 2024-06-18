@@ -12,14 +12,21 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["GridColumns", "GridColumnsArrayLike", "GridColumnsBatch", "GridColumnsLike", "GridColumnsType"]
 
 
 @define(init=False)
-class GridColumns:
+class GridColumns(ComponentMixin):
     """**Component**: How many columns a grid container should have."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, columns: GridColumnsLike):
         """
@@ -76,3 +83,7 @@ class GridColumnsBatch(BaseBatch[GridColumnsArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: GridColumnsArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.uint32).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+GridColumns._BATCH_TYPE = GridColumnsBatch  # type: ignore[assignment]

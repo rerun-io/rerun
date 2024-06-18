@@ -5,6 +5,7 @@ mod angle_ext;
 mod annotation_info;
 mod annotation_info_ext;
 mod bool;
+mod bool_ext;
 mod class_description;
 mod class_description_ext;
 mod class_description_map_elem;

@@ -6,12 +6,15 @@
 from __future__ import annotations
 
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
+from .._baseclasses import (
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = ["HalfSizes2D", "HalfSizes2DBatch", "HalfSizes2DType"]
 
 
-class HalfSizes2D(datatypes.Vec2D):
+class HalfSizes2D(datatypes.Vec2D, ComponentMixin):
     """
     **Component**: Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
 
@@ -19,6 +22,7 @@ class HalfSizes2D(datatypes.Vec2D):
     Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
     """
 
+    _BATCH_TYPE = None
     # You can define your own __init__ function as a member of HalfSizes2DExt in half_sizes2d_ext.py
 
     # Note: there are no fields here because HalfSizes2D delegates to datatypes.Vec2D
@@ -31,3 +35,7 @@ class HalfSizes2DType(datatypes.Vec2DType):
 
 class HalfSizes2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = HalfSizes2DType()
+
+
+# This is patched in late to avoid circular dependencies.
+HalfSizes2D._BATCH_TYPE = HalfSizes2DBatch  # type: ignore[assignment]

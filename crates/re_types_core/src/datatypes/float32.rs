@@ -23,7 +23,8 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct Float32(pub f32);
 
 impl crate::SizeBytes for Float32 {

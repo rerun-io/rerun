@@ -5,7 +5,6 @@
 //!
 
 pub mod entity_db;
-pub mod entity_properties;
 pub mod entity_tree;
 mod instance_path;
 mod store_bundle;
@@ -13,14 +12,8 @@ mod time_histogram_per_timeline;
 mod times_per_timeline;
 mod versioned_instance_path;
 
-#[cfg(feature = "serde")]
-pub mod blueprint;
-#[cfg(feature = "serde")]
-mod editable_auto_value;
-
 pub use self::{
     entity_db::EntityDb,
-    entity_properties::*,
     entity_tree::EntityTree,
     instance_path::{InstancePath, InstancePathHash},
     store_bundle::{StoreBundle, StoreLoadError},
@@ -33,11 +26,6 @@ pub(crate) use self::entity_tree::{ClearCascade, CompactedStoreEvents};
 
 use re_log_types::DataTableError;
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
-
-#[cfg(feature = "serde")]
-pub use blueprint::components::EntityPropertiesComponent;
-#[cfg(feature = "serde")]
-pub use editable_auto_value::EditableAutoValue;
 
 pub mod external {
     pub use re_data_store;

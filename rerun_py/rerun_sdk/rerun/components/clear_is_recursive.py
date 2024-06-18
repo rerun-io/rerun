@@ -12,7 +12,12 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 
 __all__ = [
     "ClearIsRecursive",
@@ -24,8 +29,10 @@ __all__ = [
 
 
 @define(init=False)
-class ClearIsRecursive:
+class ClearIsRecursive(ComponentMixin):
     """**Component**: Configures how a clear operation should behave - recursive or not."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, recursive: ClearIsRecursiveLike):
         """
@@ -72,3 +79,7 @@ class ClearIsRecursiveBatch(BaseBatch[ClearIsRecursiveArrayLike], ComponentBatch
     def _native_to_pa_array(data: ClearIsRecursiveArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()
         return pa.array(array, type=data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+ClearIsRecursive._BATCH_TYPE = ClearIsRecursiveBatch  # type: ignore[assignment]

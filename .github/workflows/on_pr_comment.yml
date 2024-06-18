@@ -23,12 +23,14 @@ jobs:
     outputs:
       command: ${{ steps.parse.outputs.command }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Parse comment
         id: parse
-        run: |
-          # Parse `@rerun-bot <command>`
-          command=$(echo "${{ github.event.comment.body }}" | sed -n 's/.*@rerun-bot[[:space:]]\+\([a-zA-Z\-]*\).*/\1/p')
-          echo "command=$command" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_COMMENT_BODY: "${{ github.event.comment.body }}"
+        run: python ./scripts/ci/parse_bot_pr_comment.py
 
   full-check:
     needs: [parse-command]

@@ -2,7 +2,7 @@ use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
-use re_entity_db::{EntityDb, EntityProperties};
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::View;
@@ -12,7 +12,7 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, PerSystemEntities, PerVisualizer,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer,
     RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
@@ -22,9 +22,7 @@ use re_viewer_context::{
 use crate::visualizers::{CamerasVisualizer, Transform3DArrowsVisualizer, Transform3DDetector};
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{
-        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
-    },
+    heuristics::default_visualized_entities_for_visualizer_kind,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::{format_vector, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
@@ -192,9 +190,22 @@ impl SpaceViewClass for SpatialSpaceView3D {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
+        let applicable_visualizers: HashSet<&ViewSystemIdentifier> =
+            applicable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
         let available_visualizers: HashSet<&ViewSystemIdentifier> =
             visualizable_entities_per_visualizer
                 .iter()
@@ -226,7 +237,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             //  - If we have no visualizers, but [`Transform3DDetector`] indicates there is a transform here.
             //  - If we have the [`CamerasVisualizer`] active.
             if (visualizers.is_empty()
-                && available_visualizers.contains(&Transform3DDetector::identifier()))
+                && applicable_visualizers.contains(&Transform3DDetector::identifier()))
                 || visualizers.contains(&CamerasVisualizer::identifier())
             {
                 visualizers.push(Transform3DArrowsVisualizer::identifier());
@@ -332,20 +343,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
         .unwrap_or_default()
     }
 
-    fn on_frame_start(
-        &self,
-        ctx: &ViewerContext<'_>,
-        state: &mut dyn SpaceViewState,
-        ent_paths: &PerSystemEntities,
-        auto_properties: &mut re_entity_db::EntityPropertyMap,
-    ) {
-        let Ok(_state) = state.downcast_mut::<SpatialSpaceViewState>() else {
-            return;
-        };
-        *auto_properties =
-            generate_auto_legacy_properties(ctx, ent_paths, SpatialSpaceViewKind::ThreeD);
-    }
-
     fn selection_ui(
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
@@ -353,7 +350,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
@@ -426,7 +422,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

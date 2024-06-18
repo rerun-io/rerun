@@ -8,15 +8,13 @@ use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
+use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
 use re_ui::{list_item, UiExt as _};
-use re_viewer_context::external::re_entity_db::{
-    EditableAutoValue, EntityProperties, TimeSeriesAggregator,
-};
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange, RecommendedSpaceView,
-    SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
+    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SystemExecutionOutput, TypedComponentFallbackProvider,
     ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
@@ -144,42 +142,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            ui.list_item()
-                .interactive(false)
-                .show_hierarchical(
-                    ui,
-                    list_item::PropertyContent::new("Zoom aggregation").value_fn(|ui, _| {
-                        let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
-
-                        egui::ComboBox::from_id_source("aggregation_mode")
-                            .selected_text(agg_mode.to_string())
-                            .show_ui(ui, |ui| {
-                                for variant in TimeSeriesAggregator::variants() {
-                                    ui.selectable_value(
-                                        &mut agg_mode,
-                                        variant,
-                                        variant.to_string(),
-                                    )
-                                    .on_hover_text(variant.description());
-                                }
-                            });
-
-                        root_entity_properties.time_series_aggregator =
-                            EditableAutoValue::UserEdited(agg_mode);
-                    }),
-                )
-                .on_hover_text(
-                    "Configures the zoom-dependent scalar aggregation.\n\
-                     This is done only if steps on the X axis go below 1.0, i.e. a single pixel \
-                     covers more than one tick worth of data. It can greatly improve performance \
-                     (and readability) in such situations as it prevents overdraw.",
-                );
-
             view_property_ui::<PlotLegend>(ctx, ui, space_view_id, self, state);
             view_property_ui::<ScalarAxis>(ctx, ui, space_view_id, self, state);
         });
@@ -249,6 +215,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
+        _applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
@@ -292,7 +259,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
@@ -397,7 +364,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
                 let y_value = re_format::format_f64(value.y);
 
-                if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
+                if aggregator == AggregationPolicy::Off || aggregation_factor <= 1.0 {
                     format!("{timeline_name}: {label}\n{name}: {y_value}")
                 } else {
                     format!(

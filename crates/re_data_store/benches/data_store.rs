@@ -338,7 +338,8 @@ fn gc(c: &mut Criterion) {
                 target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
                 protect_latest: 0,
                 purge_empty_tables: false,
-                dont_protect: Default::default(),
+                dont_protect_components: Default::default(),
+                dont_protect_timelines: Default::default(),
                 enable_batching: false,
                 time_budget: std::time::Duration::MAX,
             });
@@ -362,7 +363,8 @@ fn gc(c: &mut Criterion) {
                     target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
                     protect_latest: 0,
                     purge_empty_tables: false,
-                    dont_protect: Default::default(),
+                    dont_protect_components: Default::default(),
+                    dont_protect_timelines: Default::default(),
                     enable_batching: false,
                     time_budget: std::time::Duration::MAX,
                 });

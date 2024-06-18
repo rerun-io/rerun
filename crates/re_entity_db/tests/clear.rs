@@ -394,7 +394,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
 
         db.add_data_row(row)?;
 
-        db.gc_everything_but_the_latest_row();
+        db.gc_everything_but_the_latest_row_on_non_default_timelines();
 
         let stats = DataStoreStats::from_store(db.store());
         assert_eq!(stats.temporal.num_rows, 1);
@@ -411,7 +411,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
 
         db.add_data_row(clear)?;
 
-        db.gc_everything_but_the_latest_row();
+        db.gc_everything_but_the_latest_row_on_non_default_timelines();
 
         // No rows should remain because the table should have been purged
         let stats = DataStoreStats::from_store(db.store());

@@ -87,12 +87,22 @@ pub struct SeriesLine {
     ///
     /// Used in the legend.
     pub name: Option<crate::components::Name>,
+
+    /// Configures the zoom-dependent scalar aggregation.
+    ///
+    /// This is done only if steps on the X axis go below a single pixel,
+    /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+    /// (and readability) in such situations as it prevents overdraw.
+    pub aggregation_policy: Option<crate::components::AggregationPolicy>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesLine {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.color.heap_size_bytes() + self.width.heap_size_bytes() + self.name.heap_size_bytes()
+        self.color.heap_size_bytes()
+            + self.width.heap_size_bytes()
+            + self.name.heap_size_bytes()
+            + self.aggregation_policy.heap_size_bytes()
     }
 
     #[inline]
@@ -100,6 +110,7 @@ impl ::re_types_core::SizeBytes for SeriesLine {
         <Option<crate::components::Color>>::is_pod()
             && <Option<crate::components::StrokeWidth>>::is_pod()
             && <Option<crate::components::Name>>::is_pod()
+            && <Option<crate::components::AggregationPolicy>>::is_pod()
     }
 }
 
@@ -109,28 +120,30 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SeriesLineIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
             "rerun.components.StrokeWidth".into(),
             "rerun.components.Name".into(),
+            "rerun.components.AggregationPolicy".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.SeriesLineIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.StrokeWidth".into(),
             "rerun.components.Name".into(),
+            "rerun.components.AggregationPolicy".into(),
         ]
     });
 
 impl SeriesLine {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SeriesLine`] [`::re_types_core::Archetype`]
@@ -212,7 +225,22 @@ impl ::re_types_core::Archetype for SeriesLine {
         } else {
             None
         };
-        Ok(Self { color, width, name })
+        let aggregation_policy =
+            if let Some(array) = arrays_by_name.get("rerun.components.AggregationPolicy") {
+                <crate::components::AggregationPolicy>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.SeriesLine#aggregation_policy")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
+        Ok(Self {
+            color,
+            width,
+            name,
+            aggregation_policy,
+        })
     }
 }
 
@@ -231,6 +259,9 @@ impl ::re_types_core::AsComponents for SeriesLine {
             self.name
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.aggregation_policy
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -246,6 +277,7 @@ impl SeriesLine {
             color: None,
             width: None,
             name: None,
+            aggregation_policy: None,
         }
     }
 
@@ -269,6 +301,20 @@ impl SeriesLine {
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
         self.name = Some(name.into());
+        self
+    }
+
+    /// Configures the zoom-dependent scalar aggregation.
+    ///
+    /// This is done only if steps on the X axis go below a single pixel,
+    /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+    /// (and readability) in such situations as it prevents overdraw.
+    #[inline]
+    pub fn with_aggregation_policy(
+        mut self,
+        aggregation_policy: impl Into<crate::components::AggregationPolicy>,
+    ) -> Self {
+        self.aggregation_policy = Some(aggregation_policy.into());
         self
     }
 }

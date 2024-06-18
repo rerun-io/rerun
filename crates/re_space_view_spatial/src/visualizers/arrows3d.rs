@@ -227,7 +227,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
             view_query,
             context_systems,
             context_systems.get::<EntityDepthOffsets>()?.points,
-            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+            |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
                 use re_space_view::RangeResultsExt as _;

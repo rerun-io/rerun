@@ -27,16 +27,10 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .entity_properties_component import (
-    EntityPropertiesComponent,
-    EntityPropertiesComponentArrayLike,
-    EntityPropertiesComponentBatch,
-    EntityPropertiesComponentLike,
-    EntityPropertiesComponentType,
-)
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
+from .interactive import Interactive, InteractiveBatch, InteractiveType
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
@@ -45,6 +39,7 @@ from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike,
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
+from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike, ViewFitType
 from .viewer_recommendation_hash import (
     ViewerRecommendationHash,
     ViewerRecommendationHashBatch,
@@ -88,11 +83,6 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "EntityPropertiesComponent",
-    "EntityPropertiesComponentArrayLike",
-    "EntityPropertiesComponentBatch",
-    "EntityPropertiesComponentLike",
-    "EntityPropertiesComponentType",
     "GridColumns",
     "GridColumnsArrayLike",
     "GridColumnsBatch",
@@ -104,6 +94,9 @@ __all__ = [
     "IncludedSpaceView",
     "IncludedSpaceViewBatch",
     "IncludedSpaceViewType",
+    "Interactive",
+    "InteractiveBatch",
+    "InteractiveType",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
@@ -132,6 +125,11 @@ __all__ = [
     "SpaceViewOrigin",
     "SpaceViewOriginBatch",
     "SpaceViewOriginType",
+    "ViewFit",
+    "ViewFitArrayLike",
+    "ViewFitBatch",
+    "ViewFitLike",
+    "ViewFitType",
     "ViewerRecommendationHash",
     "ViewerRecommendationHashBatch",
     "ViewerRecommendationHashType",

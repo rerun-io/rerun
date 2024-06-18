@@ -68,7 +68,8 @@ fn plotting_dashboard(c: &mut Criterion) {
         target: GarbageCollectionTarget::DropAtLeastFraction(DROP_AT_LEAST),
         protect_latest: 1,
         purge_empty_tables: false,
-        dont_protect: Default::default(),
+        dont_protect_components: Default::default(),
+        dont_protect_timelines: Default::default(),
         enable_batching: false,
         time_budget: std::time::Duration::MAX,
     };

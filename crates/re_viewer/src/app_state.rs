@@ -286,6 +286,7 @@ impl AppState {
                     let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,
                         space_view,
+                        &applicable_entities_per_visualizer,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
                     );
@@ -295,7 +296,6 @@ impl AppState {
                         &blueprint_query,
                         rec_cfg.time_ctrl.read().timeline(),
                         space_view_class_registry,
-                        view_states.legacy_auto_properties(space_view.id),
                         query_result,
                     );
                 }

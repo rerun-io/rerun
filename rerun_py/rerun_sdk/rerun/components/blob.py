@@ -12,7 +12,12 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
+    ComponentBatchMixin,
+    ComponentMixin,
+)
 from .._converters import (
     to_np_uint8,
 )
@@ -22,8 +27,10 @@ __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 
 
 @define(init=False)
-class Blob(BlobExt):
+class Blob(BlobExt, ComponentMixin):
     """**Component**: A binary blob of data."""
+
+    _BATCH_TYPE = None
 
     def __init__(self: Any, data: BlobLike):
         """Create a new instance of the Blob component."""
@@ -61,3 +68,7 @@ class BlobBatch(BaseBatch[BlobArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
         return BlobExt.native_to_pa_array_override(data, data_type)
+
+
+# This is patched in late to avoid circular dependencies.
+Blob._BATCH_TYPE = BlobBatch  # type: ignore[assignment]

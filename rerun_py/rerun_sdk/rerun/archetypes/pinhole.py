@@ -8,7 +8,9 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import Archetype
+from .._baseclasses import (
+    Archetype,
+)
 from .pinhole_ext import PinholeExt
 
 __all__ = ["Pinhole"]

@@ -19,6 +19,11 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-machete]
+ignored = [
+  "serde", # Needed to make `ComponentName` (an interned string) serializable.
+]
+
 
 [features]
 default = []
@@ -43,6 +48,7 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
 ] }
 backtrace.workspace = true
+bytemuck.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 once_cell.workspace = true

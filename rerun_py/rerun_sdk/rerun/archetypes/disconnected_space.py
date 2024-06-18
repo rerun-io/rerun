@@ -8,7 +8,9 @@ from __future__ import annotations
 from attrs import define, field
 
 from .. import components
-from .._baseclasses import Archetype
+from .._baseclasses import (
+    Archetype,
+)
 from .disconnected_space_ext import DisconnectedSpaceExt
 
 __all__ = ["DisconnectedSpace"]

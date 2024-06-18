@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+from typing import Union
+
 __all__ = ["TensorView"]
 
 
-from ..._baseclasses import AsComponents
+from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from .. import components as blueprint_components
+from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -29,7 +31,17 @@ class TensorView(SpaceView):
     tensor = np.random.randint(0, 256, (8, 6, 3, 5), dtype=np.uint8)
     rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "channel", "batch")))
 
-    blueprint = rrb.Blueprint(rrb.TensorView(origin="tensor", name="Tensor"), collapse_panels=True)
+    blueprint = rrb.Blueprint(
+        rrb.TensorView(
+            origin="tensor",
+            name="Tensor",
+            # Set a scalar mapping with a custom colormap, gamma and magnification filter.
+            scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
+            # Change sizing mode to keep aspect ratio.
+            view_fit="FillKeepAspectRatio",
+        ),
+        collapse_panels=True,
+    )
     rr.send_blueprint(blueprint)
     ```
     <center>
@@ -51,6 +63,9 @@ class TensorView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
+        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
+        view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,
+        scalar_mapping: blueprint_archetypes.TensorScalarMapping | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TensorView view.
@@ -70,10 +85,28 @@ class TensorView(SpaceView):
             Whether this view is visible.
 
             Defaults to true if not specified.
+        defaults:
+            List of default components or component batches to add to the space view. When an archetype
+            in the view is missing a component included in this set, the value of default will be used
+            instead of the normal fallback for the visualizer.
+        view_fit:
+            Configures how the selected slice should fit into the view.
+        scalar_mapping:
+            Configures how scalars are mapped to color.
 
         """
 
         properties: dict[str, AsComponents] = {}
+        if view_fit is not None:
+            if not isinstance(view_fit, blueprint_archetypes.TensorViewFit):
+                view_fit = blueprint_archetypes.TensorViewFit(view_fit)
+            properties["TensorViewFit"] = view_fit
+
+        if scalar_mapping is not None:
+            if not isinstance(scalar_mapping, blueprint_archetypes.TensorScalarMapping):
+                scalar_mapping = blueprint_archetypes.TensorScalarMapping(scalar_mapping)
+            properties["TensorScalarMapping"] = scalar_mapping
+
         super().__init__(
             class_identifier="Tensor",
             origin=origin,
@@ -81,4 +114,5 @@ class TensorView(SpaceView):
             name=name,
             visible=visible,
             properties=properties,
+            defaults=defaults,
         )

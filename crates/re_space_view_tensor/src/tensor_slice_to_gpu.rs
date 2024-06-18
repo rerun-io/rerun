@@ -4,11 +4,12 @@ use re_renderer::{
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
 use re_types::{
+    components::{Colormap, GammaCorrection},
     datatypes::TensorBuffer,
     tensor_data::{DecodedTensor, TensorCastError, TensorDataType},
 };
 use re_viewer_context::{
-    gpu_bridge::{self, tensor_data_range_heuristic, RangeError},
+    gpu_bridge::{self, colormap_to_re_renderer, tensor_data_range_heuristic, RangeError},
     TensorStats,
 };
 
@@ -32,6 +33,8 @@ pub fn colormapped_texture(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     state: &ViewTensorState,
+    colormap: Colormap,
+    gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
 
@@ -45,8 +48,10 @@ pub fn colormapped_texture(
         range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
-        gamma: state.color_mapping.gamma,
-        color_mapper: re_renderer::renderer::ColorMapper::Function(state.color_mapping.map),
+        gamma: *gamma.0,
+        color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
+            colormap,
+        )),
         shader_decoding: match tensor.buffer {
             TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
             TensorBuffer::Yuy2(_) => Some(ShaderDecoding::Yuy2),

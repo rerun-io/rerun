@@ -2,10 +2,7 @@ use nohash_hasher::IntMap;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
-use re_entity_db::{
-    external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
-    EntityPropertyMap, EntityTree,
-};
+use re_entity_db::{external::re_data_store::LatestAtQuery, EntityDb, EntityTree};
 use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
 };
@@ -18,22 +15,12 @@ use re_types::{
 };
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
+    ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
+    DataResultTree, IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
     SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
 };
 
 use crate::{SpaceViewBlueprint, ViewProperty};
-
-pub struct EntityOverrideContext<'a> {
-    pub legacy_space_view_properties: EntityProperties,
-
-    /// Provides auto properties for each entity.
-    pub legacy_auto_properties: &'a EntityPropertyMap,
-
-    /// Query range that data results should fall back to if they don't specify their own.
-    pub default_query_range: QueryRange,
-}
 
 /// Data to be added to a space view, built from a [`blueprint_archetypes::SpaceViewContents`].
 ///
@@ -179,6 +166,7 @@ impl SpaceViewContents {
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
         space_view: &'a SpaceViewBlueprint,
+        applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> DataQueryPropertyResolver<'a> {
@@ -192,6 +180,7 @@ impl SpaceViewContents {
             space_view,
             individual_override_root,
             recursive_override_root,
+            applicable_entities_per_visualizer,
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
         }
@@ -372,233 +361,156 @@ pub struct DataQueryPropertyResolver<'a> {
     space_view: &'a SpaceViewBlueprint,
     individual_override_root: EntityPath,
     recursive_override_root: EntityPath,
+    applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
     visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 }
 
 impl DataQueryPropertyResolver<'_> {
-    /// Helper function to build the [`EntityOverrideContext`].
-    ///
-    /// The context is made up of 3 parts:
-    ///  - The root properties are build by merging a stack of paths from the Blueprint Tree. This
-    ///  may include properties from the `SpaceView` or `DataQuery`.
-    ///  - The individual overrides are found by walking an override subtree under the `data_query/<id>/individual_overrides`
-    ///  - The recursive overrides are found by walking an override subtree under the `data_query/<id>/recursive_overrides`
-    fn build_override_context<'a>(
-        &self,
-        blueprint: &EntityDb,
-        blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
-        space_view_class_registry: &SpaceViewClassRegistry,
-        legacy_auto_properties: &'a EntityPropertyMap,
-    ) -> EntityOverrideContext<'a> {
-        re_tracing::profile_function!();
-
-        let legacy_space_view_properties = self
-            .space_view
-            .legacy_properties(blueprint, blueprint_query);
-
-        let default_query_range = self.space_view.query_range(
-            blueprint,
-            blueprint_query,
-            active_timeline,
-            space_view_class_registry,
-        );
-
-        // TODO(#4194): Once supported, default entity properties should be passe through here.
-        EntityOverrideContext {
-            legacy_space_view_properties,
-            default_query_range,
-            legacy_auto_properties,
-        }
-    }
-
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
     ///
     /// This will accumulate the recursive properties at each step down the tree, and then merge
     /// with individual overrides on each step.
-    #[allow(clippy::too_many_arguments)] // This will be a lot simpler and smaller once `EntityProperties` are gone!
+    #[allow(clippy::too_many_arguments)]
     fn update_overrides_recursive(
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         query_result: &mut DataQueryResult,
-        override_context: &EntityOverrideContext<'_>,
-        recursive_accumulated_legacy_properties: &EntityProperties,
+        default_query_range: &QueryRange,
         recursive_property_overrides: &IntMap<ComponentName, OverridePath>,
         handle: DataResultHandle,
     ) {
-        if let Some((
-            child_handles,
-            recursive_accumulated_legacy_properties,
-            recursive_property_overrides,
-        )) = query_result.tree.lookup_node_mut(handle).map(|node| {
-            let individual_override_path = self
-                .individual_override_root
-                .join(&node.data_result.entity_path);
-            let recursive_override_path = self
-                .recursive_override_root
-                .join(&node.data_result.entity_path);
+        if let Some((child_handles, recursive_property_overrides)) =
+            query_result.tree.lookup_node_mut(handle).map(|node| {
+                let individual_override_path = self
+                    .individual_override_root
+                    .join(&node.data_result.entity_path);
+                let recursive_override_path = self
+                    .recursive_override_root
+                    .join(&node.data_result.entity_path);
 
-            // Special handling for legacy overrides.
-            let recursive_legacy_properties = blueprint
-                .latest_at_component_quiet::<EntityPropertiesComponent>(
-                    &recursive_override_path,
-                    blueprint_query,
-                )
-                .map(|result| result.value.0);
-            let individual_legacy_properties = blueprint
-                .latest_at_component_quiet::<EntityPropertiesComponent>(
-                    &individual_override_path,
-                    blueprint_query,
-                )
-                .map(|result| result.value.0);
+                // Update visualizers from overrides.
+                if !node.data_result.visualizers.is_empty() {
+                    re_tracing::profile_scope!("Update visualizers from overrides");
 
-            let recursive_accumulated_legacy_properties =
-                if let Some(recursive_legacy_properties) = recursive_legacy_properties.as_ref() {
-                    recursive_accumulated_legacy_properties.with_child(recursive_legacy_properties)
-                } else {
-                    recursive_accumulated_legacy_properties.clone()
-                };
-            let default_legacy_properties = override_context
-                .legacy_auto_properties
-                .get(&node.data_result.entity_path);
-            let accumulated_legacy_properties =
-                if let Some(individual) = individual_legacy_properties.as_ref() {
-                    recursive_accumulated_legacy_properties
-                        .with_child(individual)
-                        .with_child(&default_legacy_properties)
-                } else {
-                    recursive_accumulated_legacy_properties.with_child(&default_legacy_properties)
-                };
-
-            // Update visualizers from overrides.
-            if !node.data_result.visualizers.is_empty() {
-                re_tracing::profile_scope!("Update visualizers from overrides");
-
-                // If the user has overridden the visualizers, update which visualizers are used.
-                // TODO(#5607): what should happen if the promise is still pending?
-                if let Some(viz_override) = blueprint
-                    .latest_at_component::<VisualizerOverrides>(
-                        &individual_override_path,
-                        blueprint_query,
-                    )
-                    .map(|c| c.value)
-                {
-                    node.data_result.visualizers =
-                        viz_override.0.iter().map(|v| v.as_str().into()).collect();
-                } else {
-                    // Otherwise ask the `SpaceViewClass` to choose.
-                    node.data_result.visualizers = self
-                        .space_view
-                        .class(self.space_view_class_registry)
-                        .choose_default_visualizers(
-                            &node.data_result.entity_path,
-                            self.visualizable_entities_per_visualizer,
-                            self.indicated_entities_per_visualizer,
-                        );
-                }
-            }
-
-            // First, gather recursive overrides. Previous recursive overrides are the base for the next.
-            // We assume that most of the time there's no new recursive overrides, so clone the map lazily.
-            let mut recursive_property_overrides =
-                std::borrow::Cow::Borrowed(recursive_property_overrides);
-            if let Some(recursive_override_subtree) =
-                blueprint.tree().subtree(&recursive_override_path)
-            {
-                for component in recursive_override_subtree.entity.components.keys() {
-                    if let Some(component_data) = blueprint
-                        .store()
-                        .latest_at(
-                            blueprint_query,
-                            &recursive_override_path,
-                            *component,
-                            &[*component],
-                        )
-                        .and_then(|(_, _, cells)| cells[0].clone())
-                    {
-                        if !component_data.is_empty() {
-                            recursive_property_overrides.to_mut().insert(
-                                *component,
-                                OverridePath::blueprint_path(recursive_override_path.clone()),
-                            );
-                        }
-                    }
-                }
-            }
-
-            // Then, gather individual overrides - these may override the recursive ones again,
-            // but recursive overrides are still inherited to children.
-            let mut resolved_component_overrides = (*recursive_property_overrides).clone();
-            if let Some(individual_override_subtree) =
-                blueprint.tree().subtree(&individual_override_path)
-            {
-                for component in individual_override_subtree.entity.components.keys() {
-                    if let Some(component_data) = blueprint
-                        .store()
-                        .latest_at(
-                            blueprint_query,
+                    // If the user has overridden the visualizers, update which visualizers are used.
+                    // TODO(#5607): what should happen if the promise is still pending?
+                    if let Some(viz_override) = blueprint
+                        .latest_at_component::<VisualizerOverrides>(
                             &individual_override_path,
-                            *component,
-                            &[*component],
+                            blueprint_query,
                         )
-                        .and_then(|(_, _, cells)| cells[0].clone())
+                        .map(|c| c.value)
                     {
-                        if !component_data.is_empty() {
-                            resolved_component_overrides.insert(
-                                *component,
-                                OverridePath::blueprint_path(individual_override_path.clone()),
+                        node.data_result.visualizers =
+                            viz_override.0.iter().map(|v| v.as_str().into()).collect();
+                    } else {
+                        // Otherwise ask the `SpaceViewClass` to choose.
+                        node.data_result.visualizers = self
+                            .space_view
+                            .class(self.space_view_class_registry)
+                            .choose_default_visualizers(
+                                &node.data_result.entity_path,
+                                self.applicable_entities_per_visualizer,
+                                self.visualizable_entities_per_visualizer,
+                                self.indicated_entities_per_visualizer,
                             );
+                    }
+                }
+
+                // First, gather recursive overrides. Previous recursive overrides are the base for the next.
+                // We assume that most of the time there's no new recursive overrides, so clone the map lazily.
+                let mut recursive_property_overrides =
+                    std::borrow::Cow::Borrowed(recursive_property_overrides);
+                if let Some(recursive_override_subtree) =
+                    blueprint.tree().subtree(&recursive_override_path)
+                {
+                    for component in recursive_override_subtree.entity.components.keys() {
+                        if let Some(component_data) = blueprint
+                            .store()
+                            .latest_at(
+                                blueprint_query,
+                                &recursive_override_path,
+                                *component,
+                                &[*component],
+                            )
+                            .and_then(|(_, _, cells)| cells[0].clone())
+                        {
+                            if !component_data.is_empty() {
+                                recursive_property_overrides.to_mut().insert(
+                                    *component,
+                                    OverridePath::blueprint_path(recursive_override_path.clone()),
+                                );
+                            }
                         }
                     }
                 }
-            }
 
-            // Figure out relevant visual time range.
-            use re_types::Loggable as _;
-            let range_query_results = blueprint.latest_at(
-                blueprint_query,
-                &recursive_override_path,
-                std::iter::once(blueprint_components::VisibleTimeRange::name()),
-            );
-            let visible_time_ranges: Option<&[blueprint_components::VisibleTimeRange]> =
-                range_query_results.get_slice(blueprint.resolver());
-            let time_range = visible_time_ranges.and_then(|ranges| {
-                ranges
-                    .iter()
-                    .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
-            });
-            let query_range = time_range.map_or_else(
-                || override_context.default_query_range.clone(),
-                |time_range| QueryRange::TimeRange(time_range.0.range.clone()),
-            );
+                // Then, gather individual overrides - these may override the recursive ones again,
+                // but recursive overrides are still inherited to children.
+                let mut resolved_component_overrides = (*recursive_property_overrides).clone();
+                if let Some(individual_override_subtree) =
+                    blueprint.tree().subtree(&individual_override_path)
+                {
+                    for component in individual_override_subtree.entity.components.keys() {
+                        if let Some(component_data) = blueprint
+                            .store()
+                            .latest_at(
+                                blueprint_query,
+                                &individual_override_path,
+                                *component,
+                                &[*component],
+                            )
+                            .and_then(|(_, _, cells)| cells[0].clone())
+                        {
+                            if !component_data.is_empty() {
+                                resolved_component_overrides.insert(
+                                    *component,
+                                    OverridePath::blueprint_path(individual_override_path.clone()),
+                                );
+                            }
+                        }
+                    }
+                }
 
-            node.data_result.property_overrides = Some(PropertyOverrides {
-                accumulated_properties: accumulated_legacy_properties,
-                individual_properties: individual_legacy_properties,
-                recursive_properties: recursive_legacy_properties,
-                resolved_component_overrides,
-                recursive_override_path,
-                individual_override_path,
-                query_range,
-            });
+                // Figure out relevant visual time range.
+                use re_types::Loggable as _;
+                let range_query_results = blueprint.latest_at(
+                    blueprint_query,
+                    &recursive_override_path,
+                    std::iter::once(blueprint_components::VisibleTimeRange::name()),
+                );
+                let visible_time_ranges: Option<&[blueprint_components::VisibleTimeRange]> =
+                    range_query_results.get_slice(blueprint.resolver());
+                let time_range = visible_time_ranges.and_then(|ranges| {
+                    ranges
+                        .iter()
+                        .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
+                });
+                let query_range = time_range.map_or_else(
+                    || default_query_range.clone(),
+                    |time_range| QueryRange::TimeRange(time_range.0.range.clone()),
+                );
 
-            (
-                node.children.clone(),
-                recursive_accumulated_legacy_properties,
-                recursive_property_overrides,
-            )
-        }) {
+                node.data_result.property_overrides = Some(PropertyOverrides {
+                    resolved_component_overrides,
+                    recursive_override_path,
+                    individual_override_path,
+                    query_range,
+                });
+
+                (node.children.clone(), recursive_property_overrides)
+            })
+        {
             for child in child_handles {
                 self.update_overrides_recursive(
                     blueprint,
                     blueprint_query,
                     active_timeline,
                     query_result,
-                    override_context,
-                    &recursive_accumulated_legacy_properties,
+                    default_query_range,
                     &recursive_property_overrides,
                     child,
                 );
@@ -613,29 +525,26 @@ impl DataQueryPropertyResolver<'_> {
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         space_view_class_registry: &SpaceViewClassRegistry,
-        legacy_auto_properties: &EntityPropertyMap,
         query_result: &mut DataQueryResult,
     ) {
         re_tracing::profile_function!();
-        let override_context = self.build_override_context(
-            blueprint,
-            blueprint_query,
-            active_timeline,
-            space_view_class_registry,
-            legacy_auto_properties,
-        );
 
         if let Some(root) = query_result.tree.root_handle() {
-            let accumulated_legacy_properties = EntityProperties::default();
             let recursive_property_overrides = Default::default();
+
+            let default_query_range = self.space_view.query_range(
+                blueprint,
+                blueprint_query,
+                active_timeline,
+                space_view_class_registry,
+            );
 
             self.update_overrides_recursive(
                 blueprint,
                 blueprint_query,
                 active_timeline,
                 query_result,
-                &override_context,
-                &accumulated_legacy_properties,
+                &default_query_range,
                 &recursive_property_overrides,
                 root,
             );

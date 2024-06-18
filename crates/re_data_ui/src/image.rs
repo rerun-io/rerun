@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 
 use re_log_types::{EntityPath, RowId};
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::{ClassId, DepthMeter};
+use re_types::components::{ClassId, Colormap, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
 use re_ui::{ContextExt as _, UiExt as _};
@@ -113,13 +113,18 @@ pub fn tensor_ui(
 
     let meaning = image_meaning_for_entity(entity_path, query, db.store());
 
-    let meter = if meaning == TensorDataMeaning::Depth {
+    let (meter, colormap) = if meaning == TensorDataMeaning::Depth {
         // TODO(#5607): what should happen if the promise is still pending?
-        ctx.recording()
-            .latest_at_component::<DepthMeter>(entity_path, query)
-            .map(|meter| meter.value.0)
+        (
+            ctx.recording()
+                .latest_at_component::<DepthMeter>(entity_path, query)
+                .map(|meter| meter.value.0),
+            ctx.recording()
+                .latest_at_component::<Colormap>(entity_path, query)
+                .map(|colormap| colormap.value),
+        )
     } else {
-        None
+        (None, None)
     };
 
     let Some(render_ctx) = ctx.render_ctx else {
@@ -134,6 +139,7 @@ pub fn tensor_ui(
         meaning,
         &tensor_stats,
         annotations,
+        colormap,
     )
     .ok();
 
@@ -230,6 +236,7 @@ pub fn tensor_ui(
                             &debug_name,
                             image_rect,
                             pointer_pos,
+                            colormap,
                         );
                     }
 
@@ -470,6 +477,7 @@ fn show_zoomed_image_region_tooltip(
     debug_name: &str,
     image_rect: egui::Rect,
     pointer_pos: egui::Pos2,
+    colormap: Option<Colormap>,
 ) -> egui::Response {
     let response_rect = response.rect;
     response
@@ -502,6 +510,7 @@ fn show_zoomed_image_region_tooltip(
                         meter,
                         debug_name,
                         center_texel,
+                        colormap,
                     );
                 }
             });
@@ -560,6 +569,7 @@ pub fn show_zoomed_image_region(
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
+    colormap: Option<Colormap>,
 ) {
     if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
@@ -572,6 +582,7 @@ pub fn show_zoomed_image_region(
         meter,
         debug_name,
         center_texel,
+        colormap,
     ) {
         ui.label(format!("Error: {err}"));
     }
@@ -590,6 +601,7 @@ fn try_show_zoomed_image_region(
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
+    colormap: Option<Colormap>,
 ) -> anyhow::Result<()> {
     let Some([height, width, _]) = tensor.image_height_width_channels() else {
         return Ok(());
@@ -603,6 +615,7 @@ fn try_show_zoomed_image_region(
         meaning,
         tensor_stats,
         annotations,
+        colormap,
     )?;
 
     const POINTS_PER_TEXEL: f32 = 5.0;
