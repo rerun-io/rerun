@@ -31,6 +31,7 @@ impl From<ViewPropertyQueryError> for SpaceViewSystemExecutionError {
 pub struct ViewProperty<'a> {
     pub blueprint_store_path: EntityPath,
     archetype_name: ArchetypeName,
+    component_names: Vec<ComponentName>,
     query_results: LatestAtResults,
     blueprint_db: &'a EntityDb,
     blueprint_query: &'a LatestAtQuery,
@@ -72,6 +73,7 @@ impl<'a> ViewProperty<'a> {
             blueprint_store_path,
             archetype_name,
             query_results,
+            component_names: component_names.to_vec(),
             blueprint_db,
             blueprint_query,
         }
@@ -179,7 +181,8 @@ impl<'a> ViewProperty<'a> {
 
     /// Resets all components the values they had in the default blueprint.
     pub fn reset_all_components(&self, ctx: &'a ViewerContext<'a>) {
-        for &component_name in self.query_results.components.keys() {
+        // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
+        for &component_name in &self.component_names {
             ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, component_name);
         }
     }
