@@ -28,7 +28,7 @@ class TensorView(SpaceView):
 
     rr.init("rerun_example_tensor", spawn=True)
 
-    tensor = np.random.randint(0, 256, (8, 10, 12, 14), dtype=np.uint8)
+    tensor = np.random.randint(0, 256, (32, 20, 12, 14), dtype=np.uint8)
     rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "batch", "other")))
 
     blueprint = rrb.Blueprint(
@@ -60,11 +60,11 @@ class TensorView(SpaceView):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/1200w.png">
-      <img src="https://static.rerun.io/tensor_view/3b452ace3cdb29ada1a613eae8e8e8e165a1d396/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/1200w.png">
+      <img src="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/full.png" width="640">
     </picture>
     </center>
 
