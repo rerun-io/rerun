@@ -27,6 +27,7 @@ class Viewer:
         width: int = DEFAULT_WIDTH,
         height: int = DEFAULT_HEIGHT,
         recording: RecordingStream | None = None,
+        display: bool | None = None,
     ):
         try:
             from rerun_notebook import Viewer as _Viewer
@@ -36,39 +37,25 @@ class Viewer:
             return hack
 
         self._recording = recording
-        self._memory_recording = memory_recording(self._recording)
         self._viewer = _Viewer(
             width=width,
             height=height,
         )
 
-    def __enter__(self) -> Viewer:
-        from IPython.display import display
+        if display is not None and display:
+            from IPython.display import display as do_display
 
-        display(self._viewer)
+            do_display(self._viewer)
 
-        self._running = True
-        self._thread_handle = Thread(target=self._flush_thread)
-        self._thread_handle.start()
+    def consume(self, recording: RecordingStream):
+        self._memory_recording = memory_recording(recording)
+        self.flush()
 
-        return self
-
-    def _flush_thread(self):
-        while self._running:
-            self._flush()
-            sleep(0.1)
-
-        self._flush()
-
-    def _flush(self):
+    def flush(self):
         num_msgs = self._memory_recording.num_msgs()
         if num_msgs > 0:
             data = self._memory_recording.drain_as_bytes()
             self._viewer.send_rrd(data)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self._running = False
-        self._thread_handle.join()
 
     def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:
         return self._viewer._repr_mimebundle_(**kwargs)
