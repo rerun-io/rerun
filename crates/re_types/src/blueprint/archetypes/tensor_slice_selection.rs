@@ -37,13 +37,13 @@ pub struct TensorSliceSelection {
 
     /// Selected indices for all other dimensions.
     ///
-    /// TODO: describe fallbacks & fillins.
+    /// Any dimension not mentioned here or in width/height will be set to its center index.
     pub indices: Vec<crate::components::TensorDimensionIndexSelection>,
 
     /// Any dimension that listed here, will show a slider in the view.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
-    /// TODO: describe fallbacks & fillins.
+    /// If not specified, adds slides for any dimension in `indices`.
     pub slider: Vec<crate::blueprint::components::TensorDimensionIndexSlider>,
 }
 
@@ -109,12 +109,12 @@ static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Indices",
-            documentation: "Selected indices for all other dimensions.\n\nTODO: describe fallbacks & fillins.",
+            documentation: "Selected indices for all other dimensions.\n\nAny dimension not mentioned here or in width/height will be set to its center index.",
             component_name: "rerun.components.TensorDimensionIndexSelection".into(),
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Slider",
-            documentation: "Any dimension that listed here, will show a slider in the view.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nTODO: describe fallbacks & fillins.",
+            documentation: "Any dimension that listed here, will show a slider in the view.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf not specified, adds slides for any dimension in `indices`.",
             component_name: "rerun.blueprint.components.TensorDimensionIndexSlider"
                 .into(),
         },

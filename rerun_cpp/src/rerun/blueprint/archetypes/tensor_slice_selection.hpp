@@ -33,13 +33,13 @@ namespace rerun::blueprint::archetypes {
 
         /// Selected indices for all other dimensions.
         ///
-        /// TODO: describe fallbacks & fillins.
+        /// Any dimension not mentioned here or in width/height will be set to its center index.
         Collection<rerun::components::TensorDimensionIndexSelection> indices;
 
         /// Any dimension that listed here, will show a slider in the view.
         ///
         /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
-        /// TODO: describe fallbacks & fillins.
+        /// If not specified, adds slides for any dimension in `indices`.
         Collection<rerun::blueprint::components::TensorDimensionIndexSlider> slider;
 
       public:
