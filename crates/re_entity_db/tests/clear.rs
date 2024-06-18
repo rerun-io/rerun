@@ -333,6 +333,86 @@ fn clears() -> anyhow::Result<()> {
 }
 
 #[test]
+fn clears_respect_index_order() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+
+    let timeline_frame = Timeline::new_sequence("frame");
+
+    let entity_path: EntityPath = "parent".into();
+
+    let row_id1 = RowId::new();
+    let row_id2 = row_id1.next();
+    let row_id3 = row_id2.next();
+
+    let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
+
+    let point = MyPoint::new(1.0, 2.0);
+    let row = DataRow::from_component_batches(
+        row_id2,
+        timepoint.clone(),
+        entity_path.clone(),
+        [&[point] as _],
+    )?;
+
+    db.add_data_row(row)?;
+
+    {
+        let query = LatestAtQuery::new(timeline_frame, 11);
+        let (_, _, got_point) =
+            query_latest_component::<MyPoint>(&db, &entity_path, &query).unwrap();
+        similar_asserts::assert_eq!(point, got_point);
+    }
+
+    let clear = Clear::recursive();
+    let row = DataRow::from_component_batches(
+        row_id1, // older row id!
+        timepoint.clone(),
+        entity_path.clone(),
+        clear.as_component_batches().iter().map(|b| b.as_ref()),
+    )?;
+
+    db.add_data_row(row)?;
+
+    {
+        let query = LatestAtQuery::new(timeline_frame, 11);
+
+        let (_, _, got_point) =
+            query_latest_component::<MyPoint>(&db, &entity_path, &query).unwrap();
+        similar_asserts::assert_eq!(point, got_point);
+
+        // the `Clear` component itself doesn't get cleared!
+        let (_, _, got_clear) =
+            query_latest_component::<ClearIsRecursive>(&db, &entity_path, &query).unwrap();
+        similar_asserts::assert_eq!(clear.is_recursive, got_clear);
+    }
+
+    let clear = Clear::recursive();
+    let row = DataRow::from_component_batches(
+        row_id3, // newer row id!
+        timepoint,
+        entity_path.clone(),
+        clear.as_component_batches().iter().map(|b| b.as_ref()),
+    )?;
+
+    db.add_data_row(row)?;
+
+    {
+        let query = LatestAtQuery::new(timeline_frame, 11);
+
+        assert!(query_latest_component::<MyPoint>(&db, &entity_path, &query).is_none());
+
+        // the `Clear` component itself doesn't get cleared!
+        let (_, _, got_clear) =
+            query_latest_component::<ClearIsRecursive>(&db, &entity_path, &query).unwrap();
+        similar_asserts::assert_eq!(clear.is_recursive, got_clear);
+    }
+
+    Ok(())
+}
+
+#[test]
 fn clear_and_gc() -> anyhow::Result<()> {
     use re_data_store::DataStoreStats;
 
