@@ -7,7 +7,7 @@ import rerun.blueprint as rrb
 rr.init("rerun_example_tensor", spawn=True)
 
 tensor = np.random.randint(0, 256, (8, 10, 12, 14), dtype=np.uint8)
-rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "channel", "batch")))
+rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "batch", "other")))
 
 blueprint = rrb.Blueprint(
     rrb.TensorView(
@@ -30,7 +30,7 @@ blueprint = rrb.Blueprint(
         # Set a scalar mapping with a custom colormap, gamma and magnification filter.
         scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
         # Change sizing mode to keep aspect ratio.
-        view_fit="FillKeepAspectRatio",
+        view_fit="fillkeepaspectratio",
     ),
     collapse_panels=True,
 )
