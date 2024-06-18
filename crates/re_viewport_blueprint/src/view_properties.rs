@@ -1,7 +1,9 @@
 use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtResults, EntityDb};
 use re_log_types::EntityPath;
-use re_types::{external::arrow2, Archetype, ArchetypeName, ComponentName, DeserializationError};
+use re_types::{
+    external::arrow2, Archetype, ArchetypeName, ComponentBatch, ComponentName, DeserializationError,
+};
 use re_viewer_context::{
     external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
     QueryContext, SpaceViewId, SpaceViewSystemExecutionError, ViewerContext,
@@ -104,13 +106,37 @@ impl<'a> ViewProperty<'a> {
         )?)
     }
 
+    /// Get a single component or None, not using any fallbacks.
+    #[inline]
+    pub fn component_or_empty<C: re_types::Component + Default>(
+        &self,
+    ) -> Result<Option<C>, DeserializationError> {
+        self.component_array()
+            .map(|v| v.and_then(|v| v.into_iter().next()))
+    }
+
     /// Get the component array for a given type.
     pub fn component_array<C: re_types::Component + Default>(
         &self,
-    ) -> Option<Result<Vec<C>, DeserializationError>> {
+    ) -> Result<Option<Vec<C>>, DeserializationError> {
         let component_name = C::name();
-        self.component_raw(component_name)
-            .map(|raw| C::from_arrow(raw.as_ref()))
+        let result = self
+            .component_raw(component_name)
+            .map(|raw| C::from_arrow(raw.as_ref()));
+
+        match result {
+            Some(Ok(value)) => Ok(Some(value)),
+            Some(Err(err)) => Err(err),
+            None => Ok(None),
+        }
+    }
+
+    /// Get the component array for a given type or an empty array.
+    pub fn component_array_or_empty<C: re_types::Component + Default>(
+        &self,
+    ) -> Result<Vec<C>, DeserializationError> {
+        self.component_array()
+            .map(|value| value.unwrap_or_default())
     }
 
     fn component_raw(
@@ -138,12 +164,12 @@ impl<'a> ViewProperty<'a> {
     }
 
     /// Save change to a blueprint component.
-    pub fn save_blueprint_component<C: re_types::Component>(
+    pub fn save_blueprint_component(
         &self,
         ctx: &'a ViewerContext<'a>,
-        component: &C,
+        components: &dyn ComponentBatch,
     ) {
-        ctx.save_blueprint_component(&self.blueprint_store_path, component);
+        ctx.save_blueprint_component(&self.blueprint_store_path, components);
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.

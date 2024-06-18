@@ -1,19 +1,16 @@
-use std::collections::BTreeMap;
-
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_space_view::{suggest_space_view_for_each_entity, view_property_ui};
 
-use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
 use re_types::{
     blueprint::{
-        archetypes::{TensorScalarMapping, TensorViewFit},
+        archetypes::{TensorScalarMapping, TensorSliceSelection, TensorViewFit},
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter},
-    datatypes::{TensorData, TensorDimension},
+    datatypes::TensorDimension,
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,
 };
@@ -26,7 +23,10 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
+use crate::{
+    dimension_mapping::load_tensor_slice_selection_and_make_valid,
+    tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem,
+};
 
 #[derive(Default)]
 pub struct TensorSpaceView;
@@ -35,11 +35,6 @@ type ViewType = re_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
-    /// What slice are we viewing?
-    ///
-    /// This get automatically reset if/when the current tensor shape changes.
-    pub(crate) slice: SliceSelection,
-
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
     tensor: Option<(RowId, DecodedTensor)>,
@@ -53,16 +48,6 @@ impl SpaceViewState for ViewTensorState {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-}
-
-/// How we slice a given tensor
-#[derive(Default, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct SliceSelection {
-    /// How we select which dimensions to project the tensor onto.
-    pub dim_mapping: DimensionMapping,
-
-    /// Selected value of every dimension (iff they are in [`DimensionMapping::selectors`]).
-    pub selector_values: BTreeMap<usize, u64>,
 }
 
 impl SpaceViewClass for TensorSpaceView {
@@ -153,21 +138,18 @@ impl SpaceViewClass for TensorSpaceView {
         });
 
         if let Some((_, tensor)) = &state.tensor {
+            let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                view_id,
+            );
+            let slice_selection =
+                load_tensor_slice_selection_and_make_valid(&slice_property, tensor.shape())?;
+
             ui.separator();
             ui.strong("Dimension Mapping");
-            dimension_mapping_ui(ui, &mut state.slice.dim_mapping, tensor.shape());
-            let default_mapping = DimensionMapping::create(tensor.shape());
-            if ui
-                .add_enabled(
-                    state.slice.dim_mapping != default_mapping,
-                    egui::Button::new("Reset mapping"),
-                )
-                .on_disabled_hover_text("The default is already set up")
-                .on_hover_text("Reset dimension mapping to the default")
-                .clicked()
-            {
-                state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
-            }
+            dimension_mapping_ui(ctx, ui, tensor.shape(), &slice_selection, &slice_property);
+            // TODO: there used to be a reset to default button here, we need to bring this back in a blueprinty way
         }
 
         Ok(())
@@ -192,12 +174,11 @@ impl SpaceViewClass for TensorSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
         let state = state.downcast_mut::<ViewTensorState>()?;
+        state.tensor = None;
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
         if tensors.len() > 1 {
-            state.tensor = None;
-
             egui::Frame {
                 inner_margin: re_ui::DesignTokens::view_padding().into(),
                 ..egui::Frame::default()
@@ -211,16 +192,8 @@ impl SpaceViewClass for TensorSpaceView {
             });
         } else if let Some((tensor_data_row_id, tensor)) = tensors.first() {
             state.tensor = Some((*tensor_data_row_id, tensor.clone()));
-            self.view_tensor(
-                ctx,
-                ui,
-                state,
-                query.space_view_id,
-                *tensor_data_row_id,
-                tensor,
-            );
+            self.view_tensor(ctx, ui, state, query.space_view_id, tensor)?;
         } else {
-            state.tensor = None;
             ui.centered_and_justified(|ui| ui.label("(empty)"));
         }
 
@@ -233,79 +206,68 @@ impl TensorSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut ViewTensorState,
+        state: &ViewTensorState,
         view_id: SpaceViewId,
-        tensor_data_row_id: RowId,
         tensor: &DecodedTensor,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        if !state.slice.dim_mapping.is_valid(tensor.num_dim()) {
-            state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
-        }
+        let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        );
+        let slice_selection =
+            load_tensor_slice_selection_and_make_valid(&slice_property, tensor.shape())?;
 
         let default_item_spacing = ui.spacing_mut().item_spacing;
         ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
 
-        if state
-            .slice
-            .dim_mapping
-            .selectors
-            .iter()
-            .any(|selector| selector.visible)
-        {
+        if !slice_selection.slider.is_empty() {
             egui::Frame {
                 inner_margin: egui::Margin::symmetric(16.0, 8.0),
                 ..Default::default()
             }
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
-                selectors_ui(ui, state, tensor);
+                selectors_ui(ctx, ui, tensor.shape(), &slice_selection, &slice_property);
             });
         }
 
         let dimension_labels = {
-            let dm = &state.slice.dim_mapping;
+            let width = slice_selection.width.unwrap_or_default();
+            let height = slice_selection.height.unwrap_or_default();
             [
                 (
-                    dimension_name(&tensor.shape, dm.width.unwrap_or_default()),
-                    dm.invert_width,
+                    dimension_name(&tensor.shape, height.dimension),
+                    height.invert,
                 ),
-                (
-                    dimension_name(&tensor.shape, dm.height.unwrap_or_default()),
-                    dm.invert_height,
-                ),
+                (dimension_name(&tensor.shape, width.dimension), width.invert),
             ]
         };
 
         egui::ScrollArea::both().show(ui, |ui| {
-            if let Err(err) = self.tensor_slice_ui(
-                ctx,
-                ui,
-                state,
-                view_id,
-                tensor_data_row_id,
-                tensor,
-                dimension_labels,
-            ) {
+            if let Err(err) =
+                self.tensor_slice_ui(ctx, ui, state, view_id, dimension_labels, &slice_selection)
+            {
                 ui.label(ui.ctx().error_text(err.to_string()));
             }
         });
+
+        Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn tensor_slice_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: SpaceViewId,
-        tensor_data_row_id: RowId,
-        tensor: &DecodedTensor,
         dimension_labels: [(String, bool); 2],
+        slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
         let (response, painter, image_rect) =
-            self.paint_tensor_slice(ctx, ui, state, view_id, tensor_data_row_id, tensor)?;
+            self.paint_tensor_slice(ctx, ui, state, view_id, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
@@ -321,10 +283,13 @@ impl TensorSpaceView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: SpaceViewId,
-        tensor_data_row_id: RowId,
-        tensor: &DecodedTensor,
+        slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
         re_tracing::profile_function!();
+
+        let Some((tensor_data_row_id, tensor)) = state.tensor.as_ref() else {
+            return Err(anyhow::Error::msg("No tensor data available."));
+        };
 
         let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
             ctx.blueprint_db(),
@@ -342,13 +307,13 @@ impl TensorSpaceView {
 
         let tensor_stats = ctx
             .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
+            .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
         let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
             render_ctx,
-            tensor_data_row_id,
+            *tensor_data_row_id,
             tensor,
             &tensor_stats,
-            state,
+            slice_selection,
             colormap,
             gamma,
         )?;
@@ -401,29 +366,28 @@ impl TensorSpaceView {
 // ----------------------------------------------------------------------------
 
 pub fn selected_tensor_slice<'a, T: Copy>(
-    slice_selection: &SliceSelection,
+    slice_selection: &TensorSliceSelection,
     tensor: &'a ndarray::ArrayViewD<'_, T>,
 ) -> ndarray::ArrayViewD<'a, T> {
-    let SliceSelection {
-        dim_mapping: dimension_mapping,
-        selector_values,
+    let TensorSliceSelection {
+        width,
+        height,
+        indices,
+        slider: _,
     } = slice_selection;
 
-    assert!(dimension_mapping.is_valid(tensor.ndim()));
-
-    let (width, height) =
-        if let (Some(width), Some(height)) = (dimension_mapping.width, dimension_mapping.height) {
-            (width, height)
-        } else if let Some(width) = dimension_mapping.width {
-            // If height is missing, create a 1D row.
-            (width, 1)
-        } else if let Some(height) = dimension_mapping.height {
-            // If width is missing, create a 1D column.
-            (1, height)
-        } else {
-            // If both are missing, give up.
-            return tensor.view();
-        };
+    let (dwidth, dheight) = if let (Some(width), Some(height)) = (width, height) {
+        (width.dimension, height.dimension)
+    } else if let Some(width) = width {
+        // If height is missing, create a 1D row.
+        (width.dimension, 1)
+    } else if let Some(height) = height {
+        // If width is missing, create a 1D column.
+        (1, height.dimension)
+    } else {
+        // If both are missing, give up.
+        return tensor.view();
+    };
 
     let view = if tensor.shape().len() == 1 {
         // We want 2D slices, so for "pure" 1D tensors add a dimension.
@@ -437,36 +401,29 @@ pub fn selected_tensor_slice<'a, T: Copy>(
     };
 
     #[allow(clippy::tuple_array_conversions)]
-    let axis = [height, width]
+    let axis = [dheight as usize, dwidth as usize]
         .into_iter()
-        .chain(dimension_mapping.selectors.iter().map(|s| s.dim_idx))
+        .chain(indices.iter().map(|s| s.dimension as usize))
         .collect::<Vec<_>>();
     let mut slice = view.permuted_axes(axis);
 
-    for DimensionSelector { dim_idx, .. } in &dimension_mapping.selectors {
-        let selector_value = selector_values.get(dim_idx).copied().unwrap_or_default() as usize;
-        assert!(
-            selector_value < slice.shape()[2],
-            "Bad tensor slicing. Trying to select slice index {selector_value} of dim=2. tensor shape: {:?}, dim_mapping: {dimension_mapping:#?}",
-            tensor.shape()
-        );
-
+    for index_selection in indices {
         // 0 and 1 are width/height, the rest are rearranged by dimension_mapping.selectors
         // This call removes Axis(2), so the next iteration of the loop does the right thing again.
-        slice.index_axis_inplace(Axis(2), selector_value);
+        slice.index_axis_inplace(Axis(2), index_selection.index as usize);
     }
-    if dimension_mapping.invert_height {
+    if height.unwrap_or_default().invert {
         slice.invert_axis(Axis(0));
     }
-    if dimension_mapping.invert_width {
+    if width.unwrap_or_default().invert {
         slice.invert_axis(Axis(1));
     }
 
     slice
 }
 
-fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
-    let dim = &shape[dim_idx];
+fn dimension_name(shape: &[TensorDimension], dim_idx: u32) -> String {
+    let dim = &shape[dim_idx as usize];
     dim.name.as_ref().map_or_else(
         || format!("Dimension {dim_idx} (size={})", dim.size),
         |name| format!("{name} (size={})", dim.size),
@@ -592,58 +549,77 @@ fn paint_axis_names(
     }
 }
 
-fn selectors_ui(ui: &mut egui::Ui, state: &mut ViewTensorState, tensor: &TensorData) {
-    for selector in &state.slice.dim_mapping.selectors {
-        if !selector.visible {
+fn selectors_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    shape: &[TensorDimension],
+    slice_selection: &TensorSliceSelection,
+    slice_property: &ViewProperty<'_>,
+) {
+    let mut changed_indices = false;
+    let mut indices = slice_selection.indices.clone();
+
+    for selector in &slice_selection.slider {
+        let dim = &shape[selector.dimension as usize];
+        let size = dim.size;
+        if size <= 1 {
             continue;
         }
 
-        let dim = &tensor.shape()[selector.dim_idx];
-        let size = dim.size;
+        let Some(selector_index) = indices
+            .iter_mut()
+            .find(|i| i.dimension == selector.dimension)
+        else {
+            // There should be an entry already via `load_tensor_slice_selection_and_make_valid`
+            continue;
+        };
+        let selector_value = &mut selector_index.index;
 
-        let selector_value = state
-            .slice
-            .selector_values
-            .entry(selector.dim_idx)
-            .or_insert_with(|| size / 2); // start in the middle
+        ui.horizontal(|ui| {
+            let name = dim
+                .name
+                .clone()
+                .map_or_else(|| selector.dimension.to_string(), |name| name.to_string());
 
-        if size > 0 {
-            *selector_value = selector_value.at_most(size - 1);
-        }
+            let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
+            ui.label(&name).on_hover_text(&slider_tooltip);
 
-        if size > 1 {
-            ui.horizontal(|ui| {
-                let name = dim
-                    .name
-                    .clone()
-                    .map_or_else(|| selector.dim_idx.to_string(), |name| name.to_string());
-
-                let slider_tooltip = format!("Adjust the selected slice for the {name} dimension");
-                ui.label(&name).on_hover_text(&slider_tooltip);
-
-                // If the range is big (say, 2048) then we would need
-                // a slider that is 2048 pixels wide to get the good precision.
-                // So we add a high-precision drag-value instead:
-                ui.add(
+            // If the range is big (say, 2048) then we would need
+            // a slider that is 2048 pixels wide to get the good precision.
+            // So we add a high-precision drag-value instead:
+            if ui
+                .add(
                     egui::DragValue::new(selector_value)
                         .clamp_range(0..=size - 1)
                         .speed(0.5),
                 )
                 .on_hover_text(format!(
                     "Drag to precisely control the slice index of the {name} dimension"
-                ));
+                ))
+                .changed()
+            {
+                changed_indices = true;
+            }
 
-                // Make the slider as big as needed:
-                const MIN_SLIDER_WIDTH: f32 = 64.0;
-                if ui.available_width() >= MIN_SLIDER_WIDTH {
-                    ui.spacing_mut().slider_width = ((size as f32) * 4.0)
-                        .at_least(MIN_SLIDER_WIDTH)
-                        .at_most(ui.available_width());
-                    ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))
-                        .on_hover_text(slider_tooltip);
+            // Make the slider as big as needed:
+            const MIN_SLIDER_WIDTH: f32 = 64.0;
+            if ui.available_width() >= MIN_SLIDER_WIDTH {
+                ui.spacing_mut().slider_width = ((size as f32) * 4.0)
+                    .at_least(MIN_SLIDER_WIDTH)
+                    .at_most(ui.available_width());
+                if ui
+                    .add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))
+                    .on_hover_text(slider_tooltip)
+                    .changed()
+                {
+                    changed_indices = true;
                 }
-            });
-        }
+            }
+        });
+    }
+
+    if changed_indices {
+        slice_property.save_blueprint_component(ctx, &indices);
     }
 }
 
@@ -654,4 +630,5 @@ impl TypedComponentFallbackProvider<Colormap> for TensorSpaceView {
     }
 }
 
+// Fallback for the various components of `TensorSliceSelection` is handled by `load_tensor_slice_selection_and_make_valid`.
 re_viewer_context::impl_component_fallback_provider!(TensorSpaceView => [Colormap]);

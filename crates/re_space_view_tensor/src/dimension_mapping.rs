@@ -1,115 +1,131 @@
-use re_types::datatypes::TensorDimension;
+use egui::NumExt as _;
+use re_types::{
+    blueprint::{archetypes::TensorSliceSelection, components::TensorDimensionIndexSlider},
+    components::{TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension},
+    datatypes::{TensorDimension, TensorDimensionSelection},
+};
+use re_viewport_blueprint::ViewProperty;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub struct DimensionSelector {
-    pub visible: bool,
-    pub dim_idx: usize,
-}
+/// Loads slice selection from blueprint and makes modifications (without writing back) such that it is valid
+/// for the given tensor shape.
+///
+/// This is a best effort function and will insert fallbacks as needed.
+/// Note that fallbacks are defined on the spot here and don't use the component fallback system.
+/// We don't need the fallback system here since we're also not using generic ui either.
+///
+/// General rules for scrubbing the input data:
+/// * out of bounds dimensions and indices are clamped to valid
+/// * missing width/height is filled in if there's at least 2 dimensions.
+pub fn load_tensor_slice_selection_and_make_valid(
+    slice_selection: &ViewProperty<'_>,
+    shape: &[TensorDimension],
+) -> Result<TensorSliceSelection, re_types::DeserializationError> {
+    re_tracing::profile_function!();
 
-impl DimensionSelector {
-    pub fn new(dim_idx: usize) -> Self {
-        Self {
-            visible: true,
-            dim_idx,
-        }
+    let max_valid_dim = shape.len().saturating_sub(1) as u32;
+
+    let mut width = slice_selection.component_or_empty::<TensorWidthDimension>()?;
+    let mut height = slice_selection.component_or_empty::<TensorHeightDimension>()?;
+
+    // Clamp width and height to valid dimensions.
+    if let Some(width) = width.as_mut() {
+        width.dimension = width.dimension.at_most(max_valid_dim);
     }
-}
+    if let Some(height) = height.as_mut() {
+        height.dimension = height.dimension.at_most(max_valid_dim);
+    }
 
-#[derive(Default, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub struct DimensionMapping {
-    /// Which dimensions have selectors, and are they visible?
-    pub selectors: Vec<DimensionSelector>,
-
-    // Which dim?
-    pub width: Option<usize>,
-
-    // Which dim?
-    pub height: Option<usize>,
-
-    /// Flip the width
-    pub invert_width: bool,
-
-    /// Flip the height
-    pub invert_height: bool,
-}
-
-impl DimensionMapping {
-    pub fn create(shape: &[TensorDimension]) -> Self {
-        match shape.len() {
-            0 => Self {
-                selectors: Default::default(),
-                width: None,
-                height: None,
-                invert_width: false,
-                invert_height: false,
-            },
-
-            1 => Self {
-                selectors: Default::default(),
-                width: Some(0),
-                height: None,
-                invert_width: false,
-                invert_height: false,
-            },
-
-            _ => {
-                let (width, height) = find_width_height_dim_indices(shape);
-                let selectors = (0..shape.len())
-                    .filter(|i| *i != width && *i != height)
-                    .map(DimensionSelector::new)
-                    .collect();
-
-                let invert_width = shape[width]
-                    .name
-                    .as_ref()
-                    .map(|name| name.to_lowercase().eq("left"))
-                    .unwrap_or_default();
-                let invert_height = shape[height]
-                    .name
-                    .as_ref()
-                    .map(|name| name.to_lowercase().eq("up"))
-                    .unwrap_or_default();
-
-                Self {
-                    selectors,
-                    width: Some(width),
-                    height: Some(height),
-                    invert_width,
-                    invert_height,
+    // If there's more than two dimensions, force width and height to be set.
+    if shape.len() >= 2 && (width.is_none() || height.is_none()) {
+        let (default_width, default_height) = find_width_height_dim_indices(shape);
+        if width.is_none() {
+            width = Some(
+                TensorDimensionSelection {
+                    dimension: default_width as u32,
+                    invert: shape[default_width]
+                        .name
+                        .as_ref()
+                        .map_or(false, |name| name.to_lowercase().eq("left")),
                 }
-            }
+                .into(),
+            );
+        }
+        if height.is_none() {
+            height = Some(
+                TensorDimensionSelection {
+                    dimension: default_height as u32,
+                    invert: shape[default_height]
+                        .name
+                        .as_ref()
+                        .map_or(false, |name| name.to_lowercase().eq("up")),
+                }
+                .into(),
+            );
         }
     }
 
-    /// Protect against old serialized data that is not up-to-date with the new tensor
-    pub fn is_valid(&self, num_dim: usize) -> bool {
-        fn is_in_range(dim_selector: &Option<usize>, num_dim: usize) -> bool {
-            if let Some(dim) = dim_selector {
-                *dim < num_dim
-            } else {
-                true
-            }
-        }
+    let width_dim = width.map_or(u32::MAX, |w| w.0.dimension);
+    let height_dim = height.map_or(u32::MAX, |h| h.0.dimension);
 
-        let mut used_dimensions: ahash::HashSet<usize> =
-            self.selectors.iter().map(|s| s.dim_idx).collect();
-        if let Some(width) = self.width {
-            used_dimensions.insert(width);
-        }
-        if let Some(height) = self.height {
-            used_dimensions.insert(height);
-        }
-        if used_dimensions.len() != num_dim {
-            return false;
-        }
+    // -----
 
-        // we should have both width and height set…
-        (num_dim < 2 || (self.width.is_some() && self.height.is_some()))
+    let mut indices =
+        slice_selection.component_array_or_empty::<TensorDimensionIndexSelection>()?;
 
-        // …and all dimensions should be in range
-            && is_in_range(&self.width, num_dim)
-            && is_in_range(&self.height, num_dim)
+    // Remove any index selection that uses a dimension that is out of bounds or equal to width/height.
+    indices.retain(|index| {
+        index.dimension < shape.len() as u32
+            && index.dimension != width_dim
+            && index.dimension != height_dim
+    });
+
+    // Clamp indices to valid dimension extent.
+    let mut covered_dims = vec![false; shape.len()];
+    for dim_index_selection in &mut indices {
+        dim_index_selection.index = dim_index_selection
+            .index
+            .at_most(shape[dim_index_selection.dimension as usize].size - 1);
+        covered_dims[dim_index_selection.dimension as usize] = true;
     }
+
+    // Fill in missing indices for dimensions that aren't covered with the middle index.
+    width.inspect(|w| covered_dims[w.dimension as usize] = true);
+    height.inspect(|h| covered_dims[h.dimension as usize] = true);
+    for (i, _) in covered_dims.into_iter().enumerate().filter(|(_, b)| !b) {
+        indices.push(
+            re_types::datatypes::TensorDimensionIndexSelection {
+                dimension: i as u32,
+                index: shape[i].size / 2,
+            }
+            .into(),
+        );
+    }
+
+    // -----
+
+    let slider = if let Some(mut slider) =
+        slice_selection.component_array::<TensorDimensionIndexSlider>()?
+    {
+        // Remove any slider selection that uses a dimension that is out of bounds or equal to width/height.
+        slider.retain(|slider| {
+            slider.dimension < shape.len() as u32
+                && slider.dimension != width_dim
+                && slider.dimension != height_dim
+        });
+        slider
+    } else {
+        // If no slider were specified, create a default one for each dimension that isn't covered by width/height
+        indices.iter().map(|index| index.dimension.into()).collect()
+    };
+
+    // -----
+
+    Ok(TensorSliceSelection {
+        width,
+        height,
+        indices,
+        slider,
+    })
 }
 
 #[allow(clippy::collapsible_else_if)]
