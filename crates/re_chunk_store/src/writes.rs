@@ -1,12 +1,13 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use arrow2::array::{Array as _, ListArray as ArrowListArray};
+use itertools::Itertools as _;
 
-use re_chunk::{Chunk, RowId};
+use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreError,
-    ChunkStoreEvent, ChunkStoreResult,
+    store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind,
+    ChunkStoreError, ChunkStoreEvent, ChunkStoreResult,
 };
 
 // Used all over in docstrings.
@@ -172,5 +173,108 @@ impl ChunkStore {
         }
 
         Ok(Some(event))
+    }
+
+    /// Unconditionally drops all the data for a given `entity_path`.
+    ///
+    /// Returns the list of `Chunk`s that were dropped from the store in the form of [`ChunkStoreEvent`]s.
+    ///
+    /// This is _not_ recursive. The store is unaware of the entity hierarchy.
+    pub fn drop_entity_path(&mut self, entity_path: &EntityPath) -> Vec<ChunkStoreEvent> {
+        re_tracing::profile_function!(entity_path.to_string());
+
+        self.gc_id += 1; // close enough
+
+        let generation = self.generation();
+
+        let Self {
+            id,
+            config: _,
+            type_registry: _,
+            chunks_per_chunk_id,
+            chunk_ids_per_min_row_id,
+            temporal_chunk_ids_per_entity,
+            temporal_chunks_stats,
+            static_chunk_ids_per_entity,
+            static_chunks_stats,
+            insert_id: _,
+            query_id: _,
+            gc_id: _,
+            event_id,
+        } = self;
+
+        let dropped_static_chunks = {
+            let dropped_static_chunk_ids: BTreeSet<_> = static_chunk_ids_per_entity
+                .remove(entity_path)
+                .unwrap_or_default()
+                .into_values()
+                .collect();
+
+            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
+                chunk_ids.retain(|chunk_id| !dropped_static_chunk_ids.contains(chunk_id));
+                !chunk_ids.is_empty()
+            });
+
+            dropped_static_chunk_ids.into_iter()
+        };
+
+        let dropped_temporal_chunks = {
+            let dropped_temporal_chunk_ids: BTreeSet<_> = temporal_chunk_ids_per_entity
+                .remove(entity_path)
+                .unwrap_or_default()
+                .into_values()
+                .flat_map(|temporal_chunk_ids_per_component| {
+                    temporal_chunk_ids_per_component.into_values()
+                })
+                .flat_map(|temporal_chunk_ids_per_time| {
+                    let ChunkIdSetPerTime {
+                        per_start_time,
+                        per_end_time,
+                    } = temporal_chunk_ids_per_time;
+
+                    per_start_time
+                        .into_values()
+                        .flat_map(|chunk_ids| chunk_ids.into_iter())
+                        .chain(
+                            per_end_time
+                                .into_values()
+                                .flat_map(|chunk_ids| chunk_ids.into_iter()),
+                        )
+                })
+                .collect();
+
+            chunk_ids_per_min_row_id.retain(|_row_id, chunk_ids| {
+                chunk_ids.retain(|chunk_id| !dropped_temporal_chunk_ids.contains(chunk_id));
+                !chunk_ids.is_empty()
+            });
+
+            dropped_temporal_chunk_ids.into_iter()
+        };
+
+        let dropped_static_chunks = dropped_static_chunks
+            .filter_map(|chunk_id| chunks_per_chunk_id.remove(&chunk_id))
+            .inspect(|chunk| {
+                *static_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
+            })
+            // NOTE: gotta collect to release the mut ref on `chunks_per_chunk_id`.
+            .collect_vec();
+
+        let dropped_temporal_chunks = dropped_temporal_chunks
+            .filter_map(|chunk_id| chunks_per_chunk_id.remove(&chunk_id))
+            .inspect(|chunk| {
+                *temporal_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
+            });
+
+        dropped_static_chunks
+            .into_iter()
+            .chain(dropped_temporal_chunks)
+            .map(ChunkStoreDiff::deletion)
+            .map(|diff| ChunkStoreEvent {
+                store_id: id.clone(),
+                store_generation: generation.clone(),
+                event_id: event_id.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect()
     }
 }
