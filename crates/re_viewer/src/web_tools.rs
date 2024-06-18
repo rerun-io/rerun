@@ -6,6 +6,8 @@ use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 
 use re_log::ResultExt as _;
+use web_sys::History;
+use web_sys::UrlSearchParams;
 
 /// Web-specific tools used by various parts of the application.
 
@@ -83,7 +85,7 @@ pub fn current_url_suffix() -> Option<String> {
 /// ```
 /// push_history("foo/bar?baz=qux#fragment");
 /// ```
-pub fn push_history(new_relative_url: &str) -> Option<()> {
+pub fn push_history(entry: HistoryEntry) -> Option<()> {
     let current_relative_url = current_url_suffix().unwrap_or_default();
 
     if current_relative_url == new_relative_url {
@@ -97,6 +99,7 @@ pub fn push_history(new_relative_url: &str) -> Option<()> {
             .history()
             .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
             .ok_or_log_error()?;
+
         // Instead of setting state to `null`, try to preserve existing state.
         // This helps with ensuring JS frameworks can perform client-side routing.
         // If we ever need to store anything in `state`, we should rethink how
@@ -116,7 +119,7 @@ pub fn push_history(new_relative_url: &str) -> Option<()> {
 }
 
 /// Replace the current relative url with an new one.
-pub fn replace_history(new_relative_url: &str) -> Option<()> {
+pub fn replace_history(entry: HistoryEntry) -> Option<()> {
     let history = web_sys::window()?
         .history()
         .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
@@ -132,6 +135,147 @@ pub fn replace_history(new_relative_url: &str) -> Option<()> {
             )
         })
         .ok_or_log_error()
+}
+
+/// A history entry is actually stored in two places:
+/// - State object
+/// - URL
+///
+/// Ideally we wouldn't have to, but we want two things:
+/// - Listen to `popstate` events and handle navigations client-side,
+///   so that the forward/back buttons can be used to navigate between
+///   examples and the welcome screen.
+/// - Add a `?url` query param to the address bar when navigating to
+///   an example, so that examples can be shared directly by just
+///   copying the link.
+#[derive(Clone, Default, Debug, serde::Serialize, serde::Deserialize)]
+pub struct HistoryEntry {
+    /// Data source URL
+    ///
+    /// We support loading multiple URLs at the same time
+    pub url: Vec<String>,
+
+    /// Active app id
+    pub app_id: Option<String>,
+}
+
+// Builder methods
+impl HistoryEntry {
+    pub fn new() -> Self {
+        Self {
+            url: Vec::new(),
+            app_id: None,
+        }
+    }
+
+    pub fn url(mut self, url: String) -> Self {
+        self.url.push(url);
+        self
+    }
+
+    pub fn app_id(mut self, app_id: Option<String>) -> Self {
+        self.app_id = app_id;
+        self
+    }
+}
+
+// Serialization
+impl HistoryEntry {
+    fn to_search_params(&self) -> Option<UrlSearchParams> {
+        let params = UrlSearchParams::new().ok()?;
+        for url in &self.url {
+            params.append("url", url);
+        }
+        if let Some(app_id) = &self.app_id {
+            params.append("app_id", app_id);
+        }
+        Some(params)
+    }
+}
+
+pub fn history() -> Option<History> {
+    web_sys::window()?
+        .history()
+        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
+        .ok_or_log_error()
+}
+
+pub trait HistoryExt {
+    fn current(&self) -> Option<HistoryEntry>;
+    fn push(&self, entry: HistoryEntry);
+    fn replace(&self, entry: HistoryEntry);
+}
+
+const HISTORY_ENTRY_KEY: &str = "__rerun";
+
+extern "C" {
+    #[wasm_bindgen(js_namespace = "window", js_name = structuredClone)]
+    /// The `structuredClone()` method.
+    ///
+    /// [MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/structuredClone)
+    pub fn structured_clone(value: &JsValue) -> Result<JsValue, JsValue>;
+}
+
+/// Get the current raw history state.
+///
+/// The return value is an object which may contain properties
+/// added by other JS code. We need to be careful about not
+/// trampling over those.
+///
+/// The returned object has been shallow-cloned, so it is safe
+/// to add our own keys to the object, as it won't update the
+/// current browser history.
+fn get_state(history: &History) -> Option<JsValue> {
+    let state = self.state().unwrap_or(JsValue::UNDEFINED);
+    if state.is_object() {
+        Some(structured_clone(&state))
+    } else {
+        None
+    }
+}
+
+fn get_current_history_entry(history: &History) -> Option<HistoryEntry> {
+    let state = get_state(history)?;
+
+    let key = JsValue::from_str(HISTORY_ENTRY_KEY);
+
+    // let entry = serde_wasm_bindgen::to_value(&entry).ok()?;
+    // js_sys::Reflect::set(&state, &key, &entry).ok()?;
+}
+
+fn get_state_with(history: &History, entry: HistoryEntry) -> Option<JsValue> {
+    let state = history.state().unwrap_or(JsValue::UNDEFINED);
+    if !state.is_object() {
+        return None;
+    }
+
+    let key = JsValue::from_str(Self::KEY);
+    let entry = serde_wasm_bindgen::to_value(&entry).ok()?;
+    js_sys::Reflect::set(&state, &key, &entry).ok()?;
+
+    Some(state)
+}
+
+impl HistoryExt for History {
+    fn push(&self, entry: HistoryEntry) {
+        fn try_push(history: &History, entry: HistoryEntry) -> Option<()> {
+            let key = JsValue::from_str(Self::KEY);
+            let entry = serde_wasm_bindgen::to_value(&entry).ok()?;
+            history.push_state_with_url(data, title, url)
+        }
+
+        try_push(self, entry);
+    }
+
+    fn replace(&self, entry: HistoryEntry) {
+        fn try_replace(history: &History, entry: HistoryEntry) -> Option<()> {
+            let history = history()?;
+
+            todo!()
+        }
+
+        try_replace(self, entry);
+    }
 }
 
 enum EndpointCategory {

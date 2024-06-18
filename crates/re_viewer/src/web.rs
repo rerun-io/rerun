@@ -386,12 +386,6 @@ fn create_app(
             if let Some(receiver) =
                 url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
             {
-                // We may be here because the user clicked Back/Forward in the browser while trying
-                // out examples. If we re-download the same file we should clear out the old data first.
-                app.command_sender
-                    .send_system(SystemCommand::ClearSourceAndItsStores(
-                        receiver.source().clone(),
-                    ));
                 app.command_sender
                     .send_system(SystemCommand::AddReceiver(receiver));
             }
