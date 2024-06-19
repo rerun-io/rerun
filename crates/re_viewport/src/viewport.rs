@@ -169,6 +169,35 @@ impl<'a> Viewport<'a> {
 
             // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
             self.tree_edited |= tab_viewer.edited;
+
+            // Outline hovered & selected tiles:
+            for (tile_id, contents) in &tab_viewer.contents_per_tile_id {
+                if let Some(rect) = tree.tiles.rect(*tile_id) {
+                    let item = contents.as_item();
+
+                    let mut hovered = ctx.hovered().contains_item(&item);
+                    let selected = ctx.selection().contains_item(&item);
+
+                    if hovered && ui.rect_contains_pointer(rect) {
+                        // Showing a hover-outline when hovering the same thing somewhere else
+                        // (e.g. in the blueprint panel) is really helpful,
+                        // but showing a hover-outline when just dragging around the camera is
+                        // just annoying.
+                        hovered = false;
+                    }
+
+                    let stroke = if hovered {
+                        ui.ctx().hover_stroke()
+                    } else if selected {
+                        ui.ctx().selection_stroke()
+                    } else {
+                        continue;
+                    };
+
+                    ui.painter()
+                        .rect_stroke(rect.shrink(stroke.width / 2.0), 0.0, stroke);
+                }
+            }
         });
 
         self.blueprint.set_maximized(maximized, ctx);
