@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-from threading import Thread
-from time import sleep
 from typing import TYPE_CHECKING, Any
 
 from .memory import MemoryRecording, _memory_recording_with_flush_hook
@@ -12,9 +10,8 @@ from .memory import MemoryRecording, _memory_recording_with_flush_hook
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
-from rerun import bindings
 
-from .recording_stream import RecordingStream, get_application_id, get_data_recording
+from .recording_stream import RecordingStream, get_data_recording
 
 DEFAULT_WIDTH = 950
 DEFAULT_HEIGHT = 712
