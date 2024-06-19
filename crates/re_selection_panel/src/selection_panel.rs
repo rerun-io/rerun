@@ -30,10 +30,7 @@ use re_viewport_blueprint::{
 };
 
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
-use crate::{
-    defaults_ui::defaults_ui,
-    override_ui::{override_ui, override_visualizer_ui},
-};
+use crate::{defaults_ui::defaults_ui, visualizer_ui::visualizer_ui};
 use crate::{
     query_range_ui::query_range_ui_data_result, query_range_ui::query_range_ui_space_view,
     selection_history_ui::SelectionHistoryUi,
@@ -164,18 +161,17 @@ impl SelectionPanel {
                     });
                 }
 
-                // Special override section for space-view-entities
+                // Special override section for view-entities
                 if let Item::DataResult(view_id, instance_path) = item {
-                    if let Some(view) = blueprint.space_views.get(view_id) {
-                        ui.large_collapsing_header("Visualizers", true, |ui| {
-                            override_visualizer_ui(ctx, view, instance_path, ui);
-                        });
-
-                        let view_ctx = view.bundle_context_with_states(ctx, view_states);
-
-                        ui.large_collapsing_header("Component Overrides", true, |ui| {
-                            override_ui(&view_ctx, view, instance_path, ui);
-                        });
+                    // Only show visualizer selection when the entire entity is selected.
+                    // (showing it for instances gives the wrong impression)
+                    if instance_path.is_all() {
+                        if let Some(view) = blueprint.space_views.get(view_id) {
+                            let view_ctx = view.bundle_context_with_states(ctx, view_states);
+                            ui.large_collapsing_header("Visualizers", true, |ui| {
+                                visualizer_ui(&view_ctx, view, &instance_path.entity_path, ui);
+                            });
+                        }
                     }
                 }
 
@@ -1253,7 +1249,7 @@ fn pinhole_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &Data
         .latest_at_component::<PinholeProjection>(&data_result.entity_path, &query)
         .is_some()
     {
-        let results = data_result.latest_at_with_overrides::<Pinhole>(ctx, &query);
+        let results = data_result.latest_at_with_blueprint_resolved_data::<Pinhole>(ctx, &query);
 
         let mut image_plane_value: f32 = results
             .get_mono_with_fallback::<ImagePlaneDistance>()
@@ -1299,7 +1295,7 @@ fn transform3d_visualization_ui(
 
     let mut show_arrows = data_result.visualizers.contains(&arrow_viz);
 
-    let results = data_result.latest_at_with_overrides::<Axes3D>(ctx, &query);
+    let results = data_result.latest_at_with_blueprint_resolved_data::<Axes3D>(ctx, &query);
 
     let mut arrow_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
 
@@ -1389,7 +1385,8 @@ fn depth_props_ui(
 
     let (query, _store) =
         guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-    let depth_image_results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
+    let depth_image_results =
+        data_result.latest_at_with_blueprint_resolved_data::<DepthImage>(ctx, &query);
 
     depth_from_world_scale_ui(ctx, ui, data_result, &depth_image_results);
     backproject_radius_scale_ui(ctx, ui, data_result, &depth_image_results);

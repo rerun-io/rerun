@@ -172,7 +172,7 @@ fn query_overrides<'a>(
 }
 
 pub trait DataResultQuery {
-    fn latest_at_with_overrides<'a, A: re_types_core::Archetype>(
+    fn latest_at_with_blueprint_resolved_data<'a, A: re_types_core::Archetype>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
@@ -186,7 +186,7 @@ pub trait DataResultQuery {
 }
 
 impl DataResultQuery for DataResult {
-    fn latest_at_with_overrides<'a, A: re_types_core::Archetype>(
+    fn latest_at_with_blueprint_resolved_data<'a, A: re_types_core::Archetype>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,

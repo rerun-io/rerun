@@ -1,10 +1,7 @@
-use std::sync::Arc;
-
 use egui::NumExt;
 
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityPath, InstancePath};
 use re_log_types::Instance;
-use re_types::ComponentName;
 use re_ui::{ContextExt as _, SyntaxHighlighting as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -12,13 +9,12 @@ use super::DataUi;
 use crate::item_ui;
 
 /// All the values of a specific [`re_log_types::ComponentPath`].
-pub struct EntityLatestAtResults {
+pub struct EntityLatestAtResults<'a> {
     pub entity_path: EntityPath,
-    pub component_name: ComponentName,
-    pub results: Arc<LatestAtComponentResults>,
+    pub results: &'a LatestAtComponentResults,
 }
 
-impl DataUi for EntityLatestAtResults {
+impl<'a> DataUi for EntityLatestAtResults<'a> {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -27,12 +23,17 @@ impl DataUi for EntityLatestAtResults {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_name);
+        let Some(component_name) = self.results.component_name(db.resolver()) else {
+            // TODO: the usual todo.
+            return;
+        };
+
+        re_tracing::profile_function!(component_name);
 
         // TODO(#5607): what should happen if the promise is still pending?
         let Some(num_instances) = self
             .results
-            .raw(db.resolver(), self.component_name)
+            .raw(db.resolver(), component_name)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -74,7 +75,7 @@ impl DataUi for EntityLatestAtResults {
                 if let Some(histogram) = db
                     .tree()
                     .subtree(&self.entity_path)
-                    .and_then(|tree| tree.entity.components.get(&self.component_name))
+                    .and_then(|tree| tree.entity.components.get(&component_name))
                 {
                     if histogram.num_static_messages() > 1 {
                         ui.label(ui.ctx().warning_text(format!(
@@ -157,7 +158,7 @@ impl DataUi for EntityLatestAtResults {
                         ui.label("Index");
                     });
                     header.col(|ui| {
-                        ui.label(self.component_name.short_name());
+                        ui.label(component_name.short_name());
                     });
                 })
                 .body(|mut body| {

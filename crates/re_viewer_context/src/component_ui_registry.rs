@@ -472,38 +472,30 @@ impl ComponentUiRegistry {
         // TODO(andreas, jleibs): Editors only show & edit the first instance of a component batch.
         let instance: Instance = 0.into();
 
-        let editors = if multiline {
-            &self.component_multiline_editors
-        } else {
-            &self.component_singleline_editors
+        let component_value_or_fallback = match component_value_or_fallback(
+            ctx,
+            component_query_result,
+            component_name,
+            instance,
+            origin_db.resolver(),
+            fallback_provider,
+        ) {
+            Ok(value) => value,
+            Err(error_text) => {
+                re_log::error_once!("{error_text}");
+                ui.error_label(&error_text);
+                return;
+            }
         };
 
-        if let Some(edit_callback) = editors.get(&component_name) {
-            let component_value_or_fallback = match component_value_or_fallback(
-                ctx,
-                component_query_result,
-                component_name,
-                instance,
-                origin_db.resolver(),
-                fallback_provider,
-            ) {
-                Ok(value) => value,
-                Err(error_text) => {
-                    re_log::error_once!("{error_text}");
-                    ui.error_label(&error_text);
-                    return;
-                }
-            };
-
-            if let Some(updated) =
-                (*edit_callback)(ctx.viewer_ctx, ui, component_value_or_fallback.as_ref())
-            {
-                ctx.viewer_ctx.save_blueprint_data_cell(
-                    blueprint_write_path,
-                    re_log_types::DataCell::from_arrow(component_name, updated),
-                );
-            }
-        } else {
+        if !self.try_show_edit_ui(
+            ctx.viewer_ctx,
+            ui,
+            component_value_or_fallback.as_ref(),
+            blueprint_write_path,
+            component_name,
+            multiline,
+        ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
             self.ui(
                 ctx.viewer_ctx,
@@ -515,6 +507,36 @@ impl ComponentUiRegistry {
                 component_query_result,
                 &instance,
             );
+        }
+    }
+
+    pub fn try_show_edit_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        raw_current_value: &dyn arrow2::array::Array,
+        blueprint_write_path: &EntityPath,
+        component_name: ComponentName,
+        multiline: bool,
+    ) -> bool {
+        re_tracing::profile_function!(component_name.full_name());
+
+        let editors = if multiline {
+            &self.component_multiline_editors
+        } else {
+            &self.component_singleline_editors
+        };
+
+        if let Some(edit_callback) = editors.get(&component_name) {
+            if let Some(updated) = (*edit_callback)(ctx, ui, raw_current_value) {
+                ctx.save_blueprint_data_cell(
+                    blueprint_write_path,
+                    re_log_types::DataCell::from_arrow(component_name, updated),
+                );
+            }
+            true
+        } else {
+            false
         }
     }
 }
