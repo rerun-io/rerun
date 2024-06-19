@@ -21,7 +21,7 @@ __all__ = ["TensorSliceSelection"]
 
 @define(str=False, repr=False, init=False)
 class TensorSliceSelection(Archetype):
-    """**Archetype**: Determines which slice of a tensor is shown."""
+    """**Archetype**: Specifies a 2D slice of a tensor."""
 
     def __init__(
         self: Any,
@@ -47,13 +47,12 @@ class TensorSliceSelection(Archetype):
         indices:
             Selected indices for all other dimensions.
 
-            If any of the here listed dimensions is equal to width or height, it will be ignored.
-            Any dimension not mentioned here or in width/height will be set to its center index.
+            If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         slider:
-            Any dimension that listed here, will show a slider in the view.
+            Any dimension listed here will have a slider for the index.
 
             Edits to the sliders will directly manipulate dimensions on the `indices` list.
-            If any of the here listed dimensions is equal to width or height, it will be ignored.
+            If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
             If not specified, adds slides for any dimension in `indices`.
 
         """
@@ -109,8 +108,7 @@ class TensorSliceSelection(Archetype):
     )
     # Selected indices for all other dimensions.
     #
-    # If any of the here listed dimensions is equal to width or height, it will be ignored.
-    # Any dimension not mentioned here or in width/height will be set to its center index.
+    # If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -119,10 +117,10 @@ class TensorSliceSelection(Archetype):
         default=None,
         converter=blueprint_components.TensorDimensionIndexSliderBatch._optional,  # type: ignore[misc]
     )
-    # Any dimension that listed here, will show a slider in the view.
+    # Any dimension listed here will have a slider for the index.
     #
     # Edits to the sliders will directly manipulate dimensions on the `indices` list.
-    # If any of the here listed dimensions is equal to width or height, it will be ignored.
+    # If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
     # If not specified, adds slides for any dimension in `indices`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

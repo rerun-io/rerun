@@ -13,7 +13,7 @@ How to select the slice of the tensor to show.
 * `width`: Which dimension to map to width.
 * `height`: Which dimension to map to height.
 * `indices`: Selected indices for all other dimensions.
-* `slider`: Any dimension that listed here, will show a slider in the view.
+* `slider`: Any dimension listed here will have a slider for the index.
 ### `scalar_mapping`
 Configures how scalars are mapped to color.
 

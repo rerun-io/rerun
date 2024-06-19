@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Determines which slice of a tensor is shown.
+/// **Archetype**: Specifies a 2D slice of a tensor.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct TensorSliceSelection {
     /// Which dimension to map to width.
@@ -37,14 +37,13 @@ pub struct TensorSliceSelection {
 
     /// Selected indices for all other dimensions.
     ///
-    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
-    /// Any dimension not mentioned here or in width/height will be set to its center index.
+    /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
     pub indices: Option<Vec<crate::components::TensorDimensionIndexSelection>>,
 
-    /// Any dimension that listed here, will show a slider in the view.
+    /// Any dimension listed here will have a slider for the index.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
-    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
+    /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
     /// If not specified, adds slides for any dimension in `indices`.
     pub slider: Option<Vec<crate::blueprint::components::TensorDimensionIndexSlider>>,
 }
@@ -111,12 +110,12 @@ static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Indices",
-            documentation: "Selected indices for all other dimensions.\n\nIf any of the here listed dimensions is equal to width or height, it will be ignored.\nAny dimension not mentioned here or in width/height will be set to its center index.",
+            documentation: "Selected indices for all other dimensions.\n\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.",
             component_name: "rerun.components.TensorDimensionIndexSelection".into(),
         },
         ::re_types_core::ArchetypeFieldInfo {
             display_name: "Slider",
-            documentation: "Any dimension that listed here, will show a slider in the view.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf any of the here listed dimensions is equal to width or height, it will be ignored.\nIf not specified, adds slides for any dimension in `indices`.",
+            documentation: "Any dimension listed here will have a slider for the index.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.\nIf not specified, adds slides for any dimension in `indices`.",
             component_name: "rerun.blueprint.components.TensorDimensionIndexSlider"
                 .into(),
         },
@@ -303,8 +302,7 @@ impl TensorSliceSelection {
 
     /// Selected indices for all other dimensions.
     ///
-    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
-    /// Any dimension not mentioned here or in width/height will be set to its center index.
+    /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
     #[inline]
     pub fn with_indices(
         mut self,
@@ -314,10 +312,10 @@ impl TensorSliceSelection {
         self
     }
 
-    /// Any dimension that listed here, will show a slider in the view.
+    /// Any dimension listed here will have a slider for the index.
     ///
     /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
-    /// If any of the here listed dimensions is equal to width or height, it will be ignored.
+    /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
     /// If not specified, adds slides for any dimension in `indices`.
     #[inline]
     pub fn with_slider(

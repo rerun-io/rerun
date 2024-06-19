@@ -19,7 +19,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Determines which slice of a tensor is shown.
+    /// **Archetype**: Specifies a 2D slice of a tensor.
     struct TensorSliceSelection {
         /// Which dimension to map to width.
         ///
@@ -33,14 +33,13 @@ namespace rerun::blueprint::archetypes {
 
         /// Selected indices for all other dimensions.
         ///
-        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
-        /// Any dimension not mentioned here or in width/height will be set to its center index.
+        /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         std::optional<Collection<rerun::components::TensorDimensionIndexSelection>> indices;
 
-        /// Any dimension that listed here, will show a slider in the view.
+        /// Any dimension listed here will have a slider for the index.
         ///
         /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
-        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
+        /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         /// If not specified, adds slides for any dimension in `indices`.
         std::optional<Collection<rerun::blueprint::components::TensorDimensionIndexSlider>> slider;
 
@@ -75,8 +74,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Selected indices for all other dimensions.
         ///
-        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
-        /// Any dimension not mentioned here or in width/height will be set to its center index.
+        /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         TensorSliceSelection with_indices(
             Collection<rerun::components::TensorDimensionIndexSelection> _indices
         ) && {
@@ -85,10 +83,10 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Any dimension that listed here, will show a slider in the view.
+        /// Any dimension listed here will have a slider for the index.
         ///
         /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
-        /// If any of the here listed dimensions is equal to width or height, it will be ignored.
+        /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
         /// If not specified, adds slides for any dimension in `indices`.
         TensorSliceSelection with_slider(
             Collection<rerun::blueprint::components::TensorDimensionIndexSlider> _slider
