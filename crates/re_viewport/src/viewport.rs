@@ -171,8 +171,9 @@ impl<'a> Viewport<'a> {
             self.tree_edited |= tab_viewer.edited;
 
             // Outline hovered & selected tiles:
-            for (tile_id, contents) in &tab_viewer.contents_per_tile_id {
-                if let Some(rect) = tree.tiles.rect(*tile_id) {
+            for contents in blueprint.contents_iter() {
+                let tile_id = contents.as_tile_id();
+                if let Some(rect) = tree.tiles.rect(tile_id) {
                     let item = contents.as_item();
 
                     let mut hovered = ctx.hovered().contains_item(&item);
