@@ -41,7 +41,7 @@ class Viewer(anywidget.AnyWidget):
     # _data = traitlets.Bytes(allow_none=True).tag(sync=True)
 
     _ready = False
-    _data_queue: list[bytes] = []
+    _data_queue: list[bytes]
 
     def __init__(
         self,
@@ -58,6 +58,7 @@ class Viewer(anywidget.AnyWidget):
         self._height = height
         self._url = url
         self._panel_states = panel_states
+        self._data_queue = []
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str) and content == "ready":
