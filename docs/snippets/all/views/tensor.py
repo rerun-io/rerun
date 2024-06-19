@@ -6,8 +6,8 @@ import rerun.blueprint as rrb
 
 rr.init("rerun_example_tensor", spawn=True)
 
-tensor = np.random.randint(0, 256, (32, 20, 12, 14), dtype=np.uint8)
-rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "batch", "other")))
+tensor = np.random.randint(0, 256, (32, 240, 320, 3), dtype=np.uint8)
+rr.log("tensor", rr.Tensor(tensor, dim_names=("batch", "height", "width", "channel")))
 
 blueprint = rrb.Blueprint(
     rrb.TensorView(
@@ -16,9 +16,9 @@ blueprint = rrb.Blueprint(
         # Explicitly pick which dimensions to show.
         slice_selection=rrb.TensorSliceSelection(
             # Use the first dimension as width.
-            width=0,
+            width=1,
             # Use the second dimension as height and invert it.
-            height=rr.TensorDimensionSelection(dimension=1, invert=True),
+            height=rr.TensorDimensionSelection(dimension=2, invert=True),
             # Set which indices to show for the other dimensions.
             indices=[
                 rr.TensorDimensionIndexSelection(dimension=2, index=4),
@@ -29,7 +29,7 @@ blueprint = rrb.Blueprint(
         ),
         # Set a scalar mapping with a custom colormap, gamma and magnification filter.
         scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
-        # Change sizing mode to fill out entirely.
+        # Fill the view, ignoring aspect ratio.
         view_fit="fill",
     ),
     collapse_panels=True,

@@ -20,7 +20,7 @@ class TensorDimensionSelectionExt:
         Parameters
         ----------
         dimension:
-            The index of the dimension to select for height.
+            The dimension number to select.
         invert:
             Invert the direction of the dimension.
 
