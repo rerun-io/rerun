@@ -123,7 +123,7 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for &component in &query_info.queried {
+    for &component in query_info.queried.iter() {
         if component.is_indicator_component() {
             continue;
         }

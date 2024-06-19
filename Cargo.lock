@@ -5260,6 +5260,7 @@ dependencies = [
  "half 2.3.1",
  "indexmap 2.1.0",
  "itertools 0.13.0",
+ "linked-hash-map",
  "macaw",
  "ndarray",
  "nohash-hasher",

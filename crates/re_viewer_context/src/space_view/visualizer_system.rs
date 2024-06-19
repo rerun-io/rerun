@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use re_types::{Archetype, ComponentNameSet};
+use re_types::{Archetype, ComponentName, ComponentNameSet};
 
 use crate::{
     ApplicableEntities, ComponentFallbackProvider, IdentifiedViewSystem,
@@ -8,6 +8,33 @@ use crate::{
     ViewSystemIdentifier, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter,
 };
+
+#[derive(Debug, Clone, Default)]
+pub struct SortedComponentNameSet(linked_hash_map::LinkedHashMap<ComponentName, ()>);
+
+impl SortedComponentNameSet {
+    pub fn insert(&mut self, k: ComponentName) -> Option<()> {
+        self.0.insert(k, ())
+    }
+
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = ComponentName>) {
+        self.0.extend(iter.into_iter().map(|k| (k, ())));
+    }
+
+    pub fn iter(&self) -> linked_hash_map::Keys<'_, ComponentName, ()> {
+        self.0.keys()
+    }
+
+    pub fn contains(&self, k: &ComponentName) -> bool {
+        self.0.contains_key(k)
+    }
+}
+
+impl FromIterator<ComponentName> for SortedComponentNameSet {
+    fn from_iter<I: IntoIterator<Item = ComponentName>>(iter: I) -> Self {
+        Self(iter.into_iter().map(|k| (k, ())).collect())
+    }
+}
 
 pub struct VisualizerQueryInfo {
     /// These are not required, but if _any_ of these are found, it is a strong indication that this
@@ -19,9 +46,11 @@ pub struct VisualizerQueryInfo {
     /// This does not include indicator components.
     pub required: ComponentNameSet,
 
-    /// Returns the set of components that the system _queries_.
-    /// Must include required, usually excludes indicators
-    pub queried: ComponentNameSet,
+    /// Returns the list of components that the system _queries_.
+    ///
+    /// Must include required, usually excludes indicators.
+    /// Order should reflect order in archetype docs & user code as well as possible.
+    pub queried: SortedComponentNameSet,
 }
 
 impl VisualizerQueryInfo {
@@ -40,7 +69,7 @@ impl VisualizerQueryInfo {
         Self {
             indicators: ComponentNameSet::new(),
             required: ComponentNameSet::new(),
-            queried: ComponentNameSet::new(),
+            queried: SortedComponentNameSet::default(),
         }
     }
 }
