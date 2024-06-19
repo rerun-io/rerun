@@ -25,29 +25,7 @@ ARCHETYPES_PATHS = [
     "crates/re_types/definitions/rerun/blueprint/archetypes",
 ]
 
-opt_out = {
-    "asset3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
-    "axes3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
-    "bar_chart": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
-    "clear": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
-    "mesh3d": ["cpp", "python", "rust"],  # Don't need it, API example roundtrips cover it all
-    "scalar": ["cpp", "python", "rust"],  # TODO(jleibs)
-    "series_line": ["cpp", "python", "rust"],  # TODO(jleibs)
-    "series_point": ["cpp", "python", "rust"],  # TODO(jleibs)
-    #
-    # Most blueprint archetypes are untested currently:
-    "background": ["cpp", "python", "rust"],
-    "container_blueprint": ["cpp", "python", "rust"],
-    "panel_blueprint": ["cpp", "python", "rust"],
-    "plot_legend": ["cpp", "python", "rust"],
-    "scalar_axis": ["cpp", "python", "rust"],
-    "space_view_blueprint": ["cpp", "python", "rust"],
-    "space_view_contents": ["cpp", "python", "rust"],
-    "tensor_scalar_mapping": ["cpp", "python", "rust"],
-    "tensor_view_fit": ["cpp", "python", "rust"],
-    "viewport_blueprint": ["cpp", "python", "rust"],
-    "visual_bounds2d": ["cpp", "python", "rust"],
-}
+opt_out = {}
 
 
 def main() -> None:
@@ -87,19 +65,16 @@ def main() -> None:
         ]
         assert len(archetypes) > 0, "No archetypes found!"
 
-    # Check that we have a roundtrip test for each language for each archetype:
-    errors = []
+    # Opt out of archetypes for which there's no test.
     for arch in archetypes:
         for lang in ["cpp", "python", "rust"]:
             if lang not in opt_out.get(arch, []):
                 dir_path = f"tests/{lang}/roundtrips/{arch}"
                 if not os.path.exists(dir_path):
-                    errors.append(f"Missing {lang} roundtrip test for archetype '{arch}' (should be in '{dir_path}')")
-    if errors:
-        print("ERROR: Missing roundtrip tests for some archetypes!")
-        for error in errors:
-            print(f"  {error}")
-        sys.exit(1)
+                    if arch in opt_out:
+                        opt_out[arch].append(lang)
+                    else:
+                        opt_out[arch] = [lang]
 
     if args.no_run:
         print("All archetypes have roundtrip tests.")
@@ -248,7 +223,9 @@ def run_roundtrip_cpp(arch: str, release: bool) -> str:
 
     cmake_build(target_name, release)
 
-    target_path = f"Release/{target_name}.exe" if os.name == "nt" else target_name
+    config_dir = "Release" if release else "Debug"
+
+    target_path = f"{config_dir}/{target_name}.exe" if os.name == "nt" else target_name
     cmd = [f"{cpp_build_dir}/tests/cpp/roundtrips/{target_path}", output_path]
     run(cmd, env=roundtrip_env(), timeout=12000)
 

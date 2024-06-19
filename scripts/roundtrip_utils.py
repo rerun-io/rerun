@@ -30,7 +30,9 @@ def run(
         cwd = get_repo_root()
 
     print(f"> {subprocess.list2cmdline(args)}")
-    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True, encoding="utf-8"
+    )
     assert (
         result.returncode == 0
     ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
