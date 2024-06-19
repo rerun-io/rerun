@@ -1217,28 +1217,8 @@ fn entity_props_ui(
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
             pinhole_props_ui(ctx, ui, data_result);
-            depth_props_ui(ctx, ui, data_result, entity_path);
             transform3d_visualization_ui(ctx, ui, data_result);
         });
-}
-
-fn colormap_props_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    depth_image_results: &HybridLatestAtResults<'_>,
-) {
-    let colormap = depth_image_results.get_mono_with_fallback::<Colormap>();
-    let mut new_colormap = colormap;
-
-    ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.viewer_ctx.render_ctx, ui, &mut new_colormap);
-
-    if new_colormap != colormap {
-        data_result.save_individual_override(ctx.viewer_ctx, &new_colormap);
-    }
-
-    ui.end_row();
 }
 
 fn pinhole_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
@@ -1349,109 +1329,5 @@ fn transform3d_visualization_ui(
         }
     }
 
-    ui.end_row();
-}
-
-fn depth_props_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    entity_path: &EntityPath,
-) -> Option<()> {
-    re_tracing::profile_function!();
-
-    let (query, db) = guess_query_and_db_for_selected_entity(ctx.viewer_ctx, entity_path);
-
-    let meaning = image_meaning_for_entity(entity_path, &query, db.store());
-
-    if meaning != TensorDataMeaning::Depth {
-        return Some(());
-    }
-    let image_projection_ent_path = db
-        .latest_at_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
-        .0;
-
-    ui.label("Pinhole");
-    item_ui::entity_path_button(
-        ctx.viewer_ctx,
-        &query,
-        db,
-        ui,
-        None,
-        &image_projection_ent_path,
-    )
-    .on_hover_text("The entity path of the pinhole transform being used to do the backprojection.");
-    ui.end_row();
-
-    let (query, _store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-    let depth_image_results =
-        data_result.latest_at_with_blueprint_resolved_data::<DepthImage>(ctx, &query);
-
-    depth_from_world_scale_ui(ctx, ui, data_result, &depth_image_results);
-    backproject_radius_scale_ui(ctx, ui, data_result, &depth_image_results);
-    colormap_props_ui(ctx, ui, data_result, &depth_image_results);
-
-    Some(())
-}
-
-fn depth_from_world_scale_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    depth_image_results: &HybridLatestAtResults<'_>,
-) {
-    let depth_meter = depth_image_results.get_mono_with_fallback::<DepthMeter>();
-
-    ui.label("Backproject meter");
-    let mut value = *depth_meter;
-    let speed = (value * 0.05).at_least(0.01);
-    let response = ui
-        .add(
-            egui::DragValue::new(&mut value)
-                .clamp_range(0.0..=1.0e8)
-                .speed(speed),
-        )
-        .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
-                    Double-click to reset.");
-    if response.double_clicked() {
-        data_result.clear_individual_override::<DepthMeter>(ctx.viewer_ctx);
-        response.surrender_focus();
-    } else if response.changed() {
-        data_result.save_individual_override(ctx.viewer_ctx, &DepthMeter(value));
-    }
-
-    ui.end_row();
-}
-
-fn backproject_radius_scale_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    depth_image_results: &HybridLatestAtResults<'_>,
-) {
-    let radius_scale = depth_image_results.get_mono_with_fallback::<FillRatio>();
-
-    ui.label("Backproject radius scale");
-    let mut value = *radius_scale.0;
-    let speed = (value * 0.01).at_least(0.001);
-    let response = ui
-        .add(
-            egui::DragValue::new(&mut value)
-                .clamp_range(0.0..=1.0e8)
-                .speed(speed),
-        )
-        .on_hover_text(
-            "Scales the radii of the points in the backprojected point cloud.\n\
-            This is a factor of the projected pixel diameter. \
-            This means a scale of 0.5 will leave adjacent pixels at the same depth value just touching.\n\
-            Double-click to reset.",
-        );
-    if response.double_clicked() {
-        data_result.clear_individual_override::<FillRatio>(ctx.viewer_ctx);
-        response.surrender_focus();
-    } else if response.changed() {
-        data_result.save_individual_override(ctx.viewer_ctx, &FillRatio(value.into()));
-    }
     ui.end_row();
 }

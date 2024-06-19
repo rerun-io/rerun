@@ -16,7 +16,7 @@ use datatype_editors::{
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Color, Colormap, FillRatio, GammaCorrection,
+        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, FillRatio, GammaCorrection,
         ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Radius, StrokeWidth, Text,
     },
 };
@@ -59,6 +59,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui::<Text>(edit_singleline_string);
     registry.add_singleline_editor_ui::<Name>(edit_singleline_string);
 
+    registry.add_singleline_editor_ui::<DepthMeter>(edit_f32_zero_to_max_float_raw);
     registry.add_singleline_editor_ui::<MarkerSize>(edit_f32_zero_to_max_float_raw);
     registry.add_singleline_editor_ui::<Radius>(edit_f32_zero_to_max_float_raw);
     registry.add_singleline_editor_ui::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
