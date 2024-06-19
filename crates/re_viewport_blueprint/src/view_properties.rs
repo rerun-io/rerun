@@ -110,31 +110,25 @@ impl<'a> ViewProperty<'a> {
 
     /// Get a single component or None, not using any fallbacks.
     #[inline]
-    pub fn component_or_empty<C: re_types::Component + Default>(
+    pub fn component_or_empty<C: re_types::Component>(
         &self,
     ) -> Result<Option<C>, DeserializationError> {
         self.component_array()
             .map(|v| v.and_then(|v| v.into_iter().next()))
     }
 
-    /// Get the component array for a given type.
-    pub fn component_array<C: re_types::Component + Default>(
+    /// Get the component array for a given type, not using any fallbacks.
+    pub fn component_array<C: re_types::Component>(
         &self,
     ) -> Result<Option<Vec<C>>, DeserializationError> {
         let component_name = C::name();
-        let result = self
-            .component_raw(component_name)
-            .map(|raw| C::from_arrow(raw.as_ref()));
-
-        match result {
-            Some(Ok(value)) => Ok(Some(value)),
-            Some(Err(err)) => Err(err),
-            None => Ok(None),
-        }
+        self.component_raw(component_name)
+            .map(|raw| C::from_arrow(raw.as_ref()))
+            .transpose()
     }
 
-    /// Get the component array for a given type or an empty array.
-    pub fn component_array_or_empty<C: re_types::Component + Default>(
+    /// Get the component array for a given type or an empty array, not using any fallbacks.
+    pub fn component_array_or_empty<C: re_types::Component>(
         &self,
     ) -> Result<Vec<C>, DeserializationError> {
         self.component_array()
@@ -179,7 +173,7 @@ impl<'a> ViewProperty<'a> {
         ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, C::name());
     }
 
-    /// Resets all components the values they had in the default blueprint.
+    /// Resets all components to the values they had in the default blueprint.
     pub fn reset_all_components(&self, ctx: &'a ViewerContext<'a>) {
         // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
         for &component_name in &self.component_names {
@@ -196,14 +190,10 @@ impl<'a> ViewProperty<'a> {
 
     /// Returns whether any property is non-empty.
     pub fn any_non_empty(&self) -> bool {
-        for &component_name in self.query_results.components.keys() {
-            if let Some(raw) = self.component_raw(component_name) {
-                if raw.len() > 0 {
-                    return true;
-                }
-            }
-        }
-        false
+        self.query_results.components.keys().any(|name| {
+            self.component_raw(*name)
+                .map_or(false, |raw| !raw.is_empty())
+        })
     }
 
     fn query_context(
