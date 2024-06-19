@@ -35,6 +35,13 @@ pub fn load_tensor_slice_selection_and_make_valid(
         height.dimension = height.dimension.at_most(max_valid_dim);
     }
 
+    // If height.dimension == width.dimension, remove height and go from there, pretending it was not set.
+    if let (Some(some_width), Some(some_height)) = (&width, &height) {
+        if some_width.dimension == some_height.dimension {
+            height.take();
+        }
+    }
+
     // If there's more than two dimensions, force width and height to be set.
     if shape.len() >= 2 && (width.is_none() || height.is_none()) {
         let (default_width, default_height) = find_width_height_dim_indices(shape);
@@ -92,13 +99,15 @@ pub fn load_tensor_slice_selection_and_make_valid(
     // Clamp indices to valid dimension extent.
     let mut covered_dims = vec![false; shape.len()];
     for dim_index_selection in &mut indices {
-        dim_index_selection.index = dim_index_selection
-            .index
-            .at_most(shape[dim_index_selection.dimension as usize].size - 1);
+        dim_index_selection.index = dim_index_selection.index.at_most(
+            shape[dim_index_selection.dimension as usize]
+                .size
+                .saturating_sub(1),
+        );
         covered_dims[dim_index_selection.dimension as usize] = true;
     }
 
-    // Fill in missing indices for dimensions that aren't covered with the middle index.
+    // Use middle index for dimensions that aren't covered.
     width.inspect(|w| covered_dims[w.dimension as usize] = true);
     height.inspect(|h| covered_dims[h.dimension as usize] = true);
     for (i, _) in covered_dims.into_iter().enumerate().filter(|(_, b)| !b) {
