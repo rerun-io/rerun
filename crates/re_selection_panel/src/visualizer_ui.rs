@@ -315,7 +315,6 @@ pub fn visualizer_ui(
 enum ValueSource {
     Override,
     Store,
-    //AnnotationContext, // TODO: Here be dragons
     Default,
     FallbackOrPlaceholder,
 }
@@ -468,14 +467,14 @@ fn visualizer_components(
             }
         };
 
-        // TODO: action button.
-
-        let content = list_item::PropertyContent::new(component.short_name()).value_fn(value_fn);
-        // TODO: edit ui and actual value.
-
+        // TODO(andreas): Add a "more" button for options like "remove override" etc.
+        // TODO(andreas): Add subitems for showing override/store/default/fallback values + easy removal etc.
         ui.list_item()
             .interactive(false)
-            .show_flat(ui, content)
+            .show_flat(
+                ui,
+                list_item::PropertyContent::new(component.short_name()).value_fn(value_fn),
+            )
             .on_hover_text(component.full_name());
     }
 }

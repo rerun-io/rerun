@@ -49,7 +49,6 @@ impl<'a> HybridLatestAtResults<'a> {
         } else {
             self.results.get(component_name)
         }
-        // TODO: is this wrong? shouldn't we check defaults? (here and following)
     }
 
     /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].

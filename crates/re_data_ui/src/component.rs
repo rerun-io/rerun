@@ -24,7 +24,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
         db: &re_entity_db::EntityDb,
     ) {
         let Some(component_name) = self.results.component_name(db.resolver()) else {
-            // TODO: the usual todo.
+            // TODO(#5607): what should happen if the promise is still pending?
             return;
         };
 
