@@ -160,6 +160,7 @@ impl DesignTokens {
 
         egui_style.visuals.selection.bg_fill =
             get_aliased_color(&self.json, "{Alias.Color.Highlight.Default.value}");
+        egui_style.visuals.selection.stroke.color = egui::Color32::from_rgb(173, 184, 255); // Brighter version of the above
 
         egui_style.visuals.widgets.noninteractive.bg_stroke.color = Color32::from_gray(30); // from figma. separator lines, panel lines, etc
 
