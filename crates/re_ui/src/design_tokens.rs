@@ -172,7 +172,7 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
         egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
-        let wide_stroke_width = 1.5; // Make it a bit more visible, especially important for spatial primitives.
+        let wide_stroke_width = 2.0; // Make it a bit more visible, especially important for spatial primitives.
         egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
         egui_style.visuals.selection.stroke.width = wide_stroke_width;
 
