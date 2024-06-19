@@ -158,6 +158,12 @@ py-build = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin d
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
+# Build the `rerun-notebook` package.
+py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
+  "js-build",
+] }
+
+
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
   "py-build",
@@ -386,6 +392,7 @@ scripts = ["pixi/maturin_config.bat"]
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
 [feature.python-dev.pypi-dependencies]
 rerun-sdk = { path = "rerun_py", editable = true }
+rerun-notebook = { path = "rerun_notebook", editable = true }
 
 # PYTHON PYPI ENVIRONMENT
 [feature.python-pypi]
@@ -393,6 +400,8 @@ platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
 [feature.python-pypi.pypi-dependencies]
 rerun-sdk = "==0.16.1"
+# TODO(jprochazk): Uncomment this once we have published the notebook package to pypi
+#rerun-notebook = "==0.16.1"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
@@ -406,6 +415,11 @@ macos = "12.0" # needed for scipy
 python = "=3.11"
 
 [feature.examples-common.pypi-dependencies]
+# External deps
+jupyter = ">=1.0"
+
+# Rerun libs
+
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
