@@ -32,7 +32,7 @@
             "cargo": {
                 "args": [
                     "test",
-                    "--profile=debug",
+                    "--profile=debugging",
                     "-p=re_log_encoding",
                     "--no-run",
                     "--lib",
@@ -51,7 +51,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=debug",
+                    "--profile=debugging",
                     "--package=rerun-cli",
                     "--no-default-features",
                     "--features=native_viewer"
@@ -74,7 +74,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=debug",
+                    "--profile=debugging",
                     "--package=rerun-cli",
                     "--no-default-features",
                     "--features=native_viewer"
@@ -99,7 +99,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=debug",
+                    "--profile=debugging",
                     "--package=rerun-cli",
                     "--no-default-features",
                     "--features=native_viewer"
@@ -121,7 +121,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=debug",
+                    "--profile=debugging",
                     "--package=minimal",
                 ],
                 "filter": {
@@ -142,7 +142,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=debug",
+                    "--profile=debugging",
                     "--example=multiview"
                 ],
                 "filter": {
@@ -160,7 +160,7 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--profile=debug",
+                    "--profile=debugging",
                     "--package=re_types_builder",
                 ],
                 "filter": {

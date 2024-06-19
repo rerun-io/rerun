@@ -289,10 +289,10 @@ debug = true
 
 
 # Set up a `debug` profile that turns of optimization of the workspace and select packages.
-[profile.debug]
+[profile.debugging]
 inherits = "dev"
 opt-level = 0
-[profile.debug.package.egui]
+[profile.debugging.package.egui]
 opt-level = 0 # we often debug egui via Rerun
 
 
