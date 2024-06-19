@@ -15,12 +15,14 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: Selection of a concrete index on a single tensor dimension.
+    /// **Datatype**: Indexing a specific tensor dimension.
+    ///
+    /// Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
     struct TensorDimensionIndexSelection {
         /// The dimension number to select.
         uint32_t dimension;
 
-        /// The index on above dimension to use.
+        /// The index along the dimension to use.
         uint64_t index;
 
       public:

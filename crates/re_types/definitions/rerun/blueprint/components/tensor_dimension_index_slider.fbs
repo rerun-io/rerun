@@ -1,6 +1,6 @@
 namespace rerun.blueprint.components;
 
-/// Specifies a concrete index on a tensor dimension.
+/// Show a slider for the index of some dimension of a slider.
 struct TensorDimensionIndexSlider (
     "attr.docs.unreleased",
     "attr.arrow.transparent",

@@ -27,7 +27,11 @@ __all__ = [
 
 @define(init=False)
 class TensorDimensionIndexSelection:
-    """**Datatype**: Selection of a concrete index on a single tensor dimension."""
+    """
+    **Datatype**: Indexing a specific tensor dimension.
+
+    Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
+    """
 
     def __init__(self: Any, dimension: int, index: int):
         """
@@ -38,7 +42,7 @@ class TensorDimensionIndexSelection:
         dimension:
             The dimension number to select.
         index:
-            The index on above dimension to use.
+            The index along the dimension to use.
 
         """
 
@@ -51,7 +55,7 @@ class TensorDimensionIndexSelection:
     # (Docstring intentionally commented out to hide this field from the docs)
 
     index: int = field(converter=int)
-    # The index on above dimension to use.
+    # The index along the dimension to use.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

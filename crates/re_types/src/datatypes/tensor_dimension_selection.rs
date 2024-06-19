@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Selection of a single tensor dimension.
 #[derive(Clone, Debug, Default, Copy, Hash, PartialEq, Eq)]
 pub struct TensorDimensionSelection {
-    /// The index of the dimension to select for height.
+    /// The dimension number to select.
     pub dimension: u32,
 
     /// Invert the direction of the dimension.

@@ -33,7 +33,7 @@ class TensorDimensionSelection(TensorDimensionSelectionExt):
     # __init__ can be found in tensor_dimension_selection_ext.py
 
     dimension: int = field(converter=int)
-    # The index of the dimension to select for height.
+    # The dimension number to select.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

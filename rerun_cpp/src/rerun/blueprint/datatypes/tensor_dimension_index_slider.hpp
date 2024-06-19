@@ -15,9 +15,9 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::datatypes {
-    /// **Datatype**: Selection of a single tensor dimension.
+    /// **Datatype**: Defines a slider for the index of some dimension.
     struct TensorDimensionIndexSlider {
-        /// The index of the dimension to select for height.
+        /// The dimension number.
         uint32_t dimension;
 
       public:

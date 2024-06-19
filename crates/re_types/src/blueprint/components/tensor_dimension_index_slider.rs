@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Specifies a concrete index on a tensor dimension.
+/// **Component**: Show a slider for the index of some dimension of a slider.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(transparent)]
 pub struct TensorDimensionIndexSlider(pub crate::blueprint::datatypes::TensorDimensionIndexSlider);

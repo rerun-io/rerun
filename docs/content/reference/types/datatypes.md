@@ -30,7 +30,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`TensorBuffer`](datatypes/tensor_buffer.md): The underlying storage for a `Tensor`.
 * [`TensorData`](datatypes/tensor_data.md): A multi-dimensional `Tensor` of data.
 * [`TensorDimension`](datatypes/tensor_dimension.md): A single dimension within a multi-dimensional tensor.
-* [`TensorDimensionIndexSelection`](datatypes/tensor_dimension_index_selection.md): Selection of a concrete index on a single tensor dimension.
+* [`TensorDimensionIndexSelection`](datatypes/tensor_dimension_index_selection.md): Indexing a specific tensor dimension.
 * [`TensorDimensionSelection`](datatypes/tensor_dimension_selection.md): Selection of a single tensor dimension.
 * [`TimeInt`](datatypes/time_int.md): A 64-bit number describing either nanoseconds OR sequence numbers.
 * [`TimeRange`](datatypes/time_range.md): Visible time range bounds for a specific timeline.

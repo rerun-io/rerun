@@ -1,6 +1,6 @@
 namespace rerun.blueprint.datatypes;
 
-/// Selection of a single tensor dimension.
+/// Defines a slider for the index of some dimension.
 struct TensorDimensionIndexSlider (
     "attr.docs.unreleased",
     "attr.python.aliases": "int",
@@ -8,7 +8,7 @@ struct TensorDimensionIndexSlider (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
 ) {
-    /// The index of the dimension to select for height.
+    /// The dimension number.
     dimension: uint (order: 100);
 
     // TODO(andreas): Range of the slider?

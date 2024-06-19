@@ -22,13 +22,15 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Selection of a concrete index on a single tensor dimension.
+/// **Datatype**: Indexing a specific tensor dimension.
+///
+/// Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
 #[derive(Clone, Debug, Default, Copy, Hash, PartialEq, Eq)]
 pub struct TensorDimensionIndexSelection {
     /// The dimension number to select.
     pub dimension: u32,
 
-    /// The index on above dimension to use.
+    /// The index along the dimension to use.
     pub index: u64,
 }
 

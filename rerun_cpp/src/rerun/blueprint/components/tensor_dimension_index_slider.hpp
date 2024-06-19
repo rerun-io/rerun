@@ -10,7 +10,7 @@
 #include <memory>
 
 namespace rerun::blueprint::components {
-    /// **Component**: Specifies a concrete index on a tensor dimension.
+    /// **Component**: Show a slider for the index of some dimension of a slider.
     struct TensorDimensionIndexSlider {
         rerun::blueprint::datatypes::TensorDimensionIndexSlider selection;
 

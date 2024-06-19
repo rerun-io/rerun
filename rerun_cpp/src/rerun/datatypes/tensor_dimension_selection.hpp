@@ -17,7 +17,7 @@ namespace arrow {
 namespace rerun::datatypes {
     /// **Datatype**: Selection of a single tensor dimension.
     struct TensorDimensionSelection {
-        /// The index of the dimension to select for height.
+        /// The dimension number to select.
         uint32_t dimension;
 
         /// Invert the direction of the dimension.

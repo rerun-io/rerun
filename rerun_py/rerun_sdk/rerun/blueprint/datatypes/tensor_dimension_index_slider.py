@@ -29,7 +29,7 @@ __all__ = [
 
 @define(init=False)
 class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
-    """**Datatype**: Selection of a single tensor dimension."""
+    """**Datatype**: Defines a slider for the index of some dimension."""
 
     def __init__(self: Any, dimension: TensorDimensionIndexSliderLike):
         """
@@ -38,7 +38,7 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
         Parameters
         ----------
         dimension:
-            The index of the dimension to select for height.
+            The dimension number.
 
         """
 
@@ -46,7 +46,7 @@ class TensorDimensionIndexSlider(TensorDimensionIndexSliderExt):
         self.__attrs_init__(dimension=dimension)
 
     dimension: int = field(converter=int)
-    # The index of the dimension to select for height.
+    # The dimension number.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

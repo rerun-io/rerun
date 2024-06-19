@@ -22,10 +22,10 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Selection of a single tensor dimension.
+/// **Datatype**: Defines a slider for the index of some dimension.
 #[derive(Clone, Debug, Default, Copy, Hash, PartialEq, Eq)]
 pub struct TensorDimensionIndexSlider {
-    /// The index of the dimension to select for height.
+    /// The dimension number.
     pub dimension: u32,
 }
 
