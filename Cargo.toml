@@ -268,6 +268,10 @@ xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 
 
+# ---------------------------------------------------------------------------------
+[profile]
+
+# Our dev profile has some optimizations turned on, as well as debug assertions.
 [profile.dev]
 opt-level = 1   # Make debug builds run faster
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
@@ -279,12 +283,26 @@ debug = true # enable debug symbols for build scripts when building in dev (code
 [profile.dev.package."*"]
 opt-level = 2
 
+
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
+
 [profile.bench]
 debug = true
+
+
+# Set up a `debugging` profile that turns of optimization of the workspace and select packages.
+# Note that the profile name `debug` is reserved.
+[profile.debugging]
+inherits = "dev"
+opt-level = 0
+[profile.debugging.package.egui]
+opt-level = 0 # we often debug egui via Rerun
+
+
+# ---------------------------------------------------------------------------------
 
 
 [workspace.lints.rust]
