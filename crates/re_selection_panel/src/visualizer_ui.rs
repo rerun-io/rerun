@@ -84,6 +84,9 @@ pub fn visualizer_ui(
     });
 }
 
+/// Possible sources for a value in the component resolve stack.
+///
+/// Mostly for convenience and readability.
 enum ValueSource {
     Override,
     Store,
