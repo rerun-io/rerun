@@ -288,7 +288,8 @@ panic = "abort" # This leads to better optimizations and smaller binaries (and i
 debug = true
 
 
-# Set up a `debug` profile that turns of optimization of the workspace and select packages.
+# Set up a `debugging` profile that turns of optimization of the workspace and select packages.
+# Note that the profile name `debug` is reserved.
 [profile.debugging]
 inherits = "dev"
 opt-level = 0
