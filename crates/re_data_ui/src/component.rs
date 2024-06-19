@@ -140,7 +140,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                 query,
                 db,
                 &self.entity_path,
-                &self.results,
+                self.results,
                 &Instance::from(0),
             );
         } else if one_line {
@@ -187,7 +187,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
                                 query,
                                 db,
                                 &self.entity_path,
-                                &self.results,
+                                self.results,
                                 &instance,
                             );
                         });
