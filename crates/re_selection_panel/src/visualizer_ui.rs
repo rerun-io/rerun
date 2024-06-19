@@ -374,7 +374,7 @@ fn visualizer_components(
             Ok(fallback) => fallback,
             Err(err) => {
                 re_log::warn_once!("Failed to get fallback for component {component}: {err}");
-                continue; // TODO(andreas): Don't give up on the entire component because of this.
+                continue; // TODO(andreas): Don't give up on the entire component because of this. Show an error instead.
             }
         };
 
@@ -389,11 +389,12 @@ fn visualizer_components(
 
         #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
         let raw_current_value = match value_source {
-            ValueSource::Override => raw_override.unwrap(),
-            ValueSource::Store => raw_store.unwrap(),
-            ValueSource::Default => raw_default.unwrap(),
-            ValueSource::FallbackOrPlaceholder => raw_fallback,
-        };
+            ValueSource::Override => raw_override.as_ref().unwrap(),
+            ValueSource::Store => raw_store.as_ref().unwrap(),
+            ValueSource::Default => raw_default.as_ref().unwrap(),
+            ValueSource::FallbackOrPlaceholder => &raw_fallback,
+        }
+        .as_ref();
 
         let Some(override_path) = data_result.individual_override_path() else {
             // This shouldn't the `DataResult` is valid.
@@ -410,7 +411,7 @@ fn visualizer_components(
                 || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
-                    raw_current_value.as_ref(),
+                    raw_current_value,
                     override_path,
                     component,
                     multiline,
@@ -443,8 +444,18 @@ fn visualizer_components(
                         result_default.unwrap(),
                     ),
                     ValueSource::FallbackOrPlaceholder => {
-                        // TODO(andreas): this isn't in any store, can't display this.
-                        ui.weak("can't display some fallback values");
+                        // Fallback values are always single values, so we can directly go to the component ui.
+                        // TODO(andreas): db & entity path don't make sense here.
+                        ctx.viewer_ctx.component_ui_registry.ui_raw(
+                            ctx.viewer_ctx,
+                            ui,
+                            UiLayout::List,
+                            &store_query,
+                            ctx.recording(),
+                            &data_result.entity_path,
+                            component,
+                            raw_current_value,
+                        );
                         return;
                     }
                 };

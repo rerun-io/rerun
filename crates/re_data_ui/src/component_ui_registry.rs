@@ -1,7 +1,8 @@
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
-use re_log_types::{external::arrow2, EntityPath, Instance};
+use re_entity_db::EntityDb;
+use re_log_types::{external::arrow2, EntityPath};
 use re_types::external::arrow2::array::Utf8Array;
+use re_ui::UiExt;
 use re_viewer_context::{ComponentUiRegistry, UiLayout, ViewerContext};
 
 use super::EntityDataUi;
@@ -39,43 +40,39 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add_display_ui(
         C::name(),
         Box::new(
-            |ctx, ui, ui_layout, query, db, entity_path, component, instance| {
-                // TODO(#5607): what should happen if the promise is still pending?
-                if let Some(component) = component.instance::<C>(db.resolver(), instance.get() as _)
-                {
-                    component.entity_data_ui(ctx, ui, ui_layout, entity_path, query, db);
-                } else {
-                    ui.weak("(not found)");
+            |ctx, ui, ui_layout, query, db, entity_path, component_raw| match C::from_arrow(
+                component_raw,
+            ) {
+                Ok(components) => match components.len() {
+                    0 => {
+                        ui.weak("(empty)");
+                    }
+                    1 => {
+                        components[0].entity_data_ui(ctx, ui, ui_layout, entity_path, query, db);
+                    }
+                    i => {
+                        ui.label(format!("{} values", re_format::format_uint(i)));
+                    }
+                },
+                Err(err) => {
+                    ui.error_label("(failed to deserialize)")
+                        .on_hover_text(err.to_string());
                 }
             },
         ),
     );
 }
 
-#[allow(clippy::too_many_arguments)]
 fn fallback_component_ui(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     _query: &LatestAtQuery,
-    db: &EntityDb,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
-    component: &LatestAtComponentResults,
-    instance: &Instance,
+    component: &dyn arrow2::array::Array,
 ) {
-    // TODO(#5607): what should happen if the promise is still pending?
-    let value = component
-        .component_name(db.resolver())
-        .and_then(|component_name| {
-            component.instance_raw(db.resolver(), component_name, instance.get() as _)
-        });
-
-    // No special ui implementation - use a generic one:
-    if let Some(value) = value {
-        arrow_ui(ui, ui_layout, &*value);
-    } else {
-        ui.weak("(null)");
-    }
+    arrow_ui(ui, ui_layout, component);
 }
 
 fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {

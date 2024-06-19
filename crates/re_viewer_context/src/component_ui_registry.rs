@@ -154,8 +154,7 @@ type ComponentUiCallback = Box<
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
-            &LatestAtComponentResults,
-            &Instance,
+            &dyn arrow2::array::Array,
         ) + Send
         + Sync,
 >;
@@ -335,7 +334,10 @@ impl ComponentUiRegistry {
         types
     }
 
-    /// Show a ui for this instance of this component.
+    /// Show a ui for a component instance.
+    ///
+    /// Has a fallback to show an info text if the instance is not specific,
+    /// but in these cases `LatestAtComponentResults::data_ui` should be used instead!
     #[allow(clippy::too_many_arguments)]
     pub fn ui(
         &self,
@@ -353,48 +355,57 @@ impl ComponentUiRegistry {
             return;
         };
 
-        re_tracing::profile_function!(component_name.full_name());
-
-        // Use the ui callback if there is one.
-        if let Some(ui_callback) = self.component_uis.get(&component_name) {
-            (*ui_callback)(
+        if !instance.is_specific() {
+            ui.label(format!("({instance} values)"));
+        } else if let Some(component_raw) =
+            component.instance_raw(db.resolver(), component_name, instance.get() as _)
+        {
+            self.ui_raw(
                 ctx,
                 ui,
                 ui_layout,
                 query,
                 db,
                 entity_path,
-                component,
-                instance,
+                component_name,
+                component_raw.as_ref(),
             );
+        } else {
+            ui.label("(empty)");
+        }
+    }
+
+    /// Show a ui for a single raw component.
+    #[allow(clippy::too_many_arguments)]
+    pub fn ui_raw(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        query: &LatestAtQuery,
+        db: &EntityDb,
+        entity_path: &EntityPath,
+        component_name: ComponentName,
+        component_raw: &dyn arrow2::array::Array,
+    ) {
+        re_tracing::profile_function!(component_name.full_name());
+
+        // Use the ui callback if there is one.
+        if let Some(ui_callback) = self.component_uis.get(&component_name) {
+            (*ui_callback)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
             return;
         }
 
         // If there is none but we have a singleline edit_ui and only a single value, use a disabled edit ui.
-        if instance.is_specific() {
-            if let Some(edit_ui) = self.component_singleline_editors.get(&component_name) {
-                if let Some(raw_component) =
-                    component.instance_raw(db.resolver(), component_name, instance.get() as _)
-                {
-                    ui.scope(|ui| {
-                        ui.disable();
-                        (*edit_ui)(ctx, ui, raw_component.as_ref());
-                    });
-                    return;
-                }
-            }
+        if let Some(edit_ui) = self.component_singleline_editors.get(&component_name) {
+            ui.scope(|ui| {
+                ui.disable();
+                (*edit_ui)(ctx, ui, component_raw);
+            });
+            return;
         }
 
-        (*self.fallback_ui)(
-            ctx,
-            ui,
-            ui_layout,
-            query,
-            db,
-            entity_path,
-            component,
-            instance,
-        );
+        (*self.fallback_ui)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
     }
 
     /// Show a multi-line editor for this instance of this component.
@@ -472,7 +483,7 @@ impl ComponentUiRegistry {
         // TODO(andreas, jleibs): Editors only show & edit the first instance of a component batch.
         let instance: Instance = 0.into();
 
-        let component_value_or_fallback = match component_value_or_fallback(
+        let component_raw = match component_value_or_fallback(
             ctx,
             component_query_result,
             component_name,
@@ -491,21 +502,21 @@ impl ComponentUiRegistry {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx,
             ui,
-            component_value_or_fallback.as_ref(),
+            component_raw.as_ref(),
             blueprint_write_path,
             component_name,
             multiline,
         ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
-            self.ui(
+            self.ui_raw(
                 ctx.viewer_ctx,
                 ui,
                 UiLayout::List,
                 ctx.query,
                 origin_db,
                 ctx.target_entity_path,
-                component_query_result,
-                &instance,
+                component_name,
+                component_raw.as_ref(),
             );
         }
     }
