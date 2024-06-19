@@ -368,7 +368,7 @@ impl AppState {
         // Left panel (recordings and blueprint)
         //
 
-        let mut left_panel = egui::SidePanel::left("blueprint_panel")
+        let left_panel = egui::SidePanel::left("blueprint_panel")
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.visuals().panel_fill,
@@ -382,26 +382,10 @@ impl AppState {
         let show_welcome =
             store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
-        //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
-        left_panel = left_panel
-            .frame(egui::Frame::default())
-            .show_separator_line(false);
-
         left_panel.show_animated_inside(
             ui,
             app_blueprint.blueprint_panel_state().is_expanded(),
             |ui: &mut egui::Ui| {
-                //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
-                let max_rect = ui.max_rect();
-                ui.painter()
-                    .rect_filled(max_rect, 0.0, ui.visuals().panel_fill);
-                ui.painter().vline(
-                    max_rect.right(),
-                    max_rect.y_range(),
-                    ui.visuals().widgets.noninteractive.bg_stroke,
-                );
-                ui.set_clip_rect(max_rect);
-
                 // ListItem don't need vertical spacing so we disable it, but restore it
                 // before drawing the blueprint panel.
                 ui.spacing_mut().item_spacing.y = 0.0;

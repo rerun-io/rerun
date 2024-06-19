@@ -19,7 +19,7 @@ impl CommandPalette {
     /// Show the command palette, if it is visible.
     #[must_use = "Returns the command that was selected"]
     pub fn show(&mut self, egui_ctx: &egui::Context) -> Option<UICommand> {
-        self.visible &= !egui_ctx.input_mut(|i| i.consume_key(Default::default(), Key::Escape));
+        self.visible &= !egui_ctx.input_mut(|i| i.key_pressed(Key::Escape));
         if !self.visible {
             self.query.clear();
             return None;
