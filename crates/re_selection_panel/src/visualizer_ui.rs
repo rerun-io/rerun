@@ -114,12 +114,14 @@ fn visualizer_components(
     let query_ctx = ctx.query_context(data_result, &store_query);
 
     // Query fully resolved data.
+    let query_shadowed_defaults = true;
     let query_result = latest_at_with_blueprint_resolved_data(
         ctx,
         None, // TODO(andreas): Figure out how to deal with annotation context here.
         &store_query,
         data_result,
         query_info.queried.iter().copied(),
+        query_shadowed_defaults,
     );
 
     // TODO(andreas): Should we show required components in a special way?
@@ -177,6 +179,7 @@ fn visualizer_components(
             }
             return;
         };
+        let bp_query = ctx.viewer_ctx.blueprint_query;
 
         let value_fn = |ui: &mut egui::Ui, _style| {
             // Edit ui can only handle a single value.
@@ -194,8 +197,6 @@ fn visualizer_components(
                 // TODO(andreas): Unfortunately, display ui needs db & query. (fix that!)
                 // In fact some display UIs will struggle since they try to query additional data from the store.
                 // so we have to figure out what store and path things come from.
-                let bp_query = ctx.viewer_ctx.blueprint_query;
-
                 #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
                 let (query, db, entity_path, latest_at_results) = match value_source {
                     ValueSource::Override => (
@@ -241,14 +242,135 @@ fn visualizer_components(
             }
         };
 
+        let add_children = |ui: &mut egui::Ui| {
+            if let (Some(result_override), Some(raw_override), true) =
+                (result_override, raw_override.as_ref(), non_empty_override)
+            {
+                // TODO: make this an editor
+                ui.list_item().interactive(false).show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Override")
+                        .value_fn(|ui, _style| {
+                            let multiline = false;
+                            if raw_override.len() > 1
+                                || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
+                                    ctx.viewer_ctx,
+                                    ui,
+                                    raw_override.as_ref(),
+                                    override_path,
+                                    component,
+                                    multiline,
+                                )
+                            {
+                                re_data_ui::EntityLatestAtResults {
+                                    entity_path: override_path.clone(),
+                                    results: result_override,
+                                }
+                                .data_ui(
+                                    ctx.viewer_ctx,
+                                    ui,
+                                    UiLayout::List,
+                                    bp_query,
+                                    ctx.blueprint_db(),
+                                );
+                            }
+                        })
+                        .action_button(&re_ui::icons::CLOSE, || {
+                            ctx.save_empty_blueprint_component_by_name(override_path, component);
+                        }),
+                );
+            }
+            if let (Some(result_store), true) = (result_store, non_empty_store) {
+                ui.list_item().interactive(false).show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
+                        re_data_ui::EntityLatestAtResults {
+                            entity_path: data_result.entity_path.clone(),
+                            results: result_store,
+                        }
+                        .data_ui(
+                            ctx.viewer_ctx,
+                            ui,
+                            UiLayout::List,
+                            &store_query,
+                            ctx.recording(),
+                        );
+                    }),
+                );
+            }
+            if let (Some(result_default), Some(raw_default), true) =
+                (result_default, raw_default.as_ref(), non_empty_default)
+            {
+                // TODO: make this an editor
+                ui.list_item().interactive(false).show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Default")
+                        .value_fn(|ui, _style| {
+                            let multiline = false;
+                            if raw_default.len() > 1
+                                || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
+                                    ctx.viewer_ctx,
+                                    ui,
+                                    raw_default.as_ref(),
+                                    ctx.defaults_path,
+                                    component,
+                                    multiline,
+                                )
+                            {
+                                re_data_ui::EntityLatestAtResults {
+                                    entity_path: ctx.defaults_path.clone(),
+                                    results: result_default,
+                                }
+                                .data_ui(
+                                    ctx.viewer_ctx,
+                                    ui,
+                                    UiLayout::List,
+                                    bp_query,
+                                    ctx.blueprint_db(),
+                                );
+                            }
+                        })
+                        .action_button(&re_ui::icons::REMOVE, || {
+                            ctx.save_empty_blueprint_component_by_name(
+                                ctx.defaults_path,
+                                component,
+                            );
+                        }),
+                );
+            }
+            // Fallback (always there)
+            {
+                ui.list_item().interactive(false).show_flat(
+                    ui,
+                    list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
+                        // TODO(andreas): db & entity path don't make sense here.
+                        ctx.viewer_ctx.component_ui_registry.ui_raw(
+                            ctx.viewer_ctx,
+                            ui,
+                            UiLayout::List,
+                            &store_query,
+                            ctx.recording(),
+                            &data_result.entity_path,
+                            component,
+                            raw_fallback.as_ref(),
+                        );
+                    }),
+                )
+            }
+        };
+
         // TODO(andreas): Add a "more" button for options like "remove override" etc.
-        // TODO(andreas): Add subitems for showing override/store/default/fallback values + easy removal etc.
+        let default_open = false;
         ui.list_item()
             .interactive(false)
-            .show_flat(
+            .show_hierarchical_with_children(
                 ui,
+                ui.make_persistent_id(component),
+                default_open,
                 list_item::PropertyContent::new(component.short_name()).value_fn(value_fn),
+                add_children,
             )
+            .item_response
             .on_hover_text(component.full_name());
     }
 }

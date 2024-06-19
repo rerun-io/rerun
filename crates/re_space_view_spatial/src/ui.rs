@@ -540,12 +540,14 @@ pub fn picking(
                 store,
             );
 
+            let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(
                 &view_ctx,
                 None,
                 &ctx.current_query(),
                 data_result,
                 [TensorData::name(), Colormap::name(), DepthMeter::name()],
+                query_shadowed_defaults,
             );
 
             // TODO(andreas): Just calling `results.get_mono::<TensorData>` would be a lot more elegant.
