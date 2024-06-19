@@ -3,27 +3,18 @@ use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::{
-    image_meaning_for_entity, item_ui,
+    item_ui,
     item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
     DataUi,
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
-use re_space_view::{DataResultQuery as _, HybridLatestAtResults};
-use re_types::{
-    archetypes::{Axes3D, DepthImage, Pinhole},
-    blueprint::components::Interactive,
-    components::{
-        AxisLength, Colormap, DepthMeter, FillRatio, ImagePlaneDistance, PinholeProjection,
-        Transform3D, VisualizerOverrides,
-    },
-    tensor_data::TensorDataMeaning,
-};
+use re_types::blueprint::components::Interactive;
 use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
-    contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewId,
-    UiLayout, ViewContext, ViewStates, ViewerContext,
+    contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
+    DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
+    ViewerContext,
 };
 use re_viewport_blueprint::{
     ui::show_add_space_view_or_container_modal, SpaceViewBlueprint, ViewportBlueprint,
@@ -1148,8 +1139,6 @@ fn entity_props_ui(
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
 
-    let entity_path = &data_result.entity_path;
-
     list_item::list_item_scope(ui, "entity_props", |ui| {
         {
             let visible_before = data_result.is_visible(ctx.viewer_ctx);
@@ -1210,124 +1199,4 @@ fn entity_props_ui(
     });
 
     query_range_ui_data_result(ctx.viewer_ctx, ui, data_result);
-
-    egui::Grid::new("entity_properties")
-        .num_columns(2)
-        .show(ui, |ui| {
-            // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
-            // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-            pinhole_props_ui(ctx, ui, data_result);
-            transform3d_visualization_ui(ctx, ui, data_result);
-        });
-}
-
-fn pinhole_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
-    let (query, store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-
-    if store
-        .latest_at_component::<PinholeProjection>(&data_result.entity_path, &query)
-        .is_some()
-    {
-        let results = data_result.latest_at_with_blueprint_resolved_data::<Pinhole>(ctx, &query);
-
-        let mut image_plane_value: f32 = results
-            .get_mono_with_fallback::<ImagePlaneDistance>()
-            .into();
-
-        ui.label("Image plane distance");
-        let speed = (image_plane_value * 0.05).at_least(0.01);
-        if ui
-            .add(
-                egui::DragValue::new(&mut image_plane_value)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text("Controls how far away the image plane is")
-            .changed()
-        {
-            let new_image_plane: ImagePlaneDistance = image_plane_value.into();
-
-            data_result.save_individual_override(ctx.viewer_ctx, &new_image_plane);
-        }
-        ui.end_row();
-    }
-}
-
-fn transform3d_visualization_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-) {
-    re_tracing::profile_function!();
-
-    let (query, store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-
-    if store
-        .latest_at_component::<Transform3D>(&data_result.entity_path, &query)
-        .is_none()
-    {
-        return;
-    }
-
-    let arrow_viz = "Transform3DArrows".into();
-
-    let mut show_arrows = data_result.visualizers.contains(&arrow_viz);
-
-    let results = data_result.latest_at_with_blueprint_resolved_data::<Axes3D>(ctx, &query);
-
-    let mut arrow_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
-
-    {
-        let response = ui.re_checkbox( &mut show_arrows, "Show transform").on_hover_text(
-            "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
-        if response.changed() {
-            let component = if show_arrows {
-                VisualizerOverrides::from(
-                    data_result
-                        .visualizers
-                        .iter()
-                        .chain(std::iter::once(&arrow_viz))
-                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
-                        .collect::<Vec<_>>(),
-                )
-            } else {
-                VisualizerOverrides::from(
-                    data_result
-                        .visualizers
-                        .iter()
-                        .filter(|v| **v != arrow_viz)
-                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
-                        .collect::<Vec<_>>(),
-                )
-            };
-
-            data_result.save_individual_override(ctx.viewer_ctx, &component);
-        }
-    }
-
-    if show_arrows {
-        ui.end_row();
-        ui.label("Transform-arrow length");
-        let speed = (arrow_length * 0.05).at_least(0.001);
-        let response = ui
-            .add(
-                egui::DragValue::new(&mut arrow_length)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text(
-                "How long the arrows should be in the entity's own coordinate system. Double-click to reset to auto.",
-            );
-        if response.double_clicked() {
-            data_result.clear_individual_override::<AxisLength>(ctx.viewer_ctx);
-            response.surrender_focus();
-        } else if response.changed() {
-            data_result
-                .save_individual_override::<AxisLength>(ctx.viewer_ctx, &arrow_length.into());
-        }
-    }
-
-    ui.end_row();
 }
