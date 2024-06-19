@@ -10,7 +10,6 @@ use re_data_ui::{
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
 use re_space_view::{DataResultQuery as _, HybridLatestAtResults};
-use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     archetypes::{Axes3D, DepthImage, Pinhole},
     blueprint::components::Interactive,
@@ -23,8 +22,8 @@ use re_types::{
 use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewClass,
-    SpaceViewId, UiLayout, ViewContext, ViewStates, ViewerContext,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewId,
+    UiLayout, ViewContext, ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{
     ui::show_add_space_view_or_container_modal, SpaceViewBlueprint, ViewportBlueprint,
@@ -168,22 +167,15 @@ impl SelectionPanel {
                 // Special override section for space-view-entities
                 if let Item::DataResult(view_id, instance_path) = item {
                     if let Some(view) = blueprint.space_views.get(view_id) {
-                        // TODO(jleibs): Overrides still require special handling inside the visualizers.
-                        // For now, only show the override section for TimeSeries until support is implemented
-                        // generically.
-                        if view.class_identifier() == TimeSeriesSpaceView::identifier()
-                            || ctx.app_options.experimental_visualizer_selection
-                        {
-                            ui.large_collapsing_header("Visualizers", true, |ui| {
-                                override_visualizer_ui(ctx, view, instance_path, ui);
-                            });
+                        ui.large_collapsing_header("Visualizers", true, |ui| {
+                            override_visualizer_ui(ctx, view, instance_path, ui);
+                        });
 
-                            let view_ctx = view.bundle_context_with_states(ctx, view_states);
+                        let view_ctx = view.bundle_context_with_states(ctx, view_states);
 
-                            ui.large_collapsing_header("Component Overrides", true, |ui| {
-                                override_ui(&view_ctx, view, instance_path, ui);
-                            });
-                        }
+                        ui.large_collapsing_header("Component Overrides", true, |ui| {
+                            override_ui(&view_ctx, view, instance_path, ui);
+                        });
                     }
                 }
 
