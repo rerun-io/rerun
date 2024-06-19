@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::io::IsTerminal as _;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use itertools::Itertools;
 use pyo3::{
@@ -13,9 +14,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use re_log::ResultExt;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::{
-    sink::{BinaryStreamStorage, MemorySinkStorage},
+    sink::{BinaryStreamStorage, MemorySinkFlushHook, MemorySinkStorage},
     time::TimePoint,
     EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
 };
@@ -747,16 +749,31 @@ fn stdout(
 
 /// Create an in-memory rrd file
 #[pyfunction]
-#[pyo3(signature = (recording = None))]
+#[pyo3(signature = (recording = None, flush_hook = None))]
 fn memory_recording(
     recording: Option<&PyRecordingStream>,
+    flush_hook: Option<PyObject>,
     py: Python<'_>,
 ) -> Option<PyMemorySinkStorage> {
     get_data_recording(recording).map(|rec| {
         // The call to memory may internally flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         let inner = py.allow_threads(|| {
-            let storage = rec.memory();
+            let flush_hook = flush_hook.map(|flush_hook| {
+                Arc::new(move |storage| {
+                    Python::with_gil(|py| {
+                        let flush_hook = flush_hook.as_ref(py);
+                        if flush_hook.is_callable() {
+                            flush_hook
+                                .call1((PyMemorySinkStorage { inner: storage },))
+                                .ok_or_log_error();
+                        }
+                    });
+                }) as MemorySinkFlushHook
+            });
+
+            let storage = rec.memory_with_flush_hook(flush_hook);
+
             flush_garbage_queue();
             storage
         });
@@ -831,6 +848,16 @@ impl PyMemorySinkStorage {
         })
     }
 
+    fn num_msgs_no_flush(&self, py: Python<'_>) -> usize {
+        py.allow_threads(|| {
+            let num = self.inner.num_msgs_no_flush();
+
+            flush_garbage_queue();
+
+            num
+        })
+    }
+
     /// Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
     ///
     /// This will do a blocking flush before returning!
@@ -838,6 +865,19 @@ impl PyMemorySinkStorage {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             let bytes = self.inner.drain_as_bytes();
+
+            flush_garbage_queue();
+
+            bytes
+        })
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+
+    fn drain_as_bytes_no_flush<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            let bytes = self.inner.drain_as_bytes_no_flush();
 
             flush_garbage_queue();
 

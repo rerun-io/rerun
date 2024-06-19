@@ -134,7 +134,16 @@ impl MemorySink {
     /// Create a new [`MemorySink`] with an associated [`RecordingStream`].
     #[inline]
     pub fn new(rec: RecordingStream) -> Self {
-        Self(MemorySinkStorage::new(rec))
+        Self(MemorySinkStorage::new(rec, None))
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    pub fn new_with_flush_hook(
+        rec: RecordingStream,
+        flush_hook: Option<MemorySinkFlushHook>,
+    ) -> Self {
+        Self(MemorySinkStorage::new(rec, flush_hook))
     }
 
     /// Access the raw `MemorySinkStorage`
@@ -148,11 +157,19 @@ impl LogSink for MemorySink {
     #[inline]
     fn send(&self, msg: LogMsg) {
         self.0.write().push(msg);
+
+        if let Some(flush_hook) = self.0.flush_hook.as_ref() {
+            flush_hook(self.0.clone());
+        }
     }
 
     #[inline]
     fn send_all(&self, mut messages: Vec<LogMsg>) {
         self.0.write().append(&mut messages);
+
+        if let Some(flush_hook) = self.0.flush_hook.as_ref() {
+            flush_hook(self.0.clone());
+        }
     }
 
     #[inline]
@@ -180,11 +197,15 @@ struct MemorySinkStorageInner {
     has_been_used: bool,
 }
 
+#[doc(hidden)]
+pub type MemorySinkFlushHook = Arc<dyn Fn(MemorySinkStorage) + Send + Sync>;
+
 /// The storage used by [`MemorySink`].
 #[derive(Clone)]
 pub struct MemorySinkStorage {
     inner: Arc<Mutex<MemorySinkStorageInner>>,
     pub(crate) rec: RecordingStream,
+    flush_hook: Option<MemorySinkFlushHook>,
 }
 
 impl Drop for MemorySinkStorage {
@@ -206,10 +227,11 @@ impl Drop for MemorySinkStorage {
 
 impl MemorySinkStorage {
     /// Create a new [`MemorySinkStorage`] with an associated [`RecordingStream`].
-    fn new(rec: RecordingStream) -> Self {
+    fn new(rec: RecordingStream, flush_hook: Option<MemorySinkFlushHook>) -> Self {
         Self {
             inner: Default::default(),
             rec,
+            flush_hook,
         }
     }
 
@@ -229,7 +251,12 @@ impl MemorySinkStorage {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
         self.rec.flush_blocking();
+        self.num_msgs_no_flush()
+    }
 
+    #[doc(hidden)]
+    #[inline]
+    pub fn num_msgs_no_flush(&self) -> usize {
         self.inner.lock().msgs.len()
     }
 
@@ -284,6 +311,14 @@ impl MemorySinkStorage {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
         self.rec.flush_blocking();
+        self.drain_as_bytes_no_flush()
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    pub fn drain_as_bytes_no_flush(
+        &self,
+    ) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
         let mut buffer = std::io::Cursor::new(Vec::new());
 
         {

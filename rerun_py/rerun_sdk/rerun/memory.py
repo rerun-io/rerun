@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Callable
+
 from rerun import bindings
 
 from .recording_stream import RecordingStream
@@ -28,8 +30,26 @@ def memory_recording(recording: RecordingStream | None = None) -> MemoryRecordin
 
     """
 
+    return _memory_recording_with_flush_hook(recording=recording)
+
+
+def _memory_recording_with_flush_hook(
+    recording: RecordingStream | None = None,
+    flush_hook: Callable[[MemoryRecording], None] | None = None,
+) -> MemoryRecording:
     recording = RecordingStream.to_native(recording)
-    return MemoryRecording(bindings.memory_recording(recording=recording))
+
+    if flush_hook is not None:
+        hook = lambda storage: flush_hook(MemoryRecording(storage))  # noqa: E731
+    else:
+        hook = None
+
+    return MemoryRecording(
+        bindings.memory_recording(
+            recording=recording,
+            flush_hook=hook,
+        )
+    )
 
 
 class MemoryRecording:
@@ -53,3 +73,9 @@ class MemoryRecording:
         This will flush the current sink before returning.
         """
         return self.storage.drain_as_bytes()  # type: ignore[no-any-return]
+
+    def _num_msgs_no_flush(self) -> int:
+        return self.storage.num_msgs_no_flush()
+
+    def _drain_as_bytes_no_flush(self) -> bytes:
+        return self.storage.drain_as_bytes_no_flush()

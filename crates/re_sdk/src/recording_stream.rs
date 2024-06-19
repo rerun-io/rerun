@@ -23,6 +23,7 @@ use re_web_viewer_server::WebViewerServerPort;
 use re_ws_comms::RerunServerPort;
 
 use crate::binary_stream_sink::BinaryStreamStorage;
+use crate::log_sink::MemorySinkFlushHook;
 use crate::sink::{LogSink, MemorySinkStorage};
 
 // ---
@@ -1613,6 +1614,17 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     pub fn memory(&self) -> MemorySinkStorage {
         let sink = crate::sink::MemorySink::new(self.clone());
+        let storage = sink.buffer();
+        self.set_sink(Box::new(sink));
+        storage
+    }
+
+    #[doc(hidden)]
+    pub fn memory_with_flush_hook(
+        &self,
+        flush_hook: Option<MemorySinkFlushHook>,
+    ) -> MemorySinkStorage {
+        let sink = crate::sink::MemorySink::new_with_flush_hook(self.clone(), flush_hook);
         let storage = sink.buffer();
         self.set_sink(Box::new(sink));
         storage

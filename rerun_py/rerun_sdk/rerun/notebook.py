@@ -7,14 +7,14 @@ from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any
 
-from .memory import memory_recording
+from .memory import MemoryRecording, _memory_recording_with_flush_hook
 
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 from rerun import bindings
 
-from .recording_stream import RecordingStream, get_application_id
+from .recording_stream import RecordingStream, get_application_id, get_data_recording
 
 DEFAULT_WIDTH = 950
 DEFAULT_HEIGHT = 712
@@ -47,14 +47,20 @@ class Viewer:
 
             do_display(self._viewer)
 
-    def consume(self, recording: RecordingStream):
-        self._memory_recording = memory_recording(recording)
-        self.flush()
+        recording = recording if recording is not None else get_data_recording()
+        self._memory_recording = _memory_recording_with_flush_hook(recording, flush_hook=self._flush_hook)
 
-    def flush(self):
+    def _force_flush(self):
         num_msgs = self._memory_recording.num_msgs()
         if num_msgs > 0:
             data = self._memory_recording.drain_as_bytes()
+            self._viewer.send_rrd(data)
+
+    def _flush_hook(self, recording: MemoryRecording):
+        # we are already in a flush, so don't flush again
+        num_msgs = recording._num_msgs_no_flush()
+        if num_msgs > 0:
+            data = recording._drain_as_bytes_no_flush()
             self._viewer.send_rrd(data)
 
     def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:

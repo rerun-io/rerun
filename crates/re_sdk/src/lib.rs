@@ -70,6 +70,9 @@ pub mod sink {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
+
+    #[doc(hidden)]
+    pub use crate::log_sink::MemorySinkFlushHook;
 }
 
 /// Things directly related to logging.

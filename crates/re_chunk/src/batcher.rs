@@ -561,6 +561,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
                     break;
                 };
 
+
                 match cmd {
                     Command::AppendRow(entity_path, row) => {
                         let acc = accs.entry(entity_path.clone())
