@@ -377,10 +377,6 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
     let outline_radius_ui_pts = 0.5 * f32::max(hover_outline.width, selection_outline.width);
     let outline_radius_pixel = (gui_ctx.pixels_per_point() * outline_radius_ui_pts).at_least(0.5);
 
-    // TODO(emilk): We need to double this value here to get correct widths, and I don't understand why.
-    // It doesn't have to do with `pixels_per_point`, so maybe a bug in radius vs width somewhere?
-    let outline_radius_pixel = 2.0 * outline_radius_pixel;
-
     OutlineConfig {
         outline_radius_pixel,
         color_layer_a: re_renderer::Rgba::from(hover_outline.color),
