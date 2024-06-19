@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use directories_next::ProjectDirs;
+use directories::ProjectDirs;
 use uuid::Uuid;
 
 use crate::Property;
