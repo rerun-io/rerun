@@ -160,6 +160,7 @@ impl DesignTokens {
 
         egui_style.visuals.selection.bg_fill =
             get_aliased_color(&self.json, "{Alias.Color.Highlight.Default.value}");
+        egui_style.visuals.selection.stroke.color = egui::Color32::from_rgb(173, 184, 255); // Brighter version of the above
 
         egui_style.visuals.widgets.noninteractive.bg_stroke.color = Color32::from_gray(30); // from figma. separator lines, panel lines, etc
 
@@ -170,6 +171,10 @@ impl DesignTokens {
         egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
         egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
+
+        let wide_stroke_width = 1.5; // Make it a bit more visible, especially important for spatial primitives.
+        egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
+        egui_style.visuals.selection.stroke.width = wide_stroke_width;
 
         // From figma
         let shadow = egui::epaint::Shadow {

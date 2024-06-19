@@ -2,7 +2,10 @@
 
 use egui::{NumExt, Response, Shape, Ui};
 
-use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
+use crate::{
+    list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
+    ContextExt as _,
+};
 use crate::{DesignTokens, UiExt as _};
 
 struct ListItemResponse {
@@ -331,11 +334,7 @@ impl ListItem {
             if drag_target {
                 ui.painter().set(
                     background_frame,
-                    Shape::rect_stroke(
-                        bg_rect_to_paint,
-                        0.0,
-                        (1.0, ui.visuals().selection.bg_fill),
-                    ),
+                    Shape::rect_stroke(bg_rect_to_paint, 0.0, ui.ctx().hover_stroke()),
                 );
             } else if interactive {
                 let bg_fill = if !response.hovered() && ui.rect_contains_pointer(bg_rect) {

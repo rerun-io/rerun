@@ -26,8 +26,6 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.
     var color = textureSample(color_texture, nearest_sampler, in.texcoord).rgb;
-    // TODO(andreas): Do something meaningful with values above 1
-    color = clamp(color, vec3f(0.0), vec3f(1.0));
 
     // Outlines
     {
@@ -43,9 +41,18 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
         let outline_color_a = outline_a * uniforms.outline_color_layer_a;
         let outline_color_b = outline_b * uniforms.outline_color_layer_b;
 
-        // Blend outlines with screen color.
-        color = color * (1.0 - outline_color_a.a) + outline_color_a.rgb;
-        color = color * (1.0 - outline_color_b.a) + outline_color_b.rgb;
+        // Blend outlines with screen color:
+        if false {
+            // Normal blending with premul alpha.
+            // Problem: things that are both hovered and selected will get double outlines,
+            // which can look really ugly if e.g. the selection is dark blue and the hover is bright white.
+            color = color * (1.0 - outline_color_a.a) + outline_color_a.rgb;
+            color = color * (1.0 - outline_color_b.a) + outline_color_b.rgb;
+        } else {
+            // Add the two outline colors, then blend that in:
+            let outline_color_sum = saturate(outline_color_a + outline_color_b);
+            color = color * (1.0 - outline_color_sum.a) + outline_color_sum.rgb;
+        }
 
         // Show only the outline. Useful for debugging.
         //color = outline_color_a.rgb;
@@ -53,6 +60,8 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
         // Show the raw voronoi texture. Useful for debugging.
         //color = vec3f(closest_positions.xy / resolution, 0.0);
     }
+
+    color = saturate(color); // TODO(andreas): Do something meaningful with values above 1
 
     // Apply srgb gamma curve - this is necessary since the final eframe output does *not* have an srgb format.
     return vec4f(srgb_from_linear(color), 1.0);

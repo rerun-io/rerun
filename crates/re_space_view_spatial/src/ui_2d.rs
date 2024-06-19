@@ -13,6 +13,7 @@ use re_types::{
     },
     components::ViewCoordinates,
 };
+use re_ui::ContextExt as _;
 use re_viewer_context::{
     gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
     SystemExecutionOutput, ViewQuery, ViewerContext,
@@ -274,7 +275,7 @@ impl SpatialSpaceView2D {
                 query.space_origin,
                 &ui_from_scene,
                 selected_context,
-                ui.style().visuals.selection.bg_fill,
+                ui.ctx().selection_stroke().color,
             ));
         }
         if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
@@ -283,7 +284,7 @@ impl SpatialSpaceView2D {
                 query.space_origin,
                 &ui_from_scene,
                 hovered_context,
-                egui::Color32::WHITE,
+                ui.ctx().hover_stroke().color,
             ));
         }
 
@@ -426,7 +427,7 @@ fn show_projections_from_3d_space(
     space: &EntityPath,
     ui_from_scene: &RectTransform,
     space_context: &ItemSpaceContext,
-    color: egui::Color32,
+    circle_fill_color: egui::Color32,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
     if let ItemSpaceContext::ThreeD {
@@ -445,7 +446,7 @@ fn show_projections_from_3d_space(
                         radius + 2.0,
                         Color32::BLACK,
                     ));
-                    shapes.push(Shape::circle_filled(pos_in_ui, radius, color));
+                    shapes.push(Shape::circle_filled(pos_in_ui, radius, circle_fill_color));
 
                     let text_color = Color32::WHITE;
                     let text = format!("Depth: {:.3} m", pos_2d.z);
