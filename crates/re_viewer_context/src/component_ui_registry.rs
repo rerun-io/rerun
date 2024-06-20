@@ -524,7 +524,7 @@ impl ComponentUiRegistry {
     /// Tries to show a ui for editing a component.
     ///
     /// Returns `true` if the passed component is a single value and has a registered
-    /// editor for  multiline or singleline editing respectively.
+    /// editor for multiline or singleline editing respectively.
     pub fn try_show_edit_ui(
         &self,
         ctx: &ViewerContext<'_>,
