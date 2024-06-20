@@ -9,7 +9,7 @@ use arrow2::array::{
 };
 
 use itertools::{izip, Itertools};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{ComponentName, Loggable, LoggableBatch, SerializationError, SizeBytes};
 
 use crate::{ChunkId, RowId};
@@ -501,6 +501,86 @@ impl ChunkTimeline {
             time_range,
         }
     }
+
+    /// Creates a new [`ChunkTimeline`] of sequence type.
+    pub fn new_sequence(
+        name: impl Into<re_log_types::TimelineName>,
+        times: impl IntoIterator<Item = impl Into<i64>>,
+    ) -> Self {
+        let time_vec = times.into_iter().map(|t| {
+            let t = t.into();
+            TimeInt::try_from(t)
+                .unwrap_or_else(|_| {
+                    re_log::error!(
+                illegal_value = t,
+                new_value = TimeInt::MIN.as_i64(),
+                "ChunkTimeline::new_sequence() called with illegal value - clamped to minimum legal value"
+            );
+                    TimeInt::MIN
+                })
+                .as_i64()
+        }).collect();
+
+        Self::new(
+            None,
+            Timeline::new_sequence(name.into()),
+            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+        )
+    }
+
+    /// Creates a new [`ChunkTimeline`] of sequence type.
+    pub fn new_seconds(
+        name: impl Into<re_log_types::TimelineName>,
+        times: impl IntoIterator<Item = impl Into<f64>>,
+    ) -> Self {
+        let time_vec = times.into_iter().map(|t| {
+            let t = t.into();
+            let time = Time::from_seconds_since_epoch(t);
+            TimeInt::try_from(time)
+                .unwrap_or_else(|_| {
+                    re_log::error!(
+                illegal_value = t,
+                new_value = TimeInt::MIN.as_i64(),
+                "ChunkTimeline::new_seconds() called with illegal value - clamped to minimum legal value"
+            );
+                    TimeInt::MIN
+                })
+                .as_i64()
+        }).collect();
+
+        Self::new(
+            None,
+            Timeline::new_sequence(name.into()),
+            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+        )
+    }
+
+    /// Creates a new [`ChunkTimeline`] of nanoseconds type.
+    pub fn new_nanos(
+        name: impl Into<re_log_types::TimelineName>,
+        times: impl IntoIterator<Item = impl Into<i64>>,
+    ) -> Self {
+        let time_vec = times.into_iter().map(|t| {
+            let t = t.into();
+            let time = Time::from_ns_since_epoch(t);
+            TimeInt::try_from(time)
+                .unwrap_or_else(|_| {
+                    re_log::error!(
+                illegal_value = t,
+                new_value = TimeInt::MIN.as_i64(),
+                "ChunkTimeline::new_nanos() called with illegal value - clamped to minimum legal value"
+            );
+                    TimeInt::MIN
+                })
+                .as_i64()
+        }).collect();
+
+        Self::new(
+            None,
+            Timeline::new_sequence(name.into()),
+            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+        )
+    }
 }
 
 // ---
@@ -678,6 +758,16 @@ impl std::fmt::Display for Chunk {
 }
 
 impl ChunkTimeline {
+    #[inline]
+    pub fn timeline(&self) -> &Timeline {
+        &self.timeline
+    }
+
+    #[inline]
+    pub fn name(&self) -> &str {
+        self.timeline.name()
+    }
+
     #[inline]
     pub fn time_range(&self) -> ResolvedTimeRange {
         self.time_range

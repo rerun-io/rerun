@@ -5,6 +5,7 @@ use std::sync::Weak;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
+use arrow2::offset::Offsets;
 use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
@@ -897,13 +898,73 @@ impl RecordingStream {
     /// must match. All data that occurs at the same index across the different time and components
     /// arrays will act as a single logical row.
     #[inline]
-    pub fn log_temporal_batch(
+    pub fn log_temporal_batch<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
-        timelines: BTreeMap<Timeline, ChunkTimeline>,
-        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+        timelines: impl IntoIterator<Item = ChunkTimeline>,
+        components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let id = ChunkId::new();
+
+        let timelines = timelines
+            .into_iter()
+            .map(|timeline| (*timeline.timeline(), timeline))
+            .collect::<BTreeMap<_, _>>();
+
+        let components: Result<Vec<_>, ChunkError> = components
+            .into_iter()
+            .map(|batch| {
+                let array = batch.to_arrow()?;
+
+                let array = if let Some(array) =
+                    array.as_any().downcast_ref::<ArrowListArray<i32>>()
+                {
+                    array.clone()
+                } else {
+                    let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
+                        .map_err(|err| ChunkError::Malformed {
+                            reason: format!("Failed to create offsets: {err}"),
+                        })?;
+                    let data_type =
+                        ArrowListArray::<i32>::default_datatype(array.data_type().clone());
+                    ArrowListArray::<i32>::try_new(
+                        data_type,
+                        offsets.into(),
+                        array.to_boxed(),
+                        None,
+                    )
+                    .map_err(|err| ChunkError::Malformed {
+                        reason: format!("Failed to wrap in List array: {err}"),
+                    })?
+                };
+
+                Ok((batch.name(), array))
+            })
+            .collect();
+
+        let components: BTreeMap<ComponentName, ArrowListArray<i32>> =
+            components?.into_iter().collect();
+
+        let mut all_lengths = timelines
+            .values()
+            .map(|timeline| (timeline.name(), timeline.num_rows()))
+            .chain(
+                components
+                    .iter()
+                    .map(|(component, array)| (component.as_str(), array.len())),
+            );
+
+        if let Some((_, expected)) = all_lengths.next() {
+            for (name, len) in all_lengths {
+                if len != expected {
+                    return Err(RecordingStreamError::Chunk(ChunkError::Malformed {
+                        reason: format!(
+                            "Mismatched lengths: '{name}' has length {len} but expected {expected}",
+                        ),
+                    }));
+                }
+            }
+        }
 
         let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
 
