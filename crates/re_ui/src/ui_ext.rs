@@ -17,6 +17,56 @@ static FULL_SPAN_TAG: &str = "rerun_full_span";
 pub struct HeaderMenuButton<'a> {
     pub icon: &'static Icon,
     pub add_contents: Box<dyn FnOnce(&mut egui::Ui) + 'a>,
+    pub enabled: bool,
+    pub hover_text: Option<String>,
+    pub disabled_hover_text: Option<String>,
+}
+
+impl<'a> HeaderMenuButton<'a> {
+    pub fn new(icon: &'static Icon, add_contents: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
+        Self {
+            icon,
+            add_contents: Box::new(add_contents),
+            enabled: true,
+            hover_text: None,
+            disabled_hover_text: None,
+        }
+    }
+
+    /// Sets enable/disable state of the button.
+    pub fn with_enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+
+    /// Sets text shown when the button hovered.
+    pub fn with_hover_text(mut self, hover_text: impl Into<String>) -> Self {
+        self.hover_text = Some(hover_text.into());
+        self
+    }
+
+    /// Sets text shown when the button is disabled and hovered.
+    pub fn with_disabled_hover_text(mut self, hover_text: impl Into<String>) -> Self {
+        self.disabled_hover_text = Some(hover_text.into());
+        self
+    }
+
+    fn show(self, ui: &mut egui::Ui) {
+        ui.add_enabled_ui(self.enabled, |ui| {
+            let mut response = egui::menu::menu_image_button(
+                ui,
+                ui.small_icon_button_widget(self.icon),
+                self.add_contents,
+            )
+            .response;
+            if let Some(hover_text) = self.hover_text {
+                response = response.on_hover_text(hover_text);
+            }
+            if let Some(disabled_hover_text) = self.disabled_hover_text {
+                response.on_disabled_hover_text(disabled_hover_text);
+            }
+        });
+    }
 }
 
 /// Rerun custom extensions to [`egui::Ui`].
@@ -544,11 +594,7 @@ pub trait UiExt {
 
                 if let Some(button) = button {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        egui::menu::menu_image_button(
-                            ui,
-                            ui.small_icon_button_widget(button.icon),
-                            button.add_contents,
-                        );
+                        button.show(ui);
                     });
                 }
             },

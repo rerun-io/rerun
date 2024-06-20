@@ -27,28 +27,32 @@ pub fn visualizer_ui(
         return;
     };
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
+    let available_inactive_visualizers = available_inactive_visualizers(
+        ctx,
+        ctx.recording(),
+        space_view,
+        &data_result,
+        &active_visualizers,
+    );
 
     ui.large_collapsing_header_with_button(
         "Visualizers",
         true,
         |ui| {
-            // Forward to avoid right shift.
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
         },
-        // TODO: grey out if no visualizer are available
-        re_ui::HeaderMenuButton {
-            icon: &re_ui::icons::ADD,
-            add_contents: Box::new(|ui| {
-                add_new_visualizer(
-                    ctx,
-                    ctx.recording(),
-                    ui,
-                    space_view,
-                    &data_result,
-                    &active_visualizers,
-                );
-            }),
-        },
+        re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+            add_new_visualizer(
+                ctx,
+                ui,
+                &data_result,
+                &active_visualizers,
+                &available_inactive_visualizers,
+            );
+        })
+        .with_enabled(!available_inactive_visualizers.is_empty())
+        .with_hover_text("Add additional visualizers.")
+        .with_disabled_hover_text("No additional visualizers available."),
     );
 }
 
@@ -96,7 +100,7 @@ pub fn visualizer_ui_impl(
                         .min_desired_width(150.0)
                         .with_buttons(|ui| remove_visualizer_button(ui, visualizer_id))
                         .always_show_buttons(true),
-                    |ui| visualizer_components(ctx, ui, &data_result, visualizer_id),
+                    |ui| visualizer_components(ctx, ui, data_result, visualizer_id),
                 );
         }
     });
@@ -447,11 +451,10 @@ fn visualizer_components(
 
 fn add_new_visualizer(
     ctx: &ViewContext<'_>,
-    entity_db: &EntityDb,
     ui: &mut egui::Ui,
-    space_view: &SpaceViewBlueprint,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
+    inactive_visualizers: &[ViewSystemIdentifier],
 ) {
     // If we don't have an override_path we can't set up an initial override
     // this shouldn't happen if the `DataResult` is valid.
@@ -462,39 +465,10 @@ fn add_new_visualizer(
         return;
     };
 
-    // TODO(jleibs): This has already been computed for the SpaceView this frame. Maybe We
-    // should do this earlier and store it with the SpaceView?
-    let applicable_entities_per_visualizer = ctx
-        .viewer_ctx
-        .space_view_class_registry
-        .applicable_entities_for_visualizer_systems(entity_db.store_id());
-
-    let visualizable_entities = space_view
-        .class(ctx.viewer_ctx.space_view_class_registry)
-        .determine_visualizable_entities(
-            &applicable_entities_per_visualizer,
-            entity_db,
-            &ctx.visualizer_collection,
-            &space_view.space_origin,
-        );
-
-    let visualizer_options = visualizable_entities
-        .iter()
-        .filter(|(vis, ents)| {
-            ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
-        })
-        .map(|(vis, _)| vis)
-        .sorted()
-        .collect::<Vec<_>>();
-
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-    if visualizer_options.is_empty() {
-        ui.close_menu();
-    }
-
     // Present an option to enable any visualizer that isn't already enabled.
-    for viz in visualizer_options {
+    for viz in inactive_visualizers {
         if ui.button(viz.as_str()).clicked() {
             let component = VisualizerOverrides::from(
                 active_visualizers
@@ -512,4 +486,38 @@ fn add_new_visualizer(
             ui.close_menu();
         }
     }
+}
+
+/// Lists all visualizers that are _not_ active for the given entity but could be.
+fn available_inactive_visualizers(
+    ctx: &ViewContext<'_>,
+    entity_db: &EntityDb,
+    space_view: &SpaceViewBlueprint,
+    data_result: &DataResult,
+    active_visualizers: &[ViewSystemIdentifier],
+) -> Vec<ViewSystemIdentifier> {
+    // TODO(jleibs): This has already been computed for the SpaceView this frame. Maybe We
+    // should do this earlier and store it with the SpaceView?
+    let applicable_entities_per_visualizer = ctx
+        .viewer_ctx
+        .space_view_class_registry
+        .applicable_entities_for_visualizer_systems(entity_db.store_id());
+
+    let visualizable_entities = space_view
+        .class(ctx.viewer_ctx.space_view_class_registry)
+        .determine_visualizable_entities(
+            &applicable_entities_per_visualizer,
+            entity_db,
+            &ctx.visualizer_collection,
+            &space_view.space_origin,
+        );
+
+    visualizable_entities
+        .iter()
+        .filter(|&(vis, ents)| {
+            ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
+        })
+        .map(|(vis, _)| *vis)
+        .sorted()
+        .collect::<Vec<_>>()
 }
