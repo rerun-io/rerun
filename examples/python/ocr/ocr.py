@@ -299,7 +299,6 @@ def update_zoom_paths(
         )
 
         # Add to zoom paths
-        print(current_paths)
         view = rrb.Spatial2DView(
             name=record["name"].title(), contents=[f"{page_path}/Image/**"] + current_paths, visual_bounds=bounds
         )
@@ -316,11 +315,11 @@ def update_zoom_paths(
 
 def generate_blueprint(
     layouts: list[Layout],
-    base_paths: list[str],
+    page_paths: list[str],
     processed_layouts: list[LayoutStructure],
 ) -> rrb.Blueprint:
     page_tabs = []
-    for layout, (base_path, processed_layout) in zip(layouts, zip(base_paths, processed_layouts)):
+    for layout, (page_path, processed_layout) in zip(layouts, zip(page_paths, processed_layouts)):
         paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = processed_layout
 
         section_tabs = []
@@ -339,14 +338,14 @@ def generate_blueprint(
                 rrb.Horizontal(
                     rrb.Spatial2DView(
                         name="Layout",
-                        origin=f"{base_path}/Image/",
-                        contents=[f"{base_path}/Image/**"] + detections_paths,
+                        origin=f"{page_path}/Image/",
+                        contents=[f"{page_path}/Image/**"] + detections_paths,
                     ),
-                    rrb.Spatial2DView(name="Detections", contents=[f"{base_path}/Image/**"]),
-                    rrb.TextDocumentView(name="Recovery", contents=f"{base_path}/Recovery"),
+                    rrb.Spatial2DView(name="Detections", contents=[f"{page_path}/Image/**"]),
+                    rrb.TextDocumentView(name="Recovery", contents=f"{page_path}/Recovery"),
                 ),
                 rrb.Horizontal(*section_tabs),
-                name=base_path,
+                name=page_path,
                 row_shares=[4, 3],
             )
         )
@@ -370,25 +369,25 @@ def detect_and_log_layouts(file_path: str) -> None:
 
     # Extracte the layout from each image
     layouts: list[Layout] = []
-    base_paths = [f"page_{i + 1}" for i in range(len(images))]
+    page_paths = [f"page_{i + 1}" for i in range(len(images))]
     processed_layouts: list[LayoutStructure] = []
-    for i, (image, base_path) in enumerate(zip(images, base_paths)):
-        layouts.append(detect_and_log_layout(image, base_path))
+    for i, (image, page_path) in enumerate(zip(images, page_paths)):
+        layouts.append(detect_and_log_layout(image, page_path))
 
         # Generate and send a blueprint based on the detected layouts
         processed_layouts.append(
             process_layout_records(
                 layouts[-1],
-                base_path,
+                page_path,
             )
         )
         logging.info("Sending blueprint...")
-        blueprint = generate_blueprint(layouts, base_paths, processed_layouts)
+        blueprint = generate_blueprint(layouts, page_paths, processed_layouts)
         rr.send_blueprint(blueprint)
         logging.info("Blueprint sent...")
 
 
-def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], base_path: str = "") -> Layout:
+def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], page_path: str = "") -> Layout:
     # Layout Object - This will contain the detected layouts and their detections
     layout = Layout()
 
@@ -396,9 +395,9 @@ def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], base_path: str 
     # img = cv2.imread(file_path)
 
     # Log Image and add Annotation Context
-    rr.log(f"{base_path}/Image", rr.Image(coloured_image))
+    rr.log(f"{page_path}/Image", rr.Image(coloured_image))
     rr.log(
-        f"{base_path}/Image",
+        f"{page_path}/Image",
         # The annotation is defined in the Layout class based on its properties
         rr.AnnotationContext(LayoutType.get_annotation()),
         static=True,
@@ -418,7 +417,7 @@ def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], base_path: str 
     logging.info("All results are saved...")
 
     # Recovery Text Document for the detected text
-    rr.log(f"{base_path}/Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))
+    rr.log(f"{page_path}/Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))
 
     return layout
 
