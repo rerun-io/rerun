@@ -447,7 +447,7 @@ def get_data_recording(
         The most appropriate recording to log data to, in the current context, if any.
 
     """
-    result = bindings.get_data_recording(recording=recording)
+    result = bindings.get_data_recording(recording=RecordingStream.to_native(recording))
     return RecordingStream(result) if result is not None else None
 
 

@@ -66,7 +66,11 @@ class Viewer:
             hack: Any = None
             return hack
 
-        self._recording = get_data_recording(recording)
+        recording = get_data_recording(recording)
+        if recording is None:
+            raise ValueError("No recording specified and no active recording found")
+
+        self._recording = recording
 
         if blueprint is not None:
             self._recording.send_blueprint(blueprint)
