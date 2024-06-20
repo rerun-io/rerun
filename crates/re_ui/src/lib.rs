@@ -22,7 +22,7 @@ pub use self::{
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
     syntax_highlighting::SyntaxHighlighting,
-    ui_ext::UiExt,
+    ui_ext::{HeaderMenuButton, UiExt},
 };
 
 // ---------------------------------------------------------------------------

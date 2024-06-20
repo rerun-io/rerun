@@ -17,8 +17,6 @@ pub fn visualizer_ui(
     entity_path: &EntityPath,
     ui: &mut egui::Ui,
 ) {
-    let recording = ctx.recording();
-
     let query_result = ctx.lookup_query_result(space_view.id);
     let Some(data_result) = query_result
         .tree
@@ -28,24 +26,44 @@ pub fn visualizer_ui(
         ui.label(ui.ctx().error_text("Entity not found in view."));
         return;
     };
+    let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
 
+    ui.large_collapsing_header_with_button(
+        "Visualizers",
+        true,
+        |ui| {
+            // Forward to avoid right shift.
+            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
+        },
+        // TODO: grey out if no visualizer are available
+        re_ui::HeaderMenuButton {
+            icon: &re_ui::icons::ADD,
+            add_contents: Box::new(|ui| {
+                add_new_visualizer(
+                    ctx,
+                    ctx.recording(),
+                    ui,
+                    space_view,
+                    &data_result,
+                    &active_visualizers,
+                );
+            }),
+        },
+    );
+}
+
+pub fn visualizer_ui_impl(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    data_result: &DataResult,
+    active_visualizers: &[ViewSystemIdentifier],
+) {
     let Some(override_path) = data_result.individual_override_path() else {
         if cfg!(debug_assertions) {
             re_log::error!("No override path for entity: {}", data_result.entity_path);
         }
         return;
     };
-
-    let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
-
-    add_new_visualizer(
-        ctx,
-        recording,
-        ui,
-        space_view,
-        &data_result,
-        &active_visualizers,
-    );
 
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE);
@@ -66,7 +84,7 @@ pub fn visualizer_ui(
     list_item::list_item_scope(ui, "visualizers", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
 
-        for &visualizer_id in &active_visualizers {
+        for &visualizer_id in active_visualizers {
             let default_open = true;
             ui.list_item()
                 .interactive(false)
@@ -469,45 +487,29 @@ fn add_new_visualizer(
         .sorted()
         .collect::<Vec<_>>();
 
-    let enabled = !visualizer_options.is_empty();
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-    let mut opened = false;
+    if visualizer_options.is_empty() {
+        ui.close_menu();
+    }
 
-    ui.add_enabled_ui(enabled, |ui| {
-        let menu = ui
-            .menu_button("Add", |ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                opened = true;
+    // Present an option to enable any visualizer that isn't already enabled.
+    for viz in visualizer_options {
+        if ui.button(viz.as_str()).clicked() {
+            let component = VisualizerOverrides::from(
+                active_visualizers
+                    .iter()
+                    .chain(std::iter::once(viz))
+                    .map(|v| {
+                        let arrow_str: re_types_core::ArrowString = v.as_str().into();
+                        arrow_str
+                    })
+                    .collect::<Vec<_>>(),
+            );
 
-                if visualizer_options.is_empty() {
-                    ui.close_menu();
-                }
+            ctx.save_blueprint_component(override_path, &component);
 
-                // Present an option to enable any visualizer that isn't already enabled.
-                for viz in visualizer_options {
-                    if ui.button(viz.as_str()).clicked() {
-                        let component = VisualizerOverrides::from(
-                            active_visualizers
-                                .iter()
-                                .chain(std::iter::once(viz))
-                                .map(|v| {
-                                    let arrow_str: re_types_core::ArrowString = v.as_str().into();
-                                    arrow_str
-                                })
-                                .collect::<Vec<_>>(),
-                        );
-
-                        ctx.save_blueprint_component(override_path, &component);
-
-                        ui.close_menu();
-                    }
-                }
-            })
-            .response
-            .on_disabled_hover_text("No additional visualizers available.");
-
-        if !opened {
-            menu.on_hover_text("Choose a component to specify an override value.".to_owned());
+            ui.close_menu();
         }
-    });
+    }
 }
