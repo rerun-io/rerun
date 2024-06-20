@@ -80,7 +80,7 @@ class Viewer:
             height=height,
         )
 
-        if display is not None and display:
+        if display:
             self.display()
 
         print(self._recording)
