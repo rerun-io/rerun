@@ -236,16 +236,6 @@ fn query_range_ui(
         }
     });
 
-    // Add spacer after the visible history section.
-    //TODO(ab): figure out why `item_spacing.y` is added _only_ in collapsed state.
-    if collapsing_response.body_response.is_some() {
-        ui.add_space(ui.spacing().item_spacing.y / 2.0);
-    } else {
-        ui.add_space(-ui.spacing().item_spacing.y / 2.0);
-    }
-    ui.full_span_separator();
-    ui.add_space(ui.spacing().item_spacing.y / 2.0);
-
     // Decide when to show the visible history highlight in the timeline. The trick is that when
     // interacting with the controls, the mouse might end up outside the collapsing header rect,
     // so we must track these interactions specifically.

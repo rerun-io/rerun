@@ -166,10 +166,38 @@ impl SelectionPanel {
                     }
                 }
 
-                if has_blueprint_section(item) {
-                    ui.large_collapsing_header("Blueprint", true, |ui| {
-                        self.blueprint_ui(ctx, blueprint, view_states, ui, item);
+                if has_view_query_section(item) {
+                    ui.large_collapsing_header("View query (halp this name s0cks)", true, |ui| {
+                        self.view_query_ui(ctx, blueprint, view_states, ui, item);
                     });
+                }
+
+                if let Item::SpaceView(view_id) = item {
+                    if let Some(view) = blueprint.space_view(view_id) {
+                        let view_class = view.class(ctx.space_view_class_registry);
+                        let view_state = view_states.get_mut_or_create(view.id, view_class);
+
+                        ui.large_collapsing_header("View properties", true, |ui| {
+                            if let Err(err) = view_class.selection_ui(
+                                ctx,
+                                ui,
+                                view_state,
+                                &view.space_origin,
+                                view.id,
+                            ) {
+                                re_log::error!(
+                                    "Error in space view selection UI (class: {}, display name: {}): {err}",
+                                    view.class_identifier(),
+                                    view_class.display_name(),
+                                );
+                            }
+                        });
+
+                        let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                        ui.large_collapsing_header("Component Defaults", true, |ui| {
+                            defaults_ui(&view_ctx, view, ui);
+                        });
+                    }
                 }
 
                 if i < selection.len() - 1 {
@@ -181,7 +209,7 @@ impl SelectionPanel {
     }
 
     /// What is the blueprint stuff for this item?
-    fn blueprint_ui(
+    fn view_query_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         blueprint: &ViewportBlueprint,
@@ -197,8 +225,8 @@ impl SelectionPanel {
             | Item::Container(_)
             | Item::InstancePath(_) => {}
 
-            Item::SpaceView(space_view_id) => {
-                self.blueprint_ui_for_space_view(ctx, blueprint, view_states, ui, *space_view_id);
+            Item::SpaceView(view_id) => {
+                self.view_query_ui_for_view(ctx, blueprint, ui, *view_id);
             }
 
             Item::DataResult(space_view_id, instance_path) => {
@@ -208,16 +236,15 @@ impl SelectionPanel {
 
                 let view_ctx = view.bundle_context_with_states(ctx, view_states);
 
-                blueprint_ui_for_data_result(&view_ctx, view, ui, *space_view_id, instance_path);
+                view_query_ui_for_data_result(&view_ctx, view, ui, *space_view_id, instance_path);
             }
         }
     }
 
-    fn blueprint_ui_for_space_view(
+    fn view_query_ui_for_view(
         &mut self,
         ctx: &ViewerContext<'_>,
         blueprint: &ViewportBlueprint,
-        view_states: &mut ViewStates,
         ui: &mut Ui,
         view_id: SpaceViewId,
     ) {
@@ -257,25 +284,6 @@ impl SelectionPanel {
 
         if let Some(view) = blueprint.space_view(&view_id) {
             query_range_ui_space_view(ctx, ui, view);
-
-            let view_class = view.class(ctx.space_view_class_registry);
-            let view_state = view_states.get_mut_or_create(view.id, view_class);
-
-            if let Err(err) =
-                view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
-            {
-                re_log::error!(
-                    "Error in space view selection UI (class: {}, display name: {}): {err}",
-                    view.class_identifier(),
-                    view_class.display_name(),
-                );
-            }
-
-            let view_ctx = view.bundle_context_with_state(ctx, view_state);
-
-            ui.large_collapsing_header("Component Defaults", true, |ui| {
-                defaults_ui(&view_ctx, view, ui);
-            });
         }
     }
 
@@ -1090,7 +1098,7 @@ fn show_list_item_for_container_child(
     true
 }
 
-fn has_blueprint_section(item: &Item) -> bool {
+fn has_view_query_section(item: &Item) -> bool {
     match item {
         Item::AppId(_)
         | Item::DataSource(_)
@@ -1099,11 +1107,12 @@ fn has_blueprint_section(item: &Item) -> bool {
         | Item::Container(_)
         | Item::InstancePath(_) => false,
 
-        Item::SpaceView(_) | Item::DataResult(_, _) => true,
+        Item::SpaceView(_) => true,
+        Item::DataResult(_, instance) => instance.is_all(),
     }
 }
 
-fn blueprint_ui_for_data_result(
+fn view_query_ui_for_data_result(
     ctx: &ViewContext<'_>,
     space_view: &SpaceViewBlueprint,
     ui: &mut Ui,
