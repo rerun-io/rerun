@@ -1,5 +1,7 @@
 //! Methods for handling Arrow datamodel log ingest
 
+use std::collections::BTreeMap;
+
 use arrow2::{
     array::{Array, ListArray, PrimitiveArray},
     datatypes::Field,
@@ -15,7 +17,7 @@ use pyo3::{
 
 use re_chunk::{Chunk, ChunkError, ChunkId, ChunkTimeline, PendingRow, RowId};
 use re_log_types::TimePoint;
-use re_sdk::{EntityPath, Timeline};
+use re_sdk::{ComponentName, EntityPath, Timeline};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -93,8 +95,6 @@ pub fn build_chunk_from_components(
     // Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     let chunk_id = ChunkId::new();
 
-    let mut expected_length = None;
-
     // Extract the timeline data
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         timelines.iter().map(|(name, array)| {
@@ -126,19 +126,12 @@ pub fn build_chunk_from_components(
                     reason: format!("Invalid primitive array for timeline: {}", field.name),
                 })?
                 .clone();
-            if expected_length.is_none() {
-                expected_length = Some(timeline_data.len());
-            } else if expected_length != Some(timeline_data.len()) {
-                return Err(ChunkError::Malformed {
-                    reason: format!("Incorrect length time timeline: {}", field.name),
-                });
-            }
             Ok((timeline, timeline_data))
         })
         .collect();
 
-    let timelines = timelines
-        .map_err(|err| PyRuntimeError::new_err(format!("Invalid arrow type: {err}")))?
+    let timelines: BTreeMap<Timeline, ChunkTimeline> = timelines
+        .map_err(|err| PyRuntimeError::new_err(format!("Error converting temporal data: {err}")))?
         .into_iter()
         .map(|(timeline, value)| (timeline, ChunkTimeline::new(None, timeline, value)))
         .collect();
@@ -158,7 +151,7 @@ pub fn build_chunk_from_components(
         .map(|(value, field)| {
             let batch = if let Some(batch) = value.as_any().downcast_ref::<ListArray<i32>>() {
                 batch.clone()
-            } else if Some(value.len()) == expected_length {
+            } else {
                 let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(value.len()))
                     .map_err(|err| ChunkError::Malformed {
                         reason: format!("Failed to create offsets: {err}"),
@@ -169,20 +162,35 @@ pub fn build_chunk_from_components(
                         reason: format!("Failed to wrap in List array: {err}"),
                     },
                 )?
-            } else {
-                return Err(ChunkError::Malformed {
-                    reason: format!("Invalid data_type for component: {}", field.name),
-                });
             };
 
             Ok((field.name.into(), batch))
         })
         .collect();
 
-    let components = components
-        .map_err(|err| PyRuntimeError::new_err(format!("Invalid arrow type: {err}")))?
+    let components: BTreeMap<ComponentName, ListArray<i32>> = components
+        .map_err(|err| PyRuntimeError::new_err(format!("Error converting component data: {err}")))?
         .into_iter()
         .collect();
+
+    let mut all_lengths = timelines
+        .values()
+        .map(|timeline| (timeline.name(), timeline.num_rows()))
+        .chain(
+            components
+                .iter()
+                .map(|(component, array)| (component.as_str(), array.len())),
+        );
+
+    if let Some((_, expected)) = all_lengths.next() {
+        for (name, len) in all_lengths {
+            if len != expected {
+                return Err(PyRuntimeError::new_err(format!(
+                    "Mismatched lengths: '{name}' has length {len} but expected {expected}",
+                )));
+            }
+        }
+    }
 
     let chunk = Chunk::from_auto_row_ids(chunk_id, entity_path, timelines, components)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
