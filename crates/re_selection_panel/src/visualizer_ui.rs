@@ -191,9 +191,8 @@ fn visualizer_components(
                     multiline,
                 )
             {
-                // TODO(andreas): Unfortunately, display ui wants to do the query itself.
+                // TODO(andreas): Unfortunately, display ui needs db & query. (fix that!)
                 // In fact some display UIs will struggle since they try to query additional data from the store.
-                // We pass
                 // so we have to figure out what store and path things come from.
                 let bp_query = ctx.viewer_ctx.blueprint_query;
 
@@ -310,8 +309,7 @@ fn add_new_visualizer(
                     ui.close_menu();
                 }
 
-                // Present the option to add new components for each component that doesn't
-                // already have an active override.
+                // Present an option to enable any visualizer that isn't already enabled.
                 for viz in visualizer_options {
                     if ui.button(viz.as_str()).clicked() {
                         let component = VisualizerOverrides::from(
