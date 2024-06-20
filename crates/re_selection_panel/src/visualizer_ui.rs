@@ -367,7 +367,9 @@ fn visualizer_components(
                 ui,
                 ui.make_persistent_id(component),
                 default_open,
-                list_item::PropertyContent::new(component.short_name()).value_fn(value_fn),
+                list_item::PropertyContent::new(component.short_name())
+                    .value_fn(value_fn)
+                    .show_only_when_collapsed(false),
                 add_children,
             )
             .item_response
