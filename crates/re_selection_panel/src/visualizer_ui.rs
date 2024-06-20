@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use re_data_ui::DataUi;
 use re_entity_db::EntityDb;
-use re_log_types::EntityPath;
+use re_log_types::{DataCell, EntityPath};
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types_core::components::VisualizerOverrides;
 use re_ui::{list_item, ContextExt as _, UiExt as _};
@@ -359,6 +359,55 @@ fn visualizer_components(
             }
         };
 
+        let more_menu_contents = |ui: &mut egui::Ui| {
+            if ui
+                .add_enabled(non_empty_override, egui::Button::new("Remove override"))
+                .on_disabled_hover_text("There's no override active")
+                .clicked()
+            {
+                ctx.save_empty_blueprint_component_by_name(override_path, component);
+                ui.close_menu();
+            }
+            if ui
+                .add_enabled(
+                    non_empty_override,
+                    egui::Button::new("Set to view default value"),
+                )
+                .on_disabled_hover_text("There's no default component active")
+                .clicked()
+            {
+                ctx.save_blueprint_data_cell(
+                    override_path,
+                    DataCell::from_arrow(component, raw_default.clone().unwrap()), // TODO: unwrap
+                );
+                ui.close_menu();
+            }
+            if ui.button("Set to fallback value").clicked() {
+                ctx.save_blueprint_data_cell(
+                    override_path,
+                    DataCell::from_arrow(component, raw_fallback.clone()),
+                );
+                ui.close_menu();
+            }
+            if ui
+                .button("Reset override")
+                .on_hover_text(
+                    "Resets the override to what was specified in the default blueprint.",
+                )
+                .clicked()
+            {
+                ctx.reset_blueprint_component_by_name(override_path, component);
+                ui.close_menu();
+            }
+            if ui.button("Make default for current view").clicked() {
+                ctx.save_blueprint_data_cell(
+                    ctx.defaults_path,
+                    DataCell::from_arrow(component, raw_current_value.to_boxed()),
+                );
+                ui.close_menu();
+            }
+        };
+
         // TODO(andreas): Add a "more" button for options like "remove override" etc.
         let default_open = false;
         ui.list_item()
@@ -369,7 +418,8 @@ fn visualizer_components(
                 default_open,
                 list_item::PropertyContent::new(component.short_name())
                     .value_fn(value_fn)
-                    .show_only_when_collapsed(false),
+                    .show_only_when_collapsed(false)
+                    .menu_button(&re_ui::icons::MORE, more_menu_contents),
                 add_children,
             )
             .item_response
