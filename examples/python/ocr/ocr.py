@@ -8,10 +8,13 @@ import logging
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Final, Iterable, Optional
+from typing import Any, Final, Iterable, Optional, TypeAlias
 
 import cv2 as cv2
+import numpy as np
+import numpy.typing as npt
 import pandas as pd
+import pdf2image
 import requests
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
@@ -23,6 +26,10 @@ EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 
 SAMPLE_IMAGE_URLs = ["https://storage.googleapis.com/rerun-example-datasets/ocr/paper.png"]
+
+LayoutStructure: TypeAlias = tuple[
+    list[str], list[str], list[rrb.Spatial2DView], list[rrb.Spatial2DView], list[rrb.Spatial2DView]
+]
 
 # Supportive Classes
 
@@ -214,9 +221,7 @@ class Layout:
             return f"Error processing the table: {str(e)}"
 
 
-def process_layout_records(
-    layout: Layout,
-) -> tuple[list[str], list[str], list[rrb.Spatial2DView], list[rrb.Spatial2DView], list[rrb.Spatial2DView]]:
+def process_layout_records(layout: Layout, page_path: str) -> LayoutStructure:
     paths, detections_paths = [], []
     zoom_paths: list[rrb.Spatial2DView] = []
     zoom_paths_figures: list[rrb.Spatial2DView] = []
@@ -226,13 +231,13 @@ def process_layout_records(
     for layout_type in LayoutType:
         for record in layout.records[layout_type]:
             record_name = record["name"].title()
-            base_path = f"Image/{layout_type.type.title()}/{record_name}"
-            paths.append(f"-{base_path}/**")
-            detections_paths.append(f"-{base_path}/Detections/**")
+            record_base_path = f"{page_path}/Image/{layout_type.type.title()}/{record_name}"
+            paths.append(f"-{record_base_path}/**")
+            detections_paths.append(f"-{record_base_path}/Detections/**")
 
             # Log bounding box
             rr.log(
-                base_path,
+                record_base_path,
                 rr.Boxes2D(
                     array=record["bounding_box"],
                     array_format=rr.Box2DFormat.XYXY,
@@ -242,23 +247,31 @@ def process_layout_records(
                 rr.AnyValues(name=record_name),
             )
 
-            log_detections(layout_type, record, base_path)
+            log_detections(layout_type, record, record_base_path)
 
             # Prepare zoom path views
             update_zoom_paths(
-                layout, layout_type, record, paths, zoom_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts
+                layout,
+                layout_type,
+                record,
+                paths,
+                page_path,
+                zoom_paths,
+                zoom_paths_figures,
+                zoom_paths_tables,
+                zoom_paths_texts,
             )
 
     return paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts
 
 
-def log_detections(layout_type: LayoutType, record: dict[str, Any], base_path: str) -> None:
+def log_detections(layout_type: LayoutType, record: dict[str, Any], page_path: str) -> None:
     if layout_type == LayoutType.TABLE:
         rr.log(f"Extracted{record['name']}", rr.TextDocument(record["table"], media_type=rr.MediaType.MARKDOWN))
     else:
         for detection in record.get("detections", []):
             rr.log(
-                f"{base_path}/Detections/{detection['id']}",
+                f"{page_path}/Detections/{detection['id']}",
                 rr.Boxes2D(
                     array=detection["box"], array_format=rr.Box2DFormat.XYXY, class_ids=[str(layout_type.number)]
                 ),
@@ -271,6 +284,7 @@ def update_zoom_paths(
     layout_type: LayoutType,
     record: dict[str, Any],
     paths: list[str],
+    page_path: str,
     zoom_paths: list[rrb.Spatial2DView],
     zoom_paths_figures: list[rrb.Spatial2DView],
     zoom_paths_tables: list[rrb.Spatial2DView],
@@ -278,15 +292,16 @@ def update_zoom_paths(
 ) -> None:
     if layout_type in [LayoutType.FIGURE, LayoutType.TABLE, LayoutType.TEXT]:
         current_paths = paths.copy()
-        current_paths.remove(f"-Image/{layout_type.type.title()}/{record['name'].title()}/**")
+        current_paths.remove(f"-{page_path}/Image/{layout_type.type.title()}/{record['name'].title()}/**")
         bounds = rrb.VisualBounds2D(
             x_range=[record["bounding_box"][0] - 10, record["bounding_box"][2] + 10],
             y_range=[record["bounding_box"][1] - 10, record["bounding_box"][3] + 10],
         )
 
         # Add to zoom paths
+        print(current_paths)
         view = rrb.Spatial2DView(
-            name=record["name"].title(), contents=["Image/**"] + current_paths, visual_bounds=bounds
+            name=record["name"].title(), contents=[f"{page_path}/Image/**"] + current_paths, visual_bounds=bounds
         )
         zoom_paths.append(view)
 
@@ -299,56 +314,102 @@ def update_zoom_paths(
             zoom_paths_texts.append(view)
 
 
-def generate_blueprint(layout: Layout) -> rrb.Blueprint:
-    paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = process_layout_records(layout)
+def generate_blueprint(
+    layouts: list[Layout],
+    base_paths: list[str],
+    processed_layouts: list[LayoutStructure],
+) -> rrb.Blueprint:
+    page_tabs = []
+    for layout, (base_path, processed_layout) in zip(layouts, zip(base_paths, processed_layouts)):
+        paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = processed_layout
 
-    tabs = []
-    content_data: dict[str, Any] = {
-        "Figures": zoom_paths_figures,
-        "Tables": zoom_paths_tables,
-        "Texts": zoom_paths_texts,
-    }
+        section_tabs = []
+        content_data: dict[str, Any] = {
+            "Figures": zoom_paths_figures,
+            "Tables": zoom_paths_tables,
+            "Texts": zoom_paths_texts,
+        }
 
-    for name, paths in content_data.items():
-        if paths:
-            tabs.append(rrb.Tabs(*paths, name=name))  # type: ignore[arg-type]
+        for name, paths in content_data.items():
+            if paths:
+                section_tabs.append(rrb.Tabs(*paths, name=name))  # type: ignore[arg-type]
+
+        page_tabs.append(
+            rrb.Vertical(
+                rrb.Horizontal(
+                    rrb.Spatial2DView(
+                        name="Layout",
+                        origin=f"{base_path}/Image/",
+                        contents=[f"{base_path}/Image/**"] + detections_paths,
+                    ),
+                    rrb.Spatial2DView(name="Detections", contents=[f"{base_path}/Image/**"]),
+                    rrb.TextDocumentView(name="Recovery", contents=f"{base_path}/Recovery"),
+                ),
+                rrb.Horizontal(*section_tabs),
+                name=base_path,
+                row_shares=[4, 3],
+            )
+        )
 
     return rrb.Blueprint(
-        rrb.Vertical(
-            rrb.Horizontal(
-                rrb.Spatial2DView(name="Layout", origin="Image/", contents=["Image/**"] + detections_paths),
-                rrb.Spatial2DView(name="Detections", contents=["Image/**"]),
-                rrb.TextDocumentView(name="Recovery", contents="Recovery"),
-            ),
-            rrb.Horizontal(*tabs),
-            row_shares=[4, 3],
-        ),
+        rrb.Tabs(*page_tabs),
         collapse_panels=True,
     )
 
 
-def detect_and_log_layout(img_path: str) -> None:
+def detect_and_log_layouts(file_path: str) -> None:
+    images: list[npt.NDArray[np.uint8]] = []
+    if file_path.endswith(".pdf"):
+        # convert pdf to images
+        images.extend(np.array(img, dtype=np.uint8) for img in pdf2image.convert_from_path(file_path))
+    else:
+        # read image
+        img = cv2.imread(file_path)
+        coloured_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        images.append(coloured_image.astype(np.uint8))
+
+    # Extracte the layout from each image
+    layouts: list[Layout] = []
+    base_paths = [f"page_{i + 1}" for i in range(len(images))]
+    processed_layouts: list[LayoutStructure] = []
+    for i, (image, base_path) in enumerate(zip(images, base_paths)):
+        layouts.append(detect_and_log_layout(image, base_path))
+
+        # Generate and send a blueprint based on the detected layouts
+        processed_layouts.append(
+            process_layout_records(
+                layouts[-1],
+                base_path,
+            )
+        )
+        logging.info("Sending blueprint...")
+        blueprint = generate_blueprint(layouts, base_paths, processed_layouts)
+        rr.send_blueprint(blueprint)
+        logging.info("Blueprint sent...")
+
+
+def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], base_path: str = "") -> Layout:
     # Layout Object - This will contain the detected layouts and their detections
     layout = Layout()
 
     # Read Image
-    img = cv2.imread(img_path)
-    coloured_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # img = cv2.imread(file_path)
 
     # Log Image and add Annotation Context
-    rr.log("Image", rr.Image(coloured_image))
+    rr.log(f"{base_path}/Image", rr.Image(coloured_image))
     rr.log(
-        "Image",
+        f"{base_path}/Image",
         # The annotation is defined in the Layout class based on its properties
         rr.AnnotationContext(LayoutType.get_annotation()),
         static=True,
     )
 
     # Paddle Model - Getting Predictions
-    logging.info("Start detection... (It usually takes more than 10-20 seconds)")
+    logging.info("Start detection... (It usually takes more than 10-20 seconds per page)")
     ocr_model_pp = PPStructure(show_log=False, recovery=True)
+    logging.info("model loaded")
     result_pp = ocr_model_pp(coloured_image)
-    _, w, _ = img.shape
+    _, w, _ = coloured_image.shape
     result_pp = sorted_layout_boxes(result_pp, w)
     logging.info("Detection finished...")
 
@@ -357,13 +418,9 @@ def detect_and_log_layout(img_path: str) -> None:
     logging.info("All results are saved...")
 
     # Recovery Text Document for the detected text
-    rr.log("Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))
+    rr.log(f"{base_path}/Recovery", rr.TextDocument(layout.recovery, media_type=rr.MediaType.MARKDOWN))
 
-    # Generate and send a blueprint based on the detected layouts
-    logging.info("Sending blueprint...")
-    blueprint = generate_blueprint(layout)
-    rr.send_blueprint(blueprint)
-    logging.info("Blueprint sent...")
+    return layout
 
 
 def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
@@ -405,9 +462,9 @@ def main() -> None:
         help="Run on a demo image automatically downloaded",
     )
     parser.add_argument(
-        "--image",
+        "--file",
         type=str,
-        help="Run on the provided image",
+        help="Run on the provided image/pdf (for pdf files `poppler` must be installed)",
     )
 
     rr.script_add_args(parser)
@@ -429,13 +486,13 @@ def main() -> None:
     logging.getLogger().setLevel(-1)
 
     # Choose the appropriate run mode based on provided arguments
-    if args.image:
-        detect_and_log_layout(args.image)
+    if args.file:
+        detect_and_log_layouts(args.file)
     else:
         img_path = DATASET_DIR / f"{args.demo_image}.png"
         if not img_path.exists():
             download_file(SAMPLE_IMAGE_URLs[0], img_path)
-        detect_and_log_layout(str(img_path))
+        detect_and_log_layouts(str(img_path))
 
 
 if __name__ == "__main__":

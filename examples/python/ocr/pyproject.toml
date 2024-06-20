@@ -13,6 +13,7 @@ dependencies = [
   "setuptools",
   "tabulate",
   "tqdm",
+  "pdf2image",
 ]
 
 [project.scripts]
