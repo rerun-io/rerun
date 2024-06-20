@@ -84,7 +84,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 world_from_obj,
             );
 
-            let results = data_result.latest_at_with_blueprint_resolved_data::<Axes3D>(ctx, &latest_at_query);
+            let results =
+                data_result.latest_at_with_blueprint_resolved_data::<Axes3D>(ctx, &latest_at_query);
             let axis_length = results.get_mono_with_fallback::<AxisLength>().into();
 
             add_axis_arrows(
@@ -178,8 +179,8 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
                         .visualizers
                         .contains(&CamerasVisualizer::identifier())
                     {
-                        let results =
-                            data_result.latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
+                        let results = data_result
+                            .latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
 
                         Some(results.get_mono_with_fallback::<ImagePlaneDistance>())
                     } else {

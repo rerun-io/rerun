@@ -211,7 +211,8 @@ impl TransformContext {
                     .lookup_result_by_path(p)
                     .cloned()
                     .map(|data_result| {
-                        let results = data_result.latest_at_with_blueprint_resolved_data::<Pinhole>(ctx, query);
+                        let results = data_result
+                            .latest_at_with_blueprint_resolved_data::<Pinhole>(ctx, query);
 
                         results.get_mono_with_fallback::<ImagePlaneDistance>()
                     })
