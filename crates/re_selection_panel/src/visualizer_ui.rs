@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
 use re_data_ui::DataUi;
-use re_entity_db::EntityDb;
+use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::{DataCell, EntityPath};
 use re_space_view::latest_at_with_blueprint_resolved_data;
+use re_types::external::arrow2;
 use re_types_core::components::VisualizerOverrides;
 use re_ui::{list_item, ContextExt as _, UiExt as _};
 use re_viewer_context::{
@@ -42,7 +43,7 @@ pub fn visualizer_ui(
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
         },
         re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
-            add_new_visualizer(
+            menu_add_new_visualizer(
                 ctx,
                 ui,
                 &data_result,
@@ -157,16 +158,22 @@ fn visualizer_components(
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
         let result_override = query_result.overrides.get(component);
-        let raw_override = result_override.and_then(|r| r.try_raw(&query_result.resolver));
-        let non_empty_override = raw_override.as_ref().map_or(false, |r| !r.is_empty());
+        let raw_override = result_override.and_then(|r| {
+            r.try_raw(&query_result.resolver)
+                .and_then(|v| (!v.is_empty()).then_some(v))
+        });
 
         let result_store = query_result.results.get(component);
-        let raw_store = result_store.and_then(|r| r.try_raw(&query_result.resolver));
-        let non_empty_store = raw_store.as_ref().map_or(false, |r| !r.is_empty());
+        let raw_store = result_store.and_then(|r| {
+            r.try_raw(&query_result.resolver)
+                .and_then(|v| (!v.is_empty()).then_some(v))
+        });
 
         let result_default = query_result.defaults.get(component);
-        let raw_default = result_default.and_then(|r| r.try_raw(&query_result.resolver));
-        let non_empty_default = raw_default.as_ref().map_or(false, |r| !r.is_empty());
+        let raw_default = result_default.and_then(|r| {
+            r.try_raw(&query_result.resolver)
+                .and_then(|v| (!v.is_empty()).then_some(v))
+        });
 
         let raw_fallback = match visualizer.fallback_for(&query_ctx, component) {
             Ok(fallback) => fallback,
@@ -178,21 +185,16 @@ fn visualizer_components(
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
-        let value_source = match (non_empty_override, non_empty_store, non_empty_default) {
-            (true, _, _) => ValueSource::Override,
-            (false, true, _) => ValueSource::Store,
-            (false, false, true) => ValueSource::Default,
-            (false, false, false) => ValueSource::FallbackOrPlaceholder,
+        let (value_source, raw_current_value) = match (
+            raw_override.as_ref(),
+            raw_store.as_ref(),
+            raw_default.as_ref(),
+        ) {
+            (Some(override_value), _, _) => (ValueSource::Override, override_value.as_ref()),
+            (None, Some(store_value), _) => (ValueSource::Store, store_value.as_ref()),
+            (None, None, Some(default_value)) => (ValueSource::Default, default_value.as_ref()),
+            (None, None, None) => (ValueSource::FallbackOrPlaceholder, raw_fallback.as_ref()),
         };
-
-        #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
-        let raw_current_value = match value_source {
-            ValueSource::Override => raw_override.as_ref().unwrap(),
-            ValueSource::Store => raw_store.as_ref().unwrap(),
-            ValueSource::Default => raw_default.as_ref().unwrap(),
-            ValueSource::FallbackOrPlaceholder => &raw_fallback,
-        }
-        .as_ref();
 
         let Some(override_path) = data_result.individual_override_path() else {
             // This shouldn't the `DataResult` is valid.
@@ -201,7 +203,6 @@ fn visualizer_components(
             }
             return;
         };
-        let bp_query = ctx.viewer_ctx.blueprint_query;
 
         let value_fn = |ui: &mut egui::Ui, _style| {
             // Edit ui can only handle a single value.
@@ -222,7 +223,7 @@ fn visualizer_components(
                 #[allow(clippy::unwrap_used)] // We checked earlier that these values are valid!
                 let (query, db, entity_path, latest_at_results) = match value_source {
                     ValueSource::Override => (
-                        bp_query,
+                        ctx.viewer_ctx.blueprint_query,
                         ctx.blueprint_db(),
                         override_path,
                         result_override.unwrap(),
@@ -234,7 +235,7 @@ fn visualizer_components(
                         result_store.unwrap(),
                     ),
                     ValueSource::Default => (
-                        bp_query,
+                        ctx.viewer_ctx.blueprint_query,
                         ctx.blueprint_db(),
                         ctx.defaults_path,
                         result_default.unwrap(),
@@ -265,44 +266,22 @@ fn visualizer_components(
         };
 
         let add_children = |ui: &mut egui::Ui| {
-            if let (Some(result_override), Some(raw_override), true) =
-                (result_override, raw_override.as_ref(), non_empty_override)
+            // Override (if available)
+            if let (Some(result_override), Some(raw_override)) =
+                (result_override, raw_override.as_ref())
             {
-                // TODO: make this an editor
-                ui.list_item().interactive(false).show_flat(
+                editable_blueprint_component_list_item(
+                    ctx,
                     ui,
-                    list_item::PropertyContent::new("Override")
-                        .value_fn(|ui, _style| {
-                            let multiline = false;
-                            if raw_override.len() > 1
-                                || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
-                                    ctx.viewer_ctx,
-                                    ui,
-                                    raw_override.as_ref(),
-                                    override_path,
-                                    component,
-                                    multiline,
-                                )
-                            {
-                                re_data_ui::EntityLatestAtResults {
-                                    entity_path: override_path.clone(),
-                                    results: result_override,
-                                }
-                                .data_ui(
-                                    ctx.viewer_ctx,
-                                    ui,
-                                    UiLayout::List,
-                                    bp_query,
-                                    ctx.blueprint_db(),
-                                );
-                            }
-                        })
-                        .action_button(&re_ui::icons::CLOSE, || {
-                            ctx.save_empty_blueprint_component_by_name(override_path, component);
-                        }),
+                    "Override",
+                    override_path,
+                    component,
+                    raw_override.as_ref(),
+                    result_override,
                 );
             }
-            if let (Some(result_store), true) = (result_store, non_empty_store) {
+            // Store (if available)
+            if let Some(result_store) = result_store {
                 ui.list_item().interactive(false).show_flat(
                     ui,
                     list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
@@ -320,44 +299,18 @@ fn visualizer_components(
                     }),
                 );
             }
-            if let (Some(result_default), Some(raw_default), true) =
-                (result_default, raw_default.as_ref(), non_empty_default)
+            // Default (if available)
+            if let (Some(result_default), Some(raw_default)) =
+                (result_default, raw_default.as_ref())
             {
-                // TODO: make this an editor
-                ui.list_item().interactive(false).show_flat(
+                editable_blueprint_component_list_item(
+                    ctx,
                     ui,
-                    list_item::PropertyContent::new("Default")
-                        .value_fn(|ui, _style| {
-                            let multiline = false;
-                            if raw_default.len() > 1
-                                || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
-                                    ctx.viewer_ctx,
-                                    ui,
-                                    raw_default.as_ref(),
-                                    ctx.defaults_path,
-                                    component,
-                                    multiline,
-                                )
-                            {
-                                re_data_ui::EntityLatestAtResults {
-                                    entity_path: ctx.defaults_path.clone(),
-                                    results: result_default,
-                                }
-                                .data_ui(
-                                    ctx.viewer_ctx,
-                                    ui,
-                                    UiLayout::List,
-                                    bp_query,
-                                    ctx.blueprint_db(),
-                                );
-                            }
-                        })
-                        .action_button(&re_ui::icons::REMOVE, || {
-                            ctx.save_empty_blueprint_component_by_name(
-                                ctx.defaults_path,
-                                component,
-                            );
-                        }),
+                    "Default",
+                    ctx.defaults_path,
+                    component,
+                    raw_default.as_ref(),
+                    result_default,
                 );
             }
             // Fallback (always there)
@@ -381,56 +334,6 @@ fn visualizer_components(
             }
         };
 
-        let more_menu_contents = |ui: &mut egui::Ui| {
-            if ui
-                .add_enabled(non_empty_override, egui::Button::new("Remove override"))
-                .on_disabled_hover_text("There's no override active")
-                .clicked()
-            {
-                ctx.save_empty_blueprint_component_by_name(override_path, component);
-                ui.close_menu();
-            }
-            if ui
-                .add_enabled(
-                    non_empty_override,
-                    egui::Button::new("Set to view default value"),
-                )
-                .on_disabled_hover_text("There's no default component active")
-                .clicked()
-            {
-                ctx.save_blueprint_data_cell(
-                    override_path,
-                    DataCell::from_arrow(component, raw_default.clone().unwrap()), // TODO: unwrap
-                );
-                ui.close_menu();
-            }
-            if ui.button("Set to fallback value").clicked() {
-                ctx.save_blueprint_data_cell(
-                    override_path,
-                    DataCell::from_arrow(component, raw_fallback.clone()),
-                );
-                ui.close_menu();
-            }
-            if ui
-                .button("Reset override")
-                .on_hover_text(
-                    "Resets the override to what was specified in the default blueprint.",
-                )
-                .clicked()
-            {
-                ctx.reset_blueprint_component_by_name(override_path, component);
-                ui.close_menu();
-            }
-            if ui.button("Make default for current view").clicked() {
-                ctx.save_blueprint_data_cell(
-                    ctx.defaults_path,
-                    DataCell::from_arrow(component, raw_current_value.to_boxed()),
-                );
-                ui.close_menu();
-            }
-        };
-
-        // TODO(andreas): Add a "more" button for options like "remove override" etc.
         let default_open = false;
         ui.list_item()
             .interactive(false)
@@ -441,7 +344,18 @@ fn visualizer_components(
                 list_item::PropertyContent::new(component.short_name())
                     .value_fn(value_fn)
                     .show_only_when_collapsed(false)
-                    .menu_button(&re_ui::icons::MORE, more_menu_contents),
+                    .menu_button(&re_ui::icons::MORE, |ui: &mut egui::Ui| {
+                        menu_more(
+                            ctx,
+                            ui,
+                            component,
+                            override_path,
+                            &raw_override,
+                            &raw_default,
+                            raw_fallback.as_ref(),
+                            raw_current_value,
+                        );
+                    }),
                 add_children,
             )
             .item_response
@@ -449,7 +363,114 @@ fn visualizer_components(
     }
 }
 
-fn add_new_visualizer(
+fn editable_blueprint_component_list_item(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    name: &'static str,
+    blueprint_path: &EntityPath,
+    component: re_types::ComponentName,
+    raw_override: &dyn arrow2::array::Array,
+    result_override: &LatestAtComponentResults,
+) {
+    ui.list_item().interactive(false).show_flat(
+        ui,
+        list_item::PropertyContent::new(name)
+            .value_fn(|ui, _style| {
+                let multiline = false;
+                if raw_override.len() > 1
+                    || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
+                        ctx.viewer_ctx,
+                        ui,
+                        raw_override,
+                        blueprint_path,
+                        component,
+                        multiline,
+                    )
+                {
+                    re_data_ui::EntityLatestAtResults {
+                        entity_path: blueprint_path.clone(),
+                        results: result_override,
+                    }
+                    .data_ui(
+                        ctx.viewer_ctx,
+                        ui,
+                        UiLayout::List,
+                        ctx.viewer_ctx.blueprint_query,
+                        ctx.blueprint_db(),
+                    );
+                }
+            })
+            .action_button(&re_ui::icons::CLOSE, || {
+                ctx.save_empty_blueprint_component_by_name(blueprint_path, component);
+            }),
+    );
+}
+
+/// "More" menu for a component line in the visualizer ui.
+#[allow(clippy::too_many_arguments)]
+fn menu_more(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    component: re_types::ComponentName,
+    override_path: &EntityPath,
+    raw_override: &Option<Box<dyn arrow2::array::Array>>,
+    raw_default: &Option<Box<dyn arrow2::array::Array>>,
+    raw_fallback: &dyn arrow2::array::Array,
+    raw_current_value: &dyn arrow2::array::Array,
+) {
+    if ui
+        .add_enabled(raw_override.is_some(), egui::Button::new("Remove override"))
+        .on_disabled_hover_text("There's no override active")
+        .clicked()
+    {
+        ctx.save_empty_blueprint_component_by_name(override_path, component);
+        ui.close_menu();
+    }
+
+    if ui
+        .add_enabled(
+            raw_default.is_some(),
+            egui::Button::new("Set to view default value"),
+        )
+        .on_disabled_hover_text("There's no default component active")
+        .clicked()
+    {
+        if let Some(raw_default) = raw_default.as_ref() {
+            ctx.save_blueprint_data_cell(
+                override_path,
+                DataCell::from_arrow(component, raw_default.clone()),
+            );
+        }
+        ui.close_menu();
+    }
+
+    if ui.button("Set to fallback value").clicked() {
+        ctx.save_blueprint_data_cell(
+            override_path,
+            DataCell::from_arrow(component, raw_fallback.to_boxed()),
+        );
+        ui.close_menu();
+    }
+
+    if ui
+        .button("Reset override")
+        .on_hover_text("Resets the override to what was specified in the default blueprint.")
+        .clicked()
+    {
+        ctx.reset_blueprint_component_by_name(override_path, component);
+        ui.close_menu();
+    }
+
+    if ui.button("Make default for current view").clicked() {
+        ctx.save_blueprint_data_cell(
+            ctx.defaults_path,
+            DataCell::from_arrow(component, raw_current_value.to_boxed()),
+        );
+        ui.close_menu();
+    }
+}
+
+fn menu_add_new_visualizer(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     data_result: &DataResult,
