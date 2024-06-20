@@ -318,7 +318,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         """
         return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
 
-    def partition(self, offsets: npt.ArrayLike) -> PartitionedComponentBatch:
+    def partition(self, lengths: npt.ArrayLike) -> PartitionedComponentBatch:
         """
         Partitions the component into multiple sub-batches. This wraps the inner arrow
         array in a `pyarrow.ListArray` where the different lists have the lengths specified.
@@ -327,7 +327,7 @@ class ComponentBatchMixin(ComponentBatchLike):
 
         Parameters
         ----------
-        offsets : npt.ArrayLike
+        lengths : npt.ArrayLike
             The offsets to partition the component at.
 
         Returns
@@ -335,7 +335,7 @@ class ComponentBatchMixin(ComponentBatchLike):
         The partitioned component.
 
         """  # noqa: D205
-        return PartitionedComponentBatch(self, offsets)
+        return PartitionedComponentBatch(self, lengths)
 
 
 class ComponentMixin(ComponentBatchLike):
@@ -347,14 +347,13 @@ class ComponentMixin(ComponentBatchLike):
     The class using the mixin must define the `_BATCH_TYPE` field, which should be a subclass of `BaseBatch`.
     """
 
-    @classmethod
-    def component_name(cls) -> str:
+    def component_name(self) -> str:
         """
         The name of the component.
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return cls._BATCH_TYPE._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
+        return self._BATCH_TYPE._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
 
     def as_arrow_array(self) -> pa.Array:
         """

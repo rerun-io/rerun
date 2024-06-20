@@ -890,13 +890,13 @@ impl RecordingStream {
         self.log_with_static(ent_path, false, arch)
     }
 
-    #[inline]
     /// Lower-level logging API to provide data spanning multiple timepoints.
     ///
     /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
     /// in a columnar form. The lengths of all of the [`ChunkTimeline`] and the [`ArrowListArray`]s
     /// must match. All data that occurs at the same index across the different time and components
     /// arrays will act as a single logical row.
+    #[inline]
     pub fn log_temporal_batch(
         &self,
         ent_path: impl Into<EntityPath>,
@@ -1408,11 +1408,11 @@ impl RecordingStream {
     pub fn record_chunk(&self, mut chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
             // TODO(cmc): Repeating these values is pretty wasteful. Would be nice to have a way of
-            // indicting these are fixed across the whole chunk.
+            // indicating these are fixed across the whole chunk.
             // Inject the log time
             {
                 let time_timeline = Timeline::log_time();
-                let time = Time::now().try_into().unwrap_or(TimeInt::MIN);
+                let time = TimeInt::new_temporal(Time::now().nanos_since_epoch());
 
                 let repeated_time = ArrowPrimitiveArray::<i64>::from_values(
                     std::iter::repeat(time.as_i64()).take(chunk.num_rows()),
@@ -1420,8 +1420,15 @@ impl RecordingStream {
                 .to(time_timeline.datatype());
 
                 let time_chunk = ChunkTimeline::new(Some(true), time_timeline, repeated_time);
-                // TODO(jleibs): Where should the error go if this fails?
-                chunk.add_timeline(time_chunk).ok();
+
+                if let Err(err) = chunk.add_timeline(time_chunk) {
+                    re_log::error!(
+                        "Couldn't inject '{}' timeline into chunk (this is a bug in Rerun!): {}",
+                        time_timeline.name(),
+                        err
+                    );
+                    return;
+                }
             }
             // Inject the log tick
             {
@@ -1437,8 +1444,15 @@ impl RecordingStream {
                 .to(tick_timeline.datatype());
 
                 let tick_chunk = ChunkTimeline::new(Some(true), tick_timeline, repeated_tick);
-                // TODO(jleibs): Where should the error go if this fails?
-                chunk.add_timeline(tick_chunk).ok();
+
+                if let Err(err) = chunk.add_timeline(tick_chunk) {
+                    re_log::error!(
+                        "Couldn't inject '{}' timeline into chunk (this is a bug in Rerun!): {}",
+                        tick_timeline.name(),
+                        err
+                    );
+                    return;
+                }
             }
 
             inner.batcher.push_chunk(chunk);

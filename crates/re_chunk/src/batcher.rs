@@ -507,8 +507,6 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
     let mut accs: IntMap<EntityPath, Accumulator> = IntMap::default();
 
-    // TODO(#4184): do_push_chunk
-
     fn do_push_row(acc: &mut Accumulator, row: PendingRow) {
         acc.pending_num_bytes += row.total_size_bytes();
         acc.pending_rows.push(row);
@@ -574,6 +572,8 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
                 match cmd {
                     Command::AppendChunk(chunk) => {
+                        // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
+                        // as long the batching thread is alive… which is where we currently are.
                         tx_chunk.send(chunk).ok();
                     },
                     Command::AppendRow(entity_path, row) => {

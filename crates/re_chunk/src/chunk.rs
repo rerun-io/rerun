@@ -377,7 +377,7 @@ impl Chunk {
     /// This will fail if the passed in data is malformed in any way -- see [`Self::sanity_check`]
     /// for details.
     ///
-    /// The data is assumed to be sorted in row-order. Sequential row-ids will be generate for each
+    /// The data is assumed to be sorted in `RowId`-order. Sequential `RowId`s will be generated for each
     /// row in the chunk.
     pub fn from_auto_row_ids(
         id: ChunkId,
@@ -388,7 +388,7 @@ impl Chunk {
         let count = components
             .iter()
             .next()
-            .map_or(0, |(_, components)| components.len());
+            .map_or(0, |(_, list_array)| list_array.len());
 
         let row_ids = std::iter::from_fn({
             let tuid: re_tuid::Tuid = *id;

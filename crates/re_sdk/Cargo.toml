@@ -50,7 +50,6 @@ web_viewer = [
 
 
 [dependencies]
-arrow2.workspace = true
 re_build_info.workspace = true
 re_chunk.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
@@ -61,6 +60,7 @@ re_sdk_comms = { workspace = true, features = ["client"] }
 re_types_core.workspace = true
 
 ahash.workspace = true
+arrow2.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
 itertools.workspace = true
