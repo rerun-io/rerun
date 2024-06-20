@@ -17,12 +17,6 @@ Panel = Literal["top", "blueprint", "selection", "time"]
 PanelState = Literal["expanded", "collapsed", "hidden"]
 
 
-# read JS/CSS at import time
-# this slows down the import slightly, but it's better than reading the files every time a widget is created
-# _esm = (pathlib.Path(__file__).parent / "static" / "widget.js").read_text()
-# _css = (pathlib.Path(__file__).parent / "static" / "widget.css").read_text()
-
-
 class Viewer(anywidget.AnyWidget):
     _esm = pathlib.Path(__file__).parent / "static" / "widget.js"
     _css = pathlib.Path(__file__).parent / "static" / "widget.css"
@@ -37,8 +31,6 @@ class Viewer(anywidget.AnyWidget):
         value_trait=traitlets.Unicode(),
         allow_none=True,
     ).tag(sync=True)
-
-    # _data = traitlets.Bytes(allow_none=True).tag(sync=True)
 
     _ready = False
     _data_queue: list[bytes]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING:
     from .blueprint import BlueprintLike
@@ -60,11 +60,11 @@ class Viewer:
         """
 
         try:
-            from rerun_notebook import Viewer as _Viewer
+            from rerun_notebook import Viewer as _Viewer  # type: ignore[attr-defined]
         except ImportError:
             logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
             hack: Any = None
-            return hack
+            return hack  # type: ignore[no-any-return]
 
         recording = get_data_recording(recording)
         if recording is None:
@@ -73,7 +73,7 @@ class Viewer:
         self._recording = recording
 
         if blueprint is not None:
-            self._recording.send_blueprint(blueprint)
+            self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
 
         self._viewer = _Viewer(
             width=width,
@@ -89,20 +89,20 @@ class Viewer:
             callback=self._flush_hook,
         )
 
-    def display(self):
+    def display(self) -> None:
         """Display the viewer in a notebook cell."""
 
         from IPython.display import display
 
         display(self._viewer)
 
-    def _flush_hook(self, data: bytes):
+    def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)
 
-    def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:
-        return self._viewer._repr_mimebundle_(**kwargs)
+    def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:  # type: ignore[type-arg]
+        return self._viewer._repr_mimebundle_(**kwargs)  # type: ignore[no-any-return]
 
-    def _repr_keys(self):
+    def _repr_keys(self):  # type: ignore[no-untyped-def]
         return self._viewer._repr_keys()
 
 

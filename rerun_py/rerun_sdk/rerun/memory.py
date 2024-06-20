@@ -53,9 +53,3 @@ class MemoryRecording:
         This will flush the current sink before returning.
         """
         return self.storage.drain_as_bytes()  # type: ignore[no-any-return]
-
-    def _num_msgs_no_flush(self) -> int:
-        return self.storage.num_msgs_no_flush()
-
-    def _drain_as_bytes_no_flush(self) -> bytes:
-        return self.storage.drain_as_bytes_no_flush()
