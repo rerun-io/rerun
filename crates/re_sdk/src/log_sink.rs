@@ -2,6 +2,8 @@ use std::fmt;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
+use re_log_encoding::encoder::EncodeError;
+use re_log_encoding::encoder::{encode_as_bytes_local, local_encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
@@ -134,16 +136,7 @@ impl MemorySink {
     /// Create a new [`MemorySink`] with an associated [`RecordingStream`].
     #[inline]
     pub fn new(rec: RecordingStream) -> Self {
-        Self(MemorySinkStorage::new(rec, None))
-    }
-
-    #[doc(hidden)]
-    #[inline]
-    pub fn new_with_flush_hook(
-        rec: RecordingStream,
-        flush_hook: Option<MemorySinkFlushHook>,
-    ) -> Self {
-        Self(MemorySinkStorage::new(rec, flush_hook))
+        Self(MemorySinkStorage::new(rec))
     }
 
     /// Access the raw `MemorySinkStorage`
@@ -157,19 +150,11 @@ impl LogSink for MemorySink {
     #[inline]
     fn send(&self, msg: LogMsg) {
         self.0.write().push(msg);
-
-        if let Some(flush_hook) = self.0.flush_hook.as_ref() {
-            flush_hook(self.0.clone());
-        }
     }
 
     #[inline]
     fn send_all(&self, mut messages: Vec<LogMsg>) {
         self.0.write().append(&mut messages);
-
-        if let Some(flush_hook) = self.0.flush_hook.as_ref() {
-            flush_hook(self.0.clone());
-        }
     }
 
     #[inline]
@@ -197,15 +182,11 @@ struct MemorySinkStorageInner {
     has_been_used: bool,
 }
 
-#[doc(hidden)]
-pub type MemorySinkFlushHook = Arc<dyn Fn(MemorySinkStorage) + Send + Sync>;
-
 /// The storage used by [`MemorySink`].
 #[derive(Clone)]
 pub struct MemorySinkStorage {
     inner: Arc<Mutex<MemorySinkStorageInner>>,
     pub(crate) rec: RecordingStream,
-    flush_hook: Option<MemorySinkFlushHook>,
 }
 
 impl Drop for MemorySinkStorage {
@@ -227,11 +208,10 @@ impl Drop for MemorySinkStorage {
 
 impl MemorySinkStorage {
     /// Create a new [`MemorySinkStorage`] with an associated [`RecordingStream`].
-    fn new(rec: RecordingStream, flush_hook: Option<MemorySinkFlushHook>) -> Self {
+    fn new(rec: RecordingStream) -> Self {
         Self {
             inner: Default::default(),
             rec,
-            flush_hook,
         }
     }
 
@@ -251,12 +231,6 @@ impl MemorySinkStorage {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
         self.rec.flush_blocking();
-        self.num_msgs_no_flush()
-    }
-
-    #[doc(hidden)]
-    #[inline]
-    pub fn num_msgs_no_flush(&self) -> usize {
         self.inner.lock().msgs.len()
     }
 
@@ -275,69 +249,37 @@ impl MemorySinkStorage {
     ///
     /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
-    pub fn concat_memory_sinks_as_bytes(
-        sinks: &[&Self],
-    ) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
-        let mut buffer = std::io::Cursor::new(Vec::new());
+    pub fn concat_memory_sinks_as_bytes(sinks: &[&Self]) -> Result<Vec<u8>, EncodeError> {
+        let mut encoder = local_encoder()?;
 
-        {
-            let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-            let mut encoder = re_log_encoding::encoder::Encoder::new(
-                re_build_info::CrateVersion::LOCAL,
-                encoding_options,
-                &mut buffer,
-            )?;
-            for sink in sinks {
-                // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
-                // in this flush; it's just a matter of making the table batcher tick early.
-                sink.rec.flush_blocking();
-                let mut inner = sink.inner.lock();
-                inner.has_been_used = true;
+        for sink in sinks {
+            // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
+            // in this flush; it's just a matter of making the table batcher tick early.
+            sink.rec.flush_blocking();
+            let mut inner = sink.inner.lock();
+            inner.has_been_used = true;
 
-                for message in &inner.msgs {
-                    encoder.append(message)?;
-                }
+            for message in &inner.msgs {
+                encoder.append(message)?;
             }
         }
 
-        Ok(buffer.into_inner())
+        Ok(encoder.into_inner())
     }
 
     /// Drain the stored messages and return them as an in-memory RRD.
     ///
     /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
-    pub fn drain_as_bytes(&self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+    pub fn drain_as_bytes(&self) -> Result<Vec<u8>, EncodeError> {
         // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
         // in this flush; it's just a matter of making the table batcher tick early.
         self.rec.flush_blocking();
-        self.drain_as_bytes_no_flush()
-    }
 
-    #[doc(hidden)]
-    #[inline]
-    pub fn drain_as_bytes_no_flush(
-        &self,
-    ) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
-        let mut buffer = std::io::Cursor::new(Vec::new());
+        let mut inner = self.inner.lock();
+        inner.has_been_used = true;
 
-        {
-            let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-            let mut encoder = re_log_encoding::encoder::Encoder::new(
-                re_build_info::CrateVersion::LOCAL,
-                encoding_options,
-                &mut buffer,
-            )?;
-
-            let mut inner = self.inner.lock();
-            inner.has_been_used = true;
-
-            for message in &std::mem::take(&mut inner.msgs) {
-                encoder.append(message)?;
-            }
-        }
-
-        Ok(buffer.into_inner())
+        encode_as_bytes_local(std::mem::take(&mut inner.msgs).iter())
     }
 
     #[inline]
@@ -346,6 +288,44 @@ impl MemorySinkStorage {
         self.rec.store_info().map(|info| info.store_id.clone())
     }
 }
+// ----------------------------------------------------------------------------
+
+type LogMsgCallback = Box<dyn Fn(&[LogMsg]) + Send + Sync>;
+
+/// A sink which forwards all log messages to a callback without any buffering.
+pub struct CallbackSink {
+    // We often receive only one element, so we use SmallVec to avoid heap allocation
+    callback: LogMsgCallback,
+}
+
+impl CallbackSink {
+    /// Create a new `CallbackSink` with the given callback function.
+    #[inline]
+    pub fn new<F>(callback: F) -> Self
+    where
+        F: Fn(&[LogMsg]) + Send + Sync + 'static,
+    {
+        Self {
+            callback: Box::new(callback),
+        }
+    }
+}
+
+impl LogSink for CallbackSink {
+    #[inline]
+    fn send(&self, msg: LogMsg) {
+        (self.callback)(&[msg]);
+    }
+
+    #[inline]
+    fn send_all(&self, messages: Vec<LogMsg>) {
+        (self.callback)(&messages[..]);
+    }
+
+    #[inline]
+    fn flush_blocking(&self) {}
+}
+
 // ----------------------------------------------------------------------------
 
 /// Stream log messages to a Rerun TCP server.

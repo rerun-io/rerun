@@ -5,7 +5,6 @@
 use std::collections::HashMap;
 use std::io::IsTerminal as _;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use itertools::Itertools;
 use pyo3::{
@@ -15,9 +14,12 @@ use pyo3::{
 };
 
 use re_log::ResultExt;
+use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
+use re_sdk::external::re_log_encoding::encoder::encode_as_bytes_local;
+use re_sdk::sink::CallbackSink;
 use re_sdk::{
-    sink::{BinaryStreamStorage, MemorySinkFlushHook, MemorySinkStorage},
+    sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
     EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
 };
@@ -141,6 +143,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
+    m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -749,36 +752,45 @@ fn stdout(
 
 /// Create an in-memory rrd file
 #[pyfunction]
-#[pyo3(signature = (recording = None, flush_hook = None))]
+#[pyo3(signature = (recording = None))]
 fn memory_recording(
     recording: Option<&PyRecordingStream>,
-    flush_hook: Option<PyObject>,
     py: Python<'_>,
 ) -> Option<PyMemorySinkStorage> {
     get_data_recording(recording).map(|rec| {
         // The call to memory may internally flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         let inner = py.allow_threads(|| {
-            let flush_hook = flush_hook.map(|flush_hook| {
-                Arc::new(move |storage| {
-                    Python::with_gil(|py| {
-                        let flush_hook = flush_hook.as_ref(py);
-                        if flush_hook.is_callable() {
-                            flush_hook
-                                .call1((PyMemorySinkStorage { inner: storage },))
-                                .ok_or_log_error();
-                        }
-                    });
-                }) as MemorySinkFlushHook
-            });
-
-            let storage = rec.memory_with_flush_hook(flush_hook);
-
+            let storage = rec.memory();
             flush_garbage_queue();
             storage
         });
         PyMemorySinkStorage { inner }
     })
+}
+
+#[pyfunction]
+#[pyo3(signature = (callback, recording = None))]
+fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, py: Python<'_>) {
+    let Some(rec) = get_data_recording(recording) else {
+        return;
+    };
+
+    let callback = move |msgs: &[LogMsg]| {
+        Python::with_gil(|py| {
+            let data = encode_as_bytes_local(msgs).ok_or_log_error()?;
+            let bytes = PyBytes::new(py, &data);
+            callback.as_ref(py).call1((bytes,)).ok_or_log_error()?;
+            Some(())
+        });
+    };
+
+    // The call to `set_sink` may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| {
+        rec.set_sink(Box::new(CallbackSink::new(callback)));
+        flush_garbage_queue();
+    });
 }
 
 /// Create a new binary stream sink, and return the associated binary stream.
@@ -848,16 +860,6 @@ impl PyMemorySinkStorage {
         })
     }
 
-    fn num_msgs_no_flush(&self, py: Python<'_>) -> usize {
-        py.allow_threads(|| {
-            let num = self.inner.num_msgs_no_flush();
-
-            flush_garbage_queue();
-
-            num
-        })
-    }
-
     /// Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
     ///
     /// This will do a blocking flush before returning!
@@ -865,19 +867,6 @@ impl PyMemorySinkStorage {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             let bytes = self.inner.drain_as_bytes();
-
-            flush_garbage_queue();
-
-            bytes
-        })
-        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
-    }
-
-    fn drain_as_bytes_no_flush<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
-        // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        py.allow_threads(|| {
-            let bytes = self.inner.drain_as_bytes_no_flush();
 
             flush_garbage_queue();
 

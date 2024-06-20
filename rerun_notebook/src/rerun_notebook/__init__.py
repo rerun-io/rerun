@@ -70,6 +70,7 @@ class Viewer(anywidget.AnyWidget):
         self._ready = True
         for data in self._data_queue:
             self.send_rrd(data)
+        self._data_queue.clear()
 
     def send_rrd(self, data: bytes) -> None:
         """Send a recording to the viewer."""
