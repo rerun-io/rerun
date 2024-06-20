@@ -238,8 +238,7 @@ impl DataResult {
         ctx.save_empty_blueprint_component::<C>(individual_override_path);
     }
 
-    #[inline]
-    pub fn lookup_override<C: 'static + re_types::Component>(
+    fn lookup_override<C: 'static + re_types::Component>(
         &self,
         ctx: &ViewerContext<'_>,
     ) -> Option<C> {

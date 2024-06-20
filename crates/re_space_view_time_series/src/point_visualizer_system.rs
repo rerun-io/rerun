@@ -5,7 +5,7 @@ use re_space_view::range_with_blueprint_resolved_data;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
-    Archetype as _, ComponentNameSet, Loggable,
+    Archetype as _, Loggable,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -38,11 +38,9 @@ const DEFAULT_MARKER_SIZE: f32 = 3.0;
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
-        let mut series_point_queried: ComponentNameSet = SeriesPoint::all_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect::<ComponentNameSet>();
-        query_info.queried.append(&mut series_point_queried);
+        query_info
+            .queried
+            .extend(SeriesPoint::all_components().iter().map(ToOwned::to_owned));
         query_info.indicators = std::iter::once(SeriesPoint::indicator().name()).collect();
         query_info
     }
