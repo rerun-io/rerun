@@ -121,8 +121,7 @@ impl DataUi for InstancePath {
                                 if instance.is_all() {
                                     crate::EntityLatestAtResults {
                                         entity_path: entity_path.clone(),
-                                        component_name,
-                                        results: std::sync::Arc::clone(results),
+                                        results: results.as_ref(),
                                     }
                                     .data_ui(
                                         ctx,

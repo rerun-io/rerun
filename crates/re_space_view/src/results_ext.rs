@@ -16,9 +16,9 @@ use crate::DataResultQuery as _;
 /// Although overrides are never temporal, when accessed via the [`crate::RangeResultsExt`] trait
 /// they will be merged into the results appropriately.
 pub struct HybridLatestAtResults<'a> {
-    pub(crate) overrides: LatestAtResults,
-    pub(crate) results: LatestAtResults,
-    pub(crate) defaults: LatestAtResults,
+    pub overrides: LatestAtResults,
+    pub results: LatestAtResults,
+    pub defaults: LatestAtResults,
     pub ctx: &'a ViewContext<'a>,
     pub query: LatestAtQuery,
     pub data_result: &'a DataResult,

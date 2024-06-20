@@ -60,6 +60,17 @@ impl LatestAtComponentResults {
         }
     }
 
+    /// Tries to return the component data as an arrow array.
+    ///
+    /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
+    #[inline]
+    pub fn try_raw(&self, resolver: &PromiseResolver) -> Option<Box<dyn Array>> {
+        match self.resolved(resolver) {
+            PromiseResult::Pending | PromiseResult::Error(_) => None,
+            PromiseResult::Ready(cell) => Some(cell.to_arrow()),
+        }
+    }
+
     /// Returns true if the component is missing, an empty array or still pending.
     pub fn is_empty(&self, resolver: &PromiseResolver) -> bool {
         match self.resolved(resolver) {

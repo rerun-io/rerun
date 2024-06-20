@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use re_log_types::ComponentPath;
 use re_ui::ContextExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
@@ -31,8 +29,7 @@ impl DataUi for ComponentPath {
             if let Some(results) = results.components.get(component_name) {
                 crate::EntityLatestAtResults {
                     entity_path: entity_path.clone(),
-                    component_name: *component_name,
-                    results: Arc::clone(results),
+                    results: results.as_ref(),
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if let Some(entity_tree) = ctx.recording().tree().subtree(entity_path) {

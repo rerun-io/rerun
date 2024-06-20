@@ -17,7 +17,7 @@ use re_types::{
     tensor_data::TensorDataMeaning,
     Loggable as _,
 };
-use re_ui::UiExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
@@ -368,16 +368,19 @@ pub fn create_labels(
 }
 
 pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
-    // Take the exact same colors we have in the ui!
-    let selection_outline_color =
-        re_renderer::Rgba::from(gui_ctx.style().visuals.selection.bg_fill);
-    let hover_outline_color =
-        re_renderer::Rgba::from(gui_ctx.style().visuals.widgets.hovered.bg_fill);
+    // Use the exact same colors we have in the ui!
+    let hover_outline = gui_ctx.hover_stroke();
+    let selection_outline = gui_ctx.selection_stroke();
+
+    // See also: SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES
+
+    let outline_radius_ui_pts = 0.5 * f32::max(hover_outline.width, selection_outline.width);
+    let outline_radius_pixel = (gui_ctx.pixels_per_point() * outline_radius_ui_pts).at_least(0.5);
 
     OutlineConfig {
-        outline_radius_pixel: (gui_ctx.pixels_per_point() * 1.5).at_least(0.5),
-        color_layer_a: hover_outline_color,
-        color_layer_b: selection_outline_color,
+        outline_radius_pixel,
+        color_layer_a: re_renderer::Rgba::from(hover_outline.color),
+        color_layer_b: re_renderer::Rgba::from(selection_outline.color),
     }
 }
 

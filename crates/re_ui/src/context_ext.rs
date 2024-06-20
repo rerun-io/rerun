@@ -35,6 +35,24 @@ pub trait ContextExt {
         }
     }
 
+    /// Hovered UI and spatial primitives should have this outline.
+    fn hover_stroke(&self) -> egui::Stroke {
+        // We want something bright here.
+        self.ctx().style().visuals.widgets.active.fg_stroke
+    }
+
+    /// Selected UI and spatial primitives should have this outline.
+    fn selection_stroke(&self) -> egui::Stroke {
+        self.ctx().style().visuals.selection.stroke
+
+        // It is tempting to use the background selection color for outlines,
+        // but in practice it is way too dark for spatial views (you can't tell what is selected).
+        // Also: background colors should not be used as stroke colors.
+        // let color = self.ctx().style().visuals.selection.bg_fill;
+        // let stroke_width = self.ctx().style().visuals.selection.stroke.width;
+        // egui::Stroke::new(stroke_width, color)
+    }
+
     #[must_use]
     fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();

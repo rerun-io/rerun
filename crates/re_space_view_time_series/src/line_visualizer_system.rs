@@ -6,7 +6,7 @@ use re_types::components::AggregationPolicy;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
-    Archetype as _, ComponentNameSet, Loggable,
+    Archetype as _, Loggable,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -36,11 +36,9 @@ const DEFAULT_STROKE_WIDTH: f32 = 0.75;
 impl VisualizerSystem for SeriesLineSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
-        let mut series_line_queried: ComponentNameSet = SeriesLine::all_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect::<ComponentNameSet>();
-        query_info.queried.append(&mut series_line_queried);
+        query_info
+            .queried
+            .extend(SeriesLine::all_components().iter().map(ToOwned::to_owned));
         query_info.indicators = std::iter::once(SeriesLine::indicator().name()).collect();
         query_info
     }
