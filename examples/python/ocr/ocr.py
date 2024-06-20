@@ -391,9 +391,6 @@ def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], page_path: str 
     # Layout Object - This will contain the detected layouts and their detections
     layout = Layout()
 
-    # Read Image
-    # img = cv2.imread(file_path)
-
     # Log Image and add Annotation Context
     rr.log(f"{page_path}/Image", rr.Image(coloured_image))
     rr.log(

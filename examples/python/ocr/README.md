@@ -142,7 +142,7 @@ page_tabs.append(
     )
 )
 
-# ...
+# …
 
 rr.send_blueprint(rrb.Blueprint(
     rrb.Tabs(*page_tabs),
