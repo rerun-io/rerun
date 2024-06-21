@@ -360,6 +360,7 @@ binaryen = "117.*"       # for `wasm-opt`
 maturin = "1.5.1"
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
+pyarrow = "14.0.2"
 nodejs = ">=20.12"       # rerun_notebook needs nodejs to build the wheel
 wheel = ">=0.38,<0.39"
 
