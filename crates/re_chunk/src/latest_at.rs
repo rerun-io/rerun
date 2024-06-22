@@ -77,6 +77,9 @@ impl Chunk {
             return self.emptied();
         };
 
+        // TODO: densified first would avoid all the validity checks?
+        // TODO: do we have a test for sparse columns?
+
         let mut index = None;
 
         let is_static = self.is_static();

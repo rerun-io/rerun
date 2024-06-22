@@ -1,4 +1,7 @@
-use std::sync::{atomic::Ordering, Arc};
+use std::{
+    collections::BTreeSet,
+    sync::{atomic::Ordering, Arc},
+};
 
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::{EntityPath, TimeInt, Timeline};
@@ -146,11 +149,41 @@ impl ChunkStore {
                 temporal_chunk_ids_per_component.get(&component_name)
             })
             .and_then(|temporal_chunk_ids_per_time| {
-                temporal_chunk_ids_per_time
+                let upper_bound = temporal_chunk_ids_per_time
                     .per_start_time
                     .range(..=query.at())
                     .next_back()
-                    .map(|(_time, chunk_ids)| chunk_ids)
+                    .map(|(time, _)| *time)?;
+
+                // Overlapped chunks
+                // =================
+                //
+                // To deal with potentially overlapping chunks, we keep track of the longest
+                // interval in the entire map, which gives us an upper bound on how much we
+                // would need to walk backwards in order to find all potential overlaps.
+                //
+                // This is a fairly simple solution that scales much better than interval-tree
+                // based alternatives, both in terms of complexity and performance, in the normal
+                // case where most chunks in a collection have similar lengths.
+                //
+                // The most degenerate case -- a single chunk overlaps everything else -- results
+                // in `O(n)` performance, which gets amortized by the query cache.
+                // If that turns out to be a problem in practice, we can experiment with more
+                // complex solutions then.
+                let lower_bound = upper_bound
+                    .as_i64()
+                    .saturating_sub(temporal_chunk_ids_per_time.max_interval_length as _);
+
+                Some(
+                    temporal_chunk_ids_per_time
+                        .per_start_time
+                        .range(..=query.at())
+                        .rev()
+                        .take_while(|(time, _)| time.as_i64() >= lower_bound)
+                        .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
+                        .copied()
+                        .collect::<BTreeSet<_>>(),
+                )
             })
         {
             return temporal_chunk_ids
