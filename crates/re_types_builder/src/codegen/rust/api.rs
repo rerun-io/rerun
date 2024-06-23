@@ -89,8 +89,7 @@ impl RustCodeGenerator {
         let mut all_modules: HashSet<_> = HashSet::default();
 
         // Generate folder contents:
-        let ordered_objects = objects.ordered_objects(object_kind.into());
-        for &obj in &ordered_objects {
+        for obj in objects.objects_of_kind(object_kind) {
             let crate_name = obj.crate_name();
             let module_name = obj.module_name();
 
@@ -122,16 +121,15 @@ impl RustCodeGenerator {
         }
 
         for (crate_name, module_name, is_testing, module_path) in all_modules {
-            let relevant_objs = &ordered_objects
-                .iter()
+            let relevant_objs = objects
+                .objects_of_kind(object_kind)
                 .filter(|obj| obj.is_testing() == is_testing)
                 .filter(|obj| obj.crate_name() == crate_name)
                 .filter(|obj| obj.module_name() == module_name)
-                .copied()
                 .collect_vec();
 
             // src/{testing/}{datatypes|components|archetypes}/mod.rs
-            generate_mod_file(&module_path, relevant_objs, files_to_write);
+            generate_mod_file(&module_path, &relevant_objs, files_to_write);
         }
     }
 }
@@ -281,7 +279,7 @@ fn generate_component_defaults(
 ) {
     let mut quoted_fallbacks = Vec::new();
     let mut component_namespaces = HashSet::new();
-    for component in objects.ordered_objects(Some(ObjectKind::Component)) {
+    for component in objects.objects_of_kind(ObjectKind::Component) {
         if component.is_testing() {
             continue;
         }

@@ -285,7 +285,7 @@ pub fn generate_lang_agnostic(
 
     // create and fill out arrow registry
     let mut arrow_registry = ArrowRegistry::default();
-    for obj in objects.ordered_objects_mut(None) {
+    for obj in objects.objects.values_mut() {
         arrow_registry.register(obj);
     }
 

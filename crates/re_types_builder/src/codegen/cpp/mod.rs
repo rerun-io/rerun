@@ -174,13 +174,12 @@ impl CppCodeGenerator {
         let mut files_to_write = GeneratedFiles::default();
 
         // Generate folder contents:
-        let ordered_objects = objects
-            .ordered_objects(object_kind.into())
-            .into_iter()
+        let objects_of_kind = objects
+            .objects_of_kind(object_kind)
             .filter(|obj| &obj.scope() == scope)
             .collect_vec();
 
-        for &obj in &ordered_objects {
+        for &obj in &objects_of_kind {
             if let Err(err) = generate_object_files(
                 objects,
                 &folder_path_sdk,
@@ -196,7 +195,7 @@ impl CppCodeGenerator {
         for testing in [false, true] {
             let hash = quote! { # };
             let pragma_once = pragma_once();
-            let header_file_names = ordered_objects
+            let header_file_names = objects_of_kind
                 .iter()
                 .filter(|obj| obj.is_testing() == testing)
                 .map(|obj| format!("{folder_name}/{}.hpp", obj.snake_case_name()))
