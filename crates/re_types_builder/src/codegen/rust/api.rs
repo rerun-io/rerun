@@ -298,7 +298,7 @@ fn generate_component_defaults(
         });
     }
 
-    let mut code = String::new();
+    let mut code = format!("// {}\n", autogen_warning!());
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(clippy::wildcard_imports)]\n");
     code.push_str("\n\n");
