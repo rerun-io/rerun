@@ -33,6 +33,7 @@ use crate::{
 use super::{
     arrow::quote_fqname_as_type_path,
     blueprint_validation::generate_blueprint_validation,
+    registry::generate_re_types_registry,
     util::{string_from_quoted, SIMPLE_COMMENT_PREFIX},
 };
 
@@ -68,8 +69,11 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
+        let crates_root_path = self.workspace_path.join("crates");
+
         generate_component_defaults(reporter, objects, &mut files_to_write);
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
+        generate_re_types_registry(reporter, &crates_root_path, objects, &mut files_to_write);
 
         files_to_write
     }
@@ -838,7 +842,7 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
     quote_doc_lines(&lines)
 }
 
-fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
+pub fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
     let mut lines = docs.doc_lines_for_untagged_and("rs");
 
     let examples = if !fqname.starts_with("rerun.blueprint.views") {

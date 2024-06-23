@@ -4,6 +4,7 @@ mod api;
 mod arrow;
 mod blueprint_validation;
 mod deserializer;
+mod registry;
 mod serializer;
 mod util;
 
