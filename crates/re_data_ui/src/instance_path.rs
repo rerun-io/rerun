@@ -42,7 +42,7 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::component_list_for_ui(&components);
+        let components = crate::sorted_component_list_for_ui(&components);
         let indicator_count = components
             .iter()
             .filter(|c| c.is_indicator_component())

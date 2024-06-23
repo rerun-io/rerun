@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use re_data_ui::DataUi;
+use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_space_view::latest_at_with_blueprint_resolved_data;
@@ -123,7 +123,7 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for &component in query_info.queried.iter() {
+    for component in sorted_component_list_for_ui(query_info.queried.iter()) {
         if component.is_indicator_component() {
             continue;
         }

@@ -1,8 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use itertools::Itertools;
-
 use re_data_store::LatestAtQuery;
+use re_data_ui::sorted_component_list_for_ui;
 use re_log_types::{DataCell, DataRow, EntityPath, RowId};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
@@ -59,7 +58,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
         &space_view.defaults_path,
     );
 
-    let sorted_overrides = active_defaults.iter().sorted();
+    let sorted_overrides = sorted_component_list_for_ui(active_defaults.iter());
 
     let query_context = QueryContext {
         viewer_ctx: ctx.viewer_ctx,
@@ -73,7 +72,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for component_name in sorted_overrides {
-            let Some(visualizer_identifier) = component_to_vis.get(component_name) else {
+            let Some(visualizer_identifier) = component_to_vis.get(&component_name) else {
                 continue;
             };
             let Ok(visualizer) = ctx
@@ -94,10 +93,10 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                     db.store(),
                     query,
                     &space_view.defaults_path,
-                    [*component_name],
+                    [component_name],
                 )
                 .components
-                .get(component_name)
+                .get(&component_name)
                 .cloned(); /* arc */
 
             if let Some(component_data) = component_data {
@@ -107,7 +106,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                         ui,
                         db,
                         &space_view.defaults_path,
-                        *component_name,
+                        component_name,
                         &component_data,
                         visualizer.as_fallback_provider(),
                     );
@@ -122,7 +121,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                             .action_button(&re_ui::icons::CLOSE, || {
                                 ctx.save_empty_blueprint_component_by_name(
                                     &space_view.defaults_path,
-                                    *component_name,
+                                    component_name,
                                 );
                             })
                             .value_fn(|ui, _| value_fn(ui)),

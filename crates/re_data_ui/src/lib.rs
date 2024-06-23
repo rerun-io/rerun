@@ -40,13 +40,14 @@ pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
 pub use image_meaning::image_meaning_for_entity;
 
 /// Sort components for display in the UI.
-pub fn component_list_for_ui<'a>(
+pub fn sorted_component_list_for_ui<'a>(
     iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
 ) -> Vec<ComponentName> {
     let mut components: Vec<ComponentName> = iter.into_iter().copied().collect();
 
-    // Put indicator components first:
-    components.sort_by_key(|c| (!c.is_indicator_component(), c.full_name()));
+    // Put indicator components first.
+    // We then sort by the short name, as that is what is shown in the UI.
+    components.sort_by_key(|c| (!c.is_indicator_component(), c.short_name()));
 
     components
 }
