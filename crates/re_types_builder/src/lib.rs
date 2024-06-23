@@ -395,13 +395,22 @@ fn generate_code(
 ) {
     use rayon::prelude::*;
 
-    // 1. Generate in-memory code files.
+    // Generate in-memory code files:
     let mut files = generator.generate(reporter, objects, arrow_registry);
 
-    // 2. Generate in-memory gitattribute files.
+    for (filepath, contents) in &files {
+        if !contents.contains("DO NOT EDIT") {
+            reporter.error_file(
+                filepath,
+                "Generated file missing DO NOT EDIT warning. Use the `autogen_warning!` macro.",
+            );
+        }
+    }
+
+    // Generate in-memory gitattribute files:
     generate_gitattributes_for_generated_files(&mut files);
 
-    // 3. Format in-memory files.
+    // Format in-memory files:
     formatter.format(reporter, &mut files);
 
     if check {
@@ -414,7 +423,7 @@ fn generate_code(
         return;
     }
 
-    // 4. Write all files to filesystem.
+    // Write all files to filesystem:
     {
         re_tracing::profile_wait!("write_files");
 
@@ -423,7 +432,7 @@ fn generate_code(
         });
     }
 
-    // 4. Remove orphaned files.
+    // Remove orphaned files:
     for path in orphan_paths_opt_out {
         files.retain(|filepath, _| filepath.parent() != Some(path));
     }
