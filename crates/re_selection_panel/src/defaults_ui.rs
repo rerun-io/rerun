@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use re_data_store::LatestAtQuery;
-use re_data_ui::sorted_component_list_for_ui;
+use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_log_types::{DataCell, DataRow, EntityPath, RowId};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
@@ -126,7 +126,13 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                             })
                             .value_fn(|ui, _| value_fn(ui)),
                     )
-                    .on_hover_text(component_name.full_name());
+                    .on_hover_ui(|ui| {
+                        component_name.data_ui_default(
+                            ctx.viewer_ctx,
+                            ui,
+                            re_viewer_context::UiLayout::Tooltip,
+                        );
+                    });
             }
         }
     });

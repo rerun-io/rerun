@@ -147,6 +147,10 @@ impl DataUi for InstancePath {
                     list_item.show_flat(ui, content)
                 };
 
+                let response = response.on_hover_ui(|ui| {
+                    component_name.data_ui_default(ctx, ui, UiLayout::Tooltip);
+                });
+
                 if interactive {
                     ctx.select_hovered_on_click(&response, item);
                 }

@@ -13,6 +13,7 @@ mod app_id;
 mod blueprint_data;
 mod blueprint_types;
 mod component;
+mod component_name;
 mod component_path;
 mod component_ui_registry;
 mod data;
