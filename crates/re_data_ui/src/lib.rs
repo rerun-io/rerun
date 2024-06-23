@@ -62,6 +62,10 @@ pub trait DataUi {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
+
+    fn data_ui_default(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+        self.data_ui(ctx, ui, ui_layout, &ctx.current_query(), ctx.recording());
+    }
 }
 
 /// Similar to [`DataUi`], but for data that is related to an entity (e.g. a component).
