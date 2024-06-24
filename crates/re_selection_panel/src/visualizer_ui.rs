@@ -1,8 +1,9 @@
 use itertools::Itertools;
 
 use re_data_ui::DataUi;
-use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
+use re_entity_db::EntityDb;
 use re_log_types::{DataCell, EntityPath};
+use re_query::LatestAtComponentResults;
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::external::arrow2;
 use re_types_core::components::VisualizerOverrides;
