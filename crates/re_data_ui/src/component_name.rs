@@ -18,16 +18,23 @@ impl DataUi for ComponentName {
         } else {
             ui.scope(|ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                ui.label(format!("Full name: {}", self.full_name()));
+
+                if ui_layout.is_selection_panel() {
+                    ui.label(format!("Full name: {}", self.full_name()));
+                };
 
                 // Only show the first line of the docs:
                 if let Some(markdown) = ctx
                     .reflection
                     .components
                     .get(self)
-                    .and_then(|info| info.docstring_md.lines().next())
+                    .map(|info| info.docstring_md)
                 {
-                    ui.markdown_ui(egui::Id::new(self), markdown);
+                    if ui_layout.is_selection_panel() {
+                        ui.markdown_ui(egui::Id::new((self, "full")), markdown);
+                    } else if let Some(first_line) = markdown.lines().next() {
+                        ui.markdown_ui(egui::Id::new((self, "first_line")), first_line);
+                    }
                 }
 
                 if let Some(url) = self.doc_url() {
