@@ -175,8 +175,7 @@ pub struct App {
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 
-    /// Lookup table for component placeholder values, used whenever no fallback was provided explicitly.
-    component_placeholders: re_viewer_context::ComponentPlaceholders,
+    reflection: re_types_core::Reflection,
 }
 
 impl App {
@@ -255,16 +254,13 @@ impl App {
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
-        let component_base_fallbacks = {
-            re_tracing::profile_scope!("component_base_fallbacks");
-            match crate::component_defaults::list_default_components() {
-                Ok(defaults) => defaults.collect(),
-                Err(err) => {
-                    re_log::error!(
-                        "Failed to create list of serialized default values for components: {err}"
-                    );
-                    Default::default()
-                }
+        let reflection = match crate::reflection::generate_reflection() {
+            Ok(reflection) => reflection,
+            Err(err) => {
+                re_log::error!(
+                    "Failed to create list of serialized default values for components: {err}"
+                );
+                Default::default()
             }
         };
 
@@ -311,7 +307,7 @@ impl App {
             panel_state_overrides_active: true,
             panel_state_overrides,
 
-            component_placeholders: component_base_fallbacks,
+            reflection,
         }
     }
 
@@ -955,6 +951,7 @@ impl App {
                             render_ctx,
                             entity_db,
                             store_view,
+                            &self.reflection,
                             &self.component_ui_registry,
                             &self.space_view_class_registry,
                             &self.rx,
@@ -963,7 +960,6 @@ impl App {
                                 hide: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
-                            &self.component_placeholders,
                         );
                     }
                     render_ctx.before_submit();

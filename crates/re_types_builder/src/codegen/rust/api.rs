@@ -33,7 +33,7 @@ use crate::{
 use super::{
     arrow::quote_fqname_as_type_path,
     blueprint_validation::generate_blueprint_validation,
-    registry::generate_re_types_registry,
+    reflection::generate_reflection,
     util::{string_from_quoted, SIMPLE_COMMENT_PREFIX},
 };
 
@@ -69,11 +69,8 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
-        let crates_root_path = self.workspace_path.join("crates");
-
-        generate_component_defaults(reporter, objects, &mut files_to_write);
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
-        generate_re_types_registry(reporter, &crates_root_path, objects, &mut files_to_write);
+        generate_reflection(reporter, objects, &mut files_to_write);
 
         files_to_write
     }
@@ -190,7 +187,7 @@ fn generate_object_file(
     append_tokens(reporter, code, quoted_obj, target_file)
 }
 
-fn append_tokens(
+pub fn append_tokens(
     reporter: &Reporter,
     mut code: String,
     quoted_obj: TokenStream,
@@ -272,62 +269,6 @@ fn generate_mod_file(
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
 
-    files_to_write.insert(path, code);
-}
-
-/// Generate module with a function that lists all components with their serialized default values.
-fn generate_component_defaults(
-    reporter: &Reporter,
-    objects: &Objects,
-    files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
-) {
-    let mut quoted_fallbacks = Vec::new();
-    let mut component_namespaces = HashSet::new();
-    for component in objects.objects_of_kind(ObjectKind::Component) {
-        if component.is_testing() {
-            continue;
-        }
-
-        if let Some(scope) = component.scope() {
-            component_namespaces.insert(format!("{}::{scope}", component.crate_name()));
-        } else {
-            component_namespaces.insert(component.crate_name());
-        }
-
-        let type_name = format_ident!("{}", component.name);
-        quoted_fallbacks.push(quote! {
-            (<#type_name as Loggable>::name(), #type_name::default().to_arrow()?)
-        });
-    }
-
-    let mut code = format!("// {}\n", autogen_warning!());
-    code.push_str("#![allow(unused_imports)]\n");
-    code.push_str("#![allow(clippy::wildcard_imports)]\n");
-    code.push_str("\n\n");
-    for namespace in component_namespaces {
-        code.push_str(&format!("use {namespace}::components::*;\n"));
-    }
-
-    let docs = quote_doc_line("Calls `default` for each component type in this module and serializes it to arrow. This is useful as a base fallback value when displaying ui.");
-    let tokens = quote! {
-        use re_types_core::{external::arrow2, ComponentName, SerializationError};
-
-        #docs
-        pub fn list_default_components() -> Result<impl Iterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>, SerializationError> {
-            use ::re_types_core::{Loggable, LoggableBatch as _};
-
-            re_tracing::profile_function!();
-            Ok([
-                #(#quoted_fallbacks,)*
-            ].into_iter())
-        }
-    };
-
-    // Put into its own subfolder since codegen is set up in a way that it thinks that everything
-    // inside the folder is either generated or an extension to the generated code.
-    // This way we don't have to build an exception just for this file.
-    let path = Utf8PathBuf::from("crates/re_viewer/src/component_defaults/mod.rs");
-    let code = append_tokens(reporter, code, tokens, &path);
     files_to_write.insert(path, code);
 }
 

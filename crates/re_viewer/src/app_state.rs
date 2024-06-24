@@ -126,12 +126,12 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
+        reflection: &re_types_core::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
-        component_placeholders: &re_viewer_context::ComponentPlaceholders,
     ) {
         re_tracing::profile_function!();
 
@@ -244,6 +244,7 @@ impl AppState {
             app_options,
             cache,
             space_view_class_registry,
+            reflection,
             component_ui_registry,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
@@ -257,7 +258,6 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
-            component_placeholders,
         };
 
         // First update the viewport and thus all active space views.
@@ -308,6 +308,7 @@ impl AppState {
             app_options,
             cache,
             space_view_class_registry,
+            reflection,
             component_ui_registry,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
@@ -321,7 +322,6 @@ impl AppState {
             render_ctx: Some(render_ctx),
             command_sender,
             focused_item,
-            component_placeholders,
         };
 
         //

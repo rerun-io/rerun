@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/f05504784aae7fa19303e2e57bc0fab10a3cc943/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/f05504784aae7fa19303e2e57bc0fab10a3cc943/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/f05504784aae7fa19303e2e57bc0fab10a3cc943/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/f05504784aae7fa19303e2e57bc0fab10a3cc943/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/f05504784aae7fa19303e2e57bc0fab10a3cc943/1200w.png">
+  <img src="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/1200w.png">
 </picture>
 
 
@@ -163,7 +163,6 @@ Update instructions:
 | re_query             | Querying data in the re_data_store                                       |
 | re_types             | The built-in Rerun data types, component types, and archetypes.          |
 | re_types_blueprint   | The core traits and types that power Rerun's Blueprint sub-system.       |
-| re_types_registry    | A runtime registry of known Rerun types (components, archetypes, …).     |
 | re_log_encoding      | Helpers for encoding and transporting Rerun log messages                 |
 
 

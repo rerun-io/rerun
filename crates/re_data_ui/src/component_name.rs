@@ -7,7 +7,7 @@ use super::DataUi;
 impl DataUi for ComponentName {
     fn data_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
@@ -21,7 +21,9 @@ impl DataUi for ComponentName {
                 ui.label(format!("Full name: {}", self.full_name()));
 
                 // Only show the first line of the docs:
-                if let Some(markdown) = re_types_registry::components::registry()
+                if let Some(markdown) = ctx
+                    .reflection
+                    .components
                     .get(self)
                     .and_then(|info| info.docstring_md.lines().next())
                 {

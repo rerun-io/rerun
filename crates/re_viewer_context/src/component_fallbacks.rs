@@ -1,10 +1,6 @@
-use ahash::HashMap;
 use re_types::{external::arrow2, ComponentName};
 
 use crate::QueryContext;
-
-/// Lookup table for component placeholder values, used whenever no fallback was provided explicitly.
-pub type ComponentPlaceholders = HashMap<ComponentName, Box<dyn arrow2::array::Array>>;
 
 /// Result for a fallback request to a provider.
 pub enum ComponentFallbackProviderResult {
@@ -37,7 +33,7 @@ pub enum ComponentFallbackError {
     /// The fallback provider is not able to handle the given component _and_ there was no placeholder value.
     ///
     /// This should never happen, since all components should have a placeholder value
-    /// registered in [`crate::ViewerContext::component_placeholders`].
+    /// registered in [`crate::ViewerContext::reflection`].
     /// Meaning, that this is an unknown component or something went wrong with the placeholder registration.
     #[error("Missing placeholder for component. Was the component's default registered with the viewer?")]
     MissingPlaceholderValue,
@@ -84,10 +80,12 @@ pub trait ComponentFallbackProvider {
             ComponentFallbackProviderResult::ComponentNotHandled => {}
         }
 
-        match ctx.viewer_ctx.component_placeholders.get(&component) {
-            Some(placeholder) => Ok(placeholder.clone()),
-            None => Err(ComponentFallbackError::MissingPlaceholderValue),
-        }
+        ctx.viewer_ctx
+            .reflection
+            .components
+            .get(&component)
+            .and_then(|info| info.placeholder.clone())
+            .ok_or(ComponentFallbackError::MissingPlaceholderValue)
     }
 }
 

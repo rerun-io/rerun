@@ -4424,7 +4424,6 @@ dependencies = [
  "re_types",
  "re_types_blueprint",
  "re_types_core",
- "re_types_registry",
  "re_ui",
  "re_viewer_context",
  "rfd",
@@ -5142,6 +5141,7 @@ dependencies = [
  "criterion",
  "document-features",
  "itertools 0.13.0",
+ "nohash-hasher",
  "once_cell",
  "re_arrow2",
  "re_case",
@@ -5152,14 +5152,6 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror",
-]
-
-[[package]]
-name = "re_types_registry"
-version = "0.17.0-alpha.4"
-dependencies = [
- "nohash-hasher",
- "re_types_core",
 ]
 
 [[package]]
@@ -5292,6 +5284,7 @@ dependencies = [
  "re_string_interner",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "re_ui",
  "serde",
  "slotmap",
