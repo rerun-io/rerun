@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -11,92 +10,112 @@ if TYPE_CHECKING:
 
 from rerun import bindings
 
-from .html_shared import DEFAULT_HEIGHT, DEFAULT_TIMEOUT, DEFAULT_WIDTH, render_html_template
-from .memory import memory_recording
-from .recording_stream import RecordingStream, get_application_id
+from .recording_stream import RecordingStream, get_data_recording
+
+DEFAULT_WIDTH = 950
+DEFAULT_HEIGHT = 712
 
 
-def as_html(
-    *,
-    width: int = DEFAULT_WIDTH,
-    height: int = DEFAULT_HEIGHT,
-    app_url: str | None = None,
-    timeout_ms: int = DEFAULT_TIMEOUT,
-    blueprint: BlueprintLike | None = None,
-    recording: RecordingStream | None = None,
-) -> str:
+class Viewer:
     """
-    Generate an HTML snippet that displays the recording in an IFrame.
+    A viewer embeddable in a notebook.
 
-    For use in contexts such as Jupyter notebooks.
-
-    ⚠️ This will do a blocking flush of the current sink before returning!
-
-    Parameters
-    ----------
-    width : int
-        The width of the viewer in pixels.
-    height : int
-        The height of the viewer in pixels.
-    app_url : str
-        Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
-        or localhost if [rerun.start_web_viewer_server][] has been called.
-    timeout_ms : int
-        The number of milliseconds to wait for the Rerun web viewer to load.
-    blueprint : BlueprintLike
-        The blueprint to display in the viewer.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
+    This viewer is a wrapper around the [`rerun_notebook.Viewer`][] widget.
     """
 
-    application_id = get_application_id(recording)
-    if application_id is None:
-        raise ValueError(
-            "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording."
+    def __init__(
+        self,
+        *,
+        width: int = DEFAULT_WIDTH,
+        height: int = DEFAULT_HEIGHT,
+        blueprint: BlueprintLike | None = None,
+        recording: RecordingStream | None = None,
+        display: bool = False,
+    ):
+        """
+        Create a new Rerun viewer for use in a notebook.
+
+        Any data logged to the recording after initialization will be sent directly to the viewer.
+
+        Parameters
+        ----------
+        width : int
+            The width of the viewer in pixels.
+        height : int
+            The height of the viewer in pixels.
+        recording:
+            Specifies the [`rerun.RecordingStream`][] to use.
+            If left unspecified, defaults to the current active data recording, if there is one.
+            See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+        blueprint:
+            A blueprint object to send to the viewer.
+            It will be made active and set as the default blueprint in the recording.
+
+            Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+        display : bool
+            Whether to display the viewer in the current notebook cell
+            immediately after initialization.
+            Defaults to `False`.
+
+        """
+
+        try:
+            from rerun_notebook import Viewer as _Viewer  # type: ignore[attr-defined]
+        except ImportError:
+            logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
+            hack: Any = None
+            return hack  # type: ignore[no-any-return]
+
+        recording = get_data_recording(recording)
+        if recording is None:
+            raise ValueError("No recording specified and no active recording found")
+
+        self._recording = recording
+
+        if blueprint is not None:
+            self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
+
+        self._viewer = _Viewer(
+            width=width,
+            height=height,
         )
 
-    if app_url is None:
-        app_url = bindings.get_app_url()
+        if display:
+            self.display()
 
-    output_stream = RecordingStream(
-        bindings.new_recording(
-            application_id=application_id,
-            make_default=False,
-            make_thread_default=False,
-            default_enabled=True,
+        bindings.set_callback_sink(
+            recording=RecordingStream.to_native(self._recording),
+            callback=self._flush_hook,
         )
-    )
-    if blueprint is not None:
-        output_stream.send_blueprint(blueprint, make_active=True)  # type: ignore[attr-defined]
 
-    data_memory = memory_recording(recording=recording)
-    output_memory = output_stream.memory_recording()  # type: ignore[attr-defined]
+    def display(self) -> None:
+        """Display the viewer in a notebook cell."""
 
-    base64_data = base64.b64encode(output_memory.storage.concat_as_bytes(data_memory.storage)).decode("utf-8")
+        from IPython.display import display
 
-    return render_html_template(
-        base64_data=base64_data,
-        app_url=app_url,
-        timeout_ms=timeout_ms,
-        width=width,
-        height=height,
-    )
+        display(self._viewer)
+
+    def _flush_hook(self, data: bytes) -> None:
+        self._viewer.send_rrd(data)
+
+    def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:  # type: ignore[type-arg]
+        return self._viewer._repr_mimebundle_(**kwargs)  # type: ignore[no-any-return]
+
+    def _repr_keys(self):  # type: ignore[no-untyped-def]
+        return self._viewer._repr_keys()
 
 
 def notebook_show(
     *,
     width: int = DEFAULT_WIDTH,
     height: int = DEFAULT_HEIGHT,
-    app_url: str | None = None,
-    timeout_ms: int = DEFAULT_TIMEOUT,
     blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
-) -> Any:
+) -> Viewer:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
+
+    Any data logged to the recording after initialization will be sent directly to the viewer.
 
     Parameters
     ----------
@@ -104,26 +123,21 @@ def notebook_show(
         The width of the viewer in pixels.
     height : int
         The height of the viewer in pixels.
-    app_url : str
-        Alternative HTTP url to find the Rerun web viewer. This will default to using https://app.rerun.io
-        or localhost if [rerun.start_web_viewer_server][] has been called.
-    timeout_ms : int
-        The number of milliseconds to wait for the Rerun web viewer to load.
     blueprint : BlueprintLike
-        The blueprint to display in the viewer.
+        A blueprint object to send to the viewer.
+        It will be made active and set as the default blueprint in the recording.
+
+        Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    html = as_html(
-        width=width, height=height, app_url=app_url, timeout_ms=timeout_ms, blueprint=blueprint, recording=recording
-    )
-    try:
-        from IPython.core.display import HTML
 
-        return HTML(html)  # type: ignore[no-untyped-call]
-    except ImportError:
-        logging.warning("Could not import IPython.core.display. Returning raw HTML string instead.")
-        return html
+    return Viewer(
+        width=width,
+        height=height,
+        blueprint=blueprint,
+        recording=recording,
+    )

@@ -17,6 +17,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 from . import (
     blueprint as blueprint,
     experimental as experimental,
+    notebook as notebook,
 )
 from ._image import (
     ImageEncoded as ImageEncoded,
