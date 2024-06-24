@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashSet};
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
@@ -479,7 +479,7 @@ fn quote_enum(
     let quoted_doc = quote_obj_docs(reporter, obj);
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
-    let mut derives = vec!["Clone", "Copy", "Debug", "PartialEq", "Eq"];
+    let mut derives = vec!["Clone", "Copy", "Debug", "Hash", "PartialEq", "Eq"];
 
     match fields
         .iter()
@@ -526,20 +526,21 @@ fn quote_enum(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
-    let count = Literal::usize_unsuffixed(fields.len());
     let all = fields.iter().map(|field| {
         let name = format_ident!("{}", field.pascal_case_name());
         quote!(Self::#name)
     });
-    let declare_const_all = quote! {
-        /// All the different enum variants.
-        pub const ALL: [Self; #count] = [#(#all),*];
-    };
 
     let display_match_arms = fields.iter().map(|field| {
         let name = field.pascal_case_name();
         let quoted_name = format_ident!("{name}");
         quote!(Self::#quoted_name => write!(f, #name))
+    });
+    let docstring_md_match_arms = fields.iter().map(|field| {
+        let quoted_name = format_ident!("{}", field.pascal_case_name());
+        let docstring_md =
+            doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs).join("\n");
+        quote!(Self::#quoted_name => #docstring_md)
     });
 
     let tokens = quote! {
@@ -550,8 +551,19 @@ fn quote_enum(
             #(#quoted_fields,)*
         }
 
-        impl #name {
-            #declare_const_all
+        impl ::re_types_core::reflection::Enum for #name {
+
+            #[inline]
+            fn variants() -> &'static [Self] {
+                &[#(#all),*]
+            }
+
+            #[inline]
+            fn docstring_md(self) -> &'static str {
+                match self {
+                    #(#docstring_md_match_arms,)*
+                }
+            }
         }
 
         impl ::re_types_core::SizeBytes for #name {

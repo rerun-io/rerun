@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This is used for lines in plots when the X axis distance of individual points goes below a single pixel,
 /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
 /// (and readability) in such situations as it prevents overdraw.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum AggregationPolicy {
     /// No aggregation.
     Off = 1,
@@ -51,16 +51,34 @@ pub enum AggregationPolicy {
     MinMaxAverage = 6,
 }
 
-impl AggregationPolicy {
-    /// All the different enum variants.
-    pub const ALL: [Self; 6] = [
-        Self::Off,
-        Self::Average,
-        Self::Max,
-        Self::Min,
-        Self::MinMax,
-        Self::MinMaxAverage,
-    ];
+impl ::re_types_core::reflection::Enum for AggregationPolicy {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Off,
+            Self::Average,
+            Self::Max,
+            Self::Min,
+            Self::MinMax,
+            Self::MinMaxAverage,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Off => "No aggregation.",
+            Self::Average => "Average all points in the range together.",
+            Self::Max => "Keep only the maximum values in the range.",
+            Self::Min => "Keep only the minimum values in the range.",
+            Self::MinMax => {
+                "Keep both the minimum and maximum values in the range.\n\nThis will yield two aggregated points instead of one, effectively creating a vertical line."
+            }
+            Self::MinMaxAverage => {
+                "Find both the minimum and maximum values in the range, then use the average of those."
+            }
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for AggregationPolicy {

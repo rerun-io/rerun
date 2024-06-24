@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: One of four 2D corners, typically used to align objects.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum Corner2D {
     /// Left top corner.
     LeftTop = 1,
@@ -39,14 +39,26 @@ pub enum Corner2D {
     RightBottom = 4,
 }
 
-impl Corner2D {
-    /// All the different enum variants.
-    pub const ALL: [Self; 4] = [
-        Self::LeftTop,
-        Self::RightTop,
-        Self::LeftBottom,
-        Self::RightBottom,
-    ];
+impl ::re_types_core::reflection::Enum for Corner2D {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::LeftTop,
+            Self::RightTop,
+            Self::LeftBottom,
+            Self::RightBottom,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::LeftTop => "Left top corner.",
+            Self::RightTop => "Right top corner.",
+            Self::LeftBottom => "Left bottom corner.",
+            Self::RightBottom => "Right bottom corner.",
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for Corner2D {

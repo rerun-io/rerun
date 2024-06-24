@@ -65,22 +65,19 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
 
     registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "backgroundkind", value, &BackgroundKind::ALL)
-    });
-    registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "colormap", value, &Colormap::ALL)
-    });
-    registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "corner2d", value, &Corner2D::ALL)
-    });
-    registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "magnificationfilter", value, &MagnificationFilter::ALL)
-    });
-    registry.add_singleline_editor_ui(|_ctx, ui, value| {
-        edit_enum(ui, "tseriesaggregator", value, &AggregationPolicy::ALL)
+        edit_enum::<BackgroundKind>(ui, "backgroundkind", value)
     });
     registry
-        .add_singleline_editor_ui(|_ctx, ui, value| edit_enum(ui, "viewfit", value, &ViewFit::ALL));
+        .add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Colormap>(ui, "colormap", value));
+    registry
+        .add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Corner2D>(ui, "corner2d", value));
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum::<MagnificationFilter>(ui, "magnificationfilter", value)
+    });
+    registry.add_singleline_editor_ui(|_ctx, ui, value| {
+        edit_enum::<AggregationPolicy>(ui, "aggregationpolicy", value)
+    });
+    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<ViewFit>(ui, "viewfit", value));
 
     registry.add_multiline_editor_ui(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_editor_ui(visual_bounds2d::singleline_edit_visual_bounds2d);

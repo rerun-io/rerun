@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This provides a number of popular pre-defined colormaps.
 /// In the future, the Rerun Viewer will allow users to define their own colormaps,
 /// but currently the Viewer is limited to the types defined here.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum Colormap {
     /// A simple black to white gradient.
     ///
@@ -68,16 +68,42 @@ pub enum Colormap {
     Viridis = 6,
 }
 
-impl Colormap {
-    /// All the different enum variants.
-    pub const ALL: [Self; 6] = [
-        Self::Grayscale,
-        Self::Inferno,
-        Self::Magma,
-        Self::Plasma,
-        Self::Turbo,
-        Self::Viridis,
-    ];
+impl ::re_types_core::reflection::Enum for Colormap {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Grayscale,
+            Self::Inferno,
+            Self::Magma,
+            Self::Plasma,
+            Self::Turbo,
+            Self::Viridis,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Grayscale => {
+                "A simple black to white gradient.\n\nThis is a sRGB gray gradient which is perceptually uniform."
+            }
+            Self::Inferno => {
+                "The Inferno colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from black to red to bright yellow."
+            }
+            Self::Magma => {
+                "The Magma colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from black to purple to white."
+            }
+            Self::Plasma => {
+                "The Plasma colormap from Matplotlib.\n\nThis is a perceptually uniform colormap.\nIt interpolates from dark blue to purple to yellow."
+            }
+            Self::Turbo => {
+                "Google's Turbo colormap map.\n\nThis is a perceptually non-uniform rainbow colormap addressing many issues of\nmore traditional rainbow colormaps like Jet.\nIt is more perceptually uniform without sharp transitions and is more colorblind-friendly.\nDetails: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>"
+            }
+            Self::Viridis => {
+                "The Viridis colormap from Matplotlib\n\nThis is a perceptually uniform colormap which is robust to color blindness.\nIt interpolates from dark purple to green to yellow."
+            }
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for Colormap {

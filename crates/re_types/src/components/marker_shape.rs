@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Shape of a marker.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum MarkerShape {
     /// `⏺`
     #[default]
@@ -57,20 +57,38 @@ pub enum MarkerShape {
     Asterisk = 10,
 }
 
-impl MarkerShape {
-    /// All the different enum variants.
-    pub const ALL: [Self; 10] = [
-        Self::Circle,
-        Self::Diamond,
-        Self::Square,
-        Self::Cross,
-        Self::Plus,
-        Self::Up,
-        Self::Down,
-        Self::Left,
-        Self::Right,
-        Self::Asterisk,
-    ];
+impl ::re_types_core::reflection::Enum for MarkerShape {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Circle,
+            Self::Diamond,
+            Self::Square,
+            Self::Cross,
+            Self::Plus,
+            Self::Up,
+            Self::Down,
+            Self::Left,
+            Self::Right,
+            Self::Asterisk,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Circle => "`⏺`",
+            Self::Diamond => "`◆`",
+            Self::Square => "`◼\u{fe0f}`",
+            Self::Cross => "`x`",
+            Self::Plus => "`+`",
+            Self::Up => "`▲`",
+            Self::Down => "`▼`",
+            Self::Left => "`◀`",
+            Self::Right => "`▶`",
+            Self::Asterisk => "`*`",
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for MarkerShape {

@@ -2,6 +2,17 @@
 
 use crate::ComponentName;
 
+/// A trait for code-generated enums.
+pub trait Enum:
+    Sized + Copy + Clone + std::hash::Hash + PartialEq + Eq + std::fmt::Display + 'static
+{
+    /// All variants, in the order they appear in the enum.
+    fn variants() -> &'static [Self];
+
+    /// Markdown docstring for the given enum variant.
+    fn docstring_md(self) -> &'static str;
+}
+
 /// Runtime reflection about components and archetypes.
 #[derive(Default)]
 pub struct Reflection {

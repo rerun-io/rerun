@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Tri-state for panel controls.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum PanelState {
     /// Completely hidden.
     Hidden = 1,
@@ -36,9 +36,20 @@ pub enum PanelState {
     Expanded = 3,
 }
 
-impl PanelState {
-    /// All the different enum variants.
-    pub const ALL: [Self; 3] = [Self::Hidden, Self::Collapsed, Self::Expanded];
+impl ::re_types_core::reflection::Enum for PanelState {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[Self::Hidden, Self::Collapsed, Self::Expanded]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Hidden => "Completely hidden.",
+            Self::Collapsed => "Visible, but as small as possible on its shorter axis.",
+            Self::Expanded => "Fully expanded.",
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for PanelState {

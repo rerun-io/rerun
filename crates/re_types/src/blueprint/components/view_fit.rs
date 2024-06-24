@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Determines whether an image or texture should be scaled to fit the viewport.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum ViewFit {
     /// No scaling, pixel size will match the image's width/height dimensions in pixels.
     Original = 1,
@@ -36,9 +36,26 @@ pub enum ViewFit {
     FillKeepAspectRatio = 3,
 }
 
-impl ViewFit {
-    /// All the different enum variants.
-    pub const ALL: [Self; 3] = [Self::Original, Self::Fill, Self::FillKeepAspectRatio];
+impl ::re_types_core::reflection::Enum for ViewFit {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[Self::Original, Self::Fill, Self::FillKeepAspectRatio]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Original => {
+                "No scaling, pixel size will match the image's width/height dimensions in pixels."
+            }
+            Self::Fill => {
+                "Scale the image for the largest possible fit in the view's container."
+            }
+            Self::FillKeepAspectRatio => {
+                "Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."
+            }
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for ViewFit {
