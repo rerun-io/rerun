@@ -51,7 +51,7 @@ impl Chunk {
 
         let is_sorted = *is_sorted || (len < 2);
 
-        let chunk = Self {
+        let mut chunk = Self {
             id: *id,
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
@@ -68,6 +68,27 @@ impl Chunk {
                 })
                 .collect(),
         };
+
+        // We can know for sure whether the resulting chunk is already sorted (see conditional
+        // above), but the reverse is not true.
+        //
+        // Consider e.g. slicing the following chunk on `(1..=3)`:
+        // ┌──────────────┬───────────────────┬────────────────────────────────────────────┐
+        // │ frame        ┆ example.MyColor   ┆ example.MyPoint                            │
+        // ╞══════════════╪═══════════════════╪════════════════════════════════════════════╡
+        // │ 3            ┆ [4278255873]      ┆ -                                          │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 2            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 3            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 5            ┆ -                 ┆ [{x: 3, y: 3}, {x: 4, y: 4}, {x: 5, y: 5}] │
+        // └──────────────┴───────────────────┴────────────────────────────────────────────┘
+        //
+        // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
+        chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
 
         #[cfg(debug_assertions)]
         #[allow(clippy::unwrap_used)] // debug-only
@@ -294,7 +315,7 @@ impl Chunk {
                 .collect(),
         };
 
-        // We can now for sure whether the resulting chunk is already sorted (see conditional
+        // We can know for sure whether the resulting chunk is already sorted (see conditional
         // above), but the reverse is not true.
         //
         // Consider e.g. densifying the following chunk on `example.MyPoint`:
@@ -389,8 +410,29 @@ impl ChunkTimeline {
 
         let is_sorted = *is_sorted || (len < 2);
 
+        // We can know for sure whether the resulting chunk is already sorted (see conditional
+        // above), but the reverse is not true.
+        //
+        // Consider e.g. slicing the following chunk on `(1..=3)`:
+        // ┌──────────────┬───────────────────┬────────────────────────────────────────────┐
+        // │ frame        ┆ example.MyColor   ┆ example.MyPoint                            │
+        // ╞══════════════╪═══════════════════╪════════════════════════════════════════════╡
+        // │ 3            ┆ [4278255873]      ┆ -                                          │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 1            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 2            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 3            ┆ -                 ┆ [{x: 1, y: 1}, {x: 2, y: 2}]               │
+        // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+        // │ 5            ┆ -                 ┆ [{x: 3, y: 3}, {x: 4, y: 4}, {x: 5, y: 5}] │
+        // └──────────────┴───────────────────┴────────────────────────────────────────────┘
+        //
+        // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
+        let is_sorted_opt = is_sorted.then_some(is_sorted);
+
         Self::new(
-            Some(is_sorted),
+            is_sorted_opt,
             *timeline,
             ArrowPrimitiveArray::sliced(times.clone(), index, len),
         )
@@ -427,7 +469,7 @@ impl ChunkTimeline {
 
         let is_sorted = *is_sorted || filter.values_iter().filter(|&b| b).count() < 2;
 
-        // We can now for sure whether the resulting chunk is already sorted (see conditional
+        // We can know for sure whether the resulting chunk is already sorted (see conditional
         // above), but the reverse is not true.
         //
         // Consider e.g. densifying the following chunk on `example.MyPoint`:
