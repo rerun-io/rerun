@@ -94,7 +94,6 @@ pub use self::{
     arrow_string::ArrowString,
     loggable::{Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable},
     loggable_batch::{ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch},
-    reflection::*,
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,

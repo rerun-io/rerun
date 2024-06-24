@@ -4,7 +4,9 @@ use camino::Utf8PathBuf;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{codegen::autogen_warning, ObjectKind, Objects, Reporter};
+use crate::{
+    codegen::autogen_warning, ObjectKind, Objects, Reporter, ATTR_RUST_GENERATE_FIELD_INFO,
+};
 
 use super::util::{append_tokens, doc_as_lines};
 
@@ -21,38 +23,48 @@ pub fn generate_reflection(
 
     let mut imports = BTreeSet::new();
     let component_reflection = generate_component_reflection(reporter, objects, &mut imports);
+    let archetype_reflection = generate_archetype_reflection(reporter, objects);
 
     let mut code = format!("// {}\n\n", autogen_warning!());
-    code.push_str("#![allow(unused_imports)]\n");
+    code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::wildcard_imports)]\n\n");
+    code.push_str("#![allow(unused_imports)]\n");
     for namespace in imports {
         code.push_str(&format!("use {namespace};\n"));
     }
 
     let quoted_reflection = quote! {
         use re_types_core::{
-            external::arrow2,
+            ArchetypeName,
             ComponentName,
+            Loggable,
+            LoggableBatch as _,
+            reflection::{
+                ArchetypeFieldReflection,
+                ArchetypeReflection,
+                ArchetypeReflectionMap,
+                ComponentReflection,
+                ComponentReflectionMap,
+                Reflection,
+            },
             SerializationError,
-            reflection::{Reflection, ComponentReflectionMap, ComponentReflection}
         };
 
         /// Generates reflection about all known components.
         ///
         /// Call only once and reuse the results.
         pub fn generate_reflection() -> Result<Reflection, SerializationError> {
-            use ::re_types_core::{Loggable, LoggableBatch as _};
-
             re_tracing::profile_function!();
 
             Ok(Reflection {
                 components: generate_component_reflection()?,
-
-                // TODO(emilk): achetypes
+                archetypes: generate_archetype_reflection(),
             })
         }
 
         #component_reflection
+
+        #archetype_reflection
     };
 
     let code = append_tokens(reporter, code, &quoted_reflection, &path);
@@ -104,12 +116,69 @@ fn generate_component_reflection(
         ///
         /// Call only once and reuse the results.
         fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
-            use ::re_types_core::{Loggable, LoggableBatch as _};
-
             re_tracing::profile_function!();
-            Ok(ComponentReflectionMap::from_iter([
+            let array = [
                 #(#quoted_pairs,)*
-            ]))
+            ];
+            Ok(ComponentReflectionMap::from_iter(array))
+        }
+    }
+}
+
+/// Generate reflection about components.
+fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> TokenStream {
+    let mut quoted_pairs = Vec::new();
+
+    for obj in objects
+        .objects_of_kind(ObjectKind::Archetype)
+        .filter(|obj| !obj.is_testing())
+        .filter(|obj| obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO))
+    {
+        let quoted_field_reflections = obj.fields.iter().map(|field| {
+            let Some(component_name) = field.typ.fqname() else {
+                panic!("archetype field must be an object/union or an array/vector of such")
+            };
+            let display_name = re_case::to_human_case(&field.name);
+            let docstring_md =
+                doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs).join("\n");
+
+            quote! {
+                ArchetypeFieldReflection {
+                    component_name: #component_name.into(),
+                    display_name: #display_name,
+                    docstring_md: #docstring_md,
+                }
+            }
+        });
+
+        let fqname = &obj.fqname;
+        let quoted_name = quote!( ArchetypeName::new(#fqname) );
+        let display_name = re_case::to_human_case(&obj.name);
+        let docstring_md = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs).join("\n");
+        let quoted_archetype_reflection = quote! {
+            ArchetypeReflection {
+                display_name: #display_name,
+
+                docstring_md: #docstring_md,
+
+                fields: vec![
+                    #(#quoted_field_reflections,)*
+                ],
+            }
+        };
+        quoted_pairs.push(quote! { (#quoted_name, #quoted_archetype_reflection) });
+    }
+
+    quote! {
+        /// Generates reflection about all known archetypes.
+        ///
+        /// Call only once and reuse the results.
+        fn generate_archetype_reflection() -> ArchetypeReflectionMap {
+            re_tracing::profile_function!();
+            let array = [
+                #(#quoted_pairs,)*
+            ];
+            ArchetypeReflectionMap::from_iter(array)
         }
     }
 }
