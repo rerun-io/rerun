@@ -38,7 +38,7 @@ pub struct ArchetypeReflection {
     /// Markdown docstring for the archetype.
     pub docstring_md: &'static str,
 
-    /// All the component fields of the archetype.
+    /// All the component fields of the archetype, in the order they appear in the archetype.
     pub fields: Vec<ArchetypeFieldReflection>,
 }
 

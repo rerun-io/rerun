@@ -31,6 +31,7 @@ pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
             fallback_provider,
         );
     } else {
+        // The `ArchetypeReflectionMarker` bound should make this impossible.
         re_log::warn_once!("Missing reflection data for archetype {name:?}.");
     }
 }
