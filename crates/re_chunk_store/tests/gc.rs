@@ -79,8 +79,6 @@ fn simple() -> anyhow::Result<()> {
         let (_store_events, stats_diff) = store.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             protect_latest: 0,
-            dont_protect_components: Default::default(),
-            dont_protect_timelines: Default::default(),
             time_budget: std::time::Duration::MAX,
         });
 
@@ -174,8 +172,6 @@ fn simple_static() -> anyhow::Result<()> {
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
         protect_latest: 1,
-        dont_protect_components: Default::default(),
-        dont_protect_timelines: Default::default(),
         time_budget: std::time::Duration::MAX,
     });
 
@@ -265,8 +261,6 @@ fn protected() -> anyhow::Result<()> {
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
         protect_latest: 1,
-        dont_protect_components: Default::default(),
-        dont_protect_timelines: Default::default(),
         time_budget: std::time::Duration::MAX,
     });
 
