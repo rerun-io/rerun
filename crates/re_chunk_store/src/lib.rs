@@ -6,8 +6,8 @@
 //! It supports out-of-order insertions, and fast `O(log(N))` queries.
 //!
 //! * See [`ChunkStore`] for an overview of the core data structures.
-//! * See [`ChunkStore::latest_at`] and [`ChunkStore::range`] for the documentation of the public
-//!   read APIs.
+//! * See [`ChunkStore::latest_at_relevant_chunks`] and [`ChunkStore::range_relevant_chunks`]
+//!   for the documentation of the public read APIs.
 //! * See [`ChunkStore::insert_chunk`] for the documentation of the public write APIs.
 //!
 //! ## Feature flags
