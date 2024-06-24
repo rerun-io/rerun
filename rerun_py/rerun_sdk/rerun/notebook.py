@@ -83,7 +83,6 @@ class Viewer:
         if display:
             self.display()
 
-        print(self._recording)
         bindings.set_callback_sink(
             recording=RecordingStream.to_native(self._recording),
             callback=self._flush_hook,
