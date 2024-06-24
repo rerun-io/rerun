@@ -52,9 +52,9 @@ pub fn visualizer_ui(
                 &available_inactive_visualizers,
             );
         })
-        .with_enabled(!available_inactive_visualizers.is_empty())
-        .with_hover_text("Add additional visualizers")
-        .with_disabled_hover_text("No additional visualizers available"),
+        .enabled(!available_inactive_visualizers.is_empty())
+        .hover_text("Add additional visualizers")
+        .disabled_hover_text("No additional visualizers available"),
     );
 }
 

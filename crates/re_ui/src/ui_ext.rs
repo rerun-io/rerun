@@ -35,21 +35,21 @@ impl<'a> HeaderMenuButton<'a> {
 
     /// Sets enable/disable state of the button.
     #[inline]
-    pub fn with_enabled(mut self, enabled: bool) -> Self {
+    pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
         self
     }
 
     /// Sets text shown when the button hovered.
     #[inline]
-    pub fn with_hover_text(mut self, hover_text: impl Into<String>) -> Self {
+    pub fn hover_text(mut self, hover_text: impl Into<String>) -> Self {
         self.hover_text = Some(hover_text.into());
         self
     }
 
     /// Sets text shown when the button is disabled and hovered.
     #[inline]
-    pub fn with_disabled_hover_text(mut self, hover_text: impl Into<String>) -> Self {
+    pub fn disabled_hover_text(mut self, hover_text: impl Into<String>) -> Self {
         self.disabled_hover_text = Some(hover_text.into());
         self
     }
