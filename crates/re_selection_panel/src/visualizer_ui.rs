@@ -280,7 +280,7 @@ fn visualizer_components(
                     raw_override.as_ref(),
                     result_override,
                 )
-                .on_hover_text("Override value for this specific entity in the current view.");
+                .on_hover_text("Override value for this specific entity in the current view");
             }
             // Store (if available)
             if let Some(result_store) = result_store {
@@ -302,7 +302,7 @@ fn visualizer_components(
                             );
                         }),
                     )
-                    .on_hover_text("The value that was logged to the data store.");
+                    .on_hover_text("The value that was logged to the data store");
             }
             // Default (if available)
             if let (Some(result_default), Some(raw_default)) =
@@ -317,7 +317,7 @@ fn visualizer_components(
                     raw_default.as_ref(),
                     result_default,
                 )
-                .on_hover_text("Default value for all component of this type is the current view.");
+                .on_hover_text("Default value for all component of this type is the current view");
             }
             // Fallback (always there)
             {
@@ -471,8 +471,8 @@ fn menu_more(
             override_differs_from_default,
             egui::Button::new("Reset override to default blueprint"),
         )
-        .on_hover_text("Resets the override to what is specified in the default blueprint.")
-        .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any).")
+        .on_hover_text("Resets the override to what is specified in the default blueprint")
+        .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
         .clicked()
     {
         ctx.reset_blueprint_component_by_name(override_path, component);
