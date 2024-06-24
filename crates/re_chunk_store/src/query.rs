@@ -115,7 +115,7 @@ impl ChunkStore {
     ///
     /// If the entity has static component data associated with it, it will unconditionally
     /// override any temporal component data.
-    pub fn latest_at(
+    pub fn latest_at_relevant_chunks(
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
@@ -197,14 +197,15 @@ impl ChunkStore {
 
     /// Returns the most-relevant chunk(s) for the given [`RangeQuery`].
     ///
-    /// It is possible that some or all of the returned [`Chunk`]s overlap in time.
+    /// The criteria for returning a chunk is only that it may contain data that overlaps with
+    /// the queried range.
     ///
     /// The caller should filter the returned chunks further (see [`Chunk::range`]) in order to
     /// determine how exactly each row of data fit with the rest.
     ///
     /// If the entity has static component data associated with it, it will unconditionally
     /// override any temporal component data.
-    pub fn range(
+    pub fn range_relevant_chunks(
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,

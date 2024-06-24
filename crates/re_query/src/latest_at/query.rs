@@ -298,7 +298,7 @@ pub fn latest_at(
     component_name: ComponentName,
 ) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
     store
-        .latest_at(query, entity_path, component_name)
+        .latest_at_relevant_chunks(query, entity_path, component_name)
         .into_iter()
         .flat_map(|chunk| {
             chunk

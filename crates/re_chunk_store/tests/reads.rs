@@ -27,7 +27,7 @@ fn query_latest_array(
     re_tracing::profile_function!();
 
     let (data_time, row_id, array) = store
-        .latest_at(query, entity_path, component_name)
+        .latest_at_relevant_chunks(query, entity_path, component_name)
         .into_iter()
         .flat_map(|chunk| {
             chunk
@@ -580,7 +580,7 @@ fn range() -> anyhow::Result<()> {
             let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let results = store.range(&query, &entity_path, component_name);
+            let results = store.range_relevant_chunks(&query, &entity_path, component_name);
 
             eprintln!("================= {component_name} @ {query:?} ===============");
             let mut results_processed = 0usize;
