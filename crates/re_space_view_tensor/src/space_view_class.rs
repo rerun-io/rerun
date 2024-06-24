@@ -9,7 +9,7 @@ use re_types::{
         archetypes::{TensorScalarMapping, TensorSliceSelection, TensorViewFit},
         components::ViewFit,
     },
-    components::{Colormap, GammaCorrection, MagnificationFilter},
+    components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::TensorDimension,
     tensor_data::{DecodedTensor, TensorDataMeaning},
     SpaceViewClassIdentifier, View,
@@ -137,7 +137,7 @@ impl SpaceViewClass for TensorSpaceView {
             view_property_ui::<TensorViewFit>(ctx, ui, view_id, self, state);
         });
 
-        // TODO(andreas): Listitemify
+        // TODO(#6075): Listitemify
         if let Some((_, tensor)) = &state.tensor {
             let slice_property = ViewProperty::from_archetype::<TensorSliceSelection>(
                 ctx.blueprint_db(),
@@ -161,14 +161,12 @@ impl SpaceViewClass for TensorSpaceView {
             }
 
             if ui
-                .add_enabled_ui(slice_property.any_non_empty(), |ui| {
-                    ui.button("Reset to default")
-                        .on_hover_text(
-                            "Reset dimension mapping to the default, i.e. as if never set",
-                        )
-                        .on_disabled_hover_text("No custom dimension mapping set")
-                })
-                .inner
+                .add_enabled(
+                    slice_property.any_non_empty(),
+                    egui::Button::new("Reset to default"),
+                )
+                .on_hover_text("Reset dimension mapping to the default, i.e. as if never set")
+                .on_disabled_hover_text("No custom dimension mapping set")
                 .clicked()
             {
                 slice_property.reset_all_components_to_empty(ctx);
@@ -315,7 +313,7 @@ impl TensorSpaceView {
         re_tracing::profile_function!();
 
         let Some((tensor_data_row_id, tensor)) = state.tensor.as_ref() else {
-            return Err(anyhow::Error::msg("No tensor data available."));
+            anyhow::bail!("No tensor data available.");
         };
 
         let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
@@ -583,6 +581,16 @@ fn paint_axis_names(
     }
 }
 
+pub fn index_for_dimension_mut(
+    indices: &mut [TensorDimensionIndexSelection],
+    dimension: u32,
+) -> Option<&mut u64> {
+    indices
+        .iter_mut()
+        .find(|index| index.dimension == dimension)
+        .map(|index| &mut index.index)
+}
+
 fn selectors_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -604,14 +612,11 @@ fn selectors_ui(
             continue;
         }
 
-        let Some(selector_index) = indices
-            .iter_mut()
-            .find(|i| i.dimension == index_slider.dimension)
+        let Some(selector_value) = index_for_dimension_mut(&mut indices, index_slider.dimension)
         else {
             // There should be an entry already via `load_tensor_slice_selection_and_make_valid`
             continue;
         };
-        let selector_value = &mut selector_index.index;
 
         ui.horizontal(|ui| {
             let name = dim.name.clone().map_or_else(
