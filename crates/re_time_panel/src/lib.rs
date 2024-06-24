@@ -17,8 +17,8 @@ use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_data_ui::item_ui::guess_instance_path_icon;
 use re_data_ui::DataUi as _;
+use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
@@ -745,7 +745,7 @@ impl TimePanel {
 
         // If this is an entity:
         if !tree.entity.components.is_empty() {
-            for component_name in re_data_ui::component_list_for_ui(tree.entity.components.keys()) {
+            for component_name in sorted_component_list_for_ui(tree.entity.components.keys()) {
                 let data = &tree.entity.components[&component_name];
 
                 let is_static = data.is_static();

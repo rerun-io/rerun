@@ -117,7 +117,7 @@ impl CodeGenerator for PythonCodeGenerator {
             // TODO(jleibs): Should we still be generating an equivalent to this?
             /*
             let archetype_names = objects
-                .ordered_objects(ObjectKind::Archetype.into())
+                .objects_of_kind(ObjectKind::Archetype)
                 .iter()
                 .map(|o| o.name.clone())
                 .collect_vec();
@@ -290,8 +290,7 @@ impl PythonCodeGenerator {
         let mut test_mods = BTreeMap::<String, Vec<String>>::new();
 
         // Generate folder contents:
-        let ordered_objects = objects.ordered_objects(object_kind.into());
-        for &obj in &ordered_objects {
+        for obj in objects.objects_of_kind(object_kind) {
             let scope = obj.scope();
 
             let kind_path = if let Some(scope) = scope {
