@@ -98,7 +98,12 @@ egui = { version = "0.27.2", features = [
   "rayon",
 ] }
 egui_commonmark = { version = "0.16", default-features = false }
-egui_extras = { version = "0.27.2", features = ["http", "image", "puffin"] }
+egui_extras = { version = "0.27.2", features = [
+  "http",
+  "image",
+  "puffin",
+  "serde",
+] }
 egui_plot = "0.27.2"
 egui_tiles = "0.8.0"
 egui-wgpu = "0.27.2"
@@ -131,7 +136,7 @@ console_error_panic_hook = "0.1.6"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
-directories-next = "2"
+directories = "5"
 document-features = "0.2.8"
 ehttp = "0.5.0"
 enumset = "1.0.12"
@@ -263,9 +268,17 @@ xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 
 
+# ---------------------------------------------------------------------------------
+[profile]
+
+# Our dev profile has some optimizations turned on, as well as debug assertions.
 [profile.dev]
-opt-level = 1   # Make debug builds run faster
-panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+opt-level = 1 # Make debug builds run faster
+
+# panic = "abort" leads to better optimizations and smaller binaries (and is the default in Wasm anyways),
+# but it also means backtraces don't work with the `backtrace` library (https://github.com/rust-lang/backtrace-rs/issues/397).
+# egui has a feature where if you hold down all modifiers keys on your keyboard and hover any UI widget,
+# you will see the backtrace to that widget, and we don't want to break that feature in dev builds.
 
 [profile.dev.build-override]
 debug = true # enable debug symbols for build scripts when building in dev (codegen backtraces!)
@@ -274,12 +287,26 @@ debug = true # enable debug symbols for build scripts when building in dev (code
 [profile.dev.package."*"]
 opt-level = 2
 
+
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
+
 [profile.bench]
 debug = true
+
+
+# Set up a `debugging` profile that turns of optimization of the workspace and select packages.
+# Note that the profile name `debug` is reserved.
+[profile.debugging]
+inherits = "dev"
+opt-level = 0
+[profile.debugging.package.egui]
+opt-level = 0 # we often debug egui via Rerun
+
+
+# ---------------------------------------------------------------------------------
 
 
 [workspace.lints.rust]
@@ -454,13 +481,13 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "814ad0783cf8b826a258e29ed4c50ae6daa2e890" }      # egui master 2024-06-13
-eframe = { git = "https://github.com/emilk/egui.git", rev = "814ad0783cf8b826a258e29ed4c50ae6daa2e890" }      # egui master 2024-06-13
-egui = { git = "https://github.com/emilk/egui.git", rev = "814ad0783cf8b826a258e29ed4c50ae6daa2e890" }        # egui master 2024-06-13
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "814ad0783cf8b826a258e29ed4c50ae6daa2e890" } # egui master 2024-06-13
-egui_plot = { git = "https://github.com/emilk/egui.git", rev = "814ad0783cf8b826a258e29ed4c50ae6daa2e890" }   # egui master 2024-06-13
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "814ad0783cf8b826a258e29ed4c50ae6daa2e890" }   # egui master 2024-06-13
-emath = { git = "https://github.com/emilk/egui.git", rev = "814ad0783cf8b826a258e29ed4c50ae6daa2e890" }       # egui master 2024-06-13
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "8ac1d613fc69d2eb4235cda47cf2fbd5a8292150" }      # egui master 2024-06-19
+eframe = { git = "https://github.com/emilk/egui.git", rev = "8ac1d613fc69d2eb4235cda47cf2fbd5a8292150" }      # egui master 2024-06-19
+egui = { git = "https://github.com/emilk/egui.git", rev = "8ac1d613fc69d2eb4235cda47cf2fbd5a8292150" }        # egui master 2024-06-19
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "8ac1d613fc69d2eb4235cda47cf2fbd5a8292150" } # egui master 2024-06-19
+egui_plot = { git = "https://github.com/emilk/egui.git", rev = "8ac1d613fc69d2eb4235cda47cf2fbd5a8292150" }   # egui master 2024-06-19
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "8ac1d613fc69d2eb4235cda47cf2fbd5a8292150" }   # egui master 2024-06-19
+emath = { git = "https://github.com/emilk/egui.git", rev = "8ac1d613fc69d2eb4235cda47cf2fbd5a8292150" }       # egui master 2024-06-19
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
