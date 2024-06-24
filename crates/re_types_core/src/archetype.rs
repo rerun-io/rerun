@@ -128,7 +128,7 @@ pub trait Archetype {
     }
 
     /// Returns information about the archetype's fields.
-    ///s
+    ///
     /// This is optional and not implemented by all archetypes.
     /// If present, it can be used to display additional information in the viewer.
     #[inline]
