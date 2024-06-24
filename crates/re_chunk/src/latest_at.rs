@@ -71,6 +71,10 @@ impl Chunk {
     /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
     pub fn latest_at(&self, query: &LatestAtQuery, component_name: ComponentName) -> Self {
+        if self.is_empty() {
+            return self.clone();
+        }
+
         re_tracing::profile_function!(format!("{query:?}"));
 
         let Some(component_list_array) = self.components.get(&component_name) else {
