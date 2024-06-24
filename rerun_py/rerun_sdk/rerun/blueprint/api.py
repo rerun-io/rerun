@@ -132,6 +132,11 @@ class SpaceView:
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
+
 
 class Container:
     """
@@ -245,6 +250,11 @@ class Container:
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
+
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
 
 def _to_state(expanded: bool | None, state: PanelStateLike | None) -> PanelStateLike | None:
@@ -529,6 +539,11 @@ class Blueprint:
             self.time_panel._log_to_stream(stream)
         elif self.collapse_panels:
             TimePanel(state="collapsed")._log_to_stream(stream)
+
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
     def connect(
         self,
