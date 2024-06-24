@@ -4,13 +4,9 @@ use camino::Utf8PathBuf;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{
-    codegen::{
-        autogen_warning,
-        rust::api::{append_tokens, doc_as_lines},
-    },
-    ObjectKind, Objects, Reporter,
-};
+use crate::{codegen::autogen_warning, ObjectKind, Objects, Reporter};
+
+use super::util::{append_tokens, doc_as_lines};
 
 /// Generate reflection about components and archetypes.
 pub fn generate_reflection(

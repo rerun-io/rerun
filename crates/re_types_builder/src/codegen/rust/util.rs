@@ -4,7 +4,10 @@ use camino::Utf8Path;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{Object, ObjectKind, Reporter, ATTR_RUST_TUPLE_STRUCT};
+use crate::{
+    codegen::common::{collect_snippets_for_api_docs, ExampleInfo},
+    Docs, Object, ObjectKind, Reporter, ATTR_RUST_TUPLE_STRUCT,
+};
 
 // ---
 
@@ -171,4 +174,233 @@ pub fn string_from_quoted(
     }
 
     output
+}
+
+pub fn append_tokens(
+    reporter: &Reporter,
+    mut code: String,
+    quoted_obj: &TokenStream,
+    target_file: &Utf8Path,
+) -> String {
+    code.push_str(&string_from_quoted(reporter, quoted_obj, target_file));
+    code.push('\n');
+    replace_doc_attrb_with_doc_comment(&code)
+}
+
+/// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
+/// while also removing trailing whitespace.
+fn replace_doc_attrb_with_doc_comment(code: &str) -> String {
+    // This is difficult to do with regex, because the patterns with newlines overlap.
+
+    let start_pattern = "# [doc = \"";
+    let end_pattern = "\"]\n"; // assues there is no escaped quote followed by a bracket
+
+    let problematic = r#"\"]\n"#;
+    assert!(
+        !code.contains(problematic),
+        "The codegen cannot handle the string {problematic} yet"
+    );
+
+    let mut new_code = String::new();
+
+    let mut i = 0;
+    while i < code.len() {
+        if let Some(off) = code[i..].find(start_pattern) {
+            let doc_start = i + off;
+            let content_start = doc_start + start_pattern.len();
+            if let Some(off) = code[content_start..].find(end_pattern) {
+                let content_end = content_start + off;
+                let content = &code[content_start..content_end];
+                let mut unescped_content = unescape_string(content);
+
+                new_code.push_str(&code[i..doc_start]);
+
+                // TODO(emilk): why do we need to do the `SIMPLE_COMMENT_PREFIX` both here and in `fn string_from_quoted`?
+                if let Some(rest) = unescped_content.strip_prefix(SIMPLE_COMMENT_PREFIX) {
+                    // This is a normal comment
+                    new_code.push_str("//");
+                    unescped_content = rest.to_owned();
+                } else {
+                    // This is a docstring
+                    new_code.push_str("///");
+                }
+
+                if !content.starts_with(char::is_whitespace) {
+                    new_code.push(' ');
+                }
+                new_code.push_str(&unescped_content);
+                new_code.push('\n');
+
+                i = content_end + end_pattern.len();
+                // Skip trailing whitespace (extra newlines)
+                while matches!(code.as_bytes().get(i), Some(b'\n' | b' ')) {
+                    i += 1;
+                }
+                continue;
+            }
+        }
+
+        // No more doc attributes found
+        new_code.push_str(&code[i..]);
+        break;
+    }
+    new_code
+}
+
+#[test]
+fn test_doc_attr_unfolding() {
+    // Normal case with unescaping of quotes:
+    assert_eq!(
+        replace_doc_attrb_with_doc_comment(
+            r#"
+# [doc = "Hello, \"world\"!"]
+pub fn foo () {}
+        "#
+        ),
+        r#"
+/// Hello, "world"!
+pub fn foo () {}
+        "#
+    );
+
+    // Spacial case for when it contains a `SIMPLE_COMMENT_PREFIX`:
+    assert_eq!(
+        replace_doc_attrb_with_doc_comment(&format!(
+            r#"
+# [doc = "{SIMPLE_COMMENT_PREFIX}Just a \"comment\"!"]
+const FOO: u32 = 42;
+        "#
+        )),
+        r#"
+// Just a "comment"!
+const FOO: u32 = 42;
+        "#
+    );
+}
+
+fn unescape_string(input: &str) -> String {
+    let mut output = String::new();
+    unescape_string_into(input, &mut output);
+    output
+}
+
+fn unescape_string_into(input: &str, output: &mut String) {
+    let mut chars = input.chars();
+
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let c = chars.next().expect("Trailing backslash");
+            match c {
+                'n' => output.push('\n'),
+                'r' => output.push('\r'),
+                't' => output.push('\t'),
+                '\\' => output.push('\\'),
+                '"' => output.push('"'),
+                '\'' => output.push('\''),
+                _ => panic!("Unknown escape sequence: \\{c}"),
+            }
+        } else {
+            output.push(c);
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+pub fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
+    let mut lines = docs.doc_lines_for_untagged_and("rs");
+
+    let examples = if !fqname.starts_with("rerun.blueprint.views") {
+        collect_snippets_for_api_docs(docs, "rs", true)
+            .map_err(|err| reporter.error(virtpath, fqname, err))
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    if !examples.is_empty() {
+        lines.push(Default::default());
+        let section_title = if examples.len() == 1 {
+            "Example"
+        } else {
+            "Examples"
+        };
+        lines.push(format!("## {section_title}"));
+        lines.push(Default::default());
+        let mut examples = examples.into_iter().peekable();
+        while let Some(example) = examples.next() {
+            let ExampleInfo {
+                path,
+                name,
+                title,
+                image,
+                ..
+            } = &example.base;
+
+            for line in &example.lines {
+                if line.contains("```") {
+                    reporter.error(
+                        virtpath,
+                        fqname,
+                        format!("Example {path:?} contains ``` in it, so we can't embed it in the Rust API docs."),
+                    );
+                    continue;
+                }
+            }
+
+            if let Some(title) = title {
+                lines.push(format!("### {title}"));
+            } else {
+                lines.push(format!("### `{name}`:"));
+            }
+
+            lines.push("```ignore".into());
+            lines.extend(example.lines.into_iter());
+            lines.push("```".into());
+
+            if let Some(image) = &image {
+                // Don't let the images take up too much space on the page.
+                lines.extend(image.image_stack().center().width(640).finish());
+            }
+            if examples.peek().is_some() {
+                // blank line between examples
+                lines.push(Default::default());
+            }
+        }
+    }
+
+    if let Some(second_line) = lines.get(1) {
+        if !second_line.is_empty() {
+            reporter.warn(
+                virtpath,
+                fqname,
+                format!(
+                    "Second line of documentation should be an empty line; found {second_line:?}"
+                ),
+            );
+        }
+    }
+
+    lines
+}
+
+pub fn quote_doc_line(line: &str) -> TokenStream {
+    let line = format!(" {line}"); // add space between `///` and comment
+    quote!(# [doc = #line])
+}
+
+pub fn quote_doc_lines(lines: &[String]) -> TokenStream {
+    struct DocCommentTokenizer<'a>(&'a [String]);
+
+    impl quote::ToTokens for DocCommentTokenizer<'_> {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            tokens.extend(self.0.iter().map(|line| {
+                let line = format!(" {line}"); // add space between `///` and comment
+                quote!(# [doc = #line])
+            }));
+        }
+    }
+
+    let lines = DocCommentTokenizer(lines);
+    quote!(#lines)
 }
