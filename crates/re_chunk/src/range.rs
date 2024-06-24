@@ -76,6 +76,10 @@ impl Chunk {
     // TODO(#3741): Since we don't have access to arrow's ListView yet, we must actually clone the
     // data if the chunk requires sorting.
     pub fn range(&self, query: &RangeQuery, component_name: ComponentName) -> Self {
+        if self.is_empty() {
+            return self.clone();
+        }
+
         re_tracing::profile_function!(format!("{query:?}"));
 
         let is_static = self.is_static();
