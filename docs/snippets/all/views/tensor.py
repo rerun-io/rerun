@@ -7,7 +7,7 @@ import rerun.blueprint as rrb
 rr.init("rerun_example_tensor", spawn=True)
 
 tensor = np.random.randint(0, 256, (32, 240, 320, 3), dtype=np.uint8)
-rr.log("tensor", rr.Tensor(tensor, dim_names=("batch", "height", "width", "channel")))
+rr.log("tensor", rr.Tensor(tensor, dim_names=("batch", "x", "y", "channel")))
 
 blueprint = rrb.Blueprint(
     rrb.TensorView(
