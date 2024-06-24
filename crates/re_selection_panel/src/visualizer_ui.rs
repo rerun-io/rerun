@@ -462,9 +462,17 @@ fn menu_more(
         ui.close_menu();
     }
 
+    let override_differs_from_default = raw_override
+        != &ctx
+            .viewer_ctx
+            .raw_latest_at_in_default_blueprint(override_path, component);
     if ui
-        .button("Reset override")
+        .add_enabled(
+            override_differs_from_default,
+            egui::Button::new("Reset override to default blueprint"),
+        )
         .on_hover_text("Resets the override to what is specified in the default blueprint.")
+        .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any).")
         .clicked()
     {
         ctx.reset_blueprint_component_by_name(override_path, component);

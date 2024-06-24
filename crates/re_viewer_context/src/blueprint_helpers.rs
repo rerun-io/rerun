@@ -1,5 +1,5 @@
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentName};
+use re_types::{external::arrow2, AsComponents, ComponentBatch, ComponentName};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -116,22 +116,33 @@ impl ViewerContext<'_> {
         self.save_blueprint_component(entity_path, &empty);
     }
 
+    /// Queries a raw component from the default blueprint.
+    pub fn raw_latest_at_in_default_blueprint(
+        &self,
+        entity_path: &EntityPath,
+        component_name: ComponentName,
+    ) -> Option<Box<dyn arrow2::array::Array>> {
+        self.store_context
+            .default_blueprint
+            .and_then(|default_blueprint| {
+                default_blueprint
+                    .latest_at(self.blueprint_query, entity_path, [component_name])
+                    .get(component_name)
+                    .and_then(|default_value| {
+                        default_value.raw(default_blueprint.resolver(), component_name)
+                    })
+            })
+    }
+
     /// Resets a blueprint component to the value it had in the default blueprint.
     pub fn reset_blueprint_component_by_name(
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) {
-        let default_blueprint = self.store_context.default_blueprint;
-
-        if let Some(default_value) = default_blueprint.and_then(|default_blueprint| {
-            default_blueprint
-                .latest_at(self.blueprint_query, entity_path, [component_name])
-                .get(component_name)
-                .and_then(|default_value| {
-                    default_value.raw(default_blueprint.resolver(), component_name)
-                })
-        }) {
+        if let Some(default_value) =
+            self.raw_latest_at_in_default_blueprint(entity_path, component_name)
+        {
             self.save_blueprint_data_cell(
                 entity_path,
                 DataCell::from_arrow(component_name, default_value),
