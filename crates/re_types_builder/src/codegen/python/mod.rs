@@ -1931,6 +1931,7 @@ fn quote_arrow_serialization(
 
             let mut code = String::new();
 
+            code.push_indented(0, "from typing import cast", 1);
             code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
             code.push_indented(0, &format!("if isinstance(data, {name}):"), 1);
             code.push_indented(1, "data = [data]", 2);
@@ -1938,20 +1939,46 @@ fn quote_arrow_serialization(
             code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
             code.push_indented(1, "[", 1);
             for field in &obj.fields {
-                let Type::Object(field_fqname) = &field.typ else {
-                    return Err(
-                        "We lack codegen for arrow-serialization of general structs".to_owned()
-                    );
-                };
-                let field_obj = &objects[field_fqname];
-                let field_type_name = &field_obj.name;
                 let field_name = &field.name;
-                let field_batch_type = format!("{field_type_name}Batch");
-                // let field_batch_type = format!("datatypes.{field_type_name}Batch");
                 let field_array = format!("[x.{field_name} for x in data]");
-                let field_fwd =
-                    format!("{field_batch_type}({field_array}).as_arrow_array().storage,");
-                code.push_indented(2, &field_fwd, 1);
+
+                match &field.typ {
+                    Type::UInt8
+                    | Type::UInt16
+                    | Type::UInt32
+                    | Type::UInt64
+                    | Type::Int8
+                    | Type::Int16
+                    | Type::Int32
+                    | Type::Int64
+                    | Type::Bool
+                    | Type::Float16
+                    | Type::Float32
+                    | Type::Float64 => {
+                        let np_dtype = np_dtype_from_type(&field.typ).unwrap();
+                        let field_fwd =
+                            format!("pa.array(np.asarray({field_array}, dtype={np_dtype})),");
+                        code.push_indented(2, &field_fwd, 1);
+                    }
+
+                    Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } => {
+                        return Err(
+                            "We lack codegen for arrow-serialization of general structs".to_owned()
+                        );
+                    }
+                    Type::Object(field_fqname) => {
+                        let field_obj = &objects[field_fqname];
+                        let field_type_name = &field_obj.name;
+
+                        let field_batch_type = format!("{field_type_name}Batch");
+
+                        // Type checker struggles with this occasionally, exact pattern is unclear.
+                        // Tried casting the array earlier via `cast(Sequence[{name}], data)` but to no avail.
+                        let field_fwd =
+                            format!("{field_batch_type}({field_array}).as_arrow_array().storage,  # type: ignore[misc, arg-type]");
+                        code.push_indented(2, &field_fwd, 1);
+                    }
+                }
             }
             code.push_indented(1, "],", 1);
             code.push_indented(1, "fields=list(data_type),", 1);

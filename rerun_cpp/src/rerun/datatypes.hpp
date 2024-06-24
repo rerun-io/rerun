@@ -25,6 +25,8 @@
 #include "datatypes/tensor_buffer.hpp"
 #include "datatypes/tensor_data.hpp"
 #include "datatypes/tensor_dimension.hpp"
+#include "datatypes/tensor_dimension_index_selection.hpp"
+#include "datatypes/tensor_dimension_selection.hpp"
 #include "datatypes/time_int.hpp"
 #include "datatypes/time_range.hpp"
 #include "datatypes/time_range_boundary.hpp"

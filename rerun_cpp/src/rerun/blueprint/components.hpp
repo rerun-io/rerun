@@ -21,6 +21,7 @@
 #include "blueprint/components/space_view_class.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/space_view_origin.hpp"
+#include "blueprint/components/tensor_dimension_index_slider.hpp"
 #include "blueprint/components/view_fit.hpp"
 #include "blueprint/components/viewer_recommendation_hash.hpp"
 #include "blueprint/components/visible.hpp"

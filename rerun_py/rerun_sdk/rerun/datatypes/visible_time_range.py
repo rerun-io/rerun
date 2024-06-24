@@ -111,8 +111,8 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                Utf8Batch([x.timeline for x in data]).as_arrow_array().storage,
-                TimeRangeBatch([x.range for x in data]).as_arrow_array().storage,
+                Utf8Batch([x.timeline for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                TimeRangeBatch([x.range for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )
