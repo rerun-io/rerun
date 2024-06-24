@@ -387,9 +387,16 @@ impl ChunkStore {
                             temporal_chunk_ids_per_timeline.values_mut()
                         {
                             let ChunkIdSetPerTime {
+                                max_interval_length: _,
                                 per_start_time,
                                 per_end_time,
                             } = temporal_chunk_ids_per_time;
+
+                            // TODO(cmc): Technically, the optimal thing to do would be to
+                            // recompute `max_interval_length` per time here.
+                            // In practice, this adds a lot of complexity for likely very little
+                            // performance benefit, since we expect the chunks to have similar
+                            // interval lengths on the happy path.
 
                             for chunk_ids in per_start_time.values_mut() {
                                 chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
@@ -441,9 +448,16 @@ impl ChunkStore {
                             };
 
                             let ChunkIdSetPerTime {
+                                max_interval_length: _,
                                 per_start_time,
                                 per_end_time,
                             } = temporal_chunk_ids_per_time.get_mut();
+
+                            // TODO(cmc): Technically, the optimal thing to do would be to
+                            // recompute `max_interval_length` per time here.
+                            // In practice, this adds a lot of complexity for likely very little
+                            // performance benefit, since we expect the chunks to have similar
+                            // interval lengths on the happy path.
 
                             for (time, chunk_ids) in chunk_ids_to_be_removed {
                                 if let BTreeMapEntry::Occupied(mut chunk_id_set) =
