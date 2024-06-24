@@ -39,6 +39,11 @@ from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike,
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
+from .tensor_dimension_index_slider import (
+    TensorDimensionIndexSlider,
+    TensorDimensionIndexSliderBatch,
+    TensorDimensionIndexSliderType,
+)
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike, ViewFitType
 from .viewer_recommendation_hash import (
     ViewerRecommendationHash,
@@ -125,6 +130,9 @@ __all__ = [
     "SpaceViewOrigin",
     "SpaceViewOriginBatch",
     "SpaceViewOriginType",
+    "TensorDimensionIndexSlider",
+    "TensorDimensionIndexSliderBatch",
+    "TensorDimensionIndexSliderType",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",

@@ -42,7 +42,7 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::component_list_for_ui(&components);
+        let components = crate::sorted_component_list_for_ui(&components);
         let indicator_count = components
             .iter()
             .filter(|c| c.is_indicator_component())
@@ -146,6 +146,10 @@ impl DataUi for InstancePath {
 
                     list_item.show_flat(ui, content)
                 };
+
+                let response = response.on_hover_ui(|ui| {
+                    component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                });
 
                 if interactive {
                     ctx.select_hovered_on_click(&response, item);

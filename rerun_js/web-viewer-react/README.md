@@ -43,9 +43,3 @@ If `rrd` is not set, the Viewer will display the same welcome screen as <https:/
 ℹ️ Note:
 This package only targets recent versions of browsers.
 If your target browser does not support Wasm imports or top-level await, you may need to install additional plugins for your bundler.
-
-## Development
-
-```
-$ npm run build
-```

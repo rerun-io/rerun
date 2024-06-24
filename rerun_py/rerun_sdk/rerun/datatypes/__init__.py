@@ -55,6 +55,20 @@ from .tensor_dimension import (
     TensorDimensionLike,
     TensorDimensionType,
 )
+from .tensor_dimension_index_selection import (
+    TensorDimensionIndexSelection,
+    TensorDimensionIndexSelectionArrayLike,
+    TensorDimensionIndexSelectionBatch,
+    TensorDimensionIndexSelectionLike,
+    TensorDimensionIndexSelectionType,
+)
+from .tensor_dimension_selection import (
+    TensorDimensionSelection,
+    TensorDimensionSelectionArrayLike,
+    TensorDimensionSelectionBatch,
+    TensorDimensionSelectionLike,
+    TensorDimensionSelectionType,
+)
 from .time_int import TimeInt, TimeIntArrayLike, TimeIntBatch, TimeIntLike, TimeIntType
 from .time_range import TimeRange, TimeRangeArrayLike, TimeRangeBatch, TimeRangeLike, TimeRangeType
 from .time_range_boundary import (
@@ -211,7 +225,17 @@ __all__ = [
     "TensorDimension",
     "TensorDimensionArrayLike",
     "TensorDimensionBatch",
+    "TensorDimensionIndexSelection",
+    "TensorDimensionIndexSelectionArrayLike",
+    "TensorDimensionIndexSelectionBatch",
+    "TensorDimensionIndexSelectionLike",
+    "TensorDimensionIndexSelectionType",
     "TensorDimensionLike",
+    "TensorDimensionSelection",
+    "TensorDimensionSelectionArrayLike",
+    "TensorDimensionSelectionBatch",
+    "TensorDimensionSelectionLike",
+    "TensorDimensionSelectionType",
     "TensorDimensionType",
     "TimeInt",
     "TimeIntArrayLike",

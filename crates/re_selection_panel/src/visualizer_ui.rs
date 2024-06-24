@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use re_data_ui::DataUi;
+use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{DataCell, EntityPath};
 use re_query::LatestAtComponentResults;
@@ -149,7 +149,7 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for &component in query_info.queried.iter() {
+    for component in sorted_component_list_for_ui(query_info.queried.iter()) {
         if component.is_indicator_component() {
             continue;
         }
@@ -369,7 +369,9 @@ Unlike the other values, this may differ per visualizer.");
                 add_children,
             )
             .item_response
-            .on_hover_text(component.full_name());
+            .on_hover_ui(|ui| {
+                component.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+            });
     }
 }
 

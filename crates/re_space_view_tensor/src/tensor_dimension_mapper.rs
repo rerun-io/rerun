@@ -1,6 +1,10 @@
-use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
-use re_types::datatypes::TensorDimension;
+use re_types::{
+    blueprint::archetypes::TensorSliceSelection,
+    datatypes::{TensorDimension, TensorDimensionIndexSelection},
+};
 use re_ui::UiExt as _;
+use re_viewer_context::ViewerContext;
+use re_viewport_blueprint::ViewProperty;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {
@@ -16,39 +20,88 @@ impl DragDropAddress {
         *self != Self::None
     }
 
-    fn read_from_address(&self, dimension_mapping: &DimensionMapping) -> Option<usize> {
+    fn read_from_address(
+        &self,
+        slice_selection: &TensorSliceSelection,
+        shape: &[TensorDimension],
+    ) -> Option<TensorDimensionIndexSelection> {
         match self {
             Self::None => unreachable!(),
-            Self::Width => dimension_mapping.width,
-            Self::Height => dimension_mapping.height,
+            Self::Width => slice_selection
+                .width
+                .map(|w| TensorDimensionIndexSelection {
+                    dimension: w.dimension,
+                    index: shape[w.dimension as usize].size / 2, // Select middle if this becomes index fixed.
+                }),
+            Self::Height => slice_selection
+                .height
+                .map(|h| TensorDimensionIndexSelection {
+                    dimension: h.dimension,
+                    index: shape[h.dimension as usize].size / 2, // Select middle if this becomes index fixed.
+                }),
+            #[allow(clippy::unwrap_used)]
             Self::Selector(selector_idx) => {
-                Some(dimension_mapping.selectors[*selector_idx].dim_idx)
+                Some(slice_selection.indices.as_ref().unwrap()[*selector_idx].0)
             }
             Self::NewSelector => None,
         }
     }
 
-    fn write_to_address(&self, dimension_mapping: &mut DimensionMapping, dim_idx: Option<usize>) {
+    fn write_to_address(
+        &self,
+        ctx: &ViewerContext<'_>,
+        slice_selection: &TensorSliceSelection,
+        slice_property: &ViewProperty<'_>,
+        new_selection: Option<TensorDimensionIndexSelection>,
+    ) {
         match self {
             Self::None => unreachable!(),
-            Self::Width => dimension_mapping.width = dim_idx,
-            Self::Height => dimension_mapping.height = dim_idx,
+            Self::Width => {
+                let width = new_selection.map(|new_selection| {
+                    let mut width = slice_selection.width.unwrap_or_default();
+                    width.dimension = new_selection.dimension;
+                    width
+                });
+                slice_property.save_blueprint_component(ctx, &width);
+            }
+            Self::Height => {
+                let height = new_selection.map(|new_selection| {
+                    let mut height = slice_selection.height.unwrap_or_default();
+                    height.dimension = new_selection.dimension;
+                    height
+                });
+                slice_property.save_blueprint_component(ctx, &height);
+            }
             Self::Selector(selector_idx) => {
-                if let Some(dim_idx) = dim_idx {
-                    dimension_mapping.selectors[*selector_idx] = DimensionSelector::new(dim_idx);
+                let mut indices = slice_selection.indices.clone().unwrap_or_default();
+                let mut slider = slice_selection.slider.clone().unwrap_or_default();
+                if let Some(new_selection) = new_selection {
+                    indices[*selector_idx] = new_selection.into();
+                    slider.push(new_selection.dimension.into()); // Enable slider by default.
                 } else {
-                    dimension_mapping.selectors.remove(*selector_idx);
+                    let removed_dim = indices[*selector_idx].dimension;
+                    slider.retain(|s| s.dimension != removed_dim); // purge slider if there was any.
+                    indices.remove(*selector_idx);
+                }
+                slice_property.save_blueprint_component(ctx, &indices);
+                slice_property.save_blueprint_component(ctx, &slider);
+            }
+            Self::NewSelector => {
+                // NewSelector can only be a drop *target*, therefore dim_idx can't be None!
+                if let Some(new_selection) = new_selection {
+                    let mut indices = slice_selection.indices.clone().unwrap_or_default();
+                    let mut slider = slice_selection.slider.clone().unwrap_or_default();
+                    indices.push(new_selection.into());
+                    slider.push(new_selection.dimension.into()); // Enable slider by default.
+                    slice_property.save_blueprint_component(ctx, &indices);
+                    slice_property.save_blueprint_component(ctx, &slider);
                 }
             }
-            // NewSelector can only be a drop *target*, therefore dim_idx can't be None!
-            Self::NewSelector => dimension_mapping
-                .selectors
-                .push(DimensionSelector::new(dim_idx.unwrap())),
         };
     }
 }
 
-fn drag_source_ui_id(drag_context_id: egui::Id, dim_idx: usize) -> egui::Id {
+fn drag_source_ui_id(drag_context_id: egui::Id, dim_idx: u32) -> egui::Id {
     drag_context_id.with("tensor_dimension_ui").with(dim_idx)
 }
 
@@ -56,7 +109,7 @@ fn drag_source_ui_id(drag_context_id: egui::Id, dim_idx: usize) -> egui::Id {
 fn tensor_dimension_ui(
     ui: &mut egui::Ui,
     drag_context_id: egui::Id,
-    bound_dim_idx: Option<usize>,
+    bound_dim_idx: Option<u32>,
     location: DragDropAddress,
     shape: &[TensorDimension],
     drag_source: &mut DragDropAddress,
@@ -68,7 +121,7 @@ fn tensor_dimension_ui(
         ui.set_min_size(egui::vec2(80., 15.));
 
         if let Some(dim_idx) = bound_dim_idx {
-            let dim = &shape[dim_idx];
+            let dim = &shape[dim_idx as usize];
             let dim_ui_id = drag_source_ui_id(drag_context_id, dim_idx);
 
             let label_text = if let Some(dim_name) = dim.name.as_ref() {
@@ -91,14 +144,12 @@ fn tensor_dimension_ui(
 }
 
 pub fn dimension_mapping_ui(
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    dim_mapping: &mut DimensionMapping,
     shape: &[TensorDimension],
+    slice_selection: &TensorSliceSelection,
+    slice_property: &ViewProperty<'_>,
 ) {
-    if !dim_mapping.is_valid(shape.len()) {
-        *dim_mapping = DimensionMapping::create(shape);
-    }
-
     let mut drag_source = DragDropAddress::None; // Drag this…
     let mut drop_target = DragDropAddress::None; // …onto this.
 
@@ -106,19 +157,23 @@ pub fn dimension_mapping_ui(
 
     ui.vertical(|ui| {
         ui.vertical(|ui| {
-            ui.strong("Image");
+            ui.label("Image");
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
-                    dim_mapping.width,
+                    slice_selection.width.map(|w| w.dimension),
                     DragDropAddress::Width,
                     shape,
                     &mut drag_source,
                     &mut drop_target,
                 );
                 ui.horizontal(|ui| {
-                    ui.toggle_value(&mut dim_mapping.invert_width, "Flip");
+                    if let Some(mut width) = slice_selection.width {
+                        if ui.toggle_value(&mut width.invert, "Flip").changed() {
+                            slice_property.save_blueprint_component(ctx, &width);
+                        }
+                    }
                     ui.label("width");
                 });
                 ui.end_row();
@@ -126,14 +181,19 @@ pub fn dimension_mapping_ui(
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
-                    dim_mapping.height,
+                    slice_selection.height.map(|h| h.dimension),
                     DragDropAddress::Height,
                     shape,
                     &mut drag_source,
                     &mut drop_target,
                 );
+
                 ui.horizontal(|ui| {
-                    ui.toggle_value(&mut dim_mapping.invert_height, "Flip");
+                    if let Some(mut height) = slice_selection.height {
+                        if ui.toggle_value(&mut height.invert, "Flip").changed() {
+                            slice_property.save_blueprint_component(ctx, &height);
+                        }
+                    }
                     ui.label("height");
                 });
                 ui.end_row();
@@ -143,28 +203,50 @@ pub fn dimension_mapping_ui(
         ui.add_space(4.0);
 
         ui.vertical(|ui| {
-            ui.strong("Selectors");
+            ui.label("Selectors");
+
+            let Some(indices) = &slice_selection.indices else {
+                return;
+            };
+
             // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
                 .num_columns(2)
                 .show(ui, |ui| {
-                    for (selector_idx, selector) in dim_mapping.selectors.iter_mut().enumerate() {
+                    for (selector_idx, selector) in indices.iter().enumerate() {
                         tensor_dimension_ui(
                             ui,
                             drag_context_id,
-                            Some(selector.dim_idx),
+                            Some(selector.dimension),
                             DragDropAddress::Selector(selector_idx),
                             shape,
                             &mut drag_source,
                             &mut drop_target,
                         );
 
-                        let response = ui.visibility_toggle_button(&mut selector.visible);
-                        if selector.visible {
+                        let mut has_slider =
+                            slice_selection.slider.as_ref().map_or(false, |slider| {
+                                slider
+                                    .iter()
+                                    .any(|slider| slider.dimension == selector.dimension)
+                            });
+
+                        let response = ui.visibility_toggle_button(&mut has_slider);
+                        let response = if has_slider {
                             response.on_hover_text("Hide dimension slider")
                         } else {
                             response.on_hover_text("Show dimension slider")
                         };
+                        if response.changed() {
+                            let mut slider = slice_selection.slider.clone().unwrap_or_default();
+                            if has_slider {
+                                slider.push(selector.dimension.into());
+                            } else {
+                                slider.retain(|slider| slider.dimension != selector.dimension);
+                            }
+                            slice_property.save_blueprint_component(ctx, &slider);
+                        }
+
                         ui.end_row();
                     }
                     // Don't expose `NewSelector` for the moment since it doesn't add any value.
@@ -187,9 +269,9 @@ pub fn dimension_mapping_ui(
 
     // persist drag/drop
     if drag_source.is_some() && drop_target.is_some() {
-        let previous_value_source = drag_source.read_from_address(dim_mapping);
-        let previous_value_target = drop_target.read_from_address(dim_mapping);
-        drag_source.write_to_address(dim_mapping, previous_value_target);
-        drop_target.write_to_address(dim_mapping, previous_value_source);
+        let previous_value_source = drag_source.read_from_address(slice_selection, shape);
+        let previous_value_target = drop_target.read_from_address(slice_selection, shape);
+        drag_source.write_to_address(ctx, slice_selection, slice_property, previous_value_target);
+        drop_target.write_to_address(ctx, slice_selection, slice_property, previous_value_source);
     }
 }
