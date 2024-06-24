@@ -151,7 +151,7 @@ impl SpaceViewClass for TensorSpaceView {
             ui.strong("Dimension Mapping");
             dimension_mapping_ui(ctx, ui, tensor.shape(), &slice_selection, &slice_property);
 
-            // TODO(andreas): this is a bit too inconsistent with the other UIs.
+            // TODO(andreas): this is a bit too inconsistent with the other UIs - we don't offer the same reset/option buttons here
             if ui
                 .button("Reset to default blueprint")
                 .on_hover_text("Reset dimension mapping to the previously set default blueprint")

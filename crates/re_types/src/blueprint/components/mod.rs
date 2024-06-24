@@ -18,6 +18,7 @@ mod space_view_class_ext;
 mod space_view_origin;
 mod space_view_origin_ext;
 mod tensor_dimension_index_slider;
+mod tensor_dimension_index_slider_ext;
 mod view_fit;
 mod viewer_recommendation_hash;
 mod viewer_recommendation_hash_ext;

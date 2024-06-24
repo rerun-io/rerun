@@ -4,7 +4,7 @@ namespace rerun.blueprint.archetypes;
 table TensorSliceSelection (
     "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, Hash",
+    "attr.rust.derive": "Default, Hash, PartialEq, Eq",
     "attr.rust.generate_field_info"
 ) {
     /// Which dimension to map to width.

@@ -65,6 +65,7 @@ mod stroke_width;
 mod stroke_width_ext;
 mod tensor_data;
 mod tensor_dimension_index_selection;
+mod tensor_dimension_index_selection_ext;
 mod tensor_height_dimension;
 mod tensor_width_dimension;
 mod texcoord2d;
