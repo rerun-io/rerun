@@ -65,6 +65,12 @@ class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of PrimitiveComponent not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in primitive_component_ext.py
+        if isinstance(data, PrimitiveComponent):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                pa.array(np.asarray([x.value for x in data], dtype=np.uint32)),
+            ],
+            fields=list(data_type),
+        )

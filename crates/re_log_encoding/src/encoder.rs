@@ -117,6 +117,10 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn flush_blocking(&mut self) -> std::io::Result<()> {
         self.write.flush()
     }
+
+    pub fn into_inner(self) -> W {
+        self.write
+    }
 }
 
 pub fn encode<'a>(
@@ -145,4 +149,20 @@ pub fn encode_as_bytes<'a>(
         encoder.append(message)?;
     }
     Ok(bytes)
+}
+
+#[inline]
+pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
+    Encoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
+}
+
+#[inline]
+pub fn encode_as_bytes_local<'a>(
+    messages: impl IntoIterator<Item = &'a LogMsg>,
+) -> Result<Vec<u8>, EncodeError> {
+    let mut encoder = local_encoder()?;
+    for message in messages {
+        encoder.append(message)?;
+    }
+    Ok(encoder.into_inner())
 }

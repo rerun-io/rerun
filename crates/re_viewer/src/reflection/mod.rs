@@ -168,6 +168,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 },
             ),
             (
+                <TensorDimensionIndexSlider as Loggable>::name(),
+                ComponentReflection {
+                    docstring_md: "Show a slider for the index of some dimension of a slider.",
+                    placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
+                },
+            ),
+            (
                 <ViewFit as Loggable>::name(),
                 ComponentReflection {
                     docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
@@ -452,6 +459,29 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 ComponentReflection {
                     docstring_md: "A multi-dimensional `Tensor` of data.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.\n\nNote that the buffer may be encoded in a compressed format such as `jpeg` or\nin a format with downsampled chroma, such as NV12 or YUY2.\nFor file formats, the shape is used as a hint, for chroma downsampled format\nthe shape has to be the shape of the decoded image.",
                     placeholder: Some(TensorData::default().to_arrow()?),
+                },
+            ),
+            (
+                <TensorDimensionIndexSelection as Loggable>::name(),
+                ComponentReflection {
+                    docstring_md: "Specifies a concrete index on a tensor dimension.",
+                    placeholder: Some(
+                        TensorDimensionIndexSelection::default().to_arrow()?,
+                    ),
+                },
+            ),
+            (
+                <TensorHeightDimension as Loggable>::name(),
+                ComponentReflection {
+                    docstring_md: "Specifies which dimension to use for height.",
+                    placeholder: Some(TensorHeightDimension::default().to_arrow()?),
+                },
+            ),
+            (
+                <TensorWidthDimension as Loggable>::name(),
+                ComponentReflection {
+                    docstring_md: "Specifies which dimension to use for width.",
+                    placeholder: Some(TensorWidthDimension::default().to_arrow()?),
                 },
             ),
             (

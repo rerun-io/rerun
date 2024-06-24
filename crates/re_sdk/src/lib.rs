@@ -66,7 +66,9 @@ pub mod sink {
     pub use crate::binary_stream_sink::{
         BinaryStreamSink, BinaryStreamSinkError, BinaryStreamStorage,
     };
-    pub use crate::log_sink::{BufferedSink, LogSink, MemorySink, MemorySinkStorage, TcpSink};
+    pub use crate::log_sink::{
+        BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage, TcpSink,
+    };
 
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
@@ -103,6 +105,7 @@ pub mod web_viewer;
 /// Re-exports of other crates.
 pub mod external {
     pub use re_log;
+    pub use re_log_encoding;
     pub use re_log_types;
     pub use re_sdk_comms;
 

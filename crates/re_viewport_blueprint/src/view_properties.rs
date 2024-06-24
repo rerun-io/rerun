@@ -1,7 +1,9 @@
 use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtResults, EntityDb};
 use re_log_types::EntityPath;
-use re_types::{external::arrow2, Archetype, ArchetypeName, ComponentName, DeserializationError};
+use re_types::{
+    external::arrow2, Archetype, ArchetypeName, ComponentBatch, ComponentName, DeserializationError,
+};
 use re_viewer_context::{
     external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
     QueryContext, SpaceViewId, SpaceViewSystemExecutionError, ViewerContext,
@@ -29,6 +31,7 @@ impl From<ViewPropertyQueryError> for SpaceViewSystemExecutionError {
 pub struct ViewProperty<'a> {
     pub blueprint_store_path: EntityPath,
     archetype_name: ArchetypeName,
+    component_names: Vec<ComponentName>,
     query_results: LatestAtResults,
     blueprint_db: &'a EntityDb,
     blueprint_query: &'a LatestAtQuery,
@@ -70,6 +73,7 @@ impl<'a> ViewProperty<'a> {
             blueprint_store_path,
             archetype_name,
             query_results,
+            component_names: component_names.to_vec(),
             blueprint_db,
             blueprint_query,
         }
@@ -104,13 +108,31 @@ impl<'a> ViewProperty<'a> {
         )?)
     }
 
-    /// Get the component array for a given type.
-    pub fn component_array<C: re_types::Component + Default>(
+    /// Get a single component or None, not using any fallbacks.
+    #[inline]
+    pub fn component_or_empty<C: re_types::Component>(
         &self,
-    ) -> Option<Result<Vec<C>, DeserializationError>> {
+    ) -> Result<Option<C>, DeserializationError> {
+        self.component_array()
+            .map(|v| v.and_then(|v| v.into_iter().next()))
+    }
+
+    /// Get the component array for a given type, not using any fallbacks.
+    pub fn component_array<C: re_types::Component>(
+        &self,
+    ) -> Result<Option<Vec<C>>, DeserializationError> {
         let component_name = C::name();
         self.component_raw(component_name)
             .map(|raw| C::from_arrow(raw.as_ref()))
+            .transpose()
+    }
+
+    /// Get the component array for a given type or an empty array, not using any fallbacks.
+    pub fn component_array_or_empty<C: re_types::Component>(
+        &self,
+    ) -> Result<Vec<C>, DeserializationError> {
+        self.component_array()
+            .map(|value| value.unwrap_or_default())
     }
 
     fn component_raw(
@@ -138,17 +160,40 @@ impl<'a> ViewProperty<'a> {
     }
 
     /// Save change to a blueprint component.
-    pub fn save_blueprint_component<C: re_types::Component>(
+    pub fn save_blueprint_component(
         &self,
         ctx: &'a ViewerContext<'a>,
-        component: &C,
+        components: &dyn ComponentBatch,
     ) {
-        ctx.save_blueprint_component(&self.blueprint_store_path, component);
+        ctx.save_blueprint_component(&self.blueprint_store_path, components);
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.
     pub fn reset_blueprint_component<C: re_types::Component>(&self, ctx: &'a ViewerContext<'a>) {
         ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, C::name());
+    }
+
+    /// Resets all components to the values they had in the default blueprint.
+    pub fn reset_all_components(&self, ctx: &'a ViewerContext<'a>) {
+        // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
+        for &component_name in &self.component_names {
+            ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, component_name);
+        }
+    }
+
+    /// Resets all components to empty values, i.e. the fallback.
+    pub fn reset_all_components_to_empty(&self, ctx: &'a ViewerContext<'a>) {
+        for &component_name in self.query_results.components.keys() {
+            ctx.save_empty_blueprint_component_by_name(&self.blueprint_store_path, component_name);
+        }
+    }
+
+    /// Returns whether any property is non-empty.
+    pub fn any_non_empty(&self) -> bool {
+        self.query_results.components.keys().any(|name| {
+            self.component_raw(*name)
+                .map_or(false, |raw| !raw.is_empty())
+        })
     }
 
     fn query_context(

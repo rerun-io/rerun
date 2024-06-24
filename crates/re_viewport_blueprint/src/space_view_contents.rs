@@ -102,10 +102,10 @@ impl SpaceViewContents {
             query,
             view_id,
         );
-        let expressions = match property.component_array::<QueryExpression>() {
-            Some(Ok(expressions)) => expressions,
+        let expressions = match property.component_array_or_empty::<QueryExpression>() {
+            Ok(expressions) => expressions,
 
-            Some(Err(err)) => {
+            Err(err) => {
                 re_log::warn_once!(
                     "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
                     view_id,
@@ -114,9 +114,6 @@ impl SpaceViewContents {
                 );
                 Default::default()
             }
-
-            // Simply nothing available in the store, this can happen on reset.
-            None => Default::default(),
         };
         let query = expressions.iter().map(|qe| qe.0.as_str());
 

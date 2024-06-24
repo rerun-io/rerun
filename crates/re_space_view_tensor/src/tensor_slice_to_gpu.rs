@@ -4,6 +4,7 @@ use re_renderer::{
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
 use re_types::{
+    blueprint::archetypes::TensorSliceSelection,
     components::{Colormap, GammaCorrection},
     datatypes::TensorBuffer,
     tensor_data::{DecodedTensor, TensorCastError, TensorDataType},
@@ -13,7 +14,7 @@ use re_viewer_context::{
     TensorStats,
 };
 
-use crate::space_view_class::{selected_tensor_slice, SliceSelection, ViewTensorState};
+use crate::space_view_class::selected_tensor_slice;
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum TensorUploadError {
@@ -32,7 +33,7 @@ pub fn colormapped_texture(
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
-    state: &ViewTensorState,
+    slice_selection: &TensorSliceSelection,
     colormap: Colormap,
     gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
@@ -41,7 +42,7 @@ pub fn colormapped_texture(
     let range = tensor_data_range_heuristic(tensor_stats, tensor.dtype())
         .map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
     let texture =
-        upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, &state.slice)?;
+        upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, slice_selection)?;
 
     Ok(ColormappedTexture {
         texture,
@@ -64,7 +65,7 @@ fn upload_texture_slice_to_gpu(
     render_ctx: &re_renderer::RenderContext,
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
-    slice_selection: &SliceSelection,
+    slice_selection: &TensorSliceSelection,
 ) -> Result<GpuTexture2D, TextureManager2DError<TensorUploadError>> {
     let id = egui::util::hash((tensor_data_row_id, slice_selection));
 
@@ -75,7 +76,7 @@ fn upload_texture_slice_to_gpu(
 
 fn texture_desc_from_tensor(
     tensor: &DecodedTensor,
-    slice_selection: &SliceSelection,
+    slice_selection: &TensorSliceSelection,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
     use wgpu::TextureFormat;
     re_tracing::profile_function!();
@@ -150,7 +151,7 @@ fn texture_desc_from_tensor(
 
 fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     tensor: &ndarray::ArrayViewD<'_, From>,
-    slice_selection: &SliceSelection,
+    slice_selection: &TensorSliceSelection,
     format: wgpu::TextureFormat,
     caster: impl Fn(From) -> To,
 ) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {

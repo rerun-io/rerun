@@ -10,6 +10,7 @@ from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
 from .tensor_scalar_mapping import TensorScalarMapping
+from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
 from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
@@ -24,6 +25,7 @@ __all__ = [
     "SpaceViewBlueprint",
     "SpaceViewContents",
     "TensorScalarMapping",
+    "TensorSliceSelection",
     "TensorViewFit",
     "ViewportBlueprint",
     "VisibleTimeRanges",

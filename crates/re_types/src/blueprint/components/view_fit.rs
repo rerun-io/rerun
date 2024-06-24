@@ -29,10 +29,10 @@ pub enum ViewFit {
     Original = 1,
 
     /// Scale the image for the largest possible fit in the view's container.
-    #[default]
     Fill = 2,
 
     /// Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio.
+    #[default]
     FillKeepAspectRatio = 3,
 }
 

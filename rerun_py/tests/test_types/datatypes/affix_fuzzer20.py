@@ -80,8 +80,8 @@ class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                PrimitiveComponentBatch([x.p for x in data]).as_arrow_array().storage,
-                StringComponentBatch([x.s for x in data]).as_arrow_array().storage,
+                PrimitiveComponentBatch([x.p for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                StringComponentBatch([x.s for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )
