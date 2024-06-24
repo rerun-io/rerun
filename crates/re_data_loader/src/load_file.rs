@@ -154,7 +154,24 @@ pub(crate) fn load(
             struct CompatibleLoaderFound;
             let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
 
-            for loader in crate::iter_loaders() {
+            // Prevent passing RRD paths to external (and other) loaders.
+            // See <https://github.com/rerun-io/rerun/issues/6530>.
+            let loaders = {
+                use crate::DataLoader as _;
+                use rayon::iter::Either;
+
+                let extension = crate::extension(path);
+                if crate::SUPPORTED_RERUN_EXTENSIONS.contains(&extension.as_str()) {
+                    Either::Left(
+                        crate::iter_loaders()
+                            .filter(|loader| loader.name() == crate::RrdLoader.name()),
+                    )
+                } else {
+                    Either::Right(crate::iter_loaders())
+                }
+            };
+
+            for loader in loaders {
                 let loader = std::sync::Arc::clone(&loader);
 
                 let settings = settings.clone();
