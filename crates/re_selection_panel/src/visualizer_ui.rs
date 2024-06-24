@@ -279,26 +279,30 @@ fn visualizer_components(
                     component,
                     raw_override.as_ref(),
                     result_override,
-                );
+                )
+                .on_hover_text("Override value for this specific entity in the current view.");
             }
             // Store (if available)
             if let Some(result_store) = result_store {
-                ui.list_item().interactive(false).show_flat(
-                    ui,
-                    list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
-                        re_data_ui::EntityLatestAtResults {
-                            entity_path: data_result.entity_path.clone(),
-                            results: result_store,
-                        }
-                        .data_ui(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                        );
-                    }),
-                );
+                ui.list_item()
+                    .interactive(false)
+                    .show_flat(
+                        ui,
+                        list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
+                            re_data_ui::EntityLatestAtResults {
+                                entity_path: data_result.entity_path.clone(),
+                                results: result_store,
+                            }
+                            .data_ui(
+                                ctx.viewer_ctx,
+                                ui,
+                                UiLayout::List,
+                                &store_query,
+                                ctx.recording(),
+                            );
+                        }),
+                    )
+                    .on_hover_text("The value that was logged to the data store.");
             }
             // Default (if available)
             if let (Some(result_default), Some(raw_default)) =
@@ -312,26 +316,31 @@ fn visualizer_components(
                     component,
                     raw_default.as_ref(),
                     result_default,
-                );
+                )
+                .on_hover_text("Default value for all component of this type is the current view.");
             }
             // Fallback (always there)
             {
-                ui.list_item().interactive(false).show_flat(
-                    ui,
-                    list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
-                        // TODO(andreas): db & entity path don't make sense here.
-                        ctx.viewer_ctx.component_ui_registry.ui_raw(
-                            ctx.viewer_ctx,
-                            ui,
-                            UiLayout::List,
-                            &store_query,
-                            ctx.recording(),
-                            &data_result.entity_path,
-                            component,
-                            raw_fallback.as_ref(),
-                        );
-                    }),
-                )
+                ui.list_item()
+                    .interactive(false)
+                    .show_flat(
+                        ui,
+                        list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
+                            // TODO(andreas): db & entity path don't make sense here.
+                            ctx.viewer_ctx.component_ui_registry.ui_raw(
+                                ctx.viewer_ctx,
+                                ui,
+                                UiLayout::List,
+                                &store_query,
+                                ctx.recording(),
+                                &data_result.entity_path,
+                                component,
+                                raw_fallback.as_ref(),
+                            );
+                        }),
+                    )
+                    .on_hover_text("Context sensitive fallback value for this component type, used only if nothing else was specified.
+Unlike the other values, this may differ per visualizer.");
             }
         };
 
@@ -372,7 +381,7 @@ fn editable_blueprint_component_list_item(
     component: re_types::ComponentName,
     raw_override: &dyn arrow2::array::Array,
     result_override: &LatestAtComponentResults,
-) {
+) -> egui::Response {
     ui.list_item().interactive(false).show_flat(
         ui,
         list_item::PropertyContent::new(name)
@@ -404,7 +413,7 @@ fn editable_blueprint_component_list_item(
             .action_button(&re_ui::icons::CLOSE, || {
                 ctx.save_empty_blueprint_component_by_name(blueprint_path, component);
             }),
-    );
+    )
 }
 
 /// "More" menu for a component line in the visualizer ui.
