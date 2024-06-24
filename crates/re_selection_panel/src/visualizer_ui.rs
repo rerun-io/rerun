@@ -7,7 +7,7 @@ use re_query::LatestAtComponentResults;
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::external::arrow2;
 use re_types_core::components::VisualizerOverrides;
-use re_ui::{list_item, ContextExt as _, UiExt as _};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     DataResult, SpaceViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
 };
@@ -25,7 +25,7 @@ pub fn visualizer_ui(
         .lookup_result_by_path(entity_path)
         .cloned()
     else {
-        ui.label(ui.ctx().error_text("Entity not found in view."));
+        ui.error_label("Entity not found in view.");
         return;
     };
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
@@ -53,8 +53,8 @@ pub fn visualizer_ui(
             );
         })
         .with_enabled(!available_inactive_visualizers.is_empty())
-        .with_hover_text("Add additional visualizers.")
-        .with_disabled_hover_text("No additional visualizers available."),
+        .with_hover_text("Add additional visualizers")
+        .with_disabled_hover_text("No additional visualizers available"),
     );
 }
 
@@ -455,7 +455,7 @@ fn menu_more(
 
     if ui
         .button("Reset override")
-        .on_hover_text("Resets the override to what was specified in the default blueprint.")
+        .on_hover_text("Resets the override to what is specified in the default blueprint.")
         .clicked()
     {
         ctx.reset_blueprint_component_by_name(override_path, component);
