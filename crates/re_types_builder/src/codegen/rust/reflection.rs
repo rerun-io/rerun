@@ -59,7 +59,7 @@ pub fn generate_reflection(
         #component_reflection
     };
 
-    let code = append_tokens(reporter, code, quoted_reflection, &path);
+    let code = append_tokens(reporter, code, &quoted_reflection, &path);
 
     files_to_write.insert(path, code);
 }

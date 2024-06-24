@@ -184,37 +184,16 @@ fn generate_object_file(
         crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
-    append_tokens(reporter, code, quoted_obj, target_file)
+    append_tokens(reporter, code, &quoted_obj, target_file)
 }
 
 pub fn append_tokens(
     reporter: &Reporter,
     mut code: String,
-    quoted_obj: TokenStream,
+    quoted_obj: &TokenStream,
     target_file: &Utf8Path,
 ) -> String {
-    let mut acc = TokenStream::new();
-
-    let mut tokens = quoted_obj.into_iter();
-    while let Some(token) = tokens.next() {
-        match &token {
-            // If this is a doc-comment block, be smart about it.
-            proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
-                acc = TokenStream::new();
-
-                acc.extend([token, tokens.next().unwrap()]);
-                code.push_indented(0, acc.to_string(), 1);
-                acc = TokenStream::new();
-            }
-            _ => {
-                acc.extend([token]);
-            }
-        }
-    }
-
-    code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
-
+    code.push_indented(0, string_from_quoted(reporter, quoted_obj, target_file), 1);
     replace_doc_attrb_with_doc_comment(&code)
 }
 

@@ -13,9 +13,9 @@ use re_types_core::{
     ComponentName, SerializationError,
 };
 
-#[doc = r" Generates reflection about all known components."]
-#[doc = r""]
-#[doc = r" Call only once and reuse the results."]
+/// Generates reflection about all known components.
+///
+/// Call only once and reuse the results.
 
 pub fn generate_reflection() -> Result<Reflection, SerializationError> {
     use ::re_types_core::{Loggable, LoggableBatch as _};
@@ -25,9 +25,9 @@ pub fn generate_reflection() -> Result<Reflection, SerializationError> {
     })
 }
 
-#[doc = r" Generates reflection about all known components."]
-#[doc = r""]
-#[doc = r" Call only once and reuse the results."]
+/// Generates reflection about all known components.
+///
+/// Call only once and reuse the results.
 
 fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
     use ::re_types_core::{Loggable, LoggableBatch as _};
