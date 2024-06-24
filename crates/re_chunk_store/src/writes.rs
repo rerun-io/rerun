@@ -228,18 +228,14 @@ impl ChunkStore {
                 })
                 .flat_map(|temporal_chunk_ids_per_time| {
                     let ChunkIdSetPerTime {
+                        max_interval_length: _,
                         per_start_time,
-                        per_end_time,
+                        per_end_time: _, // same chunk IDs as above
                     } = temporal_chunk_ids_per_time;
 
                     per_start_time
                         .into_values()
                         .flat_map(|chunk_ids| chunk_ids.into_iter())
-                        .chain(
-                            per_end_time
-                                .into_values()
-                                .flat_map(|chunk_ids| chunk_ids.into_iter()),
-                        )
                 })
                 .collect();
 
