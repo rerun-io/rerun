@@ -276,7 +276,7 @@ fn table_ui(
 ) {
     let timelines = vec![*ctx.rec_cfg.time_ctrl.read().timeline()];
 
-    // TODO(cmc): This regressed because adding a metadata registry in the store is an antipattern.
+    // TODO(#6611): This regressed because adding a metadata registry in the store is an antipattern.
     //
     // We'll bring back the multi-timeline display once we get rid of the native cache and start
     // exposing chunks directly instead.
