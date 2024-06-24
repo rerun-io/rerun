@@ -41,9 +41,7 @@ jobs:
         run: pixi run py-fmt-check
 
       - name: Lint Python
-        run: |
-          pixi run pip install -e ./rerun_notebook
-          pixi run py-lint
+        run: pixi run py-lint
 
   # ---------------------------------------------------------------------------
 
