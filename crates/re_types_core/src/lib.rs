@@ -87,7 +87,7 @@ mod view;
 
 pub use self::{
     archetype::{
-        Archetype, ArchetypeFieldInfo, ArchetypeInfo, ArchetypeName, GenericIndicatorComponent,
+        Archetype, ArchetypeName, ArchetypeReflectionMarker, GenericIndicatorComponent,
         NamedIndicatorComponent,
     },
     arrow_buffer::ArrowBuffer,

@@ -83,27 +83,6 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         ]
     });
 
-static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 3usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Mag filter",
-            documentation: "Filter used when zooming in on the tensor.\n\nNote that the filter is applied to the scalar values *before* they are mapped to color.",
-            component_name: "rerun.components.MagnificationFilter".into(),
-        },
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Colormap",
-            documentation: "How scalar values map to colors.",
-            component_name: "rerun.components.Colormap".into(),
-        },
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Gamma",
-            documentation: "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.",
-            component_name: "rerun.components.GammaCorrection".into(),
-        },
-    ]
-    });
-
 impl TensorScalarMapping {
     /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
     pub const NUM_COMPONENTS: usize = 4usize;
@@ -150,11 +129,6 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
-    }
-
-    #[inline]
-    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
-        Some(FIELD_INFOS.as_slice().into())
     }
 
     #[inline]
@@ -224,6 +198,8 @@ impl ::re_types_core::AsComponents for TensorScalarMapping {
         .collect()
     }
 }
+
+impl ::re_types_core::ArchetypeReflectionMarker for TensorScalarMapping {}
 
 impl TensorScalarMapping {
     /// Create a new `TensorScalarMapping`.

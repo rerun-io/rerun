@@ -63,22 +63,6 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ::re_types_core::ArchetypeFieldInfo {
-                display_name: "Kind",
-                documentation: "The type of the background.",
-                component_name: "rerun.blueprint.components.BackgroundKind".into(),
-            },
-            ::re_types_core::ArchetypeFieldInfo {
-                display_name: "Color",
-                documentation: "Color used for the `SolidColor` background type.",
-                component_name: "rerun.components.Color".into(),
-            },
-        ]
-    });
-
 impl Background {
     /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 3usize;
@@ -124,11 +108,6 @@ impl ::re_types_core::Archetype for Background {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
-    }
-
-    #[inline]
-    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
-        Some(FIELD_INFOS.as_slice().into())
     }
 
     #[inline]
@@ -183,6 +162,8 @@ impl ::re_types_core::AsComponents for Background {
         .collect()
     }
 }
+
+impl ::re_types_core::ArchetypeReflectionMarker for Background {}
 
 impl Background {
     /// Create a new `Background`.

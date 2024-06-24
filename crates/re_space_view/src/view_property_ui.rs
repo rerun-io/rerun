@@ -1,6 +1,6 @@
 use re_types_core::{
     reflection::{ArchetypeFieldReflection, ArchetypeReflection},
-    Archetype, ArchetypeName, ComponentName,
+    Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentName,
 };
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
@@ -12,7 +12,7 @@ use re_viewport_blueprint::entity_path_for_view_property;
 /// Display the UI for editing all components of a blueprint archetype.
 ///
 /// Note that this will show default values for components that are null.
-pub fn view_property_ui<A: Archetype>(
+pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     view_id: SpaceViewId,
