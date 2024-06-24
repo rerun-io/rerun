@@ -211,7 +211,7 @@ pub fn range<'a>(
     component_name: ComponentName,
 ) -> impl Iterator<Item = (TimeInt, RowId, Box<dyn Array>)> + 'a {
     store
-        .range(query, entity_path, component_name)
+        .range_relevant_chunks(query, entity_path, component_name)
         .into_iter()
         .map(move |chunk| chunk.range(query, component_name))
         .filter(|chunk| !chunk.is_empty())

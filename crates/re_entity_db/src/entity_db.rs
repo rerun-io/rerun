@@ -486,6 +486,7 @@ impl EntityDb {
                     return true;
                 };
 
+                // TODO(cmc): chunk.slice_time_selection(time_selection)
                 chunk
                     .timelines()
                     .get(&timeline)

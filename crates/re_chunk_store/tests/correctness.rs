@@ -23,7 +23,7 @@ fn query_latest_component<C: re_types_core::Component>(
     re_tracing::profile_function!();
 
     let (data_time, row_id, array) = store
-        .latest_at(query, entity_path, C::name())
+        .latest_at_relevant_chunks(query, entity_path, C::name())
         .into_iter()
         .flat_map(|chunk| {
             chunk
@@ -270,7 +270,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
 
     // empty frame_nr
     {
-        let chunks = store.latest_at(
+        let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
             MyIndex::name(),
@@ -280,7 +280,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
 
     // empty log_time
     {
-        let chunks = store.latest_at(
+        let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
             MyIndex::name(),
@@ -290,7 +290,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
 
     // wrong entity path
     {
-        let chunks = store.latest_at(
+        let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::name(),
@@ -300,7 +300,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
 
     // wrong timeline name
     {
-        let chunks = store.latest_at(
+        let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::name(),
@@ -310,7 +310,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
 
     // wrong timeline kind
     {
-        let chunks = store.latest_at(
+        let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::name(),

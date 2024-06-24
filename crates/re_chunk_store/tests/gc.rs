@@ -25,7 +25,7 @@ fn query_latest_array(
     re_tracing::profile_function!();
 
     let (data_time, row_id, array) = store
-        .latest_at(query, entity_path, component_name)
+        .latest_at_relevant_chunks(query, entity_path, component_name)
         .into_iter()
         .flat_map(|chunk| {
             chunk

@@ -232,7 +232,7 @@ fn sorted_instance_paths_for<'a>(
         .filter(|component_name| !component_name.is_indicator_component())
         .flat_map(|component_name| {
             let num_instances = store
-                .latest_at(latest_at_query, entity_path, component_name)
+                .latest_at_relevant_chunks(latest_at_query, entity_path, component_name)
                 .into_iter()
                 .filter_map(|chunk| {
                     let (data_time, row_id, batch) = chunk
