@@ -45,7 +45,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
     // TODO(jleibs): We can do something fancier in the future such as presenting both
     // options once we have a motivating use-case.
     for (id, vis) in ctx.visualizer_collection.iter_with_identifiers() {
-        for component in vis.visualizer_query_info().queried {
+        for &component in vis.visualizer_query_info().queried.iter() {
             component_to_vis.entry(component).or_insert_with(|| id);
         }
     }
