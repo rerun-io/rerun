@@ -40,7 +40,7 @@ pub struct ChunkIdSetPerTime {
     /// This is used to bound the backwards linear walk when looking for overlapping chunks in
     /// latest-at queries.
     ///
-    /// See [`ChunkStore::latest_at`] implementation comments for more details.
+    /// See [`ChunkStore::latest_at_relevant_chunks`] implementation comments for more details.
     pub(crate) max_interval_length: u64,
 
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
