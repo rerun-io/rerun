@@ -120,7 +120,7 @@ impl Chunk {
             let is_sorted_by_time = time_chunk.is_sorted();
             let times = time_chunk.times_raw();
 
-            if is_sorted_by_row_id && is_sorted_by_time {
+            if is_sorted_by_time {
                 // Temporal, row-sorted, time-sorted chunk
 
                 let i = times

@@ -149,7 +149,7 @@ impl ChunkStore {
             event_id: self
                 .event_id
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-            diff: ChunkStoreDiff::addition(chunk.clone()),
+            diff: ChunkStoreDiff::addition(Arc::clone(chunk)),
         };
 
         {
