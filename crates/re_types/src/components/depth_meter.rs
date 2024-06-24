@@ -22,7 +22,11 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A component indicating how long a meter is, expressed in native units.
+/// **Component**: The world->depth map scaling factor.
+///
+/// This measures how many depth map units are in a world unit.
+/// For instance, if a depth map uses millimeters and the world uses meters,
+/// this value would be `1000`.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct DepthMeter(pub f32);

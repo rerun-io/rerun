@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Configures a policy for aggregation of values.
+/// **Component**: Policy for aggregation of multiple scalar plot values.
 ///
 /// This is used for lines in plots when the X axis distance of individual points goes below a single pixel,
 /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance

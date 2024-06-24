@@ -24,7 +24,7 @@ __all__ = ["MarkerSize", "MarkerSizeArrayLike", "MarkerSizeBatch", "MarkerSizeLi
 
 @define(init=False)
 class MarkerSize(ComponentMixin):
-    """**Component**: Size of a marker in UI points."""
+    """**Component**: Radius of a marker of a point in e.g. a 2D plot, measured in UI points."""
 
     _BATCH_TYPE = None
 
