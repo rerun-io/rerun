@@ -148,7 +148,7 @@ impl DataUi for InstancePath {
                 };
 
                 let response = response.on_hover_ui(|ui| {
-                    component_name.data_ui_default(ctx, ui, UiLayout::Tooltip);
+                    component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
                 });
 
                 if interactive {

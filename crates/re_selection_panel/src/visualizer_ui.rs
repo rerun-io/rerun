@@ -250,7 +250,7 @@ fn visualizer_components(
                 list_item::PropertyContent::new(component.short_name()).value_fn(value_fn),
             )
             .on_hover_ui(|ui| {
-                component.data_ui_default(ctx.viewer_ctx, ui, UiLayout::Tooltip);
+                component.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
             });
     }
 }

@@ -588,7 +588,7 @@ pub fn app_id_button_ui(
     );
 
     let response = response.on_hover_ui(|ui| {
-        app_id.data_ui_default(ctx, ui, re_viewer_context::UiLayout::Tooltip);
+        app_id.data_ui_recording(ctx, ui, re_viewer_context::UiLayout::Tooltip);
     });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -609,7 +609,7 @@ pub fn data_source_button_ui(
     );
 
     let response = response.on_hover_ui(|ui| {
-        data_source.data_ui_default(ctx, ui, re_viewer_context::UiLayout::Tooltip);
+        data_source.data_ui_recording(ctx, ui, re_viewer_context::UiLayout::Tooltip);
     });
 
     cursor_interact_with_selectable(ctx, response, item)

@@ -65,7 +65,8 @@ pub trait DataUi {
         db: &re_entity_db::EntityDb,
     );
 
-    fn data_ui_default(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+    /// Called [`Self::data_ui`] using the default query and recording.
+    fn data_ui_recording(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         self.data_ui(ctx, ui, ui_layout, &ctx.current_query(), ctx.recording());
     }
 }

@@ -219,7 +219,7 @@ fn app_and_its_recordings_ui(
     };
 
     let item_response = item_response.on_hover_ui(|ui| {
-        app_id.data_ui_default(ctx, ui, UiLayout::Tooltip);
+        app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
     });
 
     ctx.select_hovered_on_click(&item_response, app_item);

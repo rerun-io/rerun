@@ -637,7 +637,7 @@ pub fn picking(
                     Some(query.space_view_id),
                     &instance_path,
                 );
-                instance_path.data_ui_default(ctx, ui, UiLayout::Tooltip);
+                instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
             })
         };
     }
@@ -714,10 +714,10 @@ fn image_hover_ui(
             instance_path.entity_path.clone(),
             re_types::components::TensorData::name(),
         );
-        component_path.data_ui_default(ctx, ui, UiLayout::List);
+        component_path.data_ui_recording(ctx, ui, UiLayout::List);
     } else {
         // Show it all, like we do for any other thing we hover
-        instance_path.data_ui_default(ctx, ui, UiLayout::List);
+        instance_path.data_ui_recording(ctx, ui, UiLayout::List);
     }
 
     if let Some([h, w, ..]) = tensor.image_height_width_channels() {

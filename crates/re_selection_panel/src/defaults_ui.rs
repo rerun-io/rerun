@@ -127,7 +127,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                             .value_fn(|ui, _| value_fn(ui)),
                     )
                     .on_hover_ui(|ui| {
-                        component_name.data_ui_default(
+                        component_name.data_ui_recording(
                             ctx.viewer_ctx,
                             ui,
                             re_viewer_context::UiLayout::Tooltip,
