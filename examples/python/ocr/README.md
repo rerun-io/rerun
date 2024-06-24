@@ -136,7 +136,8 @@ rr.send_blueprint(rrb.Blueprint(
 ```
 
 ## Run the code
-To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
+You can view this example live on [Huggingface spaces](https://huggingface.co/spaces/rerun/OCR).\
+To run this example locally, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository

@@ -39,6 +39,8 @@ pub fn top_panel(
                 ui.ctx()
                     .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
             } else if title_bar_response.is_pointer_button_down_on() {
+                // TODO(emilk): This should probably only run on `title_bar_response.drag_started_by(PointerButton::Primary)`,
+                // see https://github.com/emilk/egui/pull/4656
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
         }

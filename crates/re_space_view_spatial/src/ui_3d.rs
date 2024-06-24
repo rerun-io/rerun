@@ -1,6 +1,7 @@
 use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
 use macaw::{BoundingBox, Quat, Vec3};
+use re_ui::ContextExt;
 use re_viewport_blueprint::ViewProperty;
 use web_time::Instant;
 
@@ -634,7 +635,7 @@ impl SpatialSpaceView3D {
                 space_cameras,
                 state,
                 selected_context,
-                ui.style().visuals.selection.bg_fill,
+                ui.ctx().selection_stroke().color,
             );
         }
         if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
@@ -643,7 +644,7 @@ impl SpatialSpaceView3D {
                 space_cameras,
                 state,
                 hovered_context,
-                egui::Color32::WHITE,
+                ui.ctx().hover_stroke().color,
             );
         }
 
@@ -809,7 +810,7 @@ fn show_projections_from_2d_space(
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
     space_context: &ItemSpaceContext,
-    color: egui::Color32,
+    ray_color: egui::Color32,
 ) {
     match space_context {
         ItemSpaceContext::TwoD { space_2d, pos } => {
@@ -842,7 +843,7 @@ fn show_projections_from_2d_space(
                             ray,
                             &state.bounding_boxes.accumulated,
                             thick_ray_length,
-                            color,
+                            ray_color,
                         );
                     }
                 }
@@ -870,7 +871,7 @@ fn show_projections_from_2d_space(
                         ray,
                         &state.bounding_boxes.accumulated,
                         distance,
-                        color,
+                        ray_color,
                     );
                 }
             }
@@ -884,7 +885,7 @@ fn add_picking_ray(
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
-    color: egui::Color32,
+    ray_color: egui::Color32,
 ) {
     let mut line_batch = line_builder.batch("picking ray");
 
@@ -895,11 +896,11 @@ fn add_picking_ray(
 
     line_batch
         .add_segment(origin, main_ray_end)
-        .color(color)
+        .color(ray_color)
         .radius(Size::new_points(1.0));
     line_batch
         .add_segment(main_ray_end, fallback_ray_end)
-        .color(color.gamma_multiply(0.7))
+        .color(ray_color.gamma_multiply(0.7))
         // TODO(andreas): Make this dashed.
         .radius(Size::new_points(0.5));
 }

@@ -66,7 +66,8 @@ fn query_pinhole(
     query: &re_data_store::LatestAtQuery,
     data_result: &re_viewer_context::DataResult,
 ) -> Option<re_types::archetypes::Pinhole> {
-    let results = data_result.latest_at_with_overrides::<re_types::archetypes::Pinhole>(ctx, query);
+    let results = data_result
+        .latest_at_with_blueprint_resolved_data::<re_types::archetypes::Pinhole>(ctx, query);
 
     let image_from_camera = results.get_mono()?;
 

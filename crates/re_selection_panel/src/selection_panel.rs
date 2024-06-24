@@ -3,38 +3,25 @@ use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::{
-    image_meaning_for_entity, item_ui,
+    item_ui,
     item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
     DataUi,
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
-use re_space_view::{DataResultQuery as _, HybridLatestAtResults};
-use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::{
-    archetypes::{Axes3D, DepthImage, Pinhole},
-    blueprint::components::Interactive,
-    components::{
-        AxisLength, Colormap, DepthMeter, FillRatio, ImagePlaneDistance, PinholeProjection,
-        Transform3D, VisualizerOverrides,
-    },
-    tensor_data::TensorDataMeaning,
-};
+use re_types::blueprint::components::Interactive;
 use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
-    contents_name_style, gpu_bridge::colormap_dropdown_button_ui, icon_for_container_kind,
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SpaceViewClass,
-    SpaceViewId, UiLayout, ViewContext, ViewStates, ViewerContext,
+    contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
+    DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
+    ViewerContext,
 };
 use re_viewport_blueprint::{
     ui::show_add_space_view_or_container_modal, SpaceViewBlueprint, ViewportBlueprint,
 };
 
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
-use crate::{
-    defaults_ui::defaults_ui,
-    override_ui::{override_ui, override_visualizer_ui},
-};
+use crate::{defaults_ui::defaults_ui, visualizer_ui::visualizer_ui};
 use crate::{
     query_range_ui::query_range_ui_data_result, query_range_ui::query_range_ui_space_view,
     selection_history_ui::SelectionHistoryUi,
@@ -165,23 +152,15 @@ impl SelectionPanel {
                     });
                 }
 
-                // Special override section for space-view-entities
+                // Special override section for view-entities
                 if let Item::DataResult(view_id, instance_path) = item {
-                    if let Some(view) = blueprint.space_views.get(view_id) {
-                        // TODO(jleibs): Overrides still require special handling inside the visualizers.
-                        // For now, only show the override section for TimeSeries until support is implemented
-                        // generically.
-                        if view.class_identifier() == TimeSeriesSpaceView::identifier()
-                            || ctx.app_options.experimental_visualizer_selection
-                        {
-                            ui.large_collapsing_header("Visualizers", true, |ui| {
-                                override_visualizer_ui(ctx, view, instance_path, ui);
-                            });
-
+                    // Only show visualizer selection when the entire entity is selected.
+                    // (showing it for instances gives the wrong impression)
+                    if instance_path.is_all() {
+                        if let Some(view) = blueprint.space_views.get(view_id) {
                             let view_ctx = view.bundle_context_with_states(ctx, view_states);
-
-                            ui.large_collapsing_header("Component Overrides", true, |ui| {
-                                override_ui(&view_ctx, view, instance_path, ui);
+                            ui.large_collapsing_header("Visualizers", true, |ui| {
+                                visualizer_ui(&view_ctx, view, &instance_path.entity_path, ui);
                             });
                         }
                     }
@@ -1160,8 +1139,6 @@ fn entity_props_ui(
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
 
-    let entity_path = &data_result.entity_path;
-
     list_item::list_item_scope(ui, "entity_props", |ui| {
         {
             let visible_before = data_result.is_visible(ctx.viewer_ctx);
@@ -1222,247 +1199,4 @@ fn entity_props_ui(
     });
 
     query_range_ui_data_result(ctx.viewer_ctx, ui, data_result);
-
-    egui::Grid::new("entity_properties")
-        .num_columns(2)
-        .show(ui, |ui| {
-            // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
-            // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-            pinhole_props_ui(ctx, ui, data_result);
-            depth_props_ui(ctx, ui, data_result, entity_path);
-            transform3d_visualization_ui(ctx, ui, data_result);
-        });
-}
-
-fn colormap_props_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    depth_image_results: &HybridLatestAtResults<'_>,
-) {
-    let colormap = depth_image_results.get_mono_with_fallback::<Colormap>();
-    let mut new_colormap = colormap;
-
-    ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.viewer_ctx.render_ctx, ui, &mut new_colormap);
-
-    if new_colormap != colormap {
-        data_result.save_individual_override(ctx.viewer_ctx, &new_colormap);
-    }
-
-    ui.end_row();
-}
-
-fn pinhole_props_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, data_result: &DataResult) {
-    let (query, store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-
-    if store
-        .latest_at_component::<PinholeProjection>(&data_result.entity_path, &query)
-        .is_some()
-    {
-        let results = data_result.latest_at_with_overrides::<Pinhole>(ctx, &query);
-
-        let mut image_plane_value: f32 = results
-            .get_mono_with_fallback::<ImagePlaneDistance>()
-            .into();
-
-        ui.label("Image plane distance");
-        let speed = (image_plane_value * 0.05).at_least(0.01);
-        if ui
-            .add(
-                egui::DragValue::new(&mut image_plane_value)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text("Controls how far away the image plane is")
-            .changed()
-        {
-            let new_image_plane: ImagePlaneDistance = image_plane_value.into();
-
-            data_result.save_individual_override(ctx.viewer_ctx, &new_image_plane);
-        }
-        ui.end_row();
-    }
-}
-
-fn transform3d_visualization_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-) {
-    re_tracing::profile_function!();
-
-    let (query, store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-
-    if store
-        .latest_at_component::<Transform3D>(&data_result.entity_path, &query)
-        .is_none()
-    {
-        return;
-    }
-
-    let arrow_viz = "Transform3DArrows".into();
-
-    let mut show_arrows = data_result.visualizers.contains(&arrow_viz);
-
-    let results = data_result.latest_at_with_overrides::<Axes3D>(ctx, &query);
-
-    let mut arrow_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
-
-    {
-        let response = ui.re_checkbox( &mut show_arrows, "Show transform").on_hover_text(
-            "Enables/disables the display of three arrows to visualize the (accumulated) transform at this entity. Red/green/blue show the x/y/z axis respectively.");
-        if response.changed() {
-            let component = if show_arrows {
-                VisualizerOverrides::from(
-                    data_result
-                        .visualizers
-                        .iter()
-                        .chain(std::iter::once(&arrow_viz))
-                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
-                        .collect::<Vec<_>>(),
-                )
-            } else {
-                VisualizerOverrides::from(
-                    data_result
-                        .visualizers
-                        .iter()
-                        .filter(|v| **v != arrow_viz)
-                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
-                        .collect::<Vec<_>>(),
-                )
-            };
-
-            data_result.save_individual_override(ctx.viewer_ctx, &component);
-        }
-    }
-
-    if show_arrows {
-        ui.end_row();
-        ui.label("Transform-arrow length");
-        let speed = (arrow_length * 0.05).at_least(0.001);
-        let response = ui
-            .add(
-                egui::DragValue::new(&mut arrow_length)
-                    .clamp_range(0.0..=1.0e8)
-                    .speed(speed),
-            )
-            .on_hover_text(
-                "How long the arrows should be in the entity's own coordinate system. Double-click to reset to auto.",
-            );
-        if response.double_clicked() {
-            data_result.clear_individual_override::<AxisLength>(ctx.viewer_ctx);
-            response.surrender_focus();
-        } else if response.changed() {
-            data_result
-                .save_individual_override::<AxisLength>(ctx.viewer_ctx, &arrow_length.into());
-        }
-    }
-
-    ui.end_row();
-}
-
-fn depth_props_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    entity_path: &EntityPath,
-) -> Option<()> {
-    re_tracing::profile_function!();
-
-    let (query, db) = guess_query_and_db_for_selected_entity(ctx.viewer_ctx, entity_path);
-
-    let meaning = image_meaning_for_entity(entity_path, &query, db.store());
-
-    if meaning != TensorDataMeaning::Depth {
-        return Some(());
-    }
-    let image_projection_ent_path = db
-        .latest_at_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
-        .0;
-
-    ui.label("Pinhole");
-    item_ui::entity_path_button(
-        ctx.viewer_ctx,
-        &query,
-        db,
-        ui,
-        None,
-        &image_projection_ent_path,
-    )
-    .on_hover_text("The entity path of the pinhole transform being used to do the backprojection.");
-    ui.end_row();
-
-    let (query, _store) =
-        guess_query_and_db_for_selected_entity(ctx.viewer_ctx, &data_result.entity_path);
-    let depth_image_results = data_result.latest_at_with_overrides::<DepthImage>(ctx, &query);
-
-    depth_from_world_scale_ui(ctx, ui, data_result, &depth_image_results);
-    backproject_radius_scale_ui(ctx, ui, data_result, &depth_image_results);
-    colormap_props_ui(ctx, ui, data_result, &depth_image_results);
-
-    Some(())
-}
-
-fn depth_from_world_scale_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    depth_image_results: &HybridLatestAtResults<'_>,
-) {
-    let depth_meter = depth_image_results.get_mono_with_fallback::<DepthMeter>();
-
-    ui.label("Backproject meter");
-    let mut value = *depth_meter;
-    let speed = (value * 0.05).at_least(0.01);
-    let response = ui
-        .add(
-            egui::DragValue::new(&mut value)
-                .clamp_range(0.0..=1.0e8)
-                .speed(speed),
-        )
-        .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
-                    Double-click to reset.");
-    if response.double_clicked() {
-        data_result.clear_individual_override::<DepthMeter>(ctx.viewer_ctx);
-        response.surrender_focus();
-    } else if response.changed() {
-        data_result.save_individual_override(ctx.viewer_ctx, &DepthMeter(value));
-    }
-
-    ui.end_row();
-}
-
-fn backproject_radius_scale_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    data_result: &DataResult,
-    depth_image_results: &HybridLatestAtResults<'_>,
-) {
-    let radius_scale = depth_image_results.get_mono_with_fallback::<FillRatio>();
-
-    ui.label("Backproject radius scale");
-    let mut value = *radius_scale.0;
-    let speed = (value * 0.01).at_least(0.001);
-    let response = ui
-        .add(
-            egui::DragValue::new(&mut value)
-                .clamp_range(0.0..=1.0e8)
-                .speed(speed),
-        )
-        .on_hover_text(
-            "Scales the radii of the points in the backprojected point cloud.\n\
-            This is a factor of the projected pixel diameter. \
-            This means a scale of 0.5 will leave adjacent pixels at the same depth value just touching.\n\
-            Double-click to reset.",
-        );
-    if response.double_clicked() {
-        data_result.clear_individual_override::<FillRatio>(ctx.viewer_ctx);
-        response.surrender_focus();
-    } else if response.changed() {
-        data_result.save_individual_override(ctx.viewer_ctx, &FillRatio(value.into()));
-    }
-    ui.end_row();
 }
