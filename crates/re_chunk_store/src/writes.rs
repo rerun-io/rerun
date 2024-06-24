@@ -114,6 +114,12 @@ impl ChunkStore {
                         .entry(component_name)
                         .or_default();
 
+                    // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
+                    temporal_chunk_ids_per_time.max_interval_length = u64::max(
+                        temporal_chunk_ids_per_time.max_interval_length,
+                        time_range.abs_length(),
+                    );
+
                     temporal_chunk_ids_per_time
                         .per_start_time
                         .entry(time_range.min())

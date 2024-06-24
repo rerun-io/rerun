@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use arrow2::array::Array as ArrowArray;
 
+use itertools::Itertools;
 use re_chunk::{Chunk, RowId, TimePoint};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
@@ -28,23 +29,14 @@ fn query_latest_array(
     let (data_time, row_id, array) = store
         .latest_at(query, entity_path, component_name)
         .into_iter()
-        .map(|chunk| chunk.latest_at(query, component_name))
-        // NOTE: At this point, the chunk is either empty or has a single row -- the `RowId` we use
-        // is irrelevant.
-        .filter_map(|chunk| {
+        .flat_map(|chunk| {
             chunk
-                .row_id_range()
-                .map(|(_, row_id_max)| (row_id_max, chunk))
-        })
-        .max_by_key(|(row_id_max, _)| *row_id_max)
-        .and_then(|(_, chunk)| {
-            chunk
+                .latest_at(query, component_name)
                 .iter_rows(&query.timeline(), &component_name)
-                .next()
-                .and_then(|(data_time, row_id, array)| {
-                    array.map(|array| (data_time, row_id, array))
-                })
-        })?;
+                .collect_vec()
+        })
+        .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
+        .and_then(|(data_time, row_id, array)| array.map(|array| (data_time, row_id, array)))?;
 
     Some((data_time, row_id, array))
 }
@@ -335,6 +327,127 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
     .map(|(_data_time, row_id, _array)| row_id);
 
     assert_eq!(row_id1_3, row_id.unwrap());
+
+    Ok(())
+}
+
+#[test]
+fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        ChunkStoreConfig::default(),
+    );
+
+    let entity_path = EntityPath::from("this/that");
+
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
+    let frame5 = TimeInt::new_temporal(5);
+    let frame6 = TimeInt::new_temporal(6);
+    let frame7 = TimeInt::new_temporal(7);
+
+    let points1 = MyPoint::from_iter(0..1);
+    let points2 = MyPoint::from_iter(1..2);
+    let points3 = MyPoint::from_iter(2..3);
+    let points4 = MyPoint::from_iter(3..4);
+    let points5 = MyPoint::from_iter(4..5);
+    let points6 = MyPoint::from_iter(5..6);
+    let points7 = MyPoint::from_iter(6..7);
+
+    let row_id1_1 = RowId::new();
+    let row_id1_3 = RowId::new();
+    let row_id1_5 = RowId::new();
+    let row_id1_7 = RowId::new();
+    let chunk = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id1_1,
+            [build_frame_nr(frame1)],
+            [(MyPoint::name(), Some(&points1 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id1_3,
+            [build_frame_nr(frame3)],
+            [(MyPoint::name(), Some(&points3 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id1_5,
+            [build_frame_nr(frame5)],
+            [(MyPoint::name(), Some(&points5 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id1_7,
+            [build_frame_nr(frame7)],
+            [(MyPoint::name(), Some(&points7 as _))],
+        )
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
+
+    let row_id2_2 = RowId::new();
+    let row_id2_3 = RowId::new();
+    let row_id2_4 = RowId::new();
+    let chunk = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id2_2,
+            [build_frame_nr(frame2)],
+            [(MyPoint::name(), Some(&points2 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id2_3,
+            [build_frame_nr(frame3)],
+            [(MyPoint::name(), Some(&points3 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id2_4,
+            [build_frame_nr(frame4)],
+            [(MyPoint::name(), Some(&points4 as _))],
+        )
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
+
+    let row_id3_2 = RowId::new();
+    let row_id3_4 = RowId::new();
+    let row_id3_6 = RowId::new();
+    let chunk = Chunk::builder(entity_path.clone())
+        .with_sparse_component_batches(
+            row_id3_2,
+            [build_frame_nr(frame2)],
+            [(MyPoint::name(), Some(&points2 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id3_4,
+            [build_frame_nr(frame4)],
+            [(MyPoint::name(), Some(&points4 as _))],
+        )
+        .with_sparse_component_batches(
+            row_id3_6,
+            [build_frame_nr(frame6)],
+            [(MyPoint::name(), Some(&points6 as _))],
+        )
+        .build()?;
+    store.insert_chunk(&Arc::new(chunk))?;
+
+    eprintln!("{store}");
+
+    for (at, expected_row_id) in [
+        (frame1, row_id1_1),       //
+        (frame2, row_id3_2),       //
+        (frame3, row_id2_3),       //
+        (frame4, row_id3_4),       //
+        (frame5, row_id1_5),       //
+        (frame6, row_id3_6),       //
+        (frame7, row_id1_7),       //
+        (TimeInt::MAX, row_id1_7), //
+    ] {
+        let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), at);
+        eprintln!("{} @ {query:?}", MyPoint::name());
+        let row_id = query_latest_array(&store, &entity_path, MyPoint::name(), &query)
+            .map(|(_data_time, row_id, _array)| row_id);
+        assert_eq!(expected_row_id, row_id.unwrap());
+    }
 
     Ok(())
 }

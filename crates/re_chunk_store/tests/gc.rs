@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arrow2::array::Array as ArrowArray;
+use itertools::Itertools as _;
 use rand::Rng as _;
 
 use re_chunk::{Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt};
@@ -26,23 +27,14 @@ fn query_latest_array(
     let (data_time, row_id, array) = store
         .latest_at(query, entity_path, component_name)
         .into_iter()
-        .map(|chunk| chunk.latest_at(query, component_name))
-        // NOTE: At this point, the chunk is either empty or has a single row -- the `RowId` we use
-        // is irrelevant.
-        .filter_map(|chunk| {
+        .flat_map(|chunk| {
             chunk
-                .row_id_range()
-                .map(|(_, row_id_max)| (row_id_max, chunk))
-        })
-        .max_by_key(|(row_id_max, _)| *row_id_max)
-        .and_then(|(_, chunk)| {
-            chunk
+                .latest_at(query, component_name)
                 .iter_rows(&query.timeline(), &component_name)
-                .next()
-                .and_then(|(data_time, row_id, array)| {
-                    array.map(|array| (data_time, row_id, array))
-                })
-        })?;
+                .collect_vec()
+        })
+        .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
+        .and_then(|(data_time, row_id, array)| array.map(|array| (data_time, row_id, array)))?;
 
     Some((data_time, row_id, array))
 }
