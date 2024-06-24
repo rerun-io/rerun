@@ -67,12 +67,14 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
         }
         QueryRange::LatestAt => {
             let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
+            let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &latest_query,
                 data_result,
                 A::all_components().iter().copied(),
+                query_shadowed_defaults,
             );
             (latest_query, results).into()
         }
