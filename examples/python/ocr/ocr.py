@@ -119,10 +119,11 @@ Layout Class:
 
 
 class Layout:
-    def __init__(self, show_unknown: bool = False):
+    def __init__(self, page_number: int, show_unknown: bool = False):
         self.counts = {layout_type: 0 for layout_type in LayoutType}
         self.records: dict[LayoutType, Any] = {layout_type: [] for layout_type in LayoutType}
         self.recovery = """"""
+        self.page_number = page_number
         self.show_unknown = show_unknown
 
     def add(
@@ -145,7 +146,7 @@ class Layout:
                 "table": table,
             })
             if layout_type != LayoutType.UNKNOWN or self.show_unknown:  # Discards the unknown layout types detections
-                path = f"recording://Image/{layout_type.type.title()}/{name.title()}"
+                path = f"recording://page_{self.page_number}/Image/{layout_type.type.title()}/{name.title()}"
                 self.recovery += f"\n\n## [{name.title()}]({path})\n\n"  # Log Type as Heading
                 # Enhancement - Logged image for Figure type TODO(#6517)
                 if layout_type == LayoutType.TABLE:
@@ -153,7 +154,7 @@ class Layout:
                         self.recovery += table  # Log details (table)
                 elif detections:
                     for index, detection in enumerate(detections):
-                        path_text = f"recording://Image/{layout_type.type.title()}/{name.title()}/Detections/{index}"
+                        path_text = f"recording://page_{self.page_number}/Image/{layout_type.type.title()}/{name.title()}/Detections/{index}"
                         self.recovery += f' [{detection["text"]}]({path_text})'  # Log details (text)
         else:
             logging.warning(f"Invalid layout type detected: {layout_type}")
@@ -315,11 +316,10 @@ def update_zoom_paths(
 
 def generate_blueprint(
     layouts: list[Layout],
-    page_paths: list[str],
     processed_layouts: list[LayoutStructure],
 ) -> rrb.Blueprint:
     page_tabs = []
-    for layout, (page_path, processed_layout) in zip(layouts, zip(page_paths, processed_layouts)):
+    for layout, processed_layout in zip(layouts, processed_layouts):
         paths, detections_paths, zoom_paths_figures, zoom_paths_tables, zoom_paths_texts = processed_layout
 
         section_tabs = []
@@ -333,6 +333,7 @@ def generate_blueprint(
             if paths:
                 section_tabs.append(rrb.Tabs(*paths, name=name))  # type: ignore[arg-type]
 
+        page_path = f"page_{layout.page_number}"
         page_tabs.append(
             rrb.Vertical(
                 rrb.Horizontal(
@@ -369,10 +370,11 @@ def detect_and_log_layouts(file_path: str) -> None:
 
     # Extracte the layout from each image
     layouts: list[Layout] = []
-    page_paths = [f"page_{i + 1}" for i in range(len(images))]
+    page_numbers = [i + 1 for i in range(len(images))]
     processed_layouts: list[LayoutStructure] = []
-    for i, (image, page_path) in enumerate(zip(images, page_paths)):
-        layouts.append(detect_and_log_layout(image, page_path))
+    for i, (image, page_number) in enumerate(zip(images, page_numbers)):
+        layouts.append(detect_and_log_layout(image, page_number))
+        page_path = f"page_{page_number}"
 
         # Generate and send a blueprint based on the detected layouts
         processed_layouts.append(
@@ -382,14 +384,15 @@ def detect_and_log_layouts(file_path: str) -> None:
             )
         )
         logging.info("Sending blueprint...")
-        blueprint = generate_blueprint(layouts, page_paths, processed_layouts)
+        blueprint = generate_blueprint(layouts, processed_layouts)
         rr.send_blueprint(blueprint)
         logging.info("Blueprint sent...")
 
 
-def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], page_path: str = "") -> Layout:
+def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], page_number: int) -> Layout:
     # Layout Object - This will contain the detected layouts and their detections
-    layout = Layout()
+    layout = Layout(page_number)
+    page_path = f"page_{page_number}"
 
     # Log Image and add Annotation Context
     rr.log(f"{page_path}/Image", rr.Image(coloured_image))
