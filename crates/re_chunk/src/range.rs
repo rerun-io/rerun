@@ -79,7 +79,6 @@ impl Chunk {
         re_tracing::profile_function!(format!("{query:?}"));
 
         let is_static = self.is_static();
-        let is_sorted_by_row_id = self.is_sorted();
 
         if is_static {
             // NOTE: A given component for a given entity can only have one static entry associated
@@ -100,7 +99,7 @@ impl Chunk {
 
             let chunk = self.densified(component_name);
 
-            let chunk = if is_sorted_by_row_id && is_sorted_by_time {
+            let chunk = if is_sorted_by_time {
                 // Temporal, row-sorted, time-sorted chunk
                 chunk
             } else {
