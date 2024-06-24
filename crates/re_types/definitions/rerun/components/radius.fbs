@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-/// A Radius component.
+/// The radius of something, e.g. a point, in world-space units.
 struct Radius (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",

@@ -9,7 +9,11 @@ namespace rerun.components;
 
 // ---
 
-/// A component indicating how long a meter is, expressed in native units.
+/// The world->depth map scaling factor.
+///
+/// This measures how many depth map units are in a world unit.
+/// For instance, if a depth map uses millimeters and the world uses meters,
+/// this value would be `1000`.
 struct DepthMeter (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
