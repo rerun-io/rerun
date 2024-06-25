@@ -122,82 +122,94 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter_items().enumerate() {
             ui.push_id(item, |ui| {
-                what_is_selected_ui(ctx, blueprint, ui, item);
-
-                match item {
-                    Item::Container(container_id) => {
-                        container_top_level_properties(ctx, blueprint, ui, container_id);
-                        ui.add_space(12.0);
-                        container_children(ctx, blueprint, ui, container_id);
-                    }
-
-                    Item::SpaceView(space_view_id) => {
-                        space_view_top_level_properties(ctx, blueprint, ui, space_view_id);
-                    }
-
-                    Item::DataResult(view_id, instance_path) => {
-                        if instance_path.is_all() {
-                            let entity_path = &instance_path.entity_path;
-                            let query_result = ctx.lookup_query_result(*view_id);
-                            let data_result = query_result
-                                .tree
-                                .lookup_result_by_path(entity_path)
-                                .cloned();
-
-                            if let Some(data_result) = &data_result {
-                                if let Some(space_view) = blueprint.space_view(view_id) {
-                                    visible_interactive_toggle_ui(
-                                        &space_view.bundle_context_with_states(ctx, view_states),
-                                        ui,
-                                        ctx.lookup_query_result(*view_id),
-                                        data_result,
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    _ => {}
-                }
-
-                if let Some(data_ui_item) = data_section_ui(item) {
-                    ui.large_collapsing_header("Data", true, |ui| {
-                        let (query, db) = if let Some(entity_path) = item.entity_path() {
-                            guess_query_and_db_for_selected_entity(ctx, entity_path)
-                        } else {
-                            (ctx.current_query(), ctx.recording())
-                        };
-                        data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
-                    });
-                }
-
-                match item {
-                    Item::SpaceView(view_id) => {
-                        self.space_view_selection_ui(ctx, ui, blueprint, view_id, view_states);
-                    }
-
-                    Item::DataResult(view_id, instance_path) => {
-                        if instance_path.is_all() {
-                            entity_selection_ui(
-                                ctx,
-                                ui,
-                                &instance_path.entity_path,
-                                blueprint,
-                                view_id,
-                                view_states,
-                            );
-                        } else {
-                            // NOTE: not implemented when a single instance is selected
-                        }
-                    }
-                    _ => {}
-                }
+                self.item_ui(ctx, blueprint, view_states, ui, item, ui_layout);
 
                 if i < selection.len() - 1 {
                     // Add space some space between selections
                     ui.add_space(8.);
                 }
             });
+        }
+    }
+
+    fn item_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        blueprint: &ViewportBlueprint,
+        view_states: &mut ViewStates,
+        ui: &mut egui::Ui,
+        item: &Item,
+        ui_layout: UiLayout,
+    ) {
+        what_is_selected_ui(ctx, blueprint, ui, item);
+
+        match item {
+            Item::Container(container_id) => {
+                container_top_level_properties(ctx, blueprint, ui, container_id);
+                ui.add_space(12.0);
+                container_children(ctx, blueprint, ui, container_id);
+            }
+
+            Item::SpaceView(space_view_id) => {
+                space_view_top_level_properties(ctx, blueprint, ui, space_view_id);
+            }
+
+            Item::DataResult(view_id, instance_path) => {
+                if instance_path.is_all() {
+                    let entity_path = &instance_path.entity_path;
+                    let query_result = ctx.lookup_query_result(*view_id);
+                    let data_result = query_result
+                        .tree
+                        .lookup_result_by_path(entity_path)
+                        .cloned();
+
+                    if let Some(data_result) = &data_result {
+                        if let Some(space_view) = blueprint.space_view(view_id) {
+                            visible_interactive_toggle_ui(
+                                &space_view.bundle_context_with_states(ctx, view_states),
+                                ui,
+                                ctx.lookup_query_result(*view_id),
+                                data_result,
+                            );
+                        }
+                    }
+                }
+            }
+
+            _ => {}
+        }
+
+        if let Some(data_ui_item) = data_section_ui(item) {
+            ui.large_collapsing_header("Data", true, |ui| {
+                let (query, db) = if let Some(entity_path) = item.entity_path() {
+                    guess_query_and_db_for_selected_entity(ctx, entity_path)
+                } else {
+                    (ctx.current_query(), ctx.recording())
+                };
+                data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
+            });
+        }
+
+        match item {
+            Item::SpaceView(view_id) => {
+                self.space_view_selection_ui(ctx, ui, blueprint, view_id, view_states);
+            }
+
+            Item::DataResult(view_id, instance_path) => {
+                if instance_path.is_all() {
+                    entity_selection_ui(
+                        ctx,
+                        ui,
+                        &instance_path.entity_path,
+                        blueprint,
+                        view_id,
+                        view_states,
+                    );
+                } else {
+                    // NOTE: not implemented when a single instance is selected
+                }
+            }
+            _ => {}
         }
     }
 
