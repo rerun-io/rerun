@@ -11,7 +11,7 @@ use re_log_types::EntityPathFilter;
 use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
-    list_item::{self, PropertyContent},
+    list_item::{self, LabelContent, PropertyContent},
     ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt,
 };
 use re_viewer_context::{
@@ -234,6 +234,9 @@ impl SelectionPanel {
 
         if let Some(space_view) = blueprint.space_view(view_id) {
             ui.large_collapsing_header("Entity path filter", true, |ui| {
+                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
                 if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
                     ctx,
                     ui,
@@ -469,7 +472,8 @@ fn clone_space_view_button_ui(
     view_id: SpaceViewId,
 ) {
     if ui
-        .button("Clone this space view")
+        .list_item()
+        .show_flat(ui, LabelContent::new("Clone this space view"))
         .on_hover_text(
             "Create an exact duplicate of this space view including all blueprint settings",
         )
@@ -865,41 +869,29 @@ fn space_view_top_level_properties(
     ui: &mut egui::Ui,
     space_view: &re_viewport_blueprint::SpaceViewBlueprint,
 ) {
-    egui::Grid::new("space_view_top_level_properties")
-        .num_columns(2)
-        .show(ui, |ui| {
-            let mut name = space_view.display_name.clone().unwrap_or_default();
-            ui.label("Name").on_hover_text(
-                "The name of the space view used for display purposes. This can be any text \
-                    string.",
-            );
-            ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
-            space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+    ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
+        let mut name = space_view.display_name.clone().unwrap_or_default();
+        ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
+        space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+    }));
 
-            ui.end_row();
-
-            ui.label("Space origin").on_hover_text(
-                "The origin entity for this space view. For spatial space views, the space \
+    ui.list_item_flat_noninteractive(PropertyContent::new("Space origin").value_fn(|ui, _| {
+        super::space_view_space_origin_ui::space_view_space_origin_widget_ui(ui, ctx, space_view);
+    }))
+    .on_hover_text(
+        "The origin entity for this space view. For spatial space views, the space \
                     View's origin is the same as this entity's origin and all transforms are \
                     relative to it.",
-            );
+    );
 
-            super::space_view_space_origin_ui::space_view_space_origin_widget_ui(
-                ui, ctx, space_view,
-            );
-
-            ui.end_row();
-
-            ui.label("View type")
-                .on_hover_text("The type of this space view");
-            ui.label(
-                space_view
-                    .class(ctx.space_view_class_registry)
-                    .display_name(),
-            );
-
-            ui.end_row();
-        });
+    ui.list_item_flat_noninteractive(
+        PropertyContent::new("View type").value_text(
+            space_view
+                .class(ctx.space_view_class_registry)
+                .display_name(),
+        ),
+    )
+    .on_hover_text("The type of this space view");
 }
 
 fn container_top_level_properties(
