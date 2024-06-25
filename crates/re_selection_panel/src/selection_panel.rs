@@ -850,7 +850,7 @@ fn space_view_top_level_properties(
                     "The name of the space view used for display purposes. This can be any text \
                     string.",
                 );
-                ui.text_edit_singleline(&mut name);
+                ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
                 space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
 
                 ui.end_row();
