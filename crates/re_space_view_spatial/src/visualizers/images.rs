@@ -962,7 +962,7 @@ impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
         );
 
         // Segmentation images should be transparent whenever they're on top of other images,
-        // But fully opaque if there's any other images in the scene.
+        // But fully opaque if there are no other images in the scene.
         if is_segmentation_image {
             let Some(view_state) = ctx
                 .view_state
@@ -975,6 +975,7 @@ impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
             // Known cosmetic issues with this approach:
             // * The first frame we have more than one image, the segmentation image will be opaque.
             //      It's too complex to do a full view query just for this here.
+            //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
             // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
             if view_state.num_non_segmentation_images_last_frame == 0 {
                 1.0
