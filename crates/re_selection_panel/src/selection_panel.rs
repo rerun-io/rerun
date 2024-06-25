@@ -448,7 +448,7 @@ fn clone_space_view_button_ui(
     view_id: SpaceViewId,
 ) {
     if ui
-        .button("Clone space view")
+        .button("Clone this space view")
         .on_hover_text(
             "Create an exact duplicate of this space view including all blueprint settings",
         )
@@ -867,7 +867,7 @@ fn space_view_top_level_properties(
 
                 ui.end_row();
 
-                ui.label("Type")
+                ui.label("View type")
                     .on_hover_text("The type of this space view");
                 ui.label(
                     space_view
