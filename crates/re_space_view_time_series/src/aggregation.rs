@@ -34,7 +34,7 @@ impl AverageAggregator {
                 let point = &points[i + j];
 
                 acc.value += point.value;
-                acc.attrs.marker_size += point.attrs.marker_size;
+                acc.attrs.radius_ui += point.attrs.radius_ui;
 
                 ratio += 1.0;
                 j += 1;
@@ -49,14 +49,14 @@ impl AverageAggregator {
 
                 let w = aggregation_factor_fract;
                 acc.value += point.value * w;
-                acc.attrs.marker_size += (point.attrs.marker_size as f64 * w) as f32;
+                acc.attrs.radius_ui += (point.attrs.radius_ui as f64 * w) as f32;
 
                 ratio += aggregation_factor_fract;
                 j += 1;
             }
 
             acc.value /= ratio;
-            acc.attrs.marker_size = (acc.attrs.marker_size as f64 / ratio) as _;
+            acc.attrs.radius_ui = (acc.attrs.radius_ui as f64 / ratio) as _;
 
             aggregated.push(acc);
 
@@ -125,21 +125,21 @@ impl MinMaxAggregator {
                 match self {
                     Self::MinMax | Self::MinMaxAverage => {
                         acc_min.value = f64::min(acc_min.value, point.value);
-                        acc_min.attrs.marker_size =
-                            f32::min(acc_min.attrs.marker_size, point.attrs.marker_size);
+                        acc_min.attrs.radius_ui =
+                            f32::min(acc_min.attrs.radius_ui, point.attrs.radius_ui);
                         acc_max.value = f64::max(acc_max.value, point.value);
-                        acc_max.attrs.marker_size =
-                            f32::max(acc_max.attrs.marker_size, point.attrs.marker_size);
+                        acc_max.attrs.radius_ui =
+                            f32::max(acc_max.attrs.radius_ui, point.attrs.radius_ui);
                     }
                     Self::Min => {
                         acc_min.value = f64::min(acc_min.value, point.value);
-                        acc_min.attrs.marker_size =
-                            f32::min(acc_min.attrs.marker_size, point.attrs.marker_size);
+                        acc_min.attrs.radius_ui =
+                            f32::min(acc_min.attrs.radius_ui, point.attrs.radius_ui);
                     }
                     Self::Max => {
                         acc_max.value = f64::max(acc_max.value, point.value);
-                        acc_max.attrs.marker_size =
-                            f32::max(acc_max.attrs.marker_size, point.attrs.marker_size);
+                        acc_max.attrs.radius_ui =
+                            f32::max(acc_max.attrs.radius_ui, point.attrs.radius_ui);
                     }
                 }
 
@@ -158,8 +158,8 @@ impl MinMaxAggregator {
                     // Don't average a single point with itself.
                     if j > 1 {
                         acc_min.value = (acc_min.value + acc_max.value) * 0.5;
-                        acc_min.attrs.marker_size =
-                            (acc_min.attrs.marker_size + acc_max.attrs.marker_size) * 0.5;
+                        acc_min.attrs.radius_ui =
+                            (acc_min.attrs.radius_ui + acc_max.attrs.radius_ui) * 0.5;
                     }
                     aggregated.push(acc_min);
                 }
@@ -196,7 +196,7 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
     let PlotPointAttrs {
         label,
         color,
-        marker_size: _,
+        radius_ui: _,
         kind,
     } = attrs;
 

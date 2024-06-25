@@ -448,14 +448,14 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                         Line::new(points)
                             .name(series.label.as_str())
                             .color(color)
-                            .width(series.width)
+                            .width(2.0 * series.radius_ui)
                             .id(id),
                     ),
                     PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                         Points::new(points)
                             .name(series.label.as_str())
                             .color(color)
-                            .radius(series.width)
+                            .radius(series.radius_ui)
                             .shape(scatter_attrs.marker.into())
                             .id(id),
                     ),

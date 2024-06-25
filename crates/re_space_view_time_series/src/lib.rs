@@ -37,7 +37,10 @@ pub(crate) fn plot_id(space_view_id: re_viewer_context::SpaceViewId) -> egui::Id
 pub struct PlotPointAttrs {
     pub label: Option<Utf8>,
     pub color: egui::Color32,
-    pub marker_size: f32,
+
+    /// Radius of markers, or stroke radius for lines.
+    pub radius_ui: f32,
+
     pub kind: PlotSeriesKind,
 }
 
@@ -51,12 +54,12 @@ impl PartialEq for PlotPointAttrs {
         let Self {
             label,
             color,
-            marker_size,
+            radius_ui,
             kind,
         } = self;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
-            && marker_size.total_cmp(&rhs.marker_size).is_eq()
+            && radius_ui.total_cmp(&rhs.radius_ui).is_eq()
             && kind.eq(&rhs.kind)
     }
 }
@@ -81,7 +84,10 @@ pub enum PlotSeriesKind {
 pub struct PlotSeries {
     pub label: Utf8,
     pub color: egui::Color32,
-    pub width: f32,
+
+    /// Radius of markers, or stroke radius for lines.
+    pub radius_ui: f32,
+
     pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
     pub entity_path: EntityPath,
