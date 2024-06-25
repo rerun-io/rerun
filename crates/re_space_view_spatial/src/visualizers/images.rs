@@ -1,12 +1,11 @@
 use std::collections::BTreeMap;
 
-use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query::range_zip_1x5;
+use re_query::range_zip_1x6;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     RenderContext,
@@ -14,7 +13,9 @@ use re_renderer::{
 use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
-    components::{Color, Colormap, DepthMeter, DrawOrder, FillRatio, TensorData, ViewCoordinates},
+    components::{
+        Color, Colormap, DepthMeter, DrawOrder, FillRatio, Opacity, TensorData, ViewCoordinates,
+    },
     tensor_data::{DecodedTensor, TensorDataMeaning},
     Archetype, ComponentNameSet,
 };
@@ -30,6 +31,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
     query_pinhole_legacy,
+    ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView2D, SpatialSpaceView3D,
@@ -161,11 +163,13 @@ struct ImageComponentData<'a> {
     colormap: Option<&'a Colormap>,
     depth_meter: Option<&'a DepthMeter>,
     fill_ratio: Option<&'a FillRatio>,
+    opacity: Option<&'a Opacity>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl ImageVisualizer {
+    // TODO(#6548) this should be draw order driven instead.
     fn handle_image_layering(&mut self) {
         // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
         let mut image_groups: BTreeMap<ImageGrouping, Vec<ViewerImage>> = BTreeMap::new();
@@ -193,22 +197,6 @@ impl ImageVisualizer {
                     image.meaning == TensorDataMeaning::ClassId,
                 )
             });
-
-            let total_num_images = images.len();
-            for (idx, image) in images.iter_mut().enumerate() {
-                // make top images transparent
-                let opacity = if idx == 0 {
-                    1.0
-                } else {
-                    // avoid precision problems in framebuffer
-                    1.0 / total_num_images.at_most(20) as f32
-                };
-                image.textured_rect.options.multiplicative_tint = image
-                    .textured_rect
-                    .options
-                    .multiplicative_tint
-                    .multiply(opacity);
-            }
 
             self.images.extend(images);
         }
@@ -273,6 +261,13 @@ impl ImageVisualizer {
             // TODO(andreas): We only support colormap for depth image at this point.
             let colormap = None;
 
+            let opacity = data
+                .opacity
+                .copied()
+                .unwrap_or_else(|| self.fallback_for(ctx));
+            let multiplicative_tint =
+                re_renderer::Rgba::from(color).multiply(opacity.0.clamp(0.0, 1.0));
+
             if let Some(textured_rect) = to_textured_rect(
                 ctx.viewer_ctx,
                 render_ctx,
@@ -281,7 +276,7 @@ impl ImageVisualizer {
                 tensor_data_row_id,
                 &tensor,
                 meaning,
-                color.into(),
+                multiplicative_tint,
                 colormap,
             ) {
                 // Only update the bounding box if this is a 2D space view or
@@ -295,16 +290,16 @@ impl ImageVisualizer {
                         Self::compute_bounding_box(&textured_rect),
                         ent_context.world_from_entity,
                     );
-                }
 
-                self.images.push(ViewerImage {
-                    ent_path: entity_path.clone(),
-                    tensor,
-                    meaning,
-                    textured_rect,
-                    parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
-                });
+                    self.images.push(ViewerImage {
+                        ent_path: entity_path.clone(),
+                        tensor,
+                        meaning,
+                        textured_rect,
+                        parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
+                        draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                    });
+                }
             }
         }
     }
@@ -366,6 +361,13 @@ impl ImageVisualizer {
             // TODO(andreas): colormap is only available for depth images right now.
             let colormap = None;
 
+            let opacity = data
+                .opacity
+                .copied()
+                .unwrap_or_else(|| self.fallback_for(ctx));
+            let multiplicative_tint =
+                re_renderer::Rgba::from(color).multiply(opacity.0.clamp(0.0, 1.0));
+
             if let Some(textured_rect) = to_textured_rect(
                 ctx.viewer_ctx,
                 render_ctx,
@@ -374,7 +376,7 @@ impl ImageVisualizer {
                 tensor_data_row_id,
                 &tensor,
                 meaning,
-                color.into(),
+                multiplicative_tint,
                 colormap,
             ) {
                 // Only update the bounding box if this is a 2D space view or
@@ -879,17 +881,28 @@ impl ImageVisualizer {
                 let colormap = results.get_or_empty_dense(resolver)?;
                 let depth_meter = results.get_or_empty_dense(resolver)?;
                 let fill_ratio = results.get_or_empty_dense(resolver)?;
+                let opacity = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x5(
+                let mut data = range_zip_1x6(
                     tensors.range_indexed(),
                     draw_orders.range_indexed(),
                     colors.range_indexed(),
                     colormap.range_indexed(),
                     depth_meter.range_indexed(),
                     fill_ratio.range_indexed(),
+                    opacity.range_indexed(),
                 )
                 .filter_map(
-                    |(&index, tensors, draw_orders, colors, colormap, depth_meter, fill_ratio)| {
+                    |(
+                        &index,
+                        tensors,
+                        draw_orders,
+                        colors,
+                        colormap,
+                        depth_meter,
+                        fill_ratio,
+                        opacity,
+                    )| {
                         tensors.first().map(|tensor| ImageComponentData {
                             index,
                             tensor,
@@ -898,6 +911,7 @@ impl ImageVisualizer {
                             colormap: colormap.and_then(|colormap| colormap.first()),
                             depth_meter: depth_meter.and_then(|depth_meter| depth_meter.first()),
                             fill_ratio: fill_ratio.and_then(|fill_ratio| fill_ratio.first()),
+                            opacity: opacity.and_then(|opacity| opacity.first()),
                         })
                     },
                 );
@@ -938,4 +952,40 @@ impl TypedComponentFallbackProvider<DepthMeter> for ImageVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap, DepthMeter]);
+impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
+        // TODO(#6548): This should be a different visualizer.
+        let is_segmentation_image = ctx.viewer_ctx.recording_store().entity_has_component(
+            &ctx.viewer_ctx.current_query().timeline(),
+            ctx.target_entity_path,
+            &SegmentationImage::indicator().name(),
+        );
+
+        // Segmentation images should be transparent whenever they're on top of other images,
+        // But fully opaque if there's any other images in the scene.
+        if is_segmentation_image {
+            let Some(view_state) = ctx
+                .view_state
+                .as_any()
+                .downcast_ref::<SpatialSpaceViewState>()
+            else {
+                return 1.0.into();
+            };
+
+            // Known cosmetic issues with this approach:
+            // * The first frame we have more than one image, the segmentation image will be opaque.
+            //      It's too complex to do a full view query just for this here.
+            // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
+            if view_state.num_non_segmentation_images_last_frame == 0 {
+                1.0
+            } else {
+                0.5
+            }
+        } else {
+            1.0
+        }
+        .into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap, DepthMeter, Opacity]);

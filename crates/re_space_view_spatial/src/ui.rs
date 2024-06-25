@@ -25,13 +25,13 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
 };
+use crate::{contexts::PrimitiveCounter, scene_bounding_boxes::SceneBoundingBoxes};
 use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
 
 use super::{eye::Eye, ui_3d::View3DState};
@@ -67,6 +67,9 @@ pub struct SpatialSpaceViewState {
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     pub scene_num_primitives: usize,
 
+    /// Number of images & depth images processed last frame.
+    pub num_non_segmentation_images_last_frame: usize,
+
     /// Last frame's picking result.
     pub previous_picking_result: Option<PickingResult>,
 
@@ -90,6 +93,32 @@ impl SpaceViewState for SpatialSpaceViewState {
 }
 
 impl SpatialSpaceViewState {
+    /// Updates the state with statistics from the latest system outputs.
+    pub fn update_frame_statistics(
+        &mut self,
+        system_output: &re_viewer_context::SystemExecutionOutput,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
+        self.bounding_boxes.update(&system_output.view_systems);
+
+        self.scene_num_primitives = system_output
+            .context_systems
+            .get::<PrimitiveCounter>()?
+            .num_primitives
+            .load(std::sync::atomic::Ordering::Relaxed);
+
+        self.num_non_segmentation_images_last_frame = system_output
+            .view_systems
+            .get::<ImageVisualizer>()?
+            .images
+            .iter()
+            .filter(|i| i.meaning != TensorDataMeaning::ClassId)
+            .count();
+
+        Ok(())
+    }
+
     pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
         let mut config = self.auto_size_config;
         if config.point_radius.is_auto() {
