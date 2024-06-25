@@ -18,12 +18,16 @@ namespace rerun::blueprint::components {
     /// **Component**: The kind of a blueprint container (tabs, grid, …).
     enum class ContainerKind : uint8_t {
 
+        /// Put children in separate tabs
         Tabs = 1,
 
+        /// Order the children left to right
         Horizontal = 2,
 
+        /// Order the children top to bottom
         Vertical = 3,
 
+        /// Organize children in a grid layout
         Grid = 4,
     };
 } // namespace rerun::blueprint::components
