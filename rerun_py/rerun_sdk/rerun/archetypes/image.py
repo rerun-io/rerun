@@ -69,7 +69,13 @@ class Image(ImageExt, Archetype):
 
     """
 
-    def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
+    def __init__(
+        self: Any,
+        data: datatypes.TensorDataLike,
+        *,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: components.DrawOrderLike | None = None,
+    ):
         """
         Create a new instance of the Image archetype.
 
@@ -77,6 +83,10 @@ class Image(ImageExt, Archetype):
         ----------
         data:
             The image data. Should always be a rank-2 or rank-3 tensor.
+        opacity:
+            Opacity of the image, useful for layering several images.
+
+            Defaults to 1.0 (fully opaque).
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -86,7 +96,7 @@ class Image(ImageExt, Archetype):
 
         # You can define your own __init__ function as a member of ImageExt in image_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(data=data, draw_order=draw_order)
+            self.__attrs_init__(data=data, opacity=opacity, draw_order=draw_order)
             return
         self.__attrs_clear__()
 
@@ -94,6 +104,7 @@ class Image(ImageExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
+            opacity=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
 
@@ -109,6 +120,17 @@ class Image(ImageExt, Archetype):
         converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
     )
     # The image data. Should always be a rank-2 or rank-3 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    opacity: components.OpacityBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.OpacityBatch._optional,  # type: ignore[misc]
+    )
+    # Opacity of the image, useful for layering several images.
+    #
+    # Defaults to 1.0 (fully opaque).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
