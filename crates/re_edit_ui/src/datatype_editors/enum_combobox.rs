@@ -2,7 +2,15 @@ use re_ui::UiExt;
 
 use crate::response_utils::response_with_changes_of_inner;
 
-pub fn edit_enum<EnumT: re_types_core::reflection::Enum>(
+pub fn edit_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Component>(
+    ui: &mut egui::Ui,
+    current_value: &mut EnumT,
+) -> egui::Response {
+    let id_source = EnumT::name().full_name();
+    edit_enum_impl(ui, id_source, current_value)
+}
+
+fn edit_enum_impl<EnumT: re_types_core::reflection::Enum>(
     ui: &mut egui::Ui,
     id_source: &str,
     current_value: &mut EnumT,
