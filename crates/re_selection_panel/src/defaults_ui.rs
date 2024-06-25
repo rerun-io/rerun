@@ -185,12 +185,7 @@ fn add_new_default(
 
         if component_to_vis.is_empty() && disabled_reason.is_none() {
             disabled_reason = Some(format!(
-                "Rerun lacks {} for: {}",
-                if missing_editors.len() == 1 {
-                    "an editor"
-                } else {
-                    "editors"
-                },
+                "Rerun lacks edit UI for: {}",
                 missing_editors.iter().map(|c| c.short_name()).join(", ")
             ));
         }
