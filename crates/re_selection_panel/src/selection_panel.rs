@@ -148,6 +148,55 @@ impl SelectionPanel {
         what_is_selected_ui(ctx, blueprint, ui, item);
 
         match item {
+            Item::ComponentPath(component_path) => {
+                let entity_path = &component_path.entity_path;
+                let component_name = &component_path.component_name;
+
+                let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+                let is_static = db.is_component_static(component_path).unwrap_or_default();
+
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Component type").value_text(if is_static {
+                        "Static"
+                    } else {
+                        "Temporal"
+                    }),
+                );
+
+                ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
+                    |ui, _| {
+                        item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
+                    },
+                ));
+
+                list_existing_data_blueprints(ctx, blueprint, ui, &entity_path.clone().into());
+            }
+
+            Item::InstancePath(instance_path) => {
+                let is_instance = !instance_path.instance.is_all();
+                let parent = if is_instance {
+                    Some(instance_path.entity_path.clone())
+                } else {
+                    instance_path.entity_path.parent()
+                };
+                if let Some(parent) = parent {
+                    if !parent.is_root() {
+                        let (query, db) =
+                            guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+
+                        ui.list_item_flat_noninteractive(PropertyContent::new("Parent").value_fn(
+                            |ui, _| {
+                                item_ui::entity_path_parts_buttons(
+                                    ctx, &query, db, ui, None, &parent,
+                                );
+                            },
+                        ));
+                    }
+                }
+
+                list_existing_data_blueprints(ctx, blueprint, ui, instance_path);
+            }
+
             Item::Container(container_id) => {
                 container_top_level_properties(ctx, blueprint, ui, container_id);
                 ui.add_space(12.0);
@@ -161,6 +210,42 @@ impl SelectionPanel {
             }
 
             Item::DataResult(view_id, instance_path) => {
+                if let Some(space_view) = blueprint.space_view(view_id) {
+                    let is_instance = !instance_path.instance.is_all();
+                    let parent = if is_instance {
+                        Some(instance_path.entity_path.clone())
+                    } else {
+                        instance_path.entity_path.parent()
+                    };
+                    if let Some(parent) = parent {
+                        if !parent.is_root() {
+                            ui.list_item_flat_noninteractive(
+                                PropertyContent::new("Parent").value_fn(|ui, _| {
+                                    let (query, db) = guess_query_and_db_for_selected_entity(
+                                        ctx,
+                                        &instance_path.entity_path,
+                                    );
+
+                                    item_ui::entity_path_parts_buttons(
+                                        ctx,
+                                        &query,
+                                        db,
+                                        ui,
+                                        Some(*view_id),
+                                        &parent,
+                                    );
+                                }),
+                            );
+                        }
+                    }
+
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("In space view").value_fn(|ui, _| {
+                            space_view_button(ctx, ui, space_view);
+                        }),
+                    );
+                }
+
                 if instance_path.is_all() {
                     let entity_path = &instance_path.entity_path;
                     let query_result = ctx.lookup_query_result(*view_id);
@@ -668,7 +753,7 @@ fn what_is_selected_ui(
             let entity_path = &component_path.entity_path;
             let component_name = &component_path.component_name;
 
-            let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+            let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
             let is_static = db.is_component_static(component_path).unwrap_or_default();
 
             item_title_ui(
@@ -689,22 +774,6 @@ fn what_is_selected_ui(
                     entity_path
                 ),
             );
-
-            ui.list_item_flat_noninteractive(
-                PropertyContent::new("Component type").value_text(if is_static {
-                    "Static"
-                } else {
-                    "Temporal"
-                }),
-            );
-
-            ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
-                |ui, _| {
-                    item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
-                },
-            ));
-
-            list_existing_data_blueprints(ctx, blueprint, ui, &entity_path.clone().into());
         }
 
         Item::SpaceView(space_view_id) => {
@@ -750,33 +819,12 @@ fn what_is_selected_ui(
                 None,
                 &format!("{typ} '{instance_path}'"),
             );
-
-            let is_instance = !instance_path.instance.is_all();
-            let parent = if is_instance {
-                Some(instance_path.entity_path.clone())
-            } else {
-                instance_path.entity_path.parent()
-            };
-            if let Some(parent) = parent {
-                if !parent.is_root() {
-                    let (query, db) =
-                        guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-
-                    ui.list_item_flat_noninteractive(PropertyContent::new("Parent").value_fn(
-                        |ui, _| {
-                            item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, &parent);
-                        },
-                    ));
-                }
-            }
-
-            list_existing_data_blueprints(ctx, blueprint, ui, instance_path);
         }
 
-        Item::DataResult(space_view_id, instance_path) => {
+        Item::DataResult(view_id, instance_path) => {
             let name = instance_path.syntax_highlighted(ui.style());
 
-            if let Some(space_view) = blueprint.space_view(space_view_id) {
+            if let Some(space_view) = blueprint.space_view(view_id) {
                 let typ = item.kind();
                 item_title_ui(
                     ctx,
@@ -790,40 +838,6 @@ fn what_is_selected_ui(
                         space_view.display_name
                     ),
                 );
-
-                let is_instance = !instance_path.instance.is_all();
-                let parent = if is_instance {
-                    Some(instance_path.entity_path.clone())
-                } else {
-                    instance_path.entity_path.parent()
-                };
-                if let Some(parent) = parent {
-                    if !parent.is_root() {
-                        ui.list_item_flat_noninteractive(PropertyContent::new("Parent").value_fn(
-                            |ui, _| {
-                                let (query, db) = guess_query_and_db_for_selected_entity(
-                                    ctx,
-                                    &instance_path.entity_path,
-                                );
-
-                                item_ui::entity_path_parts_buttons(
-                                    ctx,
-                                    &query,
-                                    db,
-                                    ui,
-                                    Some(*space_view_id),
-                                    &parent,
-                                );
-                            },
-                        ));
-                    }
-                }
-
-                ui.list_item_flat_noninteractive(PropertyContent::new("In space view").value_fn(
-                    |ui, _| {
-                        space_view_button(ctx, ui, space_view);
-                    },
-                ));
             }
         }
     }
