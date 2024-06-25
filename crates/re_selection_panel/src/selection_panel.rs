@@ -1,4 +1,3 @@
-use egui::{NumExt as _, Ui};
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
@@ -183,7 +182,7 @@ impl SelectionPanel {
     fn space_view_selection_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        ui: &mut Ui,
+        ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         view_id: &SpaceViewId,
         view_states: &mut ViewStates,
@@ -344,30 +343,6 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 .clone()
         });
 
-        let rightmost_x = ui.cursor().min.x;
-        ui.horizontal(|ui| {
-            let current_x = ui.cursor().min.x;
-            // Compute a width that results in these things to be right-aligned with the following text edit.
-            let desired_width = (ui.available_width() - ui.spacing().item_spacing.x)
-                .at_most(ui.spacing().text_edit_width - (current_x - rightmost_x));
-
-            ui.allocate_ui_with_layout(
-                egui::vec2(desired_width, ui.available_height()),
-                egui::Layout::right_to_left(egui::Align::Center),
-                |ui| {
-                    ui.help_hover_button()
-                        .on_hover_ui(entity_path_filter_help_ui);
-                    if ui
-                        .button("Edit")
-                        .on_hover_text("Modify the entity query using the editor")
-                        .clicked()
-                    {
-                        self.space_view_entity_modal.open(space_view_id);
-                    }
-                },
-            );
-        });
-
         let response =
             ui.add(egui::TextEdit::multiline(&mut filter_string).layouter(&mut text_layouter));
 
@@ -394,6 +369,19 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             ));
         }
 
+        ui.horizontal(|ui| {
+            ui.help_hover_button()
+                .on_hover_ui(entity_path_filter_help_ui);
+
+            if ui
+                .button("Edit")
+                .on_hover_text("Modify the entity query using the editor")
+                .clicked()
+            {
+                self.space_view_entity_modal.open(space_view_id);
+            }
+        });
+
         // Apply the edit.
         let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
         if &new_filter == filter {
@@ -406,7 +394,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
 fn entity_selection_ui(
     ctx: &ViewerContext<'_>,
-    ui: &mut Ui,
+    ui: &mut egui::Ui,
     entity_path: &EntityPath,
     blueprint: &ViewportBlueprint,
     view_id: &SpaceViewId,
@@ -443,7 +431,7 @@ fn entity_selection_ui(
 
 fn clone_space_view_button_ui(
     ctx: &ViewerContext<'_>,
-    ui: &mut Ui,
+    ui: &mut egui::Ui,
     blueprint: &ViewportBlueprint,
     view_id: SpaceViewId,
 ) {
@@ -993,7 +981,7 @@ fn container_top_level_properties(
         });
 }
 
-fn container_kind_selection_ui(ui: &mut Ui, in_out_kind: &mut ContainerKind) {
+fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKind) {
     let selected_text = format!("{in_out_kind:?}");
 
     ui.drop_down_menu("container_kind", selected_text, |ui| {
