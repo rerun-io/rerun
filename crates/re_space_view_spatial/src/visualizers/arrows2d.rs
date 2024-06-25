@@ -4,12 +4,13 @@ use re_query::range_zip_1x6;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows2D,
-    components::{ClassId, Color, KeypointId, Position2D, Radius, Text, Vector2D},
+    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text, Vector2D},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -305,4 +306,10 @@ impl VisualizerSystem for Arrows2DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Arrows2DVisualizer => []);
+impl TypedComponentFallbackProvider<DrawOrder> for Arrows2DVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
+        DrawOrder::DEFAULT_LINES2D
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Arrows2DVisualizer => [DrawOrder]);

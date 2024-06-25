@@ -4,12 +4,13 @@ use re_query::range_zip_1x6;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes2D,
-    components::{ClassId, Color, HalfSizes2D, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, HalfSizes2D, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -311,4 +312,10 @@ impl VisualizerSystem for Boxes2DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => []);
+impl TypedComponentFallbackProvider<DrawOrder> for Boxes2DVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
+        DrawOrder::DEFAULT_BOX2D
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => [DrawOrder]);

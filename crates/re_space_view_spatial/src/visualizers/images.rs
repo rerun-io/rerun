@@ -261,6 +261,10 @@ impl ImageVisualizer {
             // TODO(andreas): We only support colormap for depth image at this point.
             let colormap = None;
 
+            let draw_order = data
+                .draw_order
+                .copied()
+                .unwrap_or_else(|| self.fallback_for(ctx));
             let opacity = data
                 .opacity
                 .copied()
@@ -297,7 +301,7 @@ impl ImageVisualizer {
                         meaning,
                         textured_rect,
                         parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                        draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                        draw_order,
                     });
                 }
             }
@@ -361,6 +365,10 @@ impl ImageVisualizer {
             // TODO(andreas): colormap is only available for depth images right now.
             let colormap = None;
 
+            let draw_order = data
+                .draw_order
+                .copied()
+                .unwrap_or_else(|| self.fallback_for(ctx));
             let opacity = data
                 .opacity
                 .copied()
@@ -401,7 +409,7 @@ impl ImageVisualizer {
                     meaning,
                     textured_rect,
                     parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                    draw_order,
                 });
             }
         }
@@ -504,6 +512,10 @@ impl ImageVisualizer {
                 };
             }
 
+            let draw_order = data
+                .draw_order
+                .copied()
+                .unwrap_or_else(|| self.fallback_for(ctx));
             let color = ent_context
                 .annotations
                 .resolved_class_description(None)
@@ -543,7 +555,7 @@ impl ImageVisualizer {
                     meaning,
                     textured_rect,
                     parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                    draw_order,
                 });
             }
         }
@@ -989,4 +1001,10 @@ impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap, DepthMeter, Opacity]);
+impl TypedComponentFallbackProvider<DrawOrder> for ImageVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
+        DrawOrder::DEFAULT_IMAGE
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap, DepthMeter, DrawOrder, Opacity]);
