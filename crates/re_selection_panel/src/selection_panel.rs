@@ -152,7 +152,25 @@ impl SelectionPanel {
 
                 match item {
                     Item::SpaceView(view_id) => {
-                        self.blueprint_ui_for_space_view(ctx, blueprint, view_states, ui, *view_id);
+                        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
+
+                        if let Some(space_view) = blueprint.space_view(view_id) {
+                            if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
+                                ctx,
+                                ui,
+                                *view_id,
+                                &space_view.contents.entity_path_filter,
+                                &space_view.space_origin,
+                            ) {
+                                space_view
+                                    .contents
+                                    .set_entity_path_filter(ctx, &new_entity_path_filter);
+                            }
+                        }
+
+                        if let Some(view) = blueprint.space_view(view_id) {
+                            space_view_component_defaults_section_ui(ctx, ui, view, view_states);
+                        }
 
                         if let Some(view) = blueprint.space_view(view_id) {
                             query_range_ui_space_view(ctx, ui, view);
@@ -201,64 +219,6 @@ impl SelectionPanel {
                     // Add space some space between selections
                     ui.add_space(8.);
                 }
-            });
-        }
-    }
-
-    fn blueprint_ui_for_space_view(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        blueprint: &ViewportBlueprint,
-        view_states: &mut ViewStates,
-        ui: &mut Ui,
-        view_id: SpaceViewId,
-    ) {
-        if let Some(space_view) = blueprint.space_view(&view_id) {
-            if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
-                ctx,
-                ui,
-                view_id,
-                &space_view.contents.entity_path_filter,
-                &space_view.space_origin,
-            ) {
-                space_view
-                    .contents
-                    .set_entity_path_filter(ctx, &new_entity_path_filter);
-            }
-
-            ui.add_space(ui.spacing().item_spacing.y);
-        }
-
-        if ui
-            .button("Clone space view")
-            .on_hover_text(
-                "Create an exact duplicate of this space view including all blueprint settings",
-            )
-            .clicked()
-        {
-            if let Some(new_space_view_id) = blueprint.duplicate_space_view(&view_id, ctx) {
-                ctx.selection_state()
-                    .set_selection(Item::SpaceView(new_space_view_id));
-                blueprint.mark_user_interaction(ctx);
-            }
-        }
-
-        if let Some(view) = blueprint.space_view(&view_id) {
-            ui.large_collapsing_header("Component Defaults", true, |ui| {
-                let view_class = view.class(ctx.space_view_class_registry);
-                let view_state = view_states.get_mut_or_create(view.id, view_class);
-
-                if let Err(err) =
-                    view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
-                {
-                    re_log::error!(
-                        "Error in space view selection UI (class: {}, display name: {}): {err}",
-                        view.class_identifier(),
-                        view_class.display_name(),
-                    );
-                }
-                let view_ctx = view.bundle_context_with_state(ctx, view_state);
-                defaults_ui(&view_ctx, view, ui);
             });
         }
     }
@@ -428,6 +388,50 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             Some(new_filter)
         }
     }
+}
+
+fn clone_space_view_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut Ui,
+    blueprint: &ViewportBlueprint,
+    view_id: SpaceViewId,
+) {
+    if ui
+        .button("Clone space view")
+        .on_hover_text(
+            "Create an exact duplicate of this space view including all blueprint settings",
+        )
+        .clicked()
+    {
+        if let Some(new_space_view_id) = blueprint.duplicate_space_view(&view_id, ctx) {
+            ctx.selection_state()
+                .set_selection(Item::SpaceView(new_space_view_id));
+            blueprint.mark_user_interaction(ctx);
+        }
+    }
+}
+
+fn space_view_component_defaults_section_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut Ui,
+    view: &re_viewport_blueprint::SpaceViewBlueprint,
+    view_states: &mut ViewStates,
+) {
+    ui.large_collapsing_header("Component Defaults", true, |ui| {
+        let view_class = view.class(ctx.space_view_class_registry);
+        let view_state = view_states.get_mut_or_create(view.id, view_class);
+
+        if let Err(err) = view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
+        {
+            re_log::error!(
+                "Error in space view selection UI (class: {}, display name: {}): {err}",
+                view.class_identifier(),
+                view_class.display_name(),
+            );
+        }
+        let view_ctx = view.bundle_context_with_state(ctx, view_state);
+        defaults_ui(&view_ctx, view, ui);
+    });
 }
 
 fn container_children(
