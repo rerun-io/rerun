@@ -62,6 +62,7 @@ class Arrows2D(Arrows2DExt, Archetype):
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
 
@@ -118,6 +119,17 @@ class Arrows2D(Arrows2DExt, Archetype):
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     # Optional text labels for the arrows.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    draw_order: components.DrawOrderBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+    )
+    # An optional floating point value that specifies the 2D drawing order.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
