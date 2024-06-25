@@ -515,24 +515,24 @@ pub trait UiExt {
     }
 
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
-    fn large_collapsing_header<R>(
+    fn large_collapsing_header(
         &mut self,
         label: &str,
         default_open: bool,
-        add_body: impl FnOnce(&mut egui::Ui) -> R,
-    ) {
-        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, None);
+        add_body: impl FnOnce(&mut egui::Ui),
+    ) -> egui::CollapsingResponse<()> {
+        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, None)
     }
 
     /// Show a prominent collapsing header to be used as section delimitation in side panels with an image button.
-    fn large_collapsing_header_with_button<R>(
+    fn large_collapsing_header_with_button(
         &mut self,
         label: &str,
         default_open: bool,
-        add_body: impl FnOnce(&mut egui::Ui) -> R,
+        add_body: impl FnOnce(&mut egui::Ui),
         button: HeaderMenuButton<'_>,
-    ) {
-        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, Some(button));
+    ) -> egui::CollapsingResponse<()> {
+        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, Some(button))
     }
 
     /// Paint a collapsing triangle with rounded corners.
@@ -1055,13 +1055,13 @@ impl UiExt for egui::Ui {
     }
 }
 
-fn large_collapsing_header_impl<R>(
+fn large_collapsing_header_impl(
     ui: &mut egui::Ui,
     label: &str,
     default_open: bool,
-    add_body: impl FnOnce(&mut egui::Ui) -> R,
+    add_body: impl FnOnce(&mut egui::Ui),
     button: Option<HeaderMenuButton<'_>>,
-) {
+) -> egui::CollapsingResponse<()> {
     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         ui.make_persistent_id(label),
@@ -1076,96 +1076,112 @@ fn large_collapsing_header_impl<R>(
     // left-to-right in right-to-left UIs. Thus the `floor()`.
     let header_size = egui::vec2(ui.available_width().floor(), height);
 
-    ui.scope(|ui| {
-        ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
+    let header_response = ui
+        .scope(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
 
-        ui.allocate_ui_with_layout(
-            header_size,
-            egui::Layout::right_to_left(egui::Align::Center),
-            |ui| {
-                ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                ui.visuals_mut().widgets.active.expansion = 0.0;
-                ui.visuals_mut().widgets.open.expansion = 0.0;
+            ui.allocate_ui_with_layout(
+                header_size,
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                    ui.visuals_mut().widgets.active.expansion = 0.0;
+                    ui.visuals_mut().widgets.open.expansion = 0.0;
 
-                let background_frame = ui.painter().add(egui::Shape::Noop);
+                    let background_frame = ui.painter().add(egui::Shape::Noop);
 
-                // draw button if any, and extract its width
-                let button_width = if let Some(button) = button {
-                    button.show(ui);
-                    ui.min_rect().width() + ui.spacing().icon_spacing
-                } else {
-                    0.0
-                };
+                    // draw button if any, and extract its width
+                    let button_width = if let Some(button) = button {
+                        button.show(ui);
+                        ui.min_rect().width() + ui.spacing().icon_spacing
+                    } else {
+                        0.0
+                    };
 
-                let header_size_without_button =
-                    egui::vec2((header_size.x - button_width).floor(), header_size.y);
+                    let header_size_without_button =
+                        egui::vec2((header_size.x - button_width).floor(), header_size.y);
 
-                ui.allocate_ui_with_layout(
-                    header_size_without_button,
-                    egui::Layout::left_to_right(egui::Align::Center),
-                    |ui| {
-                        let space_before_icon = 0.0;
-                        let icon_width = ui.spacing().icon_width_inner;
-                        let space_after_icon = ui.spacing().icon_spacing;
+                    ui.allocate_ui_with_layout(
+                        header_size_without_button,
+                        egui::Layout::left_to_right(egui::Align::Center),
+                        |ui| {
+                            let space_before_icon = 0.0;
+                            let icon_width = ui.spacing().icon_width_inner;
+                            let space_after_icon = ui.spacing().icon_spacing;
 
-                        let mut layout_job = egui::WidgetText::from(label).into_layout_job(
-                            ui.style(),
-                            egui::FontSelection::Default,
-                            egui::Align::LEFT,
-                        );
-                        layout_job.wrap = TextWrapping::truncate_at_width(
-                            header_size_without_button.x
-                                - (space_before_icon + icon_width + space_after_icon),
-                        );
-                        let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
+                            let mut layout_job = egui::WidgetText::from(label).into_layout_job(
+                                ui.style(),
+                                egui::FontSelection::Default,
+                                egui::Align::LEFT,
+                            );
+                            layout_job.wrap = TextWrapping::truncate_at_width(
+                                header_size_without_button.x
+                                    - (space_before_icon + icon_width + space_after_icon),
+                            );
+                            let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
 
-                        let header_response =
-                            ui.allocate_response(header_size_without_button, egui::Sense::click());
-                        let rect = header_response.rect;
+                            let header_response = ui.allocate_response(
+                                header_size_without_button,
+                                egui::Sense::click(),
+                            );
+                            let rect = header_response.rect;
 
-                        let icon_rect = egui::Rect::from_center_size(
-                            header_response.rect.left_center()
-                                + egui::vec2(space_before_icon + icon_width / 2.0, 0.0),
-                            egui::Vec2::splat(icon_width),
-                        );
-                        let icon_response = header_response.clone().with_new_rect(icon_rect);
-                        ui.paint_collapsing_triangle(
-                            openness,
-                            icon_rect.center(),
-                            ui.style().interact(&icon_response),
-                        );
-
-                        let visuals = ui.style().interact(&header_response);
-
-                        let optical_vertical_alignment = 0.5; // improves perceived vertical alignment
-                        let text_pos = icon_response.rect.right_center()
-                            + egui::vec2(
-                                space_after_icon,
-                                -0.5 * galley.size().y + optical_vertical_alignment,
+                            let icon_rect = egui::Rect::from_center_size(
+                                header_response.rect.left_center()
+                                    + egui::vec2(space_before_icon + icon_width / 2.0, 0.0),
+                                egui::Vec2::splat(icon_width),
+                            );
+                            let icon_response = header_response.clone().with_new_rect(icon_rect);
+                            ui.paint_collapsing_triangle(
+                                openness,
+                                icon_rect.center(),
+                                ui.style().interact(&icon_response),
                             );
 
-                        ui.painter().galley(text_pos, galley, visuals.text_color());
+                            let visuals = ui.style().interact(&header_response);
 
-                        // Let the rect cover the full panel width:
-                        let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
+                            let optical_vertical_alignment = 0.5; // improves perceived vertical alignment
+                            let text_pos = icon_response.rect.right_center()
+                                + egui::vec2(
+                                    space_after_icon,
+                                    -0.5 * galley.size().y + optical_vertical_alignment,
+                                );
 
-                        ui.painter().set(
-                            background_frame,
-                            Shape::rect_filled(bg_rect, 0.0, visuals.bg_fill),
-                        );
+                            ui.painter().galley(text_pos, galley, visuals.text_color());
 
-                        if header_response.clicked() {
-                            state.toggle(ui);
-                        }
-                    },
-                );
-            },
-        );
-    });
+                            // Let the rect cover the full panel width:
+                            let bg_rect =
+                                egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
 
-    state.show_body_unindented(ui, |ui| {
+                            ui.painter().set(
+                                background_frame,
+                                Shape::rect_filled(bg_rect, 0.0, visuals.bg_fill),
+                            );
+
+                            if header_response.clicked() {
+                                state.toggle(ui);
+                            }
+
+                            header_response
+                        },
+                    )
+                },
+            )
+        })
+        .inner
+        .inner
+        .inner;
+
+    let body_response = state.show_body_unindented(ui, |ui| {
         ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
         add_body(ui);
         ui.add_space(4.0); // Same here
     });
+
+    egui::CollapsingResponse {
+        header_response,
+        body_response: body_response.map(|r| r.response),
+        body_returned: None,
+        openness,
+    }
 }
