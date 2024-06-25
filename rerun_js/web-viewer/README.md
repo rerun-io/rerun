@@ -47,7 +47,8 @@ The `rrd` in the snippet above should be a URL pointing to either:
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.
 This can be disabled by setting `hide_welcome_screen` to `true` in the options object of `viewer.start`.
 
-⚠ It's important to set the viewer's width and height, as the viewer will not automatically resize to its parent element.
+⚠ It's important to set the viewer's width and height, as without it the viewer may not display correctly.
+Setting the values to empty strings is valid, as long as you style the canvas through other means.
 
 For a full example, see https://github.com/rerun-io/web-viewer-example.
 You can open the example via CodeSandbox: https://codesandbox.io/s/github/rerun-io/web-viewer-example
