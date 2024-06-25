@@ -87,14 +87,13 @@ mod view;
 
 pub use self::{
     archetype::{
-        Archetype, ArchetypeFieldInfo, ArchetypeInfo, ArchetypeName, GenericIndicatorComponent,
+        Archetype, ArchetypeName, ArchetypeReflectionMarker, GenericIndicatorComponent,
         NamedIndicatorComponent,
     },
     arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
     loggable::{Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable},
     loggable_batch::{ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch},
-    reflection::*,
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
