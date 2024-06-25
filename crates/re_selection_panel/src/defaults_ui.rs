@@ -139,7 +139,6 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
     });
 }
 
-#[allow(clippy::too_many_arguments)]
 fn add_new_default(
     ctx: &ViewContext<'_>,
     query: &LatestAtQuery,
