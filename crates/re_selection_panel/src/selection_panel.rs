@@ -156,14 +156,18 @@ impl SelectionPanel {
                     }
 
                     Item::DataResult(view_id, instance_path) => {
-                        data_results_selection_ui(
-                            ctx,
-                            ui,
-                            instance_path,
-                            blueprint,
-                            view_id,
-                            view_states,
-                        );
+                        if instance_path.is_all() {
+                            entity_selection_ui(
+                                ctx,
+                                ui,
+                                &instance_path.entity_path,
+                                blueprint,
+                                view_id,
+                                view_states,
+                            );
+                        } else {
+                            // NOTE: not implemented when a single instance is selected
+                        }
                     }
                     _ => {}
                 }
@@ -398,46 +402,40 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 }
 
-fn data_results_selection_ui(
+fn entity_selection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    instance_path: &InstancePath,
+    entity_path: &EntityPath,
     blueprint: &ViewportBlueprint,
     view_id: &SpaceViewId,
     view_states: &mut ViewStates,
 ) {
-    // Special override section
-    // Only show visualizer selection when the entire entity is selected.
-    // (showing it for instances gives the wrong impression)
-    if instance_path.is_all() {
-        if let Some(view) = blueprint.space_views.get(view_id) {
-            let view_ctx = view.bundle_context_with_states(ctx, view_states);
-            visualizer_ui(&view_ctx, view, &instance_path.entity_path, ui);
+    let query_result = ctx.lookup_query_result(*view_id);
+    let data_result = query_result
+        .tree
+        .lookup_result_by_path(entity_path)
+        .cloned();
+
+    if let Some(data_result) = &data_result {
+        if let Some(space_view) = blueprint.space_view(view_id) {
+            ui.large_collapsing_header("Entity properties", true, |ui| {
+                entity_props_ui(
+                    &space_view.bundle_context_with_states(ctx, view_states),
+                    ui,
+                    ctx.lookup_query_result(*view_id),
+                    data_result,
+                );
+            });
         }
     }
 
-    if instance_path.instance.is_all() {
-        // the whole entity
-        let entity_path = &instance_path.entity_path;
-        let query_result = ctx.lookup_query_result(*view_id);
-        if let Some(data_result) = query_result
-            .tree
-            .lookup_result_by_path(entity_path)
-            .cloned()
-        {
-            if let Some(space_view) = blueprint.space_view(view_id) {
-                ui.large_collapsing_header("Entity properties", true, |ui| {
-                    entity_props_ui(
-                        &space_view.bundle_context_with_states(ctx, view_states),
-                        ui,
-                        ctx.lookup_query_result(*view_id),
-                        &data_result,
-                    );
-                });
-            }
+    if let Some(view) = blueprint.space_views.get(view_id) {
+        let view_ctx = view.bundle_context_with_states(ctx, view_states);
+        visualizer_ui(&view_ctx, view, entity_path, ui);
+    }
 
-            query_range_ui_data_result(ctx, ui, &data_result);
-        }
+    if let Some(data_result) = &data_result {
+        query_range_ui_data_result(ctx, ui, data_result);
     }
 }
 
