@@ -1,58 +1,16 @@
-use egui::{Ui, Vec2};
+use egui::Ui;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, ViewCoordinates};
+use re_types::components::{LineStrip2D, LineStrip3D, ViewCoordinates};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
-
-impl DataUi for [u8; 4] {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
-        let [r, g, b, a] = self;
-        let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
-        let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
-        ui.painter().rect_stroke(
-            response.rect,
-            1.0,
-            ui.visuals().widgets.noninteractive.fg_stroke,
-        );
-        response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));
-    }
-}
-
-impl DataUi for Color {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
-        let [r, g, b, a] = self.to_array();
-        let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
-        let response = egui::color_picker::show_color(ui, color, Vec2::new(32.0, 16.0));
-        ui.painter().rect_stroke(
-            response.rect,
-            1.0,
-            ui.visuals().widgets.noninteractive.fg_stroke,
-        );
-        response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));
-    }
-}
 
 impl DataUi for ViewCoordinates {
     fn data_ui(

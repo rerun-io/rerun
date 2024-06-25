@@ -24,7 +24,6 @@ mod image;
 mod image_meaning;
 mod instance_path;
 mod log_msg;
-mod material;
 mod pinhole;
 mod rotation3d;
 mod store_id;
