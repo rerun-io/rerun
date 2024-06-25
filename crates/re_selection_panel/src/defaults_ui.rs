@@ -17,38 +17,8 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
     let query = ctx.viewer_ctx.blueprint_query;
     let resolver = Default::default();
 
-    // Cleared components should act as unset, so we filter out everything that's empty,
-    // even if they are listed in `all_components`.
-    let active_defaults = ctx
-        .blueprint_db()
-        .store()
-        .all_components(&blueprint_timeline(), &space_view.defaults_path)
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|c| {
-            db.query_caches()
-                .latest_at(db.store(), query, &space_view.defaults_path, [*c])
-                .components
-                .get(c)
-                .and_then(|data| data.resolved(&resolver).ok())
-                .map_or(false, |data| !data.is_empty())
-        })
-        .collect::<BTreeSet<_>>();
-
-    // It only makes sense to set defaults for components that are used by a system in the view.
-    let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
-
-    // Accumulate the components across all visualizers and track which visualizer
-    // each component came from so we can use it for fallbacks later.
-    //
-    // If two visualizers have the same component, the first one wins.
-    // TODO(jleibs): We can do something fancier in the future such as presenting both
-    // options once we have a motivating use-case.
-    for (id, vis) in ctx.visualizer_collection.iter_with_identifiers() {
-        for &component in vis.visualizer_query_info().queried.iter() {
-            component_to_vis.entry(component).or_insert_with(|| id);
-        }
-    }
+    let active_defaults = active_defaults(ctx, space_view, db, query, resolver);
+    let component_to_vis = component_to_vis(ctx);
 
     add_new_default(
         ctx,
@@ -137,6 +107,49 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
             }
         }
     });
+}
+
+fn component_to_vis(ctx: &ViewContext<'_>) -> BTreeMap<ComponentName, ViewSystemIdentifier> {
+    // It only makes sense to set defaults for components that are used by a system in the view.
+    let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
+
+    // Accumulate the components across all visualizers and track which visualizer
+    // each component came from so we can use it for fallbacks later.
+    //
+    // If two visualizers have the same component, the first one wins.
+    // TODO(jleibs): We can do something fancier in the future such as presenting both
+    // options once we have a motivating use-case.
+    for (id, vis) in ctx.visualizer_collection.iter_with_identifiers() {
+        for &component in vis.visualizer_query_info().queried.iter() {
+            component_to_vis.entry(component).or_insert_with(|| id);
+        }
+    }
+    component_to_vis
+}
+
+fn active_defaults(
+    ctx: &ViewContext<'_>,
+    space_view: &SpaceViewBlueprint,
+    db: &re_entity_db::EntityDb,
+    query: &LatestAtQuery,
+    resolver: re_query::PromiseResolver,
+) -> BTreeSet<ComponentName> {
+    // Cleared components should act as unset, so we filter out everything that's empty,
+    // even if they are listed in `all_components`.
+    ctx.blueprint_db()
+        .store()
+        .all_components(&blueprint_timeline(), &space_view.defaults_path)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|c| {
+            db.query_caches()
+                .latest_at(db.store(), query, &space_view.defaults_path, [*c])
+                .components
+                .get(c)
+                .and_then(|data| data.resolved(&resolver).ok())
+                .map_or(false, |data| !data.is_empty())
+        })
+        .collect::<BTreeSet<_>>()
 }
 
 fn add_new_default(
