@@ -18,7 +18,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: A multi-dimensional `Tensor` of data.
+    /// **Datatype**: An N-dimensional array of numbers.
     ///
     /// The number of dimensions and their respective lengths is specified by the `shape` field.
     /// The dimensions are ordered from outermost to innermost. For example, in the common case of

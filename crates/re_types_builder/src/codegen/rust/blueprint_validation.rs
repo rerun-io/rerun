@@ -23,7 +23,7 @@ pub(crate) fn generate_blueprint_validation(
     code.push_str("use re_entity_db::EntityDb;\n");
     code.push_str("use super::validation::validate_component;\n");
 
-    for obj in objects.ordered_objects(Some(ObjectKind::Component)) {
+    for obj in objects.objects_of_kind(ObjectKind::Component) {
         if obj.scope() == blueprint_scope {
             let type_name = &obj.name;
             let mut crate_name = obj.crate_name();
@@ -38,7 +38,7 @@ pub(crate) fn generate_blueprint_validation(
 
     let mut validations = TokenStream::new();
     let mut first = true;
-    for obj in objects.ordered_objects(Some(ObjectKind::Component)) {
+    for obj in objects.objects_of_kind(ObjectKind::Component) {
         if obj.scope() == blueprint_scope {
             validations.extend(quote_component_validation(obj, first));
             first = false;

@@ -11,7 +11,7 @@
 #include <memory>
 
 namespace rerun::components {
-    /// **Component**: The three indices of a triangle mesh.
+    /// **Component**: The three indices of a triangle in a triangle mesh.
     struct TriangleIndices {
         rerun::datatypes::UVec3D indices;
 

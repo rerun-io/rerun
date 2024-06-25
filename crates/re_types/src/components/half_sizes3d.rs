@@ -22,7 +22,9 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
+/// **Component**: Half-size (radius) of a 3D box.
+///
+/// Measured in its local coordinate system.
 ///
 /// The box extends both in negative and positive direction along each axis.
 /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.

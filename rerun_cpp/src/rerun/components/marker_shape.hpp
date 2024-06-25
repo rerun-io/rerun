@@ -15,7 +15,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: Shape of a marker.
+    /// **Component**: The visual appearance of a point in e.g. a 2D plot.
     enum class MarkerShape : uint8_t {
 
         /// `⏺`

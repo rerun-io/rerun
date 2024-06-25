@@ -20,7 +20,11 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: A component indicating how long a meter is, expressed in native units.
+    /// **Component**: The world->depth map scaling factor.
+    ///
+    /// This measures how many depth map units are in a world unit.
+    /// For instance, if a depth map uses millimeters and the world uses meters,
+    /// this value would be `1000`.
     struct DepthMeter {
         float value;
 

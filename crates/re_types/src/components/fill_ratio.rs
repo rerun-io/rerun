@@ -25,7 +25,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: How much a primitive fills out the available space.
 ///
 /// Used for instance to scale the points of the point cloud created from `DepthImage` projection.
-/// Valid range is from 0 to max float although typically values above 1.0 are not useful
+/// Valid range is from 0 to max float although typically values above 1.0 are not useful.
+///
 /// Defaults to 1.0.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]

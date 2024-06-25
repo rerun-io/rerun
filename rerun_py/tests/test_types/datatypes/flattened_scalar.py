@@ -67,6 +67,12 @@ class FlattenedScalarBatch(BaseBatch[FlattenedScalarArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of FlattenedScalar not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in flattened_scalar_ext.py
+        if isinstance(data, FlattenedScalar):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                pa.array(np.asarray([x.value for x in data], dtype=np.float32)),
+            ],
+            fields=list(data_type),
+        )

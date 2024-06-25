@@ -44,7 +44,7 @@ pub use command_sender::{
 };
 pub use component_fallbacks::{
     ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
-    ComponentPlaceholders, TypedComponentFallbackProvider,
+    TypedComponentFallbackProvider,
 };
 pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};

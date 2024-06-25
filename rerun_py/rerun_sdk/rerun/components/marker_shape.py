@@ -22,7 +22,7 @@ from enum import Enum
 
 
 class MarkerShape(Enum):
-    """**Component**: Shape of a marker."""
+    """**Component**: The visual appearance of a point in e.g. a 2D plot."""
 
     Circle = 1
     """`⏺`"""

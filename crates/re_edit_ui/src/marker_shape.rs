@@ -1,4 +1,4 @@
-use re_types::components::MarkerShape;
+use re_types::{components::MarkerShape, reflection::Enum as _};
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 
@@ -20,7 +20,7 @@ pub(crate) fn edit_marker_shape_ui(
             .show_ui(ui, |ui| {
                 let list_ui = |ui: &mut egui::Ui| {
                     let mut combined_response: Option<egui::Response> = None;
-                    for marker in MarkerShape::ALL {
+                    for &marker in MarkerShape::variants() {
                         let mut response =
                             ui.list_item().selected(*edit_marker == marker).show_flat(
                                 ui,

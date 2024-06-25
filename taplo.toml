@@ -6,6 +6,8 @@ include = [
   "crates/**/*.toml",
   "examples/rust/**/*.toml",
   "examples/python/**/*.toml",
+  "rerun_notebook/*.toml",
+  "rerun_py/*.toml",
   "tests/rust/**/*.toml",
 ]
 

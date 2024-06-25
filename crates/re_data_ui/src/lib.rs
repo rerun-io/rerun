@@ -13,6 +13,7 @@ mod app_id;
 mod blueprint_data;
 mod blueprint_types;
 mod component;
+mod component_name;
 mod component_path;
 mod component_ui_registry;
 mod data;
@@ -40,13 +41,14 @@ pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
 pub use image_meaning::image_meaning_for_entity;
 
 /// Sort components for display in the UI.
-pub fn component_list_for_ui<'a>(
+pub fn sorted_component_list_for_ui<'a>(
     iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
 ) -> Vec<ComponentName> {
     let mut components: Vec<ComponentName> = iter.into_iter().copied().collect();
 
-    // Put indicator components first:
-    components.sort_by_key(|c| (!c.is_indicator_component(), c.full_name()));
+    // Put indicator components first.
+    // We then sort by the short name, as that is what is shown in the UI.
+    components.sort_by_key(|c| (!c.is_indicator_component(), c.short_name()));
 
     components
 }
@@ -62,6 +64,11 @@ pub trait DataUi {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
+
+    /// Called [`Self::data_ui`] using the default query and recording.
+    fn data_ui_recording(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+        self.data_ui(ctx, ui, ui_layout, &ctx.current_query(), ctx.recording());
+    }
 }
 
 /// Similar to [`DataUi`], but for data that is related to an entity (e.g. a component).

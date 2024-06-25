@@ -11,7 +11,7 @@ Archetypes are bundles of components. This page lists all built-in components.
 * [`DepthImage`](archetypes/depth_image.md): A depth image.
 * [`Image`](archetypes/image.md): A monochrome or color image.
 * [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer class-ids.
-* [`Tensor`](archetypes/tensor.md): A generic n-dimensional Tensor.
+* [`Tensor`](archetypes/tensor.md): An N-dimensional array of numbers.
 
 ## Plotting
 

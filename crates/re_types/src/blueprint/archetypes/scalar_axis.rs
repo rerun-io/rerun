@@ -70,22 +70,6 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Range",
-            documentation: "The range of the axis.\n\nIf unset, the range well be automatically determined based on the queried data.",
-            component_name: "rerun.components.Range1D".into(),
-        },
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Zoom lock",
-            documentation: "If enabled, the Y axis range will remain locked to the specified range when zooming.",
-            component_name: "rerun.blueprint.components.LockRangeDuringZoom".into(),
-        },
-    ]
-    });
-
 impl ScalarAxis {
     /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 3usize;
@@ -131,11 +115,6 @@ impl ::re_types_core::Archetype for ScalarAxis {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
-    }
-
-    #[inline]
-    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
-        Some(FIELD_INFOS.as_slice().into())
     }
 
     #[inline]
@@ -190,6 +169,8 @@ impl ::re_types_core::AsComponents for ScalarAxis {
         .collect()
     }
 }
+
+impl ::re_types_core::ArchetypeReflectionMarker for ScalarAxis {}
 
 impl ScalarAxis {
     /// Create a new `ScalarAxis`.

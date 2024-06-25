@@ -25,9 +25,16 @@ class ContainerKind(Enum):
     """**Component**: The kind of a blueprint container (tabs, grid, …)."""
 
     Tabs = 1
+    """Put children in separate tabs"""
+
     Horizontal = 2
+    """Order the children left to right"""
+
     Vertical = 3
+    """Order the children top to bottom"""
+
     Grid = 4
+    """Organize children in a grid layout"""
 
 
 ContainerKindLike = Union[

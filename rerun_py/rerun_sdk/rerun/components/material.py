@@ -15,7 +15,7 @@ __all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 
 class Material(datatypes.Material, ComponentMixin):
-    """**Component**: Material properties of a mesh."""
+    """**Component**: Material properties of a mesh, e.g. its color multiplier."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of MaterialExt in material_ext.py

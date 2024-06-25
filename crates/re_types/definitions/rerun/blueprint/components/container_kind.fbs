@@ -13,8 +13,15 @@ enum ContainerKind: byte (
     "attr.rerun.scope": "blueprint",
     "attr.rust.override_crate": "re_types_blueprint"
 ) {
+    /// Put children in separate tabs
     Tabs,
+
+    /// Order the children left to right
     Horizontal,
+
+    /// Order the children top to bottom
     Vertical,
+
+    /// Organize children in a grid layout
     Grid (default),
 }
