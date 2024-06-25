@@ -191,17 +191,24 @@ impl SelectionPanel {
         clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
 
         if let Some(space_view) = blueprint.space_view(view_id) {
-            if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
-                ctx,
-                ui,
-                *view_id,
-                &space_view.contents.entity_path_filter,
-                &space_view.space_origin,
-            ) {
-                space_view
-                    .contents
-                    .set_entity_path_filter(ctx, &new_entity_path_filter);
-            }
+            ui.large_collapsing_header("Entity path filter", true, |ui| {
+                if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
+                    ctx,
+                    ui,
+                    *view_id,
+                    &space_view.contents.entity_path_filter,
+                    &space_view.space_origin,
+                ) {
+                    space_view
+                        .contents
+                        .set_entity_path_filter(ctx, &new_entity_path_filter);
+                }
+            })
+            .header_response
+            .on_hover_text(
+                "The entity path query consists of a list of include/exclude rules \
+            that determines what entities are part of this space view",
+            );
         }
 
         if let Some(view) = blueprint.space_view(view_id) {
@@ -339,11 +346,6 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         let rightmost_x = ui.cursor().min.x;
         ui.horizontal(|ui| {
-            ui.label("Entity path query").on_hover_text(
-                "The entity path query consists of a list of include/exclude rules \
-            that determines what entities are part of this space view",
-            );
-
             let current_x = ui.cursor().min.x;
             // Compute a width that results in these things to be right-aligned with the following text edit.
             let desired_width = (ui.available_width() - ui.spacing().item_spacing.x)
