@@ -19,7 +19,7 @@ pub fn edit_f32_zero_to_max_float_raw(
     edit_f32_zero_to_max_float_raw_impl(ui, value)
 }
 
-/// Non monomorphized implementation of [`edit_f32_zero_to_max_float`].
+/// Non monomorphized implementation of [`edit_f32_zero_to_max_float_raw`].
 fn edit_f32_zero_to_max_float_raw_impl(ui: &mut egui::Ui, value: &mut f32) -> egui::Response {
     let speed = (*value * 0.01).at_least(0.001);
     ui.add(
