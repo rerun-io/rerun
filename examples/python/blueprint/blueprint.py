@@ -30,7 +30,11 @@ def main() -> None:
             Grid(
                 Spatial2DView(name="Rect 0", origin="/", contents=["image", "rect/0"]),
                 Spatial2DView(
-                    name="Rect 1", origin="/", contents=["image", "rect/1"], defaults=[rr.components.Radius(2)]
+                    name="Rect 1",
+                    origin="/",
+                    contents=["/**"],
+                    defaults=[rr.components.Radius(2)],
+                    overrides={"rect/0": [rr.components.Radius(1)]},
                 ),
             ),
             BlueprintPanel(state="collapsed"),
