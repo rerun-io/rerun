@@ -44,6 +44,7 @@ class SpaceView:
         visible: VisibleLike | None = None,
         properties: dict[str, AsComponents] = {},
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     ):
         """
         Construct a blueprint for a new space view.
@@ -71,6 +72,9 @@ class SpaceView:
             List of default components or component batches to add to the space view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
+        overrides:
+            Dictionary of overrides to apply to the space view. The key is the path to the component to override,
+            and the value is the component or component batch to use instead.
 
         """
         self.id = uuid.uuid4()
@@ -81,6 +85,7 @@ class SpaceView:
         self.visible = visible
         self.properties = properties
         self.defaults = defaults
+        self.overrides = overrides
 
     def blueprint_path(self) -> str:
         """
@@ -131,6 +136,11 @@ class SpaceView:
                 stream.log(f"{self.blueprint_path()}/defaults", [default], recording=stream)  # type: ignore[attr-defined]
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
+
+        for path, components in self.overrides.items():
+            stream.log(  # type: ignore[attr-defined]
+                f"{self.blueprint_path()}/SpaceViewContents/individual_overrides/{path}", components, recording=stream
+            )
 
     def _ipython_display_(self) -> None:
         from rerun.notebook import Viewer
