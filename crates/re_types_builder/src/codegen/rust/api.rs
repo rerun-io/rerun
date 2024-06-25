@@ -540,6 +540,13 @@ fn quote_enum(
         let quoted_name = format_ident!("{}", field.pascal_case_name());
         let docstring_md =
             doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs).join("\n");
+        if docstring_md.is_empty() {
+            reporter.error(
+                &field.virtpath,
+                &field.fqname,
+                "Missing documentation for enum variant. These are shown in the UI on hover.",
+            );
+        }
         quote!(Self::#quoted_name => #docstring_md)
     });
 
