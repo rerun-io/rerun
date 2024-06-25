@@ -33,6 +33,7 @@ impl SegmentationImage {
         Ok(Self {
             data: data.into(),
             draw_order: None,
+            opacity: None,
         })
     }
 }

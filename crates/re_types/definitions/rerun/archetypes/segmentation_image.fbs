@@ -38,6 +38,11 @@ table SegmentationImage (
 
   // --- Optional ---
 
+  /// Opacity of the image, useful for layering the segmentation image on top of another image.
+  ///
+  /// Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
+  opacity: rerun.components.Opacity ("attr.rerun.component_optional", nullable, order: 3000);
+
   /// An optional floating point value that specifies the 2D drawing order.
   ///
   /// Objects with higher values are drawn on top of those with lower values.

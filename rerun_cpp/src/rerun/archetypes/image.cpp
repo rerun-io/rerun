@@ -14,10 +14,15 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(3);
+        cells.reserve(4);
 
         {
             auto result = DataCell::from_loggable(archetype.data);
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.opacity.has_value()) {
+            auto result = DataCell::from_loggable(archetype.opacity.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

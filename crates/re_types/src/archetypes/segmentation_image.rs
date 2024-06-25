@@ -77,6 +77,11 @@ pub struct SegmentationImage {
     /// The image data. Should always be a rank-2 tensor.
     pub data: crate::components::TensorData,
 
+    /// Opacity of the image, useful for layering the segmentation image on top of another image.
+    ///
+    /// Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
+    pub opacity: Option<crate::components::Opacity>,
+
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
@@ -86,12 +91,15 @@ pub struct SegmentationImage {
 impl ::re_types_core::SizeBytes for SegmentationImage {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes() + self.draw_order.heap_size_bytes()
+        self.data.heap_size_bytes()
+            + self.opacity.heap_size_bytes()
+            + self.draw_order.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::components::TensorData>::is_pod()
+            && <Option<crate::components::Opacity>>::is_pod()
             && <Option<crate::components::DrawOrder>>::is_pod()
     }
 }
@@ -102,21 +110,27 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SegmentationImageIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.DrawOrder".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.Opacity".into(),
+            "rerun.components.DrawOrder".into(),
+        ]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.SegmentationImageIndicator".into(),
+            "rerun.components.Opacity".into(),
             "rerun.components.DrawOrder".into(),
         ]
     });
 
 impl SegmentationImage {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`SegmentationImage`] [`::re_types_core::Archetype`]
@@ -184,6 +198,15 @@ impl ::re_types_core::Archetype for SegmentationImage {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.SegmentationImage#data")?
         };
+        let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
+            <crate::components::Opacity>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SegmentationImage#opacity")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
             <crate::components::DrawOrder>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.SegmentationImage#draw_order")?
@@ -193,7 +216,11 @@ impl ::re_types_core::Archetype for SegmentationImage {
         } else {
             None
         };
-        Ok(Self { data, draw_order })
+        Ok(Self {
+            data,
+            opacity,
+            draw_order,
+        })
     }
 }
 
@@ -204,6 +231,9 @@ impl ::re_types_core::AsComponents for SegmentationImage {
         [
             Some(Self::indicator()),
             Some((&self.data as &dyn ComponentBatch).into()),
+            self.opacity
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.draw_order
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -220,8 +250,18 @@ impl SegmentationImage {
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
         Self {
             data: data.into(),
+            opacity: None,
             draw_order: None,
         }
+    }
+
+    /// Opacity of the image, useful for layering the segmentation image on top of another image.
+    ///
+    /// Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
+    #[inline]
+    pub fn with_opacity(mut self, opacity: impl Into<crate::components::Opacity>) -> Self {
+        self.opacity = Some(opacity.into());
+        self
     }
 
     /// An optional floating point value that specifies the 2D drawing order.

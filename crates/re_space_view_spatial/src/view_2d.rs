@@ -18,7 +18,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{register_spatial_contexts, PrimitiveCounter},
+    contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
     max_image_dimension_subscriber::{ImageDimensions, MaxImageDimensions},
     spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
@@ -249,12 +249,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
-        state.bounding_boxes.update(&system_output.view_systems);
-        state.scene_num_primitives = system_output
-            .context_systems
-            .get::<PrimitiveCounter>()?
-            .num_primitives
-            .load(std::sync::atomic::Ordering::Relaxed);
+        state.update_frame_statistics(&system_output)?;
 
         self.view_2d(ctx, ui, state, query, system_output)
     }
