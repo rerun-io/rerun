@@ -671,14 +671,18 @@ fn what_is_selected_ui(
             );
 
             ui.list_item_flat_noninteractive(
-                PropertyContent::new(format!(
-                    "{} component of",
-                    if is_static { "Static" } else { "Temporal" }
-                ))
-                .value_fn(|ui, _| {
-                    item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
+                PropertyContent::new("Component type").value_text(if is_static {
+                    "Static"
+                } else {
+                    "Temporal"
                 }),
             );
+
+            ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
+                |ui, _| {
+                    item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
+                },
+            ));
 
             list_existing_data_blueprints(ctx, blueprint, ui, &entity_path.clone().into());
         }
@@ -839,21 +843,20 @@ fn list_existing_data_blueprints(
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any space view)");
     } else {
-        for space_view_id in &space_views_with_path {
-            if let Some(space_view) = blueprint.space_view(space_view_id) {
-                ui.horizontal(|ui| {
-                    item_ui::instance_path_button_to(
-                        ctx,
-                        &query,
-                        db,
-                        ui,
-                        Some(*space_view_id),
-                        instance_path,
-                        "Shown",
-                    );
-                    ui.label("in");
-                    space_view_button(ctx, ui, space_view);
+        for &space_view_id in &space_views_with_path {
+            if let Some(space_view) = blueprint.space_view(&space_view_id) {
+                let response = ui.list_item().show_flat(
+                    ui,
+                    PropertyContent::new("Shown in").value_fn(|ui, _| {
+                        space_view_button(ctx, ui, space_view);
+                    }),
+                );
+
+                let item = Item::DataResult(space_view_id, instance_path.clone());
+                let response = response.on_hover_ui(|ui| {
+                    item_ui::instance_hover_card_ui(ui, ctx, &query, db, instance_path);
                 });
+                item_ui::cursor_interact_with_selectable(ctx, response, item);
             }
         }
     }
