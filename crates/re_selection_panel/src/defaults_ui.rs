@@ -127,27 +127,24 @@ fn active_default_ui(
                     );
                 };
 
-                ui.list_item()
-                    .interactive(false)
-                    .show_flat(
+                ui.list_item_flat_noninteractive(
+                    re_ui::list_item::PropertyContent::new(component_name.short_name())
+                        .min_desired_width(150.0)
+                        .action_button(&re_ui::icons::CLOSE, || {
+                            ctx.save_empty_blueprint_component_by_name(
+                                &space_view.defaults_path,
+                                component_name,
+                            );
+                        })
+                        .value_fn(|ui, _| value_fn(ui)),
+                )
+                .on_hover_ui(|ui| {
+                    component_name.data_ui_recording(
+                        ctx.viewer_ctx,
                         ui,
-                        re_ui::list_item::PropertyContent::new(component_name.short_name())
-                            .min_desired_width(150.0)
-                            .action_button(&re_ui::icons::CLOSE, || {
-                                ctx.save_empty_blueprint_component_by_name(
-                                    &space_view.defaults_path,
-                                    component_name,
-                                );
-                            })
-                            .value_fn(|ui, _| value_fn(ui)),
-                    )
-                    .on_hover_ui(|ui| {
-                        component_name.data_ui_recording(
-                            ctx.viewer_ctx,
-                            ui,
-                            re_viewer_context::UiLayout::Tooltip,
-                        );
-                    });
+                        re_viewer_context::UiLayout::Tooltip,
+                    );
+                });
             }
         }
     });

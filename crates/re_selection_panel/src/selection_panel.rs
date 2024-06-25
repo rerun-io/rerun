@@ -508,8 +508,7 @@ fn container_children(
         }
 
         if !has_child {
-            ui.list_item().interactive(false).show_flat(
-                ui,
+            ui.list_item_flat_noninteractive(
                 list_item::LabelContent::new("empty — use the + button to add content")
                     .weak(true)
                     .italics(true),
@@ -1143,10 +1142,7 @@ fn visible_interactive_toggle_ui(
             ""
         };
 
-        ui.list_item()
-            .interactive(false)
-            .show_flat(
-                ui,
+        ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
             )
             .on_hover_text(format!(
@@ -1172,10 +1168,7 @@ fn visible_interactive_toggle_ui(
             ""
         };
 
-        ui.list_item()
-            .interactive(false)
-            .show_flat(
-                ui,
+        ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
             )
             .on_hover_text(format!(

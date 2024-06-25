@@ -649,6 +649,16 @@ pub trait UiExt {
         list_item::ListItem::new()
     }
 
+    /// Convenience for adding a flat non-interactive [`list_item::ListItemContent`]
+    fn list_item_flat_noninteractive(
+        &mut self,
+        content: impl list_item::ListItemContent,
+    ) -> egui::Response {
+        self.list_item()
+            .interactive(false)
+            .show_flat(self.ui_mut(), content)
+    }
+
     fn selectable_label_with_icon(
         &mut self,
 
