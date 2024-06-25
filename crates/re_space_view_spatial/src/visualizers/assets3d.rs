@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialSpaceViewKind,
@@ -145,7 +145,6 @@ impl VisualizerSystem for Asset3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 

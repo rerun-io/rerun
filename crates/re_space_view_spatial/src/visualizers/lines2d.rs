@@ -14,7 +14,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{UiLabel, UiLabelTarget},
 };
@@ -209,7 +209,6 @@ impl VisualizerSystem for Lines2DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 

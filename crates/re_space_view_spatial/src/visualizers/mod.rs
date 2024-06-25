@@ -31,9 +31,10 @@ use re_types::{
     datatypes::{KeypointId, KeypointPair},
 };
 use re_viewer_context::{
-    auto_color, Annotations, ApplicableEntities, DefaultColor, ResolvedAnnotationInfos,
-    SpaceViewClassRegistryError, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
+    auto_color, Annotations, ApplicableEntities, DefaultColor, IdentifiedViewSystem,
+    ResolvedAnnotationInfos, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, ViewSystemIdentifier, VisualizableEntities,
+    VisualizableFilterContext, VisualizerCollection,
 };
 
 use crate::view_2d::VisualizableFilterContext2D;
@@ -91,6 +92,18 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
+}
+
+/// List of all visualizers that read [`re_types::components::DrawOrder`].
+pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIdentifier> {
+    [
+        arrows2d::Arrows2DVisualizer::identifier(),
+        boxes2d::Boxes2DVisualizer::identifier(),
+        images::ImageVisualizer::identifier(),
+        lines2d::Lines2DVisualizer::identifier(),
+        points2d::Points2DVisualizer::identifier(),
+    ]
+    .into_iter()
 }
 
 pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {

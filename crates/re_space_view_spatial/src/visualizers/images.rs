@@ -29,7 +29,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
+    contexts::{SpatialSceneEntityContext, TransformContext},
     query_pinhole_legacy,
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
@@ -875,7 +875,6 @@ impl ImageVisualizer {
             ctx,
             view_query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.image,
             |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
