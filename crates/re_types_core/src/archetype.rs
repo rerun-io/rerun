@@ -95,7 +95,7 @@ pub trait Archetype {
         .collect::<Vec<_>>()
         .into()
     }
-    
+
     // ---
 
     /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
