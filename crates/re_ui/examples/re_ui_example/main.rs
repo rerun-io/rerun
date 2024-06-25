@@ -473,7 +473,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
         _visuals: &egui::Visuals,
         _tiles: &egui_tiles::Tiles<Tab>,
         _tile_id: egui_tiles::TileId,
-        _active: bool,
+        _tab_state: &egui_tiles::TabState,
     ) -> egui::Stroke {
         egui::Stroke::NONE
     }

@@ -572,19 +572,20 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     #[allow(clippy::fn_params_excessive_bools)]
     fn tab_ui(
         &mut self,
-        tiles: &egui_tiles::Tiles<SpaceViewId>,
+        tiles: &mut egui_tiles::Tiles<SpaceViewId>,
         ui: &mut egui::Ui,
         id: egui::Id,
         tile_id: egui_tiles::TileId,
-        active: bool,
-        is_being_dragged: bool,
+        tab_state: &egui_tiles::TabState,
     ) -> egui::Response {
-        let tab_widget = TabWidget::new(self, ui, tiles, tile_id, active, 1.0);
+        let tab_widget = TabWidget::new(self, ui, tiles, tile_id, tab_state, 1.0);
 
-        let response = ui.interact(tab_widget.rect, id, egui::Sense::click_and_drag());
+        let response = ui
+            .interact(tab_widget.rect, id, egui::Sense::click_and_drag())
+            .on_hover_cursor(egui::CursorIcon::Grab);
 
         // Show a gap when dragged
-        if ui.is_rect_visible(tab_widget.rect) && !is_being_dragged {
+        if ui.is_rect_visible(tab_widget.rect) && !tab_state.is_being_dragged {
             tab_widget.paint(ui);
         }
 
@@ -622,7 +623,18 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
     ) {
-        let tab_widget = TabWidget::new(self, ui, tiles, tile_id, true, 0.5);
+        let tab_widget = TabWidget::new(
+            self,
+            ui,
+            tiles,
+            tile_id,
+            &egui_tiles::TabState {
+                active: true,
+                is_being_dragged: true,
+                ..Default::default()
+            },
+            0.5,
+        );
 
         let frame = egui::Frame {
             inner_margin: egui::Margin::same(0.),
@@ -797,7 +809,7 @@ impl TabWidget {
         ui: &'a mut egui::Ui,
         tiles: &'a egui_tiles::Tiles<SpaceViewId>,
         tile_id: egui_tiles::TileId,
-        active: bool,
+        tab_state: &egui_tiles::TabState,
         gamma: f32,
     ) -> Self {
         struct TabDesc {
@@ -869,7 +881,7 @@ impl TabWidget {
                     // not have a matching ContainerBlueprint.
                     if container.kind() == egui_tiles::ContainerKind::Tabs {
                         if let Some(tile_id) = container.only_child() {
-                            return Self::new(tab_viewer, ui, tiles, tile_id, active, gamma);
+                            return Self::new(tab_viewer, ui, tiles, tile_id, tab_state, gamma);
                         }
                     }
 
@@ -946,7 +958,7 @@ impl TabWidget {
         };
         let bg_color = bg_color.gamma_multiply(gamma);
         let text_color = tab_viewer
-            .tab_text_color(ui.visuals(), tiles, tile_id, active)
+            .tab_text_color(ui.visuals(), tiles, tile_id, tab_state)
             .gamma_multiply(gamma);
 
         Self {
