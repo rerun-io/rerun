@@ -191,7 +191,7 @@ fn add_new_default(
                 } else {
                     "editors"
                 },
-                missing_editors.iter().map(|c| c.short_name()).join(" ")
+                missing_editors.iter().map(|c| c.short_name()).join(", ")
             ));
         }
     }
