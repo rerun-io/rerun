@@ -120,7 +120,7 @@ impl SeriesPointSystem {
                 attrs: PlotPointAttrs {
                     label: None,
                     color: fallback_color.into(),
-                    marker_size: fallback_size.into(),
+                    radius_ui: fallback_size.into(),
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
                         marker: fallback_shape,
                     }),
@@ -272,7 +272,7 @@ impl SeriesPointSystem {
                         if let Some(marker_size) =
                             marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
                         {
-                            points[i].attrs.marker_size = marker_size.0;
+                            points[i].attrs.radius_ui = marker_size.0;
                         }
                     }
                 }

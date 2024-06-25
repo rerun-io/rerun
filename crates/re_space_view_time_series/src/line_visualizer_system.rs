@@ -152,7 +152,7 @@ impl SeriesLineSystem {
         let query_ctx = ctx.query_context(data_result, &current_query);
 
         let fallback_color: Color = self.fallback_for(&query_ctx);
-        let fallback_stroke: StrokeWidth = self.fallback_for(&query_ctx);
+        let fallback_stroke_width: StrokeWidth = self.fallback_for(&query_ctx);
 
         // All the default values for a `PlotPoint`, accounting for both overrides and default
         // values.
@@ -162,7 +162,7 @@ impl SeriesLineSystem {
             attrs: PlotPointAttrs {
                 label: None,
                 color: fallback_color.into(),
-                marker_size: fallback_stroke.into(),
+                radius_ui: 0.5 * fallback_stroke_width.0,
                 kind: PlotSeriesKind::Continuous,
             },
         };
@@ -307,7 +307,7 @@ impl SeriesLineSystem {
                     if let Some(stroke_width) =
                         stroke_widths.and_then(|stroke_widths| stroke_widths.first().map(|r| r.0))
                     {
-                        points[i].attrs.marker_size = stroke_width;
+                        points[i].attrs.radius_ui = 0.5 * stroke_width;
                     }
                 }
             }
