@@ -30,7 +30,6 @@ class Viewer:
         height: int = DEFAULT_HEIGHT,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
-        display: bool = False,
     ):
         """
         Create a new Rerun viewer for use in a notebook.
@@ -52,10 +51,6 @@ class Viewer:
             It will be made active and set as the default blueprint in the recording.
 
             Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
-        display : bool
-            Whether to display the viewer in the current notebook cell
-            immediately after initialization.
-            Defaults to `False`.
 
         """
 
@@ -80,20 +75,20 @@ class Viewer:
             height=height,
         )
 
-        if display:
-            self.display()
-
         bindings.set_callback_sink(
             recording=RecordingStream.to_native(self._recording),
             callback=self._flush_hook,
         )
 
-    def display(self) -> None:
+    def display(self, block_until_ready=True) -> None:
         """Display the viewer in a notebook cell."""
 
         from IPython.display import display
 
         display(self._viewer)
+
+        if block_until_ready:
+            self._viewer.block_until_ready()
 
     def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)
@@ -111,7 +106,7 @@ def notebook_show(
     height: int = DEFAULT_HEIGHT,
     blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
-) -> Viewer:
+):
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
 
@@ -135,9 +130,10 @@ def notebook_show(
 
     """
 
-    return Viewer(
+    viewer = Viewer(
         width=width,
         height=height,
         blueprint=blueprint,
         recording=recording,
     )
+    viewer.display()
