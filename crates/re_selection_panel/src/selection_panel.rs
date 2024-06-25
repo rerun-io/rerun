@@ -155,7 +155,9 @@ impl SelectionPanel {
             }
 
             Item::SpaceView(space_view_id) => {
-                space_view_top_level_properties(ctx, blueprint, ui, space_view_id);
+                if let Some(space_view) = blueprint.space_view(space_view_id) {
+                    space_view_top_level_properties(ctx, ui, space_view);
+                }
             }
 
             Item::DataResult(view_id, instance_path) => {
@@ -860,47 +862,44 @@ fn list_existing_data_blueprints(
 /// shown at the very top.
 fn space_view_top_level_properties(
     ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
-    space_view_id: &SpaceViewId,
+    space_view: &re_viewport_blueprint::SpaceViewBlueprint,
 ) {
-    if let Some(space_view) = viewport.space_view(space_view_id) {
-        egui::Grid::new("space_view_top_level_properties")
-            .num_columns(2)
-            .show(ui, |ui| {
-                let mut name = space_view.display_name.clone().unwrap_or_default();
-                ui.label("Name").on_hover_text(
-                    "The name of the space view used for display purposes. This can be any text \
+    egui::Grid::new("space_view_top_level_properties")
+        .num_columns(2)
+        .show(ui, |ui| {
+            let mut name = space_view.display_name.clone().unwrap_or_default();
+            ui.label("Name").on_hover_text(
+                "The name of the space view used for display purposes. This can be any text \
                     string.",
-                );
-                ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
-                space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+            );
+            ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
+            space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
 
-                ui.end_row();
+            ui.end_row();
 
-                ui.label("Space origin").on_hover_text(
-                    "The origin entity for this space view. For spatial space views, the space \
+            ui.label("Space origin").on_hover_text(
+                "The origin entity for this space view. For spatial space views, the space \
                     View's origin is the same as this entity's origin and all transforms are \
                     relative to it.",
-                );
+            );
 
-                super::space_view_space_origin_ui::space_view_space_origin_widget_ui(
-                    ui, ctx, space_view,
-                );
+            super::space_view_space_origin_ui::space_view_space_origin_widget_ui(
+                ui, ctx, space_view,
+            );
 
-                ui.end_row();
+            ui.end_row();
 
-                ui.label("View type")
-                    .on_hover_text("The type of this space view");
-                ui.label(
-                    space_view
-                        .class(ctx.space_view_class_registry)
-                        .display_name(),
-                );
+            ui.label("View type")
+                .on_hover_text("The type of this space view");
+            ui.label(
+                space_view
+                    .class(ctx.space_view_class_registry)
+                    .display_name(),
+            );
 
-                ui.end_row();
-            });
-    }
+            ui.end_row();
+        });
 }
 
 fn container_top_level_properties(
