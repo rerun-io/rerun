@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A test of the enum type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum EnumTest {
     /// Great film.
     Up = 1,
@@ -45,16 +45,30 @@ pub enum EnumTest {
     Back = 6,
 }
 
-impl EnumTest {
-    /// All the different enum variants.
-    pub const ALL: [Self; 6] = [
-        Self::Up,
-        Self::Down,
-        Self::Right,
-        Self::Left,
-        Self::Forward,
-        Self::Back,
-    ];
+impl ::re_types_core::reflection::Enum for EnumTest {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Up,
+            Self::Down,
+            Self::Right,
+            Self::Left,
+            Self::Forward,
+            Self::Back,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Up => "Great film.",
+            Self::Down => "Feeling blue.",
+            Self::Right => "Correct.",
+            Self::Left => "It's what's remaining.",
+            Self::Forward => "It's the only way to go.",
+            Self::Back => "Baby's got it.",
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for EnumTest {

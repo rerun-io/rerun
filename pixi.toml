@@ -32,7 +32,7 @@ libc = "2.31"
 [pypi-dependencies]
 
 [environments]
-default = ["base", "maturin-build"]
+default = ["base", "wheel-build"]
 cpp = ["cpp", "base"]
 wheel-test = ["wheel-test", "base"]
 
@@ -41,8 +41,8 @@ wheel-test = ["wheel-test", "base"]
 # This environment uses the dev version of the python package.
 # The package will be installed in editable mode, so changes to the python code will be reflected immediately.
 # However, any changes to do the rust bindings will require running `pixi run -e examples py-build`.
-examples = ["examples-common", "maturin-build", "python-dev"]
-examples-ocr = ["examples-ocr", "maturin-build", "python-dev"]
+examples = ["examples-common", "python-dev", "wheel-build"]
+examples-ocr = ["examples-ocr", "python-dev", "wheel-build"]
 
 # This environment uses the pypi-published version of the python package. This avoids the need to
 # build the package from source if you just want to try running the examples locally.
@@ -158,6 +158,12 @@ py-build = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin d
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
+# Build the `rerun-notebook` package.
+py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
+  "js-build-base",
+] }
+
+
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
   "py-build",
@@ -214,6 +220,20 @@ py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 # Lint markdown
 mdlint = "python scripts/ci/mdlint.py"
+
+# Setup JS tools
+js-setup = "npm i -g yarn"
+
+# Install JS package dependencies
+js-install = { cmd = "yarn install --cwd rerun_js", depends_on = ["js-setup"] }
+
+# Build JS packages
+js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends_on = [
+  "js-install",
+] }
+js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = [
+  "js-install",
+] }
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
@@ -300,7 +320,6 @@ py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only
 
 aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
 attrs = ">=23.1.0"
-binaryen = "117.*"                # for `wasm-opt`
 clang-tools = "16.0.6"            # clang-format
 cmake = "3.27.6"
 colorama = ">=0.4.6,<0.5"
@@ -309,12 +328,10 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2"           # For `update_pr_bodies.py`, `generate_pr_summary.py`, `build_screenshot_compare.py` and other utilities that build websites.
-maturin = "1.5.1"                 # For py-build and dependents
 mypy = "1.8.0"
 ninja = "1.11.1"
 numpy = ">=1.23,<2"
-packaging = ">=24.0,<25"          # For `publish_wheels.py`
-prettier = "2.8.8.*"
+prettier = "3.2.5.*"
 pyarrow = "14.0.2"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
@@ -326,7 +343,6 @@ tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
-wheel = ">=0.38,<0.39"
 
 [feature.base.pypi-dependencies]
 cryptography = "==38.0.4"        # For `upload_image.py`
@@ -339,9 +355,14 @@ types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
 opencv-python = ">4.6"           # For `compare_snippet_output.py`
 
-[feature.maturin-build.dependencies]
+[feature.wheel-build.dependencies]
+binaryen = "117.*"       # for `wasm-opt`
 maturin = "1.5.1"
+packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
+pyarrow = "14.0.2"
+nodejs = ">=20.12"       # rerun_notebook needs nodejs to build the wheel
+wheel = ">=0.38,<0.39"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
@@ -374,6 +395,7 @@ scripts = ["pixi/maturin_config.bat"]
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
 [feature.python-dev.pypi-dependencies]
 rerun-sdk = { path = "rerun_py", editable = true }
+rerun-notebook = { path = "rerun_notebook", editable = true }
 
 # PYTHON PYPI ENVIRONMENT
 [feature.python-pypi]
@@ -381,6 +403,8 @@ platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
 [feature.python-pypi.pypi-dependencies]
 rerun-sdk = "==0.16.1"
+# TODO(jprochazk): Uncomment this once we have published the notebook package to pypi
+#rerun-notebook = "==0.16.1"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
@@ -394,6 +418,11 @@ macos = "12.0" # needed for scipy
 python = "=3.11"
 
 [feature.examples-common.pypi-dependencies]
+# External deps
+jupyter = ">=1.0"
+
+# Rerun libs
+
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }

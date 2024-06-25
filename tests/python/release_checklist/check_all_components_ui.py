@@ -75,6 +75,7 @@ class TestCase:
 
 
 ALL_COMPONENTS: dict[str, TestCase] = {
+    "AggregationPolicyBatch": TestCase(rr.components.AggregationPolicy.Average),
     "AnnotationContextBatch": TestCase([
         rr.datatypes.ClassDescriptionMapElem(
             class_id=1,
@@ -99,9 +100,12 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "ClassIdBatch": TestCase(batch=[1, 2, 3, 6]),
     "ClearIsRecursiveBatch": TestCase(disabled=True),  # disabled because it messes with the logging
     "ColorBatch": TestCase(batch=[(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)]),
+    "ColormapBatch": TestCase(rr.components.Colormap.Viridis),
     "DepthMeterBatch": TestCase(1000.0),
     "DisconnectedSpaceBatch": TestCase(True),
     "DrawOrderBatch": TestCase(100.0),
+    "FillRatioBatch": TestCase(0.5),
+    "GammaCorrectionBatch": TestCase(2.2),
     "HalfSizes2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSizes3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
     "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
@@ -110,6 +114,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "LineStrip3DBatch": TestCase(
         batch=[((0, 0, 0), (1, 1, 1), (2, 2, 2)), ((3, 3, 3), (4, 4, 4), (5, 5, 5)), ((6, 6, 6), (7, 7, 7), (8, 8, 8))]
     ),
+    "MagnificationFilterBatch": TestCase(rr.components.MagnificationFilter.Linear),
     "MarkerShapeBatch": TestCase(
         batch=[rr.components.MarkerShape.Plus, rr.components.MarkerShape.Cross, rr.components.MarkerShape.Circle]
     ),

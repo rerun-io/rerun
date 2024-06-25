@@ -44,6 +44,15 @@ pub enum UiLayout {
 }
 
 impl UiLayout {
+    /// Do we have a lot of vertical space?
+    #[inline]
+    pub fn is_selection_panel(self) -> bool {
+        match self {
+            Self::List | Self::Tooltip => false,
+            Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => true,
+        }
+    }
+
     /// Build an egui table and configure it for the given UI layout.
     ///
     /// Note that the caller is responsible for strictly limiting the number of displayed rows for
@@ -521,6 +530,10 @@ impl ComponentUiRegistry {
         }
     }
 
+    /// Tries to show a ui for editing a component.
+    ///
+    /// Returns `true` if the passed component is a single value and has a registered
+    /// editor for multiline or singleline editing respectively.
     pub fn try_show_edit_ui(
         &self,
         ctx: &ViewerContext<'_>,

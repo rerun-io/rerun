@@ -24,7 +24,7 @@ __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType
 
 @define(init=False)
 class Radius(ComponentMixin):
-    """**Component**: A Radius component."""
+    """**Component**: The radius of something, e.g. a point, in world-space units."""
 
     _BATCH_TYPE = None
 

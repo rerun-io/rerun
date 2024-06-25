@@ -75,6 +75,7 @@ impl TestContext {
             let ctx = ViewerContext {
                 app_options: &Default::default(),
                 cache: &Default::default(),
+                reflection: &Default::default(),
                 component_ui_registry: &component_ui_registry,
                 space_view_class_registry: &self.space_view_class_registry,
                 store_context: &store_context,
@@ -89,7 +90,6 @@ impl TestContext {
                 render_ctx: None,
                 command_sender: &command_sender,
                 focused_item: &None,
-                component_placeholders: &Default::default(),
             };
 
             func(&ctx, ui);

@@ -75,29 +75,32 @@ pub trait AsComponents {
 // ---
 
 mod archetype;
+mod arrow_buffer;
+mod arrow_string;
 mod loggable;
 mod loggable_batch;
+pub mod reflection;
 mod result;
 mod size_bytes;
 mod tuid;
 mod view;
 
-pub use self::archetype::{
-    Archetype, ArchetypeFieldInfo, ArchetypeInfo, ArchetypeName, GenericIndicatorComponent,
-    NamedIndicatorComponent,
+pub use self::{
+    archetype::{
+        Archetype, ArchetypeName, ArchetypeReflectionMarker, GenericIndicatorComponent,
+        NamedIndicatorComponent,
+    },
+    arrow_buffer::ArrowBuffer,
+    arrow_string::ArrowString,
+    loggable::{Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable},
+    loggable_batch::{ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch},
+    result::{
+        DeserializationError, DeserializationResult, ResultExt, SerializationError,
+        SerializationResult, _Backtrace,
+    },
+    size_bytes::SizeBytes,
+    view::{SpaceViewClassIdentifier, View},
 };
-pub use self::loggable::{
-    Component, ComponentName, ComponentNameSet, Datatype, DatatypeName, Loggable,
-};
-pub use self::loggable_batch::{
-    ComponentBatch, DatatypeBatch, LoggableBatch, MaybeOwnedComponentBatch,
-};
-pub use self::result::{
-    DeserializationError, DeserializationResult, ResultExt, SerializationError,
-    SerializationResult, _Backtrace,
-};
-pub use self::size_bytes::SizeBytes;
-pub use self::view::{SpaceViewClassIdentifier, View};
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
@@ -118,11 +121,6 @@ pub mod components;
 pub mod datatypes;
 
 // ---
-
-mod arrow_buffer;
-mod arrow_string;
-pub use self::arrow_buffer::ArrowBuffer;
-pub use self::arrow_string::ArrowString;
 
 #[path = "macros.rs"]
 mod _macros; // just for the side-effect of exporting the macros

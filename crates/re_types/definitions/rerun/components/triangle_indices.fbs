@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-/// The three indices of a triangle mesh.
+/// The three indices of a triangle in a triangle mesh.
 struct TriangleIndices (
   "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"

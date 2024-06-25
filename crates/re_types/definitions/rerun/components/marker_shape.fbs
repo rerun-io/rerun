@@ -7,7 +7,7 @@ include "rerun/attributes.fbs";
 
 namespace rerun.components;
 
-/// Shape of a marker.
+/// The visual appearance of a point in e.g. a 2D plot.
 enum MarkerShape: byte
  {
     /// `⏺`

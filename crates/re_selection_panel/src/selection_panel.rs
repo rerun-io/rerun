@@ -159,9 +159,7 @@ impl SelectionPanel {
                     if instance_path.is_all() {
                         if let Some(view) = blueprint.space_views.get(view_id) {
                             let view_ctx = view.bundle_context_with_states(ctx, view_states);
-                            ui.large_collapsing_header("Visualizers", true, |ui| {
-                                visualizer_ui(&view_ctx, view, &instance_path.entity_path, ui);
-                            });
+                            visualizer_ui(&view_ctx, view, &instance_path.entity_path, ui);
                         }
                     }
                 }

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Iterable, Optional, Union
+from typing import Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
@@ -9,7 +9,6 @@ from .._baseclasses import AsComponents, ComponentBatchLike
 from .._spawn import _spawn_viewer
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
-from ..notebook import as_html
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, PanelState, PanelStateLike, RowShareArrayLike, VisibleLike
@@ -133,9 +132,10 @@ class SpaceView:
             else:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
 
 class Container:
@@ -251,9 +251,10 @@ class Container:
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
 
 def _to_state(expanded: bool | None, state: PanelStateLike | None) -> PanelStateLike | None:
@@ -539,9 +540,10 @@ class Blueprint:
         elif self.collapse_panels:
             TimePanel(state="collapsed")._log_to_stream(stream)
 
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
     def connect(
         self,

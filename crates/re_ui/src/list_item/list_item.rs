@@ -166,7 +166,7 @@ impl ListItem {
         id: egui::Id,
         default_open: bool,
         content: impl ListItemContent,
-        add_childrens: impl FnOnce(&mut egui::Ui) -> R,
+        add_children: impl FnOnce(&mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
@@ -195,7 +195,7 @@ impl ListItem {
             .scope(|ui| {
                 ui.spacing_mut().indent =
                     DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
-                state.show_body_indented(&response.response, ui, |ui| add_childrens(ui))
+                state.show_body_indented(&response.response, ui, |ui| add_children(ui))
             })
             .inner;
 

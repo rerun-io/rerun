@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The three indices of a triangle mesh.
+/// **Component**: The three indices of a triangle in a triangle mesh.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct TriangleIndices(pub crate::datatypes::UVec3D);

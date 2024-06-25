@@ -228,6 +228,13 @@ export class WebViewer {
   }
 
   /**
+   * The underlying canvas element.
+   */
+  get canvas() {
+    return this.#canvas;
+  }
+
+  /**
    * Returns `true` if the viewer is ready to connect to data sources.
    */
   get ready() {

@@ -23,18 +23,37 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The kind of a blueprint container (tabs, grid, …).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum ContainerKind {
+    /// Put children in separate tabs
     Tabs = 1,
+
+    /// Order the children left to right
     Horizontal = 2,
+
+    /// Order the children top to bottom
     Vertical = 3,
+
+    /// Organize children in a grid layout
     #[default]
     Grid = 4,
 }
 
-impl ContainerKind {
-    /// All the different enum variants.
-    pub const ALL: [Self; 4] = [Self::Tabs, Self::Horizontal, Self::Vertical, Self::Grid];
+impl ::re_types_core::reflection::Enum for ContainerKind {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[Self::Tabs, Self::Horizontal, Self::Vertical, Self::Grid]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Tabs => "Put children in separate tabs",
+            Self::Horizontal => "Order the children left to right",
+            Self::Vertical => "Order the children top to bottom",
+            Self::Grid => "Organize children in a grid layout",
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for ContainerKind {

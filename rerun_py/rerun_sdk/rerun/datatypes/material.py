@@ -33,7 +33,7 @@ def _material__albedo_factor__special_field_converter_override(
 
 @define(init=False)
 class Material(MaterialExt):
-    """**Datatype**: Material properties of a mesh."""
+    """**Datatype**: Material properties of a mesh, e.g. its color multiplier."""
 
     def __init__(self: Any, albedo_factor: datatypes.Rgba32Like | None = None):
         """

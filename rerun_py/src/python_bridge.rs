@@ -13,7 +13,11 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use re_log::ResultExt;
+use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
+use re_sdk::external::re_log_encoding::encoder::encode_as_bytes_local;
+use re_sdk::sink::CallbackSink;
 use re_sdk::{
     sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
@@ -139,6 +143,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
+    m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -762,6 +767,30 @@ fn memory_recording(
         });
         PyMemorySinkStorage { inner }
     })
+}
+
+#[pyfunction]
+#[pyo3(signature = (callback, recording = None))]
+fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, py: Python<'_>) {
+    let Some(rec) = get_data_recording(recording) else {
+        return;
+    };
+
+    let callback = move |msgs: &[LogMsg]| {
+        Python::with_gil(|py| {
+            let data = encode_as_bytes_local(msgs).ok_or_log_error()?;
+            let bytes = PyBytes::new(py, &data);
+            callback.as_ref(py).call1((bytes,)).ok_or_log_error()?;
+            Some(())
+        });
+    };
+
+    // The call to `set_sink` may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| {
+        rec.set_sink(Box::new(CallbackSink::new(callback)));
+        flush_garbage_queue();
+    });
 }
 
 /// Create a new binary stream sink, and return the associated binary stream.

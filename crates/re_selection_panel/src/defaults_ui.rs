@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use itertools::Itertools;
-
+use itertools::Itertools as _;
 use re_data_store::LatestAtQuery;
+use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_log_types::{DataCell, DataRow, EntityPath, RowId};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
@@ -59,7 +59,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
         &space_view.defaults_path,
     );
 
-    let sorted_overrides = active_defaults.iter().sorted();
+    let sorted_overrides = sorted_component_list_for_ui(active_defaults.iter());
 
     let query_context = QueryContext {
         viewer_ctx: ctx.viewer_ctx,
@@ -73,7 +73,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for component_name in sorted_overrides {
-            let Some(visualizer_identifier) = component_to_vis.get(component_name) else {
+            let Some(visualizer_identifier) = component_to_vis.get(&component_name) else {
                 continue;
             };
             let Ok(visualizer) = ctx
@@ -94,10 +94,10 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                     db.store(),
                     query,
                     &space_view.defaults_path,
-                    [*component_name],
+                    [component_name],
                 )
                 .components
-                .get(component_name)
+                .get(&component_name)
                 .cloned(); /* arc */
 
             if let Some(component_data) = component_data {
@@ -107,7 +107,7 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                         ui,
                         db,
                         &space_view.defaults_path,
-                        *component_name,
+                        component_name,
                         &component_data,
                         visualizer.as_fallback_provider(),
                     );
@@ -122,38 +122,80 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
                             .action_button(&re_ui::icons::CLOSE, || {
                                 ctx.save_empty_blueprint_component_by_name(
                                     &space_view.defaults_path,
-                                    *component_name,
+                                    component_name,
                                 );
                             })
                             .value_fn(|ui, _| value_fn(ui)),
                     )
-                    .on_hover_text(component_name.full_name());
+                    .on_hover_ui(|ui| {
+                        component_name.data_ui_recording(
+                            ctx.viewer_ctx,
+                            ui,
+                            re_viewer_context::UiLayout::Tooltip,
+                        );
+                    });
             }
         }
     });
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn add_new_default(
+fn add_new_default(
     ctx: &ViewContext<'_>,
     query: &LatestAtQuery,
     ui: &mut egui::Ui,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
-    active_overrides: &BTreeSet<ComponentName>,
+    active_defaults: &BTreeSet<ComponentName>,
     defaults_path: &EntityPath,
 ) {
-    let remaining_components = component_to_vis
-        .keys()
-        .filter(|c| !active_overrides.contains(*c))
+    let mut disabled_reason = None;
+    if component_to_vis.is_empty() {
+        disabled_reason = Some("No components to visualize".to_owned());
+    }
+
+    let mut component_to_vis = component_to_vis
+        .iter()
+        .filter(|(component, _)| !active_defaults.contains(*component))
         .collect::<Vec<_>>();
 
-    let enabled = !remaining_components.is_empty();
+    if component_to_vis.is_empty() && disabled_reason.is_none() {
+        disabled_reason = Some("All components already have active defaults".to_owned());
+    }
 
-    ui.add_enabled_ui(enabled, |ui| {
-        let mut opened = false;
+    {
+        // Make sure we have editors. If we don't, explain to the user.
+        let mut missing_editors = vec![];
+
+        component_to_vis.retain(|(component, _)| {
+            let component = **component;
+
+            // If there is no registered editor, don't let the user create an override
+            // TODO(andreas): Can only handle single line editors right now.
+            let types = ctx
+                .viewer_ctx
+                .component_ui_registry
+                .registered_ui_types(component);
+
+            if types.contains(ComponentUiTypes::SingleLineEditor) {
+                true // show it
+            } else {
+                missing_editors.push(component);
+                false // don't show
+            }
+        });
+
+        if component_to_vis.is_empty() && disabled_reason.is_none() {
+            disabled_reason = Some(format!(
+                "Rerun lacks edit UI for: {}",
+                missing_editors.iter().map(|c| c.short_name()).join(", ")
+            ));
+        }
+    }
+
+    let button_ui = |ui: &mut egui::Ui| -> egui::Response {
+        let mut open = false;
         let menu = ui
             .menu_button("Add", |ui| {
-                opened = true;
+                open = true;
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                 let query_context = QueryContext {
@@ -168,21 +210,6 @@ pub fn add_new_default(
                 // Present the option to add new components for each component that doesn't
                 // already have an active override.
                 for (component, viz) in component_to_vis {
-                    if active_overrides.contains(component) {
-                        continue;
-                    }
-
-                    // If there is no registered editor, don't let the user create an override
-                    // TODO(andreas): Can only handle single line editors right now.
-                    if !ctx
-                        .viewer_ctx
-                        .component_ui_registry
-                        .registered_ui_types(*component)
-                        .contains(ComponentUiTypes::SingleLineEditor)
-                    {
-                        continue;
-                    }
-
                     if ui.button(component.short_name()).clicked() {
                         // We are creating a new override. We need to decide what initial value to give it.
                         // - First see if there's an existing splat in the recording.
@@ -232,10 +259,17 @@ pub fn add_new_default(
                     }
                 }
             })
-            .response
-            .on_disabled_hover_text("No additional components available.");
-        if !opened {
-            menu.on_hover_text("Choose a component to specify an override value.".to_owned());
+            .response;
+        if open {
+            menu
+        } else {
+            menu.on_hover_text("Choose a component to specify an override value.".to_owned())
         }
-    });
+    };
+
+    let enabled = disabled_reason.is_none();
+    let button_response = ui.add_enabled_ui(enabled, button_ui).inner;
+    if let Some(disabled_reason) = disabled_reason {
+        button_response.on_disabled_hover_text(disabled_reason);
+    }
 }

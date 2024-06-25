@@ -12,7 +12,7 @@
 #include <optional>
 
 namespace rerun::components {
-    /// **Component**: Material properties of a mesh.
+    /// **Component**: Material properties of a mesh, e.g. its color multiplier.
     struct Material {
         rerun::datatypes::Material material;
 

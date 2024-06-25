@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A double-precision scalar.
+/// **Component**: A scalar value, encoded as a 64-bit floating point.
 ///
 /// Used for time series plots.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]

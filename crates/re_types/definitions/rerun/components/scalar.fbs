@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-/// A double-precision scalar.
+/// A scalar value, encoded as a 64-bit floating point.
 ///
 /// Used for time series plots.
 struct Scalar (

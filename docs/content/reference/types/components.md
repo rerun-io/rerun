@@ -13,7 +13,7 @@ For more information on the relationship between **archetypes** and **components
 on [Entities and Components](../../concepts/entity-component.md).
 
 
-* [`AggregationPolicy`](components/aggregation_policy.md): Configures a policy for aggregation of values.
+* [`AggregationPolicy`](components/aggregation_policy.md): Policy for aggregation of multiple scalar plot values.
 * [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
@@ -21,39 +21,42 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 * [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
-* [`DepthMeter`](components/depth_meter.md): A component indicating how long a meter is, expressed in native units.
+* [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
-* [`DrawOrder`](components/draw_order.md): Draw order used for the display order of 2D elements.
+* [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
-* [`HalfSizes2D`](components/half_sizes2d.md): Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
-* [`HalfSizes3D`](components/half_sizes3d.md): Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
+* [`HalfSizes2D`](components/half_sizes2d.md): Half-size (radius) of a 2D box.
+* [`HalfSizes3D`](components/half_sizes3d.md): Half-size (radius) of a 3D box.
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
 * [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.
 * [`MagnificationFilter`](components/magnification_filter.md): Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
-* [`MarkerShape`](components/marker_shape.md): Shape of a marker.
-* [`MarkerSize`](components/marker_size.md): Size of a marker in UI points.
-* [`Material`](components/material.md): Material properties of a mesh.
+* [`MarkerShape`](components/marker_shape.md): The visual appearance of a point in e.g. a 2D plot.
+* [`MarkerSize`](components/marker_size.md): Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
+* [`Material`](components/material.md): Material properties of a mesh, e.g. its color multiplier.
 * [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md): An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
 * [`Position2D`](components/position2d.md): A position in 2D space.
 * [`Position3D`](components/position3d.md): A position in 3D space.
-* [`Radius`](components/radius.md): A Radius component.
+* [`Radius`](components/radius.md): The radius of something, e.g. a point, in world-space units.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
-* [`Scalar`](components/scalar.md): A double-precision scalar.
+* [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
-* [`TensorData`](components/tensor_data.md): A multi-dimensional `Tensor` of data.
+* [`TensorData`](components/tensor_data.md): An N-dimensional array of numbers.
+* [`TensorDimensionIndexSelection`](components/tensor_dimension_index_selection.md): Specifies a concrete index on a tensor dimension.
+* [`TensorHeightDimension`](components/tensor_height_dimension.md): Specifies which dimension to use for height.
+* [`TensorWidthDimension`](components/tensor_width_dimension.md): Specifies which dimension to use for width.
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
 * [`Transform3D`](components/transform3d.md): An affine transform between two 3D spaces, represented in a given direction.
-* [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle mesh.
+* [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.

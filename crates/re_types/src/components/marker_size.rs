@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Size of a marker in UI points.
+/// **Component**: Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct MarkerSize(pub f32);

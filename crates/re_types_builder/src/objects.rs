@@ -174,22 +174,9 @@ impl Objects {
 }
 
 impl Objects {
-    /// Returns all available objects, pre-sorted in ascending order based on their `order`
-    /// attribute.
-    pub fn ordered_objects_mut(&mut self, kind: Option<ObjectKind>) -> Vec<&mut Object> {
-        self.objects
-            .values_mut()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
-            .collect()
-    }
-
-    /// Returns all available objects, pre-sorted in ascending order based on their `order`
-    /// attribute.
-    pub fn ordered_objects(&self, kind: Option<ObjectKind>) -> Vec<&Object> {
-        self.objects
-            .values()
-            .filter(|obj| kind.map_or(true, |kind| obj.kind == kind))
-            .collect()
+    /// Returns all available objects of the given kind.
+    pub fn objects_of_kind(&self, kind: ObjectKind) -> impl Iterator<Item = &Object> {
+        self.objects.values().filter(move |obj| obj.kind == kind)
     }
 }
 

@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Material properties of a mesh.
+/// **Datatype**: Material properties of a mesh, e.g. its color multiplier.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct Material {
     /// Optional color multiplier.

@@ -60,9 +60,15 @@ class AffixFuzzer8Batch(BaseBatch[AffixFuzzer8ArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer8ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer8 not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in affix_fuzzer8_ext.py
+        if isinstance(data, AffixFuzzer8):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                pa.array(np.asarray([x.single_float_optional for x in data], dtype=np.float32)),
+            ],
+            fields=list(data_type),
+        )
 
 
 # This is patched in late to avoid circular dependencies.

@@ -20,7 +20,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: A double-precision scalar.
+    /// **Component**: A scalar value, encoded as a 64-bit floating point.
     ///
     /// Used for time series plots.
     struct Scalar {

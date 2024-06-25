@@ -26,7 +26,7 @@ default = []
 decoder = ["dep:rmp-serde", "dep:lz4_flex", "re_log_types/serde"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
-encoder = ["dep:rmp-serde", "dep:lz4_flex"]
+encoder = ["dep:rmp-serde", "dep:lz4_flex", "re_log_types/serde"]
 
 ## Enable streaming of .rrd files from HTTP.
 stream_from_http = [

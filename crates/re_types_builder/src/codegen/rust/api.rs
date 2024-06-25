@@ -3,13 +3,12 @@ use std::collections::{BTreeMap, HashSet};
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_snippets_for_api_docs, ExampleInfo},
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -17,14 +16,13 @@ use crate::{
                 should_optimize_buffer_slice_deserialize,
             },
             serializer::quote_arrow_serializer,
-            util::{is_tuple_struct_from_obj, iter_archetype_components},
+            util::{is_tuple_struct_from_obj, iter_archetype_components, quote_doc_line},
         },
-        StringExt as _,
     },
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
     ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_GENERATE_FIELD_INFO,
     ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
@@ -33,7 +31,8 @@ use crate::{
 use super::{
     arrow::quote_fqname_as_type_path,
     blueprint_validation::generate_blueprint_validation,
-    util::{string_from_quoted, SIMPLE_COMMENT_PREFIX},
+    reflection::generate_reflection,
+    util::{append_tokens, doc_as_lines, quote_doc_lines},
 };
 
 // ---
@@ -68,8 +67,8 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
-        generate_component_defaults(reporter, objects, &mut files_to_write);
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
+        generate_reflection(reporter, objects, &mut files_to_write);
 
         files_to_write
     }
@@ -89,8 +88,7 @@ impl RustCodeGenerator {
         let mut all_modules: HashSet<_> = HashSet::default();
 
         // Generate folder contents:
-        let ordered_objects = objects.ordered_objects(object_kind.into());
-        for &obj in &ordered_objects {
+        for obj in objects.objects_of_kind(object_kind) {
             let crate_name = obj.crate_name();
             let module_name = obj.module_name();
 
@@ -122,16 +120,15 @@ impl RustCodeGenerator {
         }
 
         for (crate_name, module_name, is_testing, module_path) in all_modules {
-            let relevant_objs = &ordered_objects
-                .iter()
+            let relevant_objs = objects
+                .objects_of_kind(object_kind)
                 .filter(|obj| obj.is_testing() == is_testing)
                 .filter(|obj| obj.crate_name() == crate_name)
                 .filter(|obj| obj.module_name() == module_name)
-                .copied()
                 .collect_vec();
 
             // src/{testing/}{datatypes|components|archetypes}/mod.rs
-            generate_mod_file(&module_path, relevant_objs, files_to_write);
+            generate_mod_file(&module_path, &relevant_objs, files_to_write);
         }
     }
 }
@@ -185,38 +182,7 @@ fn generate_object_file(
         crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
-    append_tokens(reporter, code, quoted_obj, target_file)
-}
-
-fn append_tokens(
-    reporter: &Reporter,
-    mut code: String,
-    quoted_obj: TokenStream,
-    target_file: &Utf8Path,
-) -> String {
-    let mut acc = TokenStream::new();
-
-    let mut tokens = quoted_obj.into_iter();
-    while let Some(token) = tokens.next() {
-        match &token {
-            // If this is a doc-comment block, be smart about it.
-            proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
-                acc = TokenStream::new();
-
-                acc.extend([token, tokens.next().unwrap()]);
-                code.push_indented(0, acc.to_string(), 1);
-                acc = TokenStream::new();
-            }
-            _ => {
-                acc.extend([token]);
-            }
-        }
-    }
-
-    code.push_indented(0, string_from_quoted(reporter, &acc, target_file), 1);
-
-    replace_doc_attrb_with_doc_comment(&code)
+    append_tokens(reporter, code, &quoted_obj, target_file)
 }
 
 fn generate_mod_file(
@@ -271,180 +237,6 @@ fn generate_mod_file(
     }
 
     files_to_write.insert(path, code);
-}
-
-/// Generate module with a function that lists all components with their serialized default values.
-fn generate_component_defaults(
-    reporter: &Reporter,
-    objects: &Objects,
-    files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
-) {
-    let mut quoted_fallbacks = Vec::new();
-    let mut component_namespaces = HashSet::new();
-    for component in objects.ordered_objects(Some(ObjectKind::Component)) {
-        if component.is_testing() {
-            continue;
-        }
-
-        if let Some(scope) = component.scope() {
-            component_namespaces.insert(format!("{}::{scope}", component.crate_name()));
-        } else {
-            component_namespaces.insert(component.crate_name());
-        }
-
-        let type_name = format_ident!("{}", component.name);
-        quoted_fallbacks.push(quote! {
-            (<#type_name as Loggable>::name(), #type_name::default().to_arrow()?)
-        });
-    }
-
-    let mut code = String::new();
-    code.push_str("#![allow(unused_imports)]\n");
-    code.push_str("#![allow(clippy::wildcard_imports)]\n");
-    code.push_str("\n\n");
-    for namespace in component_namespaces {
-        code.push_str(&format!("use {namespace}::components::*;\n"));
-    }
-
-    let docs = quote_doc_line("Calls `default` for each component type in this module and serializes it to arrow. This is useful as a base fallback value when displaying ui.");
-    let tokens = quote! {
-        use re_types_core::{external::arrow2, ComponentName, SerializationError};
-
-        #docs
-        pub fn list_default_components() -> Result<impl Iterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>, SerializationError> {
-            use ::re_types_core::{Loggable, LoggableBatch as _};
-
-            re_tracing::profile_function!();
-            Ok([
-                #(#quoted_fallbacks,)*
-            ].into_iter())
-        }
-    };
-
-    // Put into its own subfolder since codegen is set up in a way that it thinks that everything
-    // inside the folder is either generated or an extension to the generated code.
-    // This way we don't have to build an exception just for this file.
-    let path = Utf8PathBuf::from("crates/re_viewer/src/component_defaults/mod.rs");
-    let code = append_tokens(reporter, code, tokens, &path);
-    files_to_write.insert(path, code);
-}
-
-/// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
-/// while also removing trailing whitespace.
-fn replace_doc_attrb_with_doc_comment(code: &str) -> String {
-    // This is difficult to do with regex, because the patterns with newlines overlap.
-
-    let start_pattern = "# [doc = \"";
-    let end_pattern = "\"]\n"; // assues there is no escaped quote followed by a bracket
-
-    let problematic = r#"\"]\n"#;
-    assert!(
-        !code.contains(problematic),
-        "The codegen cannot handle the string {problematic} yet"
-    );
-
-    let mut new_code = String::new();
-
-    let mut i = 0;
-    while i < code.len() {
-        if let Some(off) = code[i..].find(start_pattern) {
-            let doc_start = i + off;
-            let content_start = doc_start + start_pattern.len();
-            if let Some(off) = code[content_start..].find(end_pattern) {
-                let content_end = content_start + off;
-                let content = &code[content_start..content_end];
-                let mut unescped_content = unescape_string(content);
-
-                new_code.push_str(&code[i..doc_start]);
-
-                // TODO(emilk): why do we need to do the `SIMPLE_COMMENT_PREFIX` both here and in `fn string_from_quoted`?
-                if let Some(rest) = unescped_content.strip_prefix(SIMPLE_COMMENT_PREFIX) {
-                    // This is a normal comment
-                    new_code.push_str("//");
-                    unescped_content = rest.to_owned();
-                } else {
-                    // This is a docstring
-                    new_code.push_str("///");
-                }
-
-                if !content.starts_with(char::is_whitespace) {
-                    new_code.push(' ');
-                }
-                new_code.push_str(&unescped_content);
-                new_code.push('\n');
-
-                i = content_end + end_pattern.len();
-                // Skip trailing whitespace (extra newlines)
-                while matches!(code.as_bytes().get(i), Some(b'\n' | b' ')) {
-                    i += 1;
-                }
-                continue;
-            }
-        }
-
-        // No more doc attributes found
-        new_code.push_str(&code[i..]);
-        break;
-    }
-    new_code
-}
-
-#[test]
-fn test_doc_attr_unfolding() {
-    // Normal case with unescaping of quotes:
-    assert_eq!(
-        replace_doc_attrb_with_doc_comment(
-            r#"
-# [doc = "Hello, \"world\"!"]
-pub fn foo () {}
-        "#
-        ),
-        r#"
-/// Hello, "world"!
-pub fn foo () {}
-        "#
-    );
-
-    // Spacial case for when it contains a `SIMPLE_COMMENT_PREFIX`:
-    assert_eq!(
-        replace_doc_attrb_with_doc_comment(&format!(
-            r#"
-# [doc = "{SIMPLE_COMMENT_PREFIX}Just a \"comment\"!"]
-const FOO: u32 = 42;
-        "#
-        )),
-        r#"
-// Just a "comment"!
-const FOO: u32 = 42;
-        "#
-    );
-}
-
-fn unescape_string(input: &str) -> String {
-    let mut output = String::new();
-    unescape_string_into(input, &mut output);
-    output
-}
-
-fn unescape_string_into(input: &str, output: &mut String) {
-    let mut chars = input.chars();
-
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            let c = chars.next().expect("Trailing backslash");
-            match c {
-                'n' => output.push('\n'),
-                'r' => output.push('\r'),
-                't' => output.push('\t'),
-                '\\' => output.push('\\'),
-                '"' => output.push('"'),
-                '\'' => output.push('\''),
-                _ => panic!("Unknown escape sequence: \\{c}"),
-            }
-        } else {
-            output.push(c);
-        }
-    }
 }
 
 // --- Codegen core loop ---
@@ -687,7 +479,7 @@ fn quote_enum(
     let quoted_doc = quote_obj_docs(reporter, obj);
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
-    let mut derives = vec!["Clone", "Copy", "Debug", "PartialEq", "Eq"];
+    let mut derives = vec!["Clone", "Copy", "Debug", "Hash", "PartialEq", "Eq"];
 
     match fields
         .iter()
@@ -734,20 +526,28 @@ fn quote_enum(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
-    let count = Literal::usize_unsuffixed(fields.len());
     let all = fields.iter().map(|field| {
         let name = format_ident!("{}", field.pascal_case_name());
         quote!(Self::#name)
     });
-    let declare_const_all = quote! {
-        /// All the different enum variants.
-        pub const ALL: [Self; #count] = [#(#all),*];
-    };
 
     let display_match_arms = fields.iter().map(|field| {
         let name = field.pascal_case_name();
         let quoted_name = format_ident!("{name}");
         quote!(Self::#quoted_name => write!(f, #name))
+    });
+    let docstring_md_match_arms = fields.iter().map(|field| {
+        let quoted_name = format_ident!("{}", field.pascal_case_name());
+        let docstring_md =
+            doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs).join("\n");
+        if docstring_md.is_empty() {
+            reporter.error(
+                &field.virtpath,
+                &field.fqname,
+                "Missing documentation for enum variant. These are shown in the UI on hover.",
+            );
+        }
+        quote!(Self::#quoted_name => #docstring_md)
     });
 
     let tokens = quote! {
@@ -758,8 +558,19 @@ fn quote_enum(
             #(#quoted_fields,)*
         }
 
-        impl #name {
-            #declare_const_all
+        impl ::re_types_core::reflection::Enum for #name {
+
+            #[inline]
+            fn variants() -> &'static [Self] {
+                &[#(#all),*]
+            }
+
+            #[inline]
+            fn docstring_md(self) -> &'static str {
+                match self {
+                    #(#docstring_md_match_arms,)*
+                }
+            }
         }
 
         impl ::re_types_core::SizeBytes for #name {
@@ -838,104 +649,6 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
     }
 
     quote_doc_lines(&lines)
-}
-
-fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
-    let mut lines = docs.doc_lines_for_untagged_and("rs");
-
-    let examples = if !fqname.starts_with("rerun.blueprint.views") {
-        collect_snippets_for_api_docs(docs, "rs", true)
-            .map_err(|err| reporter.error(virtpath, fqname, err))
-            .unwrap_or_default()
-    } else {
-        Vec::new()
-    };
-
-    if !examples.is_empty() {
-        lines.push(Default::default());
-        let section_title = if examples.len() == 1 {
-            "Example"
-        } else {
-            "Examples"
-        };
-        lines.push(format!("## {section_title}"));
-        lines.push(Default::default());
-        let mut examples = examples.into_iter().peekable();
-        while let Some(example) = examples.next() {
-            let ExampleInfo {
-                path,
-                name,
-                title,
-                image,
-                ..
-            } = &example.base;
-
-            for line in &example.lines {
-                if line.contains("```") {
-                    reporter.error(
-                        virtpath,
-                        fqname,
-                        format!("Example {path:?} contains ``` in it, so we can't embed it in the Rust API docs."),
-                    );
-                    continue;
-                }
-            }
-
-            if let Some(title) = title {
-                lines.push(format!("### {title}"));
-            } else {
-                lines.push(format!("### `{name}`:"));
-            }
-
-            lines.push("```ignore".into());
-            lines.extend(example.lines.into_iter());
-            lines.push("```".into());
-
-            if let Some(image) = &image {
-                // Don't let the images take up too much space on the page.
-                lines.extend(image.image_stack().center().width(640).finish());
-            }
-            if examples.peek().is_some() {
-                // blank line between examples
-                lines.push(Default::default());
-            }
-        }
-    }
-
-    if let Some(second_line) = lines.get(1) {
-        if !second_line.is_empty() {
-            reporter.warn(
-                virtpath,
-                fqname,
-                format!(
-                    "Second line of documentation should be an empty line; found {second_line:?}"
-                ),
-            );
-        }
-    }
-
-    lines
-}
-
-fn quote_doc_line(line: &str) -> TokenStream {
-    let line = format!(" {line}"); // add space between `///` and comment
-    quote!(# [doc = #line])
-}
-
-fn quote_doc_lines(lines: &[String]) -> TokenStream {
-    struct DocCommentTokenizer<'a>(&'a [String]);
-
-    impl quote::ToTokens for DocCommentTokenizer<'_> {
-        fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.extend(self.0.iter().map(|line| {
-                let line = format!(" {line}"); // add space between `///` and comment
-                quote!(# [doc = #line])
-            }));
-        }
-    }
-
-    let lines = DocCommentTokenizer(lines);
-    quote!(#lines)
 }
 
 /// Returns type name as string and whether it was force unwrapped.
@@ -1318,43 +1031,13 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
-            let (field_info_array, field_info_getter) = if obj
-                .is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
+            let impl_archetype_reflection_marker = if obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
             {
-                let field_infos = obj.fields.iter().map(|field| {
-                    let display_name = re_case::to_human_case(&field.name);
-                    let documentation = field
-                        .docs
-                        .lines_with_tag_matching(|tag| tag.is_empty())
-                        .join("\n");
-                    let Some(component_name) = field.typ.fqname() else {
-                        panic!("archetype field must be an object/union or an array/vector of such")
-                    };
-
-                    quote! {
-                        ::re_types_core::ArchetypeFieldInfo {
-                            display_name: #display_name,
-                            documentation: #documentation,
-                            component_name: #component_name.into(),
-                        }
-                    }
-                }).collect_vec();
-                let num_field_infos = field_infos.len();
-
-                let field_info_array = quote! {
-                    static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; #num_field_infos]> =
-                    once_cell::sync::Lazy::new(|| {[#(#field_infos,)*]});
-                };
-                let field_info_getter = quote! {
-                    #[inline]
-                    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
-                        Some(FIELD_INFOS.as_slice().into())
-                    }
-                };
-
-                (field_info_array, field_info_getter)
+                quote! {
+                    impl ::re_types_core::ArchetypeReflectionMarker for #name { }
+                }
             } else {
-                (quote!(), quote!())
+                quote!()
             };
 
             quote! {
@@ -1369,8 +1052,6 @@ fn quote_trait_impls_from_obj(
 
                 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_all]> =
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
-
-                #field_info_array
 
                 impl #name {
                     #num_components_docstring
@@ -1420,8 +1101,6 @@ fn quote_trait_impls_from_obj(
                         ALL_COMPONENTS.as_slice().into()
                     }
 
-                    #field_info_getter
-
                     #[inline]
                     fn from_arrow_components(
                         arrow_data: impl IntoIterator<Item = (
@@ -1457,6 +1136,8 @@ fn quote_trait_impls_from_obj(
                         [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }
                 }
+
+                #impl_archetype_reflection_marker
             }
         }
         ObjectKind::View => {

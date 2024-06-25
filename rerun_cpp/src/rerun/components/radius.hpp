@@ -20,7 +20,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: A Radius component.
+    /// **Component**: The radius of something, e.g. a point, in world-space units.
     struct Radius {
         float value;
 

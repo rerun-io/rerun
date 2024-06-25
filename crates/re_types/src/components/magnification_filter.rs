@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum MagnificationFilter {
     /// Show the nearest pixel value.
     ///
@@ -38,9 +38,23 @@ pub enum MagnificationFilter {
     Linear = 2,
 }
 
-impl MagnificationFilter {
-    /// All the different enum variants.
-    pub const ALL: [Self; 2] = [Self::Nearest, Self::Linear];
+impl ::re_types_core::reflection::Enum for MagnificationFilter {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[Self::Nearest, Self::Linear]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Nearest => {
+                "Show the nearest pixel value.\n\nThis will give a blocky appearance when zooming in.\nUsed as default when rendering 2D images."
+            }
+            Self::Linear => {
+                "Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.\n\nUsed as default for mesh rendering."
+            }
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for MagnificationFilter {

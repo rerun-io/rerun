@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
+import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
@@ -118,6 +119,16 @@ class TranslationAndMat3x3Batch(BaseBatch[TranslationAndMat3x3ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TranslationAndMat3x3 not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in translation_and_mat3x3_ext.py
+        from rerun.datatypes import Mat3x3Batch, Vec3DBatch
+
+        if isinstance(data, TranslationAndMat3x3):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                Vec3DBatch([x.translation for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Mat3x3Batch([x.mat3x3 for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                pa.array(np.asarray([x.from_parent for x in data], dtype=np.bool_)),
+            ],
+            fields=list(data_type),
+        )

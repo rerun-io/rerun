@@ -397,12 +397,10 @@ impl SpaceViewBlueprint {
         );
         let ranges = property.component_array();
 
-        let time_range = ranges.and_then(|ranges| {
-            ranges.ok().and_then(|ranges| {
-                blueprint_archetypes::VisibleTimeRanges { ranges }
-                    .range_for_timeline(active_timeline.name().as_str())
-                    .cloned()
-            })
+        let time_range = ranges.ok().flatten().and_then(|ranges| {
+            blueprint_archetypes::VisibleTimeRanges { ranges }
+                .range_for_timeline(active_timeline.name().as_str())
+                .cloned()
         });
         time_range.map_or_else(
             || {
