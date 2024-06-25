@@ -1,5 +1,7 @@
-use ahash::HashMap;
-use re_types_core::{Archetype, ArchetypeFieldInfo, ArchetypeInfo, ComponentName};
+use re_types_core::{
+    reflection::{ArchetypeFieldReflection, ArchetypeReflection},
+    Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentName,
+};
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     ComponentFallbackProvider, ComponentUiTypes, QueryContext, SpaceViewId, SpaceViewState,
@@ -10,30 +12,44 @@ use re_viewport_blueprint::entity_path_for_view_property;
 /// Display the UI for editing all components of a blueprint archetype.
 ///
 /// Note that this will show default values for components that are null.
-pub fn view_property_ui<A: Archetype>(
+pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     view_id: SpaceViewId,
     fallback_provider: &dyn ComponentFallbackProvider,
     view_state: &dyn SpaceViewState,
 ) {
-    view_property_ui_impl(ctx, ui, view_id, A::info(), view_state, fallback_provider);
+    let name = A::name();
+    if let Some(reflection) = ctx.reflection.archetypes.get(&name) {
+        view_property_ui_impl(
+            ctx,
+            ui,
+            view_id,
+            name,
+            reflection,
+            view_state,
+            fallback_provider,
+        );
+    } else {
+        // The `ArchetypeReflectionMarker` bound should make this impossible.
+        re_log::warn_once!("Missing reflection data for archetype {name:?}.");
+    }
 }
 
 fn view_property_ui_impl(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     view_id: SpaceViewId,
-    archetype: ArchetypeInfo,
+    name: ArchetypeName,
+    reflection: &ArchetypeReflection,
     view_state: &dyn SpaceViewState,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
-    let blueprint_path =
-        entity_path_for_view_property(view_id, ctx.blueprint_db().tree(), archetype.name);
+    let blueprint_path = entity_path_for_view_property(view_id, ctx.blueprint_db().tree(), name);
     let query_ctx = QueryContext {
         viewer_ctx: ctx,
         target_entity_path: &blueprint_path,
-        archetype_name: Some(archetype.name),
+        archetype_name: Some(name),
         query: ctx.blueprint_query,
         view_state,
         view_ctx: None,
@@ -42,57 +58,38 @@ fn view_property_ui_impl(
     let component_results = ctx.blueprint_db().latest_at(
         ctx.blueprint_query,
         &blueprint_path,
-        archetype.component_names.iter().copied(),
+        reflection.fields.iter().map(|field| field.component_name),
     );
 
-    let field_info_per_component: HashMap<_, _> = archetype
-        .field_infos
-        .map(|field_infos| {
-            field_infos
-                .iter()
-                .cloned()
-                .map(|field_info| (field_info.component_name, field_info))
-                .collect()
-        })
-        .unwrap_or_default();
-
-    let non_indicator_components = archetype
-        .component_names
-        .as_ref()
-        .iter()
-        .filter(|component_name| !component_name.is_indicator_component())
-        .collect::<Vec<_>>();
-
     // If the property archetype only has a single component, don't show an additional hierarchy level!
-    if non_indicator_components.len() == 1 {
-        let component_name = *non_indicator_components[0];
-        let field_info = field_info_per_component.get(&component_name);
+    if reflection.fields.len() == 1 {
+        let field = &reflection.fields[0];
 
         view_property_component_ui(
             &query_ctx,
             ui,
-            component_name,
-            archetype.display_name,
-            field_info,
+            field.component_name,
+            reflection.display_name,
+            name,
+            field,
             &blueprint_path,
-            component_results.get_or_empty(component_name),
+            component_results.get_or_empty(field.component_name),
             fallback_provider,
         );
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
-            for component_name in non_indicator_components {
-                let field_info = field_info_per_component.get(component_name);
-                let display_name = field_info
-                    .map_or_else(|| component_name.short_name(), |info| info.display_name);
+            for field in &reflection.fields {
+                let display_name = &field.display_name;
 
                 view_property_component_ui(
                     &query_ctx,
                     ui,
-                    *component_name,
+                    field.component_name,
                     display_name,
-                    field_info,
+                    name,
+                    field,
                     &blueprint_path,
-                    component_results.get_or_empty(*component_name),
+                    component_results.get_or_empty(field.component_name),
                     fallback_provider,
                 );
             }
@@ -102,9 +99,9 @@ fn view_property_ui_impl(
             .interactive(false)
             .show_hierarchical_with_children(
                 ui,
-                ui.make_persistent_id(archetype.name.full_name()),
+                ui.make_persistent_id(name.full_name()),
                 true,
-                list_item::LabelContent::new(archetype.display_name),
+                list_item::LabelContent::new(reflection.display_name),
                 sub_prop_ui,
             );
     }
@@ -117,7 +114,8 @@ fn view_property_component_ui(
     ui: &mut egui::Ui,
     component_name: ComponentName,
     root_item_display_name: &str,
-    field_info: Option<&ArchetypeFieldInfo>,
+    archetype_name: ArchetypeName,
+    field: &ArchetypeFieldReflection,
     blueprint_path: &re_log_types::EntityPath,
     component_results: &re_query::LatestAtComponentResults,
     fallback_provider: &dyn ComponentFallbackProvider,
@@ -166,9 +164,10 @@ fn view_property_component_ui(
             .show_hierarchical(ui, singleline_list_item_content)
     };
 
-    if let Some(tooltip) = field_info.map(|info| info.documentation) {
-        list_item_response = list_item_response.on_hover_text(tooltip);
-    }
+    list_item_response = list_item_response.on_hover_ui(|ui| {
+        let id = egui::Id::new((archetype_name, field.display_name));
+        ui.markdown_ui(id, field.docstring_md);
+    });
 
     view_property_context_menu(
         ctx.viewer_ctx,

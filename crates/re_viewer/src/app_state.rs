@@ -126,7 +126,7 @@ impl AppState {
         render_ctx: &re_renderer::RenderContext,
         recording: &EntityDb,
         store_context: &StoreContext<'_>,
-        reflection: &re_types_core::Reflection,
+        reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,

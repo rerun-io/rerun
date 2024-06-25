@@ -175,7 +175,7 @@ pub struct App {
     pub(crate) panel_state_overrides_active: bool,
     pub(crate) panel_state_overrides: PanelStateOverrides,
 
-    reflection: re_types_core::Reflection,
+    reflection: re_types_core::reflection::Reflection,
 }
 
 impl App {

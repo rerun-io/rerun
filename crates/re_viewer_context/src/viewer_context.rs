@@ -27,7 +27,7 @@ pub struct ViewerContext<'a> {
     ///
     /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
     /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
-    pub reflection: &'a re_types_core::Reflection,
+    pub reflection: &'a re_types_core::reflection::Reflection,
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,

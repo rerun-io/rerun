@@ -13,6 +13,65 @@ use crate::{
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
+/// Icon button to be used in the header of a panel.
+pub struct HeaderMenuButton<'a> {
+    pub icon: &'static Icon,
+    pub add_contents: Box<dyn FnOnce(&mut egui::Ui) + 'a>,
+    pub enabled: bool,
+    pub hover_text: Option<String>,
+    pub disabled_hover_text: Option<String>,
+}
+
+impl<'a> HeaderMenuButton<'a> {
+    pub fn new(icon: &'static Icon, add_contents: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
+        Self {
+            icon,
+            add_contents: Box::new(add_contents),
+            enabled: true,
+            hover_text: None,
+            disabled_hover_text: None,
+        }
+    }
+
+    /// Sets enable/disable state of the button.
+    #[inline]
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
+    }
+
+    /// Sets text shown when the button hovered.
+    #[inline]
+    pub fn hover_text(mut self, hover_text: impl Into<String>) -> Self {
+        self.hover_text = Some(hover_text.into());
+        self
+    }
+
+    /// Sets text shown when the button is disabled and hovered.
+    #[inline]
+    pub fn disabled_hover_text(mut self, hover_text: impl Into<String>) -> Self {
+        self.disabled_hover_text = Some(hover_text.into());
+        self
+    }
+
+    fn show(self, ui: &mut egui::Ui) {
+        ui.add_enabled_ui(self.enabled, |ui| {
+            let mut response = egui::menu::menu_image_button(
+                ui,
+                ui.small_icon_button_widget(self.icon),
+                self.add_contents,
+            )
+            .response;
+            if let Some(hover_text) = self.hover_text {
+                response = response.on_hover_text(hover_text);
+            }
+            if let Some(disabled_hover_text) = self.disabled_hover_text {
+                response.on_disabled_hover_text(disabled_hover_text);
+            }
+        });
+    }
+}
+
 /// Rerun custom extensions to [`egui::Ui`].
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
@@ -455,11 +514,12 @@ pub trait UiExt {
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
     ///
     /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
-    fn large_collapsing_header<R>(
+    fn large_collapsing_header_impl<R>(
         &mut self,
         label: &str,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
+        button: Option<HeaderMenuButton<'_>>,
     ) {
         let ui = self.ui_mut();
 
@@ -534,6 +594,12 @@ pub trait UiExt {
                 if header_response.clicked() {
                     state.toggle(ui);
                 }
+
+                if let Some(button) = button {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        button.show(ui);
+                    });
+                }
             },
         );
         state.show_body_unindented(ui, |ui| {
@@ -541,6 +607,31 @@ pub trait UiExt {
             add_body(ui);
             ui.add_space(4.0); // Same here
         });
+    }
+
+    /// Show a prominent collapsing header to be used as section delimitation in side panels.
+    ///
+    /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
+    fn large_collapsing_header<R>(
+        &mut self,
+        label: &str,
+        default_open: bool,
+        add_body: impl FnOnce(&mut egui::Ui) -> R,
+    ) {
+        self.large_collapsing_header_impl(label, default_open, add_body, None);
+    }
+
+    /// Show a prominent collapsing header to be used as section delimitation in side panels with an image button.
+    ///
+    /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
+    fn large_collapsing_header_with_button<R>(
+        &mut self,
+        label: &str,
+        default_open: bool,
+        add_body: impl FnOnce(&mut egui::Ui) -> R,
+        button: HeaderMenuButton<'_>,
+    ) {
+        self.large_collapsing_header_impl(label, default_open, add_body, Some(button));
     }
 
     /// Paint a collapsing triangle with rounded corners.

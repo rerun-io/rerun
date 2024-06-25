@@ -72,12 +72,15 @@ pub fn range_with_blueprint_resolved_data(
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
+///
+/// If `query_shadowed_defaults` is true, all defaults will be queried, even if they are not used.
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     component_names: impl IntoIterator<Item = ComponentName>,
+    query_shadowed_defaults: bool,
 ) -> HybridLatestAtResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
@@ -85,8 +88,10 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
     let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
 
-    // No need to query for components that have overrides.
-    component_set.retain(|component| !overrides.components.contains_key(component));
+    // No need to query for components that have overrides unless opted in!
+    if !query_shadowed_defaults {
+        component_set.retain(|component| !overrides.components.contains_key(component));
+    }
 
     let results = ctx.viewer_ctx.recording().query_caches().latest_at(
         ctx.viewer_ctx.recording_store(),
@@ -191,12 +196,14 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a> {
+        let query_shadowed_defaults = false;
         latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             latest_at_query,
             self,
             A::all_components().iter().copied(),
+            query_shadowed_defaults,
         )
     }
 

@@ -15,6 +15,17 @@ struct PropertyActionButton<'a> {
     on_click: Box<dyn FnOnce() + 'a>,
 }
 
+struct PropertyMenuButton<'a> {
+    icon: &'static crate::icons::Icon,
+    enabled: bool,
+    add_contents: Box<dyn FnOnce(&mut egui::Ui) + 'a>,
+}
+
+enum PropertyButton<'a> {
+    Action(PropertyActionButton<'a>),
+    Menu(PropertyMenuButton<'a>),
+}
+
 /// [`ListItemContent`] to display property-like, two-column content, with the left column
 /// containing a label (along with an optional icon) and the right column containing some custom
 /// value (which may be editable).
@@ -26,7 +37,7 @@ pub struct PropertyContent<'a> {
     show_only_when_collapsed: bool,
     value_fn: Option<Box<PropertyValueFn<'a>>>,
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    action_buttons: Option<PropertyActionButton<'a>>,
+    property_buttons: Option<PropertyButton<'a>>,
     /**/
     //TODO(ab): icon styling? link icon right of label? clickable label?
 }
@@ -42,7 +53,7 @@ impl<'a> PropertyContent<'a> {
             icon_fn: None,
             show_only_when_collapsed: true,
             value_fn: None,
-            action_buttons: None,
+            property_buttons: None,
         }
     }
 
@@ -101,14 +112,37 @@ impl<'a> PropertyContent<'a> {
     ) -> Self {
         // TODO(#6191): support multiple action buttons
         assert!(
-            self.action_buttons.is_none(),
+            self.property_buttons.is_none(),
             "Only one action button supported right now"
         );
-        self.action_buttons = Some(PropertyActionButton {
+        self.property_buttons = Some(PropertyButton::Action(PropertyActionButton {
             icon,
             enabled,
             on_click: Box::new(on_click),
-        });
+        }));
+        self
+    }
+
+    /// Right aligned action button.
+    ///
+    /// Note: for aesthetics, space is always reserved for the action button.
+    // TODO(#6191): accept multiple calls for this function for multiple actions.
+    #[inline]
+    pub fn menu_button(
+        mut self,
+        icon: &'static crate::icons::Icon,
+        add_contents: impl FnOnce(&mut egui::Ui) + 'a,
+    ) -> Self {
+        // TODO(#6191): support multiple action buttons
+        assert!(
+            self.property_buttons.is_none(),
+            "Only one action button supported right now"
+        );
+        self.property_buttons = Some(PropertyButton::Menu(PropertyMenuButton {
+            icon,
+            enabled: true,
+            add_contents: Box::new(add_contents),
+        }));
         self
     }
 
@@ -204,7 +238,7 @@ impl ListItemContent for PropertyContent<'_> {
             icon_fn,
             show_only_when_collapsed,
             value_fn,
-            action_buttons,
+            property_buttons: action_buttons,
         } = *self;
 
         // │                                                                              │
@@ -357,12 +391,25 @@ impl ListItemContent for PropertyContent<'_> {
                 None,
             );
 
-            child_ui.add_enabled_ui(action_button.enabled, |ui| {
-                let button_response = ui.small_icon_button(action_button.icon);
-                if button_response.clicked() {
-                    (action_button.on_click)();
+            match action_button {
+                PropertyButton::Action(action) => {
+                    child_ui.add_enabled_ui(action.enabled, |ui| {
+                        let button_response = ui.small_icon_button(action.icon);
+                        if button_response.clicked() {
+                            (action.on_click)();
+                        }
+                    });
                 }
-            });
+                PropertyButton::Menu(menu) => {
+                    child_ui.add_enabled_ui(menu.enabled, |ui| {
+                        egui::menu::menu_image_button(
+                            ui,
+                            ui.small_icon_button_widget(menu.icon),
+                            menu.add_contents,
+                        );
+                    });
+                }
+            }
         }
     }
 
@@ -378,7 +425,7 @@ impl ListItemContent for PropertyContent<'_> {
             let action_button_dimension =
                 DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
             let reserve_action_button_space =
-                self.action_buttons.is_some() || layout_info.reserve_action_button_space;
+                self.property_buttons.is_some() || layout_info.reserve_action_button_space;
             if reserve_action_button_space {
                 desired_width += action_button_dimension + DesignTokens::text_to_icon_padding();
             }

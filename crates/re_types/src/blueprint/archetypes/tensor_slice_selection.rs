@@ -95,33 +95,6 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         ]
     });
 
-static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 4usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Width",
-            documentation: "Which dimension to map to width.\n\nIf not specified, the height will be determined automatically based on the name and index of the dimension.",
-            component_name: "rerun.components.TensorWidthDimension".into(),
-        },
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Height",
-            documentation: "Which dimension to map to height.\n\nIf not specified, the height will be determined automatically based on the name and index of the dimension.",
-            component_name: "rerun.components.TensorHeightDimension".into(),
-        },
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Indices",
-            documentation: "Selected indices for all other dimensions.\n\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.",
-            component_name: "rerun.components.TensorDimensionIndexSelection".into(),
-        },
-        ::re_types_core::ArchetypeFieldInfo {
-            display_name: "Slider",
-            documentation: "Any dimension listed here will have a slider for the index.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.\nIf not specified, adds slides for any dimension in `indices`.",
-            component_name: "rerun.blueprint.components.TensorDimensionIndexSlider"
-                .into(),
-        },
-    ]
-    });
-
 impl TensorSliceSelection {
     /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 5usize;
@@ -168,11 +141,6 @@ impl ::re_types_core::Archetype for TensorSliceSelection {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
-    }
-
-    #[inline]
-    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
-        Some(FIELD_INFOS.as_slice().into())
     }
 
     #[inline]
@@ -266,6 +234,8 @@ impl ::re_types_core::AsComponents for TensorSliceSelection {
         .collect()
     }
 }
+
+impl ::re_types_core::ArchetypeReflectionMarker for TensorSliceSelection {}
 
 impl TensorSliceSelection {
     /// Create a new `TensorSliceSelection`.

@@ -58,15 +58,6 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; 1usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [::re_types_core::ArchetypeFieldInfo {
-            display_name: "Scaling",
-            documentation: "How the image is scaled to fit the view.",
-            component_name: "rerun.blueprint.components.ViewFit".into(),
-        }]
-    });
-
 impl TensorViewFit {
     /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 2usize;
@@ -115,11 +106,6 @@ impl ::re_types_core::Archetype for TensorViewFit {
     }
 
     #[inline]
-    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
-        Some(FIELD_INFOS.as_slice().into())
-    }
-
-    #[inline]
     fn from_arrow_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
@@ -158,6 +144,8 @@ impl ::re_types_core::AsComponents for TensorViewFit {
         .collect()
     }
 }
+
+impl ::re_types_core::ArchetypeReflectionMarker for TensorViewFit {}
 
 impl TensorViewFit {
     /// Create a new `TensorViewFit`.
