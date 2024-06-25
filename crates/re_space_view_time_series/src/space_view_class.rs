@@ -277,7 +277,14 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let mut y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        if y_range.start() >= y_range.end() {
+            // Ensure that the range is valid - egui_plot might debug_assert otherwise.
+            // `next_up_f64` should be sufficient, but empirically it's not always enough
+            // (likely we're loosing precision due to some calculations down the line)
+            *y_range.end_mut() = y_range.start() + 1.0;
+        }
+
         let y_zoom_lock =
             scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
         let y_zoom_lock = y_zoom_lock.0 .0;
@@ -488,7 +495,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         // Decide if the time cursor should be displayed, and if so where:
         let time_x = current_time
-            .map(|current_time| (current_time - time_offset) as f64)
+            .map(|current_time| (current_time.saturating_sub(time_offset)) as f64)
             .filter(|&x| {
                 // only display the time cursor when it's actually above the plot area
                 transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
