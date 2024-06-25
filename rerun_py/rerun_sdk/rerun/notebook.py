@@ -30,12 +30,14 @@ class Viewer:
         height: int = DEFAULT_HEIGHT,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
-        display: bool = False,
     ):
         """
-        Create a new Rerun viewer for use in a notebook.
+        Create a new Rerun viewer widget for use in a notebook.
 
         Any data logged to the recording after initialization will be sent directly to the viewer.
+
+        This widget can be displayed by returning it at the end of your cells execution, or immediately
+        by calling [`Viewer.display`][].
 
         Parameters
         ----------
@@ -52,10 +54,6 @@ class Viewer:
             It will be made active and set as the default blueprint in the recording.
 
             Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
-        display : bool
-            Whether to display the viewer in the current notebook cell
-            immediately after initialization.
-            Defaults to `False`.
 
         """
 
@@ -80,20 +78,30 @@ class Viewer:
             height=height,
         )
 
-        if display:
-            self.display()
-
         bindings.set_callback_sink(
             recording=RecordingStream.to_native(self._recording),
             callback=self._flush_hook,
         )
 
-    def display(self) -> None:
-        """Display the viewer in a notebook cell."""
+    def display(self, block_until_ready: bool = True) -> None:
+        """
+        Display the viewer in the notebook cell immediately.
+
+        Parameters
+        ----------
+        block_until_ready : bool
+            Whether to block until the viewer is ready to receive data. If this is `False`, the viewer
+            will still be displayed, but logged data will likely be queued until the viewer becomes ready
+            at the end of cell execution.
+
+        """
 
         from IPython.display import display
 
         display(self._viewer)
+
+        if block_until_ready:
+            self._viewer.block_until_ready()
 
     def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)
@@ -111,11 +119,15 @@ def notebook_show(
     height: int = DEFAULT_HEIGHT,
     blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
-) -> Viewer:
+) -> None:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
 
     Any data logged to the recording after initialization will be sent directly to the viewer.
+
+    Note that this can be called at any point during cell execution. The call will block until the embedded
+    viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
+    to the viewer.
 
     Parameters
     ----------
@@ -135,9 +147,10 @@ def notebook_show(
 
     """
 
-    return Viewer(
+    viewer = Viewer(
         width=width,
         height=height,
         blueprint=blueprint,
         recording=recording,
     )
+    viewer.display()
