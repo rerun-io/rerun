@@ -222,7 +222,7 @@ impl SelectionPanel {
                 }
             });
 
-            ui.large_collapsing_header("Component Defaults", true, |ui| {
+            ui.large_collapsing_header("Component defaults", true, |ui| {
                 let view_ctx = view.bundle_context_with_state(ctx, view_state);
                 defaults_ui(&view_ctx, view, ui);
             });
