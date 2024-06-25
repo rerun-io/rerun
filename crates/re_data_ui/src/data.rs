@@ -4,7 +4,7 @@ use re_entity_db::EntityDb;
 
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, ViewCoordinates};
+use re_types::components::{Color, LineStrip2D, LineStrip3D, ViewCoordinates};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -179,19 +179,6 @@ impl DataUi for re_types::datatypes::UVec4D {
         ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
-    ) {
-        ui_layout.data_label(ui, self.to_string());
-    }
-}
-
-impl DataUi for Range1D {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut Ui,
-        ui_layout: UiLayout,
-        _query: &LatestAtQuery,
-        _db: &EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
     }
