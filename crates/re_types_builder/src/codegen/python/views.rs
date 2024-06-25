@@ -42,6 +42,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     name: Utf8Like | None = None,
     visible: blueprint_components.VisibleLike | None = None,
     defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
+    overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     "#
     .to_owned();
 
@@ -115,7 +116,11 @@ Defaults to true if not specified."
             "List of default components or component batches to add to the space view. When an archetype
 in the view is missing a component included in this set, the value of default will be used
 instead of the normal fallback for the visualizer.".to_owned(),
-        )
+        ),
+        (
+            "overrides",
+            "Dictionary of overrides to apply to the space view. The key is the path to the component to override,
+and the value is the component or component batch to use instead.".to_owned(),)
     ];
     for field in &obj.fields {
         let doc_content = field.docs.doc_lines_for_untagged_and("py");
@@ -181,7 +186,7 @@ instead of the normal fallback for the visualizer.".to_owned(),
     }
     code.push_indented(
         1,
-        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties, defaults=defaults)"#),
+        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties, defaults=defaults, overrides=overrides)"#),
         1,
     );
 
