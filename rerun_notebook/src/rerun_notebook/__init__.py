@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.metadata
+import logging
 import pathlib
+import sys
 import time
 from typing import Any, Literal
 
@@ -83,6 +85,7 @@ class Viewer(anywidget.AnyWidget):
         with jupyter_ui_poll.ui_events() as poll:
             while self._ready is False:
                 if time.time() - start > timeout:
-                    raise TimeoutError("Timed out waiting for viewer to be ready.")
+                    logging.warning("Timed out waiting for viewer to become ready.")
+                    return
                 poll(1)
                 time.sleep(0.1)
