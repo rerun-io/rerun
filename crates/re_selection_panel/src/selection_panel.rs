@@ -135,6 +135,28 @@ impl SelectionPanel {
                         space_view_top_level_properties(ctx, blueprint, ui, space_view_id);
                     }
 
+                    Item::DataResult(view_id, instance_path) => {
+                        if instance_path.is_all() {
+                            let entity_path = &instance_path.entity_path;
+                            let query_result = ctx.lookup_query_result(*view_id);
+                            let data_result = query_result
+                                .tree
+                                .lookup_result_by_path(entity_path)
+                                .cloned();
+
+                            if let Some(data_result) = &data_result {
+                                if let Some(space_view) = blueprint.space_view(view_id) {
+                                    visible_interactive_toggle_ui(
+                                        &space_view.bundle_context_with_states(ctx, view_states),
+                                        ui,
+                                        ctx.lookup_query_result(*view_id),
+                                        data_result,
+                                    );
+                                }
+                            }
+                        }
+                    }
+
                     _ => {}
                 }
 
@@ -406,19 +428,6 @@ fn entity_selection_ui(
         .lookup_result_by_path(entity_path)
         .cloned();
 
-    if let Some(data_result) = &data_result {
-        if let Some(space_view) = blueprint.space_view(view_id) {
-            ui.large_collapsing_header("Entity properties", true, |ui| {
-                entity_props_ui(
-                    &space_view.bundle_context_with_states(ctx, view_states),
-                    ui,
-                    ctx.lookup_query_result(*view_id),
-                    data_result,
-                );
-            });
-        }
-    }
-
     if let Some(view) = blueprint.space_views.get(view_id) {
         let view_ctx = view.bundle_context_with_states(ctx, view_states);
         visualizer_ui(&view_ctx, view, entity_path, ui);
@@ -553,6 +562,7 @@ fn what_is_selected_ui(
             let title = app_id.to_string();
             item_title_ui(ui, &title, Some(&icons::APPLICATION), None, &title);
         }
+
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
             item_title_ui(ui, &title, Some(&icons::DATA_SOURCE), None, &title);
@@ -1094,7 +1104,7 @@ fn show_list_item_for_container_child(
     true
 }
 
-fn entity_props_ui(
+fn visible_interactive_toggle_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     query_result: &DataQueryResult,
