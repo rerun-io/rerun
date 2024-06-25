@@ -1,8 +1,10 @@
 # `rerun_notebook`
 
+Part of the [Rerun](https://github.com/rerun-io/rerun) project.
+
 ## What?
 
-`rerun_notebook` is a support package for `rerun_sdk`'s notebook integration. This is an implementation package that shouldn't be directly interacted with. It is typically installed using the `notebook` [extra](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#extras) of `rerun_sdk`:
+`rerun_notebook` is a support package for [`rerun_sdk`](https://pypi.org/project/rerun-sdk/)'s notebook integration. This is an implementation package that shouldn't be directly interacted with. It is typically installed using the `notebook` [extra](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#extras) of `rerun_sdk`:
 
 ```sh
 pip install "rerun_sdk[notebook]"

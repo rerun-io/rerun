@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rerun-notebook"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.5"
 dependencies = ["anywidget"]
 readme = "README.md"
 
