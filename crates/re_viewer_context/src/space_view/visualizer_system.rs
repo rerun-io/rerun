@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
-
 use re_types::{Archetype, ComponentName, ComponentNameSet};
 
 use crate::{
