@@ -32,9 +32,12 @@ class Viewer:
         recording: RecordingStream | None = None,
     ):
         """
-        Create a new Rerun viewer for use in a notebook.
+        Create a new Rerun viewer widget for use in a notebook.
 
         Any data logged to the recording after initialization will be sent directly to the viewer.
+
+        This widget can be displayed by returning it at the end of your cells execution, or immediately
+        by calling [`Viewer.display`][].
 
         Parameters
         ----------
@@ -81,7 +84,17 @@ class Viewer:
         )
 
     def display(self, block_until_ready=True) -> None:
-        """Display the viewer in a notebook cell."""
+        """
+        Display the viewer in the notebook cell immediately.
+
+        Parameters
+        ----------
+        block_until_ready : bool
+            Whether to block until the viewer is ready to receive data. If this is `False`, the viewer
+            will still be displayed, but logged data will likely be queued until the viewer becomes ready
+            at the end of cell execution.
+
+        """
 
         from IPython.display import display
 
@@ -111,6 +124,10 @@ def notebook_show(
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
 
     Any data logged to the recording after initialization will be sent directly to the viewer.
+
+    Note that this can be called at any point during cell execution. The call will block until the embedded
+    viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
+    to the viewer.
 
     Parameters
     ----------
