@@ -8,12 +8,12 @@ dependencies = [
   "paddleocr",
   "paddlepaddle",
   "pandas",
+  "pdf2image",
   "requests",
   "rerun-sdk",
   "setuptools",
   "tabulate",
   "tqdm",
-  "pdf2image",
 ]
 
 [project.scripts]

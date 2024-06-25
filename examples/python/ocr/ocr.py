@@ -365,8 +365,8 @@ def detect_and_log_layouts(file_path: str) -> None:
     else:
         # read image
         img = cv2.imread(file_path)
-        coloured_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        images.append(coloured_image.astype(np.uint8))
+        image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        images.append(image_rgb.astype(np.uint8))
 
     # Extracte the layout from each image
     layouts: list[Layout] = []
@@ -389,13 +389,13 @@ def detect_and_log_layouts(file_path: str) -> None:
         logging.info("Blueprint sent...")
 
 
-def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], page_number: int) -> Layout:
+def detect_and_log_layout(image_rgb: npt.NDArray[np.uint8], page_number: int) -> Layout:
     # Layout Object - This will contain the detected layouts and their detections
     layout = Layout(page_number)
     page_path = f"page_{page_number}"
 
     # Log Image and add Annotation Context
-    rr.log(f"{page_path}/Image", rr.Image(coloured_image))
+    rr.log(f"{page_path}/Image", rr.Image(image_rgb))
     rr.log(
         f"{page_path}/Image",
         # The annotation is defined in the Layout class based on its properties
@@ -407,8 +407,8 @@ def detect_and_log_layout(coloured_image: npt.NDArray[np.uint8], page_number: in
     logging.info("Start detection... (It usually takes more than 10-20 seconds per page)")
     ocr_model_pp = PPStructure(show_log=False, recovery=True)
     logging.info("model loaded")
-    result_pp = ocr_model_pp(coloured_image)
-    _, w, _ = coloured_image.shape
+    result_pp = ocr_model_pp(image_rgb)
+    _, w, _ = image_rgb.shape
     result_pp = sorted_layout_boxes(result_pp, w)
     logging.info("Detection finished...")
 
