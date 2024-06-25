@@ -9,7 +9,11 @@ use re_data_ui::{
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
 use re_types::blueprint::components::Interactive;
-use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt};
+use re_ui::{
+    icons,
+    list_item::{self, PropertyContent},
+    ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt,
+};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
     DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
@@ -141,11 +145,7 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
-        ui.scope(|ui| {
-            // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-            what_is_selected_ui(ctx, blueprint, ui, item);
-        });
+        what_is_selected_ui(ctx, blueprint, ui, item);
 
         match item {
             Item::Container(container_id) => {
@@ -664,13 +664,15 @@ fn what_is_selected_ui(
                 ),
             );
 
-            ui.horizontal(|ui| {
-                ui.label(format!(
+            ui.list_item_flat_noninteractive(
+                PropertyContent::new(format!(
                     "{} component of",
                     if is_static { "Static" } else { "Temporal" }
-                ));
-                item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
-            });
+                ))
+                .value_fn(|ui, _| {
+                    item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
+                }),
+            );
 
             list_existing_data_blueprints(ctx, blueprint, ui, &entity_path.clone().into());
         }
@@ -725,10 +727,12 @@ fn what_is_selected_ui(
                 if !parent.is_root() {
                     let (query, db) =
                         guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-                    ui.horizontal(|ui| {
-                        ui.label("Parent");
-                        item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, &parent);
-                    });
+
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Parent").value_fn(
+                        |ui, _| {
+                            item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, &parent);
+                        },
+                    ));
                 }
             }
 
@@ -759,29 +763,31 @@ fn what_is_selected_ui(
                 };
                 if let Some(parent) = parent {
                     if !parent.is_root() {
-                        ui.horizontal(|ui| {
-                            let (query, db) = guess_query_and_db_for_selected_entity(
-                                ctx,
-                                &instance_path.entity_path,
-                            );
+                        ui.list_item_flat_noninteractive(PropertyContent::new("Parent").value_fn(
+                            |ui, _| {
+                                let (query, db) = guess_query_and_db_for_selected_entity(
+                                    ctx,
+                                    &instance_path.entity_path,
+                                );
 
-                            ui.label("Parent");
-                            item_ui::entity_path_parts_buttons(
-                                ctx,
-                                &query,
-                                db,
-                                ui,
-                                Some(*space_view_id),
-                                &parent,
-                            );
-                        });
+                                item_ui::entity_path_parts_buttons(
+                                    ctx,
+                                    &query,
+                                    db,
+                                    ui,
+                                    Some(*space_view_id),
+                                    &parent,
+                                );
+                            },
+                        ));
                     }
                 }
 
-                ui.horizontal(|ui| {
-                    ui.label("in");
-                    space_view_button(ctx, ui, space_view);
-                });
+                ui.list_item_flat_noninteractive(PropertyContent::new("In space view").value_fn(
+                    |ui, _| {
+                        space_view_button(ctx, ui, space_view);
+                    },
+                ));
             }
         }
     }
@@ -1143,11 +1149,11 @@ fn visible_interactive_toggle_ui(
         };
 
         ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
-            )
-            .on_hover_text(format!(
-                "If disabled, the entity won't be shown in the view.{inherited_hint}"
-            ));
+            list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
+        )
+        .on_hover_text(format!(
+            "If disabled, the entity won't be shown in the view.{inherited_hint}"
+        ));
 
         if visible_before != visible {
             data_result.save_recursive_override_or_clear_if_redundant(
@@ -1169,11 +1175,11 @@ fn visible_interactive_toggle_ui(
         };
 
         ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
-            )
-            .on_hover_text(format!(
-                "If disabled, the entity will not react to any mouse interaction.{inherited_hint}"
-            ));
+            list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
+        )
+        .on_hover_text(format!(
+            "If disabled, the entity will not react to any mouse interaction.{inherited_hint}"
+        ));
 
         if interactive_before != interactive {
             data_result.save_recursive_override_or_clear_if_redundant(
