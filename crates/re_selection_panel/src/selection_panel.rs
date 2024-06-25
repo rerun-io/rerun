@@ -247,7 +247,7 @@ impl SelectionPanel {
             .header_response
             .on_hover_text(
                 "The entity path query consists of a list of include/exclude rules \
-            that determines what entities are part of this space view",
+                that determines what entities are part of this space view",
             );
         }
 
@@ -255,7 +255,7 @@ impl SelectionPanel {
             let view_class = view.class(ctx.space_view_class_registry);
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
-            ui.large_collapsing_header("View settings", true, |ui| {
+            ui.large_collapsing_header("View properties", true, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
 
