@@ -30,7 +30,7 @@ This means that `@rerun-io/web-viewer-react@0.10.0` can only connect to a data s
 import WebViewer from "@rerun-io/web-viewer-react";
 
 export default function App() {
-  return <WebViewer rrd="...">
+  return <WebViewer width="800px" height="600px" rrd="...">
 }
 ```
 
@@ -39,6 +39,9 @@ The `rrd` in the snippet above should be a URL pointing to either:
 - A WebSocket connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk-operating-modes#serve) API
 
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.
+This can be disabled by setting the `hide_welcome_screen` prop to `true`.
+
+⚠ It's important to set the viewer's width and height, as the viewer will not automatically resize to its parent element.
 
 ℹ️ Note:
 This package only targets recent versions of browsers.

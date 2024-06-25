@@ -44,6 +44,9 @@ interface WebViewerOptions {
   render_backend?: Backend;
   hide_welcome_screen?: boolean;
   allow_fullscreen?: boolean;
+
+  width?: string;
+  height?: string;
 }
 
 interface FullscreenOptions {
@@ -107,6 +110,8 @@ export class WebViewer {
     this.#state = "starting";
 
     this.#canvas = document.createElement("canvas");
+    this.#canvas.style.width = options.width ?? "640px";
+    this.#canvas.style.height = options.height ?? "360px";
     this.#canvas.id = this.#id;
     parent.append(this.#canvas);
 
