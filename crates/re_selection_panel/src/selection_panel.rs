@@ -121,14 +121,14 @@ impl SelectionPanel {
             UiLayout::SelectionPanelFull
         };
         for (i, item) in selection.iter_items().enumerate() {
-            ui.push_id(item, |ui| {
+            list_item::list_item_scope(ui, item, |ui| {
                 self.item_ui(ctx, blueprint, view_states, ui, item, ui_layout);
-
-                if i < selection.len() - 1 {
-                    // Add space some space between selections
-                    ui.add_space(8.);
-                }
             });
+
+            if i < selection.len() - 1 {
+                // Add space some space between selections
+                ui.add_space(8.);
+            }
         }
     }
 
@@ -141,7 +141,11 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
-        what_is_selected_ui(ctx, blueprint, ui, item);
+        ui.scope(|ui| {
+            // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+            ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+            what_is_selected_ui(ctx, blueprint, ui, item);
+        });
 
         match item {
             Item::Container(container_id) => {
@@ -181,6 +185,9 @@ impl SelectionPanel {
 
         if let Some(data_ui_item) = data_section_ui(item) {
             ui.large_collapsing_header("Data", true, |ui| {
+                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
                 let (query, db) = if let Some(entity_path) = item.entity_path() {
                     guess_query_and_db_for_selected_entity(ctx, entity_path)
                 } else {
@@ -249,6 +256,9 @@ impl SelectionPanel {
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
             ui.large_collapsing_header("View settings", true, |ui| {
+                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
                 let cursor = ui.cursor();
 
                 if let Err(err) =
@@ -796,13 +806,11 @@ fn item_title_ui(
         content = content.label_style(label_style);
     }
 
-    list_item::list_item_scope(ui, ui.next_auto_id(), |ui| {
-        ui.list_item()
-            .with_height(DesignTokens::title_bar_height())
-            .selected(true)
-            .show_flat(ui, content)
-            .on_hover_text(hover)
-    })
+    ui.list_item()
+        .with_height(DesignTokens::title_bar_height())
+        .selected(true)
+        .show_flat(ui, content)
+        .on_hover_text(hover)
 }
 
 /// Display a list of all the space views an entity appears in.
@@ -1125,62 +1133,61 @@ fn visible_interactive_toggle_ui(
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
 
-    list_item::list_item_scope(ui, "entity_props", |ui| {
-        {
-            let visible_before = data_result.is_visible(ctx.viewer_ctx);
-            let mut visible = visible_before;
+    {
+        let visible_before = data_result.is_visible(ctx.viewer_ctx);
+        let mut visible = visible_before;
 
-            let inherited_hint = if data_result.is_inherited(&query_result.tree, Visible::name()) {
-                "\n\nVisible status was inherited from a parent entity."
-            } else {
-                ""
-            };
+        let inherited_hint = if data_result.is_inherited(&query_result.tree, Visible::name()) {
+            "\n\nVisible status was inherited from a parent entity."
+        } else {
+            ""
+        };
 
-            ui.list_item()
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
-                )
-                .on_hover_text(format!(
-                    "If disabled, the entity won't be shown in the view.{inherited_hint}"
-                ));
+        ui.list_item()
+            .interactive(false)
+            .show_flat(
+                ui,
+                list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
+            )
+            .on_hover_text(format!(
+                "If disabled, the entity won't be shown in the view.{inherited_hint}"
+            ));
 
-            if visible_before != visible {
-                data_result.save_recursive_override_or_clear_if_redundant(
-                    ctx.viewer_ctx,
-                    &query_result.tree,
-                    &Visible(visible),
-                );
-            }
+        if visible_before != visible {
+            data_result.save_recursive_override_or_clear_if_redundant(
+                ctx.viewer_ctx,
+                &query_result.tree,
+                &Visible(visible),
+            );
         }
+    }
 
-        {
-            let interactive_before = data_result.is_interactive(ctx.viewer_ctx);
-            let mut interactive = interactive_before;
+    {
+        let interactive_before = data_result.is_interactive(ctx.viewer_ctx);
+        let mut interactive = interactive_before;
 
-            let inherited_hint =
-                if data_result.is_inherited(&query_result.tree, Interactive::name()) {
-                    "\n\nInteractive status was inherited from a parent entity."
-                } else {
-                    ""
-                };
+        let inherited_hint = if data_result.is_inherited(&query_result.tree, Interactive::name()) {
+            "\n\nInteractive status was inherited from a parent entity."
+        } else {
+            ""
+        };
 
-            ui.list_item()
-                .interactive(false)
-                .show_flat(
-                    ui,
-                    list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
-                )
-                .on_hover_text(format!("If disabled, the entity will not react to any mouse interaction.{inherited_hint}"));
+        ui.list_item()
+            .interactive(false)
+            .show_flat(
+                ui,
+                list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
+            )
+            .on_hover_text(format!(
+                "If disabled, the entity will not react to any mouse interaction.{inherited_hint}"
+            ));
 
-            if interactive_before != interactive {
-                data_result.save_recursive_override_or_clear_if_redundant(
-                    ctx.viewer_ctx,
-                    &query_result.tree,
-                    &Interactive(interactive.into()),
-                );
-            }
+        if interactive_before != interactive {
+            data_result.save_recursive_override_or_clear_if_redundant(
+                ctx.viewer_ctx,
+                &query_result.tree,
+                &Interactive(interactive.into()),
+            );
         }
-    });
+    }
 }
