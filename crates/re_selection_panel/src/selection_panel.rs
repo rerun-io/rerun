@@ -16,8 +16,8 @@ use re_ui::{
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
-    ViewerContext,
+    DataResult, HoverHighlight, Item, SpaceViewId, SystemCommandSender, UiLayout, ViewContext,
+    ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
@@ -587,12 +587,28 @@ fn what_is_selected_ui(
     match item {
         Item::AppId(app_id) => {
             let title = app_id.to_string();
-            item_title_ui(ui, &title, Some(&icons::APPLICATION), None, &title);
+            item_title_ui(
+                ctx,
+                ui,
+                item,
+                &title,
+                Some(&icons::APPLICATION),
+                None,
+                &title,
+            );
         }
 
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
-            item_title_ui(ui, &title, Some(&icons::DATA_SOURCE), None, &title);
+            item_title_ui(
+                ctx,
+                ui,
+                item,
+                &title,
+                Some(&icons::DATA_SOURCE),
+                None,
+                &title,
+            );
         }
 
         Item::StoreId(store_id) => {
@@ -618,7 +634,7 @@ fn what_is_selected_ui(
                 re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
             };
 
-            item_title_ui(ui, &title, Some(icon), None, &id_str);
+            item_title_ui(ctx, ui, item, &title, Some(icon), None, &id_str);
         }
 
         Item::Container(container_id) => {
@@ -635,7 +651,9 @@ fn what_is_selected_ui(
 
                 let container_name = container_blueprint.display_name_or_default();
                 item_title_ui(
+                    ctx,
                     ui,
+                    item,
                     container_name.as_ref(),
                     Some(re_viewer_context::icon_for_container_kind(
                         &container_blueprint.container_kind,
@@ -654,7 +672,9 @@ fn what_is_selected_ui(
             let is_static = db.is_component_static(component_path).unwrap_or_default();
 
             item_title_ui(
+                ctx,
                 ui,
+                item,
                 component_name.short_name(),
                 Some(if is_static {
                     &icons::COMPONENT_STATIC
@@ -706,7 +726,9 @@ fn what_is_selected_ui(
 
                 let space_view_name = space_view.display_name_or_default();
                 item_title_ui(
+                    ctx,
                     ui,
+                    item,
                     space_view_name.as_ref(),
                     Some(space_view.class(ctx.space_view_class_registry).icon()),
                     Some(contents_name_style(&space_view_name)),
@@ -720,7 +742,9 @@ fn what_is_selected_ui(
             let name = instance_path.syntax_highlighted(ui.style());
 
             item_title_ui(
+                ctx,
                 ui,
+                item,
                 name,
                 Some(guess_instance_path_icon(ctx, instance_path)),
                 None,
@@ -755,7 +779,9 @@ fn what_is_selected_ui(
             if let Some(space_view) = blueprint.space_view(space_view_id) {
                 let typ = item.kind();
                 item_title_ui(
+                    ctx,
                     ui,
+                    item,
                     name,
                     Some(guess_instance_path_icon(ctx, instance_path)),
                     None,
@@ -805,7 +831,9 @@ fn what_is_selected_ui(
 
 /// A title bar for an item.
 fn item_title_ui(
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    item: &Item,
     name: impl Into<egui::WidgetText>,
     icon: Option<&re_ui::Icon>,
     label_style: Option<re_ui::LabelStyle>,
@@ -821,11 +849,21 @@ fn item_title_ui(
         content = content.label_style(label_style);
     }
 
-    ui.list_item()
+    let response = ui
+        .list_item()
         .with_height(DesignTokens::title_bar_height())
         .selected(true)
         .show_flat(ui, content)
-        .on_hover_text(hover)
+        .on_hover_text(hover);
+
+    if response.clicked() {
+        // If the user has multiple things selected but only wants to have one thing selected,
+        // this is how they can do it.
+        ctx.command_sender
+            .send_system(re_viewer_context::SystemCommand::SetSelection(item.clone()));
+    }
+
+    response
 }
 
 /// Display a list of all the space views an entity appears in.
