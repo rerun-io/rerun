@@ -1,3 +1,4 @@
+use eframe::epaint::text::TextWrapping;
 use std::hash::Hash;
 
 use egui::{
@@ -56,6 +57,8 @@ impl<'a> HeaderMenuButton<'a> {
 
     fn show(self, ui: &mut egui::Ui) {
         ui.add_enabled_ui(self.enabled, |ui| {
+            ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
+
             let mut response = egui::menu::menu_image_button(
                 ui,
                 ui.small_icon_button_widget(self.icon),
@@ -512,118 +515,16 @@ pub trait UiExt {
     }
 
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
-    ///
-    /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
-    fn large_collapsing_header_impl<R>(
-        &mut self,
-        label: &str,
-        default_open: bool,
-        add_body: impl FnOnce(&mut egui::Ui) -> R,
-        button: Option<HeaderMenuButton<'_>>,
-    ) {
-        let ui = self.ui_mut();
-
-        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
-            ui.ctx(),
-            ui.make_persistent_id(label),
-            default_open,
-        );
-
-        let openness = state.openness(ui.ctx());
-
-        let height = DesignTokens::list_item_height();
-        let header_size = egui::vec2(ui.available_width(), height);
-
-        // Draw custom header.
-        ui.allocate_ui_with_layout(
-            header_size,
-            egui::Layout::left_to_right(egui::Align::Center),
-            |ui| {
-                ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                ui.visuals_mut().widgets.active.expansion = 0.0;
-                ui.visuals_mut().widgets.open.expansion = 0.0;
-
-                let background_frame = ui.painter().add(egui::Shape::Noop);
-
-                let space_before_icon = 0.0;
-                let icon_width = ui.spacing().icon_width_inner;
-                let space_after_icon = ui.spacing().icon_spacing;
-
-                let font_id = egui::TextStyle::Button.resolve(ui.style());
-                let galley =
-                    ui.painter()
-                        .layout_no_wrap(label.to_owned(), font_id, Color32::PLACEHOLDER);
-
-                let desired_size = header_size.at_least(
-                    egui::vec2(space_before_icon + icon_width + space_after_icon, 0.0)
-                        + galley.size(),
-                );
-                let header_response = ui.allocate_response(desired_size, egui::Sense::click());
-                let rect = header_response.rect;
-
-                let icon_rect = egui::Rect::from_center_size(
-                    header_response.rect.left_center()
-                        + egui::vec2(space_before_icon + icon_width / 2.0, 0.0),
-                    egui::Vec2::splat(icon_width),
-                );
-                let icon_response = header_response.clone().with_new_rect(icon_rect);
-                ui.paint_collapsing_triangle(
-                    openness,
-                    icon_rect.center(),
-                    ui.style().interact(&icon_response),
-                );
-
-                let visuals = ui.style().interact(&header_response);
-
-                let optical_vertical_alignment = 0.5; // improves perceived vertical alignment
-                let text_pos = icon_response.rect.right_center()
-                    + egui::vec2(
-                        space_after_icon,
-                        -0.5 * galley.size().y + optical_vertical_alignment,
-                    );
-                ui.painter().galley(text_pos, galley, visuals.text_color());
-
-                // Let the rect cover the full panel width:
-                let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
-
-                ui.painter().set(
-                    background_frame,
-                    Shape::rect_filled(bg_rect, 0.0, visuals.bg_fill),
-                );
-
-                if header_response.clicked() {
-                    state.toggle(ui);
-                }
-
-                if let Some(button) = button {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        button.show(ui);
-                    });
-                }
-            },
-        );
-        state.show_body_unindented(ui, |ui| {
-            ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
-            add_body(ui);
-            ui.add_space(4.0); // Same here
-        });
-    }
-
-    /// Show a prominent collapsing header to be used as section delimitation in side panels.
-    ///
-    /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
     fn large_collapsing_header<R>(
         &mut self,
         label: &str,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
     ) {
-        self.large_collapsing_header_impl(label, default_open, add_body, None);
+        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, None);
     }
 
     /// Show a prominent collapsing header to be used as section delimitation in side panels with an image button.
-    ///
-    /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
     fn large_collapsing_header_with_button<R>(
         &mut self,
         label: &str,
@@ -631,7 +532,7 @@ pub trait UiExt {
         add_body: impl FnOnce(&mut egui::Ui) -> R,
         button: HeaderMenuButton<'_>,
     ) {
-        self.large_collapsing_header_impl(label, default_open, add_body, Some(button));
+        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, Some(button));
     }
 
     /// Paint a collapsing triangle with rounded corners.
@@ -1152,4 +1053,119 @@ impl UiExt for egui::Ui {
     fn ui_mut(&mut self) -> &mut egui::Ui {
         self
     }
+}
+
+fn large_collapsing_header_impl<R>(
+    ui: &mut egui::Ui,
+    label: &str,
+    default_open: bool,
+    add_body: impl FnOnce(&mut egui::Ui) -> R,
+    button: Option<HeaderMenuButton<'_>>,
+) {
+    let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+        ui.ctx(),
+        ui.make_persistent_id(label),
+        default_open,
+    );
+
+    let openness = state.openness(ui.ctx());
+
+    let height = DesignTokens::list_item_height();
+
+    // In some cases, the available width is not even, which cause some instability with the nested
+    // left-to-right in right-to-left UIs. Thus the `floor()`.
+    let header_size = egui::vec2(ui.available_width().floor(), height);
+
+    ui.scope(|ui| {
+        ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
+
+        ui.allocate_ui_with_layout(
+            header_size,
+            egui::Layout::right_to_left(egui::Align::Center),
+            |ui| {
+                ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                ui.visuals_mut().widgets.active.expansion = 0.0;
+                ui.visuals_mut().widgets.open.expansion = 0.0;
+
+                let background_frame = ui.painter().add(egui::Shape::Noop);
+
+                // draw button if any, and extract its width
+                let button_width = if let Some(button) = button {
+                    button.show(ui);
+                    ui.min_rect().width() + ui.spacing().icon_spacing
+                } else {
+                    0.0
+                };
+
+                let header_size_without_button =
+                    egui::vec2((header_size.x - button_width).floor(), header_size.y);
+
+                ui.allocate_ui_with_layout(
+                    header_size_without_button,
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        let space_before_icon = 0.0;
+                        let icon_width = ui.spacing().icon_width_inner;
+                        let space_after_icon = ui.spacing().icon_spacing;
+
+                        let mut layout_job = egui::WidgetText::from(label).into_layout_job(
+                            ui.style(),
+                            egui::FontSelection::Default,
+                            egui::Align::LEFT,
+                        );
+                        layout_job.wrap = TextWrapping::truncate_at_width(
+                            header_size_without_button.x
+                                - (space_before_icon + icon_width + space_after_icon),
+                        );
+                        let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
+
+                        let header_response =
+                            ui.allocate_response(header_size_without_button, egui::Sense::click());
+                        let rect = header_response.rect;
+
+                        let icon_rect = egui::Rect::from_center_size(
+                            header_response.rect.left_center()
+                                + egui::vec2(space_before_icon + icon_width / 2.0, 0.0),
+                            egui::Vec2::splat(icon_width),
+                        );
+                        let icon_response = header_response.clone().with_new_rect(icon_rect);
+                        ui.paint_collapsing_triangle(
+                            openness,
+                            icon_rect.center(),
+                            ui.style().interact(&icon_response),
+                        );
+
+                        let visuals = ui.style().interact(&header_response);
+
+                        let optical_vertical_alignment = 0.5; // improves perceived vertical alignment
+                        let text_pos = icon_response.rect.right_center()
+                            + egui::vec2(
+                                space_after_icon,
+                                -0.5 * galley.size().y + optical_vertical_alignment,
+                            );
+
+                        ui.painter().galley(text_pos, galley, visuals.text_color());
+
+                        // Let the rect cover the full panel width:
+                        let bg_rect = egui::Rect::from_x_y_ranges(ui.full_span(), rect.y_range());
+
+                        ui.painter().set(
+                            background_frame,
+                            Shape::rect_filled(bg_rect, 0.0, visuals.bg_fill),
+                        );
+
+                        if header_response.clicked() {
+                            state.toggle(ui);
+                        }
+                    },
+                );
+            },
+        );
+    });
+
+    state.show_body_unindented(ui, |ui| {
+        ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
+        add_body(ui);
+        ui.add_space(4.0); // Same here
+    });
 }
