@@ -212,7 +212,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <AggregationPolicy as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Configures a policy for aggregation of values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
+                docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
                 placeholder: Some(AggregationPolicy::default().to_arrow()?),
             },
         ),
@@ -268,7 +268,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <DepthMeter as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A component indicating how long a meter is, expressed in native units.",
+                docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.",
                 placeholder: Some(DepthMeter::default().to_arrow()?),
             },
         ),
@@ -282,14 +282,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <DrawOrder as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Draw order used for the display order of 2D elements.\n\nHigher values are drawn on top of lower values.\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
+                docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
                 placeholder: Some(DrawOrder::default().to_arrow()?),
             },
         ),
         (
             <FillRatio as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from `DepthImage` projection.\nValid range is from 0 to max float although typically values above 1.0 are not useful\nDefaults to 1.0.",
+                docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from `DepthImage` projection.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
                 placeholder: Some(FillRatio::default().to_arrow()?),
             },
         ),
@@ -303,14 +303,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <HalfSizes2D as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
+                docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 placeholder: Some(HalfSizes2D::default().to_arrow()?),
             },
         ),
         (
             <HalfSizes3D as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
+                docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 placeholder: Some(HalfSizes3D::default().to_arrow()?),
             },
         ),
@@ -352,21 +352,21 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <MarkerShape as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Shape of a marker.",
+                docstring_md: "The visual appearance of a point in e.g. a 2D plot.",
                 placeholder: Some(MarkerShape::default().to_arrow()?),
             },
         ),
         (
             <MarkerSize as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Size of a marker in UI points.",
+                docstring_md: "Radius of a marker of a point in e.g. a 2D plot, measured in UI points.",
                 placeholder: Some(MarkerSize::default().to_arrow()?),
             },
         ),
         (
             <Material as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Material properties of a mesh.",
+                docstring_md: "Material properties of a mesh, e.g. its color multiplier.",
                 placeholder: Some(Material::default().to_arrow()?),
             },
         ),
@@ -415,7 +415,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Radius as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A Radius component.",
+                docstring_md: "The radius of something, e.g. a point, in world-space units.",
                 placeholder: Some(Radius::default().to_arrow()?),
             },
         ),
@@ -443,7 +443,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Scalar as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A double-precision scalar.\n\nUsed for time series plots.",
+                docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
                 placeholder: Some(Scalar::default().to_arrow()?),
             },
         ),
@@ -457,7 +457,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TensorData as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A multi-dimensional `Tensor` of data.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.\n\nNote that the buffer may be encoded in a compressed format such as `jpeg` or\nin a format with downsampled chroma, such as NV12 or YUY2.\nFor file formats, the shape is used as a hint, for chroma downsampled format\nthe shape has to be the shape of the decoded image.",
+                docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.\n\nNote that the buffer may be encoded in a compressed format such as `jpeg` or\nin a format with downsampled chroma, such as NV12 or YUY2.\nFor file formats, the shape is used as a hint, for chroma downsampled format\nthe shape has to be the shape of the decoded image.",
                 placeholder: Some(TensorData::default().to_arrow()?),
             },
         ),
@@ -513,7 +513,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TriangleIndices as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The three indices of a triangle mesh.",
+                docstring_md: "The three indices of a triangle in a triangle mesh.",
                 placeholder: Some(TriangleIndices::default().to_arrow()?),
             },
         ),

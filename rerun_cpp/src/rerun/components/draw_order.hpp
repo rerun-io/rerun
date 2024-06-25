@@ -20,9 +20,8 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: Draw order used for the display order of 2D elements.
+    /// **Component**: Draw order of 2D elements. Higher values are drawn on top of lower values.
     ///
-    /// Higher values are drawn on top of lower values.
     /// An entity can have only a single draw order component.
     /// Within an entity draw order is governed by the order of the components.
     ///

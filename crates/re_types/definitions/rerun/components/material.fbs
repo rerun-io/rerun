@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-/// Material properties of a mesh.
+/// Material properties of a mesh, e.g. its color multiplier.
 table Material (
   "attr.rust.derive": "Default, PartialEq, Eq"
 ) {

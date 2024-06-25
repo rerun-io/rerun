@@ -11,7 +11,9 @@
 #include <memory>
 
 namespace rerun::components {
-    /// **Component**: Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
+    /// **Component**: Half-size (radius) of a 2D box.
+    ///
+    /// Measured in its local coordinate system.
     ///
     /// The box extends both in negative and positive direction along each axis.
     /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.

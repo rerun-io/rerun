@@ -19,7 +19,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two `Keypoints`.
 * [`Mat3x3`](datatypes/mat3x3.md): A 3x3 Matrix.
 * [`Mat4x4`](datatypes/mat4x4.md): A 4x4 Matrix.
-* [`Material`](datatypes/material.md): Material properties of a mesh.
+* [`Material`](datatypes/material.md): Material properties of a mesh, e.g. its color multiplier.
 * [`Quaternion`](datatypes/quaternion.md): A Quaternion represented by 4 real numbers.
 * [`Range1D`](datatypes/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Range2D`](datatypes/range2d.md): An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
@@ -28,7 +28,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`RotationAxisAngle`](datatypes/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`Scale3D`](datatypes/scale3d.md): 3D scaling factor, part of a transform representation.
 * [`TensorBuffer`](datatypes/tensor_buffer.md): The underlying storage for a `Tensor`.
-* [`TensorData`](datatypes/tensor_data.md): A multi-dimensional `Tensor` of data.
+* [`TensorData`](datatypes/tensor_data.md): An N-dimensional array of numbers.
 * [`TensorDimension`](datatypes/tensor_dimension.md): A single dimension within a multi-dimensional tensor.
 * [`TensorDimensionIndexSelection`](datatypes/tensor_dimension_index_selection.md): Indexing a specific tensor dimension.
 * [`TensorDimensionSelection`](datatypes/tensor_dimension_selection.md): Selection of a single tensor dimension.

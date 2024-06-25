@@ -17,7 +17,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: Material properties of a mesh.
+    /// **Datatype**: Material properties of a mesh, e.g. its color multiplier.
     struct Material {
         /// Optional color multiplier.
         std::optional<rerun::datatypes::Rgba32> albedo_factor;

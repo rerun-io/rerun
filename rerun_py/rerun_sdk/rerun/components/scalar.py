@@ -25,7 +25,7 @@ __all__ = ["Scalar", "ScalarArrayLike", "ScalarBatch", "ScalarLike", "ScalarType
 @define(init=False)
 class Scalar(ComponentMixin):
     """
-    **Component**: A double-precision scalar.
+    **Component**: A scalar value, encoded as a 64-bit floating point.
 
     Used for time series plots.
     """

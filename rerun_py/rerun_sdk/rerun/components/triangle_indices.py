@@ -15,7 +15,7 @@ __all__ = ["TriangleIndices", "TriangleIndicesBatch", "TriangleIndicesType"]
 
 
 class TriangleIndices(datatypes.UVec3D, ComponentMixin):
-    """**Component**: The three indices of a triangle mesh."""
+    """**Component**: The three indices of a triangle in a triangle mesh."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TriangleIndicesExt in triangle_indices_ext.py

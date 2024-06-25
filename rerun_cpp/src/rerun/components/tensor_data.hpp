@@ -11,7 +11,7 @@
 #include <utility>
 
 namespace rerun::components {
-    /// **Component**: A multi-dimensional `Tensor` of data.
+    /// **Component**: An N-dimensional array of numbers.
     ///
     /// The number of dimensions and their respective lengths is specified by the `shape` field.
     /// The dimensions are ordered from outermost to innermost. For example, in the common case of
