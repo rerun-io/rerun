@@ -15,9 +15,8 @@ use re_viewport_blueprint::SpaceViewBlueprint;
 pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &mut egui::Ui) {
     let db = ctx.viewer_ctx.blueprint_db();
     let query = ctx.viewer_ctx.blueprint_query;
-    let resolver = Default::default();
 
-    let active_defaults = active_defaults(ctx, space_view, db, query, resolver);
+    let active_defaults = active_defaults(ctx, space_view, db, query);
     let component_to_vis = component_to_vis(ctx);
 
     add_new_default(
@@ -29,6 +28,26 @@ pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &
         &space_view.defaults_path,
     );
 
+    active_default_ui(
+        ctx,
+        ui,
+        &active_defaults,
+        &component_to_vis,
+        space_view,
+        query,
+        db,
+    );
+}
+
+fn active_default_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    active_defaults: &BTreeSet<ComponentName>,
+    component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
+    space_view: &SpaceViewBlueprint,
+    query: &LatestAtQuery,
+    db: &re_entity_db::EntityDb,
+) {
     let sorted_overrides = sorted_component_list_for_ui(active_defaults.iter());
 
     let query_context = QueryContext {
@@ -132,8 +151,9 @@ fn active_defaults(
     space_view: &SpaceViewBlueprint,
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
-    resolver: re_query::PromiseResolver,
 ) -> BTreeSet<ComponentName> {
+    let resolver = Default::default();
+
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
@@ -211,66 +231,7 @@ fn add_new_default(
                 open = true;
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-                let query_context = QueryContext {
-                    viewer_ctx: ctx.viewer_ctx,
-                    target_entity_path: defaults_path,
-                    archetype_name: None,
-                    query,
-                    view_state: ctx.view_state,
-                    view_ctx: Some(ctx),
-                };
-
-                // Present the option to add new components for each component that doesn't
-                // already have an active override.
-                for (component, viz) in component_to_vis {
-                    if ui.button(component.short_name()).clicked() {
-                        // We are creating a new override. We need to decide what initial value to give it.
-                        // - First see if there's an existing splat in the recording.
-                        // - Next see if visualizer system wants to provide a value.
-                        // - Finally, fall back on the default value from the component registry.
-
-                        // TODO(jleibs): Is this the right place for fallbacks to come from?
-                        let Some(mut initial_data) = ctx
-                            .visualizer_collection
-                            .get_by_identifier(*viz)
-                            .ok()
-                            .and_then(|sys| {
-                                sys.fallback_for(&query_context, *component)
-                                    .map(|fallback| DataCell::from_arrow(*component, fallback))
-                                    .ok()
-                            })
-                        else {
-                            re_log::warn!("Could not identify an initial value for: {}", component);
-                            return;
-                        };
-
-                        initial_data.compute_size_bytes();
-
-                        match DataRow::from_cells(
-                            RowId::new(),
-                            ctx.blueprint_timepoint_for_writes(),
-                            defaults_path.clone(),
-                            [initial_data],
-                        ) {
-                            Ok(row) => {
-                                ctx.viewer_ctx.command_sender.send_system(
-                                    SystemCommand::UpdateBlueprint(
-                                        ctx.blueprint_db().store_id().clone(),
-                                        vec![row],
-                                    ),
-                                );
-                            }
-                            Err(err) => {
-                                re_log::warn!(
-                                    "Failed to create DataRow for blueprint component: {}",
-                                    err
-                                );
-                            }
-                        }
-
-                        ui.close_menu();
-                    }
-                }
+                add_popup_ui(ctx, ui, defaults_path, query, component_to_vis);
             })
             .response;
         if open {
@@ -284,5 +245,71 @@ fn add_new_default(
     let button_response = ui.add_enabled_ui(enabled, button_ui).inner;
     if let Some(disabled_reason) = disabled_reason {
         button_response.on_disabled_hover_text(disabled_reason);
+    }
+}
+
+fn add_popup_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    defaults_path: &EntityPath,
+    query: &LatestAtQuery,
+    component_to_vis: Vec<(&ComponentName, &ViewSystemIdentifier)>,
+) {
+    let query_context = QueryContext {
+        viewer_ctx: ctx.viewer_ctx,
+        target_entity_path: defaults_path,
+        archetype_name: None,
+        query,
+        view_state: ctx.view_state,
+        view_ctx: Some(ctx),
+    };
+
+    // Present the option to add new components for each component that doesn't
+    // already have an active override.
+    for (component, viz) in component_to_vis {
+        if ui.button(component.short_name()).clicked() {
+            // We are creating a new override. We need to decide what initial value to give it.
+            // - First see if there's an existing splat in the recording.
+            // - Next see if visualizer system wants to provide a value.
+            // - Finally, fall back on the default value from the component registry.
+
+            // TODO(jleibs): Is this the right place for fallbacks to come from?
+            let Some(mut initial_data) = ctx
+                .visualizer_collection
+                .get_by_identifier(*viz)
+                .ok()
+                .and_then(|sys| {
+                    sys.fallback_for(&query_context, *component)
+                        .map(|fallback| DataCell::from_arrow(*component, fallback))
+                        .ok()
+                })
+            else {
+                re_log::warn!("Could not identify an initial value for: {}", component);
+                return;
+            };
+
+            initial_data.compute_size_bytes();
+
+            match DataRow::from_cells(
+                RowId::new(),
+                ctx.blueprint_timepoint_for_writes(),
+                defaults_path.clone(),
+                [initial_data],
+            ) {
+                Ok(row) => {
+                    ctx.viewer_ctx
+                        .command_sender
+                        .send_system(SystemCommand::UpdateBlueprint(
+                            ctx.blueprint_db().store_id().clone(),
+                            vec![row],
+                        ));
+                }
+                Err(err) => {
+                    re_log::warn!("Failed to create DataRow for blueprint component: {}", err);
+                }
+            }
+
+            ui.close_menu();
+        }
     }
 }
