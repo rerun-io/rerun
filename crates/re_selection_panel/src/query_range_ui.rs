@@ -170,71 +170,74 @@ fn query_range_ui(
 
     let mut interacting_with_controls = false;
 
-    let collapsing_response = ui.collapsing_header("Visible time range", false, |ui| {
-        ui.horizontal(|ui| {
-            ui.re_radio_value(has_individual_time_range, false, "Default")
-                .on_hover_text(if is_space_view {
-                    "Default query range settings for this kind of space view"
-                } else {
-                    "Query range settings inherited from parent entity or enclosing \
+    let default_open = false;
+    let collapsing_response =
+        ui.large_collapsing_header("Visible time range", default_open, |ui| {
+            ui.horizontal(|ui| {
+                ui.re_radio_value(has_individual_time_range, false, "Default")
+                    .on_hover_text(if is_space_view {
+                        "Default query range settings for this kind of space view"
+                    } else {
+                        "Query range settings inherited from parent entity or enclosing \
                         space view"
-                });
-            ui.re_radio_value(has_individual_time_range, true, "Override")
-                .on_hover_text(if is_space_view {
-                    "Set query range settings for the contents of this space view"
+                    });
+                ui.re_radio_value(has_individual_time_range, true, "Override")
+                    .on_hover_text(if is_space_view {
+                        "Set query range settings for the contents of this space view"
+                    } else {
+                        "Set query range settings for this entity"
+                    });
+            });
+            let timeline_spec =
+                if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline()) {
+                    TimelineSpec::from_time_histogram(times)
                 } else {
-                    "Set query range settings for this entity"
-                });
-        });
-        let timeline_spec =
-            if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline()) {
-                TimelineSpec::from_time_histogram(times)
+                    TimelineSpec::from_time_range(0..=0)
+                };
+
+            let current_time = TimeInt(
+                time_ctrl
+                    .time_i64()
+                    .unwrap_or_default()
+                    .at_least(*timeline_spec.range.start()),
+            ); // accounts for timeless time (TimeInt::MIN)
+
+            if *has_individual_time_range {
+                let time_range = match query_range {
+                    QueryRange::TimeRange(time_range) => time_range,
+                    QueryRange::LatestAt => {
+                        // This should only happen if we just flipped to an individual range and the parent used latest-at queries.
+                        *query_range = QueryRange::TimeRange(TimeRange::AT_CURSOR);
+                        match query_range {
+                            QueryRange::TimeRange(range) => range,
+                            QueryRange::LatestAt => unreachable!(),
+                        }
+                    }
+                };
+
+                time_range_editor(
+                    ctx,
+                    ui,
+                    time_range,
+                    current_time,
+                    &mut interacting_with_controls,
+                    time_type,
+                    &timeline_spec,
+                );
             } else {
-                TimelineSpec::from_time_range(0..=0)
-            };
-
-        let current_time = TimeInt(
-            time_ctrl
-                .time_i64()
-                .unwrap_or_default()
-                .at_least(*timeline_spec.range.start()),
-        ); // accounts for timeless time (TimeInt::MIN)
-
-        if *has_individual_time_range {
-            let time_range = match query_range {
-                QueryRange::TimeRange(time_range) => time_range,
-                QueryRange::LatestAt => {
-                    // This should only happen if we just flipped to an individual range and the parent used latest-at queries.
-                    *query_range = QueryRange::TimeRange(TimeRange::AT_CURSOR);
-                    match query_range {
-                        QueryRange::TimeRange(range) => range,
-                        QueryRange::LatestAt => unreachable!(),
+                match &query_range {
+                    QueryRange::TimeRange(range) => {
+                        show_visual_time_range(ctx, ui, range, time_type, current_time);
+                    }
+                    QueryRange::LatestAt => {
+                        let current_time =
+                            time_type.format(current_time, ctx.app_options.time_zone);
+                        ui.label(format!("Latest-at query at: {current_time}"))
+                            .on_hover_text("Uses the latest known value for each component.");
                     }
                 }
-            };
-
-            time_range_editor(
-                ctx,
-                ui,
-                time_range,
-                current_time,
-                &mut interacting_with_controls,
-                time_type,
-                &timeline_spec,
-            );
-        } else {
-            match &query_range {
-                QueryRange::TimeRange(range) => {
-                    show_visual_time_range(ctx, ui, range, time_type, current_time);
-                }
-                QueryRange::LatestAt => {
-                    let current_time = time_type.format(current_time, ctx.app_options.time_zone);
-                    ui.label(format!("Latest-at query at: {current_time}"))
-                        .on_hover_text("Uses the latest known value for each component.");
-                }
             }
-        }
-    });
+        });
 
     // Add spacer after the visible history section.
     //TODO(ab): figure out why `item_spacing.y` is added _only_ in collapsed state.
