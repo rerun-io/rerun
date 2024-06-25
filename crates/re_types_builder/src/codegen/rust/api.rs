@@ -1031,43 +1031,13 @@ fn quote_trait_impls_from_obj(
                 })
             };
 
-            let (field_info_array, field_info_getter) = if obj
-                .is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
+            let impl_archetype_reflection_marker = if obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO)
             {
-                let field_infos = obj.fields.iter().map(|field| {
-                    let display_name = re_case::to_human_case(&field.name);
-                    let documentation = field
-                        .docs
-                        .lines_with_tag_matching(|tag| tag.is_empty())
-                        .join("\n");
-                    let Some(component_name) = field.typ.fqname() else {
-                        panic!("archetype field must be an object/union or an array/vector of such")
-                    };
-
-                    quote! {
-                        ::re_types_core::ArchetypeFieldInfo {
-                            display_name: #display_name,
-                            documentation: #documentation,
-                            component_name: #component_name.into(),
-                        }
-                    }
-                }).collect_vec();
-                let num_field_infos = field_infos.len();
-
-                let field_info_array = quote! {
-                    static FIELD_INFOS: once_cell::sync::Lazy<[::re_types_core::ArchetypeFieldInfo; #num_field_infos]> =
-                    once_cell::sync::Lazy::new(|| {[#(#field_infos,)*]});
-                };
-                let field_info_getter = quote! {
-                    #[inline]
-                    fn field_infos() -> Option<::std::borrow::Cow<'static, [::re_types_core::ArchetypeFieldInfo]>> {
-                        Some(FIELD_INFOS.as_slice().into())
-                    }
-                };
-
-                (field_info_array, field_info_getter)
+                quote! {
+                    impl ::re_types_core::ArchetypeReflectionMarker for #name { }
+                }
             } else {
-                (quote!(), quote!())
+                quote!()
             };
 
             quote! {
@@ -1082,8 +1052,6 @@ fn quote_trait_impls_from_obj(
 
                 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_all]> =
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
-
-                #field_info_array
 
                 impl #name {
                     #num_components_docstring
@@ -1133,8 +1101,6 @@ fn quote_trait_impls_from_obj(
                         ALL_COMPONENTS.as_slice().into()
                     }
 
-                    #field_info_getter
-
                     #[inline]
                     fn from_arrow_components(
                         arrow_data: impl IntoIterator<Item = (
@@ -1170,6 +1136,8 @@ fn quote_trait_impls_from_obj(
                         [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }
                 }
+
+                #impl_archetype_reflection_marker
             }
         }
         ObjectKind::View => {

@@ -243,9 +243,16 @@ impl eframe::App for ExampleApp {
 
             // ---
 
-            ui.large_collapsing_header("Data", true, |ui| {
-                ui.label("Some data here");
-            });
+            ui.large_collapsing_header_with_button(
+                "Data",
+                true,
+                |ui| {
+                    ui.label("Some data here");
+                },
+                re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+                    ui.weak("empty");
+                }),
+            );
             ui.large_collapsing_header("Blueprint", true, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.label("Some blueprint stuff here, that might be wide.");

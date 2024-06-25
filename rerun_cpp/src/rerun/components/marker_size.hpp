@@ -20,7 +20,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: Size of a marker in UI points.
+    /// **Component**: Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
     struct MarkerSize {
         float value;
 

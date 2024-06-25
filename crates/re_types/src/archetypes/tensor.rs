@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A generic n-dimensional Tensor.
+/// **Archetype**: An N-dimensional array of numbers.
 ///
 /// ## Example
 ///

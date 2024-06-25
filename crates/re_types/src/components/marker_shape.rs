@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Shape of a marker.
+/// **Component**: The visual appearance of a point in e.g. a 2D plot.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum MarkerShape {
     /// `⏺`

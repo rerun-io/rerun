@@ -13,7 +13,8 @@ namespace rerun::components {
     /// **Component**: How much a primitive fills out the available space.
     ///
     /// Used for instance to scale the points of the point cloud created from `DepthImage` projection.
-    /// Valid range is from 0 to max float although typically values above 1.0 are not useful
+    /// Valid range is from 0 to max float although typically values above 1.0 are not useful.
+    ///
     /// Defaults to 1.0.
     struct FillRatio {
         rerun::datatypes::Float32 value;
