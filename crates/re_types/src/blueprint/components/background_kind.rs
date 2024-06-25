@@ -23,7 +23,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The type of the background in a view.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum BackgroundKind {
     /// A dark gradient.
     ///
@@ -40,9 +40,24 @@ pub enum BackgroundKind {
     SolidColor = 3,
 }
 
-impl BackgroundKind {
-    /// All the different enum variants.
-    pub const ALL: [Self; 3] = [Self::GradientDark, Self::GradientBright, Self::SolidColor];
+impl ::re_types_core::reflection::Enum for BackgroundKind {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[Self::GradientDark, Self::GradientBright, Self::SolidColor]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::GradientDark => {
+                "A dark gradient.\n\nIn 3D views it changes depending on the direction of the view."
+            }
+            Self::GradientBright => {
+                "A bright gradient.\n\nIn 3D views it changes depending on the direction of the view."
+            }
+            Self::SolidColor => "Simple uniform color.",
+        }
+    }
 }
 
 impl ::re_types_core::SizeBytes for BackgroundKind {

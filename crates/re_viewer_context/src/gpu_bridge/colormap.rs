@@ -1,5 +1,7 @@
-use crate::gpu_bridge::{get_or_create_texture, render_image};
+use re_types::reflection::Enum as _;
 use re_ui::list_item;
+
+use crate::gpu_bridge::{get_or_create_texture, render_image};
 
 /// Show the given colormap as a horizontal bar.
 fn colormap_preview_ui(
@@ -69,7 +71,7 @@ pub fn colormap_dropdown_button_ui(
 ) {
     let selected_text = map.to_string();
     let content_ui = |ui: &mut egui::Ui| {
-        for option in re_types::components::Colormap::ALL {
+        for &option in re_types::components::Colormap::variants() {
             let list_item = list_item::ListItem::new().selected(&option == map);
 
             let response = if let Some(render_ctx) = render_ctx {

@@ -420,13 +420,9 @@ pub fn component_path_button_to(
                 .with_icon(icon),
             );
 
-            let component_name = component_path.component_name;
-
-            ui.label(format!("Full name: {}", component_name.full_name()));
-
-            if let Some(url) = component_name.doc_url() {
-                ui.re_hyperlink("Documentation", url);
-            }
+            component_path
+                .component_name
+                .data_ui_recording(ctx, ui, UiLayout::Tooltip);
         });
     });
 

@@ -44,6 +44,15 @@ pub enum UiLayout {
 }
 
 impl UiLayout {
+    /// Do we have a lot of vertical space?
+    #[inline]
+    pub fn is_selection_panel(self) -> bool {
+        match self {
+            Self::List | Self::Tooltip => false,
+            Self::SelectionPanelLimitHeight | Self::SelectionPanelFull => true,
+        }
+    }
+
     /// Build an egui table and configure it for the given UI layout.
     ///
     /// Note that the caller is responsible for strictly limiting the number of displayed rows for
