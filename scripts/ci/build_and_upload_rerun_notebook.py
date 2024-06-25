@@ -26,7 +26,7 @@ def run(
 
 
 def build_and_upload(bucket: Bucket, gcs_dir: str) -> None:
-    dist = "dist/rerun_notebook/"
+    dist = "dist/"
 
     # Build into `dist`
     run(

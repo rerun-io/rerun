@@ -227,13 +227,14 @@ jobs:
         # only build the notebook if we are building for pypi and running linux-x64
         if: ${{ inputs.MODE == 'pypi' && inputs.PLATFORM == 'linux-x64' }}
         run: |
+          rm dist/*.whl
           pixi run js-build-base
           pixi run python scripts/ci/build_and_upload_rerun_notebook.py \
-            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels/rerun_notebook
+            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
 
       - name: Save rerun_notebook wheel artifact
         if: ${{ inputs.MODE == 'pypi' && inputs.PLATFORM == 'linux-x64' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rerun_notebook
+          name: rerun_notebook_wheel
           path: dist
