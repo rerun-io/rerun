@@ -10,7 +10,7 @@ use re_data_ui::{
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
 use re_types::blueprint::components::Interactive;
-use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{icons, list_item, ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt};
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
     DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
@@ -19,7 +19,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
-use crate::{defaults_ui::defaults_ui, visualizer_ui::visualizer_ui};
+use crate::{defaults_ui::space_view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
 use crate::{
     query_range_ui::query_range_ui_data_result, query_range_ui::query_range_ui_space_view,
     selection_history_ui::SelectionHistoryUi,
@@ -222,10 +222,8 @@ impl SelectionPanel {
                 }
             });
 
-            ui.large_collapsing_header("Component defaults", true, |ui| {
-                let view_ctx = view.bundle_context_with_state(ctx, view_state);
-                defaults_ui(&view_ctx, view, ui);
-            });
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
+            space_view_components_defaults_section_ui(&view_ctx, ui, view);
         }
 
         if let Some(view) = blueprint.space_view(view_id) {

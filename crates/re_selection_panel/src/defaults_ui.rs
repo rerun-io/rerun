@@ -12,31 +12,51 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-pub fn defaults_ui(ctx: &ViewContext<'_>, space_view: &SpaceViewBlueprint, ui: &mut egui::Ui) {
+pub fn space_view_components_defaults_section_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    space_view: &SpaceViewBlueprint,
+) {
     let db = ctx.viewer_ctx.blueprint_db();
     let query = ctx.viewer_ctx.blueprint_query;
 
     let active_defaults = active_defaults(ctx, space_view, db, query);
     let component_to_vis = component_to_vis(ctx);
 
-    add_new_default(
-        ctx,
-        query,
-        ui,
-        &component_to_vis,
-        &active_defaults,
-        &space_view.defaults_path,
-    );
+    let components_to_show_in_add_menu =
+        components_to_show_in_add_menu(ctx, &component_to_vis, &active_defaults);
+    let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
-    active_default_ui(
-        ctx,
-        ui,
-        &active_defaults,
-        &component_to_vis,
-        space_view,
-        query,
-        db,
-    );
+    let mut add_button_is_open = false;
+    let mut add_button = re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+        add_button_is_open = true;
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        add_popup_ui(
+            ctx,
+            ui,
+            &space_view.defaults_path,
+            query,
+            components_to_show_in_add_menu.unwrap_or_default(),
+        );
+    })
+    .hover_text("Add more component defaults");
+
+    if let Some(reason) = reason_we_cannot_add_more {
+        add_button = add_button.enabled(false).disabled_hover_text(reason);
+    }
+
+    let body = |ui: &mut egui::Ui| {
+        active_default_ui(
+            ctx,
+            ui,
+            &active_defaults,
+            &component_to_vis,
+            space_view,
+            query,
+            db,
+        );
+    };
+    ui.large_collapsing_header_with_button("Component defaults", true, body, add_button);
 }
 
 fn active_default_ui(
@@ -61,6 +81,11 @@ fn active_default_ui(
 
     re_ui::list_item::list_item_scope(ui, "defaults", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
+
+        if sorted_overrides.is_empty() {
+            ui.weak("(none)");
+        }
+
         for component_name in sorted_overrides {
             let Some(visualizer_identifier) = component_to_vis.get(&component_name) else {
                 continue;
@@ -170,44 +195,6 @@ fn active_defaults(
                 .map_or(false, |data| !data.is_empty())
         })
         .collect::<BTreeSet<_>>()
-}
-
-fn add_new_default(
-    ctx: &ViewContext<'_>,
-    query: &LatestAtQuery,
-    ui: &mut egui::Ui,
-    component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
-    active_defaults: &BTreeSet<ComponentName>,
-    defaults_path: &EntityPath,
-) {
-    let (disabled_reason, component_to_vis) =
-        match components_to_show_in_add_menu(ctx, component_to_vis, active_defaults) {
-            Ok(component_to_vis) => (None, component_to_vis),
-            Err(disabled_reason) => (Some(disabled_reason), vec![]),
-        };
-
-    let button_ui = |ui: &mut egui::Ui| -> egui::Response {
-        let mut open = false;
-        let menu = ui
-            .menu_button("Add", |ui| {
-                open = true;
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-
-                add_popup_ui(ctx, ui, defaults_path, query, component_to_vis);
-            })
-            .response;
-        if open {
-            menu
-        } else {
-            menu.on_hover_text("Choose a component to specify an override value.".to_owned())
-        }
-    };
-
-    let enabled = disabled_reason.is_none();
-    let button_response = ui.add_enabled_ui(enabled, button_ui).inner;
-    if let Some(disabled_reason) = disabled_reason {
-        button_response.on_disabled_hover_text(disabled_reason);
-    }
 }
 
 fn components_to_show_in_add_menu(
