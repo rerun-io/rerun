@@ -180,49 +180,11 @@ fn add_new_default(
     active_defaults: &BTreeSet<ComponentName>,
     defaults_path: &EntityPath,
 ) {
-    let mut disabled_reason = None;
-    if component_to_vis.is_empty() {
-        disabled_reason = Some("No components to visualize".to_owned());
-    }
-
-    let mut component_to_vis = component_to_vis
-        .iter()
-        .filter(|(component, _)| !active_defaults.contains(*component))
-        .collect::<Vec<_>>();
-
-    if component_to_vis.is_empty() && disabled_reason.is_none() {
-        disabled_reason = Some("All components already have active defaults".to_owned());
-    }
-
-    {
-        // Make sure we have editors. If we don't, explain to the user.
-        let mut missing_editors = vec![];
-
-        component_to_vis.retain(|(component, _)| {
-            let component = **component;
-
-            // If there is no registered editor, don't let the user create an override
-            // TODO(andreas): Can only handle single line editors right now.
-            let types = ctx
-                .viewer_ctx
-                .component_ui_registry
-                .registered_ui_types(component);
-
-            if types.contains(ComponentUiTypes::SingleLineEditor) {
-                true // show it
-            } else {
-                missing_editors.push(component);
-                false // don't show
-            }
-        });
-
-        if component_to_vis.is_empty() && disabled_reason.is_none() {
-            disabled_reason = Some(format!(
-                "Rerun lacks edit UI for: {}",
-                missing_editors.iter().map(|c| c.short_name()).join(", ")
-            ));
-        }
-    }
+    let (disabled_reason, component_to_vis) =
+        match components_to_show_in_add_menu(ctx, component_to_vis, active_defaults) {
+            Ok(component_to_vis) => (None, component_to_vis),
+            Err(disabled_reason) => (Some(disabled_reason), vec![]),
+        };
 
     let button_ui = |ui: &mut egui::Ui| -> egui::Response {
         let mut open = false;
@@ -248,12 +210,64 @@ fn add_new_default(
     }
 }
 
+fn components_to_show_in_add_menu(
+    ctx: &ViewContext<'_>,
+    component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
+    active_defaults: &BTreeSet<ComponentName>,
+) -> Result<Vec<(ComponentName, ViewSystemIdentifier)>, String> {
+    if component_to_vis.is_empty() {
+        return Err("No components to visualize".to_owned());
+    }
+
+    let mut component_to_vis = component_to_vis
+        .iter()
+        .filter(|(component, _)| !active_defaults.contains(*component))
+        .map(|(c, v)| (*c, *v))
+        .collect::<Vec<_>>();
+
+    if component_to_vis.is_empty() {
+        return Err("All components already have active defaults".to_owned());
+    }
+
+    {
+        // Make sure we have editors. If we don't, explain to the user.
+        let mut missing_editors = vec![];
+
+        component_to_vis.retain(|(component, _)| {
+            let component = *component;
+
+            // If there is no registered editor, don't let the user create an override
+            // TODO(andreas): Can only handle single line editors right now.
+            let types = ctx
+                .viewer_ctx
+                .component_ui_registry
+                .registered_ui_types(component);
+
+            if types.contains(ComponentUiTypes::SingleLineEditor) {
+                true // show it
+            } else {
+                missing_editors.push(component);
+                false // don't show
+            }
+        });
+
+        if component_to_vis.is_empty() {
+            return Err(format!(
+                "Rerun lacks edit UI for: {}",
+                missing_editors.iter().map(|c| c.short_name()).join(", ")
+            ));
+        }
+    }
+
+    Ok(component_to_vis)
+}
+
 fn add_popup_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     defaults_path: &EntityPath,
     query: &LatestAtQuery,
-    component_to_vis: Vec<(&ComponentName, &ViewSystemIdentifier)>,
+    component_to_vis: Vec<(ComponentName, ViewSystemIdentifier)>,
 ) {
     let query_context = QueryContext {
         viewer_ctx: ctx.viewer_ctx,
@@ -276,11 +290,11 @@ fn add_popup_ui(
             // TODO(jleibs): Is this the right place for fallbacks to come from?
             let Some(mut initial_data) = ctx
                 .visualizer_collection
-                .get_by_identifier(*viz)
+                .get_by_identifier(viz)
                 .ok()
                 .and_then(|sys| {
-                    sys.fallback_for(&query_context, *component)
-                        .map(|fallback| DataCell::from_arrow(*component, fallback))
+                    sys.fallback_for(&query_context, component)
+                        .map(|fallback| DataCell::from_arrow(component, fallback))
                         .ok()
                 })
             else {
