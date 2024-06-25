@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import importlib.metadata
 import pathlib
+import time
 from typing import Any, Literal
 
 import anywidget
+import jupyter_ui_poll
 import traitlets
 
 try:
@@ -72,3 +74,11 @@ class Viewer(anywidget.AnyWidget):
             return
 
         self.send({"type": "rrd"}, buffers=[data])
+
+    def block_until_ready(self) -> None:
+        """Block until the viewer is ready."""
+
+        with jupyter_ui_poll.ui_events() as poll:
+            while self._ready is False:
+                poll(1)
+                time.sleep(0.1)
