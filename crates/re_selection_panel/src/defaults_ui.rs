@@ -180,7 +180,7 @@ fn add_new_default(
                 true // show it
             } else {
                 missing_editors.push(component);
-                false // don't shopw
+                false // don't show
             }
         });
 
