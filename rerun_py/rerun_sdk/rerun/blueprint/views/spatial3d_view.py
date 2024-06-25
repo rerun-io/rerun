@@ -71,6 +71,7 @@ class Spatial3DView(SpaceView):
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
@@ -102,6 +103,9 @@ class Spatial3DView(SpaceView):
             List of default components or component batches to add to the space view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
+        overrides:
+            Dictionary of overrides to apply to the space view. The key is the path to the component to override,
+            and the value is the component or component batch to use instead.
         background:
             Configuration for the background of the view.
         time_ranges:
@@ -131,4 +135,5 @@ class Spatial3DView(SpaceView):
             visible=visible,
             properties=properties,
             defaults=defaults,
+            overrides=overrides,
         )
