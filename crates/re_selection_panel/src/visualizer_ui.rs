@@ -284,8 +284,8 @@ fn visualizer_components(
             }
             // Store (if available)
             if let Some(result_store) = result_store {
-                ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Store").value_fn(
-                    |ui, _style| {
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
                         re_data_ui::EntityLatestAtResults {
                             entity_path: data_result.entity_path.clone(),
                             results: result_store,
@@ -297,8 +297,8 @@ fn visualizer_components(
                             &store_query,
                             ctx.recording(),
                         );
-                    },
-                ))
+                    }),
+                )
                 .on_hover_text("The value that was logged to the data store");
             }
             // Default (if available)
