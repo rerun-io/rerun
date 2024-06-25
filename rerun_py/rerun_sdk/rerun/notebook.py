@@ -83,7 +83,7 @@ class Viewer:
             callback=self._flush_hook,
         )
 
-    def display(self, block_until_ready=True) -> None:
+    def display(self, block_until_ready: bool = True) -> None:
         """
         Display the viewer in the notebook cell immediately.
 
@@ -119,7 +119,7 @@ def notebook_show(
     height: int = DEFAULT_HEIGHT,
     blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
-):
+) -> None:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
 
