@@ -152,65 +152,18 @@ impl SelectionPanel {
 
                 match item {
                     Item::SpaceView(view_id) => {
-                        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
-
-                        if let Some(space_view) = blueprint.space_view(view_id) {
-                            if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
-                                ctx,
-                                ui,
-                                *view_id,
-                                &space_view.contents.entity_path_filter,
-                                &space_view.space_origin,
-                            ) {
-                                space_view
-                                    .contents
-                                    .set_entity_path_filter(ctx, &new_entity_path_filter);
-                            }
-                        }
-
-                        if let Some(view) = blueprint.space_view(view_id) {
-                            space_view_component_defaults_section_ui(ctx, ui, view, view_states);
-                        }
-
-                        if let Some(view) = blueprint.space_view(view_id) {
-                            query_range_ui_space_view(ctx, ui, view);
-                        }
+                        self.space_view_selection_ui(ctx, ui, blueprint, view_id, view_states);
                     }
+
                     Item::DataResult(view_id, instance_path) => {
-                        // Special override section
-                        // Only show visualizer selection when the entire entity is selected.
-                        // (showing it for instances gives the wrong impression)
-                        if instance_path.is_all() {
-                            if let Some(view) = blueprint.space_views.get(view_id) {
-                                let view_ctx = view.bundle_context_with_states(ctx, view_states);
-                                visualizer_ui(&view_ctx, view, &instance_path.entity_path, ui);
-                            }
-                        }
-
-                        if instance_path.instance.is_all() {
-                            // the whole entity
-                            let entity_path = &instance_path.entity_path;
-                            let query_result = ctx.lookup_query_result(*view_id);
-                            if let Some(data_result) = query_result
-                                .tree
-                                .lookup_result_by_path(entity_path)
-                                .cloned()
-                            {
-                                if let Some(space_view) = blueprint.space_view(view_id) {
-                                    ui.large_collapsing_header("Entity properties", true, |ui| {
-                                        entity_props_ui(
-                                            &space_view
-                                                .bundle_context_with_states(ctx, view_states),
-                                            ui,
-                                            ctx.lookup_query_result(*view_id),
-                                            &data_result,
-                                        );
-                                    });
-                                }
-
-                                query_range_ui_data_result(ctx, ui, &data_result);
-                            }
-                        }
+                        data_results_selection_ui(
+                            ctx,
+                            ui,
+                            instance_path,
+                            blueprint,
+                            view_id,
+                            view_states,
+                        );
                     }
                     _ => {}
                 }
@@ -220,6 +173,63 @@ impl SelectionPanel {
                     ui.add_space(8.);
                 }
             });
+        }
+    }
+
+    fn space_view_selection_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        blueprint: &ViewportBlueprint,
+        view_id: &SpaceViewId,
+        view_states: &mut ViewStates,
+    ) {
+        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
+
+        if let Some(space_view) = blueprint.space_view(view_id) {
+            if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
+                ctx,
+                ui,
+                *view_id,
+                &space_view.contents.entity_path_filter,
+                &space_view.space_origin,
+            ) {
+                space_view
+                    .contents
+                    .set_entity_path_filter(ctx, &new_entity_path_filter);
+            }
+        }
+
+        if let Some(view) = blueprint.space_view(view_id) {
+            let view_class = view.class(ctx.space_view_class_registry);
+            let view_state = view_states.get_mut_or_create(view.id, view_class);
+
+            ui.large_collapsing_header("View settings", true, |ui| {
+                let cursor = ui.cursor();
+
+                if let Err(err) =
+                    view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
+                {
+                    re_log::error_once!(
+                        "Error in space view selection UI (class: {}, display name: {}): {err}",
+                        view.class_identifier(),
+                        view_class.display_name(),
+                    );
+                }
+
+                if cursor == ui.cursor() {
+                    ui.weak("(none)");
+                }
+            });
+
+            ui.large_collapsing_header("Component Defaults", true, |ui| {
+                let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                defaults_ui(&view_ctx, view, ui);
+            });
+        }
+
+        if let Some(view) = blueprint.space_view(view_id) {
+            query_range_ui_space_view(ctx, ui, view);
         }
     }
 
@@ -390,6 +400,49 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 }
 
+fn data_results_selection_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut Ui,
+    instance_path: &InstancePath,
+    blueprint: &ViewportBlueprint,
+    view_id: &SpaceViewId,
+    view_states: &mut ViewStates,
+) {
+    // Special override section
+    // Only show visualizer selection when the entire entity is selected.
+    // (showing it for instances gives the wrong impression)
+    if instance_path.is_all() {
+        if let Some(view) = blueprint.space_views.get(view_id) {
+            let view_ctx = view.bundle_context_with_states(ctx, view_states);
+            visualizer_ui(&view_ctx, view, &instance_path.entity_path, ui);
+        }
+    }
+
+    if instance_path.instance.is_all() {
+        // the whole entity
+        let entity_path = &instance_path.entity_path;
+        let query_result = ctx.lookup_query_result(*view_id);
+        if let Some(data_result) = query_result
+            .tree
+            .lookup_result_by_path(entity_path)
+            .cloned()
+        {
+            if let Some(space_view) = blueprint.space_view(view_id) {
+                ui.large_collapsing_header("Entity properties", true, |ui| {
+                    entity_props_ui(
+                        &space_view.bundle_context_with_states(ctx, view_states),
+                        ui,
+                        ctx.lookup_query_result(*view_id),
+                        &data_result,
+                    );
+                });
+            }
+
+            query_range_ui_data_result(ctx, ui, &data_result);
+        }
+    }
+}
+
 fn clone_space_view_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
@@ -409,29 +462,6 @@ fn clone_space_view_button_ui(
             blueprint.mark_user_interaction(ctx);
         }
     }
-}
-
-fn space_view_component_defaults_section_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut Ui,
-    view: &re_viewport_blueprint::SpaceViewBlueprint,
-    view_states: &mut ViewStates,
-) {
-    ui.large_collapsing_header("Component Defaults", true, |ui| {
-        let view_class = view.class(ctx.space_view_class_registry);
-        let view_state = view_states.get_mut_or_create(view.id, view_class);
-
-        if let Err(err) = view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
-        {
-            re_log::error!(
-                "Error in space view selection UI (class: {}, display name: {}): {err}",
-                view.class_identifier(),
-                view_class.display_name(),
-            );
-        }
-        let view_ctx = view.bundle_context_with_state(ctx, view_state);
-        defaults_ui(&view_ctx, view, ui);
-    });
 }
 
 fn container_children(
