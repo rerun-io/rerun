@@ -8,7 +8,7 @@ use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_viewer_context::{
     blueprint_timeline, ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _,
-    ViewContext, ViewSystemIdentifier,
+    UiLayout, ViewContext, ViewSystemIdentifier,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -265,7 +265,11 @@ fn add_popup_ui(
     // Present the option to add new components for each component that doesn't
     // already have an active override.
     for (component, viz) in component_to_vis {
-        if ui.button(component.short_name()).clicked() {
+        if ui
+            .button(component.short_name())
+            .on_hover_ui(|ui| component.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip))
+            .clicked()
+        {
             // We are creating a new override. We need to decide what initial value to give it.
             // - First see if there's an existing splat in the recording.
             // - Next see if visualizer system wants to provide a value.
