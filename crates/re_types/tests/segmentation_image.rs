@@ -26,7 +26,7 @@ fn segmentation_image_roundtrip() {
         }
         .into(),
         draw_order: None,
-        opacity: Some(123.0.into()),
+        opacity: None,
     }];
 
     let all_arch_serialized = [SegmentationImage::try_from(ndarray::array![
