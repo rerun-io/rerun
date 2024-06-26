@@ -184,10 +184,13 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             },
         )?;
 
-        // TODO(#702): draw oder is translated to depth offset, which works fine for opaque images, but for everything with transparency,
-        // actual drawing order is still important.
-        // We can't avoid all bugs here (we need global renderable sorting in re_renderer), but mitigate some of it by sorting images
-        // by depth offset and then (for same depth offset) by opacity.
+        // TODO(#702): draw oder is translated to depth offset, which works fine for opaque images,
+        // but for everything with transparency, actual drawing order is still important.
+        // We mitigate this a bit by at least sorting the segmentation images within each other.
+        // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
+        // visualizers are executed in the order of their identifiers.
+        // -> The draw order is always DepthImage then Image then SegmentationImage,
+        //    which happens to be exactly what we want 🙈
         self.images.sort_by_key(|image| {
             (
                 image.textured_rect.options.depth_offset,
