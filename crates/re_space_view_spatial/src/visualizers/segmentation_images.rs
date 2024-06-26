@@ -1,6 +1,5 @@
 use itertools::Itertools as _;
 
-use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
 use re_query::range_zip_1x1;
 use re_space_view::diff_component_filter;
@@ -17,9 +16,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext, ui::SpatialSpaceViewState,
-    view_kind::SpatialSpaceViewKind, visualizers::filter_visualizable_2d_entities,
-    PickableImageRect, SpatialSpaceView2D,
+    ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
+    visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
 };
 
 use super::{
@@ -46,76 +44,6 @@ struct SegmentationImageComponentData<'a> {
 
     tensor: &'a TensorData,
     opacity: Option<&'a Opacity>,
-}
-
-impl SegmentationImageVisualizer {
-    fn process_segmentation_image_data<'a>(
-        &mut self,
-        ctx: &QueryContext<'_>,
-        entity_path: &EntityPath,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = SegmentationImageComponentData<'a>>,
-    ) {
-        let meaning = TensorDataMeaning::ClassId;
-
-        for data in data {
-            if !data.tensor.is_shaped_like_an_image() {
-                continue;
-            }
-
-            let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
-                c.entry(tensor_data_row_id, data.tensor.0.clone())
-            }) {
-                Ok(tensor) => tensor,
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {entity_path}: {err}"
-                    );
-                    continue;
-                }
-            };
-
-            // TODO(andreas): colormap is only available for depth images right now.
-            let colormap = None;
-
-            let opacity = data
-                .opacity
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
-            let multiplicative_tint =
-                re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
-
-            if let Some(textured_rect) = tensor_to_textured_rect(
-                ctx.viewer_ctx,
-                entity_path,
-                ent_context,
-                tensor_data_row_id,
-                &tensor,
-                meaning,
-                multiplicative_tint,
-                colormap,
-            ) {
-                // Only update the bounding box if this is a 2D space view.
-                // This is avoids a cyclic relationship where the image plane grows
-                // the bounds which in turn influence the size of the image plane.
-                // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-                    self.data.add_bounding_box(
-                        entity_path.hash(),
-                        bounding_box_for_textured_rect(&textured_rect),
-                        ent_context.world_from_entity,
-                    );
-                }
-
-                self.images.push(PickableImageRect {
-                    ent_path: entity_path.clone(),
-                    meaning,
-                    textured_rect,
-                });
-            }
-        }
-    }
 }
 
 impl IdentifiedViewSystem for SegmentationImageVisualizer {
@@ -180,7 +108,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                 let opacity = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed())
+                let data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed())
                     .filter_map(|(&index, tensors, opacity)| {
                         tensors
                             .first()
@@ -191,7 +119,67 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             })
                     });
 
-                self.process_segmentation_image_data(ctx, entity_path, spatial_ctx, &mut data);
+                let meaning = TensorDataMeaning::ClassId;
+
+                for data in data {
+                    if !data.tensor.is_shaped_like_an_image() {
+                        continue;
+                    }
+
+                    let tensor_data_row_id = data.index.1;
+                    let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
+                        c.entry(tensor_data_row_id, data.tensor.0.clone())
+                    }) {
+                        Ok(tensor) => tensor,
+                        Err(err) => {
+                            re_log::warn_once!(
+                                "Encountered problem decoding tensor at path {entity_path}: {err}"
+                            );
+                            continue;
+                        }
+                    };
+
+                    // TODO(andreas): colormap is only available for depth images right now.
+                    let colormap = None;
+
+                    let opacity = data
+                        .opacity
+                        .copied()
+                        .unwrap_or_else(|| self.fallback_for(ctx));
+                    let multiplicative_tint =
+                        re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
+
+                    if let Some(textured_rect) = tensor_to_textured_rect(
+                        ctx.viewer_ctx,
+                        entity_path,
+                        spatial_ctx,
+                        tensor_data_row_id,
+                        &tensor,
+                        meaning,
+                        multiplicative_tint,
+                        colormap,
+                    ) {
+                        // Only update the bounding box if this is a 2D space view.
+                        // This is avoids a cyclic relationship where the image plane grows
+                        // the bounds which in turn influence the size of the image plane.
+                        // See: https://github.com/rerun-io/rerun/issues/3728
+                        if spatial_ctx.space_view_class_identifier
+                            == SpatialSpaceView2D::identifier()
+                        {
+                            self.data.add_bounding_box(
+                                entity_path.hash(),
+                                bounding_box_for_textured_rect(&textured_rect),
+                                spatial_ctx.world_from_entity,
+                            );
+                        }
+
+                        self.images.push(PickableImageRect {
+                            ent_path: entity_path.clone(),
+                            meaning,
+                            textured_rect,
+                        });
+                    }
+                }
 
                 Ok(())
             },
