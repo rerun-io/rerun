@@ -8,7 +8,7 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
-use re_types::{blueprint::components::Interactive, external::image::flat::view};
+use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, LabelContent, PropertyContent},
