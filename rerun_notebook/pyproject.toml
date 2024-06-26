@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rerun-notebook"
-version = "0.17.0-alpha.7"
+version = "0.17.0-alpha.8"
 dependencies = ["anywidget", "jupyter-ui-poll"]
 readme = "README.md"
 
