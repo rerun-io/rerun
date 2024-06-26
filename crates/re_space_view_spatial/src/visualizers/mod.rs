@@ -17,7 +17,7 @@ mod spatial_view_visualizer;
 mod transform3d_arrows;
 
 pub use cameras::CamerasVisualizer;
-pub use images::{ImageVisualizer, ViewerImage};
+pub use images::ImageVisualizer;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer, Transform3DDetector};
 

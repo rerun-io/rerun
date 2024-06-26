@@ -5,7 +5,7 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::PickingLayerProcessor;
 
-use crate::visualizers::ViewerImage;
+use crate::PickableImageRect;
 use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -107,7 +107,7 @@ impl PickingContext {
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
         previous_picking_result: &Option<PickingResult>,
-        images: &[ViewerImage],
+        images: &[PickableImageRect],
         ui_rects: &[PickableUiRect],
     ) -> PickingResult {
         re_tracing::profile_function!();
@@ -240,7 +240,10 @@ fn picking_gpu(
     }
 }
 
-fn picking_textured_rects(context: &PickingContext, images: &[ViewerImage]) -> Vec<PickingRayHit> {
+fn picking_textured_rects(
+    context: &PickingContext,
+    images: &[PickableImageRect],
+) -> Vec<PickingRayHit> {
     re_tracing::profile_function!();
 
     let mut hits = Vec::new();

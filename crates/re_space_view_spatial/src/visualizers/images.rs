@@ -32,21 +32,10 @@ use crate::{
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
-    SpatialSpaceView2D, SpatialSpaceView3D,
+    PickableImageRect, SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
 use super::SpatialViewVisualizerData;
-
-pub struct ViewerImage {
-    /// Path to the image (note image instance ids would refer to pixels!)
-    pub ent_path: EntityPath,
-
-    /// The meaning of the tensor stored in the image
-    pub meaning: TensorDataMeaning,
-
-    /// Textured rectangle for the renderer.
-    pub textured_rect: TexturedRect,
-}
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
@@ -130,7 +119,7 @@ struct ImageGrouping {
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub images: Vec<ViewerImage>,
+    pub images: Vec<PickableImageRect>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
@@ -252,7 +241,7 @@ impl ImageVisualizer {
                         ent_context.world_from_entity,
                     );
 
-                    self.images.push(ViewerImage {
+                    self.images.push(PickableImageRect {
                         ent_path: entity_path.clone(),
                         meaning,
                         textured_rect,
@@ -344,7 +333,7 @@ impl ImageVisualizer {
                     );
                 }
 
-                self.images.push(ViewerImage {
+                self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
                     meaning,
                     textured_rect,
@@ -476,7 +465,7 @@ impl ImageVisualizer {
                     );
                 }
 
-                self.images.push(ViewerImage {
+                self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
                     meaning,
                     textured_rect,
