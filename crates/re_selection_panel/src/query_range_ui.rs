@@ -111,13 +111,17 @@ fn visible_time_range_ui(
     let has_individual_range_before = has_individual_range;
     let query_range_before = resolved_query_range.clone();
 
-    query_range_ui(
-        ctx,
-        ui,
-        &mut resolved_query_range,
-        &mut has_individual_range,
-        is_space_view,
-    );
+    ui.scope(|ui| {
+        // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+        query_range_ui(
+            ctx,
+            ui,
+            &mut resolved_query_range,
+            &mut has_individual_range,
+            is_space_view,
+        );
+    });
 
     if query_range_before != resolved_query_range
         || has_individual_range_before != has_individual_range
@@ -238,16 +242,6 @@ fn query_range_ui(
                 }
             }
         });
-
-    // Add spacer after the visible history section.
-    //TODO(ab): figure out why `item_spacing.y` is added _only_ in collapsed state.
-    if collapsing_response.body_response.is_some() {
-        ui.add_space(ui.spacing().item_spacing.y / 2.0);
-    } else {
-        ui.add_space(-ui.spacing().item_spacing.y / 2.0);
-    }
-    ui.full_span_separator();
-    ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
     // Decide when to show the visible history highlight in the timeline. The trick is that when
     // interacting with the controls, the mouse might end up outside the collapsing header rect,
