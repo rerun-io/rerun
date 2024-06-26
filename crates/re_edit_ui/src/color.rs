@@ -23,5 +23,8 @@ pub fn edit_color_ui(
     );
 
     let [r, g, b, a] = edit_color.to_array();
-    response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"))
+    response.on_hover_ui(|ui| {
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        ui.monospace(format!("#{r:02x}{g:02x}{b:02x}{a:02x}"));
+    })
 }
