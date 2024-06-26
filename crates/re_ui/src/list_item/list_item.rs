@@ -23,6 +23,9 @@ pub struct ShowCollapsingResponse<R> {
 
     /// Response from the body, if it was displayed.
     pub body_response: Option<egui::InnerResponse<R>>,
+
+    /// 0.0 if fully closed, 1.0 if fully open, and something in-between while animating.
+    pub openness: f32,
 }
 
 /// Content-generic list item.
@@ -45,6 +48,7 @@ pub struct ListItem {
     pub draggable: bool,
     pub drag_target: bool,
     pub force_hovered: bool,
+    force_background: Option<egui::Color32>,
     pub collapse_openness: Option<f32>,
     height: f32,
 }
@@ -57,6 +61,7 @@ impl Default for ListItem {
             draggable: false,
             drag_target: false,
             force_hovered: false,
+            force_background: None,
             collapse_openness: None,
             height: DesignTokens::list_item_height(),
         }
@@ -117,6 +122,16 @@ impl ListItem {
         self
     }
 
+    /// Override the background color for the item.
+    ///
+    /// If set, this takes precedence over [`Self::force_hovered`] and any kind of selection/
+    /// interaction-driven background handling.
+    #[inline]
+    pub fn force_background(mut self, force_background: egui::Color32) -> Self {
+        self.force_background = Some(force_background);
+        self
+    }
+
     /// Set the item height.
     ///
     /// The default is provided by [`DesignTokens::list_item_height`] and is suitable for hierarchical
@@ -156,15 +171,49 @@ impl ListItem {
 
     /// Draw the item as a non-leaf node from a hierarchical list.
     ///
-    /// The `id` should be globally unique!
-    /// You can use `ui.make_persistent_id(…)` for that.
+    /// The `id` should be globally unique! You can use `ui.make_persistent_id(…)` for that. The
+    /// children content is indented.
     ///
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_hierarchical_with_children<R>(
+        self,
+        ui: &mut Ui,
+        id: egui::Id,
+        default_open: bool,
+        content: impl ListItemContent,
+        add_children: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> ShowCollapsingResponse<R> {
+        self.show_hierarchical_with_children_impl(ui, id, default_open, true, content, add_children)
+    }
+
+    /// Draw the item with unindented child content.
+    ///
+    /// This is similar to [`Self::show_hierarchical_with_children`] but without indent. This is
+    /// only for special cases such as [`crate::UiExt::large_collapsing_header`].
+    pub fn show_hierarchical_with_children_unindented<R>(
+        self,
+        ui: &mut Ui,
+        id: egui::Id,
+        default_open: bool,
+        content: impl ListItemContent,
+        add_children: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> ShowCollapsingResponse<R> {
+        self.show_hierarchical_with_children_impl(
+            ui,
+            id,
+            default_open,
+            false,
+            content,
+            add_children,
+        )
+    }
+
+    fn show_hierarchical_with_children_impl<R>(
         mut self,
         ui: &mut Ui,
         id: egui::Id,
         default_open: bool,
+        indented: bool,
         content: impl ListItemContent,
         add_children: impl FnOnce(&mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
@@ -175,7 +224,8 @@ impl ListItem {
         );
 
         // enable collapsing arrow
-        self.collapse_openness = Some(state.openness(ui.ctx()));
+        let openness = state.openness(ui.ctx());
+        self.collapse_openness = Some(openness);
 
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         let response = ui
@@ -193,15 +243,20 @@ impl ListItem {
 
         let body_response = ui
             .scope(|ui| {
-                ui.spacing_mut().indent =
-                    DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
-                state.show_body_indented(&response.response, ui, |ui| add_children(ui))
+                if indented {
+                    ui.spacing_mut().indent =
+                        DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+                    state.show_body_indented(&response.response, ui, |ui| add_children(ui))
+                } else {
+                    state.show_body_unindented(ui, |ui| add_children(ui))
+                }
             })
             .inner;
 
         ShowCollapsingResponse {
             item_response: response.response,
             body_response,
+            openness,
         }
     }
 
@@ -218,6 +273,7 @@ impl ListItem {
             draggable,
             drag_target,
             force_hovered,
+            force_background,
             collapse_openness,
             height,
         } = self;
@@ -330,33 +386,38 @@ impl ListItem {
             // fractional pixels.
             let bg_rect_to_paint = ui.painter().round_rect_to_pixels(bg_rect);
 
-            // Draw background on interaction.
             if drag_target {
                 ui.painter().set(
                     background_frame,
                     Shape::rect_stroke(bg_rect_to_paint, 0.0, ui.ctx().hover_stroke()),
                 );
-            } else if interactive {
-                let bg_fill = if !response.hovered() && ui.rect_contains_pointer(bg_rect) {
-                    // if some part of the content is active and hovered, our background should
-                    // become dimmer
-                    Some(visuals.bg_fill)
-                } else if selected
-                    || style_response.hovered()
-                    || style_response.highlighted()
-                    || style_response.has_focus()
-                {
-                    Some(visuals.weak_bg_fill)
+            }
+
+            let bg_fill = force_background.or_else(|| {
+                if !drag_target && interactive {
+                    if !response.hovered() && ui.rect_contains_pointer(bg_rect) {
+                        // if some part of the content is active and hovered, our background should
+                        // become dimmer
+                        Some(visuals.bg_fill)
+                    } else if selected
+                        || style_response.hovered()
+                        || style_response.highlighted()
+                        || style_response.has_focus()
+                    {
+                        Some(visuals.weak_bg_fill)
+                    } else {
+                        None
+                    }
                 } else {
                     None
-                };
-
-                if let Some(bg_fill) = bg_fill {
-                    ui.painter().set(
-                        background_frame,
-                        Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),
-                    );
                 }
+            });
+
+            if let Some(bg_fill) = bg_fill {
+                ui.painter().set(
+                    background_frame,
+                    Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),
+                );
             }
         }
 
