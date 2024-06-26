@@ -242,11 +242,11 @@ impl SelectionPanel {
                         }
                     }
 
-                    ui.list_item_flat_noninteractive(
-                        PropertyContent::new("In space view").value_fn(|ui, _| {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("In view").value_fn(
+                        |ui, _| {
                             space_view_button(ctx, ui, view);
-                        }),
-                    );
+                        },
+                    ));
                 }
 
                 if instance_path.is_all() {
@@ -339,7 +339,7 @@ impl SelectionPanel {
             .header_response
             .on_hover_text(
                 "The entity path query consists of a list of include/exclude rules \
-                that determines what entities are part of this space view",
+                that determines what entities are part of this view",
             );
         }
 
@@ -357,7 +357,7 @@ impl SelectionPanel {
                     view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
                 {
                     re_log::error_once!(
-                        "Error in space view selection UI (class: {}, display name: {}): {err}",
+                        "Error in view selection UI (class: {}, display name: {}): {err}",
                         view.class_identifier(),
                         view_class.display_name(),
                     );
@@ -501,7 +501,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
             // TODO(andreas): Talk about this root bit only if it's a spatial view.
             ui.label(ui.ctx().warning_text(
-                format!("This space view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
+                format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
             ));
         }
 
@@ -560,10 +560,8 @@ fn clone_space_view_button_ui(
 ) {
     if ui
         .list_item()
-        .show_flat(ui, LabelContent::new("Clone this space view"))
-        .on_hover_text(
-            "Create an exact duplicate of this space view including all blueprint settings",
-        )
+        .show_flat(ui, LabelContent::new("Clone this view"))
+        .on_hover_text("Create an exact duplicate of this view including all blueprint settings")
         .clicked()
     {
         if let Some(new_space_view_id) = blueprint.duplicate_space_view(&view_id, ctx) {
@@ -765,7 +763,7 @@ fn item_tile(
                         view_class.display_name()
                     )
                 } else {
-                    format!("Unnamed space view of type {}", view_class.display_name())
+                    format!("Unnamed view of type {}", view_class.display_name())
                 };
 
                 let view_name = view.display_name_or_default();
@@ -801,7 +799,7 @@ fn item_tile(
                     ItemTitle::new(name)
                         .with_icon(guess_instance_path_icon(ctx, instance_path))
                         .with_tooltip(format!(
-                            "{typ} '{instance_path}' as shown in space view {:?}",
+                            "{typ} '{instance_path}' as shown in view {:?}",
                             view.display_name
                         )),
                 )
@@ -882,7 +880,7 @@ impl ItemTitle {
     }
 }
 
-/// Display a list of all the space views an entity appears in.
+/// Display a list of all the views an entity appears in.
 fn list_existing_data_blueprints(
     ctx: &ViewerContext<'_>,
     blueprint: &ViewportBlueprint,
@@ -895,7 +893,7 @@ fn list_existing_data_blueprints(
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
     if space_views_with_path.is_empty() {
-        ui.weak("(Not shown in any space view)");
+        ui.weak("(Not shown in any view)");
     } else {
         for &view_id in &space_views_with_path {
             if let Some(view) = blueprint.view(&view_id) {
@@ -916,10 +914,10 @@ fn list_existing_data_blueprints(
     }
 }
 
-/// Display the top-level properties of a space view.
+/// Display the top-level properties of a view.
 ///
-/// This includes the name, space origin entity, and space view type. These properties are singled
-/// out as needing to be edited in most case when creating a new space view, which is why they are
+/// This includes the name, space origin entity, and view type. These properties are singled
+/// out as needing to be edited in most case when creating a new view, which is why they are
 /// shown at the very top.
 fn view_top_level_properties(
     ctx: &ViewerContext<'_>,
@@ -936,7 +934,7 @@ fn view_top_level_properties(
         super::space_view_space_origin_ui::space_view_space_origin_widget_ui(ui, ctx, view);
     }))
     .on_hover_text(
-        "The origin entity for this space view. For spatial space views, the space \
+        "The origin entity for this view. For spatial views, the space \
                     view's origin is the same as this entity's origin and all transforms are \
                     relative to it.",
     );
@@ -945,7 +943,7 @@ fn view_top_level_properties(
         PropertyContent::new("View type")
             .value_text(view.class(ctx.space_view_class_registry).display_name()),
     )
-    .on_hover_text("The type of this space view");
+    .on_hover_text("The type of this view");
 }
 
 fn container_top_level_properties(
@@ -1098,7 +1096,7 @@ fn show_list_item_for_container_child(
     let (item, list_item_content) = match child_contents {
         Contents::SpaceView(view_id) => {
             let Some(view) = blueprint.view(view_id) else {
-                re_log::warn_once!("Could not find space view with ID {view_id:?}",);
+                re_log::warn_once!("Could not find view with ID {view_id:?}",);
                 return false;
             };
 
@@ -1111,7 +1109,7 @@ fn show_list_item_for_container_child(
                     .with_buttons(|ui| {
                         let response = ui
                             .small_icon_button(&icons::REMOVE)
-                            .on_hover_text("Remove this space view");
+                            .on_hover_text("Remove this view");
 
                         if response.clicked() {
                             remove_contents = true;
