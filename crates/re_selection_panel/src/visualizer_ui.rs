@@ -37,25 +37,24 @@ pub fn visualizer_ui(
         &active_visualizers,
     );
 
-    ui.large_collapsing_header_with_button(
-        "Visualizers",
-        true,
-        |ui| {
+    ui.section_collapsing_header("Visualizers")
+        .button(
+            re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+                menu_add_new_visualizer(
+                    ctx,
+                    ui,
+                    &data_result,
+                    &active_visualizers,
+                    &available_inactive_visualizers,
+                );
+            })
+            .enabled(!available_inactive_visualizers.is_empty())
+            .hover_text("Add additional visualizers")
+            .disabled_hover_text("No additional visualizers available"),
+        )
+        .show(ui, |ui| {
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
-        },
-        re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
-            menu_add_new_visualizer(
-                ctx,
-                ui,
-                &data_result,
-                &active_visualizers,
-                &available_inactive_visualizers,
-            );
-        })
-        .enabled(!available_inactive_visualizers.is_empty())
-        .hover_text("Add additional visualizers")
-        .disabled_hover_text("No additional visualizers available"),
-    );
+        });
 }
 
 pub fn visualizer_ui_impl(

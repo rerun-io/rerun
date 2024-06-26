@@ -13,74 +13,6 @@ use crate::{
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
-/// Icon button to be used in the header of a panel.
-pub struct HeaderMenuButton<'a> {
-    pub icon: &'static Icon,
-    pub add_contents: Box<dyn FnOnce(&mut egui::Ui) + 'a>,
-    pub enabled: bool,
-    pub hover_text: Option<String>,
-    pub disabled_hover_text: Option<String>,
-}
-
-impl<'a> HeaderMenuButton<'a> {
-    pub fn new(icon: &'static Icon, add_contents: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
-        Self {
-            icon,
-            add_contents: Box::new(add_contents),
-            enabled: true,
-            hover_text: None,
-            disabled_hover_text: None,
-        }
-    }
-
-    /// Sets enable/disable state of the button.
-    #[inline]
-    pub fn enabled(mut self, enabled: bool) -> Self {
-        self.enabled = enabled;
-        self
-    }
-
-    /// Sets text shown when the button hovered.
-    #[inline]
-    pub fn hover_text(mut self, hover_text: impl Into<String>) -> Self {
-        self.hover_text = Some(hover_text.into());
-        self
-    }
-
-    /// Sets text shown when the button is disabled and hovered.
-    #[inline]
-    pub fn disabled_hover_text(mut self, hover_text: impl Into<String>) -> Self {
-        self.disabled_hover_text = Some(hover_text.into());
-        self
-    }
-
-    fn show(self, ui: &mut egui::Ui) -> egui::Response {
-        ui.add_enabled_ui(self.enabled, |ui| {
-            if !self.enabled {
-                ui.disable()
-            }
-
-            ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
-
-            let mut response = egui::menu::menu_image_button(
-                ui,
-                ui.small_icon_button_widget(self.icon),
-                self.add_contents,
-            )
-            .response;
-            if let Some(hover_text) = self.hover_text {
-                response = response.on_hover_text(hover_text);
-            }
-            if let Some(disabled_hover_text) = self.disabled_hover_text {
-                response = response.on_disabled_hover_text(disabled_hover_text);
-            }
-
-            response
-        })
-        .inner
-    }
-}
-
 /// Rerun custom extensions to [`egui::Ui`].
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
@@ -520,26 +452,26 @@ pub trait UiExt {
         }
     }
 
-    /// Show a prominent collapsing header to be used as section delimitation in side panels.
-    fn large_collapsing_header(
-        &mut self,
-        label: &str,
-        default_open: bool,
-        add_body: impl FnOnce(&mut egui::Ui),
-    ) -> egui::CollapsingResponse<()> {
-        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, None)
-    }
-
-    /// Show a prominent collapsing header to be used as section delimitation in side panels with an image button.
-    fn large_collapsing_header_with_button(
-        &mut self,
-        label: &str,
-        default_open: bool,
-        add_body: impl FnOnce(&mut egui::Ui),
-        button: HeaderMenuButton<'_>,
-    ) -> egui::CollapsingResponse<()> {
-        large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, Some(button))
-    }
+    // /// Show a prominent collapsing header to be used as section delimitation in side panels.
+    // fn large_collapsing_header(
+    //     &mut self,
+    //     label: &str,
+    //     default_open: bool,
+    //     add_body: impl FnOnce(&mut egui::Ui),
+    // ) -> egui::CollapsingResponse<()> {
+    //     large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, None)
+    // }
+    //
+    // /// Show a prominent collapsing header to be used as section delimitation in side panels with an image button.
+    // fn large_collapsing_header_with_button(
+    //     &mut self,
+    //     label: &str,
+    //     default_open: bool,
+    //     add_body: impl FnOnce(&mut egui::Ui),
+    //     button: HeaderMenuButton<'_>,
+    // ) -> egui::CollapsingResponse<()> {
+    //     large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, Some(button))
+    // }
 
     /// Paint a collapsing triangle with rounded corners.
     ///
@@ -663,6 +595,15 @@ pub trait UiExt {
         self.list_item()
             .interactive(false)
             .show_flat(self.ui_mut(), content)
+    }
+
+    /// Convenience function to create a [`crate::SectionCollapsingHeader`].
+    #[allow(clippy:unused_self)]
+    fn section_collapsing_header<'a>(
+        &self,
+        label: impl Into<egui::WidgetText>,
+    ) -> crate::SectionCollapsingHeader<'a> {
+        crate::SectionCollapsingHeader::new(label)
     }
 
     fn selectable_label_with_icon(
@@ -1073,36 +1014,36 @@ impl UiExt for egui::Ui {
     }
 }
 
-fn large_collapsing_header_impl(
-    ui: &mut egui::Ui,
-    label: &str,
-    default_open: bool,
-    add_body: impl FnOnce(&mut egui::Ui),
-    button: Option<HeaderMenuButton<'_>>,
-) -> egui::CollapsingResponse<()> {
-    let id = ui.make_persistent_id(label);
-
-    let mut content = list_item::LabelContent::new(label);
-    if let Some(button) = button {
-        content = content
-            .with_buttons(|ui| button.show(ui))
-            .always_show_buttons(true);
-    }
-
-    let resp = list_item::ListItem::new()
-        .interactive(true)
-        .force_background(DesignTokens::large_collapsing_header_color())
-        .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
-            //TODO(ab): this space is not desirable when the content actually is list items
-            ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
-            add_body(ui);
-            ui.add_space(4.0); // Same here
-        });
-
-    egui::CollapsingResponse {
-        header_response: resp.item_response,
-        body_response: resp.body_response.map(|r| r.response),
-        body_returned: None,
-        openness: resp.openness,
-    }
-}
+// fn large_collapsing_header_impl(
+//     ui: &mut egui::Ui,
+//     label: &str,
+//     default_open: bool,
+//     add_body: impl FnOnce(&mut egui::Ui),
+//     button: Option<HeaderMenuButton<'_>>,
+// ) -> egui::CollapsingResponse<()> {
+//     let id = ui.make_persistent_id(label);
+//
+//     let mut content = list_item::LabelContent::new(label);
+//     if let Some(button) = button {
+//         content = content
+//             .with_buttons(|ui| button.show(ui))
+//             .always_show_buttons(true);
+//     }
+//
+//     let resp = list_item::ListItem::new()
+//         .interactive(true)
+//         .force_background(DesignTokens::large_collapsing_header_color())
+//         .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
+//             //TODO(ab): this space is not desirable when the content actually is list items
+//             ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
+//             add_body(ui);
+//             ui.add_space(4.0); // Same here
+//         });
+//
+//     egui::CollapsingResponse {
+//         header_response: resp.item_response,
+//         body_response: resp.body_response.map(|r| r.response),
+//         body_returned: None,
+//         openness: resp.openness,
+//     }
+// }
