@@ -4,9 +4,18 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rerun-notebook"
+description = "Implementation helper for running rerun-sdk in notebooks"
 version = "0.17.0-alpha.8"
 dependencies = ["anywidget", "jupyter-ui-poll"]
 readme = "README.md"
+keywords = ["rerun", "notebook"]
+
+[[project.authors]]
+email = "opensource@rerun.io"
+name = "Rerun.io"
+
+[project.license]
+text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 dev = ["watchfiles", "jupyterlab", "hatch"]
