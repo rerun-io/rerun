@@ -12,15 +12,15 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-pub fn space_view_components_defaults_section_ui(
+pub fn view_components_defaults_section_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    space_view: &SpaceViewBlueprint,
+    view: &SpaceViewBlueprint,
 ) {
     let db = ctx.viewer_ctx.blueprint_db();
     let query = ctx.viewer_ctx.blueprint_query;
 
-    let active_defaults = active_defaults(ctx, space_view, db, query);
+    let active_defaults = active_defaults(ctx, view, db, query);
     let component_to_vis = component_to_vis(ctx);
 
     let components_to_show_in_add_menu =
@@ -34,7 +34,7 @@ pub fn space_view_components_defaults_section_ui(
         add_popup_ui(
             ctx,
             ui,
-            &space_view.defaults_path,
+            &view.defaults_path,
             query,
             components_to_show_in_add_menu.unwrap_or_default(),
         );
@@ -51,7 +51,7 @@ pub fn space_view_components_defaults_section_ui(
             ui,
             &active_defaults,
             &component_to_vis,
-            space_view,
+            view,
             query,
             db,
         );
@@ -64,7 +64,7 @@ fn active_default_ui(
     ui: &mut egui::Ui,
     active_defaults: &BTreeSet<ComponentName>,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
-    space_view: &SpaceViewBlueprint,
+    view: &SpaceViewBlueprint,
     query: &LatestAtQuery,
     db: &re_entity_db::EntityDb,
 ) {
@@ -72,7 +72,7 @@ fn active_default_ui(
 
     let query_context = QueryContext {
         viewer_ctx: ctx.viewer_ctx,
-        target_entity_path: &space_view.defaults_path,
+        target_entity_path: &view.defaults_path,
         archetype_name: None,
         query,
         view_state: ctx.view_state,
@@ -104,12 +104,7 @@ fn active_default_ui(
             // Change the structure to avoid this.
             let component_data = db
                 .query_caches()
-                .latest_at(
-                    db.store(),
-                    query,
-                    &space_view.defaults_path,
-                    [component_name],
-                )
+                .latest_at(db.store(), query, &view.defaults_path, [component_name])
                 .components
                 .get(&component_name)
                 .cloned(); /* arc */
@@ -120,7 +115,7 @@ fn active_default_ui(
                         &query_context,
                         ui,
                         db,
-                        &space_view.defaults_path,
+                        &view.defaults_path,
                         component_name,
                         &component_data,
                         visualizer.as_fallback_provider(),
@@ -132,7 +127,7 @@ fn active_default_ui(
                         .min_desired_width(150.0)
                         .action_button(&re_ui::icons::CLOSE, || {
                             ctx.save_empty_blueprint_component_by_name(
-                                &space_view.defaults_path,
+                                &view.defaults_path,
                                 component_name,
                             );
                         })
@@ -170,7 +165,7 @@ fn component_to_vis(ctx: &ViewContext<'_>) -> BTreeMap<ComponentName, ViewSystem
 
 fn active_defaults(
     ctx: &ViewContext<'_>,
-    space_view: &SpaceViewBlueprint,
+    view: &SpaceViewBlueprint,
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
 ) -> BTreeSet<ComponentName> {
@@ -180,12 +175,12 @@ fn active_defaults(
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
         .store()
-        .all_components(&blueprint_timeline(), &space_view.defaults_path)
+        .all_components(&blueprint_timeline(), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
         .filter(|c| {
             db.query_caches()
-                .latest_at(db.store(), query, &space_view.defaults_path, [*c])
+                .latest_at(db.store(), query, &view.defaults_path, [*c])
                 .components
                 .get(c)
                 .and_then(|data| data.resolved(&resolver).ok())

@@ -35,22 +35,18 @@ fn space_view_with_visible_history(space_view_class: SpaceViewClassIdentifier) -
     VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(&space_view_class)
 }
 
-pub fn query_range_ui_space_view(
-    ctx: &ViewerContext<'_>,
-    ui: &mut Ui,
-    space_view: &SpaceViewBlueprint,
-) {
-    if !space_view_with_visible_history(space_view.class_identifier()) {
+pub fn query_range_ui_space_view(ctx: &ViewerContext<'_>, ui: &mut Ui, view: &SpaceViewBlueprint) {
+    if !space_view_with_visible_history(view.class_identifier()) {
         return;
     }
 
     let property_path = entity_path_for_view_property(
-        space_view.id,
+        view.id,
         ctx.store_context.blueprint.tree(),
         re_types::blueprint::archetypes::VisibleTimeRanges::name(),
     );
 
-    let query_range = space_view.query_range(
+    let query_range = view.query_range(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
         ctx.rec_cfg.time_ctrl.read().timeline(),

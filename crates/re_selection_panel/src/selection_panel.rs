@@ -8,7 +8,7 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
-use re_types::blueprint::components::Interactive;
+use re_types::{blueprint::components::Interactive, external::image::flat::view};
 use re_ui::{
     icons,
     list_item::{self, LabelContent, PropertyContent},
@@ -22,7 +22,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
-use crate::{defaults_ui::space_view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
+use crate::{defaults_ui::view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
 use crate::{
     query_range_ui::query_range_ui_data_result, query_range_ui::query_range_ui_space_view,
     selection_history_ui::SelectionHistoryUi,
@@ -70,7 +70,7 @@ impl SelectionPanel {
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
-                let hover = "The Selection View contains information and options about \
+                let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
                 ui.panel_title_bar_with_buttons("Selection", Some(hover), |ui| {
                     let mut history = ctx.selection_state().history.lock();
@@ -206,14 +206,14 @@ impl SelectionPanel {
                 container_children(ctx, blueprint, ui, container_id);
             }
 
-            Item::SpaceView(space_view_id) => {
-                if let Some(space_view) = blueprint.space_view(space_view_id) {
-                    space_view_top_level_properties(ctx, ui, space_view);
+            Item::SpaceView(view_id) => {
+                if let Some(view) = blueprint.view(view_id) {
+                    view_top_level_properties(ctx, ui, view);
                 }
             }
 
             Item::DataResult(view_id, instance_path) => {
-                if let Some(space_view) = blueprint.space_view(view_id) {
+                if let Some(view) = blueprint.view(view_id) {
                     let is_instance = !instance_path.instance.is_all();
                     let parent = if is_instance {
                         Some(instance_path.entity_path.clone())
@@ -244,7 +244,7 @@ impl SelectionPanel {
 
                     ui.list_item_flat_noninteractive(
                         PropertyContent::new("In space view").value_fn(|ui, _| {
-                            space_view_button(ctx, ui, space_view);
+                            space_view_button(ctx, ui, view);
                         }),
                     );
                 }
@@ -258,9 +258,9 @@ impl SelectionPanel {
                         .cloned();
 
                     if let Some(data_result) = &data_result {
-                        if let Some(space_view) = blueprint.space_view(view_id) {
+                        if let Some(view) = blueprint.view(view_id) {
                             visible_interactive_toggle_ui(
-                                &space_view.bundle_context_with_states(ctx, view_states),
+                                &view.bundle_context_with_states(ctx, view_states),
                                 ui,
                                 ctx.lookup_query_result(*view_id),
                                 data_result,
@@ -289,7 +289,7 @@ impl SelectionPanel {
 
         match item {
             Item::SpaceView(view_id) => {
-                self.space_view_selection_ui(ctx, ui, blueprint, view_id, view_states);
+                self.view_selection_ui(ctx, ui, blueprint, view_id, view_states);
             }
 
             Item::DataResult(view_id, instance_path) => {
@@ -310,7 +310,7 @@ impl SelectionPanel {
         }
     }
 
-    fn space_view_selection_ui(
+    fn view_selection_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -320,7 +320,7 @@ impl SelectionPanel {
     ) {
         clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
 
-        if let Some(space_view) = blueprint.space_view(view_id) {
+        if let Some(view) = blueprint.view(view_id) {
             ui.large_collapsing_header("Entity path filter", true, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
@@ -329,11 +329,10 @@ impl SelectionPanel {
                     ctx,
                     ui,
                     *view_id,
-                    &space_view.contents.entity_path_filter,
-                    &space_view.space_origin,
+                    &view.contents.entity_path_filter,
+                    &view.space_origin,
                 ) {
-                    space_view
-                        .contents
+                    view.contents
                         .set_entity_path_filter(ctx, &new_entity_path_filter);
                 }
             })
@@ -344,7 +343,7 @@ impl SelectionPanel {
             );
         }
 
-        if let Some(view) = blueprint.space_view(view_id) {
+        if let Some(view) = blueprint.view(view_id) {
             let view_class = view.class(ctx.space_view_class_registry);
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
@@ -370,10 +369,10 @@ impl SelectionPanel {
             });
 
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
-            space_view_components_defaults_section_ui(&view_ctx, ui, view);
+            view_components_defaults_section_ui(&view_ctx, ui, view);
         }
 
-        if let Some(view) = blueprint.space_view(view_id) {
+        if let Some(view) = blueprint.view(view_id) {
             query_range_ui_space_view(ctx, ui, view);
         }
     }
@@ -383,7 +382,7 @@ impl SelectionPanel {
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_view_id: SpaceViewId,
+        view_id: SpaceViewId,
         filter: &EntityPathFilter,
         origin: &EntityPath,
     ) -> Option<EntityPathFilter> {
@@ -491,7 +490,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         }
 
         // Show some statistics about the query, print a warning text if something seems off.
-        let query = ctx.lookup_query_result(space_view_id);
+        let query = ctx.lookup_query_result(view_id);
         if query.num_matching_entities == 0 {
             ui.label(ui.ctx().warning_text("Does not match any entity"));
         } else if query.num_matching_entities == 1 {
@@ -515,7 +514,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 .on_hover_text("Modify the entity query using the editor")
                 .clicked()
             {
-                self.space_view_entity_modal.open(space_view_id);
+                self.space_view_entity_modal.open(view_id);
             }
         });
 
@@ -646,18 +645,18 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
 fn space_view_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view: &re_viewport_blueprint::SpaceViewBlueprint,
+    view: &re_viewport_blueprint::SpaceViewBlueprint,
 ) -> egui::Response {
-    let item = Item::SpaceView(space_view.id);
+    let item = Item::SpaceView(view.id);
     let is_selected = ctx.selection().contains_item(&item);
-    let space_view_name = space_view.display_name_or_default();
+    let view_name = view.display_name_or_default();
 
     let response = ui
         .selectable_label_with_icon(
-            space_view.class(ctx.space_view_class_registry).icon(),
-            space_view_name.as_ref(),
+            view.class(ctx.space_view_class_registry).icon(),
+            view_name.as_ref(),
             is_selected,
-            contents_name_style(&space_view_name),
+            contents_name_style(&view_name),
         )
         .on_hover_text("Space view");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
@@ -755,29 +754,26 @@ fn item_tile(
             )
         }
 
-        Item::SpaceView(space_view_id) => {
-            if let Some(space_view) = blueprint.space_view(space_view_id) {
-                let space_view_class = space_view.class(ctx.space_view_class_registry);
+        Item::SpaceView(view_id) => {
+            if let Some(view) = blueprint.view(view_id) {
+                let view_class = view.class(ctx.space_view_class_registry);
 
-                let hover_text = if let Some(display_name) = space_view.display_name.as_ref() {
+                let hover_text = if let Some(display_name) = view.display_name.as_ref() {
                     format!(
                         "Space view {:?} of type {}",
                         display_name,
-                        space_view_class.display_name()
+                        view_class.display_name()
                     )
                 } else {
-                    format!(
-                        "Unnamed space view of type {}",
-                        space_view_class.display_name()
-                    )
+                    format!("Unnamed space view of type {}", view_class.display_name())
                 };
 
-                let space_view_name = space_view.display_name_or_default();
+                let view_name = view.display_name_or_default();
 
                 Some(
-                    ItemTitle::new(space_view_name.as_ref())
-                        .with_icon(space_view.class(ctx.space_view_class_registry).icon())
-                        .with_label_style(contents_name_style(&space_view_name))
+                    ItemTitle::new(view_name.as_ref())
+                        .with_icon(view.class(ctx.space_view_class_registry).icon())
+                        .with_label_style(contents_name_style(&view_name))
                         .with_tooltip(hover_text),
                 )
             } else {
@@ -799,14 +795,14 @@ fn item_tile(
         Item::DataResult(view_id, instance_path) => {
             let name = instance_path.syntax_highlighted(style);
 
-            if let Some(space_view) = blueprint.space_view(view_id) {
+            if let Some(view) = blueprint.view(view_id) {
                 let typ = item.kind();
                 Some(
                     ItemTitle::new(name)
                         .with_icon(guess_instance_path_icon(ctx, instance_path))
                         .with_tooltip(format!(
                             "{typ} '{instance_path}' as shown in space view {:?}",
-                            space_view.display_name
+                            view.display_name
                         )),
                 )
             } else {
@@ -901,16 +897,16 @@ fn list_existing_data_blueprints(
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any space view)");
     } else {
-        for &space_view_id in &space_views_with_path {
-            if let Some(space_view) = blueprint.space_view(&space_view_id) {
+        for &view_id in &space_views_with_path {
+            if let Some(view) = blueprint.view(&view_id) {
                 let response = ui.list_item().show_flat(
                     ui,
                     PropertyContent::new("Shown in").value_fn(|ui, _| {
-                        space_view_button(ctx, ui, space_view);
+                        space_view_button(ctx, ui, view);
                     }),
                 );
 
-                let item = Item::DataResult(space_view_id, instance_path.clone());
+                let item = Item::DataResult(view_id, instance_path.clone());
                 let response = response.on_hover_ui(|ui| {
                     item_ui::instance_hover_card_ui(ui, ctx, &query, db, instance_path);
                 });
@@ -925,32 +921,29 @@ fn list_existing_data_blueprints(
 /// This includes the name, space origin entity, and space view type. These properties are singled
 /// out as needing to be edited in most case when creating a new space view, which is why they are
 /// shown at the very top.
-fn space_view_top_level_properties(
+fn view_top_level_properties(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view: &re_viewport_blueprint::SpaceViewBlueprint,
+    view: &re_viewport_blueprint::SpaceViewBlueprint,
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
-        let mut name = space_view.display_name.clone().unwrap_or_default();
+        let mut name = view.display_name.clone().unwrap_or_default();
         ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
-        space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+        view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
     ui.list_item_flat_noninteractive(PropertyContent::new("Space origin").value_fn(|ui, _| {
-        super::space_view_space_origin_ui::space_view_space_origin_widget_ui(ui, ctx, space_view);
+        super::space_view_space_origin_ui::space_view_space_origin_widget_ui(ui, ctx, view);
     }))
     .on_hover_text(
         "The origin entity for this space view. For spatial space views, the space \
-                    View's origin is the same as this entity's origin and all transforms are \
+                    view's origin is the same as this entity's origin and all transforms are \
                     relative to it.",
     );
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("View type").value_text(
-            space_view
-                .class(ctx.space_view_class_registry)
-                .display_name(),
-        ),
+        PropertyContent::new("View type")
+            .value_text(view.class(ctx.space_view_class_registry).display_name()),
     )
     .on_hover_text("The type of this space view");
 }
@@ -1103,18 +1096,18 @@ fn show_list_item_for_container_child(
 ) -> bool {
     let mut remove_contents = false;
     let (item, list_item_content) = match child_contents {
-        Contents::SpaceView(space_view_id) => {
-            let Some(space_view) = blueprint.space_view(space_view_id) else {
-                re_log::warn_once!("Could not find space view with ID {space_view_id:?}",);
+        Contents::SpaceView(view_id) => {
+            let Some(view) = blueprint.view(view_id) else {
+                re_log::warn_once!("Could not find space view with ID {view_id:?}",);
                 return false;
             };
 
-            let space_view_name = space_view.display_name_or_default();
+            let view_name = view.display_name_or_default();
             (
-                Item::SpaceView(*space_view_id),
-                list_item::LabelContent::new(space_view_name.as_ref())
-                    .label_style(contents_name_style(&space_view_name))
-                    .with_icon(space_view.class(ctx.space_view_class_registry).icon())
+                Item::SpaceView(*view_id),
+                list_item::LabelContent::new(view_name.as_ref())
+                    .label_style(contents_name_style(&view_name))
+                    .with_icon(view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|ui| {
                         let response = ui
                             .small_icon_button(&icons::REMOVE)

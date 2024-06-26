@@ -46,7 +46,7 @@ impl ContextMenuAction for RemoveAction {
         space_view_id: &SpaceViewId,
         instance_path: &InstancePath,
     ) {
-        if let Some(space_view) = ctx.viewport_blueprint.space_view(space_view_id) {
+        if let Some(space_view) = ctx.viewport_blueprint.view(space_view_id) {
             space_view.contents.remove_subtree_and_matching_rules(
                 ctx.viewer_context,
                 instance_path.entity_path.clone(),
