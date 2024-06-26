@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import importlib.metadata
+import logging
 import pathlib
+import sys
+import time
 from typing import Any, Literal
 
 import anywidget
+import jupyter_ui_poll
 import traitlets
 
 try:
@@ -72,3 +76,16 @@ class Viewer(anywidget.AnyWidget):
             return
 
         self.send({"type": "rrd"}, buffers=[data])
+
+    def block_until_ready(self, timeout=5.0) -> None:
+        """Block until the viewer is ready."""
+
+        start = time.time()
+
+        with jupyter_ui_poll.ui_events() as poll:
+            while self._ready is False:
+                if time.time() - start > timeout:
+                    logging.warning("Timed out waiting for viewer to become ready.")
+                    return
+                poll(1)
+                time.sleep(0.1)
