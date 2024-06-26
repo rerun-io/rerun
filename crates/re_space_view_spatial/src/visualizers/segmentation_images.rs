@@ -175,7 +175,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                         self.images.push(PickableImageRect {
                             ent_path: entity_path.clone(),
-                            meaning,
                             textured_rect,
                         });
                     }
