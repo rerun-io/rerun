@@ -14,11 +14,13 @@ mod meshes;
 mod points2d;
 mod points3d;
 mod spatial_view_visualizer;
+mod tensor_to_textured_rect;
 mod transform3d_arrows;
 
 pub use cameras::CamerasVisualizer;
 pub use images::ImageVisualizer;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
+pub use tensor_to_textured_rect::tensor_to_textured_rect;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer, Transform3DDetector};
 
 // ---

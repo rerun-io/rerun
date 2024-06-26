@@ -5,7 +5,7 @@ use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, RowId, TimeInt};
 use re_query::range_zip_1x5;
 use re_renderer::{
-    renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
+    renderer::{DepthCloud, DepthClouds, TexturedRect},
     RenderContext,
 };
 use re_space_view::diff_component_filter;
@@ -18,12 +18,11 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge::{self, colormap_to_re_renderer},
-    ApplicableEntities, DefaultColor, IdentifiedViewSystem, QueryContext, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
-    VisualizerQueryInfo, VisualizerSystem,
+    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, DefaultColor, IdentifiedViewSystem,
+    QueryContext, SpaceViewClass, SpaceViewSystemExecutionError, TensorDecodeCache,
+    TensorStatsCache, TypedComponentFallbackProvider, ViewContext, ViewContextCollection,
+    ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -35,81 +34,7 @@ use crate::{
     PickableImageRect, SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
-use super::SpatialViewVisualizerData;
-
-#[allow(clippy::too_many_arguments)]
-fn to_textured_rect(
-    ctx: &ViewerContext<'_>,
-    render_ctx: &RenderContext,
-    ent_path: &EntityPath,
-    ent_context: &SpatialSceneEntityContext<'_>,
-    tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
-    meaning: TensorDataMeaning,
-    multiplicative_tint: egui::Rgba,
-    colormap: Option<Colormap>,
-) -> Option<re_renderer::renderer::TexturedRect> {
-    let [height, width, _] = tensor.image_height_width_channels()?;
-
-    let debug_name = ent_path.to_string();
-    let tensor_stats = ctx
-        .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
-
-    match gpu_bridge::tensor_to_gpu(
-        render_ctx,
-        &debug_name,
-        tensor_data_row_id,
-        tensor,
-        meaning,
-        &tensor_stats,
-        &ent_context.annotations,
-        colormap,
-    ) {
-        Ok(colormapped_texture) => {
-            // TODO(emilk): let users pick texture filtering.
-            // Always use nearest for magnification: let users see crisp individual pixels when they zoom
-            let texture_filter_magnification = re_renderer::renderer::TextureFilterMag::Nearest;
-
-            // For minimization: we want a smooth linear (ideally mipmapped) filter for color images.
-            // Note that this filtering is done BEFORE applying the color map!
-            // For labeled/annotated/class_Id images we want nearest, because interpolating classes makes no sense.
-            // Interpolating depth images _can_ make sense, but can also produce weird artifacts when there are big jumps (0.1m -> 100m),
-            // so it's usually safer to turn off.
-            // The best heuristic is this: if there is a color map being applied, use nearest.
-            // TODO(emilk): apply filtering _after_ the color map?
-            let texture_filter_minification = if colormapped_texture.color_mapper.is_on() {
-                re_renderer::renderer::TextureFilterMin::Nearest
-            } else {
-                re_renderer::renderer::TextureFilterMin::Linear
-            };
-
-            Some(re_renderer::renderer::TexturedRect {
-                top_left_corner_position: ent_context
-                    .world_from_entity
-                    .transform_point3(glam::Vec3::ZERO),
-                extent_u: ent_context
-                    .world_from_entity
-                    .transform_vector3(glam::Vec3::X * width as f32),
-                extent_v: ent_context
-                    .world_from_entity
-                    .transform_vector3(glam::Vec3::Y * height as f32),
-                colormapped_texture,
-                options: RectangleOptions {
-                    texture_filter_magnification,
-                    texture_filter_minification,
-                    multiplicative_tint,
-                    depth_offset: ent_context.depth_offset,
-                    outline_mask: ent_context.highlight.overall,
-                },
-            })
-        }
-        Err(err) => {
-            re_log::error_once!("Failed to create texture for {debug_name:?}: {err}");
-            None
-        }
-    }
-}
+use super::{tensor_to_textured_rect, SpatialViewVisualizerData};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct ImageGrouping {
@@ -165,7 +90,6 @@ impl ImageVisualizer {
     fn process_image_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
-        render_ctx: &RenderContext,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -218,9 +142,8 @@ impl ImageVisualizer {
             let multiplicative_tint =
                 re_renderer::Rgba::from(color).multiply(opacity.0.clamp(0.0, 1.0));
 
-            if let Some(textured_rect) = to_textured_rect(
+            if let Some(textured_rect) = tensor_to_textured_rect(
                 ctx.viewer_ctx,
-                render_ctx,
                 entity_path,
                 ent_context,
                 tensor_data_row_id,
@@ -255,7 +178,6 @@ impl ImageVisualizer {
     fn process_segmentation_image_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
-        render_ctx: &RenderContext,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -306,9 +228,8 @@ impl ImageVisualizer {
             let multiplicative_tint =
                 re_renderer::Rgba::from(color).multiply(opacity.0.clamp(0.0, 1.0));
 
-            if let Some(textured_rect) = to_textured_rect(
+            if let Some(textured_rect) = tensor_to_textured_rect(
                 ctx.viewer_ctx,
-                render_ctx,
                 entity_path,
                 ent_context,
                 tensor_data_row_id,
@@ -438,9 +359,8 @@ impl ImageVisualizer {
                 .annotation_info()
                 .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
-            if let Some(textured_rect) = to_textured_rect(
+            if let Some(textured_rect) = tensor_to_textured_rect(
                 ctx.viewer_ctx,
-                render_ctx,
                 entity_path,
                 ent_context,
                 tensor_data_row_id,
@@ -665,7 +585,7 @@ impl VisualizerSystem for ImageVisualizer {
             context_systems,
             &mut depth_clouds,
             |visualizer, ctx, _depth_clouds, _transforms, entity_path, spatial_ctx, data| {
-                visualizer.process_image_data(ctx, render_ctx, entity_path, spatial_ctx, data);
+                visualizer.process_image_data(ctx, entity_path, spatial_ctx, data);
             },
         )?;
 
@@ -675,13 +595,7 @@ impl VisualizerSystem for ImageVisualizer {
             context_systems,
             &mut depth_clouds,
             |visualizer, ctx, _depth_clouds, _transforms, entity_path, spatial_ctx, data| {
-                visualizer.process_segmentation_image_data(
-                    ctx,
-                    render_ctx,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                visualizer.process_segmentation_image_data(ctx, entity_path, spatial_ctx, data);
             },
         )?;
 
