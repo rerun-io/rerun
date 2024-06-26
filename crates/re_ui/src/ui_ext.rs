@@ -452,27 +452,6 @@ pub trait UiExt {
         }
     }
 
-    // /// Show a prominent collapsing header to be used as section delimitation in side panels.
-    // fn large_collapsing_header(
-    //     &mut self,
-    //     label: &str,
-    //     default_open: bool,
-    //     add_body: impl FnOnce(&mut egui::Ui),
-    // ) -> egui::CollapsingResponse<()> {
-    //     large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, None)
-    // }
-    //
-    // /// Show a prominent collapsing header to be used as section delimitation in side panels with an image button.
-    // fn large_collapsing_header_with_button(
-    //     &mut self,
-    //     label: &str,
-    //     default_open: bool,
-    //     add_body: impl FnOnce(&mut egui::Ui),
-    //     button: HeaderMenuButton<'_>,
-    // ) -> egui::CollapsingResponse<()> {
-    //     large_collapsing_header_impl(self.ui_mut(), label, default_open, add_body, Some(button))
-    // }
-
     /// Paint a collapsing triangle with rounded corners.
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
@@ -1013,37 +992,3 @@ impl UiExt for egui::Ui {
         self
     }
 }
-
-// fn large_collapsing_header_impl(
-//     ui: &mut egui::Ui,
-//     label: &str,
-//     default_open: bool,
-//     add_body: impl FnOnce(&mut egui::Ui),
-//     button: Option<HeaderMenuButton<'_>>,
-// ) -> egui::CollapsingResponse<()> {
-//     let id = ui.make_persistent_id(label);
-//
-//     let mut content = list_item::LabelContent::new(label);
-//     if let Some(button) = button {
-//         content = content
-//             .with_buttons(|ui| button.show(ui))
-//             .always_show_buttons(true);
-//     }
-//
-//     let resp = list_item::ListItem::new()
-//         .interactive(true)
-//         .force_background(DesignTokens::large_collapsing_header_color())
-//         .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
-//             //TODO(ab): this space is not desirable when the content actually is list items
-//             ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
-//             add_body(ui);
-//             ui.add_space(4.0); // Same here
-//         });
-//
-//     egui::CollapsingResponse {
-//         header_response: resp.item_response,
-//         body_response: resp.body_response.map(|r| r.response),
-//         body_returned: None,
-//         openness: resp.openness,
-//     }
-// }
