@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
-
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query::range_zip_1x6;
+use re_query::range_zip_1x5;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     RenderContext,
@@ -53,9 +51,6 @@ pub struct ViewerImage {
 
     /// Pinhole camera this image is under.
     pub parent_pinhole: Option<EntityPathHash>,
-
-    /// Draw order value used.
-    pub draw_order: DrawOrder,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -159,7 +154,6 @@ struct ImageComponentData<'a> {
 
     tensor: &'a TensorData,
     color: Option<&'a Color>,
-    draw_order: Option<&'a DrawOrder>,
     colormap: Option<&'a Colormap>,
     depth_meter: Option<&'a DepthMeter>,
     fill_ratio: Option<&'a FillRatio>,
@@ -169,37 +163,18 @@ struct ImageComponentData<'a> {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl ImageVisualizer {
-    // TODO(#6548) this should be draw order driven instead.
-    fn handle_image_layering(&mut self) {
-        // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
-        let mut image_groups: BTreeMap<ImageGrouping, Vec<ViewerImage>> = BTreeMap::new();
-        for image in self.images.drain(..) {
-            image_groups
-                .entry(ImageGrouping {
-                    parent_pinhole: image.parent_pinhole,
-                    draw_order: image.draw_order,
-                })
-                .or_default()
-                .push(image);
-        }
-
-        // Then, for each group do resorting and change transparency.
-        for (_, mut images) in image_groups {
-            // Since we change transparency depending on order and re_renderer doesn't handle transparency
-            // ordering either, we need to ensure that sorting is stable at the very least.
-            // Sorting is done by depth offset, not by draw order which is the same for the entire group.
-            //
-            // Class id images should generally come last within the same layer as
-            // they typically have large areas being zeroed out (which maps to fully transparent).
-            images.sort_by_key(|image| {
-                (
-                    image.textured_rect.options.depth_offset,
-                    image.meaning == TensorDataMeaning::ClassId,
-                )
-            });
-
-            self.images.extend(images);
-        }
+    fn sort_images(&mut self) {
+        // TODO(#702): draw oder is translated to depth offset, which works fine for opaque images, but for everything with transparency,
+        // actual drawing order is still important.
+        // We can't avoid all bugs here (we need global renderable sorting in re_renderer), but mitigate some of it by sorting images
+        // by depth offset and then (for same depth offset) by opacity.
+        self.images.sort_by_key(|image| {
+            (
+                image.textured_rect.options.depth_offset,
+                image.meaning == TensorDataMeaning::ClassId,
+                egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
+            )
+        });
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -261,10 +236,6 @@ impl ImageVisualizer {
             // TODO(andreas): We only support colormap for depth image at this point.
             let colormap = None;
 
-            let draw_order = data
-                .draw_order
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
             let opacity = data
                 .opacity
                 .copied()
@@ -301,7 +272,6 @@ impl ImageVisualizer {
                         meaning,
                         textured_rect,
                         parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                        draw_order,
                     });
                 }
             }
@@ -365,10 +335,6 @@ impl ImageVisualizer {
             // TODO(andreas): colormap is only available for depth images right now.
             let colormap = None;
 
-            let draw_order = data
-                .draw_order
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
             let opacity = data
                 .opacity
                 .copied()
@@ -409,7 +375,6 @@ impl ImageVisualizer {
                     meaning,
                     textured_rect,
                     parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order,
                 });
             }
         }
@@ -512,10 +477,6 @@ impl ImageVisualizer {
                 };
             }
 
-            let draw_order = data
-                .draw_order
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
             let color = ent_context
                 .annotations
                 .resolved_class_description(None)
@@ -555,7 +516,6 @@ impl ImageVisualizer {
                     meaning,
                     textured_rect,
                     parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order,
                 });
             }
         }
@@ -798,7 +758,7 @@ impl VisualizerSystem for ImageVisualizer {
             },
         )?;
 
-        self.handle_image_layering();
+        self.sort_images();
 
         let mut draw_data_list = Vec::new();
 
@@ -888,15 +848,13 @@ impl ImageVisualizer {
                 };
 
                 let colors = results.get_or_empty_dense(resolver)?;
-                let draw_orders = results.get_or_empty_dense(resolver)?;
                 let colormap = results.get_or_empty_dense(resolver)?;
                 let depth_meter = results.get_or_empty_dense(resolver)?;
                 let fill_ratio = results.get_or_empty_dense(resolver)?;
                 let opacity = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x6(
+                let mut data = range_zip_1x5(
                     tensors.range_indexed(),
-                    draw_orders.range_indexed(),
                     colors.range_indexed(),
                     colormap.range_indexed(),
                     depth_meter.range_indexed(),
@@ -904,21 +862,11 @@ impl ImageVisualizer {
                     opacity.range_indexed(),
                 )
                 .filter_map(
-                    |(
-                        &index,
-                        tensors,
-                        draw_orders,
-                        colors,
-                        colormap,
-                        depth_meter,
-                        fill_ratio,
-                        opacity,
-                    )| {
+                    |(&index, tensors, colors, colormap, depth_meter, fill_ratio, opacity)| {
                         tensors.first().map(|tensor| ImageComponentData {
                             index,
                             tensor,
                             color: colors.and_then(|colors| colors.first()),
-                            draw_order: draw_orders.and_then(|draw_orders| draw_orders.first()),
                             colormap: colormap.and_then(|colormap| colormap.first()),
                             depth_meter: depth_meter.and_then(|depth_meter| depth_meter.first()),
                             fill_ratio: fill_ratio.and_then(|fill_ratio| fill_ratio.first()),
