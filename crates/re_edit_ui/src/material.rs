@@ -10,7 +10,7 @@ pub fn edit_material_ui(
     ui: &mut egui::Ui,
     value: &mut Material,
 ) -> egui::Response {
-    ui.label("Albedo factor");
+    ui.label("Albedo"); // "Albedo factor" makes the UI too wide.
 
     let mut edit_color = value.albedo_factor.unwrap_or(Rgba32::WHITE).into();
     let response = edit_color_ui(ctx, ui, &mut edit_color);
