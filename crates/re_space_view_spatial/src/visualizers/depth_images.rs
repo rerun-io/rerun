@@ -4,7 +4,7 @@ use nohash_hasher::IntSet;
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, RowId, TimeInt};
 use re_query::range_zip_1x3;
-use re_renderer::renderer::{DepthCloud, DepthClouds, TexturedRect};
+use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::DepthImage,
@@ -27,7 +27,10 @@ use crate::{
     PickableImageRect, SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
-use super::{tensor_to_textured_rect, SpatialViewVisualizerData};
+use super::{
+    tensor_to_textured_rect, textured_rect_utils::bounding_box_for_textured_rect,
+    SpatialViewVisualizerData,
+};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -142,18 +145,14 @@ impl DepthImageVisualizer {
                 re_renderer::Rgba::WHITE,
                 Some(colormap),
             ) {
-                // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto. This is avoids a cyclic
-                // relationship where the image plane grows the bounds which in
-                // turn influence the size of the image plane.
+                // Only update the bounding box if this is a 2D space view.
+                // This is avoids a cyclic relationship where the image plane grows
+                // the bounds which in turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                // TODO(jleibs): Is there an equivalent for this?
-                // || !ent_props.pinhole_image_plane_distance.is_auto()
-                {
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier() {
                     self.data.add_bounding_box(
                         entity_path.hash(),
-                        Self::compute_bounding_box(&textured_rect),
+                        bounding_box_for_textured_rect(&textured_rect),
                         ent_context.world_from_entity,
                     );
                 }
@@ -251,22 +250,6 @@ impl DepthImageVisualizer {
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
         })
-    }
-
-    fn compute_bounding_box(textured_rect: &TexturedRect) -> macaw::BoundingBox {
-        let left_top = textured_rect.top_left_corner_position;
-        let extent_u = textured_rect.extent_u;
-        let extent_v = textured_rect.extent_v;
-
-        macaw::BoundingBox::from_points(
-            [
-                left_top,
-                left_top + extent_u,
-                left_top + extent_v,
-                left_top + extent_v + extent_u,
-            ]
-            .into_iter(),
-        )
     }
 }
 

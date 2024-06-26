@@ -14,15 +14,17 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
+mod segmentation_images;
 mod spatial_view_visualizer;
-mod tensor_to_textured_rect;
+mod textured_rect_utils;
 mod transform3d_arrows;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
 pub use images::ImageVisualizer;
+pub use segmentation_images::SegmentationImageVisualizer;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
-pub use tensor_to_textured_rect::tensor_to_textured_rect;
+pub use textured_rect_utils::tensor_to_textured_rect;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer, Transform3DDetector};
 
 // ---
@@ -74,6 +76,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
@@ -95,6 +98,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
@@ -109,6 +113,7 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
         images::ImageVisualizer::identifier(),
         lines2d::Lines2DVisualizer::identifier(),
         points2d::Points2DVisualizer::identifier(),
+        segmentation_images::SegmentationImageVisualizer::identifier(),
     ]
     .into_iter()
 }

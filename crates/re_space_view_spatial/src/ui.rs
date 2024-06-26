@@ -30,7 +30,8 @@ use crate::{
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        CamerasVisualizer, DepthImageVisualizer, ImageVisualizer, UiLabel, UiLabelTarget,
+        CamerasVisualizer, DepthImageVisualizer, ImageVisualizer, SegmentationImageVisualizer,
+        UiLabel, UiLabelTarget,
     },
 };
 use crate::{contexts::PrimitiveCounter, scene_bounding_boxes::SceneBoundingBoxes};
@@ -114,9 +115,12 @@ impl SpatialSpaceViewState {
             .view_systems
             .get::<ImageVisualizer>()?
             .images
-            .iter()
-            .filter(|i| i.meaning != TensorDataMeaning::ClassId)
-            .count()
+            .len()
+            + system_output
+                .view_systems
+                .get::<SegmentationImageVisualizer>()?
+                .images
+                .len()
             + system_output
                 .view_systems
                 .get::<DepthImageVisualizer>()?
@@ -507,12 +511,17 @@ pub fn picking(
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
     let depth_images = visualizers.get::<DepthImageVisualizer>()?;
+    let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
         render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        images.images.iter().chain(depth_images.images.iter()),
+        images
+            .images
+            .iter()
+            .chain(depth_images.images.iter())
+            .chain(segmentation_images.images.iter()),
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
