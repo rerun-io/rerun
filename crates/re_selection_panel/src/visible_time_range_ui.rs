@@ -35,7 +35,11 @@ fn space_view_with_visible_history(space_view_class: SpaceViewClassIdentifier) -
     VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(&space_view_class)
 }
 
-pub fn query_range_ui_space_view(ctx: &ViewerContext<'_>, ui: &mut Ui, view: &SpaceViewBlueprint) {
+pub fn visible_time_range_ui_for_view(
+    ctx: &ViewerContext<'_>,
+    ui: &mut Ui,
+    view: &SpaceViewBlueprint,
+) {
     if !space_view_with_visible_history(view.class_identifier()) {
         return;
     }
@@ -57,7 +61,7 @@ pub fn query_range_ui_space_view(ctx: &ViewerContext<'_>, ui: &mut Ui, view: &Sp
     visible_time_range_ui(ctx, ui, query_range, &property_path, is_space_view);
 }
 
-pub fn query_range_ui_data_result(
+pub fn visible_time_range_ui_for_data_result(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     data_result: &re_viewer_context::DataResult,

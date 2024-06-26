@@ -24,8 +24,9 @@ use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, Viewport
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
 use crate::{defaults_ui::view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
 use crate::{
-    query_range_ui::query_range_ui_data_result, query_range_ui::query_range_ui_space_view,
     selection_history_ui::SelectionHistoryUi,
+    visible_time_range_ui::visible_time_range_ui_for_data_result,
+    visible_time_range_ui::visible_time_range_ui_for_view,
 };
 
 // ---
@@ -373,7 +374,7 @@ impl SelectionPanel {
         }
 
         if let Some(view) = blueprint.view(view_id) {
-            query_range_ui_space_view(ctx, ui, view);
+            visible_time_range_ui_for_view(ctx, ui, view);
         }
     }
 
@@ -548,7 +549,7 @@ fn entity_selection_ui(
     }
 
     if let Some(data_result) = &data_result {
-        query_range_ui_data_result(ctx, ui, data_result);
+        visible_time_range_ui_for_data_result(ctx, ui, data_result);
     }
 }
 
