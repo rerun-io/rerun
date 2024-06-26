@@ -5,7 +5,7 @@ use re_data_store::LatestAtQuery;
 use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_log_types::{DataCell, DataRow, EntityPath, RowId};
 use re_types_core::ComponentName;
-use re_ui::UiExt as _;
+use re_ui::{list_item::LabelContent, UiExt as _};
 use re_viewer_context::{
     blueprint_timeline, ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _,
     UiLayout, ViewContext, ViewSystemIdentifier,
@@ -83,7 +83,7 @@ fn active_default_ui(
         ui.spacing_mut().item_spacing.y = 0.0;
 
         if sorted_overrides.is_empty() {
-            ui.weak("(none)");
+            ui.list_item_flat_noninteractive(LabelContent::new("(none)").weak(true));
         }
 
         for component_name in sorted_overrides {
