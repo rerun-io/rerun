@@ -509,15 +509,13 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             ));
         }
 
-        ui.horizontal(|ui| {
-            if ui
-                .button("Edit")
-                .on_hover_text("Modify the entity query using the editor")
-                .clicked()
-            {
-                self.space_view_entity_modal.open(view_id);
-            }
-        });
+        if ui
+            .button("Edit")
+            .on_hover_text("Modify the entity query using the editor")
+            .clicked()
+        {
+            self.space_view_entity_modal.open(view_id);
+        }
 
         // Apply the edit.
         let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
