@@ -80,6 +80,9 @@ pub struct StartupOptions {
 
     /// Default overrides for state of top/side/bottom panels.
     pub panel_state_overrides: PanelStateOverrides,
+
+    #[cfg(target_arch = "wasm32")]
+    pub enable_history: bool,
 }
 
 impl Default for StartupOptions {
@@ -107,6 +110,9 @@ impl Default for StartupOptions {
             fullscreen_options: Default::default(),
 
             panel_state_overrides: Default::default(),
+
+            #[cfg(target_arch = "wasm32")]
+            enable_history: false,
         }
     }
 }
@@ -945,6 +951,11 @@ impl App {
                     if let Some(store_view) = store_context {
                         let entity_db = store_view.recording;
 
+                        #[cfg(target_arch = "wasm32")]
+                        let is_history_enabled = self.startup_options.enable_history;
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let is_history_enabled = false;
+
                         self.state.show(
                             app_blueprint,
                             ui,
@@ -960,6 +971,7 @@ impl App {
                                 hide: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
+                            is_history_enabled,
                         );
                     }
                     render_ctx.before_submit();
@@ -1462,7 +1474,7 @@ impl eframe::App for App {
         }
 
         #[cfg(target_arch = "wasm32")]
-        {
+        if self.startup_options.enable_history {
             // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
             let back_pressed =
                 egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));

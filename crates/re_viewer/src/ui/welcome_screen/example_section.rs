@@ -246,6 +246,7 @@ impl ExampleSection {
         ui: &mut egui::Ui,
         command_sender: &CommandSender,
         header_ui: &impl Fn(&mut Ui),
+        is_history_enabled: bool,
     ) {
         let examples = self
             .examples
@@ -352,19 +353,11 @@ impl ExampleSection {
                                     // panel to quit auto-zoom mode.
                                     ui.input_mut(|i| i.pointer = Default::default());
 
-                                    let open_in_new_tab = ui.input(|i| i.modifiers.any());
                                     open_example_url(
                                         ui.ctx(),
                                         command_sender,
                                         &example.desc.rrd_url,
-                                        open_in_new_tab,
-                                    );
-                                } else if response.middle_clicked() {
-                                    open_example_url(
-                                        ui.ctx(),
-                                        command_sender,
-                                        &example.desc.rrd_url,
-                                        true,
+                                        is_history_enabled,
                                     );
                                 }
 
@@ -433,28 +426,12 @@ impl ExampleSection {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-fn open_in_background_tab(egui_ctx: &egui::Context, rrd_url: &str) {
-    egui_ctx.open_url(egui::output::OpenUrl {
-        url: format!("/?url={}", crate::web_tools::percent_encode(rrd_url)),
-        new_tab: true,
-    });
-}
-
 fn open_example_url(
     _egui_ctx: &egui::Context,
     command_sender: &CommandSender,
     rrd_url: &str,
-    _open_in_new_tab: bool,
+    _is_history_enabled: bool,
 ) {
-    #[cfg(target_arch = "wasm32")]
-    {
-        if _open_in_new_tab {
-            open_in_background_tab(_egui_ctx, rrd_url);
-            return;
-        }
-    }
-
     let data_source = re_data_source::DataSource::RrdHttpUrl {
         url: rrd_url.to_owned(),
         follow: false,
@@ -471,30 +448,13 @@ fn open_example_url(
     command_sender.send_system(SystemCommand::LoadDataSource(data_source));
 
     #[cfg(target_arch = "wasm32")]
-    {
-        // Ensure that the user returns to the welcome page after navigating to an example.
-        use crate::web_tools;
+    if _is_history_enabled {
+        use crate::web_tools::{history, HistoryEntry, HistoryExt, JsResultExt};
 
-        // So we know where to return to
-        let welcome_screen_app_id = re_viewer_context::StoreHub::welcome_screen_app_id();
-        let welcome_screen_url = format!(
-            "?app_id={}",
-            web_tools::percent_encode(&welcome_screen_app_id.to_string())
-        );
-
-        if web_tools::current_url_suffix()
-            .unwrap_or_default()
-            .is_empty()
-        {
-            // Replace, otherwise the user would need to hit back twice to return to
-            // whatever linked them to `https://www.rerun.io/viewer` in the first place.
-            web_tools::replace_history(&welcome_screen_url);
-        } else {
-            web_tools::push_history(&welcome_screen_url);
+        if let Some(history) = history().ok_or_log_js_error() {
+            let entry = HistoryEntry::new().rrd_url(rrd_url.to_owned());
+            history.push_entry(entry).ok_or_log_js_error();
         }
-
-        // Where we're going:
-        web_tools::push_history(&format!("?url={}", web_tools::percent_encode(rrd_url)));
     }
 }
 

@@ -1,6 +1,6 @@
 import type { WebHandle } from "./re_viewer.js";
 
-interface AppOptions {
+export interface AppOptions {
   app_id?: string;
   url?: string;
   manifest_url?: string;
@@ -10,6 +10,7 @@ interface AppOptions {
     [K in Panel]: PanelState;
   }>;
   fullscreen?: FullscreenOptions;
+  enable_history?: boolean;
 
   persist?: boolean;
   notebook?: boolean;
@@ -43,11 +44,12 @@ export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
 
-interface WebViewerOptions {
+export interface WebViewerOptions {
   manifest_url?: string;
   render_backend?: Backend;
   hide_welcome_screen?: boolean;
   allow_fullscreen?: boolean;
+  enable_history?: boolean;
 }
 
 interface FullscreenOptions {

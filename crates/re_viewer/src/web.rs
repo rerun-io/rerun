@@ -11,7 +11,8 @@ use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
 
-use crate::web_tools::{url_to_receiver, Callback, StringOrStringArray};
+use crate::web_tools::JsResultExt;
+use crate::web_tools::{install_popstate_listener, url_to_receiver, Callback, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -293,22 +294,22 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
     }
 }
 
-// Keep in sync with the `AppOptions` typedef in `rerun_js/web-viewer/index.js`
+// Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
-    app_id: Option<String>,
     url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
     fullscreen: Option<FullscreenOptions>,
+    enable_history: Option<bool>,
 
     notebook: Option<bool>,
     persist: Option<bool>,
 }
 
-// Keep in sync with the `FullscreenOptions` typedef in `rerun_js/web-viewer/index.js`
+// Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
 #[derive(Clone, Deserialize)]
 pub struct FullscreenOptions {
     /// This returns the current fullscreen state, which is a boolean representing on/off.
@@ -345,6 +346,7 @@ fn create_app(
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
     };
+    let enable_history = app_options.enable_history.unwrap_or(false);
     let startup_options = crate::StartupOptions {
         memory_limit: re_memory::MemoryLimit {
             // On wasm32 we only have 4GB of memory to play around with.
@@ -358,6 +360,7 @@ fn create_app(
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
         fullscreen_options: app_options.fullscreen.clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
+        enable_history,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -369,11 +372,9 @@ fn create_app(
         cc.storage,
     );
 
-    if let Some(app_id) = app_options.app_id {
-        app.command_sender
-            .send_system(SystemCommand::ActivateApp(re_log_types::ApplicationId(
-                app_id,
-            )));
+    if enable_history {
+        install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone())
+            .ok_or_log_js_error();
     }
 
     if let Some(manifest_url) = app_options.manifest_url {
