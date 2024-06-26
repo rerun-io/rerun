@@ -11,10 +11,10 @@
     }
   ],
   "scripts": {
-    "build:wasm": "cargo run -p re_dev_tools -- build-web-viewer --release -g --module -o rerun_js/web-viewer",
+    "build:wasm": "node build-wasm.mjs --mode release",
     "build:js": "tsc",
     "build": "npm run build:wasm && npm run build:js",
-    "build:wasm:debug": "cargo run -p re_dev_tools -- build-web-viewer --debug --module -o rerun_js/web-viewer",
+    "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js"
   },
   "repository": {

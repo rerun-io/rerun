@@ -49,6 +49,19 @@ impl Profile {
 pub enum Target {
     Browser,
     Module,
+    /// Custom target meant for post-processing inside `rerun_js`.
+    NoModulesBase,
+}
+
+impl argh::FromArgValue for Target {
+    fn from_arg_value(value: &str) -> Result<Self, String> {
+        match value {
+            "browser" => Ok(Self::Browser),
+            "module" => Ok(Self::Module),
+            "no-modules-base" => Ok(Self::NoModulesBase),
+            _ => Err(format!("Unknown target: {value}")),
+        }
+    }
 }
 
 /// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `build_dir` folder.
@@ -158,6 +171,7 @@ pub fn build(
         match target {
             Target::Browser => bindgen_cmd.no_modules(true)?.typescript(false),
             Target::Module => bindgen_cmd.no_modules(false)?.typescript(true),
+            Target::NoModulesBase => bindgen_cmd.no_modules(true)?.typescript(true),
         };
         if let Err(err) = bindgen_cmd.generate(build_dir.as_str()) {
             if err

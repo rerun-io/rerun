@@ -14,9 +14,12 @@ if (args.values.watch) {
 }
 
 async function watch() {
-  const watcher = await subscribe(path.join(process.cwd(), "src/js"), async () => {
-    await build();
-  });
+  const watcher = await subscribe(
+    path.join(process.cwd(), "src/js"),
+    async () => {
+      await build();
+    },
+  );
 
   process.on("SIGINT", async () => {
     await watcher.unsubscribe();
@@ -33,11 +36,16 @@ async function build() {
     const start = Date.now();
     await esbuild.build({
       entryPoints: ["src/js/widget.ts"],
+      entryNames: "[name]",
+      chunkNames: "[name]",
+      assetNames: "[name]",
       bundle: true,
       format: "esm",
-      minify: true,
+      splitting: true,
+      // minify: true,
+      // write: false,
       outdir: "src/rerun_notebook/static",
-      plugins: [wasmLoader({ mode: "embedded" })],
+      loader: { ".wasm": "copy" },
     });
     log(`Built widget in ${Date.now() - start}ms`);
   } catch (e) {
@@ -58,4 +66,3 @@ function log(message) {
 function error(message) {
   return console.error(`[${now()}] ${message}`);
 }
-

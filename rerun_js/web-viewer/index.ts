@@ -1,4 +1,4 @@
-import type { WebHandle } from "./re_viewer.js";
+import { WebHandle, wasm_bindgen } from "./re_viewer";
 
 interface AppOptions {
   url?: string;
@@ -11,18 +11,23 @@ interface AppOptions {
   fullscreen?: FullscreenOptions;
 }
 
-type WebHandleConstructor = {
-  new (app_options?: AppOptions): WebHandle;
-};
+let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
+let _wasm_module: WebAssembly.Module | null = null;
 
-let WebHandleConstructor: WebHandleConstructor | null = null;
-
-async function load(): Promise<WebHandleConstructor> {
-  if (WebHandleConstructor) {
-    return WebHandleConstructor;
+async function load(): Promise<typeof wasm_bindgen.WebHandle> {
+  // instantiate wbg globals+module for every invocation of `load`,
+  // but don't load the JS/Wasm source every time
+  if (!get_wasm_bindgen || !_wasm_module) {
+    [get_wasm_bindgen, _wasm_module] = await Promise.all([
+      import("./re_viewer").then((m) => m.default),
+      WebAssembly.compileStreaming(
+        fetch(new URL("./re_viewer_bg.wasm", import.meta.url)),
+      ),
+    ]);
   }
-  WebHandleConstructor = (await import("./re_viewer.js")).WebHandle;
-  return WebHandleConstructor;
+  let bindgen = get_wasm_bindgen();
+  await bindgen(_wasm_module);
+  return bindgen.WebHandle;
 }
 
 let _minimize_current_fullscreen_viewer: (() => void) | null = null;
