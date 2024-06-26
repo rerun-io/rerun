@@ -36,7 +36,7 @@ fn command_channel() -> (CommandSender, CommandReceiver) {
     (CommandSender(sender), CommandReceiver(receiver))
 }
 
-fn main() -> eframe::Result<()> {
+fn main() -> eframe::Result {
     re_log::setup_logging();
 
     let native_options = eframe::NativeOptions {
