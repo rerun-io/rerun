@@ -85,7 +85,7 @@ fn active_default_ui(
         ui.spacing_mut().item_spacing.y = 0.0;
 
         if sorted_overrides.is_empty() {
-            ui.list_item_flat_noninteractive(LabelContent::new("(none)").weak(true));
+            ui.list_item_flat_noninteractive(LabelContent::new("none").weak(true).italics(true));
         }
 
         for component_name in sorted_overrides {

@@ -87,7 +87,13 @@ pub fn visualizer_ui_impl(
     };
 
     list_item::list_item_scope(ui, "visualizers", |ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
+        if active_visualizers.is_empty() {
+            ui.list_item_flat_noninteractive(
+                list_item::LabelContent::new("none")
+                    .weak(true)
+                    .italics(true),
+            );
+        }
 
         for &visualizer_id in active_visualizers {
             let default_open = true;
