@@ -24,7 +24,7 @@ Using these formats can save a lot of bandwidth and memory.
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
-**Optional**: [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)

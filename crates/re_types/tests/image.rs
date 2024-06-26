@@ -26,6 +26,7 @@ fn image_roundtrip() {
         }
         .into(),
         draw_order: None,
+        opacity: Some(123.0.into()),
     }];
 
     let all_arch_serialized = [Image::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
@@ -88,6 +89,7 @@ fn dynamic_image_roundtrip() {
         }
         .into(),
         draw_order: None,
+        opacity: Some(123.0.into()),
     }];
 
     let mut img = RgbImage::new(3, 2);

@@ -9,13 +9,16 @@ namespace rerun.components;
 
 // ---
 
-/// The length of an axis in local units of the space.
-struct AxisLength (
+/// Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
+///
+/// The final opacity value may be a result of multiplication with alpha values as specified by other color sources.
+/// Unless otherwise specified, the default value is 1.
+struct Opacity (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   "attr.rust.repr": "transparent",
   "attr.docs.unreleased"
 ) {
-  length: rerun.datatypes.Float32 (order: 100);
+  opacity: rerun.datatypes.Float32 (order: 100);
 }

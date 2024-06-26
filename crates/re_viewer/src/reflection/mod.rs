@@ -385,6 +385,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Opacity as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).\n\nThe final opacity value may be a result of multiplication with alpha values as specified by other color sources.\nUnless otherwise specified, the default value is 1.",
+                placeholder: Some(Opacity::default().to_arrow()?),
+            },
+        ),
+        (
             <OutOfTreeTransform3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "An out-of-tree affine transform between two 3D spaces, represented in a given direction.\n\n\"Out-of-tree\" means that the transform only affects its own entity: children don't inherit from it.",
