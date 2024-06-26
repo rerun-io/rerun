@@ -29,7 +29,9 @@ use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
-    visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
+    visualizers::{
+        CamerasVisualizer, DepthImageVisualizer, ImageVisualizer, UiLabel, UiLabelTarget,
+    },
 };
 use crate::{contexts::PrimitiveCounter, scene_bounding_boxes::SceneBoundingBoxes};
 use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
@@ -114,7 +116,12 @@ impl SpatialSpaceViewState {
             .images
             .iter()
             .filter(|i| i.meaning != TensorDataMeaning::ClassId)
-            .count();
+            .count()
+            + system_output
+                .view_systems
+                .get::<DepthImageVisualizer>()?
+                .images
+                .len();
 
         Ok(())
     }
@@ -499,12 +506,13 @@ pub fn picking(
 
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
+    let depth_images = visualizers.get::<DepthImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
         render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &images.images,
+        images.images.iter().chain(depth_images.images.iter()),
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
@@ -549,7 +557,7 @@ pub fn picking(
         let store = ctx.recording_store();
 
         // Special hover ui for images.
-        let is_depth_cloud = images
+        let is_depth_cloud = depth_images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
 

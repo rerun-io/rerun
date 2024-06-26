@@ -1,51 +1,36 @@
 use itertools::Itertools as _;
-use nohash_hasher::IntSet;
 
 use re_entity_db::EntityPath;
-use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query::range_zip_1x5;
-use re_renderer::{
-    renderer::{DepthCloud, DepthClouds, TexturedRect},
-    RenderContext,
-};
+use re_log_types::{RowId, TimeInt};
+use re_query::range_zip_1x1;
+use re_renderer::renderer::{DepthCloud, DepthClouds, TexturedRect};
 use re_space_view::diff_component_filter;
 use re_types::{
-    archetypes::{DepthImage, Image, SegmentationImage},
-    components::{
-        Color, Colormap, DepthMeter, DrawOrder, FillRatio, Opacity, TensorData, ViewCoordinates,
-    },
-    tensor_data::{DecodedTensor, TensorDataMeaning},
+    archetypes::{Image, SegmentationImage},
+    components::{DrawOrder, Opacity, TensorData},
+    tensor_data::TensorDataMeaning,
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, DefaultColor, IdentifiedViewSystem,
-    QueryContext, SpaceViewClass, SpaceViewSystemExecutionError, TensorDecodeCache,
-    TensorStatsCache, TypedComponentFallbackProvider, ViewContext, ViewContextCollection,
-    ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewClass,
+    SpaceViewSystemExecutionError, TensorDecodeCache, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
     contexts::{SpatialSceneEntityContext, TransformContext},
-    query_pinhole_legacy,
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
-    PickableImageRect, SpatialSpaceView2D, SpatialSpaceView3D,
+    PickableImageRect, SpatialSpaceView2D,
 };
 
 use super::{tensor_to_textured_rect, SpatialViewVisualizerData};
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct ImageGrouping {
-    parent_pinhole: Option<EntityPathHash>,
-    draw_order: DrawOrder,
-}
-
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
     pub images: Vec<PickableImageRect>,
-    pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
 impl Default for ImageVisualizer {
@@ -53,7 +38,6 @@ impl Default for ImageVisualizer {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
             images: Vec::new(),
-            depth_cloud_entities: IntSet::default(),
         }
     }
 }
@@ -62,10 +46,6 @@ struct ImageComponentData<'a> {
     index: (TimeInt, RowId),
 
     tensor: &'a TensorData,
-    color: Option<&'a Color>,
-    colormap: Option<&'a Colormap>,
-    depth_meter: Option<&'a DepthMeter>,
-    fill_ratio: Option<&'a FillRatio>,
     opacity: Option<&'a Opacity>,
 }
 
@@ -94,16 +74,6 @@ impl ImageVisualizer {
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
     ) {
-        // If this isn't an image, return
-        // TODO(jleibs): The ArchetypeView should probably do this for us.
-        if !ctx.viewer_ctx.recording_store().entity_has_component(
-            &ctx.query.timeline(),
-            entity_path,
-            &Image::indicator().name(),
-        ) {
-            return;
-        }
-
         // Unknown is currently interpreted as "Some Color" in most cases.
         // TODO(jleibs): Make this more explicit
         let meaning = TensorDataMeaning::Unknown;
@@ -126,12 +96,6 @@ impl ImageVisualizer {
                 }
             };
 
-            let color = ent_context
-                .annotations
-                .resolved_class_description(None)
-                .annotation_info()
-                .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
-
             // TODO(andreas): We only support colormap for depth image at this point.
             let colormap = None;
 
@@ -140,7 +104,7 @@ impl ImageVisualizer {
                 .copied()
                 .unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
-                re_renderer::Rgba::from(color).multiply(opacity.0.clamp(0.0, 1.0));
+                re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
             if let Some(textured_rect) = tensor_to_textured_rect(
                 ctx.viewer_ctx,
@@ -163,13 +127,13 @@ impl ImageVisualizer {
                         Self::compute_bounding_box(&textured_rect),
                         ent_context.world_from_entity,
                     );
-
-                    self.images.push(PickableImageRect {
-                        ent_path: entity_path.clone(),
-                        meaning,
-                        textured_rect,
-                    });
                 }
+
+                self.images.push(PickableImageRect {
+                    ent_path: entity_path.clone(),
+                    meaning,
+                    textured_rect,
+                });
             }
         }
     }
@@ -212,12 +176,6 @@ impl ImageVisualizer {
                 }
             };
 
-            let color = ent_context
-                .annotations
-                .resolved_class_description(None)
-                .annotation_info()
-                .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
-
             // TODO(andreas): colormap is only available for depth images right now.
             let colormap = None;
 
@@ -226,7 +184,7 @@ impl ImageVisualizer {
                 .copied()
                 .unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
-                re_renderer::Rgba::from(color).multiply(opacity.0.clamp(0.0, 1.0));
+                re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
             if let Some(textured_rect) = tensor_to_textured_rect(
                 ctx.viewer_ctx,
@@ -263,219 +221,6 @@ impl ImageVisualizer {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn process_depth_image_data<'a>(
-        &mut self,
-        ctx: &QueryContext<'_>,
-        render_ctx: &RenderContext,
-        depth_clouds: &mut Vec<DepthCloud>,
-        transforms: &TransformContext,
-        entity_path: &EntityPath,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = ImageComponentData<'a>>,
-    ) {
-        // If this isn't an image, return
-        // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.viewer_ctx.recording_store().entity_has_component(
-            &ctx.query.timeline(),
-            entity_path,
-            &DepthImage::indicator().name(),
-        ) {
-            return;
-        }
-
-        let is_3d_view =
-            ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
-
-        let meaning = TensorDataMeaning::Depth;
-
-        for data in data {
-            if !data.tensor.is_shaped_like_an_image() {
-                continue;
-            }
-
-            let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
-                c.entry(tensor_data_row_id, data.tensor.0.clone())
-            }) {
-                Ok(tensor) => tensor,
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {entity_path}: {err}"
-                    );
-                    continue;
-                }
-            };
-
-            let colormap = data
-                .colormap
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
-
-            if is_3d_view {
-                if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
-                    let depth_meter = data
-                        .depth_meter
-                        .copied()
-                        .unwrap_or_else(|| self.fallback_for(ctx));
-                    let fill_ratio = data.fill_ratio.copied().unwrap_or_default();
-
-                    // NOTE: we don't pass in `world_from_obj` because this corresponds to the
-                    // transform of the projection plane, which is of no use to us here.
-                    // What we want are the extrinsics of the depth camera!
-                    match Self::process_entity_view_as_depth_cloud(
-                        ctx,
-                        render_ctx,
-                        transforms,
-                        ent_context,
-                        tensor_data_row_id,
-                        &tensor,
-                        entity_path,
-                        parent_pinhole_path,
-                        colormap,
-                        depth_meter,
-                        fill_ratio,
-                    ) {
-                        Ok(cloud) => {
-                            self.data.add_bounding_box(
-                                entity_path.hash(),
-                                cloud.world_space_bbox(),
-                                glam::Affine3A::IDENTITY,
-                            );
-                            self.depth_cloud_entities.insert(entity_path.hash());
-                            depth_clouds.push(cloud);
-                            return;
-                        }
-                        Err(err) => {
-                            re_log::warn_once!("{err}");
-                        }
-                    }
-                };
-            }
-
-            let color = ent_context
-                .annotations
-                .resolved_class_description(None)
-                .annotation_info()
-                .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
-
-            if let Some(textured_rect) = tensor_to_textured_rect(
-                ctx.viewer_ctx,
-                entity_path,
-                ent_context,
-                tensor_data_row_id,
-                &tensor,
-                meaning,
-                color.into(),
-                Some(colormap),
-            ) {
-                // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto. This is avoids a cyclic
-                // relationship where the image plane grows the bounds which in
-                // turn influence the size of the image plane.
-                // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                // TODO(jleibs): Is there an equivalent for this?
-                // || !ent_props.pinhole_image_plane_distance.is_auto()
-                {
-                    self.data.add_bounding_box(
-                        entity_path.hash(),
-                        Self::compute_bounding_box(&textured_rect),
-                        ent_context.world_from_entity,
-                    );
-                }
-
-                self.images.push(PickableImageRect {
-                    ent_path: entity_path.clone(),
-                    meaning,
-                    textured_rect,
-                });
-            }
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn process_entity_view_as_depth_cloud(
-        ctx: &QueryContext<'_>,
-        render_ctx: &RenderContext,
-        transforms: &TransformContext,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        tensor_data_row_id: RowId,
-        tensor: &DecodedTensor,
-        ent_path: &EntityPath,
-        parent_pinhole_path: &EntityPath,
-        colormap: Colormap,
-        depth_meter: DepthMeter,
-        radius_scale: FillRatio,
-    ) -> anyhow::Result<DepthCloud> {
-        re_tracing::profile_function!();
-
-        let Some(intrinsics) =
-            query_pinhole_legacy(ctx.recording(), ctx.query, parent_pinhole_path)
-        else {
-            anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
-        };
-
-        // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
-        let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
-            parent_pinhole_path,
-            ctx.recording(),
-            ctx.query,
-        );
-        let Some(world_from_view) = world_from_view else {
-            anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
-        };
-        let world_from_rdf = world_from_view
-            * glam::Affine3A::from_mat3(
-                intrinsics
-                    .camera_xyz
-                    .unwrap_or(ViewCoordinates::RDF) // TODO(#2641): This should come from archetype
-                    .from_rdf(),
-            );
-
-        let Some([height, width, _]) = tensor.image_height_width_channels() else {
-            anyhow::bail!("Tensor at {ent_path:?} is not an image");
-        };
-        let dimensions = glam::UVec2::new(width as _, height as _);
-
-        let debug_name = ent_path.to_string();
-        let tensor_stats = ctx
-            .viewer_ctx
-            .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
-        let depth_texture = re_viewer_context::gpu_bridge::tensor_to_gpu(
-            render_ctx,
-            &debug_name,
-            tensor_data_row_id,
-            tensor,
-            TensorDataMeaning::Depth,
-            &tensor_stats,
-            &ent_context.annotations,
-            Some(colormap),
-        )?;
-
-        let world_depth_from_texture_depth = 1.0 / depth_meter.0;
-
-        // We want point radius to be defined in a scale where the radius of a point
-        // is a factor of the diameter of a pixel projected at that distance.
-        let fov_y = intrinsics.fov_y().unwrap_or(1.0);
-        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * height as f32);
-        let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
-
-        Ok(DepthCloud {
-            world_from_rdf,
-            depth_camera_intrinsics: intrinsics.image_from_camera.0.into(),
-            world_depth_from_texture_depth,
-            point_radius_from_world_depth,
-            max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
-            depth_dimensions: dimensions,
-            depth_texture: depth_texture.texture,
-            colormap: colormap_to_re_renderer(colormap),
-            outline_mask_id: ent_context.highlight.overall,
-            picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
-        })
-    }
-
     fn compute_bounding_box(textured_rect: &TexturedRect) -> macaw::BoundingBox {
         let left_top = textured_rect.top_left_corner_position;
         let extent_u = textured_rect.extent_u;
@@ -495,7 +240,7 @@ impl ImageVisualizer {
 
 impl IdentifiedViewSystem for ImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Images".into()
+        "Image".into()
     }
 }
 
@@ -513,7 +258,6 @@ impl VisualizerSystem for ImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let indicators = [
             Image::indicator().name(),
-            DepthImage::indicator().name(),
             SegmentationImage::indicator().name(),
         ]
         .into_iter()
@@ -523,26 +267,18 @@ impl VisualizerSystem for ImageVisualizer {
             .iter()
             .map(ToOwned::to_owned)
             .collect();
-        let depth_image: ComponentNameSet = DepthImage::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect();
         let segmentation_image: ComponentNameSet = SegmentationImage::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect();
 
         let required = image
-            .intersection(&depth_image)
-            .map(ToOwned::to_owned)
-            .collect::<ComponentNameSet>()
             .intersection(&segmentation_image)
             .map(ToOwned::to_owned)
             .collect();
 
         let queried = Image::all_components()
             .iter()
-            .chain(DepthImage::all_components().iter())
             .chain(SegmentationImage::all_components().iter())
             .map(ToOwned::to_owned)
             .collect();
@@ -596,24 +332,6 @@ impl VisualizerSystem for ImageVisualizer {
             &mut depth_clouds,
             |visualizer, ctx, _depth_clouds, _transforms, entity_path, spatial_ctx, data| {
                 visualizer.process_segmentation_image_data(ctx, entity_path, spatial_ctx, data);
-            },
-        )?;
-
-        self.process_image_archetype::<DepthImage, _>(
-            ctx,
-            view_query,
-            context_systems,
-            &mut depth_clouds,
-            |visualizer, ctx, depth_clouds, transforms, entity_path, spatial_ctx, data| {
-                visualizer.process_depth_image_data(
-                    ctx,
-                    render_ctx,
-                    depth_clouds,
-                    transforms,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
             },
         )?;
 
@@ -706,33 +424,16 @@ impl ImageVisualizer {
                     _ => return Ok(()),
                 };
 
-                let colors = results.get_or_empty_dense(resolver)?;
-                let colormap = results.get_or_empty_dense(resolver)?;
-                let depth_meter = results.get_or_empty_dense(resolver)?;
-                let fill_ratio = results.get_or_empty_dense(resolver)?;
                 let opacity = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x5(
-                    tensors.range_indexed(),
-                    colors.range_indexed(),
-                    colormap.range_indexed(),
-                    depth_meter.range_indexed(),
-                    fill_ratio.range_indexed(),
-                    opacity.range_indexed(),
-                )
-                .filter_map(
-                    |(&index, tensors, colors, colormap, depth_meter, fill_ratio, opacity)| {
+                let mut data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed())
+                    .filter_map(|(&index, tensors, opacity)| {
                         tensors.first().map(|tensor| ImageComponentData {
                             index,
                             tensor,
-                            color: colors.and_then(|colors| colors.first()),
-                            colormap: colormap.and_then(|colormap| colormap.first()),
-                            depth_meter: depth_meter.and_then(|depth_meter| depth_meter.first()),
-                            fill_ratio: fill_ratio.and_then(|fill_ratio| fill_ratio.first()),
                             opacity: opacity.and_then(|opacity| opacity.first()),
                         })
-                    },
-                );
+                    });
 
                 f(
                     self,
@@ -749,24 +450,6 @@ impl ImageVisualizer {
         )?;
 
         Ok(())
-    }
-}
-
-impl TypedComponentFallbackProvider<Colormap> for ImageVisualizer {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
-        // We anticipate depth images and turbo is well suited for that.
-        Colormap::Turbo
-    }
-}
-
-impl TypedComponentFallbackProvider<DepthMeter> for ImageVisualizer {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> DepthMeter {
-        let is_integer_tensor = ctx
-            .recording()
-            .latest_at_component::<TensorData>(ctx.target_entity_path, ctx.query)
-            .map_or(false, |tensor| tensor.dtype().is_integer());
-
-        if is_integer_tensor { 1000.0 } else { 1.0 }.into()
     }
 }
 
@@ -813,4 +496,4 @@ impl TypedComponentFallbackProvider<DrawOrder> for ImageVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [Colormap, DepthMeter, DrawOrder, Opacity]);
+re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [DrawOrder, Opacity]);

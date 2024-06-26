@@ -3,6 +3,9 @@ use super::DrawOrder;
 // TODO(cmc): come up with some DSL in our flatbuffers definitions so that we can declare these
 // constants directly in there.
 impl DrawOrder {
+    /// Draw order used for depth image when they're not shown as a 3D point cloud and no draw order was specified.
+    pub const DEFAULT_DEPTH_IMAGE: Self = Self(-20.0);
+
     /// Draw order used for images if no draw order was specified.
     pub const DEFAULT_IMAGE: Self = Self(-10.0);
 

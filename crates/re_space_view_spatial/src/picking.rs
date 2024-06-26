@@ -102,12 +102,12 @@ impl PickingContext {
     }
 
     /// Performs picking for a given scene.
-    pub fn pick(
+    pub fn pick<'a>(
         &self,
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
         previous_picking_result: &Option<PickingResult>,
-        images: &[PickableImageRect],
+        images: impl Iterator<Item = &'a PickableImageRect>,
         ui_rects: &[PickableUiRect],
     ) -> PickingResult {
         re_tracing::profile_function!();
@@ -240,9 +240,9 @@ fn picking_gpu(
     }
 }
 
-fn picking_textured_rects(
+fn picking_textured_rects<'a>(
     context: &PickingContext,
-    images: &[PickableImageRect],
+    images: impl Iterator<Item = &'a PickableImageRect>,
 ) -> Vec<PickingRayHit> {
     re_tracing::profile_function!();
 

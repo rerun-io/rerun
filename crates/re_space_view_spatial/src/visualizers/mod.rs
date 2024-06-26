@@ -6,6 +6,7 @@ mod assets3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
+mod depth_images;
 mod entity_iterator;
 mod images;
 mod lines2d;
@@ -18,6 +19,7 @@ mod tensor_to_textured_rect;
 mod transform3d_arrows;
 
 pub use cameras::CamerasVisualizer;
+pub use depth_images::DepthImageVisualizer;
 pub use images::ImageVisualizer;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use tensor_to_textured_rect::tensor_to_textured_rect;
@@ -60,11 +62,12 @@ pub fn register_2d_spatial_visualizers(
 ) -> Result<(), SpaceViewClassRegistryError> {
     // Note: 2D spatial systems don't include cameras as this
     // visualizer only shows a 2D projection WITHIN a 3D view.
-    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
+    system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -79,12 +82,13 @@ pub fn register_2d_spatial_visualizers(
 pub fn register_3d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
-    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
+    system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
@@ -101,6 +105,7 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
     [
         arrows2d::Arrows2DVisualizer::identifier(),
         boxes2d::Boxes2DVisualizer::identifier(),
+        depth_images::DepthImageVisualizer::identifier(),
         images::ImageVisualizer::identifier(),
         lines2d::Lines2DVisualizer::identifier(),
         points2d::Points2DVisualizer::identifier(),
