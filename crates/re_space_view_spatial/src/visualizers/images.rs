@@ -44,13 +44,8 @@ pub struct ViewerImage {
     /// The meaning of the tensor stored in the image
     pub meaning: TensorDataMeaning,
 
-    pub tensor: DecodedTensor,
-
     /// Textured rectangle for the renderer.
     pub textured_rect: TexturedRect,
-
-    /// Pinhole camera this image is under.
-    pub parent_pinhole: Option<EntityPathHash>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -182,7 +177,6 @@ impl ImageVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
-        transforms: &TransformContext,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -196,14 +190,6 @@ impl ImageVisualizer {
         ) {
             return;
         }
-
-        // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
-                transforms.parent_pinhole(entity_path)
-            } else {
-                None
-            };
 
         // Unknown is currently interpreted as "Some Color" in most cases.
         // TODO(jleibs): Make this more explicit
@@ -268,10 +254,8 @@ impl ImageVisualizer {
 
                     self.images.push(ViewerImage {
                         ent_path: entity_path.clone(),
-                        tensor,
                         meaning,
                         textured_rect,
-                        parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
                     });
                 }
             }
@@ -283,7 +267,6 @@ impl ImageVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
-        transforms: &TransformContext,
         entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = ImageComponentData<'a>>,
@@ -297,14 +280,6 @@ impl ImageVisualizer {
         ) {
             return;
         }
-
-        // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
-                transforms.parent_pinhole(entity_path)
-            } else {
-                None
-            };
 
         let meaning = TensorDataMeaning::ClassId;
 
@@ -371,10 +346,8 @@ impl ImageVisualizer {
 
                 self.images.push(ViewerImage {
                     ent_path: entity_path.clone(),
-                    tensor,
                     meaning,
                     textured_rect,
-                    parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
                 });
             }
         }
@@ -403,13 +376,6 @@ impl ImageVisualizer {
 
         let is_3d_view =
             ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
-
-        // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path = if is_3d_view {
-            transforms.parent_pinhole(entity_path)
-        } else {
-            None
-        };
 
         let meaning = TensorDataMeaning::Depth;
 
@@ -512,10 +478,8 @@ impl ImageVisualizer {
 
                 self.images.push(ViewerImage {
                     ent_path: entity_path.clone(),
-                    tensor,
                     meaning,
                     textured_rect,
-                    parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
                 });
             }
         }
@@ -711,15 +675,8 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &mut depth_clouds,
-            |visualizer, ctx, _depth_clouds, transforms, entity_path, spatial_ctx, data| {
-                visualizer.process_image_data(
-                    ctx,
-                    render_ctx,
-                    transforms,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+            |visualizer, ctx, _depth_clouds, _transforms, entity_path, spatial_ctx, data| {
+                visualizer.process_image_data(ctx, render_ctx, entity_path, spatial_ctx, data);
             },
         )?;
 
@@ -728,11 +685,10 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &mut depth_clouds,
-            |visualizer, ctx, _depth_clouds, transforms, entity_path, spatial_ctx, data| {
+            |visualizer, ctx, _depth_clouds, _transforms, entity_path, spatial_ctx, data| {
                 visualizer.process_segmentation_image_data(
                     ctx,
                     render_ctx,
-                    transforms,
                     entity_path,
                     spatial_ctx,
                     data,
