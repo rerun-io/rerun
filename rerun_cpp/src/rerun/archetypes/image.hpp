@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/opacity.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -75,6 +76,11 @@ namespace rerun::archetypes {
         /// The image data. Should always be a rank-2 or rank-3 tensor.
         rerun::components::TensorData data;
 
+        /// Opacity of the image, useful for layering several images.
+        ///
+        /// Defaults to 1.0 (fully opaque).
+        std::optional<rerun::components::Opacity> opacity;
+
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
@@ -123,6 +129,15 @@ namespace rerun::archetypes {
       public:
         Image() = default;
         Image(Image&& other) = default;
+
+        /// Opacity of the image, useful for layering several images.
+        ///
+        /// Defaults to 1.0 (fully opaque).
+        Image with_opacity(rerun::components::Opacity _opacity) && {
+            opacity = std::move(_opacity);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///

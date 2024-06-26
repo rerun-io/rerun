@@ -66,7 +66,13 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
     """
 
-    def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
+    def __init__(
+        self: Any,
+        data: datatypes.TensorDataLike,
+        *,
+        opacity: datatypes.Float32Like | None = None,
+        draw_order: components.DrawOrderLike | None = None,
+    ):
         """
         Create a new instance of the SegmentationImage archetype.
 
@@ -74,6 +80,10 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         ----------
         data:
             The image data. Should always be a rank-2 tensor.
+        opacity:
+            Opacity of the image, useful for layering the segmentation image on top of another image.
+
+            Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -83,7 +93,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
 
         # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(data=data, draw_order=draw_order)
+            self.__attrs_init__(data=data, opacity=opacity, draw_order=draw_order)
             return
         self.__attrs_clear__()
 
@@ -91,6 +101,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
+            opacity=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
         )
 
@@ -106,6 +117,17 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
     )
     # The image data. Should always be a rank-2 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    opacity: components.OpacityBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.OpacityBatch._optional,  # type: ignore[misc]
+    )
+    # Opacity of the image, useful for layering the segmentation image on top of another image.
+    #
+    # Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
