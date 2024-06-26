@@ -1,6 +1,7 @@
 //! Handles picking in 2D and 3D spaces.
 
-use ahash::HashSet;
+use std::collections::HashSet;
+
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::PickingLayerProcessor;
@@ -248,6 +249,8 @@ fn picking_textured_rects<'a>(
 
     let mut hits = Vec::new();
 
+    let mut hit_image_rect_entities = HashSet::new();
+
     for image in images {
         let rect = &image.textured_rect;
         let Some(normal) = rect.extent_u.cross(rect.extent_v).try_normalize() else {
@@ -269,18 +272,24 @@ fn picking_textured_rects<'a>(
 
         if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
             let [width, height] = rect.colormapped_texture.width_height();
-            hits.push(PickingRayHit {
-                instance_path_hash: InstancePathHash {
-                    entity_path_hash: image.ent_path.hash(),
-                    instance: Instance::from_2d_image_coordinate(
-                        [(u * width as f32) as u32, (v * height as f32) as u32],
-                        width as u64,
-                    ),
-                },
-                space_position: intersection_world,
-                hit_type: PickingHitType::TexturedRect,
-                depth_offset: rect.options.depth_offset,
-            });
+
+            // Ignore the image if we hit the same entity already as an image.
+            // This happens if the same entity has multiple textured rects.
+            let entity_path_hash = image.ent_path.hash();
+            if hit_image_rect_entities.insert(entity_path_hash) {
+                hits.push(PickingRayHit {
+                    instance_path_hash: InstancePathHash {
+                        entity_path_hash,
+                        instance: Instance::from_2d_image_coordinate(
+                            [(u * width as f32) as u32, (v * height as f32) as u32],
+                            width as u64,
+                        ),
+                    },
+                    space_position: intersection_world,
+                    hit_type: PickingHitType::TexturedRect,
+                    depth_offset: rect.options.depth_offset,
+                });
+            }
         }
     }
 

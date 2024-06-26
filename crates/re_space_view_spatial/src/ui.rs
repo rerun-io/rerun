@@ -4,8 +4,7 @@ use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_ui::{
-    image_meaning_for_entity, item_ui, show_zoomed_image_region,
-    show_zoomed_image_region_area_outline, DataUi,
+    item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi,
 };
 use re_format::format_f32;
 use re_log_types::Instance;
@@ -563,8 +562,6 @@ pub fn picking(
             continue;
         }
 
-        let store = ctx.recording_store();
-
         // Special hover ui for images.
         let is_depth_cloud = depth_images
             .depth_cloud_entities
@@ -580,11 +577,22 @@ pub fn picking(
         }
 
         let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-            let meaning = image_meaning_for_entity(
-                &instance_path.entity_path,
-                &query.latest_at_query(),
-                store,
-            );
+            let meaning = if segmentation_images
+                .images
+                .iter()
+                .any(|i| i.ent_path == instance_path.entity_path)
+            {
+                TensorDataMeaning::ClassId
+            } else if is_depth_cloud
+                || depth_images
+                    .images
+                    .iter()
+                    .any(|i| i.ent_path == instance_path.entity_path)
+            {
+                TensorDataMeaning::Depth
+            } else {
+                TensorDataMeaning::Unknown
+            };
 
             let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(
