@@ -44,6 +44,8 @@ export default class WebViewer extends React.Component {
     const current = /** @type {HTMLDivElement} */ (this.#parent.current);
     this.#handle.start(this.#recordings, current, {
       hide_welcome_screen: this.#hide_welcome_screen,
+      width: "100%",
+      height: "100%",
     });
   }
 
@@ -61,7 +63,7 @@ export default class WebViewer extends React.Component {
   }
 
   render() {
-    const { width = "100%", height = "640px" } = this.props;
+    const { width = "640px", height = "360px" } = this.props;
     return React.createElement("div", {
       className: "rerun-web-viewer",
       style: { width, height, position: "relative" },
