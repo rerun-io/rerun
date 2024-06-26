@@ -464,6 +464,7 @@ platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 macos = "12.0" # needed for scipy
 
 [feature.examples-ocr.dependencies]
+poppler = "24.04"     # Needed to read pdf files.
 faiss-cpu = "==1.7.2" # Dep comes from paddleclas but we want the conda version to avoid source-wheel build
 
 [feature.examples-ocr.pypi-dependencies]
