@@ -829,16 +829,19 @@ impl ItemTitle {
         }
     }
 
+    #[inline]
     fn with_tooltip(mut self, hover: impl Into<String>) -> Self {
         self.hover = Some(hover.into());
         self
     }
 
+    #[inline]
     fn with_icon(mut self, icon: &'static re_ui::Icon) -> Self {
         self.icon = Some(icon);
         self
     }
 
+    #[inline]
     fn with_label_style(mut self, label_style: re_ui::LabelStyle) -> Self {
         self.label_style = Some(label_style);
         self
