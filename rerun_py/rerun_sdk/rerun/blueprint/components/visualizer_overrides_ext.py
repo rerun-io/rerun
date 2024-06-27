@@ -30,7 +30,7 @@ class VisualizerOverridesExt:
             if len(data) == 0:
                 array = []
             elif isinstance(data[0], VisualizerOverrides):
-                array = [datum.visualizers for datum in data]
+                array = [datum.visualizers for datum in data]  # type: ignore[union-attr]
             else:
                 array = [[str(datum) for datum in data]]
         else:
