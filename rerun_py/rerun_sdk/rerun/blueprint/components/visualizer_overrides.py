@@ -32,6 +32,12 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
     """
     **Component**: Override the visualizers for an entity.
 
+    This component is a stop-gap mechanism based on the current implementation details
+    of the visualizer system. It is not intended to be a long-term solution, but provides
+    enough utility to be useful in the short term.
+
+    The long-term solution is likely to be based off: https://github.com/rerun-io/rerun/issues/6626
+
     This can only be used as part of blueprints. It will have no effect if used
     in a regular entity.
     """
@@ -47,6 +53,27 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
         visualizers:
             Names of the visualizers that should be active.
 
+            The built-in visualizers are:
+            - BarChartView
+            - Arrows2D
+            - Arrows3D
+            - Asset3D
+            - Boxes2D
+            - Boxes3D
+            - Cameras
+            - Images
+            - Lines2D
+            - Lines3D
+            - Mesh3D
+            - Points2D
+            - Points3D
+            - Transform3DArrows
+            - Tensor
+            - TextDocument
+            - TextLog
+            - SeriesLine
+            - SeriesPoint
+
         """
 
         # You can define your own __init__ function as a member of VisualizerOverridesExt in visualizer_overrides_ext.py
@@ -56,6 +83,27 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
         converter=VisualizerOverridesExt.visualizers__field_converter_override,  # type: ignore[misc]
     )
     # Names of the visualizers that should be active.
+    #
+    # The built-in visualizers are:
+    # - BarChartView
+    # - Arrows2D
+    # - Arrows3D
+    # - Asset3D
+    # - Boxes2D
+    # - Boxes3D
+    # - Cameras
+    # - Images
+    # - Lines2D
+    # - Lines3D
+    # - Mesh3D
+    # - Points2D
+    # - Points3D
+    # - Transform3DArrows
+    # - Tensor
+    # - TextDocument
+    # - TextLog
+    # - SeriesLine
+    # - SeriesPoint
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
