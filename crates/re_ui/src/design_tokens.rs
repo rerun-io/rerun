@@ -378,8 +378,8 @@ impl DesignTokens {
         Self::small_icon_size()
     }
 
-    // The color for the background of the large collapsing headers
-    pub fn large_collapsing_header_color() -> egui::Color32 {
+    /// The color for the background of [`crate::SectionCollapsingHeader`].
+    pub fn section_collapsing_header_color() -> egui::Color32 {
         // same as visuals.widgets.inactive.bg_fill
         egui::Color32::from_gray(50)
     }

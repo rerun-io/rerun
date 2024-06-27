@@ -189,7 +189,7 @@ impl ListItem {
     /// Draw the item with unindented child content.
     ///
     /// This is similar to [`Self::show_hierarchical_with_children`] but without indent. This is
-    /// only for special cases such as [`crate::UiExt::large_collapsing_header`].
+    /// only for special cases such as [`crate::SectionCollapsingHeader`].
     pub fn show_hierarchical_with_children_unindented<R>(
         self,
         ui: &mut Ui,

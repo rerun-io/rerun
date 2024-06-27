@@ -154,7 +154,7 @@ impl<'a> SectionCollapsingHeader<'a> {
 
         let resp = list_item::ListItem::new()
             .interactive(true)
-            .force_background(DesignTokens::large_collapsing_header_color())
+            .force_background(DesignTokens::section_collapsing_header_color())
             .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
                 //TODO(ab): this space is not desirable when the content actually is list items
                 ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
