@@ -74,6 +74,7 @@ impl<'a> PropertyContent<'a> {
     ///
     /// Note: for aesthetics, space is always reserved for the action button.
     // TODO(#6191): accept multiple calls for this function for multiple actions.
+    #[inline]
     pub fn button(mut self, button: impl super::ItemButton + 'a) -> Self {
         // TODO(#6191): support multiple action buttons
         assert!(
