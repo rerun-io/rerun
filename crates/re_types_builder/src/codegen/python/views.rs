@@ -119,8 +119,12 @@ instead of the normal fallback for the visualizer.".to_owned(),
         ),
         (
             "overrides",
-            "Dictionary of overrides to apply to the space view. The key is the path to the component to override,
-and the value is the component or component batch to use instead.".to_owned(),)
+            "Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+should be applied. The value is a list of component or component batches to apply to the entity.
+
+Important note: the path must be a fully qualified entity path starting at the root. The override paths
+do not yet support `$origin` relative paths or glob expressions.
+This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].".to_owned(),)
     ];
     for field in &obj.fields {
         let doc_content = field.docs.doc_lines_for_untagged_and("py");
