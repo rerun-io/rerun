@@ -25,6 +25,7 @@ class Transform3DExt:
         scale: Scale3DLike | None = None,
         mat3x3: Mat3x3Like | None = None,
         from_parent: bool | None = None,
+        axis_length: float | None = None,
     ):
         """
         Create a new instance of the Transform3D archetype.
@@ -50,6 +51,11 @@ class Transform3DExt:
         from_parent:
              If true, the transform maps from the parent space to the space where the transform was logged.
              Otherwise, the transform maps from the space to its parent.
+        axis_length:
+            Visual length of the 3 axes.
+
+            The length is interpreted in the local coordinate system of the transform.
+            If the transform is scaled, the axes will be scaled accordingly.
 
         """
 
@@ -63,7 +69,7 @@ class Transform3DExt:
                     or from_parent is not None
                 ):
                     raise ValueError("If a transform is given, none of the other parameters can be set.")
-                self.__attrs_init__(transform=transform)
+                self.__attrs_init__(transform=transform, axis_length=axis_length)
             else:
                 if rotation is not None and mat3x3 is not None:
                     raise ValueError("Rotation and mat3x3 parameters are mutually exclusive.")
@@ -79,8 +85,12 @@ class Transform3DExt:
                 else:
                     self.__attrs_init__(
                         transform=TranslationRotationScale3D(
-                            translation=translation, rotation=rotation, scale=scale, from_parent=from_parent
-                        )
+                            translation=translation,
+                            rotation=rotation,
+                            scale=scale,
+                            from_parent=from_parent,
+                        ),
+                        axis_length=axis_length,
                     )
             return
 
