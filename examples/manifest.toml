@@ -93,6 +93,7 @@ examples = [
   "open_photogrammetry_format",
   "kiss-icp",
   "differentiable_blocks_world",
+  "stereo_vision_slam",
   "signed_distance_fields",
   "raw_mesh",
 ]
