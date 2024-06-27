@@ -22,5 +22,26 @@ table VisualizerOverrides (
     "attr.rust.override_crate": "re_types_blueprint"
 ) {
     /// Names of the visualizers that should be active.
+    ///
+    /// The built-in visualizers are:
+    /// - BarChartView
+    /// - Arrows2D
+    /// - Arrows3D
+    /// - Asset3D
+    /// - Boxes2D
+    /// - Boxes3D
+    /// - Cameras
+    /// - Images
+    /// - Lines2D
+    /// - Lines3D
+    /// - Mesh3D
+    /// - Points2D
+    /// - Points3D
+    /// - Transform3DArrows
+    /// - Tensor
+    /// - TextDocument
+    /// - TextLog
+    /// - SeriesLine
+    /// - SeriesPoint
     visualizers: [string] (order: 100);
 }
