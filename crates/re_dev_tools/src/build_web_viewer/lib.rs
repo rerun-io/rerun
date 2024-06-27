@@ -49,6 +49,7 @@ impl Profile {
 pub enum Target {
     Browser,
     Module,
+
     /// Custom target meant for post-processing inside `rerun_js`.
     NoModulesBase,
 }
