@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use re_entity_db::VersionedInstancePathHash;
+use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
 use re_types::components::MediaType;
 use re_viewer_context::Cache;
@@ -12,11 +13,11 @@ use crate::mesh_loader::LoadedMesh;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,
+    pub query_result_hash: Hash64,
     pub media_type: Option<MediaType>,
 }
 
-/// Caches meshes based on their [`VersionedInstancePathHash`], i.e. a specific instance of a specific
-/// entity path for a specific row in the store.
+/// Caches meshes based on their [`MeshCacheKey`].
 #[derive(Default)]
 pub struct MeshCache(ahash::HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>);
 

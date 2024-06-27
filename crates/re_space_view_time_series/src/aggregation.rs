@@ -194,7 +194,6 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
         attrs,
     } = point1;
     let PlotPointAttrs {
-        label,
         color,
         radius_ui: _,
         kind,
@@ -203,7 +202,6 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
     // We cannot aggregate two points that don't live in the same aggregation window to start with.
     // This is very common with e.g. sparse datasets.
     time.abs_diff(point2.time) <= window_size as u64
-        && *label == point2.attrs.label
         && *color == point2.attrs.color
         && *kind == point2.attrs.kind
 }

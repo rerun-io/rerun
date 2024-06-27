@@ -244,7 +244,7 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
-                .button(re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+                .button(list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
                     ui.weak("empty");
                 }))
                 .show(ui, |ui| {

@@ -9,23 +9,6 @@ type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisua
 /// Closure to draw the right column of the property.
 type PropertyValueFn<'a> = dyn FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + 'a;
 
-struct PropertyActionButton<'a> {
-    icon: &'static crate::icons::Icon,
-    enabled: bool,
-    on_click: Box<dyn FnOnce() + 'a>,
-}
-
-struct PropertyMenuButton<'a> {
-    icon: &'static crate::icons::Icon,
-    enabled: bool,
-    add_contents: Box<dyn FnOnce(&mut egui::Ui) + 'a>,
-}
-
-enum PropertyButton<'a> {
-    Action(PropertyActionButton<'a>),
-    Menu(PropertyMenuButton<'a>),
-}
-
 /// [`ListItemContent`] to display property-like, two-column content, with the left column
 /// containing a label (along with an optional icon) and the right column containing some custom
 /// value (which may be editable).
@@ -37,7 +20,7 @@ pub struct PropertyContent<'a> {
     show_only_when_collapsed: bool,
     value_fn: Option<Box<PropertyValueFn<'a>>>,
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
-    property_buttons: Option<PropertyButton<'a>>,
+    button: Option<Box<dyn super::ItemButton + 'a>>,
     /**/
     //TODO(ab): icon styling? link icon right of label? clickable label?
 }
@@ -53,7 +36,7 @@ impl<'a> PropertyContent<'a> {
             icon_fn: None,
             show_only_when_collapsed: true,
             value_fn: None,
-            property_buttons: None,
+            button: None,
         }
     }
 
@@ -86,10 +69,25 @@ impl<'a> PropertyContent<'a> {
         self
     }
 
-    /// Right aligned action button.
+    /// Add a right-aligned [`super::ItemButton`].
     ///
     /// Note: for aesthetics, space is always reserved for the action button.
     // TODO(#6191): accept multiple calls for this function for multiple actions.
+    #[inline]
+    pub fn button(mut self, button: impl super::ItemButton + 'a) -> Self {
+        // TODO(#6191): support multiple action buttons
+        assert!(
+            self.button.is_none(),
+            "Only one action button supported right now"
+        );
+
+        self.button = Some(Box::new(button));
+        self
+    }
+
+    /// Helper to add an [`super::ItemActionButton`] to the right of the item.
+    ///
+    /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button(
         self,
@@ -99,51 +97,29 @@ impl<'a> PropertyContent<'a> {
         self.action_button_with_enabled(icon, true, on_click)
     }
 
-    /// Right aligned action button.
+    /// Helper to add an enabled/disabled [`super::ItemActionButton`] to the right of the item.
     ///
-    /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(#6191): accept multiple calls for this function for multiple actions.
+    /// See [`Self::button`] for more information.
     #[inline]
     pub fn action_button_with_enabled(
-        mut self,
+        self,
         icon: &'static crate::icons::Icon,
         enabled: bool,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
-        // TODO(#6191): support multiple action buttons
-        assert!(
-            self.property_buttons.is_none(),
-            "Only one action button supported right now"
-        );
-        self.property_buttons = Some(PropertyButton::Action(PropertyActionButton {
-            icon,
-            enabled,
-            on_click: Box::new(on_click),
-        }));
-        self
+        self.button(super::ItemActionButton::new(icon, on_click).enabled(enabled))
     }
 
-    /// Right aligned action button.
+    /// Helper to add a [`super::ItemMenuButton`] to the right of the item.
     ///
-    /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(#6191): accept multiple calls for this function for multiple actions.
+    /// See [`Self::button`] for more information.
     #[inline]
     pub fn menu_button(
-        mut self,
+        self,
         icon: &'static crate::icons::Icon,
         add_contents: impl FnOnce(&mut egui::Ui) + 'a,
     ) -> Self {
-        // TODO(#6191): support multiple action buttons
-        assert!(
-            self.property_buttons.is_none(),
-            "Only one action button supported right now"
-        );
-        self.property_buttons = Some(PropertyButton::Menu(PropertyMenuButton {
-            icon,
-            enabled: true,
-            add_contents: Box::new(add_contents),
-        }));
-        self
+        self.button(super::ItemMenuButton::new(icon, add_contents))
     }
 
     /// Display value only for leaf or collapsed items.
@@ -238,7 +214,7 @@ impl ListItemContent for PropertyContent<'_> {
             icon_fn,
             show_only_when_collapsed,
             value_fn,
-            property_buttons: action_buttons,
+            button,
         } = *self;
 
         // │                                                                              │
@@ -279,7 +255,7 @@ impl ListItemContent for PropertyContent<'_> {
         let action_button_dimension =
             DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
         let reserve_action_button_space =
-            action_buttons.is_some() || context.layout_info.reserve_action_button_space;
+            button.is_some() || context.layout_info.reserve_action_button_space;
         let action_button_extra = if reserve_action_button_space {
             action_button_dimension + DesignTokens::text_to_icon_padding()
         } else {
@@ -326,7 +302,7 @@ impl ListItemContent for PropertyContent<'_> {
             .register_desired_left_column_width(ui.ctx(), desired_width);
         context
             .layout_info
-            .reserve_action_button_space(ui.ctx(), action_buttons.is_some());
+            .reserve_action_button_space(ui.ctx(), button.is_some());
 
         let galley = if desired_galley.size().x <= label_rect.width() {
             desired_galley
@@ -377,7 +353,7 @@ impl ListItemContent for PropertyContent<'_> {
         }
 
         // Draw action button
-        if let Some(action_button) = action_buttons {
+        if let Some(button) = button {
             let action_button_rect = egui::Rect::from_center_size(
                 context.rect.right_center() - egui::vec2(action_button_dimension / 2.0, 0.0),
                 egui::Vec2::splat(action_button_dimension),
@@ -391,25 +367,7 @@ impl ListItemContent for PropertyContent<'_> {
                 None,
             );
 
-            match action_button {
-                PropertyButton::Action(action) => {
-                    child_ui.add_enabled_ui(action.enabled, |ui| {
-                        let button_response = ui.small_icon_button(action.icon);
-                        if button_response.clicked() {
-                            (action.on_click)();
-                        }
-                    });
-                }
-                PropertyButton::Menu(menu) => {
-                    child_ui.add_enabled_ui(menu.enabled, |ui| {
-                        egui::menu::menu_image_button(
-                            ui,
-                            ui.small_icon_button_widget(menu.icon),
-                            menu.add_contents,
-                        );
-                    });
-                }
-            }
+            button.ui(&mut child_ui);
         }
     }
 
@@ -425,7 +383,7 @@ impl ListItemContent for PropertyContent<'_> {
             let action_button_dimension =
                 DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
             let reserve_action_button_space =
-                self.property_buttons.is_some() || layout_info.reserve_action_button_space;
+                self.button.is_some() || layout_info.reserve_action_button_space;
             if reserve_action_button_space {
                 desired_width += action_button_dimension + DesignTokens::text_to_icon_padding();
             }

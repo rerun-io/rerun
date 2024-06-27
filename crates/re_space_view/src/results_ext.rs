@@ -1,5 +1,5 @@
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_log_types::{external::arrow2, RowId, TimeInt};
+use re_log_types::{external::arrow2, hash::Hash64, RowId, TimeInt};
 use re_query::{
     LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult, RangeData,
     RangeResults, Results,
@@ -152,6 +152,43 @@ impl<'a> HybridLatestAtResults<'a> {
 pub enum HybridResults<'a> {
     LatestAt(LatestAtQuery, HybridLatestAtResults<'a>),
     Range(RangeQuery, HybridRangeResults),
+}
+
+impl<'a> HybridResults<'a> {
+    pub fn query_result_hash(&self) -> Hash64 {
+        re_tracing::profile_function!();
+        // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
+
+        match self {
+            Self::LatestAt(_, r) => {
+                let mut indices = Vec::with_capacity(
+                    r.defaults.components.len()
+                        + r.overrides.components.len()
+                        + r.results.components.len(),
+                );
+                indices.extend(r.defaults.components.values().map(|r| *r.index()));
+                indices.extend(r.overrides.components.values().map(|r| *r.index()));
+                indices.extend(r.results.components.values().map(|r| *r.index()));
+
+                Hash64::hash(&indices)
+            }
+            Self::Range(_, r) => {
+                let mut indices = Vec::with_capacity(
+                    r.defaults.components.len()
+                        + r.overrides.components.len()
+                        + r.results.components.len(), // Don't know how many results per component.
+                );
+                indices.extend(r.defaults.components.values().map(|r| *r.index()));
+                indices.extend(r.overrides.components.values().map(|r| *r.index()));
+                indices.extend(r.results.components.values().flat_map(|r| {
+                    // Have top collect in order to release the lock.
+                    r.read().indices().copied().collect::<Vec<_>>()
+                }));
+
+                Hash64::hash(&indices)
+            }
+        }
+    }
 }
 
 impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> {
