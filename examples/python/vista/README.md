@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Vista"
+title = "Vista driving world model"
 tags = ["2D", "Diffusion", "HuggingFace", "Video"]
 source = "https://github.com/rerun-io/kiss-icp"
 thumbnail = "https://static.rerun.io/vista/1db07fa2bffee2351066e1768be5c7c72f9af0aa/480w.png"
@@ -15,7 +15,7 @@ Vista is a generative driving world model. Built on Stable Video Diffusion it ca
 ## Run the code
 This is an external example, check the [repository](https://github.com/rerun-io/hf-example-vista) for more information.
 
-You can try the example on Rerun's HuggingFace space [here](https://huggingface.co/spaces/rerun/Vista).pace here.
+You can try the example on Rerun's HuggingFace space [here](https://huggingface.co/spaces/rerun/Vista).
 
 If you have a GPU with ~20GB of memory you can run the example locally. To do so, clone the repo and run:
 ```
