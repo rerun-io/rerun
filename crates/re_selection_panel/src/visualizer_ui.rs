@@ -37,7 +37,7 @@ pub fn visualizer_ui(
         &active_visualizers,
     );
 
-    let button = re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
         menu_add_new_visualizer(
             ctx,
             ui,

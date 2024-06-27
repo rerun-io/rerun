@@ -1,75 +1,11 @@
-use crate::{list_item, DesignTokens, Icon, UiExt as _};
-
-/// Icon button to be used in the header of a panel.
-pub struct HeaderMenuButton<'a> {
-    pub icon: &'static Icon,
-    pub add_contents: Box<dyn FnOnce(&mut egui::Ui) + 'a>,
-    pub enabled: bool,
-    pub hover_text: Option<String>,
-    pub disabled_hover_text: Option<String>,
-}
-
-impl<'a> HeaderMenuButton<'a> {
-    pub fn new(icon: &'static Icon, add_contents: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
-        Self {
-            icon,
-            add_contents: Box::new(add_contents),
-            enabled: true,
-            hover_text: None,
-            disabled_hover_text: None,
-        }
-    }
-
-    /// Sets enable/disable state of the button.
-    #[inline]
-    pub fn enabled(mut self, enabled: bool) -> Self {
-        self.enabled = enabled;
-        self
-    }
-
-    /// Sets text shown when the button hovered.
-    #[inline]
-    pub fn hover_text(mut self, hover_text: impl Into<String>) -> Self {
-        self.hover_text = Some(hover_text.into());
-        self
-    }
-
-    /// Sets text shown when the button is disabled and hovered.
-    #[inline]
-    pub fn disabled_hover_text(mut self, hover_text: impl Into<String>) -> Self {
-        self.disabled_hover_text = Some(hover_text.into());
-        self
-    }
-
-    fn show(self, ui: &mut egui::Ui) -> egui::Response {
-        ui.add_enabled_ui(self.enabled, |ui| {
-            ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
-
-            let mut response = egui::menu::menu_image_button(
-                ui,
-                ui.small_icon_button_widget(self.icon),
-                self.add_contents,
-            )
-            .response;
-            if let Some(hover_text) = self.hover_text {
-                response = response.on_hover_text(hover_text);
-            }
-            if let Some(disabled_hover_text) = self.disabled_hover_text {
-                response = response.on_disabled_hover_text(disabled_hover_text);
-            }
-
-            response
-        })
-        .inner
-    }
-}
+use crate::{list_item, DesignTokens, UiExt as _};
 
 /// A collapsible section header, with support for optional help tooltip and button.
 #[allow(clippy::type_complexity)]
 pub struct SectionCollapsingHeader<'a> {
     label: egui::WidgetText,
     default_open: bool,
-    button: Option<HeaderMenuButton<'a>>,
+    button: Option<Box<dyn list_item::ItemButton + 'a>>,
     help: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
 }
 
@@ -97,12 +33,13 @@ impl<'a> SectionCollapsingHeader<'a> {
 
     /// Set the button to be shown in the header.
     #[inline]
-    pub fn button(mut self, button: HeaderMenuButton<'a>) -> Self {
-        self.button = Some(button);
+    pub fn button(mut self, button: impl list_item::ItemButton + 'a) -> Self {
+        self.button = Some(Box::new(button));
         self
     }
 
     /// Set the help text tooltip to be shown in the header.
+    //TODO(#6191): the help button should be just another `impl ItemButton`.
     #[inline]
     pub fn help_text(mut self, help: impl Into<egui::WidgetText>) -> Self {
         let help = help.into();
@@ -138,7 +75,7 @@ impl<'a> SectionCollapsingHeader<'a> {
         if button.is_some() || help.is_some() {
             content = content
                 .with_buttons(|ui| {
-                    let button_response = button.map(|button| button.show(ui));
+                    let button_response = button.map(|button| button.ui(ui));
                     let help_response = help.map(|help| ui.help_hover_button().on_hover_ui(help));
 
                     match (button_response, help_response) {

@@ -131,6 +131,8 @@ impl<'a> LabelContent<'a> {
     ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
     ///   used, the item will only allocate the width needed for the text and icons if any.
     /// - A right to left layout is used, so the right-most button must be added first.
+    // TODO(#6191): This should reconciled this with the `ItemButton` abstraction by using something
+    //              like `Vec<Box<dyn ItemButton>>` instead of a generic closure.
     #[inline]
     pub fn with_buttons(
         mut self,
