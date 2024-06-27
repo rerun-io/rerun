@@ -149,7 +149,10 @@ fn save_visible_time_ranges(
         let time_range = match query_range {
             QueryRange::TimeRange(time_range) => time_range,
             QueryRange::LatestAt => {
-                re_log::error!("Latest-at queries can't be used as an override yet. They can only come from defaults.");
+                re_log::error!(
+                    "Latest-at queries can't be used as an override yet. They can only \
+                come from defaults."
+                );
                 return;
             }
         };
@@ -173,10 +176,27 @@ fn query_range_ui(
     let time_type = time_ctrl.timeline().typ();
 
     let mut interacting_with_controls = false;
+    let markdown = format!(
+        "# Visible time range\n
+This feature controls the time range used to display data in the space view.
+
+The settings are inherited from the parent entity or enclosing space view if not overridden.
+
+Visible time range properties are stored separately for each _type_ of timelines. They may differ \
+depending on whether the current timeline is temporal or a sequence. The current settings apply to \
+all _{}_ timelines.
+
+Notes that the data current as of the time range starting time is included.",
+        match time_type {
+            TimeType::Time => "temporal",
+            TimeType::Sequence => "sequence",
+        }
+    );
 
     let collapsing_response = ui
         .section_collapsing_header("Visible time range")
         .default_open(false)
+        .help_markdown(&markdown)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.re_radio_value(has_individual_time_range, false, "Default")
@@ -264,25 +284,6 @@ fn query_range_ui(
             }
         }
     }
-
-    let markdown = format!("# Visible time range\n
-This feature controls the time range used to display data in the space view.
-
-The settings are inherited from the parent entity or enclosing space view if not overridden.
-
-Visible time range properties are stored separately for each _type_ of timelines. They may differ depending on \
-whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.
-
-Notes that the data current as of the time range starting time is included.",
-        match time_type {
-            TimeType::Time => "temporal",
-            TimeType::Sequence => "sequence",
-        }
-    );
-
-    collapsing_response.header_response.on_hover_ui(|ui| {
-        ui.markdown_ui(egui::Id::new(markdown.as_str()), &markdown);
-    });
 }
 
 fn time_range_editor(

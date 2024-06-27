@@ -45,6 +45,12 @@ pub fn view_components_defaults_section_ui(
         add_button = add_button.enabled(false).disabled_hover_text(reason);
     }
 
+    let markdown = "# Component defaults\n
+This section lists default values for components in the scope of the present view. The visualizers \
+corresponding to this view's entities use these defaults when no per-entity \
+override is specified.\n
+Click on the `+` button to add a new default value.";
+
     let body = |ui: &mut egui::Ui| {
         active_default_ui(
             ctx,
@@ -58,6 +64,7 @@ pub fn view_components_defaults_section_ui(
     };
     ui.section_collapsing_header("Component defaults")
         .button(add_button)
+        .help_markdown(markdown)
         .show(ui, body);
 }
 
