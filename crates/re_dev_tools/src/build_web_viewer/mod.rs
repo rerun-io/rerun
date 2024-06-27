@@ -28,7 +28,7 @@ pub struct Args {
     debug_symbols: bool,
 
     /// target to build for.
-    #[argh(option, short = 't', long = "target")]
+    #[argh(option, short = 't', long = "target", default = "Target::Browser")]
     target: Target,
 
     /// set the output directory. This is a path relative to the cargo workspace root.
