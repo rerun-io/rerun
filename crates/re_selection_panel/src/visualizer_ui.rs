@@ -37,25 +37,24 @@ pub fn visualizer_ui(
         &active_visualizers,
     );
 
-    ui.large_collapsing_header_with_button(
-        "Visualizers",
-        true,
-        |ui| {
+    let button = re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+        menu_add_new_visualizer(
+            ctx,
+            ui,
+            &data_result,
+            &active_visualizers,
+            &available_inactive_visualizers,
+        );
+    })
+    .enabled(!available_inactive_visualizers.is_empty())
+    .hover_text("Add additional visualizers")
+    .disabled_hover_text("No additional visualizers available");
+
+    ui.section_collapsing_header("Visualizers")
+        .button(button)
+        .show(ui, |ui| {
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
-        },
-        re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
-            menu_add_new_visualizer(
-                ctx,
-                ui,
-                &data_result,
-                &active_visualizers,
-                &available_inactive_visualizers,
-            );
-        })
-        .enabled(!available_inactive_visualizers.is_empty())
-        .hover_text("Add additional visualizers")
-        .disabled_hover_text("No additional visualizers available"),
-    );
+        });
 }
 
 pub fn visualizer_ui_impl(
@@ -88,7 +87,13 @@ pub fn visualizer_ui_impl(
     };
 
     list_item::list_item_scope(ui, "visualizers", |ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
+        if active_visualizers.is_empty() {
+            ui.list_item_flat_noninteractive(
+                list_item::LabelContent::new("none")
+                    .weak(true)
+                    .italics(true),
+            );
+        }
 
         for &visualizer_id in active_visualizers {
             let default_open = true;
@@ -284,25 +289,22 @@ fn visualizer_components(
             }
             // Store (if available)
             if let Some(result_store) = result_store {
-                ui.list_item()
-                    .interactive(false)
-                    .show_flat(
-                        ui,
-                        list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
-                            re_data_ui::EntityLatestAtResults {
-                                entity_path: data_result.entity_path.clone(),
-                                results: result_store,
-                            }
-                            .data_ui(
-                                ctx.viewer_ctx,
-                                ui,
-                                UiLayout::List,
-                                &store_query,
-                                ctx.recording(),
-                            );
-                        }),
-                    )
-                    .on_hover_text("The value that was logged to the data store");
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
+                        re_data_ui::EntityLatestAtResults {
+                            entity_path: data_result.entity_path.clone(),
+                            results: result_store,
+                        }
+                        .data_ui(
+                            ctx.viewer_ctx,
+                            ui,
+                            UiLayout::List,
+                            &store_query,
+                            ctx.recording(),
+                        );
+                    }),
+                )
+                .on_hover_text("The value that was logged to the data store");
             }
             // Default (if available)
             if let (Some(result_default), Some(raw_default)) =
@@ -321,26 +323,22 @@ fn visualizer_components(
             }
             // Fallback (always there)
             {
-                ui.list_item()
-                    .interactive(false)
-                    .show_flat(
-                        ui,
-                        list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
-                            // TODO(andreas): db & entity path don't make sense here.
-                            ctx.viewer_ctx.component_ui_registry.ui_raw(
-                                ctx.viewer_ctx,
-                                ui,
-                                UiLayout::List,
-                                &store_query,
-                                ctx.recording(),
-                                &data_result.entity_path,
-                                component,
-                                raw_fallback.as_ref(),
-                            );
-                        }),
-                    )
-                    .on_hover_text("Context sensitive fallback value for this component type, used only if nothing else was specified.
-Unlike the other values, this may differ per visualizer.");
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Fallback").value_fn(|ui, _| {
+                        // TODO(andreas): db & entity path don't make sense here.
+                        ctx.viewer_ctx.component_ui_registry.ui_raw(
+                            ctx.viewer_ctx,
+                            ui,
+                            UiLayout::List,
+                            &store_query,
+                            ctx.recording(),
+                            &data_result.entity_path,
+                            component,
+                            raw_fallback.as_ref(),
+                        );
+                    }),
+                )
+                .on_hover_text("Context sensitive fallback value for this component type, used only if nothing else was specified. Unlike the other values, this may differ per visualizer.");
             }
         };
 
@@ -384,8 +382,7 @@ fn editable_blueprint_component_list_item(
     raw_override: &dyn arrow2::array::Array,
     result_override: &LatestAtComponentResults,
 ) -> egui::Response {
-    ui.list_item().interactive(false).show_flat(
-        ui,
+    ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
                 let multiline = false;

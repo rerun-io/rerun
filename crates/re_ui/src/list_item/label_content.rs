@@ -14,7 +14,7 @@ pub struct LabelContent<'a> {
     italics: bool,
 
     label_style: LabelStyle,
-    icon_fn: Option<Box<dyn FnOnce(&egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
+    icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
     always_show_buttons: bool,
 
@@ -115,7 +115,7 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn with_icon_fn(
         mut self,
-        icon_fn: impl FnOnce(&egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+        icon_fn: impl FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
     ) -> Self {
         self.icon_fn = Some(Box::new(icon_fn));
         self

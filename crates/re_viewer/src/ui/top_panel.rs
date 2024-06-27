@@ -269,7 +269,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
                 &mut app_blueprint.selection_panel_state().is_expanded(),
             )
             .on_hover_text(format!(
-                "Toggle Selection View{}",
+                "Toggle selection view{}",
                 UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
             ))
             .clicked()
@@ -285,7 +285,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
                 &mut app_blueprint.time_panel_state().is_expanded(),
             )
             .on_hover_text(format!(
-                "Toggle Timeline View{}",
+                "Toggle timeline view{}",
                 UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
             ))
             .clicked()

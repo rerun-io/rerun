@@ -5,7 +5,7 @@ use re_log_types::LogMsg;
 ///
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
-pub fn show(msgs: Vec<LogMsg>) -> re_viewer::external::eframe::Result<()> {
+pub fn show(msgs: Vec<LogMsg>) -> re_viewer::external::eframe::Result {
     if msgs.is_empty() {
         re_log::debug!("Empty array of msgs - call to show() ignored");
         return Ok(());

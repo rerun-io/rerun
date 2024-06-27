@@ -13,8 +13,7 @@ pub fn multiline_edit_visual_bounds2d(
 
     let mut any_edit = false;
 
-    let response_x = ui.list_item().interactive(false).show_flat(
-        ui,
+    let response_x = ui.list_item_flat_noninteractive(
         re_ui::list_item::PropertyContent::new("x").value_fn(|ui, _| {
             let [x_range_start, x_range_end] = &mut value.x_range.0;
             let speed = speed_func(*x_range_start, *x_range_end);
@@ -47,8 +46,7 @@ pub fn multiline_edit_visual_bounds2d(
         }),
     );
 
-    let response_y = ui.list_item().interactive(false).show_flat(
-        ui,
+    let response_y = ui.list_item_flat_noninteractive(
         re_ui::list_item::PropertyContent::new("y").value_fn(|ui, _| {
             let [y_range_start, y_range_end] = &mut value.y_range.0;
             let speed = speed_func(*y_range_start, *y_range_end);

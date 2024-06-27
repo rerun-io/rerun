@@ -9,7 +9,7 @@ type AppCreator = Box<dyn FnOnce(&eframe::CreationContext<'_>) -> Box<dyn eframe
 pub fn run_native_app(
     app_creator: AppCreator,
     force_wgpu_backend: Option<String>,
-) -> eframe::Result<()> {
+) -> eframe::Result {
     let native_options = eframe_options(force_wgpu_backend);
 
     let window_title = "Rerun Viewer";
@@ -86,7 +86,7 @@ pub fn run_native_viewer_with_messages(
     app_env: crate::AppEnvironment,
     startup_options: crate::StartupOptions,
     log_messages: Vec<LogMsg>,
-) -> eframe::Result<()> {
+) -> eframe::Result {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::Sdk,
         re_smart_channel::SmartChannelSource::Sdk,
