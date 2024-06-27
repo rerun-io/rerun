@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Sequence
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import VisualizerOverridesLike
+    from . import VisualizerOverridesArrayLike
 
 
 class VisualizerOverridesExt:
@@ -18,7 +18,7 @@ class VisualizerOverridesExt:
         return value
 
     @staticmethod
-    def native_to_pa_array_override(data: VisualizerOverridesLike, data_type: pa.DataType) -> pa.Array:
+    def native_to_pa_array_override(data: VisualizerOverridesArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import VisualizerOverrides
 
         if isinstance(data, VisualizerOverrides):
