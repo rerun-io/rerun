@@ -36,16 +36,11 @@ async function build() {
     const start = Date.now();
     await esbuild.build({
       entryPoints: ["src/js/widget.ts"],
-      entryNames: "[name]",
-      chunkNames: "[name]",
-      assetNames: "[name]",
       bundle: true,
       format: "esm",
-      splitting: true,
       // minify: true,
-      // write: false,
+      keepNames: true,
       outdir: "src/rerun_notebook/static",
-      loader: { ".wasm": "copy" },
     });
     log(`Built widget in ${Date.now() - start}ms`);
   } catch (e) {

@@ -1,3 +1,5 @@
+// Script responsible for building the wasm and transforming the JS bindings for the web viewer.
+
 import * as child_process from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as path from "node:path";
@@ -12,7 +14,7 @@ const exec = (cmd) => {
   child_process.execSync(cmd, { cwd: __dirname, stdio: "inherit" });
 };
 
-function buildWasm(mode) {
+function wasm(mode) {
   switch (mode) {
     case "debug": {
       return exec(
@@ -34,8 +36,18 @@ child_process.execSync(
   { cwd: __dirname, stdio: "inherit" },
 );
 
-function preprocessJs() {
+function script() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
+
+  // this transforms the module, wrapping it in a default-exported function.
+  // calling the function produces a new "instance" of the module, because
+  // all of the globals are scoped to the function, and become closure state
+  // for any functions that reference them within the module.
+  //
+  // we do this so that we don't leak globals across web viewer instantiations.
+  //
+  // this is HIGHLY sensitive to the exact output of `wasm-bindgen`, so if
+  // the output changes, this will need to be updated.
 
   const start = `let wasm_bindgen;
 (function() {`;
@@ -54,8 +66,10 @@ return Object.assign(__wbg_init, { initSync }, __exports);
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }
 
-function preprocessDts() {
+function types() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.d.ts"), "utf-8");
+
+  // this transformation just re-exports WebHandle and adds a default export inside the `.d.ts` file
 
   code = `
 ${code}
@@ -78,6 +92,6 @@ if (!args.values.mode) {
   throw new Error("Missing required argument: mode");
 }
 
-buildWasm(args.values.mode);
-preprocessJs();
-preprocessDts();
+wasm(args.values.mode);
+script();
+types();
