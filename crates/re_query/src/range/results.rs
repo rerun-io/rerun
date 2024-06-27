@@ -870,4 +870,9 @@ impl RangeComponentResultsInner {
     pub fn clear(&mut self) {
         *self = Self::empty();
     }
+
+    #[inline]
+    pub fn indices(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
+        self.indices.iter()
+    }
 }

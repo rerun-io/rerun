@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Vista driving world model"
 tags = ["2D", "Diffusion", "HuggingFace", "Video"]
-source = "https://github.com/rerun-io/kiss-icp"
+source = "https://github.com/rerun-io/hf-example-vista"
 thumbnail = "https://static.rerun.io/vista/1db07fa2bffee2351066e1768be5c7c72f9af0aa/480w.png"
 thumbnail_dimensions = [480, 480]
 -->

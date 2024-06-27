@@ -28,7 +28,7 @@ pub fn view_components_defaults_section_ui(
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
     let mut add_button_is_open = false;
-    let mut add_button = re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+    let mut add_button = re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
         add_button_is_open = true;
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         add_popup_ui(
