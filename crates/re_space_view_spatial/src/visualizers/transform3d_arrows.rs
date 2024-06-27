@@ -2,7 +2,7 @@ use egui::Color32;
 use re_log_types::{EntityPath, Instance};
 use re_space_view::DataResultQuery;
 use re_types::{
-    archetypes::{Axes3D, Pinhole, Transform3D},
+    archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
     Loggable,
 };
@@ -85,8 +85,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 world_from_obj,
             );
 
-            let results =
-                data_result.latest_at_with_blueprint_resolved_data::<Axes3D>(ctx, &latest_at_query);
+            let results = data_result
+                .latest_at_with_blueprint_resolved_data::<Transform3D>(ctx, &latest_at_query);
             let axis_length = results.get_mono_with_fallback::<AxisLength>().into();
 
             add_axis_arrows(
