@@ -11,6 +11,7 @@ from ..datatypes import (  # Re-export time range types for better discoverabili
 from . import (
     archetypes as archetypes,
     components as components,
+    visualizers as visualizers,
 )
 from .api import (
     Blueprint as Blueprint,
@@ -40,6 +41,7 @@ from .components import (
     Corner2D as Corner2D,
     LockRangeDuringZoom as LockRangeDuringZoom,
     VisibleTimeRange as VisibleTimeRange,
+    VisualizerOverrides as VisualizerOverrides,
 )
 from .containers import (
     Grid as Grid,
