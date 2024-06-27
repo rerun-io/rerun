@@ -21,7 +21,6 @@ pub struct PropertyContent<'a> {
     value_fn: Option<Box<PropertyValueFn<'a>>>,
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
     button: Option<Box<dyn super::ItemButton + 'a>>,
-    //property_buttons: Option<PropertyButton<'a>>,
     /**/
     //TODO(ab): icon styling? link icon right of label? clickable label?
 }
