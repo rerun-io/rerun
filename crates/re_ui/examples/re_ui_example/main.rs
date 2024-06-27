@@ -243,17 +243,14 @@ impl eframe::App for ExampleApp {
 
             // ---
 
-            ui.large_collapsing_header_with_button(
-                "Data",
-                true,
-                |ui| {
-                    ui.label("Some data here");
-                },
-                re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+            ui.section_collapsing_header("Data")
+                .button(re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
                     ui.weak("empty");
-                }),
-            );
-            ui.large_collapsing_header("Blueprint", true, |ui| {
+                }))
+                .show(ui, |ui| {
+                    ui.label("Some data here");
+                });
+            ui.section_collapsing_header("Blueprint").show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.label("Some blueprint stuff here, that might be wide.");
                 ui.re_checkbox(&mut self.dummy_bool, "Checkbox");

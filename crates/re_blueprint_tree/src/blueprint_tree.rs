@@ -277,6 +277,7 @@ impl BlueprintTree {
         let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
+            ..
         } = ui
             .list_item()
             .selected(ctx.selection().contains_item(&item))
@@ -363,6 +364,7 @@ impl BlueprintTree {
         let list_item::ShowCollapsingResponse {
             item_response: mut response,
             body_response,
+            ..
         } = ui
             .list_item()
             .selected(ctx.selection().contains_item(&item))

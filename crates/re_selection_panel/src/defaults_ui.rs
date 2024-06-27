@@ -56,7 +56,9 @@ pub fn view_components_defaults_section_ui(
             db,
         );
     };
-    ui.large_collapsing_header_with_button("Component defaults", true, body, add_button);
+    ui.section_collapsing_header("Component defaults")
+        .button(add_button)
+        .show(ui, body);
 }
 
 fn active_default_ui(
@@ -83,7 +85,7 @@ fn active_default_ui(
         ui.spacing_mut().item_spacing.y = 0.0;
 
         if sorted_overrides.is_empty() {
-            ui.list_item_flat_noninteractive(LabelContent::new("(none)").weak(true));
+            ui.list_item_flat_noninteractive(LabelContent::new("none").weak(true).italics(true));
         }
 
         for component_name in sorted_overrides {

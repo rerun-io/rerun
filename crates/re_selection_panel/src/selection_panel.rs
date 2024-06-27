@@ -275,7 +275,7 @@ impl SelectionPanel {
         }
 
         if let Some(data_ui_item) = data_section_ui(item) {
-            ui.large_collapsing_header("Data", true, |ui| {
+            ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
 
@@ -319,74 +319,6 @@ impl SelectionPanel {
         view_id: &SpaceViewId,
         view_states: &mut ViewStates,
     ) {
-        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
-
-        if let Some(view) = blueprint.view(view_id) {
-            ui.large_collapsing_header("Entity path filter", true, |ui| {
-                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-
-                if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
-                    ctx,
-                    ui,
-                    *view_id,
-                    &view.contents.entity_path_filter,
-                    &view.space_origin,
-                ) {
-                    view.contents
-                        .set_entity_path_filter(ctx, &new_entity_path_filter);
-                }
-            })
-            .header_response
-            .on_hover_text(
-                "The entity path query consists of a list of include/exclude rules \
-                that determines what entities are part of this view",
-            );
-        }
-
-        if let Some(view) = blueprint.view(view_id) {
-            let view_class = view.class(ctx.space_view_class_registry);
-            let view_state = view_states.get_mut_or_create(view.id, view_class);
-
-            ui.large_collapsing_header("View properties", true, |ui| {
-                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-
-                let cursor = ui.cursor();
-
-                if let Err(err) =
-                    view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
-                {
-                    re_log::error_once!(
-                        "Error in view selection UI (class: {}, display name: {}): {err}",
-                        view.class_identifier(),
-                        view_class.display_name(),
-                    );
-                }
-
-                if cursor == ui.cursor() {
-                    ui.weak("(none)");
-                }
-            });
-
-            let view_ctx = view.bundle_context_with_state(ctx, view_state);
-            view_components_defaults_section_ui(&view_ctx, ui, view);
-        }
-
-        if let Some(view) = blueprint.view(view_id) {
-            visible_time_range_ui_for_view(ctx, ui, view);
-        }
-    }
-
-    /// Returns a new filter when the editing is done, and there has been a change.
-    fn entity_path_filter_ui(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        view_id: SpaceViewId,
-        filter: &EntityPathFilter,
-        origin: &EntityPath,
-    ) -> Option<EntityPathFilter> {
         fn entity_path_filter_help_ui(ui: &mut egui::Ui) {
             let markdown = r#"
 # Entity path query syntax
@@ -428,6 +360,77 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             ui.markdown_ui(egui::Id::new("entity_path_filter_help_ui"), markdown);
         }
 
+        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
+
+        if let Some(view) = blueprint.view(view_id) {
+            ui.section_collapsing_header("Entity path filter")
+                .help_ui(entity_path_filter_help_ui)
+                .show(ui, |ui| {
+                    // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
+                    if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
+                        ctx,
+                        ui,
+                        *view_id,
+                        &view.contents.entity_path_filter,
+                        &view.space_origin,
+                    ) {
+                        view.contents
+                            .set_entity_path_filter(ctx, &new_entity_path_filter);
+                    }
+                })
+                .header_response
+                .on_hover_text(
+                    "The entity path query consists of a list of include/exclude rules \
+                that determines what entities are part of this view",
+                );
+        }
+
+        if let Some(view) = blueprint.view(view_id) {
+            let view_class = view.class(ctx.space_view_class_registry);
+            let view_state = view_states.get_mut_or_create(view.id, view_class);
+
+            ui.section_collapsing_header("View properties")
+                .show(ui, |ui| {
+                    // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
+                    let cursor = ui.cursor();
+
+                    if let Err(err) =
+                        view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
+                    {
+                        re_log::error_once!(
+                            "Error in view selection UI (class: {}, display name: {}): {err}",
+                            view.class_identifier(),
+                            view_class.display_name(),
+                        );
+                    }
+
+                    if cursor == ui.cursor() {
+                        ui.weak("(none)");
+                    }
+                });
+
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
+            view_components_defaults_section_ui(&view_ctx, ui, view);
+        }
+
+        if let Some(view) = blueprint.view(view_id) {
+            visible_time_range_ui_for_view(ctx, ui, view);
+        }
+    }
+
+    /// Returns a new filter when the editing is done, and there has been a change.
+    fn entity_path_filter_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        view_id: SpaceViewId,
+        filter: &EntityPathFilter,
+        origin: &EntityPath,
+    ) -> Option<EntityPathFilter> {
         fn syntax_highlight_entity_path_filter(
             style: &egui::Style,
             mut string: &str,
@@ -506,18 +509,13 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             ));
         }
 
-        ui.horizontal(|ui| {
-            ui.help_hover_button()
-                .on_hover_ui(entity_path_filter_help_ui);
-
-            if ui
-                .button("Edit")
-                .on_hover_text("Modify the entity query using the editor")
-                .clicked()
-            {
-                self.space_view_entity_modal.open(view_id);
-            }
-        });
+        if ui
+            .button("Edit")
+            .on_hover_text("Modify the entity query using the editor")
+            .clicked()
+        {
+            self.space_view_entity_modal.open(view_id);
+        }
 
         // Apply the edit.
         let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
