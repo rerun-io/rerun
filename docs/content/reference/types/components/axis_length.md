@@ -17,5 +17,4 @@ The length of an axis in local units of the space.
 
 ## Used by
 
-* [`Axes3D`](../archetypes/axes3d.md?speculative-link)
 * [`Transform3D`](../archetypes/transform3d.md)
