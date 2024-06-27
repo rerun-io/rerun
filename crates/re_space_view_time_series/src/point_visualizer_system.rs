@@ -158,10 +158,11 @@ impl SeriesPointSystem {
                     &query,
                     data_result,
                     [
-                        Scalar::name(),
                         Color::name(),
-                        MarkerSize::name(),
                         MarkerShape::name(),
+                        MarkerSize::name(),
+                        Name::name(),
+                        Scalar::name(),
                     ],
                 );
 
