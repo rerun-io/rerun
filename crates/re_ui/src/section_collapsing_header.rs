@@ -7,6 +7,7 @@ pub struct SectionCollapsingHeader<'a> {
     default_open: bool,
     button: Option<Box<dyn list_item::ItemButton + 'a>>,
     help: Option<Box<dyn FnOnce(&mut egui::Ui) + 'a>>,
+    legacy_content: bool,
 }
 
 impl<'a> SectionCollapsingHeader<'a> {
@@ -19,6 +20,7 @@ impl<'a> SectionCollapsingHeader<'a> {
             default_open: true,
             button: None,
             help: None,
+            legacy_content: false,
         }
     }
 
@@ -50,9 +52,23 @@ impl<'a> SectionCollapsingHeader<'a> {
     }
 
     /// Set the help UI closure to be shown in the header.
+    //TODO(#6191): the help button should be just another `impl ItemButton`.
     #[inline]
     pub fn help_ui(mut self, help: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
         self.help = Some(Box::new(help));
+        self
+    }
+
+    /// Set the legacy content flag.
+    ///
+    /// Set this to `true` if the section body contains non-[`crate::list_item::ListItem`] content.
+    /// In that case, some spacing will be added at the beginning and the end of the body.
+    ///
+    /// By default, this is `false`, and the vertical [`egui::style::Spacing::item_spacing`] is set to 0.0.
+    // TODO(#6075): remove this once ListItem has taken over the entire UI.
+    #[inline]
+    pub fn legacy_content(mut self, legacy_content: bool) -> Self {
+        self.legacy_content = legacy_content;
         self
     }
 
@@ -67,6 +83,7 @@ impl<'a> SectionCollapsingHeader<'a> {
             default_open,
             button,
             help,
+            legacy_content,
         } = self;
 
         let id = ui.make_persistent_id(label.text());
@@ -93,10 +110,17 @@ impl<'a> SectionCollapsingHeader<'a> {
             .interactive(true)
             .force_background(DesignTokens::section_collapsing_header_color())
             .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
-                //TODO(ab): this space is not desirable when the content actually is list items
-                ui.add_space(4.0); // Add space only if there is a body to make minimized headers stick together.
+                if legacy_content {
+                    ui.add_space(4.0);
+                } else {
+                    ui.spacing_mut().item_spacing.y = 0.0;
+                }
+
                 add_body(ui);
-                ui.add_space(4.0); // Same here
+
+                // some trailing space looks better in the UI even with listitems
+                //TODO(ab): use design tokens
+                ui.add_space(4.0);
             });
 
         egui::CollapsingResponse {

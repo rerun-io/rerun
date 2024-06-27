@@ -275,17 +275,19 @@ impl SelectionPanel {
         }
 
         if let Some(data_ui_item) = data_section_ui(item) {
-            ui.section_collapsing_header("Data").show(ui, |ui| {
-                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+            ui.section_collapsing_header("Data")
+                .legacy_content(true)
+                .show(ui, |ui| {
+                    // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
 
-                let (query, db) = if let Some(entity_path) = item.entity_path() {
-                    guess_query_and_db_for_selected_entity(ctx, entity_path)
-                } else {
-                    (ctx.current_query(), ctx.recording())
-                };
-                data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
-            });
+                    let (query, db) = if let Some(entity_path) = item.entity_path() {
+                        guess_query_and_db_for_selected_entity(ctx, entity_path)
+                    } else {
+                        (ctx.current_query(), ctx.recording())
+                    };
+                    data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
+                });
         }
 
         match item {
@@ -364,6 +366,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = blueprint.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
+                .legacy_content(true)
                 .button(
                     list_item::ItemActionButton::new(&re_ui::icons::EDIT, || {
                         self.space_view_entity_modal.open(*view_id);
@@ -398,6 +401,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
             ui.section_collapsing_header("View properties")
+                .legacy_content(true)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                     ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;

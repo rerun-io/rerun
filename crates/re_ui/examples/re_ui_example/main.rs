@@ -244,22 +244,25 @@ impl eframe::App for ExampleApp {
             // ---
 
             ui.section_collapsing_header("Data")
+                .legacy_content(true)
                 .button(list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
                     ui.weak("empty");
                 }))
                 .show(ui, |ui| {
                     ui.label("Some data here");
                 });
-            ui.section_collapsing_header("Blueprint").show(ui, |ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                ui.label("Some blueprint stuff here, that might be wide.");
-                ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
-
-                ui.collapsing_header("Collapsing header", true, |ui| {
-                    ui.label("Some data here");
+            ui.section_collapsing_header("Blueprint")
+                .legacy_content(true)
+                .show(ui, |ui| {
+                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                    ui.label("Some blueprint stuff here, that might be wide.");
                     ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
+
+                    ui.collapsing_header("Collapsing header", true, |ui| {
+                        ui.label("Some data here");
+                        ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
+                    });
                 });
-            });
         };
 
         // UI code

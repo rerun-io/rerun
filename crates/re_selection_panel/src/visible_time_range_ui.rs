@@ -176,6 +176,7 @@ fn query_range_ui(
 
     let collapsing_response = ui
         .section_collapsing_header("Visible time range")
+        .legacy_content(true)
         .default_open(false)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
