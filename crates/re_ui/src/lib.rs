@@ -22,7 +22,7 @@ pub use self::{
     design_tokens::DesignTokens,
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
-    section_collapsing_header::{HeaderMenuButton, SectionCollapsingHeader},
+    section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
     ui_ext::UiExt,
 };
