@@ -56,6 +56,7 @@ examples = [
   # display order, most interesting first
   "controlnet",
   "depth_guided_stable_diffusion",
+  "vista",
   "mcc",
   "shape_pointe",
   "llm_embedding_ner",
