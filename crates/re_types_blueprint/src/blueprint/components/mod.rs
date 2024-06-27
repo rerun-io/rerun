@@ -8,6 +8,7 @@ mod grid_columns;
 mod included_space_view;
 mod root_container;
 mod space_view_maximized;
+mod visualizer_overrides;
 
 pub use self::auto_layout::AutoLayout;
 pub use self::auto_space_views::AutoSpaceViews;
@@ -16,3 +17,4 @@ pub use self::grid_columns::GridColumns;
 pub use self::included_space_view::IncludedSpaceView;
 pub use self::root_container::RootContainer;
 pub use self::space_view_maximized::SpaceViewMaximized;
+pub use self::visualizer_overrides::VisualizerOverrides;

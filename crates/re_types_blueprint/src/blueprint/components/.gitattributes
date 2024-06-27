@@ -9,3 +9,4 @@ included_space_view.rs linguist-generated=true
 mod.rs linguist-generated=true
 root_container.rs linguist-generated=true
 space_view_maximized.rs linguist-generated=true
+visualizer_overrides.rs linguist-generated=true

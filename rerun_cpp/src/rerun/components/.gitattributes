@@ -66,5 +66,3 @@ vector2d.hpp linguist-generated=true
 vector3d.hpp linguist-generated=true
 view_coordinates.cpp linguist-generated=true
 view_coordinates.hpp linguist-generated=true
-visualizer_overrides.cpp linguist-generated=true
-visualizer_overrides.hpp linguist-generated=true

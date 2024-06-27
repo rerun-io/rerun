@@ -27,3 +27,4 @@
 #include "blueprint/components/visible.hpp"
 #include "blueprint/components/visible_time_range.hpp"
 #include "blueprint/components/visual_bounds2d.hpp"
+#include "blueprint/components/visualizer_overrides.hpp"
