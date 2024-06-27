@@ -47,7 +47,7 @@ pub fn view_components_defaults_section_ui(
 
     let markdown = "# Component defaults\n
 This section lists default values for components in the scope of the present view. The visualizers \
-corresponding to this view's entities use these defaults when no per-entity \
+corresponding to this view's entities use these defaults when no per-entity store value or \
 override is specified.\n
 Click on the `+` button to add a new default value.";
 
