@@ -66,6 +66,7 @@ class Transform3D(Transform3DExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             transform=None,  # type: ignore[arg-type]
+            axis_length=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -80,6 +81,18 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.Transform3DBatch._required,  # type: ignore[misc]
     )
     # The transform
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    axis_length: components.AxisLengthBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.AxisLengthBatch._optional,  # type: ignore[misc]
+    )
+    # Visual length of the 3 axes.
+    #
+    # The length is interpreted in the local coordinate system of the transform.
+    # If the transform is scaled, the axes will be scaled accordingly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
