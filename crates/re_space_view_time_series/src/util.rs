@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types::{
     components::AggregationPolicy,
-    datatypes::{TimeRange, TimeRangeBoundary, Utf8},
+    datatypes::{TimeRange, TimeRangeBoundary},
 };
 use re_viewer_context::{ViewQuery, ViewerContext};
 
@@ -85,7 +85,7 @@ pub fn points_to_series(
     points: Vec<PlotPoint>,
     store: &re_data_store::DataStore,
     query: &ViewQuery<'_>,
-    series_name: Option<Utf8>,
+    series_name: &re_types::components::Name,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
@@ -99,13 +99,6 @@ pub fn points_to_series(
         .entity_min_time(&query.timeline, entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
-    let series_label = series_name.unwrap_or_else(|| {
-        let same_label = |points: &[PlotPoint]| -> Option<Utf8> {
-            let label = points[0].attrs.label.as_ref()?;
-            (points.iter().all(|p| p.attrs.label.as_ref() == Some(label))).then(|| label.clone())
-        };
-        same_label(&points).unwrap_or_else(|| entity_path.to_string().into())
-    });
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter
         let mut kind = points[0].attrs.kind;
@@ -114,7 +107,7 @@ pub fn points_to_series(
         }
 
         all_series.push(PlotSeries {
-            label: series_label,
+            label: series_name.0.clone(),
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
             kind,
@@ -126,7 +119,7 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
-            &series_label,
+            series_name,
             points,
             entity_path,
             aggregator,
@@ -205,7 +198,7 @@ pub fn apply_aggregation(
 
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
-    series_label: &Utf8,
+    series_name: &re_types::components::Name,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
     aggregator: AggregationPolicy,
@@ -218,7 +211,7 @@ fn add_series_runs(
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
-        label: series_label.clone(),
+        label: series_name.0.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
@@ -242,7 +235,7 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
-                    label: series_label.clone(),
+                    label: series_name.0.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,

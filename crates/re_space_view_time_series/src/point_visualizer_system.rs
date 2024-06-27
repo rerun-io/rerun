@@ -5,7 +5,7 @@ use re_space_view::range_with_blueprint_resolved_data;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
-    Archetype as _, Loggable,
+    Archetype as _, Loggable as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -80,7 +80,16 @@ impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize]);
+impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
+        ctx.target_entity_path
+            .last()
+            .map(|part| part.ui_string().into())
+            .unwrap_or_default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name]);
 
 impl SeriesPointSystem {
     fn load_scalars(
@@ -118,7 +127,6 @@ impl SeriesPointSystem {
                 time: 0,
                 value: 0.0,
                 attrs: PlotPointAttrs {
-                    label: None,
                     color: fallback_color.into(),
                     radius_ui: fallback_size.into(),
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
@@ -128,7 +136,6 @@ impl SeriesPointSystem {
             };
 
             let mut points;
-            let mut series_name = Default::default();
 
             let time_range = determine_time_range(
                 view_query.latest_at,
@@ -151,10 +158,11 @@ impl SeriesPointSystem {
                     &query,
                     data_result,
                     [
-                        Scalar::name(),
                         Color::name(),
-                        MarkerSize::name(),
                         MarkerShape::name(),
+                        MarkerSize::name(),
+                        Name::name(),
+                        Scalar::name(),
                     ],
                 );
 
@@ -307,21 +315,16 @@ impl SeriesPointSystem {
                 }
 
                 // Extract the series name
-                // TODO(jleibs): Handle Err values.
-                if let Ok(all_series_name) = results.get_or_empty_dense::<Name>(resolver) {
-                    if !matches!(
-                        all_series_name.status(),
-                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                    ) {
-                        // TODO(#5607): what should happen if the promise is still pending?
-                    }
-
-                    series_name = all_series_name
-                        .range_data(all_scalars_entry_range.clone())
-                        .next()
-                        .and_then(|name| name.first())
-                        .map(|name| name.0.clone());
-                }
+                let series_name = results
+                    .get_or_empty_dense::<Name>(resolver)
+                    .ok()
+                    .and_then(|all_series_name| {
+                        all_series_name
+                            .range_data(all_scalars_entry_range.clone())
+                            .next()
+                            .and_then(|name| name.first().cloned())
+                    })
+                    .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
                 // Now convert the `PlotPoints` into `Vec<PlotSeries>`
                 points_to_series(
@@ -330,7 +333,7 @@ impl SeriesPointSystem {
                     points,
                     ctx.recording_store(),
                     view_query,
-                    series_name,
+                    &series_name,
                     // Aggregation for points is not supported.
                     re_types::components::AggregationPolicy::Off,
                     &mut self.all_series,
