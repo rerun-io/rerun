@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Stereo Vision SLAM"
+title = "Stereo vision SLAM"
 source = "https://github.com/rerun-io/StereoVision-SLAM"
 tags = ["3D", "Point cloud", "C++"]
 thumbnail = "https://static.rerun.io/stereovision_slam/c36cfcf8bc7ec9f03b40559d596d7fee97907ba8/480w.png"
