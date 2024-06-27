@@ -157,7 +157,7 @@ pub enum HybridResults<'a> {
 impl<'a> HybridResults<'a> {
     pub fn query_result_hash(&self) -> Hash64 {
         re_tracing::profile_function!();
-        // TODO(andreas/jleibs/teh): We should be able to do better than this and determine hashes for queries on the fly.
+        // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
 
         match self {
             Self::LatestAt(_, r) => {
