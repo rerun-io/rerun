@@ -176,27 +176,18 @@ fn query_range_ui(
     let time_type = time_ctrl.timeline().typ();
 
     let mut interacting_with_controls = false;
-    let markdown = format!(
-        "# Visible time range\n
+    let markdown = "# Visible time range\n
 This feature controls the time range used to display data in the space view.
 
-The settings are inherited from the parent entity or enclosing space view if not overridden.
-
-Visible time range properties are stored separately for each _type_ of timelines. They may differ \
-depending on whether the current timeline is temporal or a sequence. The current settings apply to \
-all _{}_ timelines.
-
-Notes that the data current as of the time range starting time is included.",
-        match time_type {
-            TimeType::Time => "temporal",
-            TimeType::Sequence => "sequence",
-        }
-    );
+Notes:
+- The settings are inherited from the parent entity or enclosing space view if not overridden.
+- Visible time range properties are stored on a per-timeline basis.
+- The data current as of the time range starting time is included.";
 
     let collapsing_response = ui
         .section_collapsing_header("Visible time range")
         .default_open(false)
-        .help_markdown(&markdown)
+        .help_markdown(markdown)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.re_radio_value(has_individual_time_range, false, "Default")

@@ -104,7 +104,8 @@ fn active_default_ui(
                 .get_by_identifier(*visualizer_identifier)
             else {
                 re_log::warn!(
-                    "Failed to resolve visualizer identifier {visualizer_identifier}, to a visualizer implementation"
+                    "Failed to resolve visualizer identifier {visualizer_identifier}, to a \
+                    visualizer implementation"
                 );
                 continue;
             };
