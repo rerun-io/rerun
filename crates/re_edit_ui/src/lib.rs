@@ -18,10 +18,11 @@ use datatype_editors::{
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Colormap, DepthMeter, FillRatio, GammaCorrection,
+        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, FillRatio, GammaCorrection,
         ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity, Radius, StrokeWidth,
         Text,
     },
+    Loggable as _,
 };
 
 // ----
@@ -32,6 +33,8 @@ use re_types::{
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui(color::edit_color_ui);
+    registry.add_display_ui(Color::name(), Box::new(color::display_color_ui));
+
     registry.add_singleline_editor_ui(marker_shape::edit_marker_shape_ui);
     registry.add_singleline_editor_ui(material::edit_material_ui);
     registry.add_singleline_editor_ui(range1d::edit_range1d);
