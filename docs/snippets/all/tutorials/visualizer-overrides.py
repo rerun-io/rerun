@@ -5,7 +5,7 @@ from math import cos, sin, tau
 import rerun as rr
 import rerun.blueprint as rrb
 
-rr.init("rerun_example_series_line_style", spawn=True)
+rr.init("rerun_example_series_line_overrides", spawn=True)
 
 # Log the data on a timeline called "step".
 for t in range(0, int(tau * 2 * 10.0)):
