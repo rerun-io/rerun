@@ -697,7 +697,7 @@ impl TimelineSpec {
 
         ui.add(
             egui::DragValue::new(&mut value.0)
-                .clamp_range(time_range)
+                .range(time_range)
                 .speed(speed),
         )
     }
@@ -757,7 +757,7 @@ impl TimelineSpec {
 
         let drag_value_response = ui.add(
             egui::DragValue::new(&mut time_unit)
-                .clamp_range(time_range)
+                .range(time_range)
                 .speed(speed)
                 .suffix(self.unit_symbol),
         );
