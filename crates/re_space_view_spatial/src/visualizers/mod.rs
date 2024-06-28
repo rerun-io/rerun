@@ -25,7 +25,7 @@ pub use images::ImageVisualizer;
 pub use segmentation_images::SegmentationImageVisualizer;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use textured_rect_utils::tensor_to_textured_rect;
-pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer, Transform3DDetector};
+pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 
 // ---
 
@@ -77,8 +77,8 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
 }
 
@@ -99,8 +99,8 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
 }
 

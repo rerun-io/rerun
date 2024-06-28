@@ -8,6 +8,7 @@ impl Transform3D {
     /// Identity transform, i.e. parent & child are in the same space.
     pub const IDENTITY: Self = Self {
         transform: crate::components::Transform3D::IDENTITY,
+        axis_length: None,
     };
 
     /// From a translation.
