@@ -6,7 +6,7 @@ use re_log_types::{DataCell, EntityPath};
 use re_query::LatestAtComponentResults;
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::external::arrow2;
-use re_types_core::components::VisualizerOverrides;
+use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     DataResult, SpaceViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,

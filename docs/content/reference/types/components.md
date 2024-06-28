@@ -61,5 +61,4 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
-* [`VisualizerOverrides`](components/visualizer_overrides.md): The name of a visualizer.
 

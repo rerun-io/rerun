@@ -17,7 +17,7 @@ pub struct BarChartVisualizerSystem {
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "BarChartView".into()
+        "BarChart".into()
     }
 }
 
