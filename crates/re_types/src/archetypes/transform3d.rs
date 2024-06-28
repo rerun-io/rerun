@@ -70,17 +70,24 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct Transform3D {
     /// The transform
     pub transform: crate::components::Transform3D,
+
+    /// Visual length of the 3 axes.
+    ///
+    /// The length is interpreted in the local coordinate system of the transform.
+    /// If the transform is scaled, the axes will be scaled accordingly.
+    pub axis_length: Option<crate::components::AxisLength>,
 }
 
 impl ::re_types_core::SizeBytes for Transform3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.transform.heap_size_bytes()
+        self.transform.heap_size_bytes() + self.axis_length.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::components::Transform3D>::is_pod()
+            && <Option<crate::components::AxisLength>>::is_pod()
     }
 }
 
@@ -90,20 +97,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.AxisLength".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3D".into(),
             "rerun.components.Transform3DIndicator".into(),
+            "rerun.components.AxisLength".into(),
         ]
     });
 
 impl Transform3D {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Transform3D`] [`::re_types_core::Archetype`]
@@ -171,7 +179,19 @@ impl ::re_types_core::Archetype for Transform3D {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Transform3D#transform")?
         };
-        Ok(Self { transform })
+        let axis_length = if let Some(array) = arrays_by_name.get("rerun.components.AxisLength") {
+            <crate::components::AxisLength>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Transform3D#axis_length")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        Ok(Self {
+            transform,
+            axis_length,
+        })
     }
 }
 
@@ -182,6 +202,9 @@ impl ::re_types_core::AsComponents for Transform3D {
         [
             Some(Self::indicator()),
             Some((&self.transform as &dyn ComponentBatch).into()),
+            self.axis_length
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -195,6 +218,20 @@ impl Transform3D {
     pub fn new(transform: impl Into<crate::components::Transform3D>) -> Self {
         Self {
             transform: transform.into(),
+            axis_length: None,
         }
+    }
+
+    /// Visual length of the 3 axes.
+    ///
+    /// The length is interpreted in the local coordinate system of the transform.
+    /// If the transform is scaled, the axes will be scaled accordingly.
+    #[inline]
+    pub fn with_axis_length(
+        mut self,
+        axis_length: impl Into<crate::components::AxisLength>,
+    ) -> Self {
+        self.axis_length = Some(axis_length.into());
+        self
     }
 }

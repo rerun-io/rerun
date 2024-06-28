@@ -4,16 +4,17 @@ use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, KeypointId, LineStrip2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, KeypointId, LineStrip2D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{UiLabel, UiLabelTarget},
 };
@@ -208,7 +209,6 @@ impl VisualizerSystem for Lines2DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
@@ -291,4 +291,10 @@ impl VisualizerSystem for Lines2DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Lines2DVisualizer => []);
+impl TypedComponentFallbackProvider<DrawOrder> for Lines2DVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
+        DrawOrder::DEFAULT_LINES2D
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Lines2DVisualizer => [DrawOrder]);

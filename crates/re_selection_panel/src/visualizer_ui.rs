@@ -50,8 +50,27 @@ pub fn visualizer_ui(
     .hover_text("Add additional visualizers")
     .disabled_hover_text("No additional visualizers available");
 
+    let markdown = "# Visualizers
+
+This section lists the active visualizers for the selected entity. Visualizers use an entity's \
+components to display it in the current view.
+
+Each visualizer lists the components it uses and their values. The component values may come from \
+a variety of sources and can be overridden in place.
+
+The final component value is determined using the following priority order:
+- **Override**: A value set from the UI and/or the blueprint. It has the highest precedence and is \
+always used if set.
+- **Store**: If any, the value logged to the data store for this entity, e.g. via the SDK's `log` \
+function.
+- **Default**: If set, the default value for this component in the current view, which can be set \
+in the blueprint or in the UI by selecting the view.
+- **Fallback**: A context-sensitive value that is used if no other value is available. It is \
+specific to the visualizer and the current view type.";
+
     ui.section_collapsing_header("Visualizers")
         .button(button)
+        .help_markdown(markdown)
         .show(ui, |ui| {
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
         });

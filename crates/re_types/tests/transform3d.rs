@@ -22,6 +22,7 @@ fn roundtrip() {
                     from_parent: false,
                 },
             )),
+            axis_length: None,
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
@@ -32,6 +33,7 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
+            axis_length: None,
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
@@ -45,6 +47,7 @@ fn roundtrip() {
                     from_parent: false,
                 },
             )),
+            axis_length: None,
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationRotationScale(
@@ -58,6 +61,7 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
+            axis_length: None,
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
@@ -67,6 +71,7 @@ fn roundtrip() {
                     from_parent: false,
                 },
             )),
+            axis_length: None,
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
@@ -76,6 +81,7 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
+            axis_length: None,
         }, //
         Transform3D {
             transform: components::Transform3D(datatypes::Transform3D::TranslationAndMat3x3(
@@ -85,6 +91,7 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
+            axis_length: None,
         }, //
     ];
 

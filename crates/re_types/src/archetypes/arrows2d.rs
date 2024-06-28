@@ -74,6 +74,11 @@ pub struct Arrows2D {
     /// Optional text labels for the arrows.
     pub labels: Option<Vec<crate::components::Text>>,
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    pub draw_order: Option<crate::components::DrawOrder>,
+
     /// Optional class Ids for the points.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
@@ -88,6 +93,7 @@ impl ::re_types_core::SizeBytes for Arrows2D {
             + self.radii.heap_size_bytes()
             + self.colors.heap_size_bytes()
             + self.labels.heap_size_bytes()
+            + self.draw_order.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
     }
 
@@ -98,6 +104,7 @@ impl ::re_types_core::SizeBytes for Arrows2D {
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
+            && <Option<crate::components::DrawOrder>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }
@@ -113,17 +120,18 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Radius".into(),
             "rerun.components.Color".into(),
             "rerun.components.Text".into(),
+            "rerun.components.DrawOrder".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Vector2D".into(),
@@ -132,13 +140,14 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
             "rerun.components.Radius".into(),
             "rerun.components.Color".into(),
             "rerun.components.Text".into(),
+            "rerun.components.DrawOrder".into(),
             "rerun.components.ClassId".into(),
         ]
     });
 
 impl Arrows2D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`Arrows2D`] [`::re_types_core::Archetype`]
@@ -253,6 +262,15 @@ impl ::re_types_core::Archetype for Arrows2D {
         } else {
             None
         };
+        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
+            <crate::components::DrawOrder>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Arrows2D#draw_order")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
@@ -271,6 +289,7 @@ impl ::re_types_core::Archetype for Arrows2D {
             radii,
             colors,
             labels,
+            draw_order,
             class_ids,
         })
     }
@@ -295,6 +314,9 @@ impl ::re_types_core::AsComponents for Arrows2D {
             self.labels
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.draw_order
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.class_ids
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
@@ -317,6 +339,7 @@ impl Arrows2D {
             radii: None,
             colors: None,
             labels: None,
+            draw_order: None,
             class_ids: None,
         }
     }
@@ -363,6 +386,15 @@ impl Arrows2D {
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {
         self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    #[inline]
+    pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
+        self.draw_order = Some(draw_order.into());
         self
     }
 

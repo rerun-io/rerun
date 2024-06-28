@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use egui::NumExt as _;
 use re_types::datatypes;
 
@@ -7,7 +9,7 @@ pub fn edit_f32_zero_to_max(
     ui: &mut egui::Ui,
     value: &mut impl std::ops::DerefMut<Target = datatypes::Float32>,
 ) -> egui::Response {
-    edit_f32_zero_to_max_float_raw_impl(ui, &mut value.deref_mut().0)
+    edit_f32_float_raw_impl(ui, &mut value.deref_mut().0, 0.0..=f32::MAX)
 }
 
 /// Generic editor for a raw f32 value from zero to max float.
@@ -16,15 +18,28 @@ pub fn edit_f32_zero_to_max_float_raw(
     ui: &mut egui::Ui,
     value: &mut impl std::ops::DerefMut<Target = f32>,
 ) -> egui::Response {
-    edit_f32_zero_to_max_float_raw_impl(ui, value)
+    edit_f32_float_raw_impl(ui, value, 0.0..=f32::MAX)
 }
 
-/// Non monomorphized implementation of [`edit_f32_zero_to_max_float_raw`].
-fn edit_f32_zero_to_max_float_raw_impl(ui: &mut egui::Ui, value: &mut f32) -> egui::Response {
+/// Generic editor for a raw f32 value from min to max float.
+pub fn edit_f32_min_to_max_float_raw(
+    _ctx: &re_viewer_context::ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    value: &mut impl std::ops::DerefMut<Target = f32>,
+) -> egui::Response {
+    edit_f32_float_raw_impl(ui, value, f32::MIN..=f32::MAX)
+}
+
+/// Non monomorphized implementation for f32 float editing.
+fn edit_f32_float_raw_impl(
+    ui: &mut egui::Ui,
+    value: &mut f32,
+    range: RangeInclusive<f32>,
+) -> egui::Response {
     let speed = (*value * 0.01).at_least(0.001);
     ui.add(
         egui::DragValue::new(value)
-            .clamp_range(0.0..=f32::MAX) // TODO(#6633): Don't change incoming values
+            .clamp_range(range) // TODO(#6633): Don't change incoming values
             .speed(speed),
     )
 }

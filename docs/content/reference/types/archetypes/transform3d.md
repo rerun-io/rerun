@@ -9,6 +9,8 @@ A 3D transform.
 
 **Required**: [`Transform3D`](../components/transform3d.md)
 
+**Optional**: [`AxisLength`](../components/axis_length.md)
+
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
