@@ -78,7 +78,6 @@ def main() -> None:
     os.mkdir("wheels")
     with ThreadPoolExecutor() as e:
         for blob in wheel_blobs:
-            pass
             e.submit(lambda: blob.download_to_filename(f"wheels/{blob.name.split('/')[-1]}"))
 
     check_version(canonicalize_version(args.version))
