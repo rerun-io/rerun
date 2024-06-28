@@ -40,8 +40,8 @@ ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/versio
 if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
 
-    bound_port = serve_assets(background=True)
-    ESM_MOD = f"http://localhost:{bound_port}/widget.js"
+    bound_addr = serve_assets(background=True)
+    ESM_MOD = f"http://localhost:{bound_addr[1]}/widget.js"
 elif ASSET_ENV == ASSET_MAGIC_INLINE:
     ESM_MOD = WIDGET_PATH
 else:
