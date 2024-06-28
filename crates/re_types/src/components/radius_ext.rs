@@ -4,19 +4,54 @@ impl Radius {
     /// Zero radius.
     pub const ZERO: Self = Self(0.0);
 
-    /// Unit radius.
+    /// Radius of length 1 in scene units.
     pub const ONE: Self = Self(1.0);
-}
 
-impl std::fmt::Display for Radius {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.prec$}", self.0, prec = crate::DISPLAY_PRECISION)
-    }
+    /// Radius of length 1 in ui points.
+    pub const ONE_UI: Self = Self(-1.0);
 }
 
 impl Default for Radius {
     #[inline]
     fn default() -> Self {
         Self::ONE
+    }
+}
+
+impl Radius {
+    /// Creates a new radius in scene units.
+    ///
+    /// Values passed must be finite positive.
+    #[inline]
+    pub fn new_scene_units(radius_in_scene_units: f32) -> Self {
+        debug_assert!(
+            (0.0..f32::INFINITY).contains(&radius_in_scene_units),
+            "Bad radius: {radius_in_scene_units}"
+        );
+        Self(radius_in_scene_units)
+    }
+
+    /// Creates a new radius in ui point units.
+    ///
+    /// Values passed must be finite positive.
+    #[inline]
+    pub fn new_ui_points(radius_in_ui_points: f32) -> Self {
+        debug_assert!(
+            (0.0..f32::INFINITY).contains(&radius_in_ui_points),
+            "Bad radius: {radius_in_ui_points}"
+        );
+        Self(-radius_in_ui_points)
+    }
+
+    /// If this radius is in scene units, returns the radius in scene units.
+    #[inline]
+    pub fn scene_units(&self) -> Option<f32> {
+        (self.0 >= 0.0).then_some(self.0)
+    }
+
+    /// If this radius is in ui points, returns the radius in ui points.
+    #[inline]
+    pub fn ui_points(&self) -> Option<f32> {
+        (self.0 <= 0.0).then_some(-self.0)
     }
 }
