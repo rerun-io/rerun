@@ -45,7 +45,8 @@ pub struct VisualizerOverrides(
     /// - Boxes2D
     /// - Boxes3D
     /// - Cameras
-    /// - Images
+    /// - DepthImage
+    /// - Image
     /// - Lines2D
     /// - Lines3D
     /// - Mesh3D
@@ -55,6 +56,7 @@ pub struct VisualizerOverrides(
     /// - Tensor
     /// - TextDocument
     /// - TextLog
+    /// - SegmentationImage
     /// - SeriesLine
     /// - SeriesPoint
     pub Vec<::re_types_core::ArrowString>,

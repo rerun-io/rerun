@@ -39,7 +39,8 @@ namespace rerun::blueprint::components {
         /// - Boxes2D
         /// - Boxes3D
         /// - Cameras
-        /// - Images
+        /// - DepthImage
+        /// - Image
         /// - Lines2D
         /// - Lines3D
         /// - Mesh3D
@@ -49,6 +50,7 @@ namespace rerun::blueprint::components {
         /// - Tensor
         /// - TextDocument
         /// - TextLog
+        /// - SegmentationImage
         /// - SeriesLine
         /// - SeriesPoint
         rerun::Collection<std::string> visualizers;

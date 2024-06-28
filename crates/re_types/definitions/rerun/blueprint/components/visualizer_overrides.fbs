@@ -37,7 +37,8 @@ table VisualizerOverrides (
     /// - Boxes2D
     /// - Boxes3D
     /// - Cameras
-    /// - Images
+    /// - DepthImage
+    /// - Image
     /// - Lines2D
     /// - Lines3D
     /// - Mesh3D
@@ -47,6 +48,7 @@ table VisualizerOverrides (
     /// - Tensor
     /// - TextDocument
     /// - TextLog
+    /// - SegmentationImage
     /// - SeriesLine
     /// - SeriesPoint
     visualizers: [string] (order: 100);

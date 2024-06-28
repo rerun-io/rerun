@@ -61,7 +61,8 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
             - Boxes2D
             - Boxes3D
             - Cameras
-            - Images
+            - DepthImage
+            - Image
             - Lines2D
             - Lines3D
             - Mesh3D
@@ -71,6 +72,7 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
             - Tensor
             - TextDocument
             - TextLog
+            - SegmentationImage
             - SeriesLine
             - SeriesPoint
 
@@ -92,7 +94,8 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
     # - Boxes2D
     # - Boxes3D
     # - Cameras
-    # - Images
+    # - DepthImage
+    # - Image
     # - Lines2D
     # - Lines3D
     # - Mesh3D
@@ -102,6 +105,7 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
     # - Tensor
     # - TextDocument
     # - TextLog
+    # - SegmentationImage
     # - SeriesLine
     # - SeriesPoint
     #
