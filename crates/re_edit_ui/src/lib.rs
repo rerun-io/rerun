@@ -21,7 +21,7 @@ use re_types::{
     components::{
         AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, DrawOrder, FillRatio,
         GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity,
-        Radius, StrokeWidth, Text,
+        StrokeWidth, Text,
     },
     Loggable as _,
 };

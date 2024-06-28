@@ -31,7 +31,7 @@ impl Radius {
         Self(radius_in_scene_units)
     }
 
-    /// Creates a new radius in ui point units.
+    /// Creates a new radius in ui points.
     ///
     /// Values passed must be finite positive.
     #[inline]

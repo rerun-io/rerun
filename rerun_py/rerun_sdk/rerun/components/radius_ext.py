@@ -19,13 +19,13 @@ class RadiusExt:
     """Extension for [Radius][rerun.components.Radius]."""
 
     @staticmethod
-    def ui_units(radii: numbers.Number | npt.ArrayLike) -> RadiusArrayLike:
+    def ui_points(radii: numbers.Number | npt.ArrayLike) -> RadiusArrayLike:
         """
-        Create a radius or list of radii in UI units.
+        Create a radius or list of radii in UI points.
 
-        By default, radii are interpreted as world-space units.
-        Ui units on the other hand are independent of zooming in Views, but are sensitive to the application ui scaling.
-        At 100% ui scaling, ui units are equal to pixels
+        By default, radii are interpreted as scene units.
+        Ui points on the other hand are independent of zooming in Views, but are sensitive to the application ui scaling.
+        At 100% ui scaling, ui points are equal to pixels
         The Viewer's ui scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
 
         Internally, ui radii are stored as negative values.
