@@ -319,8 +319,7 @@ impl SelectionPanel {
         view_id: &SpaceViewId,
         view_states: &mut ViewStates,
     ) {
-        fn entity_path_filter_help_ui(ui: &mut egui::Ui) {
-            let markdown = r#"
+        let markdown = r#"
 # Entity path query syntax
 
 Entity path queries are described as a list of include/exclude rules that act on paths:
@@ -355,10 +354,7 @@ The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded
 The last rule matching `/world` is `- /world`, so it is excluded.
 The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
-            .trim();
-
-            ui.markdown_ui(egui::Id::new("entity_path_filter_help_ui"), markdown);
-        }
+        .trim();
 
         clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
 
@@ -370,7 +366,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                     })
                     .hover_text("Modify the entity query using the editor"),
                 )
-                .help_ui(entity_path_filter_help_ui)
+                .help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                     ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
