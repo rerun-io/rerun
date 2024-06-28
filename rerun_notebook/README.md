@@ -25,7 +25,7 @@ from `https://app.rerun.io`. This is because the way anywiget transmits the asse
 [a memory leak](https://github.com/manzt/anywidget/issues/613) of the entire module for each cell execution.
 
 If your network does not allow you to access `app.rerun.io`, the behavior can be changed by setting the
-the `RERUN_NOTEBOOK_ASSET` environment variable before you import `rerun_notebook`.  This variavle must
+the `RERUN_NOTEBOOK_ASSET` environment variable before you import `rerun_notebook`. This variable must
 be set prior to your import because `AnyWidget` stores the resource on the widget class instance
 once at import time.
 
@@ -34,9 +34,9 @@ Setting:
 ```
 RERUN_NOTEBOOK_ASSET=inline
 ```
-Will cause `rerun_notebook` to directly transmit the inlined asset to the widget over jupyter comms.
+Will cause `rerun_notebook` to directly transmit the inlined asset to the widget over Jupyter comms.
 This will be the most portable way to use the widget, but is currently known to leak memory and
-has some performance issues in environments such as google colab.
+has some performance issues in environments such as Google colab.
 
 ### Locally served asset
 Setting:
