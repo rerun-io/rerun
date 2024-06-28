@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use std::collections::BTreeMap;
 
 use re_types::{Archetype, ComponentName, ComponentNameSet};
 
@@ -135,7 +135,7 @@ pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
 }
 
 pub struct VisualizerCollection {
-    pub systems: HashMap<ViewSystemIdentifier, Box<dyn VisualizerSystem>>,
+    pub systems: BTreeMap<ViewSystemIdentifier, Box<dyn VisualizerSystem>>,
 }
 
 impl VisualizerCollection {

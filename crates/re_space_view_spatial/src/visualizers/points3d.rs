@@ -15,7 +15,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
@@ -217,7 +217,6 @@ impl VisualizerSystem for Points3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 

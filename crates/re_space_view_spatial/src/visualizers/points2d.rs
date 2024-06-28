@@ -6,16 +6,17 @@ use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
-    components::{ClassId, Color, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
@@ -226,7 +227,6 @@ impl VisualizerSystem for Points2DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
@@ -306,4 +306,10 @@ impl VisualizerSystem for Points2DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => []);
+impl TypedComponentFallbackProvider<DrawOrder> for Points2DVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
+        DrawOrder::DEFAULT_POINTS2D
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => [DrawOrder]);
