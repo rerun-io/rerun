@@ -293,7 +293,7 @@ impl VisualizerSystem for Lines2DVisualizer {
 
 impl TypedComponentFallbackProvider<DrawOrder> for Lines2DVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_IMAGE
+        DrawOrder::DEFAULT_LINES2D
     }
 }
 
