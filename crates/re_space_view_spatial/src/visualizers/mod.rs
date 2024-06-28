@@ -201,18 +201,13 @@ fn process_radius(
     entity_path: &EntityPath,
     radius: re_types::components::Radius,
 ) -> re_renderer::Size {
-    if 0.0 <= radius.0 && radius.0.is_finite() {
-        re_renderer::Size::new_scene(radius.0)
-    } else {
-        if radius.0 < 0.0 {
-            re_log::warn_once!("Found negative radius in entity {entity_path}");
-        } else if radius.0.is_infinite() {
-            re_log::warn_once!("Found infinite radius in entity {entity_path}");
-        } else {
-            re_log::warn_once!("Found NaN radius in entity {entity_path}");
-        }
-        re_renderer::Size::AUTO
+    if radius.0.is_infinite() {
+        re_log::warn_once!("Found infinite radius in entity {entity_path}");
+    } else if radius.0.is_nan() {
+        re_log::warn_once!("Found NaN radius in entity {entity_path}");
     }
+
+    re_renderer::Size(radius.0)
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
