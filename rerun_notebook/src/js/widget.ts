@@ -87,8 +87,6 @@ class ViewerWidget {
       canvas.style.minHeight = "";
       canvas.style.maxHeight = "";
     }
-
-    canvas.tabIndex = 0;
   };
 
   on_change_url = (_: unknown, new_url?: Opt<string>) => {
