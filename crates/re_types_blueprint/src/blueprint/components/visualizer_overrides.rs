@@ -38,7 +38,7 @@ pub struct VisualizerOverrides(
     /// Names of the visualizers that should be active.
     ///
     /// The built-in visualizers are:
-    /// - BarChartView
+    /// - BarChart
     /// - Arrows2D
     /// - Arrows3D
     /// - Asset3D
