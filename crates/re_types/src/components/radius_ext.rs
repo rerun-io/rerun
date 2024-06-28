@@ -14,7 +14,7 @@ impl Radius {
 impl Default for Radius {
     #[inline]
     fn default() -> Self {
-        Self::ONE
+        Self::new_ui_points(1.5)
     }
 }
 

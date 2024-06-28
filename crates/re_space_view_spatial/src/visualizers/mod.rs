@@ -37,10 +37,10 @@ use re_types::{
     datatypes::{KeypointId, KeypointPair},
 };
 use re_viewer_context::{
-    auto_color, Annotations, ApplicableEntities, DefaultColor, IdentifiedViewSystem,
-    ResolvedAnnotationInfos, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, ViewSystemIdentifier, VisualizableEntities,
-    VisualizableFilterContext, VisualizerCollection,
+    auto_color, Annotations, ApplicableEntities, DefaultColor,
+    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewClassRegistryError,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, ViewSystemIdentifier,
+    VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
 };
 
 use crate::view_2d::VisualizableFilterContext2D;
@@ -185,11 +185,12 @@ pub fn process_radius_slice(
     entity_path: &EntityPath,
     num_instances: usize,
     radii: &[re_types::components::Radius],
+    fallback_radius: re_types::components::Radius,
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
 
     if radii.is_empty() {
-        vec![re_renderer::Size::AUTO; num_instances]
+        vec![re_renderer::Size(fallback_radius.0); num_instances]
     } else {
         entity_iterator::clamped(radii, num_instances)
             .map(|radius| process_radius(entity_path, *radius))

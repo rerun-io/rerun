@@ -495,7 +495,7 @@ impl SpatialSpaceView3D {
             viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
             pixels_per_point: ui.ctx().pixels_per_point(),
-            auto_size_config: state.auto_size_config(),
+            auto_size_config: re_renderer::AutoSizeConfig::default(), // TODO: remove
 
             outline_config: query
                 .highlights

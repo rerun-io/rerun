@@ -225,7 +225,6 @@ impl SpaceViewClass for SpatialSpaceView2D {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            state.default_sizes_ui(ui);
             state.bounding_box_ui(ui, SpatialSpaceViewKind::TwoD);
         });
 

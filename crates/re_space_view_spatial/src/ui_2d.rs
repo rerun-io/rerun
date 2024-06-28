@@ -196,7 +196,6 @@ impl SpatialSpaceView2D {
             &painter,
             scene_bounds,
             &query.space_origin.to_string(),
-            state.auto_size_config(),
             query.highlights.any_outlines(),
             &state.pinhole_at_origin,
         ) else {
@@ -299,7 +298,6 @@ fn setup_target_config(
     egui_painter: &egui::Painter,
     scene_bounds: Rect,
     space_name: &str,
-    auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
     scene_pinhole: &Option<Pinhole>,
 ) -> anyhow::Result<TargetConfiguration> {
@@ -407,7 +405,7 @@ fn setup_target_config(
             projection_from_view,
             viewport_transformation,
             pixels_per_point,
-            auto_size_config,
+            auto_size_config: re_renderer::AutoSizeConfig::default(), // TODO: remove
             outline_config: any_outlines.then(|| outline_config(egui_painter.ctx())),
         }
     })
