@@ -221,7 +221,8 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .collect();
 
         // We never want to consider `Transform3DArrows` as directly indicated since it uses the
-        // the Transform3D archetype.
+        // the Transform3D archetype. This is often used to transform other 3D primitives, where
+        // it might be annoying to always have the arrows show up.
         let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
             .iter()
             .filter_map(|(visualizer, ents)| {
@@ -233,7 +234,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             })
             .collect();
 
-        // Start with all the entities which are both indicated.
+        // Start with all the entities which are both indicated and visualizable.
         let mut chosen: SmallVisualizerSet = indicated
             .intersection(&visualizable)
             .copied()
