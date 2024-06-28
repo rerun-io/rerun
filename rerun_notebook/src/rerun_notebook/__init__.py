@@ -114,7 +114,9 @@ class Viewer(anywidget.AnyWidget):
         with jupyter_ui_poll.ui_events() as poll:
             while self._ready is False:
                 if time.time() - start > timeout:
-                    logging.warning("Timed out waiting for viewer to become ready.")
+                    logging.warning(
+                        f"Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible."
+                    )
                     return
                 poll(1)
                 time.sleep(0.1)
