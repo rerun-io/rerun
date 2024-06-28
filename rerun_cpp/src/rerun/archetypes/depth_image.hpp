@@ -82,11 +82,6 @@ namespace rerun::archetypes {
         /// and a range of up to ~65 meters (2^16 / 1000).
         std::optional<rerun::components::DepthMeter> meter;
 
-        /// An optional floating point value that specifies the 2D drawing order.
-        ///
-        /// Objects with higher values are drawn on top of those with lower values.
-        std::optional<rerun::components::DrawOrder> draw_order;
-
         /// Colormap to use for rendering the depth image.
         ///
         /// If not set, the depth image will be rendered using the Turbo colormap.
@@ -98,6 +93,11 @@ namespace rerun::archetypes {
         /// if it is at the same depth, leaving no gaps.
         /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
         std::optional<rerun::components::FillRatio> point_fill_ratio;
+
+        /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+        ///
+        /// Objects with higher values are drawn on top of those with lower values.
+        std::optional<rerun::components::DrawOrder> draw_order;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -154,15 +154,6 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// An optional floating point value that specifies the 2D drawing order.
-        ///
-        /// Objects with higher values are drawn on top of those with lower values.
-        DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
-            draw_order = std::move(_draw_order);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
         /// Colormap to use for rendering the depth image.
         ///
         /// If not set, the depth image will be rendered using the Turbo colormap.
@@ -179,6 +170,15 @@ namespace rerun::archetypes {
         /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
         DepthImage with_point_fill_ratio(rerun::components::FillRatio _point_fill_ratio) && {
             point_fill_ratio = std::move(_point_fill_ratio);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+        ///
+        /// Objects with higher values are drawn on top of those with lower values.
+        DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
+            draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

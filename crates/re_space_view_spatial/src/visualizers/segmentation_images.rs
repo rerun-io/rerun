@@ -4,7 +4,7 @@ use re_log_types::{RowId, TimeInt};
 use re_query::range_zip_1x1;
 use re_space_view::diff_component_filter;
 use re_types::{
-    archetypes::Image,
+    archetypes::SegmentationImage,
     components::{DrawOrder, Opacity, TensorData},
     tensor_data::TensorDataMeaning,
 };
@@ -16,8 +16,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    view_kind::SpatialSpaceViewKind, visualizers::filter_visualizable_2d_entities,
-    PickableImageRect, SpatialSpaceView2D,
+    ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
+    visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
 };
 
 use super::{
@@ -25,12 +25,12 @@ use super::{
     SpatialViewVisualizerData,
 };
 
-pub struct ImageVisualizer {
+pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
     pub images: Vec<PickableImageRect>,
 }
 
-impl Default for ImageVisualizer {
+impl Default for SegmentationImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
@@ -39,22 +39,22 @@ impl Default for ImageVisualizer {
     }
 }
 
-struct ImageComponentData<'a> {
+struct SegmentationImageComponentData<'a> {
     index: (TimeInt, RowId),
 
     tensor: &'a TensorData,
     opacity: Option<&'a Opacity>,
 }
 
-impl IdentifiedViewSystem for ImageVisualizer {
+impl IdentifiedViewSystem for SegmentationImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Image".into()
+        "SegmentationImage".into()
     }
 }
 
-struct ImageVisualizerEntityFilter;
+struct SegmentationImageVisualizerEntityFilter;
 
-impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
+impl VisualizerAdditionalApplicabilityFilter for SegmentationImageVisualizerEntityFilter {
     fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
         diff_component_filter(event, |tensor: &re_types::components::TensorData| {
             tensor.is_shaped_like_an_image()
@@ -62,13 +62,13 @@ impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
     }
 }
 
-impl VisualizerSystem for ImageVisualizer {
+impl VisualizerSystem for SegmentationImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Image>()
+        VisualizerQueryInfo::from_archetype::<SegmentationImage>()
     }
 
     fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(ImageVisualizerEntityFilter))
+        Some(Box::new(SegmentationImageVisualizerEntityFilter))
     }
 
     fn filter_visualizable_entities(
@@ -90,7 +90,7 @@ impl VisualizerSystem for ImageVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        super::entity_iterator::process_archetype::<Self, Image, _>(
+        super::entity_iterator::process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
             context_systems,
@@ -110,16 +110,16 @@ impl VisualizerSystem for ImageVisualizer {
 
                 let data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed())
                     .filter_map(|(&index, tensors, opacity)| {
-                        tensors.first().map(|tensor| ImageComponentData {
-                            index,
-                            tensor,
-                            opacity: opacity.and_then(|opacity| opacity.first()),
-                        })
+                        tensors
+                            .first()
+                            .map(|tensor| SegmentationImageComponentData {
+                                index,
+                                tensor,
+                                opacity: opacity.and_then(|opacity| opacity.first()),
+                            })
                     });
 
-                // Unknown is currently interpreted as "Some Color" in most cases.
-                // TODO(jleibs): Make this more explicit
-                let meaning = TensorDataMeaning::Unknown;
+                let meaning = TensorDataMeaning::ClassId;
 
                 for data in data {
                     if !data.tensor.is_shaped_like_an_image() {
@@ -139,7 +139,7 @@ impl VisualizerSystem for ImageVisualizer {
                         }
                     };
 
-                    // TODO(andreas): We only support colormap for depth image at this point.
+                    // TODO(andreas): colormap is only available for depth images right now.
                     let colormap = None;
 
                     let opacity = data
@@ -186,7 +186,7 @@ impl VisualizerSystem for ImageVisualizer {
 
         // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
         // but for everything with transparency, actual drawing order is still important.
-        // We mitigate this a bit by at least sorting the images within each other.
+        // We mitigate this a bit by at least sorting the segmentation images within each other.
         // Sorting of Images vs DepthImage vs SegmentationImage uses the fact that
         // visualizers are executed in the order of their identifiers.
         // -> The draw order is always DepthImage then Image then SegmentationImage,
@@ -231,16 +231,36 @@ impl VisualizerSystem for ImageVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        1.0.into()
+impl TypedComponentFallbackProvider<Opacity> for SegmentationImageVisualizer {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
+        // Segmentation images should be transparent whenever they're on top of other images,
+        // But fully opaque if there are no other images in the scene.
+        let Some(view_state) = ctx
+            .view_state
+            .as_any()
+            .downcast_ref::<SpatialSpaceViewState>()
+        else {
+            return 1.0.into();
+        };
+
+        // Known cosmetic issues with this approach:
+        // * The first frame we have more than one image, the segmentation image will be opaque.
+        //      It's too complex to do a full view query just for this here.
+        //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
+        // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
+        if view_state.num_non_segmentation_images_last_frame == 0 {
+            1.0
+        } else {
+            0.5
+        }
+        .into()
     }
 }
 
-impl TypedComponentFallbackProvider<DrawOrder> for ImageVisualizer {
+impl TypedComponentFallbackProvider<DrawOrder> for SegmentationImageVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_IMAGE
+        DrawOrder::DEFAULT_SEGMENTATION_IMAGE
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [DrawOrder, Opacity]);
+re_viewer_context::impl_component_fallback_provider!(SegmentationImageVisualizer => [DrawOrder, Opacity]);

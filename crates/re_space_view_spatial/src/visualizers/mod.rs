@@ -6,6 +6,7 @@ mod assets3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
+mod depth_images;
 mod entity_iterator;
 mod images;
 mod lines2d;
@@ -13,12 +14,17 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
+mod segmentation_images;
 mod spatial_view_visualizer;
+mod textured_rect_utils;
 mod transform3d_arrows;
 
 pub use cameras::CamerasVisualizer;
-pub use images::{ImageVisualizer, ViewerImage};
+pub use depth_images::DepthImageVisualizer;
+pub use images::ImageVisualizer;
+pub use segmentation_images::SegmentationImageVisualizer;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
+pub use textured_rect_utils::tensor_to_textured_rect;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 
 // ---
@@ -58,17 +64,19 @@ pub fn register_2d_spatial_visualizers(
 ) -> Result<(), SpaceViewClassRegistryError> {
     // Note: 2D spatial systems don't include cameras as this
     // visualizer only shows a 2D projection WITHIN a 3D view.
-    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
+    system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
     system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     Ok(())
@@ -77,18 +85,20 @@ pub fn register_2d_spatial_visualizers(
 pub fn register_3d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
-    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
+    system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
     system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     Ok(())
@@ -99,9 +109,11 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
     [
         arrows2d::Arrows2DVisualizer::identifier(),
         boxes2d::Boxes2DVisualizer::identifier(),
+        depth_images::DepthImageVisualizer::identifier(),
         images::ImageVisualizer::identifier(),
         lines2d::Lines2DVisualizer::identifier(),
         points2d::Points2DVisualizer::identifier(),
+        segmentation_images::SegmentationImageVisualizer::identifier(),
     ]
     .into_iter()
 }

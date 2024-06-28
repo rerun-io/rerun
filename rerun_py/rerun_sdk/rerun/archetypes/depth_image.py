@@ -70,9 +70,9 @@ class DepthImage(DepthImageExt, Archetype):
         data: datatypes.TensorDataLike,
         *,
         meter: components.DepthMeterLike | None = None,
-        draw_order: components.DrawOrderLike | None = None,
         colormap: components.ColormapLike | None = None,
         point_fill_ratio: datatypes.Float32Like | None = None,
+        draw_order: components.DrawOrderLike | None = None,
     ):
         """
         Create a new instance of the DepthImage archetype.
@@ -86,10 +86,6 @@ class DepthImage(DepthImageExt, Archetype):
 
             For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
             and a range of up to ~65 meters (2^16 / 1000).
-        draw_order:
-            An optional floating point value that specifies the 2D drawing order.
-
-            Objects with higher values are drawn on top of those with lower values.
         colormap:
             Colormap to use for rendering the depth image.
 
@@ -100,13 +96,17 @@ class DepthImage(DepthImageExt, Archetype):
             A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
             if it is at the same depth, leaving no gaps.
             A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+
+            Objects with higher values are drawn on top of those with lower values.
 
         """
 
         # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                data=data, meter=meter, draw_order=draw_order, colormap=colormap, point_fill_ratio=point_fill_ratio
+                data=data, meter=meter, colormap=colormap, point_fill_ratio=point_fill_ratio, draw_order=draw_order
             )
             return
         self.__attrs_clear__()
@@ -116,9 +116,9 @@ class DepthImage(DepthImageExt, Archetype):
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
-            draw_order=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
             point_fill_ratio=None,  # type: ignore[arg-type]
+            draw_order=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -148,17 +148,6 @@ class DepthImage(DepthImageExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    draw_order: components.DrawOrderBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
-    )
-    # An optional floating point value that specifies the 2D drawing order.
-    #
-    # Objects with higher values are drawn on top of those with lower values.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
     colormap: components.ColormapBatch | None = field(
         metadata={"component": "optional"},
         default=None,
@@ -180,6 +169,17 @@ class DepthImage(DepthImageExt, Archetype):
     # A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
     # if it is at the same depth, leaving no gaps.
     # A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    draw_order: components.DrawOrderBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.DrawOrderBatch._optional,  # type: ignore[misc]
+    )
+    # An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
