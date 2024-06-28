@@ -613,6 +613,7 @@ impl TimePanel {
         let list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
+            ..
         } = ui
             .list_item()
             .selected(is_selected)

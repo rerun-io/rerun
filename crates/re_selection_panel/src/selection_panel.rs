@@ -275,7 +275,7 @@ impl SelectionPanel {
         }
 
         if let Some(data_ui_item) = data_section_ui(item) {
-            ui.large_collapsing_header("Data", true, |ui| {
+            ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
 
@@ -319,74 +319,6 @@ impl SelectionPanel {
         view_id: &SpaceViewId,
         view_states: &mut ViewStates,
     ) {
-        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
-
-        if let Some(view) = blueprint.view(view_id) {
-            ui.large_collapsing_header("Entity path filter", true, |ui| {
-                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-
-                if let Some(new_entity_path_filter) = self.entity_path_filter_ui(
-                    ctx,
-                    ui,
-                    *view_id,
-                    &view.contents.entity_path_filter,
-                    &view.space_origin,
-                ) {
-                    view.contents
-                        .set_entity_path_filter(ctx, &new_entity_path_filter);
-                }
-            })
-            .header_response
-            .on_hover_text(
-                "The entity path query consists of a list of include/exclude rules \
-                that determines what entities are part of this view",
-            );
-        }
-
-        if let Some(view) = blueprint.view(view_id) {
-            let view_class = view.class(ctx.space_view_class_registry);
-            let view_state = view_states.get_mut_or_create(view.id, view_class);
-
-            ui.large_collapsing_header("View properties", true, |ui| {
-                // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-
-                let cursor = ui.cursor();
-
-                if let Err(err) =
-                    view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
-                {
-                    re_log::error_once!(
-                        "Error in view selection UI (class: {}, display name: {}): {err}",
-                        view.class_identifier(),
-                        view_class.display_name(),
-                    );
-                }
-
-                if cursor == ui.cursor() {
-                    ui.weak("(none)");
-                }
-            });
-
-            let view_ctx = view.bundle_context_with_state(ctx, view_state);
-            view_components_defaults_section_ui(&view_ctx, ui, view);
-        }
-
-        if let Some(view) = blueprint.view(view_id) {
-            visible_time_range_ui_for_view(ctx, ui, view);
-        }
-    }
-
-    /// Returns a new filter when the editing is done, and there has been a change.
-    fn entity_path_filter_ui(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        view_id: SpaceViewId,
-        filter: &EntityPathFilter,
-        origin: &EntityPath,
-    ) -> Option<EntityPathFilter> {
         fn entity_path_filter_help_ui(ui: &mut egui::Ui) {
             let markdown = r#"
 # Entity path query syntax
@@ -428,103 +360,71 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             ui.markdown_ui(egui::Id::new("entity_path_filter_help_ui"), markdown);
         }
 
-        fn syntax_highlight_entity_path_filter(
-            style: &egui::Style,
-            mut string: &str,
-        ) -> egui::text::LayoutJob {
-            let font_id = egui::TextStyle::Body.resolve(style);
+        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
 
-            let mut job = egui::text::LayoutJob::default();
+        if let Some(view) = blueprint.view(view_id) {
+            ui.section_collapsing_header("Entity path filter")
+                .button(
+                    list_item::ItemActionButton::new(&re_ui::icons::EDIT, || {
+                        self.space_view_entity_modal.open(*view_id);
+                    })
+                    .hover_text("Modify the entity query using the editor"),
+                )
+                .help_ui(entity_path_filter_help_ui)
+                .show(ui, |ui| {
+                    // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
 
-            while !string.is_empty() {
-                let newline = string.find('\n').unwrap_or(string.len() - 1);
-                let line = &string[..=newline];
-                string = &string[newline + 1..];
-                let is_exclusion = line.trim_start().starts_with('-');
-
-                let color = if is_exclusion {
-                    egui::Color32::LIGHT_RED
-                } else {
-                    egui::Color32::LIGHT_GREEN
-                };
-
-                let text_format = egui::TextFormat {
-                    font_id: font_id.clone(),
-                    color,
-                    ..Default::default()
-                };
-
-                job.append(line, 0.0, text_format);
-            }
-
-            job
+                    if let Some(new_entity_path_filter) = entity_path_filter_ui(
+                        ctx,
+                        ui,
+                        *view_id,
+                        &view.contents.entity_path_filter,
+                        &view.space_origin,
+                    ) {
+                        view.contents
+                            .set_entity_path_filter(ctx, &new_entity_path_filter);
+                    }
+                })
+                .header_response
+                .on_hover_text(
+                    "The entity path query consists of a list of include/exclude rules \
+                that determines what entities are part of this view",
+                );
         }
 
-        fn text_layouter(
-            ui: &egui::Ui,
-            string: &str,
-            wrap_width: f32,
-        ) -> std::sync::Arc<egui::Galley> {
-            let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), string);
-            layout_job.wrap.max_width = wrap_width;
-            ui.fonts(|f| f.layout_job(layout_job))
+        if let Some(view) = blueprint.view(view_id) {
+            let view_class = view.class(ctx.space_view_class_registry);
+            let view_state = view_states.get_mut_or_create(view.id, view_class);
+
+            ui.section_collapsing_header("View properties")
+                .show(ui, |ui| {
+                    // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+
+                    let cursor = ui.cursor();
+
+                    if let Err(err) =
+                        view_class.selection_ui(ctx, ui, view_state, &view.space_origin, view.id)
+                    {
+                        re_log::error_once!(
+                            "Error in view selection UI (class: {}, display name: {}): {err}",
+                            view.class_identifier(),
+                            view_class.display_name(),
+                        );
+                    }
+
+                    if cursor == ui.cursor() {
+                        ui.weak("(none)");
+                    }
+                });
+
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
+            view_components_defaults_section_ui(&view_ctx, ui, view);
         }
 
-        // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
-        // This is so it can contain invalid rules while the user edits it, and it's only normalized
-        // when they press enter, or stops editing.
-        let filter_text_id = ui.id().with("filter_text");
-
-        let mut filter_string = ui.data_mut(|data| {
-            data.get_temp_mut_or_insert_with::<String>(filter_text_id, || filter.formatted())
-                .clone()
-        });
-
-        let response =
-            ui.add(egui::TextEdit::multiline(&mut filter_string).layouter(&mut text_layouter));
-
-        if response.has_focus() {
-            ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
-        } else {
-            // Reconstruct it from the filter next frame
-            ui.data_mut(|data| data.remove::<String>(filter_text_id));
-        }
-
-        // Show some statistics about the query, print a warning text if something seems off.
-        let query = ctx.lookup_query_result(view_id);
-        if query.num_matching_entities == 0 {
-            ui.label(ui.ctx().warning_text("Does not match any entity"));
-        } else if query.num_matching_entities == 1 {
-            ui.label("Matches 1 entity");
-        } else {
-            ui.label(format!("Matches {} entities", query.num_matching_entities));
-        }
-        if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
-            // TODO(andreas): Talk about this root bit only if it's a spatial view.
-            ui.label(ui.ctx().warning_text(
-                format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
-            ));
-        }
-
-        ui.horizontal(|ui| {
-            ui.help_hover_button()
-                .on_hover_ui(entity_path_filter_help_ui);
-
-            if ui
-                .button("Edit")
-                .on_hover_text("Modify the entity query using the editor")
-                .clicked()
-            {
-                self.space_view_entity_modal.open(view_id);
-            }
-        });
-
-        // Apply the edit.
-        let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
-        if &new_filter == filter {
-            None // no change
-        } else {
-            Some(new_filter)
+        if let Some(view) = blueprint.view(view_id) {
+            visible_time_range_ui_for_view(ctx, ui, view);
         }
     }
 }
@@ -570,6 +470,97 @@ fn clone_space_view_button_ui(
                 .set_selection(Item::SpaceView(new_space_view_id));
             blueprint.mark_user_interaction(ctx);
         }
+    }
+}
+
+/// Returns a new filter when the editing is done, and there has been a change.
+fn entity_path_filter_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    view_id: SpaceViewId,
+    filter: &EntityPathFilter,
+    origin: &EntityPath,
+) -> Option<EntityPathFilter> {
+    fn syntax_highlight_entity_path_filter(
+        style: &egui::Style,
+        mut string: &str,
+    ) -> egui::text::LayoutJob {
+        let font_id = egui::TextStyle::Body.resolve(style);
+
+        let mut job = egui::text::LayoutJob::default();
+
+        while !string.is_empty() {
+            let newline = string.find('\n').unwrap_or(string.len() - 1);
+            let line = &string[..=newline];
+            string = &string[newline + 1..];
+            let is_exclusion = line.trim_start().starts_with('-');
+
+            let color = if is_exclusion {
+                egui::Color32::LIGHT_RED
+            } else {
+                egui::Color32::LIGHT_GREEN
+            };
+
+            let text_format = egui::TextFormat {
+                font_id: font_id.clone(),
+                color,
+                ..Default::default()
+            };
+
+            job.append(line, 0.0, text_format);
+        }
+
+        job
+    }
+
+    fn text_layouter(ui: &egui::Ui, string: &str, wrap_width: f32) -> std::sync::Arc<egui::Galley> {
+        let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), string);
+        layout_job.wrap.max_width = wrap_width;
+        ui.fonts(|f| f.layout_job(layout_job))
+    }
+
+    // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
+    // This is so it can contain invalid rules while the user edits it, and it's only normalized
+    // when they press enter, or stops editing.
+    let filter_text_id = ui.id().with("filter_text");
+
+    let mut filter_string = ui.data_mut(|data| {
+        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || filter.formatted())
+            .clone()
+    });
+
+    let response =
+        ui.add(egui::TextEdit::multiline(&mut filter_string).layouter(&mut text_layouter));
+
+    if response.has_focus() {
+        ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
+    } else {
+        // Reconstruct it from the filter next frame
+        ui.data_mut(|data| data.remove::<String>(filter_text_id));
+    }
+
+    // Show some statistics about the query, print a warning text if something seems off.
+    let query = ctx.lookup_query_result(view_id);
+    if query.num_matching_entities == 0 {
+        ui.label(ui.ctx().warning_text("Does not match any entity"));
+    } else if query.num_matching_entities == 1 {
+        ui.label("Matches 1 entity");
+    } else {
+        ui.label(format!("Matches {} entities", query.num_matching_entities));
+    }
+    if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
+        // TODO(andreas): Talk about this root bit only if it's a spatial view.
+        ui.label(ui.ctx().warning_text(
+            format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
+        ));
+    }
+
+    // Apply the edit.
+    let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
+    if &new_filter == filter {
+        None // no change
+    } else {
+        Some(new_filter)
     }
 }
 

@@ -11,6 +11,7 @@ pub mod drag_and_drop;
 pub mod icons;
 pub mod list_item;
 pub mod modal;
+mod section_collapsing_header;
 pub mod toasts;
 mod ui_ext;
 
@@ -21,8 +22,9 @@ pub use self::{
     design_tokens::DesignTokens,
     icons::Icon,
     layout_job_builder::LayoutJobBuilder,
+    section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
-    ui_ext::{HeaderMenuButton, UiExt},
+    ui_ext::UiExt,
 };
 
 // ---------------------------------------------------------------------------

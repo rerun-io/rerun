@@ -174,9 +174,10 @@ fn query_range_ui(
 
     let mut interacting_with_controls = false;
 
-    let default_open = false;
-    let collapsing_response =
-        ui.large_collapsing_header("Visible time range", default_open, |ui| {
+    let collapsing_response = ui
+        .section_collapsing_header("Visible time range")
+        .default_open(false)
+        .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.re_radio_value(has_individual_time_range, false, "Default")
                     .on_hover_text(if is_space_view {

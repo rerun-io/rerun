@@ -37,25 +37,24 @@ pub fn visualizer_ui(
         &active_visualizers,
     );
 
-    ui.large_collapsing_header_with_button(
-        "Visualizers",
-        true,
-        |ui| {
+    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+        menu_add_new_visualizer(
+            ctx,
+            ui,
+            &data_result,
+            &active_visualizers,
+            &available_inactive_visualizers,
+        );
+    })
+    .enabled(!available_inactive_visualizers.is_empty())
+    .hover_text("Add additional visualizers")
+    .disabled_hover_text("No additional visualizers available");
+
+    ui.section_collapsing_header("Visualizers")
+        .button(button)
+        .show(ui, |ui| {
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
-        },
-        re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
-            menu_add_new_visualizer(
-                ctx,
-                ui,
-                &data_result,
-                &active_visualizers,
-                &available_inactive_visualizers,
-            );
-        })
-        .enabled(!available_inactive_visualizers.is_empty())
-        .hover_text("Add additional visualizers")
-        .disabled_hover_text("No additional visualizers available"),
-    );
+        });
 }
 
 pub fn visualizer_ui_impl(
@@ -88,7 +87,13 @@ pub fn visualizer_ui_impl(
     };
 
     list_item::list_item_scope(ui, "visualizers", |ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
+        if active_visualizers.is_empty() {
+            ui.list_item_flat_noninteractive(
+                list_item::LabelContent::new("none")
+                    .weak(true)
+                    .italics(true),
+            );
+        }
 
         for &visualizer_id in active_visualizers {
             let default_open = true;

@@ -206,8 +206,7 @@ fn space_view_space_origin_widget_editing_ui(
 
         let excluded_count = space_view_suggestions.len() - filtered_space_view_suggestions.len();
         if excluded_count > 0 {
-            ui.list_item().interactive(false).show_flat(
-                ui,
+            ui.list_item_flat_noninteractive(
                 list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))
                     .weak(true)
                     .italics(true),
