@@ -12,15 +12,15 @@ mod response_utils;
 mod visual_bounds2d;
 
 use datatype_editors::{
-    edit_bool, edit_bool_raw, edit_enum, edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw,
-    edit_f32_zero_to_one, edit_singleline_string,
+    edit_bool, edit_bool_raw, edit_enum, edit_f32_min_to_max_float_raw, edit_f32_zero_to_max,
+    edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one, edit_singleline_string,
 };
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, FillRatio, GammaCorrection,
-        ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity, Radius, StrokeWidth,
-        Text,
+        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, DrawOrder, FillRatio,
+        GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity,
+        Radius, StrokeWidth, Text,
     },
     Loggable as _,
 };
@@ -43,6 +43,8 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui::<FillRatio>(edit_f32_zero_to_max);
     registry.add_singleline_editor_ui::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_editor_ui::<GammaCorrection>(edit_f32_zero_to_max);
+
+    registry.add_singleline_editor_ui::<DrawOrder>(edit_f32_min_to_max_float_raw);
 
     registry.add_singleline_editor_ui::<DepthMeter>(edit_f32_zero_to_max_float_raw);
     registry.add_singleline_editor_ui::<MarkerSize>(edit_f32_zero_to_max_float_raw);

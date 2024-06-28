@@ -12,6 +12,7 @@ mod instance_hash_conversions;
 mod max_image_dimension_subscriber;
 mod mesh_cache;
 mod mesh_loader;
+mod pickable_image;
 mod picking;
 mod scene_bounding_boxes;
 mod space_camera_3d;
@@ -25,12 +26,15 @@ mod view_3d;
 mod view_3d_properties;
 mod visualizers;
 
-use re_space_view::DataResultQuery as _;
-use re_viewer_context::{ViewContext, ViewerContext};
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
+pub(crate) use pickable_image::PickableImageRect;
+
 // ---
+
+use re_space_view::DataResultQuery as _;
+use re_viewer_context::{ViewContext, ViewerContext};
 
 use re_renderer::RenderContext;
 use re_types::blueprint::components::BackgroundKind;

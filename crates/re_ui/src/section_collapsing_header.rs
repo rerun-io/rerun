@@ -49,7 +49,18 @@ impl<'a> SectionCollapsingHeader<'a> {
         self
     }
 
+    /// Set the help markdown tooltip to be shown in the header.
+    //TODO(#6191): the help button should be just another `impl ItemButton`.
+    #[inline]
+    pub fn help_markdown(mut self, help: &'a str) -> Self {
+        self.help = Some(Box::new(move |ui| {
+            ui.markdown_ui(egui::Id::new(help), help);
+        }));
+        self
+    }
+
     /// Set the help UI closure to be shown in the header.
+    //TODO(#6191): the help button should be just another `impl ItemButton`.
     #[inline]
     pub fn help_ui(mut self, help: impl FnOnce(&mut egui::Ui) + 'a) -> Self {
         self.help = Some(Box::new(help));

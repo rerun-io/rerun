@@ -12,7 +12,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::image_meaning_for_entity;
+use crate::image_meaning::image_meaning_for_entity;
 
 use super::EntityDataUi;
 

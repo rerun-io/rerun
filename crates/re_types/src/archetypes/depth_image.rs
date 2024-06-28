@@ -78,11 +78,6 @@ pub struct DepthImage {
     /// and a range of up to ~65 meters (2^16 / 1000).
     pub meter: Option<crate::components::DepthMeter>,
 
-    /// An optional floating point value that specifies the 2D drawing order.
-    ///
-    /// Objects with higher values are drawn on top of those with lower values.
-    pub draw_order: Option<crate::components::DrawOrder>,
-
     /// Colormap to use for rendering the depth image.
     ///
     /// If not set, the depth image will be rendered using the Turbo colormap.
@@ -94,6 +89,11 @@ pub struct DepthImage {
     /// if it is at the same depth, leaving no gaps.
     /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
     pub point_fill_ratio: Option<crate::components::FillRatio>,
+
+    /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    pub draw_order: Option<crate::components::DrawOrder>,
 }
 
 impl ::re_types_core::SizeBytes for DepthImage {
@@ -101,18 +101,18 @@ impl ::re_types_core::SizeBytes for DepthImage {
     fn heap_size_bytes(&self) -> u64 {
         self.data.heap_size_bytes()
             + self.meter.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
             + self.colormap.heap_size_bytes()
             + self.point_fill_ratio.heap_size_bytes()
+            + self.draw_order.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::components::TensorData>::is_pod()
             && <Option<crate::components::DepthMeter>>::is_pod()
-            && <Option<crate::components::DrawOrder>>::is_pod()
             && <Option<crate::components::Colormap>>::is_pod()
             && <Option<crate::components::FillRatio>>::is_pod()
+            && <Option<crate::components::DrawOrder>>::is_pod()
     }
 }
 
@@ -126,9 +126,9 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.DepthMeter".into(),
-            "rerun.components.DrawOrder".into(),
             "rerun.components.Colormap".into(),
             "rerun.components.FillRatio".into(),
+            "rerun.components.DrawOrder".into(),
         ]
     });
 
@@ -138,9 +138,9 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
             "rerun.components.TensorData".into(),
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
-            "rerun.components.DrawOrder".into(),
             "rerun.components.Colormap".into(),
             "rerun.components.FillRatio".into(),
+            "rerun.components.DrawOrder".into(),
         ]
     });
 
@@ -223,15 +223,6 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
-        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.DepthImage#draw_order")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
         let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
             <crate::components::Colormap>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DepthImage#colormap")?
@@ -251,12 +242,21 @@ impl ::re_types_core::Archetype for DepthImage {
         } else {
             None
         };
+        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
+            <crate::components::DrawOrder>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#draw_order")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             data,
             meter,
-            draw_order,
             colormap,
             point_fill_ratio,
+            draw_order,
         })
     }
 }
@@ -271,13 +271,13 @@ impl ::re_types_core::AsComponents for DepthImage {
             self.meter
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.draw_order
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.colormap
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.point_fill_ratio
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.draw_order
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -294,9 +294,9 @@ impl DepthImage {
         Self {
             data: data.into(),
             meter: None,
-            draw_order: None,
             colormap: None,
             point_fill_ratio: None,
+            draw_order: None,
         }
     }
 
@@ -307,15 +307,6 @@ impl DepthImage {
     #[inline]
     pub fn with_meter(mut self, meter: impl Into<crate::components::DepthMeter>) -> Self {
         self.meter = Some(meter.into());
-        self
-    }
-
-    /// An optional floating point value that specifies the 2D drawing order.
-    ///
-    /// Objects with higher values are drawn on top of those with lower values.
-    #[inline]
-    pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
-        self.draw_order = Some(draw_order.into());
         self
     }
 
@@ -339,6 +330,15 @@ impl DepthImage {
         point_fill_ratio: impl Into<crate::components::FillRatio>,
     ) -> Self {
         self.point_fill_ratio = Some(point_fill_ratio.into());
+        self
+    }
+
+    /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    #[inline]
+    pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
+        self.draw_order = Some(draw_order.into());
         self
     }
 }

@@ -1,22 +1,19 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use nohash_hasher::IntMap;
+use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
+use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::{components::DrawOrder, ComponentNameSet, Loggable as _};
-use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier};
+
+use crate::visualizers::visualizers_processing_draw_order;
 
 /// Context for creating a mapping from [`DrawOrder`] to [`re_renderer::DepthOffset`].
 #[derive(Default)]
 pub struct EntityDepthOffsets {
-    // TODO(wumpf): Given that archetypes (should) contain DrawData, we should have a map of DrawData to DepthOffset.
-    //              Mapping entities to depth offset instead is inconsistent with the archetype queries which are
-    //              expected to care about DepthOffset iff they can make use of it.
-    pub per_entity: IntMap<EntityPathHash, re_renderer::DepthOffset>,
-    pub box2d: re_renderer::DepthOffset,
-    pub lines2d: re_renderer::DepthOffset,
-    pub image: re_renderer::DepthOffset,
-    pub points: re_renderer::DepthOffset,
+    pub per_entity_and_visualizer:
+        HashMap<(ViewSystemIdentifier, EntityPathHash), re_renderer::DepthOffset>,
 }
 
 impl IdentifiedViewSystem for EntityDepthOffsets {
@@ -35,53 +32,10 @@ impl ViewContextSystem for EntityDepthOffsets {
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
-        #[derive(PartialEq, PartialOrd, Eq, Ord)]
-        enum DrawOrderTarget {
-            Entity(EntityPathHash),
-            DefaultBox2D,
-            DefaultLines2D,
-            DefaultImage,
-            DefaultPoints,
+        let mut entities_per_draw_order = BTreeMap::new();
+        for visualizer in visualizers_processing_draw_order() {
+            collect_draw_order_per_visualizer(ctx, query, visualizer, &mut entities_per_draw_order);
         }
-
-        // Use a BTreeSet for entity hashes to get a stable order.
-        let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();
-        for data_result in query.iter_all_data_results() {
-            // Note that we can't use `query.iter_visible_data_results` here since `EntityDepthOffsets` isn't a visualizer
-            // and thus not in the list of per system data results.
-            if !data_result.is_visible(ctx.viewer_ctx) {
-                continue;
-            }
-
-            // TODO(#5607): what should happen if the promise is still pending?
-            if let Some(draw_order) = ctx
-                .recording()
-                .latest_at_component::<DrawOrder>(&data_result.entity_path, &ctx.current_query())
-            {
-                entities_per_draw_order
-                    .entry(draw_order.value)
-                    .or_default()
-                    .insert(DrawOrderTarget::Entity(data_result.entity_path.hash()));
-            }
-        }
-
-        // Push in default draw orders. All of them using the none hash.
-        entities_per_draw_order.insert(
-            DrawOrder::DEFAULT_BOX2D,
-            [DrawOrderTarget::DefaultBox2D].into(),
-        );
-        entities_per_draw_order.insert(
-            DrawOrder::DEFAULT_IMAGE,
-            [DrawOrderTarget::DefaultImage].into(),
-        );
-        entities_per_draw_order.insert(
-            DrawOrder::DEFAULT_LINES2D,
-            [DrawOrderTarget::DefaultLines2D].into(),
-        );
-        entities_per_draw_order.insert(
-            DrawOrder::DEFAULT_POINTS2D,
-            [DrawOrderTarget::DefaultPoints].into(),
-        );
 
         // Determine re_renderer draw order from this.
         //
@@ -94,33 +48,14 @@ impl ViewContextSystem for EntityDepthOffsets {
             .values()
             .map(|entities| entities.len())
             .sum();
-        let mut draw_order = -((num_entities_with_draw_order / 2) as re_renderer::DepthOffset);
-        self.per_entity = entities_per_draw_order
+        let mut depth_offset = -((num_entities_with_draw_order / 2) as re_renderer::DepthOffset);
+        self.per_entity_and_visualizer = entities_per_draw_order
             .into_values()
-            .flat_map(|targets| {
-                targets
-                    .into_iter()
-                    .filter_map(|target| {
-                        draw_order += 1;
-                        match target {
-                            DrawOrderTarget::Entity(entity) => Some((entity, draw_order)),
-                            DrawOrderTarget::DefaultBox2D => {
-                                self.box2d = draw_order;
-                                None
-                            }
-                            DrawOrderTarget::DefaultLines2D => {
-                                self.lines2d = draw_order;
-                                None
-                            }
-                            DrawOrderTarget::DefaultImage => {
-                                self.image = draw_order;
-                                None
-                            }
-                            DrawOrderTarget::DefaultPoints => {
-                                self.points = draw_order;
-                                None
-                            }
-                        }
+            .flat_map(|keys| {
+                keys.into_iter()
+                    .map(|key| {
+                        depth_offset += 1;
+                        (key, depth_offset)
                     })
                     .collect::<Vec<_>>()
             })
@@ -129,5 +64,34 @@ impl ViewContextSystem for EntityDepthOffsets {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+fn collect_draw_order_per_visualizer(
+    ctx: &re_viewer_context::ViewContext<'_>,
+    query: &re_viewer_context::ViewQuery<'_>,
+    visualizer_identifier: ViewSystemIdentifier,
+    entities_per_draw_order: &mut BTreeMap<
+        DrawOrder,
+        BTreeSet<(ViewSystemIdentifier, EntityPathHash)>,
+    >,
+) {
+    let latest_at_query = ctx.current_query();
+    for data_result in query.iter_visible_data_results(ctx, visualizer_identifier) {
+        let query_shadowed_components = false;
+        let draw_order = latest_at_with_blueprint_resolved_data(
+            ctx,
+            None,
+            &latest_at_query,
+            data_result,
+            std::iter::once(DrawOrder::name()),
+            query_shadowed_components,
+        )
+        .get_mono_with_fallback::<DrawOrder>();
+
+        entities_per_draw_order
+            .entry(draw_order)
+            .or_default()
+            .insert((visualizer_identifier, data_result.entity_path.hash()));
     }
 }
