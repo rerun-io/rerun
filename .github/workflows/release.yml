@@ -126,9 +126,17 @@ jobs:
           final=$(pixi run python scripts/ci/crates.py get-version --finalize)
 
           echo Output everything for use in other steps…
+          echo "previous=$previous"
+          echo "current=$current"
+          echo "final=$final"
+
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
+
+      - name: Update rerun_notebook package version
+        run: |
+          pixi run python scripts/ci/update_rerun_notebook_version.py "${{ steps.versioning.outputs.current }}"
 
       - name: Update JS package versions
         run: |
