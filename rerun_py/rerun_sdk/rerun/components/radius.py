@@ -18,13 +18,23 @@ from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
+from .radius_ext import RadiusExt
 
 __all__ = ["Radius", "RadiusArrayLike", "RadiusBatch", "RadiusLike", "RadiusType"]
 
 
 @define(init=False)
-class Radius(ComponentMixin):
-    """**Component**: The radius of something, e.g. a point, in world-space units."""
+class Radius(RadiusExt, ComponentMixin):
+    """
+    **Component**: The radius of something, e.g. a point.
+
+    Internally, positive values indicate world-space units, whereas negative values
+    are interpreted as ui units.
+
+    Ui units are independent of zooming in Views, but are sensitive to the application ui scaling.
+    At 100% ui scalling, ui units are equal to pixels
+    The Viewer's ui scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
+    """
 
     _BATCH_TYPE = None
 

@@ -429,7 +429,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Radius as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The radius of something, e.g. a point, in world-space units.",
+                docstring_md: "The radius of something, e.g. a point.\n\nInternally, positive values indicate world-space units, whereas negative values\nare interpreted as ui units.\n\nUi units are independent of zooming in Views, but are sensitive to the application ui scaling.\nAt 100% ui scalling, ui units are equal to pixels\nThe Viewer's ui scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.",
                 placeholder: Some(Radius::default().to_arrow()?),
             },
         ),

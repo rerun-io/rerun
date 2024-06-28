@@ -22,7 +22,14 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The radius of something, e.g. a point, in world-space units.
+/// **Component**: The radius of something, e.g. a point.
+///
+/// Internally, positive values indicate world-space units, whereas negative values
+/// are interpreted as ui units.
+///
+/// Ui units are independent of zooming in Views, but are sensitive to the application ui scaling.
+/// At 100% ui scalling, ui units are equal to pixels
+/// The Viewer's ui scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Radius(pub f32);

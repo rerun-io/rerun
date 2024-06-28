@@ -76,6 +76,7 @@ from .components import (
     MediaType as MediaType,
     OutOfTreeTransform3D as OutOfTreeTransform3D,
     OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
+    Radius as Radius,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
 )
