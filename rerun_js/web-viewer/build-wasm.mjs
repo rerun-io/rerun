@@ -74,6 +74,23 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
 }
 `;
 
+  // Since we are nulling `wasm` we also have to patch the closure destructor code to let things be cleaned up fully.
+  // Otherwise we end up with an exceptioon during closure destruction which prevents the references from all being
+  // cleaned up properly.
+  // TODO(jprochazk): Can we force these to run before we null `wasm` instead?
+  const closure_dtors = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(state => {
+    wasm.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`
+
+  const closure_dtors_patch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(state => {
+    wasm?.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`
+
+  code = code.replace(closure_dtors, closure_dtors_patch);
+
+
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }
 
