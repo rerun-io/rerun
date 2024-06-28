@@ -115,7 +115,9 @@ class Viewer(anywidget.AnyWidget):
             while self._ready is False:
                 if time.time() - start > timeout:
                     logging.warning(
-                        f"Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible."
+                        f"""Timed out waiting for viewer to become ready. Make sure: {ESM_MOD} is accessible.
+If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/project/rerun-notebook/{__version__}/ for details.
+"""
                     )
                     return
                 poll(1)
