@@ -212,7 +212,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VisualizerOverrides as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: https://github.com/rerun-io/rerun/issues/6626\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
+                docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
                 placeholder: Some(VisualizerOverrides::default().to_arrow()?),
             },
         ),
