@@ -61,7 +61,7 @@ python -m rerun_notebook serve
 ```
 
 However, any hosting platform can be used to serve the asset, as long as it is accessible to the notebook
-and has appropriate CORS headers set. See:
+and has appropriate CORS headers set. See: `asset_server.py` for a simple example.
 
 ## Run from source
 
