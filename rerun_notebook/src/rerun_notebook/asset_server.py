@@ -29,7 +29,7 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
         return
 
 
-def serve_assets(bind_address: str = "localhost", port: int = 0, background=False) -> int:
+def serve_assets(bind_address: str = "localhost", port: int = 0, background=False) -> socketserver._AfInetAddress:
     global resource_data
     if resource_data is None:
         with open(WIDGET_PATH, "rb") as f:
@@ -37,8 +37,8 @@ def serve_assets(bind_address: str = "localhost", port: int = 0, background=Fals
 
     httpd = socketserver.TCPServer((bind_address, port), AssetHandler)
 
-    bound_port = httpd.server_address[1]
-    print(f"Serving rerun notebook assets at http://{bind_address}:{bound_port}")
+    bound_addr = httpd.server_address
+    print(f"Serving rerun notebook assets at http://{bound_addr[0]}:{bound_addr[1]}")
 
     if background:
         import threading
@@ -49,4 +49,4 @@ def serve_assets(bind_address: str = "localhost", port: int = 0, background=Fals
     else:
         httpd.serve_forever()
 
-    return bound_port
+    return bound_addr

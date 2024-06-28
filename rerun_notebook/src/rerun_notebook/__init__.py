@@ -28,14 +28,14 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 
 # We allow customization through the `RERUN_NOTEBOOK_ASSET` environment variable.
 # The default value is hosted at `app.rerun.io`.
-# The value can be set to `serve` to use the hosted asset server.
+# The value can be set to `serve-local` to use the hosted asset server.
 # The value can be set to `inline` to use the local widget.js file.
 # The value can be set to a URL to use a custom asset server.
 #  One way to run a custom asset server is to run `python -m rerun_notebook serve`.
-ASSET_MAGIC_SERVE = "serve"
+ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
-ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", "https://app.rerun.io/version/__version__/widget.js")
+ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js")
 
 if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
