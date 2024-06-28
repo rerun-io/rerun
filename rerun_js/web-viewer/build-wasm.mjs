@@ -59,7 +59,18 @@ function script() {
   code = `
 export default function() {
 ${code}
-return Object.assign(__wbg_init, { initSync }, __exports);
+
+function deinit() {
+  __wbg_init.__wbindgen_wasm_module = null;
+  wasm = null;
+  cachedFloat32Memory0 = null;
+  cachedFloat64Memory0 = null;
+  cachedInt32Memory0 = null;
+  cachedUint32Memory0 = null;
+  cachedUint8Memory0 = null;
+}
+
+return Object.assign(__wbg_init, { initSync, deinit }, __exports);
 }
 `;
 

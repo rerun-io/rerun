@@ -24,7 +24,13 @@ async function load(): Promise<typeof wasm_bindgen.WebHandle> {
   }
   let bindgen = get_wasm_bindgen();
   await bindgen(_wasm_module);
-  return bindgen.WebHandle;
+  return class extends bindgen.WebHandle {
+    free() {
+      super.free();
+      // @ts-expect-error
+      bindgen.deinit();
+    }
+  };
 }
 
 let _minimize_current_fullscreen_viewer: (() => void) | null = null;
