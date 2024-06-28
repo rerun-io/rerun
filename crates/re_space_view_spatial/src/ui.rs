@@ -110,21 +110,10 @@ impl SpatialSpaceViewState {
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        self.num_non_segmentation_images_last_frame = system_output
-            .view_systems
-            .get::<ImageVisualizer>()?
-            .images
-            .len()
-            + system_output
-                .view_systems
-                .get::<SegmentationImageVisualizer>()?
-                .images
-                .len()
-            + system_output
-                .view_systems
-                .get::<DepthImageVisualizer>()?
-                .images
-                .len();
+        let view_systems = &system_output.view_systems;
+        let num_images = view_systems.get::<ImageVisualizer>()?.images.len();
+        let num_depth_images = view_systems.get::<DepthImageVisualizer>()?.images.len();
+        self.num_non_segmentation_images_last_frame = num_images + num_depth_images;
 
         Ok(())
     }
