@@ -15,15 +15,8 @@ use crate::{
     wgpu_resources::{
         GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
     },
-    DebugLabel, RectInt, Rgba, Size,
+    DebugLabel, RectInt, Rgba,
 };
-
-// These are only used if the point sizes are not already set.
-// Rerun always sets explicit sizes, so these are only used for other
-// users of re_renderer (mostly examples).
-// Unit: UI points.
-const AUTO_POINT_RADIUS: f32 = 2.5;
-const AUTO_LINE_RADIUS: f32 = 1.5;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {
@@ -192,30 +185,6 @@ impl Projection {
     }
 }
 
-/// How [`Size::AUTO`] is interpreted.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct AutoSizeConfig {
-    /// Determines the point radius when [`crate::Size::AUTO`].
-    ///
-    /// If this in turn is an auto size, re_renderer will pick an arbitrary but okish ui size.
-    pub point_radius: Size,
-
-    /// Determines the line radius for [`crate::Size::AUTO`] for lines.
-    ///
-    /// If this in turn is an auto size, re_renderer will pick an arbitrary but okish ui size.
-    pub line_radius: Size,
-}
-
-impl Default for AutoSizeConfig {
-    fn default() -> Self {
-        Self {
-            point_radius: Size::AUTO,
-            line_radius: Size::AUTO,
-        }
-    }
-}
-
 /// Basic configuration for a target view.
 #[derive(Debug, Clone)]
 pub struct TargetConfiguration {
@@ -246,9 +215,6 @@ pub struct TargetConfiguration {
     /// whenever point sizes were explicitly specified.
     pub pixels_per_point: f32,
 
-    /// How [`Size::AUTO`] is interpreted.
-    pub auto_size_config: AutoSizeConfig,
-
     pub outline_config: Option<OutlineConfig>,
 }
 
@@ -265,7 +231,6 @@ impl Default for TargetConfiguration {
             },
             viewport_transformation: RectTransform::IDENTITY,
             pixels_per_point: 1.0,
-            auto_size_config: Default::default(),
             outline_config: None,
         }
     }
@@ -449,17 +414,6 @@ impl ViewBuilder {
         let camera_forward = -view_from_world.row(2).truncate();
         let projection_from_world = projection_from_view * view_from_world;
 
-        let auto_size_points = if config.auto_size_config.point_radius.is_auto() {
-            Size::new_points(AUTO_POINT_RADIUS)
-        } else {
-            config.auto_size_config.point_radius
-        };
-        let auto_size_lines = if config.auto_size_config.line_radius.is_auto() {
-            Size::new_points(AUTO_LINE_RADIUS)
-        } else {
-            config.auto_size_config.line_radius
-        };
-
         // Setup frame uniform buffer
         let frame_uniform_buffer_content = FrameUniformBuffer {
             view_from_world: glam::Affine3A::from_mat4(view_from_world).into(),
@@ -470,9 +424,6 @@ impl ViewBuilder {
             tan_half_fov: tan_half_fov.into(),
             pixel_world_size_from_camera_distance,
             pixels_per_point: config.pixels_per_point,
-
-            auto_size_points: auto_size_points.0,
-            auto_size_lines: auto_size_lines.0,
 
             device_tier: (ctx.config.device_caps.tier as u32).into(),
         };

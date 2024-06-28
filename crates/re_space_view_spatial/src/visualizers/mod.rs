@@ -37,10 +37,10 @@ use re_types::{
     datatypes::{KeypointId, KeypointPair},
 };
 use re_viewer_context::{
-    auto_color, Annotations, ApplicableEntities, DefaultColor,
-    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewClassRegistryError,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, ViewSystemIdentifier,
-    VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
+    auto_color, Annotations, ApplicableEntities, DefaultColor, IdentifiedViewSystem,
+    ResolvedAnnotationInfos, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, ViewSystemIdentifier, VisualizableEntities,
+    VisualizableFilterContext, VisualizerCollection,
 };
 
 use crate::view_2d::VisualizableFilterContext2D;
@@ -353,7 +353,7 @@ pub fn load_keypoint_connections(
             };
             line_batch
                 .add_segment(*a, *b)
-                .radius(re_renderer::Size::AUTO)
+                .radius(re_renderer::Size::new_ui_points(1.5)) // TODO(andreas): make this configurable.
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.

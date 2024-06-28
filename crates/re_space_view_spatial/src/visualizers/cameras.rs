@@ -153,7 +153,7 @@ impl CamerasVisualizer {
             (up_triangle[2], up_triangle[0]),
         ];
 
-        let radius = re_renderer::Size::new_points(1.0);
+        let radius = re_renderer::Size::new_ui_points(1.0);
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);

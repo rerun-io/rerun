@@ -405,7 +405,6 @@ fn setup_target_config(
             projection_from_view,
             viewport_transformation,
             pixels_per_point,
-            auto_size_config: re_renderer::AutoSizeConfig::default(), // TODO: remove
             outline_config: any_outlines.then(|| outline_config(egui_painter.ctx())),
         }
     })

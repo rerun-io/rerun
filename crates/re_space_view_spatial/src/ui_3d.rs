@@ -495,7 +495,6 @@ impl SpatialSpaceView3D {
             viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
             pixels_per_point: ui.ctx().pixels_per_point(),
-            auto_size_config: re_renderer::AutoSizeConfig::default(), // TODO: remove
 
             outline_config: query
                 .highlights
@@ -648,11 +647,13 @@ impl SpatialSpaceView3D {
             );
         }
 
+        let box_radius = Size::new_ui_points(1.5);
+
         if state.state_3d.show_bbox {
             line_builder
                 .batch("scene_bbox_current")
                 .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
+                .map(|lines| lines.radius(box_radius).color(egui::Color32::WHITE));
         }
         if state.state_3d.show_accumulated_bbox {
             line_builder
@@ -660,7 +661,7 @@ impl SpatialSpaceView3D {
                 .add_box_outline(&state.bounding_boxes.accumulated)
                 .map(|lines| {
                     lines
-                        .radius(Size::AUTO)
+                        .radius(box_radius)
                         .color(egui::Color32::from_gray(170))
                 });
         }
@@ -792,7 +793,7 @@ fn show_orbit_eye_center(
                 ]
                 .into_iter(),
             )
-            .radius(Size::new_points(0.75))
+            .radius(Size::new_ui_points(0.75))
             // TODO(andreas): Fade this out.
             .color(re_renderer::Color32::WHITE);
 
@@ -897,12 +898,12 @@ fn add_picking_ray(
     line_batch
         .add_segment(origin, main_ray_end)
         .color(ray_color)
-        .radius(Size::new_points(1.0));
+        .radius(Size::new_ui_points(1.0));
     line_batch
         .add_segment(main_ray_end, fallback_ray_end)
         .color(ray_color.gamma_multiply(0.7))
         // TODO(andreas): Make this dashed.
-        .radius(Size::new_points(0.5));
+        .radius(Size::new_ui_points(0.5));
 }
 
 fn default_eye(

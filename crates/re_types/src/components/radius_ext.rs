@@ -8,7 +8,7 @@ impl Radius {
     pub const ONE: Self = Self(1.0);
 
     /// Radius of length 1 in ui points.
-    pub const ONE_UI: Self = Self(-1.0);
+    pub const ONE_UI_POINTS: Self = Self(-1.0);
 }
 
 impl Default for Radius {
@@ -25,7 +25,7 @@ impl Radius {
     #[inline]
     pub fn new_scene_units(radius_in_scene_units: f32) -> Self {
         debug_assert!(
-            (0.0..f32::INFINITY).contains(&radius_in_scene_units),
+            (0.0..=f32::INFINITY).contains(&radius_in_scene_units),
             "Bad radius: {radius_in_scene_units}"
         );
         Self(radius_in_scene_units)
@@ -37,7 +37,7 @@ impl Radius {
     #[inline]
     pub fn new_ui_points(radius_in_ui_points: f32) -> Self {
         debug_assert!(
-            (0.0..f32::INFINITY).contains(&radius_in_ui_points),
+            (0.0..=f32::INFINITY).contains(&radius_in_ui_points),
             "Bad radius: {radius_in_ui_points}"
         );
         Self(-radius_in_ui_points)
@@ -52,6 +52,6 @@ impl Radius {
     /// If this radius is in ui points, returns the radius in ui points.
     #[inline]
     pub fn ui_points(&self) -> Option<f32> {
-        (self.0 <= 0.0).then_some(-self.0)
+        (self.0 < 0.0).then_some(-self.0)
     }
 }
