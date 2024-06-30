@@ -353,15 +353,14 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, false].into()) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
-            .x_axis_formatter(move |time, _, _| {
+            .x_axis_formatter(move |time, _| {
                 format_time(
                     time_type,
                     (time.value as i64).saturating_add(time_offset),
                     time_zone_for_timestamps,
                 )
             })
-            .y_axis_formatter(move |mark, _, _| format_y_axis(mark))
-            .y_axis_width(3) // in digits
+            .y_axis_formatter(move |mark, _| format_y_axis(mark))
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
