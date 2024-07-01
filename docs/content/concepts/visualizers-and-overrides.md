@@ -18,7 +18,13 @@ by the [entity query](../reference/entity-queries.md), which is part of the view
 
 Views rely on visualizers to display each of their entities. For example, [3D views](../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds, and [time series views](../reference/types/views/time_series_view.md) use the `SeriesLine` visualizer to display time series line plots. Which visualizers are available is highly dependent on the specific kind of view. For example, the `SeriesLine` visualizer only exist for time series views—not, e.g., 3D views.
 
-For a given view, visualizers are selected for each of its entities based on their content. For example, in a 3D view, an entity containing a [`Position3D`](../reference/types/components/position3d.md) results in a `Points3D` visualizer being selected by default. (We will see that the visualizer selection process can be influenced by both the user interface and the blueprints.)
+<!-- TODO(#6687): add link to page explaining indicator components -->
+For a given view, visualizers are selected for each of its entities based on their content.
+By default, visualizers are selected for entities logged with a corresponding archetype.
+For example, in a 3D view, an entity logged with the [`PointsD`](../reference/types/archetypes/points3d.md) results in the `Points3D` visualizer being selected by default.
+This happens because archetypes include an _indicator component_ to capture the intent of the logging code.
+This indicator component in turn triggers the default activation of the associated visualizer. 
+(We will see that this process can be influenced by both the user interface and the blueprints.)
 
 Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../reference/types/components/position3d.md), [`Radius`](../reference/types/components/radius.md), and [`Color`](../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
  depends on the actual type of visualizer and view. (Again, we will see that this can be influenced by the user interface and the blueprint.)
@@ -29,7 +35,7 @@ snippet: concepts/viscomp-base
 
 Here is how the user interface represents the `Boxes2D` visualizers in the selection panel, when the corresponding entity is selected:
 
-<img width="50%" src="https://i.postimg.cc/L6gKRBt2/image.png">
+<img width="50%" src="https://i.postimg.cc/L6gKRBt2/image.png" alt="basic exampleE">
 
 
 All components used by the visualizer are represented, along with their corresponding values as determined by the visualizer. For the [`Color`](../reference/types/components/color.md) component, we can see both the store and fallback values, the former taking precedence over the latter.
@@ -65,7 +71,7 @@ snippet: concepts/viscomp-component-default
 
 Here, the `/boxes/2` entity is no longer logged with a color value, but a default color is added to the blueprint. Here is how the user interface represents its visualizer:
 
-<img width="50%" src="https://i.postimg.cc/pLbs53Sc/image.png">
+<img width="50%" src="https://i.postimg.cc/pLbs53Sc/image.png" alt="component override example">
 
 The default color value is displayed above the fallback since it takes precedence. It can also be edited or removed from the user interface.
 
@@ -108,4 +114,8 @@ The view now displays a point instead of the box. Here is how the visualizer is 
 
 <img src="https://i.postimg.cc/V6k3d2h0/image.png" width="50%">
 
-It is possible to add and remove visualizers from the user interface. It is also possible to have multiple visualizers for the same view entity. For example, if both a `Points2D` and `Boxes2D` visualizers are defined in this example, both a box and a point will be displayed.
+It is also possible to have _multiple_ visualizers for the same view entity by using an array:
+
+snippet: concepts/viscomp-visualizer-override-multiple
+
+In this case, both a box and a point will be displayed. Adding and removing visualizers is also possible from the user interface.

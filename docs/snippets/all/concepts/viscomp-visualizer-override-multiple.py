@@ -13,8 +13,11 @@ rr.send_blueprint(
     rrb.Spatial2DView(
         overrides={
             "boxes/1": [
-                # Specify which visualizer to use.
-                rrb.VisualizerOverrides(rrb.visualizers.Points2D),
+                # Specify multiple visualizers
+                rrb.VisualizerOverrides([
+                    rrb.visualizers.Boxes2D,
+                    rrb.visualizers.Points2D,
+                ]),
                 rr.components.Color([0, 255, 0]),
             ]
         },
