@@ -379,7 +379,7 @@ impl ComponentUiRegistry {
             );
         } else {
             let num_instances = if instance.is_all() {
-                component.num_instances()
+                component.num_instances() as _
             } else {
                 0
             };
@@ -401,6 +401,11 @@ impl ComponentUiRegistry {
         component_raw: &dyn arrow2::array::Array,
     ) {
         re_tracing::profile_function!(component_name.full_name());
+
+        if component_raw.len() != 1 {
+            none_or_many_values_ui(ui, component_raw.len());
+            return;
+        }
 
         // Use the ui callback if there is one.
         if let Some(ui_callback) = self.component_uis.get(&component_name) {
@@ -492,9 +497,6 @@ impl ComponentUiRegistry {
     ) {
         re_tracing::profile_function!(component_name.full_name());
 
-        // TODO(andreas, jleibs): Editors only show & edit the first instance of a component batch.
-        let instance: Instance = 0.into();
-
         let create_fallback = || {
             fallback_provider
                 .fallback_for(ctx, component_name)
@@ -513,12 +515,8 @@ impl ComponentUiRegistry {
                 }
             }
             re_query::PromiseResult::Ready(cell) => {
-                if cell.num_instances() > 1 {
-                    none_or_many_values_ui(ui, cell.num_instances() as _);
-                    return;
-                }
                 if !cell.is_empty() {
-                    Ok(cell.as_arrow_ref().sliced(0, 1))
+                    Ok(cell.to_arrow())
                 } else {
                     create_fallback()
                 }
@@ -536,6 +534,28 @@ impl ComponentUiRegistry {
             }
         };
 
+        self.edit_ui_raw(
+            ctx,
+            ui,
+            origin_db,
+            blueprint_write_path,
+            component_name,
+            component_raw.as_ref(),
+            multiline,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn edit_ui_raw(
+        &self,
+        ctx: &QueryContext<'_>,
+        ui: &mut egui::Ui,
+        origin_db: &EntityDb,
+        blueprint_write_path: &EntityPath,
+        component_name: ComponentName,
+        component_raw: &dyn arrow2::array::Array,
+        multiline: bool,
+    ) {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx,
             ui,
@@ -545,15 +565,15 @@ impl ComponentUiRegistry {
             multiline,
         ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
-            self.ui(
+            self.ui_raw(
                 ctx.viewer_ctx,
                 ui,
                 UiLayout::List,
                 ctx.query,
                 origin_db,
                 ctx.target_entity_path,
-                component_query_result,
-                &instance,
+                component_name,
+                component_raw,
             );
         }
     }
@@ -572,6 +592,10 @@ impl ComponentUiRegistry {
         multiline: bool,
     ) -> bool {
         re_tracing::profile_function!(component_name.full_name());
+
+        if raw_current_value.len() != 1 {
+            return false;
+        }
 
         let editors = if multiline {
             &self.component_multiline_editors
@@ -621,7 +645,7 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> 
     }
 }
 
-fn none_or_many_values_ui(ui: &mut egui::Ui, num_instances: u64) {
+fn none_or_many_values_ui(ui: &mut egui::Ui, num_instances: usize) {
     if num_instances == 1 {
         ui.label("(empty)");
     } else {
