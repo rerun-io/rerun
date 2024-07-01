@@ -97,6 +97,10 @@ type EventsWithoutValue = {
 
 type Cancel = () => void;
 
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export class WebViewer {
   #id = randomId();
   // NOTE: Using the handle requires wrapping all calls to its methods in try/catch.
@@ -137,6 +141,11 @@ export class WebViewer {
     this.#canvas.style.height = options.height ?? "360px";
     this.#canvas.id = this.#id;
     parent.append(this.#canvas);
+
+    // This yield appears to be necessary to ensure that the canvas is attached to the DOM
+    // and visible. Without it we get occasionally get a panic about a failure to find a canvas
+    // element with the given ID.
+    await delay(0);
 
     let WebHandle_class = await load();
     if (this.#state !== "starting") return;

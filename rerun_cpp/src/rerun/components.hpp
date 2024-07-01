@@ -50,4 +50,3 @@
 #include "components/vector2d.hpp"
 #include "components/vector3d.hpp"
 #include "components/view_coordinates.hpp"
-#include "components/visualizer_overrides.hpp"

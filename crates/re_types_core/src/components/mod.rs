@@ -2,7 +2,5 @@
 
 mod clear_is_recursive;
 mod clear_is_recursive_ext;
-mod visualizer_overrides;
 
 pub use self::clear_is_recursive::ClearIsRecursive;
-pub use self::visualizer_overrides::VisualizerOverrides;

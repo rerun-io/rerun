@@ -266,7 +266,7 @@ fn size_ui(
             .add(
                 egui::DragValue::new(&mut displayed_size)
                     .speed(drag_speed)
-                    .clamp_range(clamp_range)
+                    .range(clamp_range)
                     .max_decimals(4),
             )
             .changed()

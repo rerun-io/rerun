@@ -1,4 +1,5 @@
 use nohash_hasher::IntMap;
+use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -13,7 +14,7 @@ use re_types::{
     },
     Archetype as _, SpaceViewClassIdentifier,
 };
-use re_types_core::{components::VisualizerOverrides, ComponentName};
+use re_types_core::ComponentName;
 use re_viewer_context::{
     ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
     DataResultTree, IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
