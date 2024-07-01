@@ -27,9 +27,9 @@ pub struct Args {
     #[argh(switch, short = 'g')]
     debug_symbols: bool,
 
-    /// if set, will build the module target instead of the browser target.
-    #[argh(switch)]
-    module: bool,
+    /// target to build for.
+    #[argh(option, short = 't', long = "target", default = "Target::Browser")]
+    target: Target,
 
     /// set the output directory. This is a path relative to the cargo workspace root.
     #[argh(option, short = 'o', long = "out")]
@@ -47,12 +47,7 @@ pub fn main(args: Args) -> anyhow::Result<()> {
         ));
     };
 
-    let target = if args.module {
-        Target::Module
-    } else {
-        Target::Browser
-    };
     let build_dir = args.build_dir.unwrap_or_else(default_build_dir);
 
-    build(profile, args.debug_symbols, target, &build_dir)
+    build(profile, args.debug_symbols, args.target, &build_dir)
 }
