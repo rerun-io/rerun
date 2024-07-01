@@ -38,6 +38,10 @@ async function build() {
       entryPoints: ["src/js/widget.ts"],
       bundle: true,
       format: "esm",
+      // Minification doesn't help much with size, most of it is the embedded wasm binary.
+      // What it _does_ do is cause most editors to be unable to open the file at all,
+      // because it ends up being a single 30 MB-long line.
+      //
       // minify: true,
       keepNames: true,
       outdir: "src/rerun_notebook/static",
