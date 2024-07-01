@@ -364,9 +364,7 @@ impl ComponentUiRegistry {
             return;
         };
 
-        if !instance.is_specific() {
-            ui.label(format!("({instance} values)"));
-        } else if let Some(component_raw) =
+        if let Some(component_raw) =
             component.instance_raw(db.resolver(), component_name, instance.get() as _)
         {
             self.ui_raw(
@@ -380,7 +378,12 @@ impl ComponentUiRegistry {
                 component_raw.as_ref(),
             );
         } else {
-            ui.label("(empty)");
+            let num_instances = if instance.is_all() {
+                component.num_instances()
+            } else {
+                0
+            };
+            none_or_many_values_ui(ui, num_instances);
         }
     }
 
@@ -492,14 +495,39 @@ impl ComponentUiRegistry {
         // TODO(andreas, jleibs): Editors only show & edit the first instance of a component batch.
         let instance: Instance = 0.into();
 
-        let component_raw = match component_value_or_fallback(
-            ctx,
-            component_query_result,
-            component_name,
-            instance,
-            origin_db.resolver(),
-            fallback_provider,
-        ) {
+        let create_fallback = || {
+            fallback_provider
+                .fallback_for(ctx, component_name)
+                .map_err(|_err| format!("No fallback value available for {component_name}."))
+        };
+
+        let component_raw_or_error = match component_query_result.resolved(origin_db.resolver()) {
+            re_query::PromiseResult::Pending => {
+                if component_query_result.num_instances() == 0 {
+                    // This can currently also happen when there's no data at all.
+                    create_fallback()
+                } else {
+                    // In the future, we might want to show a loading indicator here,
+                    // but right now this is always an error.
+                    Err(format!("Promise for {component_name} is still pending."))
+                }
+            }
+            re_query::PromiseResult::Ready(cell) => {
+                if cell.num_instances() > 1 {
+                    none_or_many_values_ui(ui, cell.num_instances() as _);
+                    return;
+                }
+                if !cell.is_empty() {
+                    Ok(cell.as_arrow_ref().sliced(0, 1))
+                } else {
+                    create_fallback()
+                }
+            }
+            re_query::PromiseResult::Error(err) => {
+                Err(format!("Couldn't get {component_name}: {err}"))
+            }
+        };
+        let component_raw = match component_raw_or_error {
             Ok(value) => value,
             Err(error_text) => {
                 re_log::error_once!("{error_text}");
@@ -517,15 +545,15 @@ impl ComponentUiRegistry {
             multiline,
         ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
-            self.ui_raw(
+            self.ui(
                 ctx.viewer_ctx,
                 ui,
                 UiLayout::List,
                 ctx.query,
                 origin_db,
                 ctx.target_entity_path,
-                component_name,
-                component_raw.as_ref(),
+                component_query_result,
+                &instance,
             );
         }
     }
@@ -565,47 +593,6 @@ impl ComponentUiRegistry {
     }
 }
 
-fn component_value_or_fallback(
-    ctx: &QueryContext<'_>,
-    component_query_result: &LatestAtComponentResults,
-    component_name: ComponentName,
-    instance: Instance,
-    resolver: &re_query::PromiseResolver,
-    fallback_provider: &dyn ComponentFallbackProvider,
-) -> Result<Box<dyn arrow2::array::Array>, String> {
-    match component_query_result.resolved(resolver) {
-        re_query::PromiseResult::Pending => {
-            if component_query_result.num_instances() == 0 {
-                // This can currently also happen when there's no data at all.
-                None
-            } else {
-                // In the future, we might want to show a loading indicator here,
-                // but right now this is always an error.
-                return Err(format!("Promise for {component_name} is still pending."));
-            }
-        }
-        re_query::PromiseResult::Ready(cell) => {
-            let index = instance.get();
-            if cell.num_instances() > index as u32 {
-                Some(cell.as_arrow_ref().sliced(index as usize, 1))
-            } else {
-                None
-            }
-        }
-        re_query::PromiseResult::Error(err) => {
-            return Err(format!("Couldn't get {component_name}: {err}"));
-        }
-    }
-    .map_or_else(
-        || {
-            fallback_provider
-                .fallback_for(ctx, component_name)
-                .map_err(|_err| format!("No fallback value available for {component_name}."))
-        },
-        Ok,
-    )
-}
-
 fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
     let component_name = C::name();
     let deserialized = C::from_arrow(value);
@@ -631,5 +618,13 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> 
             re_log::error_once!("Failed to deserialize component of type {component_name}: {err}",);
             None
         }
+    }
+}
+
+fn none_or_many_values_ui(ui: &mut egui::Ui, num_instances: u64) {
+    if num_instances == 1 {
+        ui.label("(empty)");
+    } else {
+        ui.label(format!("{} values", re_format::format_uint(num_instances)));
     }
 }
