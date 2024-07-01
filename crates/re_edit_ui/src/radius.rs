@@ -14,7 +14,6 @@ pub fn edit_radius_ui(
 
     let drag_response = ui.add(
         egui::DragValue::new(&mut abs_value)
-            .clamp_to_range(false)
             .range(0.0..=f32::INFINITY)
             .speed(speed),
     );
