@@ -5,7 +5,8 @@ pub use self::generated::*;
 mod tests {
     use itertools::Itertools as _;
 
-    use re_log_types::{RowId, TimeInt};
+    use re_chunk::RowId;
+    use re_log_types::TimeInt;
 
     use super::*;
 

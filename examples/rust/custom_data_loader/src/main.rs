@@ -8,7 +8,7 @@
 
 use rerun::{
     external::{anyhow, re_build_info, re_data_loader, re_log},
-    log::{DataRow, RowId},
+    log::{Chunk, RowId},
     EntityPath, TimePoint,
 };
 
@@ -72,9 +72,11 @@ fn hash_and_log(
 
     let entity_path = EntityPath::from_file_path(filepath);
     let entity_path = format!("{entity_path}/hashed").into();
-    let row = DataRow::from_archetype(RowId::new(), TimePoint::default(), entity_path, &doc)?;
+    let chunk = Chunk::builder(entity_path)
+        .with_archetype(RowId::new(), TimePoint::default(), &doc)
+        .build()?;
 
-    tx.send(row.into()).ok();
+    tx.send(chunk.into()).ok();
 
     Ok(())
 }

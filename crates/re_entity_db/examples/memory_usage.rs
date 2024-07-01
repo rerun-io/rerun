@@ -51,7 +51,8 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, example_components::MyPoint, DataRow, RowId, StoreId, StoreKind};
+use re_chunk::{Chunk, RowId};
+use re_log_types::{entity_path, example_components::MyPoint, StoreId, StoreKind};
 
 fn main() {
     log_messages();
@@ -114,23 +115,21 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let table = Box::new(
-            DataRow::from_cells1(
+        let chunk = Chunk::builder("points".into())
+            .with_component_batches(
                 RowId::new(),
-                entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
-                MyPoint::from_iter(0..1),
+                [&MyPoint::from_iter(0..1) as _],
             )
-            .unwrap()
-            .into_table(),
-        );
-        let table_bytes = live_bytes() - used_bytes_start;
+            .build()
+            .unwrap();
+        let chunk_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(
             store_id.clone(),
-            table.to_arrow_msg().unwrap(),
+            chunk.to_arrow_msg().unwrap(),
         ));
         let log_msg_bytes = live_bytes() - used_bytes_start;
-        println!("Arrow payload containing a Pos2 uses {table_bytes} bytes in RAM");
+        println!("Arrow payload containing a Pos2 uses {chunk_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing a Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
@@ -140,20 +139,18 @@ fn log_messages() {
 
     {
         let used_bytes_start = live_bytes();
-        let table = Box::new(
-            DataRow::from_cells1(
+        let chunk = Chunk::builder("points".into())
+            .with_component_batches(
                 RowId::new(),
-                entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
-                MyPoint::from_iter(0..NUM_POINTS as u32),
+                [&MyPoint::from_iter(0..NUM_POINTS as u32) as _],
             )
-            .unwrap()
-            .into_table(),
-        );
-        let table_bytes = live_bytes() - used_bytes_start;
-        let log_msg = Box::new(LogMsg::ArrowMsg(store_id, table.to_arrow_msg().unwrap()));
+            .build()
+            .unwrap();
+        let chunk_bytes = live_bytes() - used_bytes_start;
+        let log_msg = Box::new(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg().unwrap()));
         let log_msg_bytes = live_bytes() - used_bytes_start;
-        println!("Arrow payload containing a Pos2 uses {table_bytes} bytes in RAM");
+        println!("Arrow payload containing a Pos2 uses {chunk_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing {NUM_POINTS}x Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",

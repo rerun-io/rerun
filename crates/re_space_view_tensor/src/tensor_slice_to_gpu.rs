@@ -1,4 +1,4 @@
-use re_log_types::RowId;
+use re_chunk_store::RowId;
 use re_renderer::{
     renderer::{ColormappedTexture, ShaderDecoding},
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},

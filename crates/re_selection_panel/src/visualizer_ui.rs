@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
-use re_log_types::{DataCell, EntityPath};
+use re_log_types::EntityPath;
 use re_query::LatestAtComponentResults;
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::external::arrow2;
@@ -439,7 +439,7 @@ fn editable_blueprint_component_list_item(
 fn menu_more(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    component: re_types::ComponentName,
+    component_name: re_types::ComponentName,
     override_path: &EntityPath,
     raw_override: &Option<Box<dyn arrow2::array::Array>>,
     raw_default: &Option<Box<dyn arrow2::array::Array>>,
@@ -451,7 +451,7 @@ fn menu_more(
         .on_disabled_hover_text("There's no override active")
         .clicked()
     {
-        ctx.save_empty_blueprint_component_by_name(override_path, component);
+        ctx.save_empty_blueprint_component_by_name(override_path, component_name);
         ui.close_menu();
     }
 
@@ -464,26 +464,20 @@ fn menu_more(
         .clicked()
     {
         if let Some(raw_default) = raw_default.as_ref() {
-            ctx.save_blueprint_data_cell(
-                override_path,
-                DataCell::from_arrow(component, raw_default.clone()),
-            );
+            ctx.save_blueprint_array(override_path, component_name, raw_default.clone());
         }
         ui.close_menu();
     }
 
     if ui.button("Set to fallback value").clicked() {
-        ctx.save_blueprint_data_cell(
-            override_path,
-            DataCell::from_arrow(component, raw_fallback.to_boxed()),
-        );
+        ctx.save_blueprint_array(override_path, component_name, raw_fallback.to_boxed());
         ui.close_menu();
     }
 
     let override_differs_from_default = raw_override
         != &ctx
             .viewer_ctx
-            .raw_latest_at_in_default_blueprint(override_path, component);
+            .raw_latest_at_in_default_blueprint(override_path, component_name);
     if ui
         .add_enabled(
             override_differs_from_default,
@@ -493,14 +487,15 @@ fn menu_more(
         .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
         .clicked()
     {
-        ctx.reset_blueprint_component_by_name(override_path, component);
+        ctx.reset_blueprint_component_by_name(override_path, component_name);
         ui.close_menu();
     }
 
     if ui.button("Make default for current view").clicked() {
-        ctx.save_blueprint_data_cell(
+        ctx.save_blueprint_array(
             ctx.defaults_path,
-            DataCell::from_arrow(component, raw_current_value.to_boxed()),
+            component_name,
+            raw_current_value.to_boxed(),
         );
         ui.close_menu();
     }

@@ -3,9 +3,9 @@ use std::{collections::BTreeMap, sync::Arc};
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 
-use re_data_store::LatestAtQuery;
+use re_chunk::RowId;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::RowId;
 use re_query::LatestAtMonoResult;
 use re_types::components::AnnotationContext;
 use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};

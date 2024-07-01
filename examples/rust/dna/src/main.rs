@@ -12,7 +12,8 @@ use rerun::{
 const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
+        .save("/tmp/helix_chunks.rrd")?;
 
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);

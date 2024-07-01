@@ -1,13 +1,13 @@
 use std::sync::{Arc, OnceLock};
 
+use arrow2::array::Array as ArrowArray;
 use nohash_hasher::IntMap;
 
-use re_log_types::{DataCell, RowId, TimeInt};
-use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
+use re_chunk::RowId;
+use re_log_types::TimeInt;
+use re_types_core::{Component, ComponentName, SizeBytes};
 
-use crate::{
-    ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver, PromiseResult, QueryError,
-};
+use crate::{ErasedFlatVecDeque, FlatVecDeque, PromiseResolver, PromiseResult, QueryError};
 
 // ---
 
@@ -139,7 +139,7 @@ pub struct LatestAtComponentResults {
     pub(crate) index: (TimeInt, RowId),
 
     // Option so we can have a constant default value for `Self`.
-    pub(crate) promise: Option<Promise>,
+    pub(crate) value: Option<(ComponentName, Box<dyn ArrowArray>)>,
 
     /// The resolved, converted, deserialized dense data.
     pub(crate) cached_dense: OnceLock<Arc<dyn ErasedFlatVecDeque + Send + Sync>>,
@@ -150,7 +150,7 @@ impl LatestAtComponentResults {
     pub const fn empty() -> Self {
         Self {
             index: (TimeInt::STATIC, RowId::ZERO),
-            promise: None,
+            value: None,
             cached_dense: OnceLock::new(),
         }
     }
@@ -158,10 +158,13 @@ impl LatestAtComponentResults {
     /// Returns the [`ComponentName`] of the resolved data, if available.
     #[inline]
     pub fn component_name(&self, resolver: &PromiseResolver) -> Option<ComponentName> {
-        match self.resolved(resolver) {
-            PromiseResult::Ready(cell) => Some(cell.component_name()),
-            _ => None,
-        }
+        // TODO(cmc): completely get rid of the promise resolving stuff once we start exposing
+        // chunks all the way.
+        _ = resolver;
+
+        self.value
+            .as_ref()
+            .map(|(component_name, _)| *component_name)
     }
 
     /// Returns whether the resolved data is static.
@@ -191,7 +194,7 @@ impl SizeBytes for LatestAtComponentResults {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             index,
-            promise,
+            value: promise,
             cached_dense,
         } = self;
 
@@ -207,7 +210,7 @@ impl std::fmt::Debug for LatestAtComponentResults {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             index,
-            promise: _,
+            value: _,
             cached_dense: _, // we can't, we don't know the type
         } = self;
 
@@ -228,9 +231,13 @@ impl LatestAtComponentResults {
 
     /// Returns the raw resolved data, if it's ready.
     #[inline]
-    pub fn resolved(&self, resolver: &PromiseResolver) -> PromiseResult<DataCell> {
-        if let Some(cell) = self.promise.as_ref() {
-            resolver.resolve(cell)
+    pub fn resolved(&self, resolver: &PromiseResolver) -> PromiseResult<Box<dyn ArrowArray>> {
+        // TODO(cmc): completely get rid of the promise resolving stuff once we start exposing
+        // chunks all the way.
+        _ = resolver;
+
+        if let Some((_, value)) = self.value.as_ref() {
+            PromiseResult::Ready(value.clone())
         } else {
             PromiseResult::Pending
         }
@@ -247,10 +254,12 @@ impl LatestAtComponentResults {
         &self,
         resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<&[C]>> {
-        if let Some(cell) = self.promise.as_ref() {
-            resolver
-                .resolve(cell)
-                .map(|cell| self.downcast_dense::<C>(&cell))
+        // TODO(cmc): completely get rid of the promise resolving stuff once we start exposing
+        // chunks all the way.
+        _ = resolver;
+
+        if let Some((_, value)) = self.value.as_ref() {
+            PromiseResult::Ready(self.downcast_dense(&**value))
         } else {
             // Manufactured empty result.
             PromiseResult::Ready(Ok(&[]))
@@ -274,7 +283,7 @@ impl LatestAtComponentResults {
 }
 
 impl LatestAtComponentResults {
-    fn downcast_dense<C: Component>(&self, cell: &DataCell) -> crate::Result<&[C]> {
+    fn downcast_dense<C: Component>(&self, value: &dyn ArrowArray) -> crate::Result<&[C]> {
         // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
         // data has already been computed.
         //
@@ -285,9 +294,7 @@ impl LatestAtComponentResults {
 
         // We have to do this outside of the callback in order to propagate errors.
         // Hence the early exit check above.
-        let data = cell
-            .try_to_native::<C>()
-            .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
+        let data = C::from_arrow(value)?;
 
         #[allow(clippy::borrowed_box)]
         let cached: &Arc<dyn ErasedFlatVecDeque + Send + Sync> = self

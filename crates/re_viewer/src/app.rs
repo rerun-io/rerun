@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_build_info::CrateVersion;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
@@ -480,8 +482,8 @@ impl App {
                 // to apply updates here, but this needs more validation and testing to be safe.
                 if !self.state.app_options.inspect_blueprint_timeline {
                     let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                    for row in updates {
-                        match blueprint_db.add_data_row(row) {
+                    for chunk in updates {
+                        match blueprint_db.add_chunk(&Arc::new(chunk)) {
                             Ok(()) => {}
                             Err(err) => {
                                 re_log::warn_once!("Failed to store blueprint delta: {err}");
@@ -695,36 +697,19 @@ impl App {
                 self.screenshotter.request_screenshot(egui_ctx);
             }
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::PrintDataStore => {
+            UICommand::PrintChunkStore => {
                 if let Some(ctx) = store_context {
-                    let table = ctx.recording.store().to_data_table();
-                    match table {
-                        Ok(table) => {
-                            let text = format!("{table}");
-                            egui_ctx.output_mut(|o| o.copied_text = text.clone());
-                            println!("{text}");
-                        }
-                        Err(err) => {
-                            println!("{err}");
-                        }
-                    }
+                    let text = format!("{}", ctx.recording.store());
+                    egui_ctx.output_mut(|o| o.copied_text = text.clone());
+                    println!("{text}");
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintBlueprintStore => {
                 if let Some(ctx) = store_context {
-                    let table = ctx.blueprint.store().to_data_table();
-                    match table {
-                        Ok(table) => {
-                            let text = format!("{table}");
-
-                            egui_ctx.output_mut(|o| o.copied_text = text.clone());
-                            println!("{text}");
-                        }
-                        Err(err) => {
-                            println!("{err}");
-                        }
-                    }
+                    let text = format!("{}", ctx.blueprint.store());
+                    egui_ctx.output_mut(|o| o.copied_text = text.clone());
+                    println!("{text}");
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -1877,7 +1862,7 @@ fn save_entity_db(
     rrd_version: CrateVersion,
     file_name: String,
     title: String,
-    to_log_messages: impl FnOnce() -> re_log_types::DataTableResult<Vec<LogMsg>>,
+    to_log_messages: impl FnOnce() -> re_chunk::ChunkResult<Vec<LogMsg>>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 

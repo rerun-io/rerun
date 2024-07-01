@@ -1,7 +1,7 @@
 use egui::Ui;
-use re_data_store::LatestAtQuery;
-use re_entity_db::EntityDb;
 
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::EntityDb;
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
 use re_types::components::{LineStrip2D, LineStrip3D, ViewCoordinates};
@@ -18,7 +18,7 @@ impl DataUi for ViewCoordinates {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {
@@ -42,7 +42,7 @@ impl DataUi for re_types::datatypes::Mat3x3 {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
@@ -70,7 +70,7 @@ impl DataUi for re_types::datatypes::Vec2D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -83,7 +83,7 @@ impl DataUi for re_types::datatypes::Vec3D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -96,7 +96,7 @@ impl DataUi for re_types::datatypes::Vec4D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -109,7 +109,7 @@ impl DataUi for re_types::datatypes::UVec2D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -122,7 +122,7 @@ impl DataUi for re_types::datatypes::UVec3D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -135,7 +135,7 @@ impl DataUi for re_types::datatypes::UVec4D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui_layout.data_label(ui, self.to_string());
@@ -161,7 +161,7 @@ impl DataUi for LineStrip2D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {
@@ -209,7 +209,7 @@ impl DataUi for LineStrip3D {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {

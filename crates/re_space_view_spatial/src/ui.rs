@@ -557,7 +557,7 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
 
         struct PickedImageInfo {
-            row_id: re_log_types::RowId,
+            row_id: re_chunk_store::RowId,
             tensor: TensorData,
             meaning: TensorDataMeaning,
             coordinates: [u32; 2],
@@ -745,7 +745,7 @@ fn image_hover_ui(
     ui_clip_rect: egui::Rect,
     coords: [u32; 2],
     space_from_ui: egui::emath::RectTransform,
-    tensor_data_row_id: re_log_types::RowId,
+    tensor_data_row_id: re_chunk_store::RowId,
     annotations: &AnnotationSceneContext,
     meaning: TensorDataMeaning,
     meter: Option<f32>,

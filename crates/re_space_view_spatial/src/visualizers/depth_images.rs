@@ -1,8 +1,9 @@
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
+use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
-use re_log_types::{EntityPathHash, RowId, TimeInt};
+use re_log_types::{EntityPathHash, TimeInt};
 use re_query::range_zip_1x3;
 use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_space_view::diff_component_filter;
@@ -261,7 +262,7 @@ impl IdentifiedViewSystem for DepthImageVisualizer {
 struct DepthImageVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for DepthImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
+    fn update_applicability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
         diff_component_filter(event, |tensor: &re_types::components::TensorData| {
             tensor.is_shaped_like_an_image()
         })

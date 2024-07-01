@@ -39,7 +39,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 
 ## Technologies we use
 ### Apache Arrow
-[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_data_store`](crates/re_data_store/README.md).
+[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_chunk_store`](crates/re_chunk_store/README.md).
 
 In rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
 
@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/710562417756943b47657d3260622b5effe392f7/1200w.png">
+  <img src="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/1200w.png">
 </picture>
 
 
@@ -160,7 +160,7 @@ Update instructions:
 | Crate                | Description                                                              |
 |----------------------|--------------------------------------------------------------------------|
 | re_entity_db         | In-memory storage of Rerun entities                                      |
-| re_query             | Querying data in the re_data_store                                       |
+| re_query             | Querying data in the re_chunk_store                                      |
 | re_types             | The built-in Rerun data types, component types, and archetypes.          |
 | re_types_blueprint   | The core traits and types that power Rerun's Blueprint sub-system.       |
 | re_log_encoding      | Helpers for encoding and transporting Rerun log messages                 |
@@ -171,7 +171,7 @@ Update instructions:
 | Crate           | Description                                                                                   |
 |-----------------|-----------------------------------------------------------------------------------------------|
 | re_chunk        | A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute. |
-| re_data_store   | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
+| re_chunk_store  | An in-memory time series database for Rerun log data, based on Apache Arrow.                  |
 | re_log_types    | The basic building blocks of the Rerun data types and tables.                                 |
 | re_types_core   | The core traits and types that power Rerun's data model.                                      |
 | re_format_arrow | Formatting of Apache Arrow tables.                                                            |

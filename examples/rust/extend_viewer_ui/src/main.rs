@@ -1,7 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_data_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
+    arrow2, eframe, egui, re_chunk_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -148,7 +148,7 @@ fn component_ui(
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
-    let query = re_data_store::LatestAtQuery::latest(timeline);
+    let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
     let results = entity_db.query_caches().latest_at(
         entity_db.store(),

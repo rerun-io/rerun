@@ -10,7 +10,7 @@ pub enum StoreLoadError {
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
     #[error(transparent)]
-    DataStore(#[from] crate::Error),
+    ChunkStore(#[from] crate::Error),
 }
 
 /// Stores many [`EntityDb`]s of recordings and blueprints.
@@ -99,7 +99,7 @@ impl StoreBundle {
             re_log::debug!("Creating a new blueprint {id}");
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
-                row_id: re_log_types::RowId::new(),
+                row_id: *re_chunk::RowId::new(),
                 info: re_log_types::StoreInfo {
                     application_id: id.as_str().into(),
                     store_id: id.clone(),

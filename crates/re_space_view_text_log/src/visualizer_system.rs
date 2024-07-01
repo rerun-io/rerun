@@ -1,6 +1,7 @@
-use re_data_store::ResolvedTimeRange;
+use re_chunk_store::ResolvedTimeRange;
+use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
-use re_log_types::{RowId, TimeInt};
+use re_log_types::TimeInt;
 use re_query::{clamped_zip_1x2, range_zip_1x2, PromiseResult, RangeData};
 use re_types::{
     archetypes::TextLog,
@@ -14,17 +15,11 @@ use re_viewer_context::{
 
 #[derive(Debug, Clone)]
 pub struct Entry {
-    // props
     pub row_id: RowId,
-
     pub entity_path: EntityPath,
-
     pub time: TimeInt,
-
     pub color: Option<Color>,
-
     pub body: Text,
-
     pub level: Option<TextLogLevel>,
 }
 
@@ -53,7 +48,7 @@ impl VisualizerSystem for TextLogSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let resolver = ctx.recording().resolver();
         let query =
-            re_data_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
+            re_chunk_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());

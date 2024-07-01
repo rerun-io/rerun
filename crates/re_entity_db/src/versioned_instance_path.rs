@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use re_log_types::RowId;
+use re_chunk::RowId;
 
 use crate::{InstancePath, InstancePathHash};
 

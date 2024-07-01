@@ -1,14 +1,17 @@
+use std::sync::Arc;
+
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_data_store::{
-    DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
+use re_chunk::{Chunk, ChunkResult, RowId};
+use re_chunk_store::{
+    ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreSubscriber, GarbageCollectionOptions,
+    GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, ComponentPath, DataRow, DataTable, DataTableResult, EntityPath, EntityPathHash,
-    LogMsg, ResolvedTimeRange, ResolvedTimeRangeF, RowId, SetStoreInfo, StoreId, StoreInfo,
-    StoreKind, Timeline,
+    ApplicationId, ComponentPath, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange,
+    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
 use re_types_core::{Archetype, Loggable};
 
@@ -16,61 +19,8 @@ use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
-/// See [`insert_row_with_retries`].
-const MAX_INSERT_ROW_ATTEMPTS: usize = 1_000;
-
-/// See [`insert_row_with_retries`].
-const DEFAULT_INSERT_ROW_STEP_SIZE: u64 = 100;
-
 /// See [`GarbageCollectionOptions::time_budget`].
 const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
-
-/// Inserts a [`DataRow`] into the [`DataStore`], retrying in case of duplicated `RowId`s.
-///
-/// Retries a maximum of `num_attempts` times if the row couldn't be inserted because of a
-/// duplicated [`RowId`], bumping the [`RowId`]'s internal counter by a random number
-/// (up to `step_size`) between attempts.
-///
-/// Returns the actual [`DataRow`] that was successfully inserted, if any.
-///
-/// The default value of `num_attempts` (see [`MAX_INSERT_ROW_ATTEMPTS`]) should be (way) more than
-/// enough for all valid use cases.
-///
-/// When using this function, please add a comment explaining the rationale.
-fn insert_row_with_retries(
-    store: &mut DataStore,
-    mut row: DataRow,
-    num_attempts: usize,
-    step_size: u64,
-) -> re_data_store::WriteResult<StoreEvent> {
-    fn random_u64() -> u64 {
-        let mut bytes = [0_u8; 8];
-        getrandom::getrandom(&mut bytes).map_or(0, |_| u64::from_le_bytes(bytes))
-    }
-
-    for i in 0..num_attempts {
-        match store.insert_row(&row) {
-            Ok(event) => return Ok(event),
-            Err(re_data_store::WriteError::ReusedRowId(_)) => {
-                // TODO(#1894): currently we produce duplicate row-ids when hitting the "save" button.
-                // This means we hit this code path when loading an .rrd file that was saved from the viewer.
-                // In the future a row-id clash should probably either be considered an error (with a loud warning)
-                // or an ignored idempotent operation (with the assumption that if the RowId is the same, so is the data).
-                // In any case, we cannot log loudly here.
-                re_log::trace!(
-                    "Found duplicated RowId ({}) during insert. Incrementing it by random offset (retry {}/{})…",
-                    row.row_id,
-                    i + 1,
-                    num_attempts
-                );
-                row.row_id = row.row_id.incremented_by(random_u64() % step_size + 1);
-            }
-            Err(err) => return Err(err),
-        }
-    }
-
-    Err(re_data_store::WriteError::ReusedRowId(row.row_id()))
-}
 
 // ----------------------------------------------------------------------------
 
@@ -109,7 +59,7 @@ pub struct EntityDb {
     tree: crate::EntityTree,
 
     /// Stores all components for all entities for all timelines.
-    data_store: DataStore,
+    data_store: ChunkStore,
 
     /// The active promise resolver for this DB.
     resolver: re_query::PromiseResolver,
@@ -122,9 +72,9 @@ pub struct EntityDb {
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
-        let data_store =
-            re_data_store::DataStore::new(store_id.clone(), DataStoreConfig::default());
+        let data_store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::default());
         let query_caches = re_query::Caches::new(&data_store);
+
         Self {
             data_source: None,
             set_store_info: None,
@@ -140,34 +90,13 @@ impl EntityDb {
         }
     }
 
-    /// Helper function to create a recording from a [`StoreInfo`] and some [`DataRow`]s.
-    ///
-    /// This is useful to programmatically create recordings from within the viewer, which cannot
-    /// use the `re_sdk`, which is not Wasm-compatible.
-    pub fn from_info_and_rows(
-        store_info: StoreInfo,
-        rows: impl IntoIterator<Item = DataRow>,
-    ) -> Result<Self, Error> {
-        let mut entity_db = Self::new(store_info.store_id.clone());
-
-        entity_db.set_store_info(SetStoreInfo {
-            row_id: RowId::new(),
-            info: store_info,
-        });
-        for row in rows {
-            entity_db.add_data_row(row)?;
-        }
-
-        Ok(entity_db)
-    }
-
     #[inline]
     pub fn tree(&self) -> &crate::EntityTree {
         &self.tree
     }
 
     #[inline]
-    pub fn data_store(&self) -> &DataStore {
+    pub fn data_store(&self) -> &ChunkStore {
         &self.data_store
     }
 
@@ -201,7 +130,7 @@ impl EntityDb {
     #[inline]
     pub fn latest_at(
         &self,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
     ) -> re_query::LatestAtResults {
@@ -221,7 +150,7 @@ impl EntityDb {
     pub fn latest_at_component<C: re_types_core::Component>(
         &self,
         entity_path: &EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
     ) -> Option<re_query::LatestAtMonoResult<C>> {
         self.query_caches().latest_at_component::<C>(
             self.store(),
@@ -243,7 +172,7 @@ impl EntityDb {
     pub fn latest_at_component_quiet<C: re_types_core::Component>(
         &self,
         entity_path: &EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
     ) -> Option<re_query::LatestAtMonoResult<C>> {
         self.query_caches().latest_at_component_quiet::<C>(
             self.store(),
@@ -257,7 +186,7 @@ impl EntityDb {
     pub fn latest_at_component_at_closest_ancestor<C: re_types_core::Component>(
         &self,
         entity_path: &EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
     ) -> Option<(EntityPath, re_query::LatestAtMonoResult<C>)> {
         self.query_caches()
             .latest_at_component_at_closest_ancestor::<C>(
@@ -269,7 +198,7 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn store(&self) -> &DataStore {
+    pub fn store(&self) -> &ChunkStore {
         &self.data_store
     }
 
@@ -335,14 +264,15 @@ impl EntityDb {
         }
     }
 
-    pub fn num_rows(&self) -> usize {
-        self.data_store.num_static_rows() as usize + self.data_store.num_temporal_rows() as usize
+    #[inline]
+    pub fn num_rows(&self) -> u64 {
+        self.data_store.stats().total().total_num_rows
     }
 
-    /// Return the current `StoreGeneration`. This can be used to determine whether the
+    /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
     #[inline]
-    pub fn generation(&self) -> re_data_store::StoreGeneration {
+    pub fn generation(&self) -> re_chunk_store::ChunkStoreGeneration {
         self.data_store.generation()
     }
 
@@ -402,8 +332,11 @@ impl EntityDb {
             LogMsg::SetStoreInfo(msg) => self.set_store_info(msg.clone()),
 
             LogMsg::ArrowMsg(_, arrow_msg) => {
-                let table = DataTable::from_arrow_msg(arrow_msg)?;
-                self.add_data_table(table)?;
+                self.last_modified_at = web_time::Instant::now();
+
+                let mut chunk = re_chunk::Chunk::from_arrow_msg(arrow_msg)?;
+                chunk.sort_if_unsorted();
+                self.add_chunk(&Arc::new(chunk))?;
             }
 
             LogMsg::BlueprintActivationCommand(_) => {
@@ -414,58 +347,25 @@ impl EntityDb {
         Ok(())
     }
 
-    pub fn add_data_table(&mut self, mut table: DataTable) -> Result<(), Error> {
-        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
-        table.compute_all_size_bytes();
+    pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<(), Error> {
+        let store_event = self.data_store.insert_chunk(chunk)?;
 
-        for row in table.to_rows() {
-            self.add_data_row(row?)?;
+        self.register_entity_path(chunk.entity_path());
+
+        if self.latest_row_id < chunk.row_id_range().map(|(_, row_id_max)| row_id_max) {
+            self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
 
-        self.last_modified_at = web_time::Instant::now();
+        if let Some(store_event) = store_event {
+            // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
+            let original_store_events = &[store_event];
+            self.times_per_timeline.on_events(original_store_events);
+            self.query_caches.on_events(original_store_events);
+            self.tree.on_store_additions(original_store_events);
 
-        Ok(())
-    }
-
-    /// Inserts a [`DataRow`] into the database.
-    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
-        re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
-
-        self.register_entity_path(&row.entity_path);
-
-        if self
-            .latest_row_id
-            .map_or(true, |latest| latest < row.row_id)
-        {
-            self.latest_row_id = Some(row.row_id);
+            // We inform the stats last, since it measures e2e latency.
+            self.stats.on_events(original_store_events);
         }
-
-        // ## RowId duplication
-        //
-        // We shouldn't be attempting to retry in this instance: a duplicated RowId at this stage
-        // is likely a user error.
-        //
-        // We only do so because, the way our 'save' feature is currently implemented in the
-        // viewer can result in a single row's worth of data to be split across several insertions
-        // when loading that data back (because we dump per-bucket, and RowIds get duplicated
-        // across buckets).
-        //
-        // TODO(#1894): Remove this once the save/load process becomes RowId-driven.
-        let store_event = insert_row_with_retries(
-            &mut self.data_store,
-            row,
-            MAX_INSERT_ROW_ATTEMPTS,
-            DEFAULT_INSERT_ROW_STEP_SIZE,
-        )?;
-
-        // Update our internal views by notifying them of resulting [`StoreEvent`]s.
-        let original_store_events = &[store_event];
-        self.times_per_timeline.on_events(original_store_events);
-        self.query_caches.on_events(original_store_events);
-        self.tree.on_store_additions(original_store_events);
-
-        // We inform the stats last, since it measures e2e latency.
-        self.stats.on_events(original_store_events);
 
         Ok(())
     }
@@ -484,9 +384,8 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         self.gc(&GarbageCollectionOptions {
-            target: re_data_store::GarbageCollectionTarget::Everything,
+            target: GarbageCollectionTarget::Everything,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
-            purge_empty_tables: true,
             dont_protect_components: [
                 re_types_core::components::ClearIsRecursive::name(),
                 re_types_core::archetypes::Clear::indicator().name(),
@@ -496,7 +395,6 @@ impl EntityDb {
             dont_protect_timelines: [Timeline::log_tick(), Timeline::log_time()]
                 .into_iter()
                 .collect(),
-            enable_batching: false,
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });
     }
@@ -507,14 +405,10 @@ impl EntityDb {
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
         self.gc(&GarbageCollectionOptions {
-            target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(
-                fraction_to_purge as _,
-            ),
+            target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             protect_latest: 1,
-            purge_empty_tables: false,
             dont_protect_components: Default::default(),
             dont_protect_timelines: Default::default(),
-            enable_batching: false,
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });
     }
@@ -526,14 +420,14 @@ impl EntityDb {
 
         re_log::trace!(
             num_row_ids_dropped = store_events.len(),
-            size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
+            size_bytes_dropped = re_format::format_bytes(stats_diff.total().total_size_bytes as _),
             "purged datastore"
         );
 
         self.on_store_deletions(&store_events);
     }
 
-    fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
+    fn on_store_deletions(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -570,10 +464,8 @@ impl EntityDb {
     pub fn to_messages(
         &self,
         time_selection: Option<(Timeline, ResolvedTimeRangeF)>,
-    ) -> DataTableResult<Vec<LogMsg>> {
+    ) -> ChunkResult<Vec<LogMsg>> {
         re_tracing::profile_function!();
-
-        self.store().sort_indices_if_needed();
 
         let set_store_info_msg = self
             .store_info_msg()
@@ -586,11 +478,28 @@ impl EntityDb {
             )
         });
 
-        let data_messages = self.store().to_data_tables(time_filter).map(|table| {
-            table
-                .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
-        });
+        let data_messages = self
+            .store()
+            .iter_chunks()
+            .filter(|chunk| {
+                let Some((timeline, time_range)) = time_filter else {
+                    return true;
+                };
+
+                // TODO(cmc): chunk.slice_time_selection(time_selection)
+                chunk
+                    .timelines()
+                    .get(&timeline)
+                    .map_or(false, |time_chunk| {
+                        time_range.contains(time_chunk.time_range().min())
+                            || time_range.contains(time_chunk.time_range().max())
+                    })
+            })
+            .map(|chunk| {
+                chunk
+                    .to_arrow_msg()
+                    .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
+            });
 
         // If this is a blueprint, make sure to include the `BlueprintActivationCommand` message.
         // We generally use `to_messages` to export a blueprint via "save". In that
@@ -620,8 +529,6 @@ impl EntityDb {
     pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        self.store().sort_indices_if_needed();
-
         let mut new_db = Self::new(new_id.clone());
 
         new_db.last_modified_at = self.last_modified_at;
@@ -641,13 +548,13 @@ impl EntityDb {
             new_info.cloned_from = Some(self.store_id().clone());
 
             new_db.set_store_info(SetStoreInfo {
-                row_id: RowId::new(),
+                row_id: *RowId::new(),
                 info: new_info,
             });
         }
 
-        for row in self.store().to_rows()? {
-            new_db.add_data_row(row)?;
+        for chunk in self.store().iter_chunks() {
+            new_db.add_chunk(&Arc::clone(chunk))?;
         }
 
         Ok(new_db)
@@ -655,9 +562,10 @@ impl EntityDb {
 }
 
 impl re_types_core::SizeBytes for EntityDb {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // TODO(emilk): size of entire EntityDb, including secondary indices etc
-        self.data_store.heap_size_bytes()
+        self.data_store().stats().total().total_size_bytes
     }
 }
 
@@ -668,23 +576,29 @@ pub struct IngestionStatistics {
     e2e_latency_sec_history: Mutex<emath::History<f32>>,
 }
 
-impl StoreSubscriber for IngestionStatistics {
+impl ChunkStoreSubscriber for IngestionStatistics {
+    #[inline]
     fn name(&self) -> String {
         "rerun.testing.store_subscribers.IngestionStatistics".into()
     }
 
+    #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 
+    #[inline]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 
-    fn on_events(&mut self, events: &[StoreEvent]) {
+    #[inline]
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
             if event.store_id == self.store_id {
-                self.on_new_row_id(event.row_id);
+                for row_id in event.diff.chunk.row_ids() {
+                    self.on_new_row_id(row_id);
+                }
             }
         }
     }

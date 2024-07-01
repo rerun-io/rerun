@@ -21,7 +21,7 @@ pub trait ViewContextSystem: Send + Sync {
     /// do so, see [`crate::SpaceViewSystemRegistrator`].
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
-    /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
+    /// Queries the chunk store and performs data conversions to make it ready for consumption by scene elements.
     fn execute(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>);
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.

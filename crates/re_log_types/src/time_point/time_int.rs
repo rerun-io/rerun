@@ -31,7 +31,7 @@ impl std::fmt::Debug for TimeInt {
                 .debug_tuple("TimeInt::MAX")
                 .field(&NonMinI64::MAX)
                 .finish(),
-            Some(t) => f.debug_tuple("TimeInt").field(&t).finish(),
+            Some(t) => f.write_fmt(format_args!("TimeInt({})", re_format::format_int(t.get()))),
             None => f.debug_tuple("TimeInt::STATIC").finish(),
         }
     }

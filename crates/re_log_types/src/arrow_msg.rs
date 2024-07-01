@@ -1,15 +1,17 @@
 //! [`ArrowMsg`] is the [`crate::LogMsg`] sub-type containing an Arrow payload.
 //!
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
-//! the inner Arrow serialization of [`Schema`] and [`Chunk`].
+//! the inner Arrow serialization of [`ArrowSchema`] and [`ArrowChunk`].
 
 use std::sync::Arc;
 
-use crate::{TableId, TimePoint};
-use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
+use crate::TimePoint;
+use arrow2::{
+    array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
+};
 
 /// An arbitrary callback to be run when an [`ArrowMsg`], and more specifically the
-/// Arrow [`Chunk`] within it, goes out of scope.
+/// [`ArrowChunk`] within it, goes out of scope.
 ///
 /// If the [`ArrowMsg`] has been cloned in a bunch of places, the callback will run for each and
 /// every instance.
@@ -18,10 +20,10 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 // TODO(#6412): probably don't need this anymore.
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
-pub struct ArrowChunkReleaseCallback(Arc<dyn Fn(Chunk<Box<dyn Array>>) + Send + Sync>);
+pub struct ArrowChunkReleaseCallback(Arc<dyn Fn(ArrowChunk<Box<dyn ArrowArray>>) + Send + Sync>);
 
 impl std::ops::Deref for ArrowChunkReleaseCallback {
-    type Target = dyn Fn(Chunk<Box<dyn Array>>) + Send + Sync;
+    type Target = dyn Fn(ArrowChunk<Box<dyn ArrowArray>>) + Send + Sync;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -31,7 +33,7 @@ impl std::ops::Deref for ArrowChunkReleaseCallback {
 
 impl<F> From<F> for ArrowChunkReleaseCallback
 where
-    F: Fn(Chunk<Box<dyn Array>>) + Send + Sync + 'static,
+    F: Fn(ArrowChunk<Box<dyn ArrowArray>>) + Send + Sync + 'static,
 {
     #[inline]
     fn from(f: F) -> Self {
@@ -68,8 +70,8 @@ impl std::fmt::Debug for ArrowChunkReleaseCallback {
 #[derive(Clone, Debug, PartialEq)]
 #[must_use]
 pub struct ArrowMsg {
-    /// Unique identifier for the [`crate::DataTable`] in this message.
-    pub table_id: TableId,
+    /// Unique identifier for the chunk in this message.
+    pub chunk_id: re_tuid::Tuid,
 
     /// The maximum values for all timelines across the entire batch of data.
     ///
@@ -78,10 +80,10 @@ pub struct ArrowMsg {
     pub timepoint_max: TimePoint,
 
     /// Schema for all control & data columns.
-    pub schema: Schema,
+    pub schema: ArrowSchema,
 
     /// Data for all control & data columns.
-    pub chunk: Chunk<Box<dyn Array>>,
+    pub chunk: ArrowChunk<Box<dyn ArrowArray>>,
 
     // pub on_release: Option<Arc<dyn FnOnce() + Send + Sync>>,
     pub on_release: Option<ArrowChunkReleaseCallback>,
@@ -119,7 +121,7 @@ impl serde::Serialize for ArrowMsg {
             .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
 
         let mut inner = serializer.serialize_tuple(3)?;
-        inner.serialize_element(&self.table_id)?;
+        inner.serialize_element(&self.chunk_id)?;
         inner.serialize_element(&self.timepoint_max)?;
         inner.serialize_element(&serde_bytes::ByteBuf::from(buf))?;
         inner.end()
@@ -149,11 +151,11 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
             {
                 re_tracing::profile_scope!("ArrowMsg::deserialize");
 
-                let table_id: Option<TableId> = seq.next_element()?;
+                let table_id: Option<re_tuid::Tuid> = seq.next_element()?;
                 let timepoint_max: Option<TimePoint> = seq.next_element()?;
                 let buf: Option<serde_bytes::ByteBuf> = seq.next_element()?;
 
-                if let (Some(table_id), Some(timepoint_max), Some(buf)) =
+                if let (Some(chunk_id), Some(timepoint_max), Some(buf)) =
                     (table_id, timepoint_max, buf)
                 {
                     let mut cursor = std::io::Cursor::new(buf);
@@ -181,7 +183,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                         .map_err(|err| serde::de::Error::custom(format!("Arrow error: {err}")))?;
 
                     if chunks.is_empty() {
-                        return Err(serde::de::Error::custom("No Chunk found in stream"));
+                        return Err(serde::de::Error::custom("No ArrowChunk found in stream"));
                     }
                     if chunks.len() > 1 {
                         return Err(serde::de::Error::custom(format!(
@@ -193,7 +195,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                     let chunk = chunks.into_iter().next().unwrap();
 
                     Ok(ArrowMsg {
-                        table_id,
+                        chunk_id,
                         timepoint_max,
                         schema,
                         chunk,

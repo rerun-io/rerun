@@ -2,8 +2,9 @@ use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_space_view::{suggest_space_view_for_each_entity, view_property_ui};
 
+use re_chunk_store::RowId;
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::{EntityPath, RowId};
+use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
         archetypes::{TensorScalarMapping, TensorSliceSelection, TensorViewFit},

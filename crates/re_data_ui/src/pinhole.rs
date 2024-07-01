@@ -9,7 +9,7 @@ impl DataUi for PinholeProjection {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {
@@ -43,7 +43,7 @@ impl DataUi for Resolution {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;

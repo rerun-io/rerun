@@ -468,8 +468,8 @@ impl TimeControl {
     }
 
     /// Query for latest value at the currently selected time on the currently selected timeline.
-    pub fn current_query(&self) -> re_data_store::LatestAtQuery {
-        re_data_store::LatestAtQuery::new(
+    pub fn current_query(&self) -> re_chunk_store::LatestAtQuery {
+        re_chunk_store::LatestAtQuery::new(
             *self.timeline,
             self.time().map_or(TimeInt::MAX, |t| t.floor()),
         )

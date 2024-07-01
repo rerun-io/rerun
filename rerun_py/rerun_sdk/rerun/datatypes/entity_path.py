@@ -20,7 +20,7 @@ __all__ = ["EntityPath", "EntityPathArrayLike", "EntityPathBatch", "EntityPathLi
 
 @define(init=False)
 class EntityPath:
-    """**Datatype**: A path to an entity in the `DataStore`."""
+    """**Datatype**: A path to an entity in the `ChunkStore`."""
 
     def __init__(self: Any, path: EntityPathLike):
         """Create a new instance of the EntityPath datatype."""

@@ -6,8 +6,8 @@ use std::{
 use ahash::{HashMap, HashSet};
 use parking_lot::RwLock;
 
-use re_data_store::{DataStore, StoreDiff, StoreEvent, StoreSubscriber, TimeInt};
-use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, Timeline};
+use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
 use re_types_core::ComponentName;
 
 use crate::{LatestAtCache, RangeCache};
@@ -67,7 +67,7 @@ impl CacheKey {
 }
 
 pub struct Caches {
-    /// The [`StoreId`] of the associated [`DataStore`].
+    /// The [`StoreId`] of the associated [`ChunkStore`].
     pub(crate) store_id: StoreId,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
@@ -127,7 +127,7 @@ impl std::fmt::Debug for Caches {
 
 impl Caches {
     #[inline]
-    pub fn new(store: &DataStore) -> Self {
+    pub fn new(store: &ChunkStore) -> Self {
         Self {
             store_id: store.id().clone(),
             latest_at_per_cache_key: Default::default(),
@@ -148,7 +148,7 @@ impl Caches {
     }
 }
 
-impl StoreSubscriber for Caches {
+impl ChunkStoreSubscriber for Caches {
     #[inline]
     fn name(&self) -> String {
         "rerun.store_subscribers.QueryCache".into()
@@ -164,7 +164,7 @@ impl StoreSubscriber for Caches {
         self
     }
 
-    fn on_events(&mut self, events: &[StoreEvent]) {
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!(format!("num_events={}", events.len()));
 
         #[derive(Default, Debug)]
@@ -176,7 +176,7 @@ impl StoreSubscriber for Caches {
         let mut compacted = CompactedEvents::default();
 
         for event in events {
-            let StoreEvent {
+            let ChunkStoreEvent {
                 store_id,
                 store_generation: _,
                 event_id: _,
@@ -190,30 +190,33 @@ impl StoreSubscriber for Caches {
                 store_id,
             );
 
-            let StoreDiff {
+            let ChunkStoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
-                row_id: _,
-                times,
-                entity_path,
-                cells,
+                chunk,
             } = diff;
 
             {
                 re_tracing::profile_scope!("compact events");
 
-                if times.is_empty() {
-                    for component_name in cells.keys() {
+                if chunk.is_static() {
+                    for component_name in chunk.component_names() {
                         compacted
                             .static_
-                            .insert((entity_path.clone(), *component_name));
+                            .insert((chunk.entity_path().clone(), component_name));
                     }
                 }
 
-                for &(timeline, data_time) in times {
-                    for component_name in cells.keys() {
-                        let key = CacheKey::new(entity_path.clone(), timeline, *component_name);
-                        let data_times = compacted.temporal.entry(key).or_default();
-                        data_times.insert(data_time);
+                for (&timeline, time_chunk) in chunk.timelines() {
+                    for data_time in time_chunk.times() {
+                        for component_name in chunk.component_names() {
+                            let key = CacheKey::new(
+                                chunk.entity_path().clone(),
+                                timeline,
+                                component_name,
+                            );
+                            let data_times = compacted.temporal.entry(key).or_default();
+                            data_times.insert(data_time);
+                        }
                     }
                 }
             }

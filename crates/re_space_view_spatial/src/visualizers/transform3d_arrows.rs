@@ -61,7 +61,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
         let transforms = context_systems.get::<TransformContext>()?;
 
-        let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
+        let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
         // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.

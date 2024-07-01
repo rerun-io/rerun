@@ -24,19 +24,22 @@ pub mod external {
 
 // -----------
 
-use re_entity_db::external::re_data_store;
-
 /// Utility for implementing [`re_viewer_context::VisualizerAdditionalApplicabilityFilter`] using on the properties of a concrete component.
 #[inline]
 pub fn diff_component_filter<T: re_types_core::Component>(
-    event: &re_data_store::StoreEvent,
+    event: &re_chunk_store::ChunkStoreEvent,
     filter: impl Fn(&T) -> bool,
 ) -> bool {
     let filter = &filter;
-    event.diff.cells.iter().any(|(component_name, cell)| {
-        component_name == &T::name()
-            && T::from_arrow(cell.as_arrow_ref())
-                .map(|components| components.iter().any(filter))
-                .unwrap_or(false)
-    })
+    event
+        .diff
+        .chunk
+        .components()
+        .get(&T::name())
+        .map_or(false, |list_array| {
+            list_array
+                .iter()
+                .filter_map(|array| array.and_then(|array| T::from_arrow(&*array).ok()))
+                .any(|instances| instances.iter().any(filter))
+        })
 }

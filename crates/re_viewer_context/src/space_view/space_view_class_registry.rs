@@ -1,7 +1,7 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 
-use re_data_store::DataStore;
+use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::SpaceViewClassIdentifier;
 
 use crate::{
@@ -100,7 +100,7 @@ impl SpaceViewSystemRegistrator<'_> {
                 .visualizers
                 .entry(T::identifier())
                 .or_insert_with(|| {
-                    let entity_subscriber_handle = DataStore::register_subscriber(Box::new(
+                    let entity_subscriber_handle = ChunkStore::register_subscriber(Box::new(
                         VisualizerEntitySubscriber::new(&T::default()),
                     ));
 
@@ -156,13 +156,13 @@ struct VisualizerTypeRegistryEntry {
     used_by: HashSet<SpaceViewClassIdentifier>,
 
     /// Handle to subscription of [`VisualizerEntitySubscriber`] for this visualizer.
-    entity_subscriber_handle: re_data_store::StoreSubscriberHandle,
+    entity_subscriber_handle: ChunkStoreSubscriberHandle,
 }
 
 impl Drop for VisualizerTypeRegistryEntry {
     fn drop(&mut self) {
-        // TODO(andreas): DataStore unsubscribe is not yet implemented!
-        //DataStore::unregister_subscriber(self.entity_subscriber_handle);
+        // TODO(andreas): ChunkStore unsubscribe is not yet implemented!
+        //ChunkStore::unregister_subscriber(self.entity_subscriber_handle);
     }
 }
 
@@ -297,7 +297,7 @@ impl SpaceViewClassRegistry {
                 .map(|(id, entry)| {
                     (
                         *id,
-                        DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                        ChunkStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                             entry.entity_subscriber_handle,
                             |subscriber| subscriber.applicable_entities(store_id).cloned(),
                         )
@@ -322,7 +322,7 @@ impl SpaceViewClassRegistry {
                 .map(|(id, entry)| {
                     (
                         *id,
-                        DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                        ChunkStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                             entry.entity_subscriber_handle,
                             |subscriber| subscriber.indicated_entities(store_id).cloned(),
                         )

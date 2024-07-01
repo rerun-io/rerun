@@ -232,14 +232,10 @@ fn is_chunk_empty(chunk: &Chunk) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::ApplicationId;
-    use re_log_types::RowId;
-    use re_log_types::SetStoreInfo;
-    use re_log_types::StoreId;
-    use re_log_types::StoreInfo;
-    use re_log_types::StoreKind;
-    use re_log_types::StoreSource;
-    use re_log_types::Time;
+    use re_chunk::RowId;
+    use re_log_types::{
+        ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+    };
 
     use crate::encoder::Encoder;
     use crate::EncodingOptions;
@@ -248,7 +244,7 @@ mod tests {
 
     fn fake_log_msg() -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: RowId::ZERO,
+            row_id: *RowId::ZERO,
             info: StoreInfo {
                 application_id: ApplicationId::unknown(),
                 store_id: StoreId::from_string(StoreKind::Recording, "test".into()),
