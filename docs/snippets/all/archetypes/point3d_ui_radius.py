@@ -22,7 +22,7 @@ rr.log(
     "ui_points_points",
     rr.Points3D(
         [[0, 0, 0], [1, 0, 1]],
-        # rr.Radius.ui_points produces radii that the viewer interprets as given in ui units.
+        # rr.Radius.ui_points produces radii that the viewer interprets as given in ui points.
         radii=rr.Radius.ui_points([40.0, 60.0]),
         colors=[255, 0, 0],
     ),

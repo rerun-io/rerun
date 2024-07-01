@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "ui_points_points",
         &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 0.0, 1.0)])
-            // rr.Radius.ui_points produces radii that the viewer interprets as given in ui units.
+            // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.
             .with_radii([
                 rerun::Radius::new_ui_points(40.0),
                 rerun::Radius::new_ui_points(60.0),

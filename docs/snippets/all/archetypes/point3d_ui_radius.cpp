@@ -1,4 +1,4 @@
-// Log some very simple points.
+// Log some points with ui points & scene unit radii.
 
 #include <rerun.hpp>
 
@@ -6,7 +6,26 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_points3d_ui_radius");
     rec.spawn().exit_on_failure();
 
-    rec.log("points", rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
-}
+    // Two blue points with scene unit radii of 0.1 and 0.3.
+    rec.log(
+        "scene_unit_points",
+        rerun::Points3D({{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})
+            // By default, radii are interpreted as world-space units.
+            .with_radii({0.1f, 0.3f})
+            .with_colors(rerun::Color(0, 0, 255))
+    );
 
-// TODO: unfinished
+    // Two red points with ui point radii of 40 and 60.
+    // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
+    // For 100% ui scaling, ui points are equal to pixels.
+    rec.log(
+        "ui_points_points",
+        rerun::Points3D({{0.0f, 0.0f, 0.0}, {1.0f, 0.0f, 1.0f}})
+            // rerun::Radius::ui_points produces radii that the viewer interprets as given in ui points.
+            .with_radii({
+                rerun::Radius::ui_points(40.0f),
+                rerun::Radius::ui_points(60.0f),
+            })
+            .with_colors(rerun::Color(255, 0, 0))
+    );
+}

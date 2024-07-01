@@ -32,6 +32,23 @@ namespace rerun::components {
         float value;
 
       public:
+        // Extensions to generated type defined in 'radius_ext.cpp'
+
+        /// Creates a new radius in scene units.
+        ///
+        /// Values passed must be finite positive.
+        static Radius scene_units(float radius_in_scene_units) {
+            return Radius(radius_in_scene_units);
+        }
+
+        /// Creates a new radius in ui points.
+        ///
+        /// Values passed must be finite positive.
+        static Radius ui_points(float radius_in_ui_points) {
+            return Radius(-radius_in_ui_points);
+        }
+
+      public:
         Radius() = default;
 
         Radius(float value_) : value(value_) {}
