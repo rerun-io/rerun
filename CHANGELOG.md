@@ -18,10 +18,10 @@
   * Among other things you can now stream data to Rerun notebook cells
   * Menu bar, time controls, etc. can now be fully hidden
   * TODO: More details!
-* 🧑‍🏫 New Examples TODO: links
-  * OCR
-  * Vistas
-  * Stereo Vision SLAM
+* 🧑‍🏫 New Examples
+  * [Paddle OCR](https://rerun.io/examples/video-image/ocr)
+  * [Vista driving world model](https://rerun.io/examples/generative-vision/vista)
+  * [Stereo Vision SLAM]() // TODO: LINK
 * 🛠️ New/changed components: TODO: doc links
   * `ImagePlaneDistance`, allows to configure the size of the Pinhole frustum visualization
   * `AxisLength`, allows to configure the axis length of the transform visualization
