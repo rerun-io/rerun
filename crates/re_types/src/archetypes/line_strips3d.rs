@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 3D line strips with positions and optional colors, radii, labels, etc.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ### Many strips
 /// ```ignore
@@ -60,6 +60,46 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1200w.png">
 ///   <img src="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Lines with scene & ui radius each
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d_ui_radius").spawn()?;
+///
+///     // A blue line with a scene unit radii of 0.01.
+///     let points = [[0., 0., 0.], [0., 0., 1.], [1., 0., 0.], [1., 0., 1.]];
+///     rec.log(
+///         "scene_unit_line",
+///         &rerun::LineStrips3D::new([points])
+///             // By default, radii are interpreted as world-space units.
+///             .with_radii([0.01])
+///             .with_colors([rerun::Color::from_rgb(0, 0, 255)]),
+///     );
+///
+///     // A red line with a ui point radii of 5.
+///     // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
+///     // For 100 % ui scaling, ui points are equal to pixels.
+///     let points = [[3., 0., 0.], [3., 0., 1.], [4., 0., 0.], [4., 0., 1.]];
+///     rec.log(
+///         "ui_points_line",
+///         &rerun::LineStrips3D::new([points])
+///             // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.
+///             .with_radii([rerun::Radius::new_ui_points(5.0)])
+///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
+///     );
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/1200w.png">
+///   <img src="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
