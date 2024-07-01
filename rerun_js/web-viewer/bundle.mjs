@@ -1,3 +1,5 @@
+// @ts-check
+
 // Script responsible for taking the generated Wasm/JS, and transpiled TS
 // and producing a single file with everything inlined.
 
@@ -42,8 +44,14 @@ async function fetch_viewer_wasm() {
 
 // replace INLINE_MARKER, inclusive
 const inline_start = index.indexOf(INLINE_MARKER);
-const inline_end =
-  index.indexOf(INLINE_MARKER, inline_start + 1) + INLINE_MARKER.length;
+if (inline_start === -1) {
+  throw new Error("no inline marker in source file");
+}
+let inline_end = index.indexOf(INLINE_MARKER, inline_start + 1);
+if (inline_end === -1) {
+  throw new Error("no inline marker in source file");
+}
+inline_end += INLINE_MARKER.length;
 
 const bundle =
   index.substring(0, inline_start) + inlined_code + index.substring(inline_end);
