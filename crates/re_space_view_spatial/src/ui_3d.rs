@@ -648,13 +648,13 @@ impl SpatialSpaceView3D {
         }
 
         // TODO(andreas): Make configurable. Could pick up default radius for this view?
-        let box_radius = Size(re_types::components::Radius::default().0);
+        let box_line_radius = Size(re_types::components::Radius::default().0);
 
         if state.state_3d.show_bbox {
             line_builder
                 .batch("scene_bbox_current")
                 .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| lines.radius(box_radius).color(egui::Color32::WHITE));
+                .map(|lines| lines.radius(box_line_radius).color(egui::Color32::WHITE));
         }
         if state.state_3d.show_accumulated_bbox {
             line_builder
@@ -662,7 +662,7 @@ impl SpatialSpaceView3D {
                 .add_box_outline(&state.bounding_boxes.accumulated)
                 .map(|lines| {
                     lines
-                        .radius(box_radius)
+                        .radius(box_line_radius)
                         .color(egui::Color32::from_gray(170))
                 });
         }
