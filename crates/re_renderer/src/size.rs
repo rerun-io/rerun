@@ -22,7 +22,7 @@ impl Size {
     /// Values passed must be finite positive.
     #[inline]
     pub fn new_scene_units(size: f32) -> Self {
-        debug_assert!((0.0..=f32::INFINITY).contains(&size), "Bad size: {size}");
+        debug_assert!(0.0 <= size, "Bad size: {size}");
         Self(size)
     }
 
@@ -31,20 +31,20 @@ impl Size {
     /// Values passed must be finite positive.
     #[inline]
     pub fn new_ui_points(size: f32) -> Self {
-        debug_assert!((0.0..=f32::INFINITY).contains(&size), "Bad size: {size}");
+        debug_assert!(0.0 <= size, "Bad size: {size}");
         Self(-size)
     }
 
     /// Get the scene-size of this, if stored as a scene size.
     #[inline]
     pub fn scene(&self) -> Option<f32> {
-        (self.0 >= 0.0).then_some(self.0)
+        self.0.is_sign_positive().then_some(self.0)
     }
 
     /// Get the point size of this, if stored as a point size.
     #[inline]
     pub fn points(&self) -> Option<f32> {
-        (self.0 < 0.0).then_some(-self.0)
+        self.0.is_sign_negative().then_some(-self.0)
     }
 }
 
