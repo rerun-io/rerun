@@ -49,17 +49,16 @@ impl ChunkStore {
 
         self.insert_id += 1;
 
-        let row_id_min = row_id_range.0;
-        let row_id_max = row_id_range.1;
-
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());
         self.chunk_ids_per_min_row_id
-            .entry(row_id_min)
+            .entry(row_id_range.0)
             .or_default()
             .push(chunk.id());
 
         if chunk.is_static() {
             // Static data: make sure to keep the most recent chunk available for each component column.
+
+            let row_id_range_per_component = chunk.row_id_range_per_component();
 
             for (&component_name, list_array) in chunk.components() {
                 let is_empty = list_array
@@ -68,6 +67,12 @@ impl ChunkStore {
                 if is_empty {
                     continue;
                 }
+
+                let Some((_row_id_min, row_id_max)) =
+                    row_id_range_per_component.get(&component_name)
+                else {
+                    continue;
+                };
 
                 self.static_chunk_ids_per_entity
                     .entry(chunk.entity_path().clone())
@@ -81,11 +86,12 @@ impl ChunkStore {
                             RowId::ZERO,
                             |chunk| {
                                 chunk
-                                    .row_id_range()
-                                    .map_or(RowId::ZERO, |(_, row_id_max)| row_id_max)
+                                    .row_id_range_per_component()
+                                    .get(&component_name)
+                                    .map_or(RowId::ZERO, |(_, row_id_max)| *row_id_max)
                             },
                         );
-                        if row_id_max > cur_row_id_max {
+                        if *row_id_max > cur_row_id_max {
                             *cur_chunk_id = chunk.id();
                         }
                     })

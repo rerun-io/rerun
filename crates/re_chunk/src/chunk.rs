@@ -217,6 +217,64 @@ impl Chunk {
             })
             .collect()
     }
+
+    /// Computes the `RowId` range covered by each individual component column on each timeline.
+    ///
+    /// This is different from the `RowId` range covered by the [`Chunk`] as a whole because component
+    /// columns are potentially sparse.
+    ///
+    /// This is crucial for indexing and queries to work properly.
+    //
+    // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
+    pub fn row_id_range_per_component(&self) -> BTreeMap<ComponentName, (RowId, RowId)> {
+        re_tracing::profile_function!();
+
+        let row_ids = self.row_ids().collect_vec();
+
+        if self.is_sorted() {
+            self.components
+                .iter()
+                .filter_map(|(component_name, list_array)| {
+                    let mut row_id_min = None;
+                    let mut row_id_max = None;
+
+                    for (i, &row_id) in row_ids.iter().enumerate() {
+                        if list_array.is_valid(i) {
+                            row_id_min = Some(row_id);
+                        }
+                    }
+                    for (i, &row_id) in row_ids.iter().enumerate().rev() {
+                        if list_array.is_valid(i) {
+                            row_id_max = Some(row_id);
+                        }
+                    }
+
+                    Some((*component_name, (row_id_min?, row_id_max?)))
+                })
+                .collect()
+        } else {
+            self.components
+                .iter()
+                .filter_map(|(component_name, list_array)| {
+                    let mut row_id_min = Some(RowId::MAX);
+                    let mut row_id_max = Some(RowId::ZERO);
+
+                    for (i, &row_id) in row_ids.iter().enumerate() {
+                        if list_array.is_valid(i) && Some(row_id) > row_id_min {
+                            row_id_min = Some(row_id);
+                        }
+                    }
+                    for (i, &row_id) in row_ids.iter().enumerate().rev() {
+                        if list_array.is_valid(i) && Some(row_id) < row_id_max {
+                            row_id_max = Some(row_id);
+                        }
+                    }
+
+                    Some((*component_name, (row_id_min?, row_id_max?)))
+                })
+                .collect()
+        }
+    }
 }
 
 // ---
