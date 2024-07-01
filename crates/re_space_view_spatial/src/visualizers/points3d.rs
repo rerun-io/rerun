@@ -9,9 +9,10 @@ use re_types::{
     components::{ClassId, Color, KeypointId, Position3D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -90,13 +91,15 @@ impl Points3DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Points3DComponentData<'a>>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.positions.len();
             if num_instances == 0 {
@@ -119,7 +122,7 @@ impl Points3DVisualizer {
             let positions = bytemuck::cast_slice(data.positions);
             let radii = process_radius_slice(entity_path, num_instances, data.radii);
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             {
                 let point_batch = point_builder
@@ -267,10 +270,10 @@ impl VisualizerSystem for Points3DVisualizer {
                 );
 
                 self.process_data(
+                    ctx,
                     &mut point_builder,
                     &mut line_builder,
                     view_query,
-                    entity_path,
                     spatial_ctx,
                     data,
                 )
@@ -296,4 +299,10 @@ impl VisualizerSystem for Points3DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Points3DVisualizer => []);
+impl TypedComponentFallbackProvider<Color> for Points3DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Points3DVisualizer => [Color]);

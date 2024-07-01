@@ -63,13 +63,13 @@ impl DepthImageVisualizer {
         ctx: &QueryContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = DepthImageComponentData<'a>>,
     ) {
         let is_3d_view =
             ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
 
+        let entity_path = ctx.target_entity_path;
         let meaning = TensorDataMeaning::Depth;
 
         for data in data {
@@ -341,7 +341,6 @@ impl VisualizerSystem for DepthImageVisualizer {
                     ctx,
                     &mut depth_clouds,
                     transforms,
-                    entity_path,
                     spatial_ctx,
                     &mut data,
                 );

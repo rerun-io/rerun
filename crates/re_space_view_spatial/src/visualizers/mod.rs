@@ -37,7 +37,7 @@ use re_types::{
     datatypes::{KeypointId, KeypointPair},
 };
 use re_viewer_context::{
-    auto_color, Annotations, ApplicableEntities, DefaultColor, IdentifiedViewSystem,
+    auto_color_egui, Annotations, ApplicableEntities, IdentifiedViewSystem, QueryContext,
     ResolvedAnnotationInfos, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, ViewSystemIdentifier, VisualizableEntities,
     VisualizableFilterContext, VisualizerCollection,
@@ -133,37 +133,44 @@ pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
 
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
-    entity_path: &'a EntityPath,
+    ctx: &QueryContext<'_>,
+    fallback_provider: &'a dyn re_viewer_context::TypedComponentFallbackProvider<Color>,
     num_instances: usize,
     annotation_infos: &'a ResolvedAnnotationInfos,
     colors: &'a [Color],
 ) -> Vec<egui::Color32> {
     // NOTE: Do not put tracing scopes here, this is called for every entity/timestamp in a frame.
 
-    let default_color = DefaultColor::EntityPath(entity_path);
-
     if colors.is_empty() {
         match annotation_infos {
             ResolvedAnnotationInfos::Same(count, annotation_info) => {
                 re_tracing::profile_scope!("no colors, same annotation");
-                let color = annotation_info.color(None, default_color);
+                let color = annotation_info
+                    .color(None)
+                    .unwrap_or_else(|| fallback_provider.fallback_for(ctx).into());
                 vec![color; *count]
             }
             ResolvedAnnotationInfos::Many(annotation_info) => {
                 re_tracing::profile_scope!("no-colors, many annotations");
+                let fallback = fallback_provider.fallback_for(ctx).into();
                 annotation_info
                     .iter()
-                    .map(|annotation_info| annotation_info.color(None, default_color))
+                    .map(|annotation_info| annotation_info.color(None).unwrap_or(fallback))
                     .collect()
             }
         }
     } else {
         let colors = entity_iterator::clamped(colors, num_instances);
+        let fallback = fallback_provider.fallback_for(ctx).into();
         match annotation_infos {
             ResolvedAnnotationInfos::Same(_count, annotation_info) => {
                 re_tracing::profile_scope!("many-colors, same annotation");
                 colors
-                    .map(|color| annotation_info.color(Some(color.to_array()), default_color))
+                    .map(|color| {
+                        annotation_info
+                            .color(Some(color.to_array()))
+                            .unwrap_or(fallback)
+                    })
                     .collect()
             }
             ResolvedAnnotationInfos::Many(annotation_infos) => {
@@ -171,7 +178,9 @@ pub fn process_color_slice<'a>(
                 colors
                     .zip(annotation_infos.iter())
                     .map(move |(color, annotation_info)| {
-                        annotation_info.color(Some(color.to_array()), default_color)
+                        annotation_info
+                            .color(Some(color.to_array()))
+                            .unwrap_or(fallback)
                     })
                     .collect()
             }
@@ -339,7 +348,7 @@ pub fn load_keypoint_connections(
         };
 
         let color = class_description.info.color.map_or_else(
-            || auto_color(class_description.info.id),
+            || auto_color_egui(class_description.info.id),
             |color| color.into(),
         );
 

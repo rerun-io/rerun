@@ -7,9 +7,9 @@ use re_types::{
     components::{ClassId, Color, DrawOrder, HalfSizes2D, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -85,12 +85,14 @@ impl Boxes2DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         view_query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Boxes2DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.half_sizes.len();
             if num_instances == 0 {
@@ -108,7 +110,7 @@ impl Boxes2DVisualizer {
 
             let radii = process_radius_slice(entity_path, num_instances, data.radii);
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             if num_instances <= self.max_labels {
                 let centers = clamped(data.centers, num_instances);
@@ -283,13 +285,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    &mut line_builder,
-                    view_query,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
 
                 Ok(())
             },
@@ -311,10 +307,16 @@ impl VisualizerSystem for Boxes2DVisualizer {
     }
 }
 
+impl TypedComponentFallbackProvider<Color> for Boxes2DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
 impl TypedComponentFallbackProvider<DrawOrder> for Boxes2DVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
         DrawOrder::DEFAULT_BOX2D
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => [DrawOrder]);
+re_viewer_context::impl_component_fallback_provider!(Boxes2DVisualizer => [Color, DrawOrder]);

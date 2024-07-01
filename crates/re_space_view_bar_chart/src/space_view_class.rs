@@ -1,4 +1,4 @@
-use egui::{ahash::HashMap, util::hash};
+use egui::ahash::HashMap;
 use re_log_types::EntityPath;
 use re_space_view::{controls, suggest_space_view_for_each_entity, view_property_ui};
 use re_types::blueprint::archetypes::PlotLegend;
@@ -7,7 +7,7 @@ use re_types::View;
 use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
 use re_ui::list_item;
 use re_viewer_context::{
-    auto_color, ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    ApplicableEntities, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery, ViewerContext,
     VisualizableEntities,
@@ -170,10 +170,9 @@ impl SpaceViewClass for BarChartSpaceView {
                 fn create_bar_chart<N: Into<f64>>(
                     ent_path: &EntityPath,
                     values: impl Iterator<Item = N>,
-                    color: &Option<re_types::components::Color>,
+                    color: &re_types::components::Color,
                 ) -> BarChart {
-                    let color =
-                        color.map_or_else(|| auto_color(hash(ent_path) as _), |color| color.into());
+                    let color: egui::Color32 = color.0.into();
                     let fill = color.gamma_multiply(0.75).additive(); // make sure overlapping bars are obvious
                     BarChart::new(
                         values

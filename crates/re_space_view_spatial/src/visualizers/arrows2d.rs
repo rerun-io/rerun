@@ -7,9 +7,9 @@ use re_types::{
     components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text, Vector2D},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -85,12 +85,14 @@ impl Arrows2DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Arrows2DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.vectors.len();
             if num_instances == 0 {
@@ -108,7 +110,7 @@ impl Arrows2DVisualizer {
 
             let radii = process_radius_slice(entity_path, num_instances, data.radii);
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             if num_instances <= self.max_labels {
                 let origins = clamped(data.origins, num_instances);
@@ -277,13 +279,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    &mut line_builder,
-                    view_query,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
 
                 Ok(())
             },
@@ -305,10 +301,16 @@ impl VisualizerSystem for Arrows2DVisualizer {
     }
 }
 
+impl TypedComponentFallbackProvider<Color> for Arrows2DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
 impl TypedComponentFallbackProvider<DrawOrder> for Arrows2DVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
         DrawOrder::DEFAULT_LINES2D
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Arrows2DVisualizer => [DrawOrder]);
+re_viewer_context::impl_component_fallback_provider!(Arrows2DVisualizer => [Color, DrawOrder]);
