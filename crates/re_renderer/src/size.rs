@@ -18,7 +18,7 @@ impl Size {
     pub const ONE: Self = Self(1.0);
 
     /// Radius of length 1 in ui points.
-    pub const ONE_UI_POINTS: Self = Self(-1.0);
+    pub const ONE_UI_POINT: Self = Self(-1.0);
 
     /// Creates a new size in scene units.
     ///

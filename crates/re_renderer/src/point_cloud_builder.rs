@@ -195,7 +195,7 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
             let vertices = izip!(
                 positions.iter().copied(),
                 radii.iter().copied().chain(std::iter::repeat(
-                    *radii.last().unwrap_or(&Size::ONE_UI_POINTS)
+                    *radii.last().unwrap_or(&Size::ONE_UI_POINT)
                 ))
             )
             .map(|(pos, radius)| PositionRadius { pos, radius })
