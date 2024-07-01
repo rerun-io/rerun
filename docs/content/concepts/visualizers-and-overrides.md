@@ -35,7 +35,10 @@ snippet: concepts/viscomp-base
 
 Here is how the user interface represents the `Boxes2D` visualizers in the selection panel, when the corresponding entity is selected:
 
-<img width="50%" src="https://i.postimg.cc/L6gKRBt2/image.png" alt="basic exampleE">
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/viscomp-base-screenshot/80f168067b49d2a40aed41b0f3512117314c6a9d/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-base-screenshot/80f168067b49d2a40aed41b0f3512117314c6a9d/480w.png">
+</picture>
 
 
 All components used by the visualizer are represented, along with their corresponding values as determined by the visualizer. For the [`Color`](../reference/types/components/color.md) component, we can see both the store and fallback values, the former taking precedence over the latter.
@@ -56,7 +59,10 @@ snippet: concepts/viscomp-component-override
 
 The color of `/boxes/1` is overridden to green. Here is how the user interface represents the corresponding visualizer:
 
-<img width="50%" src="https://i.postimg.cc/zBXDktyT/image.png">
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/viscomp-component-override-screenshot/cfd1498e18279734a2d494778bf2e6b603b3b44e/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-override-screenshot/cfd1498e18279734a2d494778bf2e6b603b3b44e/480w.png">
+</picture>
 
 The override is listed above the store and fallback value since it has precedence. It can also be edited or removed from the user interface.
 
@@ -73,13 +79,19 @@ snippet: concepts/viscomp-component-default
 
 Here, the `/boxes/2` entity is no longer logged with a color value, but a default color is added to the blueprint. Here is how the user interface represents its visualizer:
 
-<img width="50%" src="https://i.postimg.cc/pLbs53Sc/image.png" alt="component override example">
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/viscomp-component-default-screenshot-1/5966fde4bdddd5e8ef07c6c0a0576b4a487b644e/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-1/5966fde4bdddd5e8ef07c6c0a0576b4a487b644e/480w.png">
+</picture>
 
 The default color value is displayed above the fallback since it takes precedence. It can also be edited or removed from the user interface.
 
 All component default values are displayed in the selection panel when selecting the corresponding view:
 
-<img src='https://i.postimg.cc/pX8gSQb7/image.png' width="50%" alt='image'/>
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/viscomp-component-default-screenshot-2/2db4ca28ff94c1de58a750855828024aa4043576/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default-screenshot-2/2db4ca28ff94c1de58a750855828024aa4043576/480w.png">
+</picture>
 
 Again, it is possible to manually add, edit, and remove component defaults from the user interface.
 
@@ -95,7 +107,10 @@ The previous sections showed that visualizers use a variety of sources to determ
 
 As an illustration, all four values are available for the `/boxes/1` entity of the previous example. Here is how its visualizer is represented in the user interface:
 
-<img src="https://i.postimg.cc/W4K8jK07/image.png" width="50%">
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/viscomp-component-value-resolution-screenshot/4ecd7b4be069f5d77d0ea541dc1f47d66a868e2d/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-value-resolution-screenshot/4ecd7b4be069f5d77d0ea541dc1f47d66a868e2d/480w.png">
+</picture>
 
 
 ## Visualizer override
@@ -105,7 +120,14 @@ So far, we discussed how visualizers determine values for the components they ar
 ⚠️NOTE: the feature covered by this section, including its API, is very likely to change in future releases
 (relevant [issue](https://github.com/rerun-io/rerun/issues/6626)).
 
-[![image.png](https://i.postimg.cc/rzXWP2XD/image.png)](https://postimg.cc/SYdJn5K4)
+<picture>
+  <img src="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/1200w.png">
+</picture>
+
 
 In the previous examples, because [`Boxes2D`](../reference/types/archetypes/boxes2d.md) archetypes were used for logging then entities, `Boxes2D` visualizers were automatically selected. A key factor driving this behavior is the `Boxes2DIndicator` component, which is a data-less marker automatically inserted by the corresponding `Boxes2D` archetype. This is, however, not the only visualizer capable of displaying these entities. The `Point2D` visualizer can also be used, since it only requires [`Position2D`](../reference/types/components/position2d.md) components.
 
@@ -115,7 +137,10 @@ snippet: concepts/viscomp-visualizer-override
 
 The view now displays a point instead of the box. Here is how the visualizer is displayed in the user interface (note the visualizer of type `Points2D`):
 
-<img src="https://i.postimg.cc/V6k3d2h0/image.png" width="50%">
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/viscomp-visualizer-override-screenshot/fdb3e9ae8afa3c2a6bf1fc8836e0365aef393970/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-visualizer-override-screenshot/fdb3e9ae8afa3c2a6bf1fc8836e0365aef393970/480w.png">
+</picture>
 
 It is also possible to have _multiple_ visualizers for the same view entity by using an array:
 
