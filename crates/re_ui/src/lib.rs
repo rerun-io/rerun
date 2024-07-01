@@ -15,6 +15,8 @@ mod section_collapsing_header;
 pub mod toasts;
 mod ui_ext;
 
+use egui::NumExt as _;
+
 pub use self::{
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
@@ -112,8 +114,8 @@ fn format_with_decimals_in_range(
     let max_decimals = *decimal_range.end();
     debug_assert!(min_decimals <= max_decimals);
     debug_assert!(max_decimals < 100);
-    let max_decimals = max_decimals.min(16);
-    let min_decimals = min_decimals.min(max_decimals);
+    let max_decimals = max_decimals.at_most(16);
+    let min_decimals = min_decimals.at_most(max_decimals);
 
     if min_decimals < max_decimals {
         // Try using a few decimals as possible, and then add more until we have enough precision
