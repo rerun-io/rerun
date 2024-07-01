@@ -1,0 +1,15 @@
+[package]
+name = "test_temporal_batch"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+arrow2.workspace = true
+re_chunk.workspace = true
+rerun = { path = "../../../crates/rerun" }

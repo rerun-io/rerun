@@ -344,7 +344,7 @@ impl Drop for ChunkBatcherInner {
 }
 
 enum Command {
-    // TODO(#4184): AppendChunk(EntityPath, Chunk)
+    AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
     Flush(Sender<()>),
     Shutdown,
@@ -404,7 +404,9 @@ impl ChunkBatcher {
 
     // --- Send commands ---
 
-    // TODO(#4184): push_chunk
+    pub fn push_chunk(&self, chunk: Chunk) {
+        self.inner.push_chunk(chunk);
+    }
 
     /// Pushes a [`PendingRow`] down the batching pipeline.
     ///
@@ -449,6 +451,10 @@ impl ChunkBatcher {
 }
 
 impl ChunkBatcherInner {
+    fn push_chunk(&self, chunk: Chunk) {
+        self.send_cmd(Command::AppendChunk(chunk));
+    }
+
     fn push_row(&self, entity_path: EntityPath, row: PendingRow) {
         self.send_cmd(Command::AppendRow(entity_path, row));
     }
@@ -500,8 +506,6 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
     }
 
     let mut accs: IntMap<EntityPath, Accumulator> = IntMap::default();
-
-    // TODO(#4184): do_push_chunk
 
     fn do_push_row(acc: &mut Accumulator, row: PendingRow) {
         acc.pending_num_bytes += row.total_size_bytes();
@@ -567,6 +571,11 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
 
 
                 match cmd {
+                    Command::AppendChunk(chunk) => {
+                        // NOTE: This can only fail if all receivers have been dropped, which simply cannot happen
+                        // as long the batching thread is alive… which is where we currently are.
+                        tx_chunk.send(chunk).ok();
+                    },
                     Command::AppendRow(entity_path, row) => {
                         let acc = accs.entry(entity_path.clone())
                             .or_insert_with(|| Accumulator::new(entity_path));

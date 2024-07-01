@@ -178,6 +178,11 @@ impl RowId {
         Self(re_tuid::Tuid::new())
     }
 
+    #[inline]
+    pub fn from_tuid(tuid: re_tuid::Tuid) -> Self {
+        Self(tuid)
+    }
+
     /// Returns the next logical [`RowId`].
     ///
     /// Beware: wrong usage can easily lead to conflicts.

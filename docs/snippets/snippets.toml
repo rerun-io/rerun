@@ -42,6 +42,9 @@
   "rust", # Not implemented
   "py",   # Doesn't terminate
 ]
+"tutorials/temporal_batch" = [
+  "cpp", # Not impolemented yet
+]
 
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",

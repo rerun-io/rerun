@@ -5,11 +5,15 @@ use std::sync::Weak;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
+use arrow2::offset::Offsets;
 use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 
+use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray};
 use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
+
+use re_chunk::{ChunkError, ChunkId, ChunkTimeline, ComponentName};
 use re_log_types::{
     ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
@@ -49,6 +53,10 @@ pub enum RecordingStreamError {
     /// Error within the underlying file sink.
     #[error("Failed to create the underlying file sink: {0}")]
     FileSink(#[from] re_log_encoding::FileSinkError),
+
+    /// Error within the underlying chunk batcher.
+    #[error("Failed to convert data to a valid chunk: {0}")]
+    Chunk(#[from] ChunkError),
 
     /// Error within the underlying chunk batcher.
     #[error("Failed to spawn the underlying batcher: {0}")]
@@ -883,6 +891,88 @@ impl RecordingStream {
         self.log_with_static(ent_path, false, arch)
     }
 
+    /// Lower-level logging API to provide data spanning multiple timepoints.
+    ///
+    /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+    /// in a columnar form. The lengths of all of the [`ChunkTimeline`] and the [`ArrowListArray`]s
+    /// must match. All data that occurs at the same index across the different time and components
+    /// arrays will act as a single logical row.
+    #[inline]
+    pub fn log_temporal_batch<'a>(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        timelines: impl IntoIterator<Item = ChunkTimeline>,
+        components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+    ) -> RecordingStreamResult<()> {
+        let id = ChunkId::new();
+
+        let timelines = timelines
+            .into_iter()
+            .map(|timeline| (*timeline.timeline(), timeline))
+            .collect::<BTreeMap<_, _>>();
+
+        let components: Result<Vec<_>, ChunkError> = components
+            .into_iter()
+            .map(|batch| {
+                let array = batch.to_arrow()?;
+
+                let array = if let Some(array) =
+                    array.as_any().downcast_ref::<ArrowListArray<i32>>()
+                {
+                    array.clone()
+                } else {
+                    let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
+                        .map_err(|err| ChunkError::Malformed {
+                            reason: format!("Failed to create offsets: {err}"),
+                        })?;
+                    let data_type =
+                        ArrowListArray::<i32>::default_datatype(array.data_type().clone());
+                    ArrowListArray::<i32>::try_new(
+                        data_type,
+                        offsets.into(),
+                        array.to_boxed(),
+                        None,
+                    )
+                    .map_err(|err| ChunkError::Malformed {
+                        reason: format!("Failed to wrap in List array: {err}"),
+                    })?
+                };
+
+                Ok((batch.name(), array))
+            })
+            .collect();
+
+        let components: BTreeMap<ComponentName, ArrowListArray<i32>> =
+            components?.into_iter().collect();
+
+        let mut all_lengths = timelines
+            .values()
+            .map(|timeline| (timeline.name(), timeline.num_rows()))
+            .chain(
+                components
+                    .iter()
+                    .map(|(component, array)| (component.as_str(), array.len())),
+            );
+
+        if let Some((_, expected)) = all_lengths.next() {
+            for (name, len) in all_lengths {
+                if len != expected {
+                    return Err(RecordingStreamError::Chunk(ChunkError::Malformed {
+                        reason: format!(
+                            "Mismatched lengths: '{name}' has length {len} but expected {expected}",
+                        ),
+                    }));
+                }
+            }
+        }
+
+        let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
+
+        self.record_chunk(chunk);
+
+        Ok(())
+    }
+
     #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
     #[doc(hidden)]
     #[inline]
@@ -1369,6 +1459,68 @@ impl RecordingStream {
 
         if self.with(f).is_none() {
             re_log::warn_once!("Recording disabled - call to record_row() ignored");
+        }
+    }
+
+    /// Records a single [`Chunk`].
+    ///
+    /// Will inject `log_tick` and `log_time` timeline columns into the chunk.
+    #[inline]
+    pub fn record_chunk(&self, mut chunk: Chunk) {
+        let f = move |inner: &RecordingStreamInner| {
+            // TODO(cmc): Repeating these values is pretty wasteful. Would be nice to have a way of
+            // indicating these are fixed across the whole chunk.
+            // Inject the log time
+            {
+                let time_timeline = Timeline::log_time();
+                let time = TimeInt::new_temporal(Time::now().nanos_since_epoch());
+
+                let repeated_time = ArrowPrimitiveArray::<i64>::from_values(
+                    std::iter::repeat(time.as_i64()).take(chunk.num_rows()),
+                )
+                .to(time_timeline.datatype());
+
+                let time_chunk = ChunkTimeline::new(Some(true), time_timeline, repeated_time);
+
+                if let Err(err) = chunk.add_timeline(time_chunk) {
+                    re_log::error!(
+                        "Couldn't inject '{}' timeline into chunk (this is a bug in Rerun!): {}",
+                        time_timeline.name(),
+                        err
+                    );
+                    return;
+                }
+            }
+            // Inject the log tick
+            {
+                let tick_timeline = Timeline::log_tick();
+
+                let tick = inner
+                    .tick
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+                let repeated_tick = ArrowPrimitiveArray::<i64>::from_values(
+                    std::iter::repeat(tick).take(chunk.num_rows()),
+                )
+                .to(tick_timeline.datatype());
+
+                let tick_chunk = ChunkTimeline::new(Some(true), tick_timeline, repeated_tick);
+
+                if let Err(err) = chunk.add_timeline(tick_chunk) {
+                    re_log::error!(
+                        "Couldn't inject '{}' timeline into chunk (this is a bug in Rerun!): {}",
+                        tick_timeline.name(),
+                        err
+                    );
+                    return;
+                }
+            }
+
+            inner.batcher.push_chunk(chunk);
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to record_chunk() ignored");
         }
     }
 
