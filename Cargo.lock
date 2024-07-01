@@ -1178,6 +1178,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "const_soft_float"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ca1caa64ef4ed453e68bb3db612e51cf1b2f5b871337f0fcab1c8f87cc3dff"
+
+[[package]]
+name = "constgebra"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1aaf9b65849a68662ac6c0810c8893a765c960b907dd7cfab9c4a50bf764fbc"
+dependencies = [
+ "const_soft_float",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2281,6 +2296,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
+
+[[package]]
 name = "glob"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2487,6 +2508,16 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hexasphere"
+version = "14.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c64d70ed6295005e2bc5a6f624300cfd6d49908da76b3654c4cbdb1d4222705"
+dependencies = [
+ "constgebra",
+ "glam 0.28.0",
+]
 
 [[package]]
 name = "hexf-parse"
@@ -2935,7 +2966,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.22.0",
  "re_tracing",
  "rerun",
 ]
@@ -2964,7 +2995,7 @@ version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92e4daa18df16fd196b955e4bb16574641f39141fb3ea81b493a84b9439d17e6"
 dependencies = [
- "glam",
+ "glam 0.22.0",
  "num-traits",
  "serde",
 ]
@@ -3093,7 +3124,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.22.0",
  "rerun",
 ]
 
@@ -3543,7 +3574,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.22.0",
  "prost",
  "prost-build",
  "protoc-prebuilt",
@@ -4705,7 +4736,7 @@ dependencies = [
  "ecolor",
  "enumset",
  "getrandom",
- "glam",
+ "glam 0.22.0",
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
@@ -4744,7 +4775,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "console_error_panic_hook",
- "glam",
+ "glam 0.22.0",
  "image",
  "itertools 0.13.0",
  "macaw",
@@ -4918,7 +4949,8 @@ dependencies = [
  "bytemuck",
  "criterion",
  "egui",
- "glam",
+ "glam 0.22.0",
+ "hexasphere",
  "itertools 0.13.0",
  "macaw",
  "mimalloc",
@@ -5094,7 +5126,7 @@ dependencies = [
  "ecolor",
  "egui_plot",
  "emath",
- "glam",
+ "glam 0.22.0",
  "half 2.3.1",
  "image",
  "infer",
@@ -5295,7 +5327,7 @@ dependencies = [
  "egui-wgpu",
  "egui_extras",
  "egui_tiles",
- "glam",
+ "glam 0.22.0",
  "half 2.3.1",
  "indexmap 2.1.0",
  "itertools 0.13.0",
@@ -5336,7 +5368,7 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "glam",
+ "glam 0.22.0",
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
@@ -6450,7 +6482,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.22.0",
  "itertools 0.13.0",
  "ndarray",
  "ndarray-rand",

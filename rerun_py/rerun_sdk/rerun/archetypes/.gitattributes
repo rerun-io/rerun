@@ -12,6 +12,7 @@ boxes3d.py linguist-generated=true
 clear.py linguist-generated=true
 depth_image.py linguist-generated=true
 disconnected_space.py linguist-generated=true
+ellipsoids.py linguist-generated=true
 image.py linguist-generated=true
 line_strips2d.py linguist-generated=true
 line_strips3d.py linguist-generated=true
