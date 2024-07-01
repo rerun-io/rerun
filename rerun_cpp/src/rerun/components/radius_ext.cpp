@@ -1,5 +1,5 @@
 //#define EDIT_EXTENSION
-#if EDIT_EXTENSION
+#ifdef EDIT_EXTENSION
 
 #include "radius.hpp"
 
