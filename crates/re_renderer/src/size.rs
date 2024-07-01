@@ -14,9 +14,6 @@ impl Size {
     /// Zero radius.
     pub const ZERO: Self = Self(0.0);
 
-    /// Radius of length 1 in scene units.
-    pub const ONE: Self = Self(1.0);
-
     /// Radius of length 1 in ui points.
     pub const ONE_UI_POINT: Self = Self(-1.0);
 
