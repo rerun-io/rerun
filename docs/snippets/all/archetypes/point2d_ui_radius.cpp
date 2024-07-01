@@ -3,13 +3,13 @@
 #include <rerun.hpp>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_points3d_ui_radius");
+    const auto rec = rerun::RecordingStream("rerun_example_points2d_ui_radius");
     rec.spawn().exit_on_failure();
 
     // Two blue points with scene unit radii of 0.1 and 0.3.
     rec.log(
         "scene_unit_points",
-        rerun::Points3D({{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})
+        rerun::Points2D({{0.0f, 0.0f}, {0.0f, 1.0f}})
             // By default, radii are interpreted as world-space units.
             .with_radii({0.1f, 0.3f})
             .with_colors(rerun::Color(0, 0, 255))
@@ -20,7 +20,7 @@ int main() {
     // For 100% ui scaling, ui points are equal to pixels.
     rec.log(
         "ui_points_points",
-        rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}})
+        rerun::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}})
             // rerun::Radius::ui_points produces radii that the viewer interprets as given in ui points.
             .with_radii({
                 rerun::Radius::ui_points(40.0f),
@@ -28,4 +28,6 @@ int main() {
             })
             .with_colors(rerun::Color(255, 0, 0))
     );
+
+    // TODO(#5521): log VisualBounds2D
 }

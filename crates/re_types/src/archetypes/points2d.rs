@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ### Randomly distributed 2D points with varying color and radius
 /// ```ignore
@@ -55,6 +55,49 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png">
 ///   <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Log points with radii given in ui points
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d_ui_radius").spawn()?;
+///
+///     // Two blue points with scene unit radii of 0.1 and 0.3.
+///     rec.log(
+///         "scene_unit_points",
+///         &rerun::Points2D::new([(0.0, 0.0), (0.0, 1.0)])
+///             // By default, radii are interpreted as world-space units.
+///             .with_radii([0.1, 0.3])
+///             .with_colors([rerun::Color::from_rgb(0, 0, 255)]),
+///     );
+///
+///     // Two red points with ui point radii of 40 and 60.
+///     // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
+///     // For 100% ui scaling, ui points are equal to pixels.
+///     rec.log(
+///         "ui_points_points",
+///         &rerun::Points2D::new([(1.0, 0.0), (1.0, 1.0)])
+///             // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.
+///             .with_radii([
+///                 rerun::Radius::new_ui_points(40.0),
+///                 rerun::Radius::new_ui_points(60.0),
+///             ])
+///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
+///     );
+///
+///     // TODO(#5521): log VisualBounds2D
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1200w.png">
+///   <img src="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]

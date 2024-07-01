@@ -88,12 +88,12 @@ namespace rerun::archetypes {
     ///     // For 100% ui scaling, ui points are equal to pixels.
     ///     rec.log(
     ///         "ui_points_points",
-    ///         rerun::Points3D({{0.0f, 0.0f, 0.0}, {1.0f, 0.0f, 1.0f}})
+    ///         rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}})
     ///             // rerun::Radius::ui_points produces radii that the viewer interprets as given in ui points.
-    ///             .with_radii([
+    ///             .with_radii({
     ///                 rerun::Radius::ui_points(40.0f),
     ///                 rerun::Radius::ui_points(60.0f),
-    ///             ])
+    ///             })
     ///             .with_colors(rerun::Color(255, 0, 0))
     ///     );
     /// }
