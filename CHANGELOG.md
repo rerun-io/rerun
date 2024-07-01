@@ -7,8 +7,8 @@
 ### ✨ Overview & highlights
 
 * 🟦 Blueprint component override & defaults
-  * Defaults: Configure default component value for an entire view used when no data-store (via `log`) value was found
-  * Override: Ignore data-store & default value and use specified value instead. Can be set per view per entity.
+  * *Defaults*: Configure default component value for an entire view used when no data-store (via `log`) value was found
+  * *Override*: Ignore data-store & default value and use specified value instead. Can be set per view per entity.
   * Both are available from UI and (Python) blueprint code
   * New UI section on entity-in-view shows all active visualizers, what components they use and where they come from
   * Everything that was editable per Entity in a View uses component overrides now (e.g. camera plane distance, transform axis lengths etc.)
