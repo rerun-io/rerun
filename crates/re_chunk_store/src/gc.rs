@@ -4,10 +4,10 @@ use std::{
 };
 
 use ahash::{HashMap, HashSet};
-use nohash_hasher::{IntMap, IntSet};
-use re_chunk::{Chunk, ChunkId};
+use nohash_hasher::IntMap;
 use web_time::Instant;
 
+use re_chunk::{Chunk, ChunkId};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentName, SizeBytes};
 
@@ -51,18 +51,6 @@ pub struct GarbageCollectionOptions {
 
     /// How many component revisions to preserve on each timeline.
     pub protect_latest: usize,
-
-    /// Components which should not be protected from GC when using
-    /// [`GarbageCollectionOptions::protect_latest`].
-    //
-    // TODO(#6552): this should be removed in favor of a dedicated `remove_entity_path` API.
-    pub dont_protect_components: IntSet<ComponentName>,
-
-    /// Timelines which should not be protected from GC when using `protect_latest`
-    /// [`GarbageCollectionOptions::protect_latest`].
-    //
-    // TODO(#6552): this should be removed in favor of a dedicated `remove_entity_path` API.
-    pub dont_protect_timelines: IntSet<Timeline>,
 }
 
 impl GarbageCollectionOptions {
@@ -71,8 +59,6 @@ impl GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
             time_budget: std::time::Duration::MAX,
             protect_latest: 0,
-            dont_protect_components: Default::default(),
-            dont_protect_timelines: Default::default(),
         }
     }
 }
@@ -126,11 +112,7 @@ impl ChunkStore {
         let total_num_chunks_before = stats_before.total().num_chunks;
         let total_num_rows_before = stats_before.total().total_num_rows;
 
-        let protected_chunk_ids = self.find_all_protected_chunk_ids(
-            options.protect_latest,
-            &options.dont_protect_components,
-            &options.dont_protect_timelines,
-        );
+        let protected_chunk_ids = self.find_all_protected_chunk_ids(options.protect_latest);
 
         let diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
@@ -215,12 +197,7 @@ impl ChunkStore {
     //
     // TODO(jleibs): More complex functionality might required expanding this to also
     // *ignore* specific entities, components, timelines, etc. for this protection.
-    fn find_all_protected_chunk_ids(
-        &self,
-        target_count: usize,
-        dont_protect_components: &IntSet<ComponentName>,
-        dont_protect_timelines: &IntSet<Timeline>,
-    ) -> BTreeSet<ChunkId> {
+    fn find_all_protected_chunk_ids(&self, target_count: usize) -> BTreeSet<ChunkId> {
         re_tracing::profile_function!();
 
         if target_count == 0 {
@@ -230,19 +207,10 @@ impl ChunkStore {
         self.temporal_chunk_ids_per_entity
             .values()
             .flat_map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline
-                    .iter()
-                    .filter_map(|(timeline, temporal_chunk_ids_per_component)| {
-                        (!dont_protect_timelines.contains(timeline))
-                            .then_some(temporal_chunk_ids_per_component)
-                    })
-                    .flat_map(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component
-                            .iter()
-                            .filter(|(component_name, _)| {
-                                !dont_protect_components.contains(component_name)
-                            })
-                            .flat_map(|(_, temporal_chunk_ids_per_time)| {
+                temporal_chunk_ids_per_timeline.iter().flat_map(
+                    |(_timeline, temporal_chunk_ids_per_component)| {
+                        temporal_chunk_ids_per_component.iter().flat_map(
+                            |(_, temporal_chunk_ids_per_time)| {
                                 temporal_chunk_ids_per_time
                                     .per_start_time
                                     .last_key_value()
@@ -261,8 +229,10 @@ impl ChunkStore {
                                     .into_iter()
                                     .rev()
                                     .take(target_count)
-                            })
-                    })
+                            },
+                        )
+                    },
+                )
             })
             .collect()
     }

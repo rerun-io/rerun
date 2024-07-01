@@ -13,7 +13,6 @@ use re_log_types::{
     ApplicationId, ComponentPath, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange,
     ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
-use re_types_core::{Archetype, Loggable};
 
 use crate::{Error, TimesPerTimeline};
 
@@ -386,15 +385,6 @@ impl EntityDb {
         self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
-            dont_protect_components: [
-                re_types_core::components::ClearIsRecursive::name(),
-                re_types_core::archetypes::Clear::indicator().name(),
-            ]
-            .into_iter()
-            .collect(),
-            dont_protect_timelines: [Timeline::log_tick(), Timeline::log_time()]
-                .into_iter()
-                .collect(),
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });
     }
@@ -407,8 +397,6 @@ impl EntityDb {
         self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             protect_latest: 1,
-            dont_protect_components: Default::default(),
-            dont_protect_timelines: Default::default(),
             time_budget: DEFAULT_GC_TIME_BUDGET,
         });
     }
