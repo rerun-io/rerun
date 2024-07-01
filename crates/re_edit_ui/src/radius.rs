@@ -36,7 +36,7 @@ pub fn edit_radius_ui(
             .map_or(false, |r| r.changed())
         {
             // When we change the type of units,the value is likely going to be _very wrong_.
-            // Unfortunately, we don't have knowledge of a fallback here, so we to hardcoded "reasonable" values.
+            // Unfortunately, we don't have knowledge of a fallback here, so we use hardcoded "reasonable" values.
             if is_scene_units {
                 abs_value = 0.5;
             } else {
