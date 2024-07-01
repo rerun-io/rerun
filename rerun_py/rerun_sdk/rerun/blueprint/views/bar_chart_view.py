@@ -55,6 +55,7 @@ class BarChartView(SpaceView):
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
     ) -> None:
         """
@@ -79,6 +80,13 @@ class BarChartView(SpaceView):
             List of default components or component batches to add to the space view. When an archetype
             in the view is missing a component included in this set, the value of default will be used
             instead of the normal fallback for the visualizer.
+        overrides:
+            Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+            should be applied. The value is a list of component or component batches to apply to the entity.
+
+            Important note: the path must be a fully qualified entity path starting at the root. The override paths
+            do not yet support `$origin` relative paths or glob expressions.
+            This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].
         plot_legend:
             Configures the legend of the plot.
 
@@ -98,4 +106,5 @@ class BarChartView(SpaceView):
             visible=visible,
             properties=properties,
             defaults=defaults,
+            overrides=overrides,
         )

@@ -54,7 +54,7 @@ impl TimeControlUi {
                         egui::DragValue::new(&mut fps)
                             .suffix(" FPS")
                             .speed(1)
-                            .clamp_range(0.0..=f32::INFINITY),
+                            .range(0.0..=f32::INFINITY),
                     )
                     .on_hover_text("Frames per second");
                 });

@@ -24,7 +24,6 @@ mod image;
 mod image_meaning;
 mod instance_path;
 mod log_msg;
-mod material;
 mod pinhole;
 mod rotation3d;
 mod store_id;
@@ -38,7 +37,6 @@ pub use crate::image::{
 };
 pub use component::EntityLatestAtResults;
 pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
-pub use image_meaning::image_meaning_for_entity;
 
 /// Sort components for display in the UI.
 pub fn sorted_component_list_for_ui<'a>(

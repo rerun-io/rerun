@@ -1,4 +1,10 @@
-import { LogChannel, Panel, PanelState, WebViewer } from "@rerun-io/web-viewer";
+import {
+  type LogChannel,
+  type Panel,
+  type PanelState,
+  WebViewer,
+} from "@rerun-io/web-viewer/inlined.js";
+
 import type { AnyModel, Render } from "@anywidget/types";
 import "./widget.css";
 

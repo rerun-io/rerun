@@ -35,22 +35,22 @@ fn space_view_with_visible_history(space_view_class: SpaceViewClassIdentifier) -
     VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(&space_view_class)
 }
 
-pub fn query_range_ui_space_view(
+pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    space_view: &SpaceViewBlueprint,
+    view: &SpaceViewBlueprint,
 ) {
-    if !space_view_with_visible_history(space_view.class_identifier()) {
+    if !space_view_with_visible_history(view.class_identifier()) {
         return;
     }
 
     let property_path = entity_path_for_view_property(
-        space_view.id,
+        view.id,
         ctx.store_context.blueprint.tree(),
         re_types::blueprint::archetypes::VisibleTimeRanges::name(),
     );
 
-    let query_range = space_view.query_range(
+    let query_range = view.query_range(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
         ctx.rec_cfg.time_ctrl.read().timeline(),
@@ -61,7 +61,7 @@ pub fn query_range_ui_space_view(
     visible_time_range_ui(ctx, ui, query_range, &property_path, is_space_view);
 }
 
-pub fn query_range_ui_data_result(
+pub fn visible_time_range_ui_for_data_result(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     data_result: &re_viewer_context::DataResult,
@@ -111,13 +111,17 @@ fn visible_time_range_ui(
     let has_individual_range_before = has_individual_range;
     let query_range_before = resolved_query_range.clone();
 
-    query_range_ui(
-        ctx,
-        ui,
-        &mut resolved_query_range,
-        &mut has_individual_range,
-        is_space_view,
-    );
+    ui.scope(|ui| {
+        // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+        query_range_ui(
+            ctx,
+            ui,
+            &mut resolved_query_range,
+            &mut has_individual_range,
+            is_space_view,
+        );
+    });
 
     if query_range_before != resolved_query_range
         || has_individual_range_before != has_individual_range
@@ -145,7 +149,10 @@ fn save_visible_time_ranges(
         let time_range = match query_range {
             QueryRange::TimeRange(time_range) => time_range,
             QueryRange::LatestAt => {
-                re_log::error!("Latest-at queries can't be used as an override yet. They can only come from defaults.");
+                re_log::error!(
+                    "Latest-at queries can't be used as an override yet. They can only \
+                come from defaults."
+                );
                 return;
             }
         };
@@ -169,82 +176,84 @@ fn query_range_ui(
     let time_type = time_ctrl.timeline().typ();
 
     let mut interacting_with_controls = false;
+    let markdown = "# Visible time range\n
+This feature controls the time range used to display data in the space view.
 
-    let collapsing_response = ui.collapsing_header("Visible time range", false, |ui| {
-        ui.horizontal(|ui| {
-            ui.re_radio_value(has_individual_time_range, false, "Default")
-                .on_hover_text(if is_space_view {
-                    "Default query range settings for this kind of space view"
-                } else {
-                    "Query range settings inherited from parent entity or enclosing \
+Notes:
+- The settings are inherited from the parent entity or enclosing space view if not overridden.
+- Visible time range properties are stored on a per-timeline basis.
+- The data current as of the time range starting time is included.";
+
+    let collapsing_response = ui
+        .section_collapsing_header("Visible time range")
+        .default_open(false)
+        .help_markdown(markdown)
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.re_radio_value(has_individual_time_range, false, "Default")
+                    .on_hover_text(if is_space_view {
+                        "Default query range settings for this kind of space view"
+                    } else {
+                        "Query range settings inherited from parent entity or enclosing \
                         space view"
-                });
-            ui.re_radio_value(has_individual_time_range, true, "Override")
-                .on_hover_text(if is_space_view {
-                    "Set query range settings for the contents of this space view"
+                    });
+                ui.re_radio_value(has_individual_time_range, true, "Override")
+                    .on_hover_text(if is_space_view {
+                        "Set query range settings for the contents of this space view"
+                    } else {
+                        "Set query range settings for this entity"
+                    });
+            });
+            let timeline_spec =
+                if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline()) {
+                    TimelineSpec::from_time_histogram(times)
                 } else {
-                    "Set query range settings for this entity"
-                });
-        });
-        let timeline_spec =
-            if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline()) {
-                TimelineSpec::from_time_histogram(times)
+                    TimelineSpec::from_time_range(0..=0)
+                };
+
+            let current_time = TimeInt(
+                time_ctrl
+                    .time_i64()
+                    .unwrap_or_default()
+                    .at_least(*timeline_spec.range.start()),
+            ); // accounts for timeless time (TimeInt::MIN)
+
+            if *has_individual_time_range {
+                let time_range = match query_range {
+                    QueryRange::TimeRange(time_range) => time_range,
+                    QueryRange::LatestAt => {
+                        // This should only happen if we just flipped to an individual range and the parent used latest-at queries.
+                        *query_range = QueryRange::TimeRange(TimeRange::AT_CURSOR);
+                        match query_range {
+                            QueryRange::TimeRange(range) => range,
+                            QueryRange::LatestAt => unreachable!(),
+                        }
+                    }
+                };
+
+                time_range_editor(
+                    ctx,
+                    ui,
+                    time_range,
+                    current_time,
+                    &mut interacting_with_controls,
+                    time_type,
+                    &timeline_spec,
+                );
             } else {
-                TimelineSpec::from_time_range(0..=0)
-            };
-
-        let current_time = TimeInt(
-            time_ctrl
-                .time_i64()
-                .unwrap_or_default()
-                .at_least(*timeline_spec.range.start()),
-        ); // accounts for timeless time (TimeInt::MIN)
-
-        if *has_individual_time_range {
-            let time_range = match query_range {
-                QueryRange::TimeRange(time_range) => time_range,
-                QueryRange::LatestAt => {
-                    // This should only happen if we just flipped to an individual range and the parent used latest-at queries.
-                    *query_range = QueryRange::TimeRange(TimeRange::AT_CURSOR);
-                    match query_range {
-                        QueryRange::TimeRange(range) => range,
-                        QueryRange::LatestAt => unreachable!(),
+                match &query_range {
+                    QueryRange::TimeRange(range) => {
+                        show_visual_time_range(ctx, ui, range, time_type, current_time);
+                    }
+                    QueryRange::LatestAt => {
+                        let current_time =
+                            time_type.format(current_time, ctx.app_options.time_zone);
+                        ui.label(format!("Latest-at query at: {current_time}"))
+                            .on_hover_text("Uses the latest known value for each component.");
                     }
                 }
-            };
-
-            time_range_editor(
-                ctx,
-                ui,
-                time_range,
-                current_time,
-                &mut interacting_with_controls,
-                time_type,
-                &timeline_spec,
-            );
-        } else {
-            match &query_range {
-                QueryRange::TimeRange(range) => {
-                    show_visual_time_range(ctx, ui, range, time_type, current_time);
-                }
-                QueryRange::LatestAt => {
-                    let current_time = time_type.format(current_time, ctx.app_options.time_zone);
-                    ui.label(format!("Latest-at query at: {current_time}"))
-                        .on_hover_text("Uses the latest known value for each component.");
-                }
             }
-        }
-    });
-
-    // Add spacer after the visible history section.
-    //TODO(ab): figure out why `item_spacing.y` is added _only_ in collapsed state.
-    if collapsing_response.body_response.is_some() {
-        ui.add_space(ui.spacing().item_spacing.y / 2.0);
-    } else {
-        ui.add_space(-ui.spacing().item_spacing.y / 2.0);
-    }
-    ui.full_span_separator();
-    ui.add_space(ui.spacing().item_spacing.y / 2.0);
+        });
 
     // Decide when to show the visible history highlight in the timeline. The trick is that when
     // interacting with the controls, the mouse might end up outside the collapsing header rect,
@@ -266,25 +275,6 @@ fn query_range_ui(
             }
         }
     }
-
-    let markdown = format!("# Visible time range\n
-This feature controls the time range used to display data in the space view.
-
-The settings are inherited from the parent entity or enclosing space view if not overridden.
-
-Visible time range properties are stored separately for each _type_ of timelines. They may differ depending on \
-whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.
-
-Notes that the data current as of the time range starting time is included.",
-        match time_type {
-            TimeType::Time => "temporal",
-            TimeType::Sequence => "sequence",
-        }
-    );
-
-    collapsing_response.header_response.on_hover_ui(|ui| {
-        ui.markdown_ui(egui::Id::new(markdown.as_str()), &markdown);
-    });
 }
 
 fn time_range_editor(
@@ -707,7 +697,7 @@ impl TimelineSpec {
 
         ui.add(
             egui::DragValue::new(&mut value.0)
-                .clamp_range(time_range)
+                .range(time_range)
                 .speed(speed),
         )
     }
@@ -767,7 +757,7 @@ impl TimelineSpec {
 
         let drag_value_response = ui.add(
             egui::DragValue::new(&mut time_unit)
-                .clamp_range(time_range)
+                .range(time_range)
                 .speed(speed)
                 .suffix(self.unit_symbol),
         );

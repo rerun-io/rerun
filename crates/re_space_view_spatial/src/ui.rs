@@ -4,8 +4,7 @@ use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_ui::{
-    image_meaning_for_entity, item_ui, show_zoomed_image_region,
-    show_zoomed_image_region_area_outline, DataUi,
+    item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi,
 };
 use re_format::format_f32;
 use re_log_types::Instance;
@@ -29,7 +28,10 @@ use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
-    visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
+    visualizers::{
+        CamerasVisualizer, DepthImageVisualizer, ImageVisualizer, SegmentationImageVisualizer,
+        UiLabel, UiLabelTarget,
+    },
 };
 use crate::{contexts::PrimitiveCounter, scene_bounding_boxes::SceneBoundingBoxes};
 use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
@@ -108,13 +110,10 @@ impl SpatialSpaceViewState {
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        self.num_non_segmentation_images_last_frame = system_output
-            .view_systems
-            .get::<ImageVisualizer>()?
-            .images
-            .iter()
-            .filter(|i| i.meaning != TensorDataMeaning::ClassId)
-            .count();
+        let view_systems = &system_output.view_systems;
+        let num_images = view_systems.get::<ImageVisualizer>()?.images.len();
+        let num_depth_images = view_systems.get::<DepthImageVisualizer>()?.images.len();
+        self.num_non_segmentation_images_last_frame = num_images + num_depth_images;
 
         Ok(())
     }
@@ -267,7 +266,7 @@ fn size_ui(
             .add(
                 egui::DragValue::new(&mut displayed_size)
                     .speed(drag_speed)
-                    .clamp_range(clamp_range)
+                    .range(clamp_range)
                     .max_decimals(4),
             )
             .changed()
@@ -499,12 +498,18 @@ pub fn picking(
 
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
+    let depth_images = visualizers.get::<DepthImageVisualizer>()?;
+    let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
         render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &images.images,
+        images
+            .images
+            .iter()
+            .chain(depth_images.images.iter())
+            .chain(segmentation_images.images.iter()),
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
@@ -546,10 +551,8 @@ pub fn picking(
             continue;
         }
 
-        let store = ctx.recording_store();
-
         // Special hover ui for images.
-        let is_depth_cloud = images
+        let is_depth_cloud = depth_images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
 
@@ -563,11 +566,22 @@ pub fn picking(
         }
 
         let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-            let meaning = image_meaning_for_entity(
-                &instance_path.entity_path,
-                &query.latest_at_query(),
-                store,
-            );
+            let meaning = if segmentation_images
+                .images
+                .iter()
+                .any(|i| i.ent_path == instance_path.entity_path)
+            {
+                TensorDataMeaning::ClassId
+            } else if is_depth_cloud
+                || depth_images
+                    .images
+                    .iter()
+                    .any(|i| i.ent_path == instance_path.entity_path)
+            {
+                TensorDataMeaning::Depth
+            } else {
+                TensorDataMeaning::Unknown
+            };
 
             let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(

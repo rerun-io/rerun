@@ -26,6 +26,7 @@ pub use re_types_blueprint::blueprint::components::GridColumns;
 pub use re_types_blueprint::blueprint::components::IncludedSpaceView;
 pub use re_types_blueprint::blueprint::components::RootContainer;
 pub use re_types_blueprint::blueprint::components::SpaceViewMaximized;
+pub use re_types_blueprint::blueprint::components::VisualizerOverrides;
 
 /// Because blueprints are both read and written the schema must match what
 /// we expect to find or else we will run into all kinds of problems.
@@ -56,4 +57,5 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<Visible>(blueprint)
         && validate_component::<VisibleTimeRange>(blueprint)
         && validate_component::<VisualBounds2D>(blueprint)
+        && validate_component::<VisualizerOverrides>(blueprint)
 }

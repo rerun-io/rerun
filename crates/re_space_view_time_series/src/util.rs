@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types::{
     components::AggregationPolicy,
-    datatypes::{TimeRange, TimeRangeBoundary, Utf8},
+    datatypes::{TimeRange, TimeRangeBoundary},
 };
 use re_viewer_context::{ViewQuery, ViewerContext};
 
@@ -85,7 +85,7 @@ pub fn points_to_series(
     points: Vec<PlotPoint>,
     store: &re_data_store::DataStore,
     query: &ViewQuery<'_>,
-    series_name: Option<Utf8>,
+    series_name: &re_types::components::Name,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
 ) {
@@ -99,13 +99,6 @@ pub fn points_to_series(
         .entity_min_time(&query.timeline, entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
-    let series_label = series_name.unwrap_or_else(|| {
-        let same_label = |points: &[PlotPoint]| -> Option<Utf8> {
-            let label = points[0].attrs.label.as_ref()?;
-            (points.iter().all(|p| p.attrs.label.as_ref() == Some(label))).then(|| label.clone())
-        };
-        same_label(&points).unwrap_or_else(|| entity_path.to_string().into())
-    });
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter
         let mut kind = points[0].attrs.kind;
@@ -114,7 +107,7 @@ pub fn points_to_series(
         }
 
         all_series.push(PlotSeries {
-            label: series_label,
+            label: series_name.0.clone(),
             color: points[0].attrs.color,
             radius_ui: points[0].attrs.radius_ui,
             kind,
@@ -126,7 +119,7 @@ pub fn points_to_series(
         });
     } else {
         add_series_runs(
-            &series_label,
+            series_name,
             points,
             entity_path,
             aggregator,
@@ -205,7 +198,7 @@ pub fn apply_aggregation(
 
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
-    series_label: &Utf8,
+    series_name: &re_types::components::Name,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
     aggregator: AggregationPolicy,
@@ -218,7 +211,7 @@ fn add_series_runs(
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
-        label: series_label.clone(),
+        label: series_name.0.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
@@ -242,7 +235,7 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
-                    label: series_label.clone(),
+                    label: series_name.0.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,
@@ -275,54 +268,4 @@ fn add_series_runs(
     if !series.points.is_empty() {
         all_series.push(series);
     }
-}
-
-/// Returns the least number greater than `self`.
-///
-/// Unstable feature in Rust. This is a copy of the implementation from the standard library.
-///
-/// Let `TINY` be the smallest representable positive `f64`. Then,
-///  - if `self.is_nan()`, this returns `self`;
-///  - if `self` is [`NEG_INFINITY`], this returns [`MIN`];
-///  - if `self` is `-TINY`, this returns -0.0;
-///  - if `self` is -0.0 or +0.0, this returns `TINY`;
-///  - if `self` is [`MAX`] or [`INFINITY`], this returns [`INFINITY`];
-///  - otherwise the unique least value greater than `self` is returned.
-///
-/// The identity `x.next_up() == -(-x).next_down()` holds for all non-NaN `x`. When `x`
-/// is finite `x == x.next_up().next_down()` also holds.
-///
-/// ```ignore
-/// #![feature(float_next_up_down)]
-/// // f64::EPSILON is the difference between 1.0 and the next number up.
-/// assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
-/// // But not for most numbers.
-/// assert!(0.1f64.next_up() < 0.1 + f64::EPSILON);
-/// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
-/// ```
-///
-/// [`NEG_INFINITY`]: f64::NEG_INFINITY
-/// [`INFINITY`]: f64::INFINITY
-/// [`MIN`]: f64::MIN
-/// [`MAX`]: f64::MAX
-pub fn next_up_f64(this: f64) -> f64 {
-    // We must use strictly integer arithmetic to prevent denormals from
-    // flushing to zero after an arithmetic operation on some platforms.
-    const TINY_BITS: u64 = 0x1; // Smallest positive f64.
-    const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
-
-    let bits = this.to_bits();
-    if this.is_nan() || bits == f64::INFINITY.to_bits() {
-        return this;
-    }
-
-    let abs = bits & CLEAR_SIGN_MASK;
-    let next_bits = if abs == 0 {
-        TINY_BITS
-    } else if bits == abs {
-        bits + 1
-    } else {
-        bits - 1
-    };
-    f64::from_bits(next_bits)
 }

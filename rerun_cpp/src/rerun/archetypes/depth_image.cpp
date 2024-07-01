@@ -26,11 +26,6 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.draw_order.has_value()) {
-            auto result = DataCell::from_loggable(archetype.draw_order.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
         if (archetype.colormap.has_value()) {
             auto result = DataCell::from_loggable(archetype.colormap.value());
             RR_RETURN_NOT_OK(result.error);
@@ -38,6 +33,11 @@ namespace rerun {
         }
         if (archetype.point_fill_ratio.has_value()) {
             auto result = DataCell::from_loggable(archetype.point_fill_ratio.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.draw_order.has_value()) {
+            auto result = DataCell::from_loggable(archetype.draw_order.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

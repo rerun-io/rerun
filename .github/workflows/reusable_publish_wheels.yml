@@ -42,6 +42,7 @@ jobs:
 
   ## Build
 
+  # Note: this also builds `rerun_notebook`
   build-linux-x64:
     name: "Linux-x64: Build Wheels"
     needs: [get-commit-sha]

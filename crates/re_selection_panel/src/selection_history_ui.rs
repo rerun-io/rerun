@@ -184,7 +184,7 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         Item::StoreId(store_id) => store_id.to_string(),
         Item::SpaceView(space_view_id) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
-            if let Some(space_view) = blueprint.space_view(space_view_id) {
+            if let Some(space_view) = blueprint.view(space_view_id) {
                 space_view.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed space view>".to_owned()
@@ -193,12 +193,11 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         Item::InstancePath(instance_path) => instance_path.to_string(),
         Item::DataResult(space_view_id, instance_path) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
-            let space_view_display_name =
-                if let Some(space_view) = blueprint.space_view(space_view_id) {
-                    space_view.display_name_or_default().as_ref().to_owned()
-                } else {
-                    "<removed space view>".to_owned()
-                };
+            let space_view_display_name = if let Some(space_view) = blueprint.view(space_view_id) {
+                space_view.display_name_or_default().as_ref().to_owned()
+            } else {
+                "<removed space view>".to_owned()
+            };
 
             format!("{instance_path} in {space_view_display_name}")
         }

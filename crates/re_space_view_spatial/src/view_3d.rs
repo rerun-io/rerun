@@ -19,7 +19,7 @@ use re_viewer_context::{
     VisualizableEntities, VisualizableFilterContext,
 };
 
-use crate::visualizers::{CamerasVisualizer, Transform3DArrowsVisualizer, Transform3DDetector};
+use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer};
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
@@ -194,59 +194,67 @@ impl SpaceViewClass for SpatialSpaceView3D {
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
-        let applicable_visualizers: HashSet<&ViewSystemIdentifier> =
-            applicable_entities_per_visualizer
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+        let arrows_viz = Transform3DArrowsVisualizer::identifier();
+        let axis_detector = AxisLengthDetector::identifier();
+        let camera_viz = CamerasVisualizer::identifier();
 
-        let available_visualizers: HashSet<&ViewSystemIdentifier> =
-            visualizable_entities_per_visualizer
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-        let mut visualizers: SmallVisualizerSet = available_visualizers
+        let applicable: HashSet<&ViewSystemIdentifier> = applicable_entities_per_visualizer
             .iter()
-            .filter_map(|visualizer| {
-                if indicated_entities_per_visualizer
-                    .get(*visualizer)
-                    .map_or(false, |matching_list| matching_list.contains(entity_path))
-                {
-                    Some(**visualizer)
+            .filter_map(|(visualizer, ents)| {
+                if ents.contains(entity_path) {
+                    Some(visualizer)
                 } else {
                     None
                 }
             })
             .collect();
 
-        if available_visualizers.contains(&Transform3DArrowsVisualizer::identifier()) {
-            // There are two cases where we want to activate the [`Transform3DArrowVisualizer`]:
-            //  - If we have no visualizers, but [`Transform3DDetector`] indicates there is a transform here.
-            //  - If we have the [`CamerasVisualizer`] active.
-            if (visualizers.is_empty()
-                && applicable_visualizers.contains(&Transform3DDetector::identifier()))
-                || visualizers.contains(&CamerasVisualizer::identifier())
-            {
-                visualizers.push(Transform3DArrowsVisualizer::identifier());
-            }
+        let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
+            .iter()
+            .filter_map(|(visualizer, ents)| {
+                if ents.contains(entity_path) {
+                    Some(visualizer)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // We never want to consider `Transform3DArrows` as directly indicated since it uses the
+        // the Transform3D archetype. This is often used to transform other 3D primitives, where
+        // it might be annoying to always have the arrows show up.
+        let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
+            .iter()
+            .filter_map(|(visualizer, ents)| {
+                if visualizer != &arrows_viz && ents.contains(entity_path) {
+                    Some(visualizer)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Start with all the entities which are both indicated and visualizable.
+        let mut chosen: SmallVisualizerSet = indicated
+            .intersection(&visualizable)
+            .copied()
+            .copied()
+            .collect();
+
+        // There are three cases where we want to activate the [`Transform3DArrowVisualizer`]:
+        //  - If we have no visualizers, but otherwise meet the criteria for Transform3DArrows.
+        //  - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
+        //  - If we already have the [`CamerasVisualizer`] active.
+        if !chosen.contains(&arrows_viz)
+            && visualizable.contains(&arrows_viz)
+            && ((chosen.is_empty() && visualizable.contains(&arrows_viz))
+                || applicable.contains(&axis_detector)
+                || chosen.contains(&camera_viz))
+        {
+            chosen.push(arrows_viz);
         }
 
-        // If there were no other visualizers, or this is a camera, then we will include axes.
-
-        visualizers
+        chosen
     }
 
     fn spawn_heuristics(

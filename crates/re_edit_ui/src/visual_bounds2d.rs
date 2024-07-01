@@ -13,8 +13,7 @@ pub fn multiline_edit_visual_bounds2d(
 
     let mut any_edit = false;
 
-    let response_x = ui.list_item().interactive(false).show_flat(
-        ui,
+    let response_x = ui.list_item_flat_noninteractive(
         re_ui::list_item::PropertyContent::new("x").value_fn(|ui, _| {
             let [x_range_start, x_range_end] = &mut value.x_range.0;
             let speed = speed_func(*x_range_start, *x_range_end);
@@ -23,7 +22,8 @@ pub fn multiline_edit_visual_bounds2d(
                 .horizontal_centered(|ui| {
                     let response_min = ui.add(
                         egui::DragValue::new(x_range_start)
-                            .clamp_range(f64::MIN..=*x_range_end)
+                            .clamp_to_range(false)
+                            .range(f64::MIN..=*x_range_end)
                             .max_decimals(2)
                             .speed(speed),
                     );
@@ -32,7 +32,8 @@ pub fn multiline_edit_visual_bounds2d(
 
                     let response_max = ui.add(
                         egui::DragValue::new(x_range_end)
-                            .clamp_range(*x_range_start..=f64::MAX)
+                            .clamp_to_range(false)
+                            .range(*x_range_start..=f64::MAX)
                             .max_decimals(2)
                             .speed(speed),
                     );
@@ -47,8 +48,7 @@ pub fn multiline_edit_visual_bounds2d(
         }),
     );
 
-    let response_y = ui.list_item().interactive(false).show_flat(
-        ui,
+    let response_y = ui.list_item_flat_noninteractive(
         re_ui::list_item::PropertyContent::new("y").value_fn(|ui, _| {
             let [y_range_start, y_range_end] = &mut value.y_range.0;
             let speed = speed_func(*y_range_start, *y_range_end);
@@ -57,7 +57,8 @@ pub fn multiline_edit_visual_bounds2d(
                 .horizontal_centered(|ui| {
                     let response_min = ui.add(
                         egui::DragValue::new(y_range_start)
-                            .clamp_range(f64::MIN..=*y_range_end)
+                            .clamp_to_range(false)
+                            .range(f64::MIN..=*y_range_end)
                             .max_decimals(2)
                             .speed(speed),
                     );
@@ -66,7 +67,8 @@ pub fn multiline_edit_visual_bounds2d(
 
                     let response_max = ui.add(
                         egui::DragValue::new(y_range_end)
-                            .clamp_range(*y_range_start..=f64::MAX)
+                            .clamp_to_range(false)
+                            .range(*y_range_start..=f64::MAX)
                             .max_decimals(2)
                             .speed(speed),
                     );
@@ -104,14 +106,16 @@ pub fn singleline_edit_visual_bounds2d(
 
     let response_width = ui.add(
         egui::DragValue::new(&mut width_edit)
-            .clamp_range(0.001..=f64::MAX)
+            .clamp_to_range(false)
+            .range(0.001..=f64::MAX)
             .max_decimals(1)
             .speed(speed_func(width)),
     );
     ui.label("×");
     let response_height = ui.add(
         egui::DragValue::new(&mut height_edit)
-            .clamp_range(0.001..=f64::MAX)
+            .clamp_to_range(false)
+            .range(0.001..=f64::MAX)
             .max_decimals(1)
             .speed(speed_func(height)),
     );

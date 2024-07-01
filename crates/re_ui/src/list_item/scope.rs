@@ -247,7 +247,8 @@ impl LayoutInfoStack {
 /// *Note*
 /// - The scope id is derived from the provided `id_source` and combined with the [`egui::Ui`]'s id,
 ///   such that `id_source` only needs to be unique within the scope of the parent ui.
-/// - Uses [`egui::Ui::scope`] internally, so it's safe to modify the `ui` within the closure.
+/// - Creates a new wrapped [`egui::Ui`] internally, so it's safe to modify the `ui` within the closure.
+/// - Uses [`egui::Ui::push_id`] so two sibling `list_item_scope`:s with different ids won't have id clashes within them.
 /// - The `ui.spacing_mut().item_spacing.y` is set to `0.0` to remove the default spacing between
 ///   list items.
 pub fn list_item_scope<R>(
@@ -255,6 +256,7 @@ pub fn list_item_scope<R>(
     id_source: impl std::hash::Hash,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
+    let id_source = egui::Id::new(id_source); // So we can use it twice
     let scope_id = ui.id().with(id_source);
 
     // read last frame layout statistics and reset for the new frame
@@ -282,7 +284,7 @@ pub fn list_item_scope<R>(
     // push, run, pop
     LayoutInfoStack::push(ui.ctx(), state.clone());
     let result = ui
-        .scope(|ui| {
+        .push_id(id_source, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
             content(ui)
         })

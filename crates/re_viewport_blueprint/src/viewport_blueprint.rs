@@ -189,7 +189,7 @@ impl ViewportBlueprint {
         self.space_views.keys()
     }
 
-    pub fn space_view(&self, space_view: &SpaceViewId) -> Option<&SpaceViewBlueprint> {
+    pub fn view(&self, space_view: &SpaceViewId) -> Option<&SpaceViewBlueprint> {
         self.space_views.get(space_view)
     }
 
@@ -233,7 +233,7 @@ impl ViewportBlueprint {
         space_view_id: &SpaceViewId,
         ctx: &ViewerContext<'_>,
     ) -> Option<SpaceViewId> {
-        let space_view = self.space_view(space_view_id)?;
+        let space_view = self.view(space_view_id)?;
 
         let new_space_view = space_view.duplicate(ctx.store_context, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
@@ -274,10 +274,10 @@ impl ViewportBlueprint {
             | Item::ComponentPath(_)
             | Item::InstancePath(_) => true,
 
-            Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
+            Item::SpaceView(space_view_id) => self.view(space_view_id).is_some(),
 
             Item::DataResult(space_view_id, instance_path) => {
-                self.space_view(space_view_id).map_or(false, |space_view| {
+                self.view(space_view_id).map_or(false, |space_view| {
                     let entity_path = &instance_path.entity_path;
 
                     // TODO(#5742): including any path that is—or descend from—the space origin is
@@ -693,7 +693,7 @@ impl ViewportBlueprint {
                 }
             }
             Contents::SpaceView(space_view_id) => {
-                if let Some(space_view) = self.space_view(space_view_id) {
+                if let Some(space_view) = self.view(space_view_id) {
                     space_view.visible
                 } else {
                     re_log::warn_once!(
@@ -735,7 +735,7 @@ impl ViewportBlueprint {
                 }
             }
             Contents::SpaceView(space_view_id) => {
-                if let Some(space_view) = self.space_view(space_view_id) {
+                if let Some(space_view) = self.view(space_view_id) {
                     if visible != space_view.visible {
                         if self.auto_layout() {
                             re_log::trace!(
