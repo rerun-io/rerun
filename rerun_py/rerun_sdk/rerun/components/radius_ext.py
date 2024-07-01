@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numbers
-from collections.abc import Sized
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -9,10 +8,6 @@ import numpy.typing as npt
 
 if TYPE_CHECKING:
     from . import RadiusArrayLike
-
-
-def next_offset(acc: int, arr: Sized) -> int:
-    return acc + len(arr)
 
 
 class RadiusExt:
