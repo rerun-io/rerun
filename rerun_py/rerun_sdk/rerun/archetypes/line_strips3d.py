@@ -75,12 +75,7 @@ class LineStrips3D(Archetype):
     rr.init("rerun_example_line_strip3d_ui_radius", spawn=True)
 
     # A blue line with a scene unit radii of 0.01.
-    points = [
-        [0, 0, 0],
-        [0, 0, 1],
-        [1, 0, 0],
-        [1, 0, 1],
-    ]
+    points = [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1]]
     rr.log(
         "scene_unit_line",
         rr.LineStrips3D(
@@ -94,12 +89,7 @@ class LineStrips3D(Archetype):
     # A red line with a ui point radii of 5.
     # Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
     # For 100% ui scaling, ui points are equal to pixels.
-    points = [
-        [3, 0, 0],
-        [3, 0, 1],
-        [4, 0, 0],
-        [4, 0, 1],
-    ]
+    points = [[3, 0, 0], [3, 0, 1], [4, 0, 0], [4, 0, 1]]
     rr.log(
         "ui_points_line",
         rr.LineStrips3D(

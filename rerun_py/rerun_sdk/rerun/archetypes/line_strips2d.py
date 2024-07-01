@@ -23,8 +23,8 @@ class LineStrips2D(Archetype):
     """
     **Archetype**: 2D line strips with positions and optional colors, radii, labels, etc.
 
-    Example
-    -------
+    Examples
+    --------
     ### `line_strip2d_batch`:
     ```python
     import rerun as rr
@@ -57,6 +57,39 @@ class LineStrips2D(Archetype):
       <img src="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png" width="640">
     </picture>
     </center>
+
+    ### Lines with scene & ui radius each:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_line_strip3d_ui_radius", spawn=True)
+
+    # A blue line with a scene unit radii of 0.01.
+    points = [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1]]
+    rr.log(
+        "scene_unit_line",
+        rr.LineStrips3D(
+            [points],
+            # By default, radii are interpreted as world-space units.
+            radii=0.01,
+            colors=[0, 0, 255],
+        ),
+    )
+
+    # A red line with a ui point radii of 5.
+    # Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
+    # For 100% ui scaling, ui points are equal to pixels.
+    points = [[3, 0, 0], [3, 0, 1], [4, 0, 0], [4, 0, 1]]
+    rr.log(
+        "ui_points_line",
+        rr.LineStrips3D(
+            [points],
+            # rr.Radius.ui_points produces radii that the viewer interprets as given in ui points.
+            radii=rr.Radius.ui_points(5.0),
+            colors=[255, 0, 0],
+        ),
+    )
+    ```
 
     """
 
