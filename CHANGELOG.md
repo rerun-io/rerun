@@ -22,7 +22,7 @@
   * OCR
   * Vistas
   * Stereo Vision SLAM
-* 🛠️ New components: TODO: doc links
+* 🛠️ New/changed components: TODO: doc links
   * `ImagePlaneDistance`, allows to configure the size of the Pinhole frustum visualization
   * `AxisLength`, allows to configure the axis length of the transform visualization
   * (Depth/Segmentation)Images
@@ -32,6 +32,7 @@
     * `Colormap`, for setting `DepthImage` colormap
     * `AggregationPolicy`, for setting aggregation policy on line plots
   * `Interactive` property for making objects non-interactive in views is now exposed. Can only be used as override so far.
+  * `Radius` component can now optionally specify radius in UI points
 * 🖼️ New blueprint accessible View properties
   * `TensorView` is now fully configurable from code
   * `BarChartView` has now configurable plot legend placement
