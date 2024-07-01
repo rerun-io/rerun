@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // By default, radii are interpreted as world-space units.
             .with_radii([0.1, 0.3])
             .with_colors([rerun::Color::from_rgb(0, 0, 255)]),
-    );
+    )?;
 
     // Two red points with ui point radii of 40 and 60.
     // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 rerun::Radius::new_ui_points(60.0),
             ])
             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
-    );
+    )?;
 
     Ok(())
 }

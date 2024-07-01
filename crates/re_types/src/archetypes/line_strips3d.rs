@@ -76,7 +76,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             // By default, radii are interpreted as world-space units.
 ///             .with_radii([0.01])
 ///             .with_colors([rerun::Color::from_rgb(0, 0, 255)]),
-///     );
+///     )?;
 ///
 ///     // A red line with a ui point radii of 5.
 ///     // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
@@ -88,7 +88,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.
 ///             .with_radii([rerun::Radius::new_ui_points(5.0)])
 ///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
-///     );
+///     )?;
 ///
 ///     Ok(())
 /// }
