@@ -325,6 +325,9 @@ pub fn load_keypoint_connections(
         .world_from_obj(ent_context.world_from_entity)
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
+    // TODO(andreas): Make configurable. Should we pick up the point's radius and make this proportional?
+    let line_radius = re_renderer::Size(re_types::components::Radius::default().0);
+
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let resolved_class_description = ent_context
             .annotations
@@ -353,7 +356,7 @@ pub fn load_keypoint_connections(
             };
             line_batch
                 .add_segment(*a, *b)
-                .radius(re_renderer::Size::new_ui_points(1.5)) // TODO(andreas): make this configurable.
+                .radius(line_radius)
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.
