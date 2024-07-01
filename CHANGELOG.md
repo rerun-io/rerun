@@ -6,8 +6,10 @@
 
 ### ✨ Overview & highlights
 
-* 🟦 Introducing blueprint component override & defaults
-  * Can be set both from UI and (Python) blueprint code
+* 🟦 Blueprint component override & defaults
+  * Defaults: Configure default component value for an entire view used when no data-store (via `log`) value was found
+  * Override: Ignore data-store & default value and use specified value instead. Can be set per view per entity.
+  * Both are available from UI and (Python) blueprint code
   * New UI section on entity-in-view shows all active visualizers, what components they use and where they come from
   * Everything that was editable per Entity in a View uses component overrides now (e.g. camera plane distance, transform axis lengths etc.)
   * Tip: Tooltips for each component in the UI link to the docs now!
@@ -16,7 +18,11 @@
   * Among other things you can now stream data to Rerun notebook cells
   * Menu bar, time controls, etc. can now be fully hidden
   * TODO: More details!
-* 🛠️ New components: TODO: Links
+* 🧑‍🏫 New Examples TODO: links
+  * OCR
+  * Vistas
+  * Stereo Vision SLAM
+* 🛠️ New components: TODO: doc links
   * `ImagePlaneDistance`, allows to configure the size of the Pinhole frustum visualization
   * `AxisLength`, allows to configure the axis length of the transform visualization
   * (Depth/Segmentation)Images
@@ -29,10 +35,6 @@
 * 🖼️ New blueprint accessible View properties
   * `TensorView` is now fully configurable from code
   * `BarChartView` has now configurable plot legend placement
-* 🧑‍🏫 New Examples TODO: links
-  * OCR
-  * Vistas
-  * Stereo Vision SLAM
 * 🚚 In the process of making the store based on component chunks across time. More on this in the next release!
   * SDKs are already using chunks, performance characteristics may have changed but should be largely the same for the moment
 
