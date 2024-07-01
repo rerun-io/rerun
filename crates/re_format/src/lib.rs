@@ -155,6 +155,9 @@ pub struct FloatFormatOptions {
     pub num_decimals: Option<usize>,
 
     pub strip_trailing_zeros: bool,
+
+    /// Only add thousands separators to decimals if there are at least this many decimals.
+    pub min_decimals_for_thousands_separators: usize,
 }
 
 impl FloatFormatOptions {
@@ -165,6 +168,7 @@ impl FloatFormatOptions {
         precision: 7,
         num_decimals: None,
         strip_trailing_zeros: true,
+        min_decimals_for_thousands_separators: 6,
     };
 
     /// Default options for formatting an [`f64`].
@@ -174,6 +178,7 @@ impl FloatFormatOptions {
         precision: 15,
         num_decimals: None,
         strip_trailing_zeros: true,
+        min_decimals_for_thousands_separators: 6,
     };
 
     /// Always show the sign, even if it is positive (`+`).
@@ -223,6 +228,7 @@ impl FloatFormatOptions {
             precision,
             num_decimals,
             strip_trailing_zeros,
+            min_decimals_for_thousands_separators,
         } = *self;
 
         if value.is_nan() {
@@ -275,10 +281,15 @@ impl FloatFormatOptions {
                     // let fractional_part = &fractional_part[..num_decimals.min(fractional_part.len())];
 
                     let integer_part = add_thousands_separators(integer_part);
-                    // For the fractional part we should start counting thousand separators from the _front_, so we reverse:
-                    let fractional_part =
-                        reverse(&add_thousands_separators(&reverse(fractional_part)));
-                    format!("{integer_part}.{fractional_part}")
+
+                    if fractional_part.len() < min_decimals_for_thousands_separators {
+                        format!("{integer_part}.{fractional_part}")
+                    } else {
+                        // For the fractional part we should start counting thousand separators from the _front_, so we reverse:
+                        let fractional_part =
+                            reverse(&add_thousands_separators(&reverse(fractional_part)));
+                        format!("{integer_part}.{fractional_part}")
+                    }
                 } else {
                     add_thousands_separators(&formatted) // it's an integer
                 }
@@ -320,7 +331,7 @@ fn test_format_f32() {
         (-42.0, "−42"),
         (-4.20, "−4.2"),
         (123_456.78, "123 456.8"),
-        (78.4321, "78.432 1"),
+        (78.4321, "78.4321"), // min_decimals_for_thousands_separators
         (-std::f32::consts::PI, "−3.141 593"),
         (-std::f32::consts::PI * 1e6, "−3 141 593"),
         (-std::f32::consts::PI * 1e20, "−3.141593e20"), // We switch to scientific notation to not show false precision
@@ -345,15 +356,15 @@ fn test_format_f64() {
         (-42.0, "−42"),
         (-4.20, "−4.2"),
         (123_456_789.0, "123 456 789"),
-        (123_456_789.123_45, "123 456 789.123 45"),
+        (123_456_789.123_45, "123 456 789.12345"), // min_decimals_for_thousands_separators
         (0.0000123456789, "0.000 012 345 678 9"),
         (0.123456789, "0.123 456 789"),
         (1.23456789, "1.234 567 89"),
         (12.3456789, "12.345 678 9"),
         (123.456789, "123.456 789"),
-        (1234.56789, "1 234.567 89"),
-        (12345.6789, "12 345.678 9"),
-        (78.4321, "78.432 1"),
+        (1234.56789, "1 234.56789"), // min_decimals_for_thousands_separators
+        (12345.6789, "12 345.6789"), // min_decimals_for_thousands_separators
+        (78.4321, "78.4321"),        // min_decimals_for_thousands_separators
         (-std::f64::consts::PI, "−3.141 592 653 589 79"),
         (-std::f64::consts::PI * 1e6, "−3 141 592.653 589 79"),
         (-std::f64::consts::PI * 1e20, "−3.14159265358979e20"), // We switch to scientific notation to not show false precision
