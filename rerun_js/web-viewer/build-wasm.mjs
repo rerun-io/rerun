@@ -44,7 +44,8 @@ function script() {
   // all of the globals are scoped to the function, and become closure state
   // for any functions that reference them within the module.
   //
-  // we do this so that we don't leak globals across web viewer instantiations.
+  // we do this so that we don't leak globals across web viewer instantiations:
+  // https://github.com/rustwasm/wasm-bindgen/issues/3130
   //
   // this is HIGHLY sensitive to the exact output of `wasm-bindgen`, so if
   // the output changes, this will need to be updated.
@@ -81,15 +82,14 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   const closure_dtors = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(state => {
-    wasm.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`
+    wasm.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`;
 
   const closure_dtors_patch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(state => {
-    wasm?.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`
+    wasm?.__wbindgen_export_3.get(state.dtor)(state.a, state.b)`;
 
   code = code.replace(closure_dtors, closure_dtors_patch);
-
 
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }
