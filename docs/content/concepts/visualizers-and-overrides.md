@@ -20,9 +20,9 @@ Views rely on visualizers to display each of their entities. For example, [3D vi
 
 <!-- TODO(#6687): add link to page explaining indicator components -->
 For a given view, visualizers are selected for each of its entities based on their content.
-By default, visualizers are selected for entities logged with a corresponding archetype.
+By default, visualizers are selected for entities logged with a corresponding [archetype](../reference/types/archetypes.md).
 For example, in a 3D view, an entity logged with the [`PointsD`](../reference/types/archetypes/points3d.md) results in the `Points3D` visualizer being selected by default.
-This happens because archetypes include an _indicator component_ to capture the intent of the logging code.
+This happens because [archetypes](../reference/types/archetypes.md) include an _indicator component_ to capture the intent of the logging code.
 This indicator component in turn triggers the default activation of the associated visualizer. 
 (We will see that this process can be influenced by both the user interface and the blueprints.)
 
