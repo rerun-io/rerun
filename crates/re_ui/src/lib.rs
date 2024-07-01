@@ -15,6 +15,8 @@ mod section_collapsing_header;
 pub mod toasts;
 mod ui_ext;
 
+use egui::NumExt as _;
+
 pub use self::{
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
@@ -89,6 +91,51 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     );
 
     design_tokens().apply(egui_ctx);
+
+    egui_ctx.style_mut(|style| {
+        style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
+    });
+}
+
+fn format_with_decimals_in_range(
+    value: f64,
+    decimal_range: std::ops::RangeInclusive<usize>,
+) -> String {
+    fn format_with_decimals(value: f64, decimals: usize) -> String {
+        re_format::FloatFormatOptions::DEFAULT_f64
+            .with_decimals(decimals)
+            .with_strip_trailing_zeros(false)
+            .format(value)
+    }
+
+    let epsilon = 16.0 * f32::EPSILON; // margin large enough to handle most peoples round-tripping needs
+
+    let min_decimals = *decimal_range.start();
+    let max_decimals = *decimal_range.end();
+    debug_assert!(min_decimals <= max_decimals);
+    debug_assert!(max_decimals < 100);
+    let max_decimals = max_decimals.at_most(16);
+    let min_decimals = min_decimals.at_most(max_decimals);
+
+    if min_decimals < max_decimals {
+        // Try using a few decimals as possible, and then add more until we have enough precision
+        // to round-trip the number.
+        for decimals in min_decimals..max_decimals {
+            let text = format_with_decimals(value, decimals);
+            if let Some(parsed) = re_format::parse_f64(&text) {
+                if egui::emath::almost_equal(parsed as f32, value as f32, epsilon) {
+                    // Enough precision to show the value accurately - good!
+                    return text;
+                }
+            }
+        }
+        // The value has more precision than we expected.
+        // Probably the value was set not by the slider, but from outside.
+        // In any case: show the full value
+    }
+
+    // Use max decimals
+    format_with_decimals(value, max_decimals)
 }
 
 /// Is this Ui in a resizable panel?
