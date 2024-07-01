@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// are interpreted as ui points.
 ///
 /// Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-/// At 100% ui scalling, ui points are equal to pixels
+/// At 100% ui scaling, ui points are equal to pixels
 /// The Viewer's ui scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
