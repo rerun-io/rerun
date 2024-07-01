@@ -47,7 +47,7 @@ elif ASSET_ENV == ASSET_MAGIC_INLINE:
 else:
     ESM_MOD = ASSET_ENV
     if not (ASSET_ENV.startswith("http://") or ASSET_ENV.startswith("https://")):
-        raise ValueError(f"RERUN_NOTEBOOK_ASSET_URL should be a URL starting with http or https. Found: {ASSET_ENV}")
+        raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
 
 
 class Viewer(anywidget.AnyWidget):

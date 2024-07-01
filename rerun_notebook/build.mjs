@@ -14,9 +14,12 @@ if (args.values.watch) {
 }
 
 async function watch() {
-  const watcher = await subscribe(path.join(process.cwd(), "src/js"), async () => {
-    await build();
-  });
+  const watcher = await subscribe(
+    path.join(process.cwd(), "src/js"),
+    async () => {
+      await build();
+    },
+  );
 
   process.on("SIGINT", async () => {
     await watcher.unsubscribe();
@@ -35,9 +38,13 @@ async function build() {
       entryPoints: ["src/js/widget.ts"],
       bundle: true,
       format: "esm",
-      minify: true,
+      // Minification doesn't help much with size, most of it is the embedded wasm binary.
+      // What it _does_ do is cause most editors to be unable to open the file at all,
+      // because it ends up being a single 30 MB-long line.
+      //
+      // minify: true,
+      keepNames: true,
       outdir: "src/rerun_notebook/static",
-      plugins: [wasmLoader({ mode: "embedded" })],
     });
     log(`Built widget in ${Date.now() - start}ms`);
   } catch (e) {
@@ -58,4 +65,3 @@ function log(message) {
 function error(message) {
   return console.error(`[${now()}] ${message}`);
 }
-
