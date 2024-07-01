@@ -19,8 +19,8 @@ int main() {
     );
 
     // A red line with a ui point radii of 5.
-    // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-    // For 100 % ui scaling, ui points are equal to pixels.
+    // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    // For 100 % ui scaling, UI points are equal to pixels.
     rerun::LineStrip3D linestrip_red(
         {{3.f, 0.f, 0.f}, {3.f, 0.f, 1.f}, {4.f, 0.f, 0.f}, {4.f, 0.f, 1.f}}
     );

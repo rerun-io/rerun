@@ -48,7 +48,7 @@ snippet: archetypes/point2d_random
   <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png">
 </picture>
 
-### Log points with radii given in ui points
+### Log points with radii given in UI points
 
 snippet: archetypes/point2d_ui_radius
 

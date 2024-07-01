@@ -58,7 +58,7 @@ class LineStrips2D(Archetype):
     </picture>
     </center>
 
-    ### Lines with scene & ui radius each:
+    ### Lines with scene & UI radius each:
     ```python
     import rerun as rr
 
@@ -77,8 +77,8 @@ class LineStrips2D(Archetype):
     )
 
     # A red line with a ui point radii of 5.
-    # Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-    # For 100% ui scaling, ui points are equal to pixels.
+    # UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    # For 100% ui scaling, UI points are equal to pixels.
     points = [[3, 0, 0], [3, 0, 1], [4, 0, 0], [4, 0, 1]]
     rr.log(
         "ui_points_line",

@@ -62,7 +62,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### Lines with scene & ui radius each
+    /// ### Lines with scene & UI radius each
     /// ![image](https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/full.png)
     ///
     /// ```cpp
@@ -85,8 +85,8 @@ namespace rerun::archetypes {
     ///     );
     ///
     ///     // A red line with a ui point radii of 5.
-    ///     // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-    ///     // For 100 % ui scaling, ui points are equal to pixels.
+    ///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    ///     // For 100 % ui scaling, UI points are equal to pixels.
     ///     rerun::LineStrip3D linestrip_red(
     ///         {{3.f, 0.f, 0.f}, {3.f, 0.f, 1.f}, {4.f, 0.f, 0.f}, {4.f, 0.f, 1.f}}
     ///     );

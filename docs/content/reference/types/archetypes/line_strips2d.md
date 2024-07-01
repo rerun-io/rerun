@@ -60,7 +60,7 @@ snippet: archetypes/line_strip2d_batch
   <img src="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png">
 </picture>
 
-### Lines with scene & ui radius each
+### Lines with scene & UI radius each
 
 snippet: archetypes/line_strip3d_ui_radius
 

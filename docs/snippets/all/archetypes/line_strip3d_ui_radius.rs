@@ -14,8 +14,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // A red line with a ui point radii of 5.
-    // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-    // For 100 % ui scaling, ui points are equal to pixels.
+    // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    // For 100 % ui scaling, UI points are equal to pixels.
     let points = [[3., 0., 0.], [3., 0., 1.], [4., 0., 0.], [4., 0., 1.]];
     rec.log(
         "ui_points_line",

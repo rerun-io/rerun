@@ -67,7 +67,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### Log points with radii given in ui points
+    /// ### Log points with radii given in UI points
     /// ![image](https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/full.png)
     ///
     /// ```cpp
@@ -87,8 +87,8 @@ namespace rerun::archetypes {
     ///     );
     ///
     ///     // Two red points with ui point radii of 40 and 60.
-    ///     // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-    ///     // For 100% ui scaling, ui points are equal to pixels.
+    ///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    ///     // For 100% ui scaling, UI points are equal to pixels.
     ///     rec.log(
     ///         "ui_points_points",
     ///         rerun::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}})

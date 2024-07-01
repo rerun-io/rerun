@@ -51,7 +51,7 @@ class Points2D(Points2DExt, Archetype):
     </picture>
     </center>
 
-    ### Log points with radii given in ui points:
+    ### Log points with radii given in UI points:
     ```python
     import rerun as rr
     import rerun.blueprint as rrb
@@ -70,8 +70,8 @@ class Points2D(Points2DExt, Archetype):
     )
 
     # Two red points with ui point radii of 40 and 60.
-    # Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-    # For 100% ui scaling, ui points are equal to pixels.
+    # UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    # For 100% ui scaling, UI points are equal to pixels.
     rr.log(
         "ui_points_points",
         rr.Points2D(

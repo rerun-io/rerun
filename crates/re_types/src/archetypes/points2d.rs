@@ -58,7 +58,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### Log points with radii given in ui points
+/// ### Log points with radii given in UI points
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d_ui_radius").spawn()?;
@@ -73,8 +73,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///
 ///     // Two red points with ui point radii of 40 and 60.
-///     // Ui points are independent of zooming in Views, but are sensitive to the application ui scaling.
-///     // For 100% ui scaling, ui points are equal to pixels.
+///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+///     // For 100% ui scaling, UI points are equal to pixels.
 ///     rec.log(
 ///         "ui_points_points",
 ///         &rerun::Points2D::new([(1.0, 0.0), (1.0, 1.0)])
