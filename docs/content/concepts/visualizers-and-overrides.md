@@ -13,17 +13,17 @@ This section explains the process by which logged data is used to produce a visu
 
 In the Rerun viewer, visualizations happen within _views_, which are defined by their [_blueprint_](blueprint.md).
 
-The first step for a view to display its content is to determine which entities are involved. This is determined 
-by the [entity query](../reference/entity-queries.md), which is part of the view blueprint. The query is run against the data store to generate the list of view entities.
+The first step for a view to display its content is to determine which entities are involved.
+This is determined by the [entity query](../reference/entity-queries.md), which is part of the view blueprint.
+The query is run against the data store to generate the list of view entities.
 
 Views rely on visualizers to display each of their entities. For example, [3D views](../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds, and [time series views](../reference/types/views/time_series_view.md) use the `SeriesLine` visualizer to display time series line plots. Which visualizers are available is highly dependent on the specific kind of view. For example, the `SeriesLine` visualizer only exist for time series views—not, e.g., 3D views.
 
-<!-- TODO(#6687): add link to page explaining indicator components -->
 For a given view, visualizers are selected for each of its entities based on their content.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../reference/types/archetypes.md).
 For example, in a 3D view, an entity logged with the [`PointsD`](../reference/types/archetypes/points3d.md) results in the `Points3D` visualizer being selected by default.
 This happens because [archetypes](../reference/types/archetypes.md) include an _indicator component_ to capture the intent of the logging code.
-This indicator component in turn triggers the default activation of the associated visualizer. 
+This indicator component in turn triggers the default activation of the associated visualizer.
 (We will see that this process can be influenced by both the user interface and the blueprints.)
 
 Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../reference/types/components/position3d.md), [`Radius`](../reference/types/components/radius.md), and [`Color`](../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
@@ -45,8 +45,10 @@ All components used by the visualizer are represented, along with their correspo
 ## Per-entity component override
 
 [![image.png](https://i.postimg.cc/s2t2cD4R/image.png)](https://postimg.cc/f3fZWsPH)
- 
-To customize a visualization, the blueprint may override any component value for any view entity.  This can be achieved either from the user interface or the logging SDK. When such an override is defined, it takes precedence over any value that might have been logged to the data store.
+
+To customize a visualization, the blueprint may override any component value for any view entity.
+This can be achieved either from the user interface or the logging SDK.
+When such an override is defined, it takes precedence over any value that might have been logged to the data store.
 
 This is how it is achieved with the blueprint API:
 
@@ -63,7 +65,7 @@ The override is listed above the store and fallback value since it has precedenc
 
 [![image.png](https://i.postimg.cc/prK2Wg4b/image.png)](https://postimg.cc/tnC0Dm92)
 
-The blueprint may also specify a default value for all components of a given type, should their value not be logged to the store or overridden for a given view entity. This makes it easy to configure visual properties for a potentially large number of entities a view may contain.  
+The blueprint may also specify a default value for all components of a given type, should their value not be logged to the store or overridden for a given view entity. This makes it easy to configure visual properties for a potentially large number of entities a view may contain.
 
 This is how it is achieved with the blueprint API:
 
@@ -100,7 +102,8 @@ As an illustration, all four values are available for the `/boxes/1` entity of t
 
 So far, we discussed how visualizers determine values for the components they are interested in and how this can be customized. This section instead discusses the process of how visualizers themselves are determined and how to override this process.
 
-⚠️NOTE: the feature covered by this section, including its API, is very likely to change in future releases. TODO: link to GH issue.
+⚠️NOTE: the feature covered by this section, including its API, is very likely to change in future releases
+(relevant [issue](https://github.com/rerun-io/rerun/issues/6626)).
 
 [![image.png](https://i.postimg.cc/rzXWP2XD/image.png)](https://postimg.cc/SYdJn5K4)
 
