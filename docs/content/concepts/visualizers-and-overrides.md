@@ -9,7 +9,15 @@ This section explains the process by which logged data is used to produce a visu
 
 ## How are visualizations produced?
 
-[![image.png](https://i.postimg.cc/FRjRzX5g/image.png)](https://postimg.cc/47xZ2M3m)
+<!-- schematics source: https://excalidraw.com/#json=8G274_acK-zYc7Cq2ONf0,GaIabh3FBulcjNx9ZqJrXg -->
+
+<picture>
+  <img src="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/1200w.png">
+</picture>
 
 In the Rerun viewer, visualizations happen within _views_, which are defined by their [_blueprint_](blueprint.md).
 
@@ -47,7 +55,13 @@ All components used by the visualizer are represented, along with their correspo
 
 ## Per-entity component override
 
-[![image.png](https://i.postimg.cc/s2t2cD4R/image.png)](https://postimg.cc/f3fZWsPH)
+<picture>
+  <img src="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/1200w.png">
+</picture>
 
 To customize a visualization, the blueprint may override any component value for any view entity.
 This can be achieved either from the user interface or the logging SDK.
@@ -69,7 +83,13 @@ The override is listed above the store and fallback value since it has precedenc
 
 ## Per-view component default
 
-[![image.png](https://i.postimg.cc/prK2Wg4b/image.png)](https://postimg.cc/tnC0Dm92)
+<picture>
+  <img src="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/1200w.png">
+</picture>
 
 The blueprint may also specify a default value for all components of a given type, should their value not be logged to the store or overridden for a given view entity. This makes it easy to configure visual properties for a potentially large number of entities a view may contain.
 
