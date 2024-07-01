@@ -22,7 +22,6 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
-use crate::util::next_up_f64;
 use crate::PlotSeriesKind;
 
 // ---
@@ -277,13 +276,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let mut y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
-        if y_range.start() >= y_range.end() {
-            // Ensure that the range is valid - egui_plot might debug_assert otherwise.
-            // `next_up_f64` should be sufficient, but empirically it's not always enough
-            // (likely we're loosing precision due to some calculations down the line)
-            *y_range.end_mut() = y_range.start() + 1.0;
-        }
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_range = make_range_sane(y_range);
 
         let y_zoom_lock =
             scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
@@ -353,15 +347,14 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, false].into()) // Never use y auto bounds: we dictated bounds via blueprint under all circumstances.
             .allow_zoom([true, !lock_y_during_zoom])
-            .x_axis_formatter(move |time, _, _| {
+            .x_axis_formatter(move |time, _| {
                 format_time(
                     time_type,
                     (time.value as i64).saturating_add(time_offset),
                     time_zone_for_timestamps,
                 )
             })
-            .y_axis_formatter(move |mark, _, _| format_y_axis(mark))
-            .y_axis_width(3) // in digits
+            .y_axis_formatter(move |mark, _| format_y_axis(mark))
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
@@ -646,24 +639,31 @@ impl TypedComponentFallbackProvider<Range1D> for TimeSeriesSpaceView {
         ctx.view_state
             .as_any()
             .downcast_ref::<TimeSeriesSpaceViewState>()
-            .map(|s| {
-                let mut range = s.scalar_range;
-
-                // egui_plot can't handle a zero or negative range.
-                // Enforce a minimum range.
-                if !range.start().is_normal() {
-                    *range.start_mut() = -1.0;
-                }
-                if !range.end().is_normal() {
-                    *range.end_mut() = 1.0;
-                }
-                if range.start() >= range.end() {
-                    *range.start_mut() = next_up_f64(range.end());
-                }
-
-                range
-            })
+            .map(|s| make_range_sane(s.scalar_range))
             .unwrap_or_default()
+    }
+}
+
+/// Make sure the range is finite and positive, or `egui_plot` might be buggy.
+fn make_range_sane(y_range: Range1D) -> Range1D {
+    let (mut start, mut end) = (y_range.start(), y_range.end());
+
+    if !start.is_normal() {
+        start = -1.0;
+    }
+    if !end.is_normal() {
+        end = 1.0;
+    }
+
+    if end < start {
+        (start, end) = (end, start);
+    }
+
+    if end <= start {
+        let center = (start + end) / 2.0;
+        Range1D::new(center - 1.0, center + 1.0)
+    } else {
+        Range1D::new(start, end)
     }
 }
 
