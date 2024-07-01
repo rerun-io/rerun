@@ -81,7 +81,7 @@ As always there's a lot going on under the hood:
 #### 🪳 Bug Fixes
 - Fix silently interpreting zero time range as latest-at query [#6172](https://github.com/rerun-io/rerun/pull/6172)
 - Fix not being able to click suggestions in space origin selection dropdown [#6200](https://github.com/rerun-io/rerun/pull/6200)
-- Fix bug in origin selection ui [#6199](https://github.com/rerun-io/rerun/pull/6199)
+- Fix bug in origin selection UI [#6199](https://github.com/rerun-io/rerun/pull/6199)
 - Fix out-of-bounds crash in origin selection popup [#6202](https://github.com/rerun-io/rerun/pull/6202)
 - Fix rare crash [#6251](https://github.com/rerun-io/rerun/pull/6251)
 - Fix visual glitch when extending the time panel [#6255](https://github.com/rerun-io/rerun/pull/6255)
@@ -92,7 +92,7 @@ As always there's a lot going on under the hood:
 - New data APIs 11: port all range-only views (plots, logs…) [#5992](https://github.com/rerun-io/rerun/pull/5992)
 - New data APIs 12: port all spatial views [#5993](https://github.com/rerun-io/rerun/pull/5993)
 - New data APIs 14: port everything that used to be uncached [#6035](https://github.com/rerun-io/rerun/pull/6035)
-- Make visible time range ui aware of latest-at & `QueryRange` [#6176](https://github.com/rerun-io/rerun/pull/6176)
+- Make visible time range UI aware of latest-at & `QueryRange` [#6176](https://github.com/rerun-io/rerun/pull/6176)
 - Visible time ranges are now specified per timeline, not per timeline type [#6204](https://github.com/rerun-io/rerun/pull/6204)
 - Send TCP protocol header to ignore non-rerun clients [#6253](https://github.com/rerun-io/rerun/pull/6253) (thanks [@gurry](https://github.com/gurry)!)
 
@@ -615,7 +615,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Improve the UI for the entity query [#5022](https://github.com/rerun-io/rerun/pull/5022)
 - Don't show the Blueprint header when on the welcome screen [#5046](https://github.com/rerun-io/rerun/pull/5046)
 - Move Visible Time Range higher in the Selection Panel [#5036](https://github.com/rerun-io/rerun/pull/5036)
-- Clean up time range ui [#5089](https://github.com/rerun-io/rerun/pull/5089)
+- Clean up time range UI [#5089](https://github.com/rerun-io/rerun/pull/5089)
 - Improve preview UI for Component data [#5093](https://github.com/rerun-io/rerun/pull/5093)
 - Paint closest labels on top of labels further away [#5124](https://github.com/rerun-io/rerun/pull/5124)
 
@@ -760,7 +760,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Show connection status in top bar [#4443](https://github.com/rerun-io/rerun/pull/4443)
 - Add the possibility to add empty space views of all registered types [#4467](https://github.com/rerun-io/rerun/pull/4467)
 - Add experimental Dataframe Space View [#4468](https://github.com/rerun-io/rerun/pull/4468)
-- Show e2e latency in metric ui in top panel [#4502](https://github.com/rerun-io/rerun/pull/4502)
+- Show e2e latency in metric UI in top panel [#4502](https://github.com/rerun-io/rerun/pull/4502)
 - Show leading slash when formatting entity paths [#4537](https://github.com/rerun-io/rerun/pull/4537)
 - Improve entity size stats: include whole subtree [#4542](https://github.com/rerun-io/rerun/pull/4542)
 - Add support for modal Windows to `re_ui` and use it for the Space View entity picker [#4577](https://github.com/rerun-io/rerun/pull/4577)
@@ -1763,7 +1763,7 @@ here's a smaller release packed with useful improvements 🎉
 - Move `Caches` to `re_viewer_ctx` and make it generic [#2043](https://github.com/rerun-io/rerun/pull/2043)
 - Move time control to re_viewer_context [#2045](https://github.com/rerun-io/rerun/pull/2045)
 - Move `ViewerContext` & `ComponentUiRegistry` to `viewer_context` [#2047](https://github.com/rerun-io/rerun/pull/2047)
-- Move data ui to new `re_data_ui` crate [#2048](https://github.com/rerun-io/rerun/pull/2048)
+- Move data UI to new `re_data_ui` crate [#2048](https://github.com/rerun-io/rerun/pull/2048)
 - Use instant for `Time::now()` [#2090](https://github.com/rerun-io/rerun/pull/2090)
 - Move from `instant` -> `web_time` [#2093](https://github.com/rerun-io/rerun/pull/2093)
 - "namespace" flag parameters for linestrip & point cloud shader flags [#2033](https://github.com/rerun-io/rerun/pull/2033)
@@ -2114,7 +2114,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Allow rolling 3D camera with primary mouse button + alt modifier [#1659](https://github.com/rerun-io/rerun/pull/1659)
 - Name space views after the space and indicate duplicate names [#1653](https://github.com/rerun-io/rerun/pull/1653)
 - Add banner about mobile browsers being unsupported [#1674](https://github.com/rerun-io/rerun/pull/1674)
-- Improve ui for tensors and color map selection [#1683](https://github.com/rerun-io/rerun/pull/1683)
+- Improve UI for tensors and color map selection [#1683](https://github.com/rerun-io/rerun/pull/1683)
 - Only show the mobile OS warning banner on web [#1685](https://github.com/rerun-io/rerun/pull/1685)
 - Improve the depth backprojection feature [#1690](https://github.com/rerun-io/rerun/pull/1690)
 - Swap overlay order of selection & hover outlines [#1705](https://github.com/rerun-io/rerun/pull/1705)
@@ -2133,7 +2133,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Warn when most of the RAM has been used up by Rerun [#1651](https://github.com/rerun-io/rerun/pull/1651)
 - Apply color maps to all types of depth tensors [#1686](https://github.com/rerun-io/rerun/pull/1686)
 - Size boosted outlines for points & lines, color & size tweaking [#1667](https://github.com/rerun-io/rerun/pull/1667)
-- Default point radius to 1.5 ui points [#1706](https://github.com/rerun-io/rerun/pull/1706)
+- Default point radius to 1.5 UI points [#1706](https://github.com/rerun-io/rerun/pull/1706)
 - When streaming an rrd from http: play it, don't follow it [#1707](https://github.com/rerun-io/rerun/pull/1707)
 
 #### 🕸️ Web
@@ -2311,7 +2311,7 @@ Meanwhile, we did a bunch of improvements to our manual. If you had trouble runn
   * Replace `reqwest` with `ureq` [#1407](https://github.com/rerun-io/rerun/pull/1407)
   * Remove derive_more dependency [#1406](https://github.com/rerun-io/rerun/pull/1406)
 * Use different artifact names for wasm/js in debug builds [#1428](https://github.com/rerun-io/rerun/pull/1428)
-* Separate Mac wheels & trigger wheel build from ui [#1499](https://github.com/rerun-io/rerun/pull/1499)
+* Separate Mac wheels & trigger wheel build from UI [#1499](https://github.com/rerun-io/rerun/pull/1499)
 * Add spell checking to CI [#1492](https://github.com/rerun-io/rerun/pull/1492)
 * Repo size
   * Always create new orphaned branch for gh-pages [#1490](https://github.com/rerun-io/rerun/pull/1490)

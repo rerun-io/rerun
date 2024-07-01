@@ -128,7 +128,7 @@ Update instructions:
 | Crate                       | Description                                                                                                 |
 |-----------------------------|-------------------------------------------------------------------------------------------------------------|
 | re_blueprint_tree           | The UI for the blueprint tree in the left panel.                                                            |
-| re_edit_ui                  | Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry.  |
+| re_edit_ui                  | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry.  |
 | re_selection_panel          | The UI for the selection panel.                                                                             |
 | re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                      |
 | re_space_view_bar_chart     | A Space View that shows a single bar chart.                                                                 |
@@ -148,7 +148,7 @@ Update instructions:
 | Crate                 | Description                                                          |
 |-----------------------|----------------------------------------------------------------------|
 | re_context_menu       | Support crate for context menu and actions.                          |
-| re_data_ui            | Provides ui elements for Rerun component data for the Rerun Viewer.  |
+| re_data_ui            | Provides UI elements for Rerun component data for the Rerun Viewer.  |
 | re_renderer           | A wgpu-based renderer for all your visualization needs.              |
 | re_ui                 | Rerun GUI theme and helpers, built around egui                       |
 | re_viewer_context     | Rerun Viewer state that is shared with the viewer's code components. |
