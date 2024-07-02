@@ -36,7 +36,7 @@ fn edit_f32_float_raw_impl(
     value: &mut f32,
     range: RangeInclusive<f32>,
 ) -> egui::Response {
-    let speed = (*value * 0.01).at_least(0.001);
+    let speed = (value.abs() * 0.01).at_least(0.001);
     ui.add(
         egui::DragValue::new(value)
             .clamp_to_range(false)
