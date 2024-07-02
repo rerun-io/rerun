@@ -102,7 +102,10 @@ impl TextLogSystem {
             [Text::name(), TextLogLevel::name(), Color::name()],
         );
 
-        let Some(all_texts) = results.get_dense::<Text>(resolver).transpose()? else {
+        let Some(all_texts) = results
+            .get_required_component_dense::<Text>(resolver)
+            .transpose()?
+        else {
             return Ok(());
         };
 
