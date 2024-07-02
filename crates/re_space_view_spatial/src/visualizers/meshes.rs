@@ -185,10 +185,11 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let vertex_positions = match results.get_required_component_dense::<Position3D>(resolver) {
-                    Some(positions) => positions?,
-                    _ => return Ok(()),
-                };
+                let vertex_positions =
+                    match results.get_required_component_dense::<Position3D>(resolver) {
+                        Some(positions) => positions?,
+                        _ => return Ok(()),
+                    };
 
                 let vertex_normals = results.get_or_empty_dense(resolver)?;
                 let vertex_colors = results.get_or_empty_dense(resolver)?;
