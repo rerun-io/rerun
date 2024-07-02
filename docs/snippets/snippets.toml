@@ -5,11 +5,21 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+concepts = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+views = [
+  "cpp",  # TODO(#5520): C++ views are not yet implemented
+  "rust", # TODO(#5521): Rust views are not yet implemented
+]
+
 "archetypes/image_advanced" = ["cpp", "rust"] # Missing examples
-"concetps/viscomp-base" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rust
-"concetps/viscomp-component-default" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rust
-"concetps/viscomp-component-override" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rust
-"concetps/viscomp-visualizer-override" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rustt
+"migration/log_line" = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
 "tutorials/annotation-context" = [ # Not a complete example
   "cpp",
   "rust",
@@ -45,18 +55,6 @@
   "rust", # Not implemented
   "py",   # Doesn't terminate
 ]
-
-"migration/log_line" = [ # Not a complete example -- just a single log line
-  "cpp",
-  "rust",
-  "py",
-]
-
-views = [
-  "cpp",  # TODO(#5520): C++ views are not yet implemented
-  "rust", # TODO(#5521): Rust views are not yet implemented
-]
-
 "tutorials/visualizer-overrides" = [
   "cpp",  # Not implemented
   "rust", # Not implemented
@@ -68,6 +66,16 @@ views = [
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
+concepts = [ # Only python
+  "cpp",
+  "py",
+  "rust",
+]
+quick_start = [ # These examples don't have exactly the same implementation.
+  "cpp",
+  "py",
+  "rust",
+]
 "archetypes/arrow3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -115,11 +123,6 @@ views = [
   "rust",
 ]
 "archetypes/series_line_style" = [ # TODO(#5116):trigonometric functions have slightly different outcomes
-  "cpp",
-  "py",
-  "rust",
-]
-quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
