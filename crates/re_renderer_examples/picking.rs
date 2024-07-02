@@ -74,7 +74,7 @@ impl framework::Example for Picking {
                         )
                     })
                     .collect_vec(),
-                radii: std::iter::repeat(Size::new_scene(0.08))
+                radii: std::iter::repeat(Size::new_scene_units(0.08))
                     .take(point_count)
                     .collect_vec(),
                 colors: (0..point_count)
@@ -115,7 +115,7 @@ impl framework::Example for Picking {
             } else if picked_id.object.0 != 0 && picked_id.object.0 <= self.point_sets.len() as u64
             {
                 let point_set = &mut self.point_sets[picked_id.object.0 as usize - 1];
-                point_set.radii[picked_id.instance.0 as usize] = Size::new_scene(0.1);
+                point_set.radii[picked_id.instance.0 as usize] = Size::new_scene_units(0.1);
                 point_set.colors[picked_id.instance.0 as usize] = Color32::DEBUG_COLOR;
             }
         }

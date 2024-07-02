@@ -87,7 +87,7 @@ impl framework::Example for Render2D {
                     glam::vec2(screen_size.x * 0.5, 0.0),
                     glam::vec2(0.0, screen_size.y * 0.5),
                 )
-                .radius(Size::new_scene(line_radius))
+                .radius(Size::new_scene_units(line_radius))
                 .color(Color32::BLUE);
 
             // .. within, a orange rectangle
@@ -97,7 +97,7 @@ impl framework::Example for Render2D {
                     glam::vec2(screen_size.x * 0.25, 0.0),
                     glam::vec2(0.0, screen_size.y * 0.25),
                 )
-                .radius(Size::new_scene(5.0))
+                .radius(Size::new_scene_units(5.0))
                 .color(Color32::from_rgb(255, 100, 1));
         }
 
@@ -121,7 +121,7 @@ impl framework::Example for Render2D {
                 let y = (i + 1) as f32 * 70.0;
                 line_batch
                     .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
-                    .radius(Size::new_scene(15.0))
+                    .radius(Size::new_scene_units(15.0))
                     .flags(*flags | LineStripFlags::FLAG_COLOR_GRADIENT);
             }
         }
@@ -143,7 +143,7 @@ impl framework::Example for Render2D {
                 let y = (i + 1) as f32 * 40.0 + 650.0;
                 line_batch
                     .add_segment_2d(glam::vec2(70.0, y), glam::vec2(400.0, y))
-                    .radius(Size::new_scene(5.0))
+                    .radius(Size::new_scene_units(5.0))
                     .flags(*flags);
             }
         }
@@ -157,19 +157,19 @@ impl framework::Example for Render2D {
             let mut line_batch = line_strip_builder.batch("radius variations");
             line_batch
                 .add_segment_2d(glam::vec2(500.0, 10.0), glam::vec2(1000.0, 10.0))
-                .radius(Size::new_scene(4.0))
+                .radius(Size::new_scene_units(4.0))
                 .color(Color32::from_rgb(255, 180, 1));
             line_batch
                 .add_segment_2d(glam::vec2(500.0, 30.0), glam::vec2(1000.0, 30.0))
-                .radius(Size::new_points(4.0))
+                .radius(Size::new_ui_points(4.0))
                 .color(Color32::from_rgb(255, 180, 1));
             line_batch
                 .add_segment_2d(glam::vec2(500.0, 60.0), glam::vec2(1000.0, 60.0))
-                .radius(Size::AUTO)
+                .radius(Size::new_ui_points(1.5))
                 .color(Color32::from_rgb(255, 180, 1));
             line_batch
                 .add_segment_2d(glam::vec2(500.0, 90.0), glam::vec2(1000.0, 90.0))
-                .radius(Size::AUTO_LARGE)
+                .radius(Size::new_ui_points(3.0))
                 .color(Color32::from_rgb(255, 180, 1));
         }
 
@@ -188,10 +188,10 @@ impl framework::Example for Render2D {
                 glam::vec3(560.0, 120.0, 0.0),
             ],
             &[
-                Size::new_scene(4.0),
-                Size::new_points(4.0),
-                Size::AUTO,
-                Size::AUTO_LARGE,
+                Size::new_scene_units(4.0),
+                Size::new_ui_points(4.0),
+                Size::new_ui_points(1.5),
+                Size::new_ui_points(3.0),
             ],
             &[Color32::from_rgb(55, 180, 1); 4],
             &[re_renderer::PickingLayerInstanceId::default(); 4],
@@ -217,12 +217,12 @@ impl framework::Example for Render2D {
                 batch
                     .add_segment_2d(glam::vec2(x, y_range.start), glam::vec2(x, y_range.end))
                     .color(Hsva::new(0.25 / num_lines as f32 * i as f32, 1.0, 0.5, 1.0).into())
-                    .radius(Size::new_points(10.0))
+                    .radius(Size::new_ui_points(10.0))
                     .flags(LineStripFlags::FLAG_COLOR_GRADIENT);
             }
 
             let num_points = 8;
-            let size = Size::new_points(3.0);
+            let size = Size::new_ui_points(3.0);
 
             let positions = (0..num_points)
                 .map(|i| {

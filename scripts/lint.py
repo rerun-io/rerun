@@ -675,6 +675,7 @@ force_capitalized = [
     "C++17",
     "Colab",
     "Google",
+    "GUI",
     "Jupyter",
     "Linux",
     "Mac",
@@ -689,6 +690,7 @@ force_capitalized = [
     "Rerun",
     "Rust",
     "SAM",
+    "UI",
     "Wasm",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     # "Windows", # Consider "multiple plot windows"
