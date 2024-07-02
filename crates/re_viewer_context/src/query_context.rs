@@ -49,7 +49,6 @@ impl<'a> QueryContext<'a> {
 }
 
 /// The result of executing a single data query
-#[derive(Default)]
 pub struct DataQueryResult {
     /// The [`DataResultTree`] for the query
     pub tree: DataResultTree,
@@ -62,6 +61,9 @@ pub struct DataQueryResult {
     /// This does *not* take into account the actual selection of visualizers
     /// which may be an explicit none for any given entity.
     pub num_visualized_entities: usize,
+
+    /// Root path for individual overrides in this view.
+    pub individual_override_root: EntityPath,
 }
 
 impl DataQueryResult {
@@ -85,12 +87,13 @@ impl Clone for DataQueryResult {
             tree: self.tree.clone(),
             num_matching_entities: self.num_matching_entities,
             num_visualized_entities: self.num_visualized_entities,
+            individual_override_root: self.individual_override_root.clone(),
         }
     }
 }
 
 /// A hierarchical tree of [`DataResult`]s
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct DataResultTree {
     data_results: SlotMap<DataResultHandle, DataResultNode>,
     // TODO(jleibs): Decide if we really want to compute this per-query.
@@ -198,7 +201,12 @@ impl DataResultTree {
     }
 }
 
-static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(Default::default);
+static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(|| DataQueryResult {
+    tree: DataResultTree::new(SlotMap::default(), None),
+    num_matching_entities: 0,
+    num_visualized_entities: 0,
+    individual_override_root: EntityPath::root(),
+});
 
 impl ViewerContext<'_> {
     pub fn lookup_query_result(&self, id: SpaceViewId) -> &DataQueryResult {
