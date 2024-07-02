@@ -187,11 +187,18 @@ impl<'a> From<(RangeQuery, HybridRangeResults)> for HybridResults<'a> {
 /// Also turns all results into range results, so that views only have to worry about the ranged
 /// case.
 pub trait RangeResultsExt {
-    fn get_dense<'a, C: Component>(
+    /// Returns dense component data for the given component, ignores default data if the result distinguishes them.
+    ///
+    /// For results that are aware of the blueprint, only overrides & store results will be considered.
+    /// Defaults have no effect.
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>>;
 
+    /// Returns dense component data for the given component or an empty array.
+    ///
+    /// For results that are aware of the blueprint, overrides, store results, and defaults will be considered.
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
@@ -199,13 +206,13 @@ pub trait RangeResultsExt {
 }
 
 impl RangeResultsExt for Results {
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
         match self {
-            Self::LatestAt(_, results) => results.get_dense(resolver),
-            Self::Range(_, results) => results.get_dense(resolver),
+            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
+            Self::Range(_, results) => results.get_required_component_dense(resolver),
         }
     }
 
@@ -222,7 +229,7 @@ impl RangeResultsExt for Results {
 
 impl RangeResultsExt for RangeResults {
     #[inline]
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
@@ -266,7 +273,7 @@ impl RangeResultsExt for RangeResults {
 
 impl RangeResultsExt for LatestAtResults {
     #[inline]
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
@@ -318,7 +325,7 @@ impl RangeResultsExt for LatestAtResults {
 
 impl RangeResultsExt for HybridRangeResults {
     #[inline]
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
@@ -347,7 +354,7 @@ impl RangeResultsExt for HybridRangeResults {
 
             Some(Ok(data))
         } else {
-            self.results.get_dense(resolver)
+            self.results.get_required_component_dense(resolver)
         }
     }
 
@@ -411,7 +418,7 @@ impl RangeResultsExt for HybridRangeResults {
 
 impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     #[inline]
-    fn get_dense<'b, C: Component>(
+    fn get_required_component_dense<'b, C: Component>(
         &'b self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'b, C>>> {
@@ -440,7 +447,7 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 
             Some(Ok(data))
         } else {
-            self.results.get_dense(resolver)
+            self.results.get_required_component_dense(resolver)
         }
     }
 
@@ -504,13 +511,13 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 }
 
 impl<'a> RangeResultsExt for HybridResults<'a> {
-    fn get_dense<'b, C: Component>(
+    fn get_required_component_dense<'b, C: Component>(
         &'b self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'b, C>>> {
         match self {
-            Self::LatestAt(_, results) => results.get_dense(resolver),
-            Self::Range(_, results) => results.get_dense(resolver),
+            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
+            Self::Range(_, results) => results.get_required_component_dense(resolver),
         }
     }
 

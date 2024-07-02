@@ -234,7 +234,7 @@ impl VisualizerSystem for Points2DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let positions = match results.get_dense::<Position2D>(resolver) {
+                let positions = match results.get_required_component_dense::<Position2D>(resolver) {
                     Some(positions) => positions?,
                     _ => return Ok(()),
                 };

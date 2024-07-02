@@ -227,7 +227,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let half_sizes = match results.get_dense::<HalfSizes2D>(resolver) {
+                let half_sizes = match results.get_required_component_dense::<HalfSizes2D>(resolver)
+                {
                     Some(vectors) => vectors?,
                     _ => return Ok(()),
                 };

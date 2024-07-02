@@ -233,7 +233,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let vectors = match results.get_dense::<Vector3D>(resolver) {
+                let vectors = match results.get_required_component_dense::<Vector3D>(resolver) {
                     Some(vectors) => vectors?,
                     _ => return Ok(()),
                 };

@@ -224,7 +224,7 @@ impl VisualizerSystem for Points3DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let positions = match results.get_dense::<Position3D>(resolver) {
+                let positions = match results.get_required_component_dense::<Position3D>(resolver) {
                     Some(positions) => positions?,
                     _ => return Ok(()),
                 };
