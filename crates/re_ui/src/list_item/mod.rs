@@ -2,6 +2,7 @@
 //!
 //! TODO(ab): provide some top-level documentation here.
 
+mod button_content;
 mod item_button;
 mod label_content;
 #[allow(clippy::module_inception)]
@@ -10,6 +11,7 @@ mod other_contents;
 mod property_content;
 mod scope;
 
+pub use button_content::*;
 pub use item_button::*;
 pub use label_content::*;
 pub use list_item::*;

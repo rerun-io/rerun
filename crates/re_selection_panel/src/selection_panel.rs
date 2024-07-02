@@ -11,7 +11,7 @@ use re_log_types::EntityPathFilter;
 use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
-    list_item::{self, LabelContent, PropertyContent},
+    list_item::{self, PropertyContent},
     ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt,
 };
 use re_viewer_context::{
@@ -454,19 +454,17 @@ fn clone_space_view_button_ui(
     blueprint: &ViewportBlueprint,
     view_id: SpaceViewId,
 ) {
-    //TODO(#6707): use `ButtonContent` when it exists
-    if ui
-        .list_item()
-        .show_flat(ui, LabelContent::new("Clone this view"))
-        .on_hover_text("Create an exact duplicate of this view including all blueprint settings")
-        .clicked()
-    {
-        if let Some(new_space_view_id) = blueprint.duplicate_space_view(&view_id, ctx) {
-            ctx.selection_state()
-                .set_selection(Item::SpaceView(new_space_view_id));
-            blueprint.mark_user_interaction(ctx);
-        }
-    }
+    ui.list_item_flat_noninteractive(
+        list_item::ButtonContent::new("Clone this view")
+            .on_click(|| {
+                if let Some(new_space_view_id) = blueprint.duplicate_space_view(&view_id, ctx) {
+                    ctx.selection_state()
+                        .set_selection(Item::SpaceView(new_space_view_id));
+                    blueprint.mark_user_interaction(ctx);
+                }
+            })
+            .hover_text("Create an exact duplicate of this view including all blueprint settings"),
+    );
 }
 
 /// Returns a new filter when the editing is done, and there has been a change.
@@ -971,25 +969,23 @@ fn container_top_level_properties(
         }));
     }
 
-    //TODO(#6707): use `ButtonContent` when it exists
-    if ui
-        .list_item()
-        .show_flat(ui, LabelContent::new("Simplify hierarchy"))
-        .on_hover_text("Simplify this container and its children")
-        .clicked()
-    {
-        blueprint.simplify_container(
-            container_id,
-            egui_tiles::SimplificationOptions {
-                prune_empty_tabs: true,
-                prune_empty_containers: true,
-                prune_single_child_tabs: false,
-                prune_single_child_containers: false,
-                all_panes_must_have_tabs: true,
-                join_nested_linear_containers: true,
-            },
-        );
-    }
+    ui.list_item_flat_noninteractive(
+        list_item::ButtonContent::new("Simplify hierarchy")
+            .on_click(|| {
+                blueprint.simplify_container(
+                    container_id,
+                    egui_tiles::SimplificationOptions {
+                        prune_empty_tabs: true,
+                        prune_empty_containers: true,
+                        prune_single_child_tabs: false,
+                        prune_single_child_containers: false,
+                        all_panes_must_have_tabs: true,
+                        join_nested_linear_containers: true,
+                    },
+                );
+            })
+            .hover_text("Simplify this container and its children"),
+    );
 
     fn equal_shares(shares: &[f32]) -> bool {
         shares.iter().all(|&share| share == shares[0])
@@ -998,20 +994,20 @@ fn container_top_level_properties(
     let all_shares_are_equal =
         equal_shares(&container.col_shares) && equal_shares(&container.row_shares);
 
-    //TODO(#6707): use `ButtonContent` when it exists
     if container.contents.len() > 1
         && match container.container_kind {
             ContainerKind::Tabs => false,
             ContainerKind::Horizontal | ContainerKind::Vertical | ContainerKind::Grid => true,
         }
-        && ui
-            .list_item()
-            .interactive(!all_shares_are_equal)
-            .show_flat(ui, LabelContent::new("Distribute content equally"))
-            .on_hover_text("Make all children the same size")
-            .clicked()
     {
-        blueprint.make_all_children_same_size(container_id);
+        ui.list_item_flat_noninteractive(
+            list_item::ButtonContent::new("Distribute content equally")
+                .on_click(|| {
+                    blueprint.make_all_children_same_size(container_id);
+                })
+                .enabled(!all_shares_are_equal)
+                .hover_text("Make all children the same size"),
+        );
     }
 }
 
