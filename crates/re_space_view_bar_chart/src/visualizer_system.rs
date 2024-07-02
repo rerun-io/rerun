@@ -2,8 +2,12 @@ use std::collections::BTreeMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_space_view::diff_component_filter;
-use re_types::{archetypes::BarChart, components::Color, datatypes::TensorData};
+use re_space_view::{diff_component_filter, DataResultQuery as _};
+use re_types::{
+    archetypes::BarChart,
+    components::{self, Color},
+    datatypes::TensorData,
+};
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
@@ -44,41 +48,23 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_function!();
+        let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            // TODO(#5607): what should happen if the promise is still pending?
-            let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            let query_ctx = ctx.query_context(data_result, &query);
+        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+            let results = data_result
+                .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
 
-            let tensor = ctx
-                .recording()
-                .latest_at_component::<re_types::components::TensorData>(
-                    &data_result.entity_path,
-                    &query,
-                );
+            let Some(tensor) = results.get_required_mono::<components::TensorData>() else {
+                continue;
+            };
 
-            let color = ctx
-                .recording()
-                .latest_at_component::<re_types::components::Color>(
-                    &data_result.entity_path,
-                    &query,
-                );
-
-            if let Some(tensor) = tensor {
-                if tensor.is_vector() {
-                    self.charts.insert(
-                        data_result.entity_path.clone(),
-                        (
-                            tensor.value.0.clone(),
-                            color.map_or_else(|| self.fallback_for(&query_ctx), |c| c.value),
-                        ),
-                    );
-                    // shallow clones
-                }
+            if tensor.is_vector() {
+                let color = results.get_mono_with_fallback();
+                self.charts
+                    .insert(data_result.entity_path.clone(), (tensor.0.clone(), color));
             }
         }
 
