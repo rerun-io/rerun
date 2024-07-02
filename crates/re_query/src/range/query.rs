@@ -5,8 +5,7 @@ use parking_lot::RwLock;
 use re_data_store::LatestAtQuery;
 use re_data_store::{DataStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types_core::ComponentName;
-use re_types_core::SizeBytes;
+use re_types_core::{ComponentName, SizeBytes};
 
 use crate::{
     CacheKey, Caches, Promise, RangeComponentResults, RangeComponentResultsInner, RangeResults,

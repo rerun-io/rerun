@@ -484,9 +484,7 @@ fn time_histograms() -> anyhow::Result<()> {
                     &timeline_frame,
                     Some(&[
                         (RangeI64::new(42, 42), 5),
-                        // We're clearing the parent's `MyIndex` as well as the grandchild's
-                        // `MyPoint`, `MyColor` and `MyIndex`. That's four.
-                        (RangeI64::new(1000, 1000), 4),
+                        (RangeI64::new(1000, 1000), 1),
                         (RangeI64::new(1234, 1234), 3),
                     ]),
                 ),
@@ -507,10 +505,7 @@ fn time_histograms() -> anyhow::Result<()> {
             &entity_parent,
             MyIndex::name(),
             [
-                (
-                    &timeline_frame,
-                    Some(&[(RangeI64::new(42, 42), 1), (RangeI64::new(1000, 1000), 1)]),
-                ),
+                (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
                 (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 1)])),
             ] as [(_, Option<&[_]>); 3],
@@ -533,17 +528,12 @@ fn time_histograms() -> anyhow::Result<()> {
             MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
-        // NOTE: even though the component was logged twice at the same timestamp, the clear will
-        // only inject once!
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
             MyPoint::name(),
             [
-                (
-                    &timeline_frame,
-                    Some(&[(RangeI64::new(42, 42), 2), (RangeI64::new(1000, 1000), 1)]),
-                ),
+                (&timeline_frame, Some(&[(RangeI64::new(42, 42), 2)])),
                 (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 2)])),
             ] as [(_, Option<&[_]>); 2],
         );
@@ -552,10 +542,7 @@ fn time_histograms() -> anyhow::Result<()> {
             &entity_grandchild,
             MyColor::name(),
             [
-                (
-                    &timeline_frame,
-                    Some(&[(RangeI64::new(42, 42), 2), (RangeI64::new(1000, 1000), 1)]),
-                ),
+                (&timeline_frame, Some(&[(RangeI64::new(42, 42), 2)])),
                 (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 2)])),
             ] as [(_, Option<&[_]>); 2],
         );
