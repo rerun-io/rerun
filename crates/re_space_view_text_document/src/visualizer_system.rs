@@ -1,8 +1,12 @@
 use re_data_store::LatestAtQuery;
-use re_types::{archetypes::TextDocument, components};
+use re_space_view::DataResultQuery as _;
+use re_types::{
+    archetypes::TextDocument,
+    components::{self},
+};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
-    ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -39,26 +43,15 @@ impl VisualizerSystem for TextDocumentSystem {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
-            let Some(text) = ctx
-                .recording()
-                .latest_at_component::<components::Text>(&data_result.entity_path, &timeline_query)
-                .map(|res| res.value)
-            else {
-                // Text component is required.
+            let results = data_result
+                .latest_at_with_blueprint_resolved_data::<TextDocument>(ctx, &timeline_query);
+
+            let Some(text) = results.get_required_mono::<components::Text>() else {
                 continue;
             };
-            let media_type = ctx
-                .recording()
-                .latest_at_component::<components::MediaType>(
-                    &data_result.entity_path,
-                    &timeline_query,
-                )
-                .map(|res| res.value);
-
-            let media_type = media_type.unwrap_or(components::MediaType::plain_text());
             self.text_entries.push(TextDocumentEntry {
                 body: text.clone(),
-                media_type,
+                media_type: results.get_mono_with_fallback(),
             });
         }
 
@@ -74,4 +67,10 @@ impl VisualizerSystem for TextDocumentSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(TextDocumentSystem => []);
+impl TypedComponentFallbackProvider<components::MediaType> for TextDocumentSystem {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::MediaType {
+        components::MediaType::plain_text()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(TextDocumentSystem => [components::MediaType]);

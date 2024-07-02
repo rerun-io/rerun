@@ -72,6 +72,12 @@ impl<'a> HybridLatestAtResults<'a> {
             .ok()
     }
 
+    /// Utility for retrieving a single instance of a component, ignoring defaults.
+    #[inline]
+    pub fn get_required_mono<T: re_types_core::Component>(&self) -> Option<T> {
+        self.get_required_instance(0)
+    }
+
     /// Utility for retrieving a single instance of a component.
     #[inline]
     pub fn get_mono<T: re_types_core::Component>(&self) -> Option<T> {
@@ -84,11 +90,11 @@ impl<'a> HybridLatestAtResults<'a> {
         self.get_instance_with_fallback(0)
     }
 
-    /// Utility for retrieving a single instance of a component.
+    /// Utility for retrieving a single instance of a component, not checking for defaults.
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
+    pub fn get_required_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
         let component_name = T::name();
 
         self.overrides
@@ -99,12 +105,19 @@ impl<'a> HybridLatestAtResults<'a> {
                 self.results
                     .get(component_name)
                     .and_then(|r| r.try_instance::<T>(&self.resolver, index)))
-            .or_else(|| {
-                // No override & no store -> try default instead
-                self.defaults
-                    .get(T::name())
-                    .and_then(|r| r.try_instance::<T>(&self.resolver, 0))
-            })
+    }
+
+    /// Utility for retrieving a single instance of a component.
+    ///
+    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
+    #[inline]
+    pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
+        self.get_required_instance(index).or_else(|| {
+            // No override & no store -> try default instead
+            self.defaults
+                .get(T::name())
+                .and_then(|r| r.try_instance::<T>(&self.resolver, 0))
+        })
     }
 
     /// Utility for retrieving a single instance of a component.
