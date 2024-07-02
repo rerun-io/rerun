@@ -166,7 +166,8 @@ impl SeriesPointSystem {
                 );
 
                 // If we have no scalars, we can't do anything.
-                let Some(all_scalars) = results.get_dense::<Scalar>(resolver) else {
+                let Some(all_scalars) = results.get_required_component_dense::<Scalar>(resolver)
+                else {
                     return Ok(());
                 };
 

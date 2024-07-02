@@ -228,7 +228,7 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let strips = match results.get_dense::<LineStrip3D>(resolver) {
+                let strips = match results.get_required_component_dense::<LineStrip3D>(resolver) {
                     Some(strips) => strips?,
                     _ => return Ok(()),
                 };

@@ -100,7 +100,7 @@ impl VisualizerSystem for ImageVisualizer {
                 let resolver = ctx.recording().resolver();
                 let entity_path = ctx.target_entity_path;
 
-                let tensors = match results.get_dense::<TensorData>(resolver) {
+                let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
                     Some(tensors) => tensors?,
                     _ => return Ok(()),
                 };

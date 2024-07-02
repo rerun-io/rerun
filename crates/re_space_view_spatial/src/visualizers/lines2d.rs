@@ -219,7 +219,7 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let strips = match results.get_dense::<LineStrip2D>(resolver) {
+                let strips = match results.get_required_component_dense::<LineStrip2D>(resolver) {
                     Some(strips) => strips?,
                     _ => return Ok(()),
                 };

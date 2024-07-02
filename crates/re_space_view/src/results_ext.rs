@@ -44,43 +44,10 @@ impl<'a> HybridLatestAtResults<'a> {
         component_name: impl Into<ComponentName>,
     ) -> Option<&LatestAtComponentResults> {
         let component_name = component_name.into();
-        if self.overrides.contains(component_name) {
-            self.overrides.get(component_name)
-        } else {
-            self.results.get(component_name)
-        }
-    }
-
-    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
-    ///
-    /// Returns an error if the component is not present.
-    #[inline]
-    pub fn get_required(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> re_query::Result<&LatestAtComponentResults> {
-        let component_name = component_name.into();
-        if self.overrides.contains(component_name) {
-            self.overrides.get_required(component_name)
-        } else {
-            self.results.get_required(component_name)
-        }
-    }
-
-    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
-    ///
-    /// Returns empty results if the component is not present.
-    #[inline]
-    pub fn get_or_empty(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> &LatestAtComponentResults {
-        let component_name = component_name.into();
-        if self.overrides.contains(component_name) {
-            self.overrides.get_or_empty(component_name)
-        } else {
-            self.results.get_or_empty(component_name)
-        }
+        self.overrides
+            .get(component_name)
+            .or_else(|| self.results.get(component_name))
+            .or_else(|| self.defaults.get(component_name))
     }
 
     pub fn try_fallback_raw(
@@ -107,45 +74,55 @@ impl<'a> HybridLatestAtResults<'a> {
 
     /// Utility for retrieving a single instance of a component.
     #[inline]
-    pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
-        self.get(T::name())
-            .and_then(|r| r.try_instance::<T>(&self.resolver, index))
-    }
-
-    /// Utility for retrieving a single instance of a component.
-    #[inline]
     pub fn get_mono<T: re_types_core::Component>(&self) -> Option<T> {
         self.get_instance(0)
-    }
-
-    /// Utility for retrieving a single instance of a component with fallback.
-    ///
-    /// If the space view specifies a default, that will be used first, otherwise
-    /// the fallback provider will be queried.
-    #[inline]
-    pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
-        &self,
-        index: usize,
-    ) -> T {
-        self.get(T::name())
-            .and_then(|r| r.try_instance::<T>(&self.resolver, index))
-            .or_else(|| {
-                self.defaults
-                    .get(T::name())
-                    .and_then(|r| r.try_instance::<T>(&self.resolver, 0))
-            })
-            .or_else(|| {
-                self.try_fallback_raw(T::name())
-                    .and_then(|raw| T::from_arrow(raw.as_ref()).ok())
-                    .and_then(|r| r.first().cloned())
-            })
-            .unwrap_or_default()
     }
 
     /// Utility for retrieving a single instance of a component.
     #[inline]
     pub fn get_mono_with_fallback<T: re_types_core::Component + Default>(&self) -> T {
         self.get_instance_with_fallback(0)
+    }
+
+    /// Utility for retrieving a single instance of a component.
+    ///
+    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
+    #[inline]
+    pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
+        let component_name = T::name();
+
+        self.overrides
+            .get(component_name)
+            .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+            .or_else(||
+                // No override -> try recording store instead
+                self.results
+                    .get(component_name)
+                    .and_then(|r| r.try_instance::<T>(&self.resolver, index)))
+            .or_else(|| {
+                // No override & no store -> try default instead
+                self.defaults
+                    .get(T::name())
+                    .and_then(|r| r.try_instance::<T>(&self.resolver, 0))
+            })
+    }
+
+    /// Utility for retrieving a single instance of a component.
+    ///
+    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
+    #[inline]
+    pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
+        &self,
+        index: usize,
+    ) -> T {
+        self.get_instance(index)
+            .or_else(|| {
+                // No override, no store, no default -> try fallback instead
+                self.try_fallback_raw(T::name())
+                    .and_then(|raw| T::from_arrow(raw.as_ref()).ok())
+                    .and_then(|r| r.first().cloned())
+            })
+            .unwrap_or_default()
     }
 }
 
@@ -210,11 +187,18 @@ impl<'a> From<(RangeQuery, HybridRangeResults)> for HybridResults<'a> {
 /// Also turns all results into range results, so that views only have to worry about the ranged
 /// case.
 pub trait RangeResultsExt {
-    fn get_dense<'a, C: Component>(
+    /// Returns dense component data for the given component, ignores default data if the result distinguishes them.
+    ///
+    /// For results that are aware of the blueprint, only overrides & store results will be considered.
+    /// Defaults have no effect.
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>>;
 
+    /// Returns dense component data for the given component or an empty array.
+    ///
+    /// For results that are aware of the blueprint, overrides, store results, and defaults will be considered.
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
@@ -222,13 +206,13 @@ pub trait RangeResultsExt {
 }
 
 impl RangeResultsExt for Results {
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
         match self {
-            Self::LatestAt(_, results) => results.get_dense(resolver),
-            Self::Range(_, results) => results.get_dense(resolver),
+            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
+            Self::Range(_, results) => results.get_required_component_dense(resolver),
         }
     }
 
@@ -245,7 +229,7 @@ impl RangeResultsExt for Results {
 
 impl RangeResultsExt for RangeResults {
     #[inline]
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
@@ -289,7 +273,7 @@ impl RangeResultsExt for RangeResults {
 
 impl RangeResultsExt for LatestAtResults {
     #[inline]
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
@@ -341,7 +325,7 @@ impl RangeResultsExt for LatestAtResults {
 
 impl RangeResultsExt for HybridRangeResults {
     #[inline]
-    fn get_dense<'a, C: Component>(
+    fn get_required_component_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
@@ -370,7 +354,7 @@ impl RangeResultsExt for HybridRangeResults {
 
             Some(Ok(data))
         } else {
-            self.results.get_dense(resolver)
+            self.results.get_required_component_dense(resolver)
         }
     }
 
@@ -434,7 +418,7 @@ impl RangeResultsExt for HybridRangeResults {
 
 impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     #[inline]
-    fn get_dense<'b, C: Component>(
+    fn get_required_component_dense<'b, C: Component>(
         &'b self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'b, C>>> {
@@ -463,7 +447,7 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 
             Some(Ok(data))
         } else {
-            self.results.get_dense(resolver)
+            self.results.get_required_component_dense(resolver)
         }
     }
 
@@ -527,13 +511,13 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 }
 
 impl<'a> RangeResultsExt for HybridResults<'a> {
-    fn get_dense<'b, C: Component>(
+    fn get_required_component_dense<'b, C: Component>(
         &'b self,
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'b, C>>> {
         match self {
-            Self::LatestAt(_, results) => results.get_dense(resolver),
-            Self::Range(_, results) => results.get_dense(resolver),
+            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
+            Self::Range(_, results) => results.get_required_component_dense(resolver),
         }
     }
 

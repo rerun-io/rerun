@@ -151,7 +151,7 @@ impl VisualizerSystem for Asset3DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let blobs = match results.get_dense::<Blob>(resolver) {
+                let blobs = match results.get_required_component_dense::<Blob>(resolver) {
                     Some(blobs) => blobs?,
                     _ => return Ok(()),
                 };

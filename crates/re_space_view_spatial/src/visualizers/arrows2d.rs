@@ -234,7 +234,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let vectors = match results.get_dense::<Vector2D>(resolver) {
+                let vectors = match results.get_required_component_dense::<Vector2D>(resolver) {
                     Some(vectors) => vectors?,
                     _ => return Ok(()),
                 };
