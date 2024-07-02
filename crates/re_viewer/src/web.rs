@@ -11,8 +11,8 @@ use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
 
-use crate::web_tools::JsResultExt;
-use crate::web_tools::{install_popstate_listener, url_to_receiver, Callback, StringOrStringArray};
+use crate::history::install_popstate_listener;
+use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -294,7 +294,7 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
     }
 }
 
-// Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`
+// Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
     url: Option<StringOrStringArray>,
