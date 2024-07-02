@@ -1,13 +1,46 @@
-use std::{ops::ControlFlow, sync::Arc};
+//! Web-specific tools used by various parts of the application.
 
 use anyhow::Context as _;
+use re_log::ResultExt;
+use serde::Deserialize;
+use std::{ops::ControlFlow, sync::Arc};
 use wasm_bindgen::JsCast as _;
+use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
+use web_sys::Window;
 
-use re_log::ResultExt as _;
-use re_viewer_context::CommandSender;
+pub trait JsResultExt<T> {
+    /// Logs an error if the result is an error and returns the result.
+    fn ok_or_log_js_error(self) -> Option<T>;
 
-/// Web-specific tools used by various parts of the application.
+    /// Logs an error if the result is an error and returns the result, but only once.
+    fn ok_or_log_js_error_once(self) -> Option<T>;
+
+    /// Log a warning if there is an `Err`, but only log the exact same message once.
+    fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
+
+    /// Unwraps in debug builds otherwise logs an error if the result is an error and returns the result.
+    fn unwrap_debug_or_log_js_error(self) -> Option<T>;
+}
+
+impl<T> JsResultExt<T> for Result<T, JsValue> {
+    fn ok_or_log_js_error(self) -> Option<T> {
+        self.map_err(string_from_js_value).ok_or_log_error()
+    }
+
+    fn ok_or_log_js_error_once(self) -> Option<T> {
+        self.map_err(string_from_js_value).ok_or_log_error_once()
+    }
+
+    fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T> {
+        self.map_err(string_from_js_value).warn_on_err_once(msg)
+    }
+
+    fn unwrap_debug_or_log_js_error(self) -> Option<T> {
+        self.map_err(string_from_js_value)
+            .unwrap_debug_or_log_error()
+    }
+}
 
 /// Useful in error handlers
 #[allow(clippy::needless_pass_by_value)]
@@ -25,10 +58,12 @@ pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
     format!("{s:#?}")
 }
 
+pub fn js_error(msg: impl std::fmt::Display) -> JsValue {
+    JsError::new(&msg.to_string()).into()
+}
+
 pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_bindgen::JsValue> {
-    let Some(window) = web_sys::window() else {
-        return Err("Failed to get window".into());
-    };
+    let window = window()?;
     let location = window.location();
 
     let url = web_sys::Url::new(&location.href()?)?;
@@ -37,141 +72,8 @@ pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_
     location.assign(&url.href())
 }
 
-/// Percent-encode the given string so you can put it in a URL.
-pub fn percent_encode(s: &str) -> String {
-    format!("{}", js_sys::encode_uri_component(s))
-}
-
-pub fn go_back() -> Option<()> {
-    let history = web_sys::window()?
-        .history()
-        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-        .ok_or_log_error()?;
-    history
-        .back()
-        .map_err(|err| format!("Failed to go back: {}", string_from_js_value(err)))
-        .ok_or_log_error()
-}
-
-pub fn go_forward() -> Option<()> {
-    let history = web_sys::window()?
-        .history()
-        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-        .ok_or_log_error()?;
-    history
-        .forward()
-        .map_err(|err| format!("Failed to go forward: {}", string_from_js_value(err)))
-        .ok_or_log_error()
-}
-
-/// The current percent-encoded URL suffix, e.g. "?foo=bar#baz".
-pub fn current_url_suffix() -> Option<String> {
-    let location = web_sys::window()?.location();
-    let search = location.search().unwrap_or_default();
-    let hash = location.hash().unwrap_or_default();
-    Some(format!("{search}{hash}"))
-}
-
-/// Push a relative url on the web `History`,
-/// so that the user can use the back button to navigate to it.
-///
-/// If this is already the current url, nothing happens.
-///
-/// The url must be percent encoded.
-///
-/// Example:
-/// ```
-/// push_history("foo/bar?baz=qux#fragment");
-/// ```
-pub fn push_history(new_relative_url: &str) -> Option<()> {
-    let current_relative_url = current_url_suffix().unwrap_or_default();
-
-    if current_relative_url == new_relative_url {
-        re_log::debug!("Ignoring navigation to {new_relative_url:?} as we're already there");
-    } else {
-        re_log::debug!(
-            "Existing url is {current_relative_url:?}; navigating to {new_relative_url:?}"
-        );
-
-        let history = web_sys::window()?
-            .history()
-            .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-            .ok_or_log_error()?;
-        // Instead of setting state to `null`, try to preserve existing state.
-        // This helps with ensuring JS frameworks can perform client-side routing.
-        // If we ever need to store anything in `state`, we should rethink how
-        // we handle this.
-        let existing_state = history.state().unwrap_or(JsValue::NULL);
-        history
-            .push_state_with_url(&existing_state, "", Some(new_relative_url))
-            .map_err(|err| {
-                format!(
-                    "Failed to push history state: {}",
-                    string_from_js_value(err)
-                )
-            })
-            .ok_or_log_error()?;
-    }
-    Some(())
-}
-
-/// Replace the current relative url with an new one.
-pub fn replace_history(new_relative_url: &str) -> Option<()> {
-    let history = web_sys::window()?
-        .history()
-        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-        .ok_or_log_error()?;
-    // NOTE: See `existing_state` in `push_history` above for info on why this is here.
-    let existing_state = history.state().unwrap_or(JsValue::NULL);
-    history
-        .replace_state_with_url(&existing_state, "", Some(new_relative_url))
-        .map_err(|err| {
-            format!(
-                "Failed to push history state: {}",
-                string_from_js_value(err)
-            )
-        })
-        .ok_or_log_error()
-}
-
-/// Parse the `?query` parst of the url, and translate it into commands to control the application.
-pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    use re_viewer_context::{SystemCommand, SystemCommandSender as _};
-
-    let location = eframe::web::web_location();
-
-    if let Some(app_ids) = location.query_map.get("app_id") {
-        if let Some(app_id) = app_ids.last() {
-            let app_id = re_log_types::ApplicationId::from(app_id.as_str());
-            command_sender.send_system(SystemCommand::ActivateApp(app_id));
-        }
-    }
-
-    // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
-    let urls: Vec<&String> = location
-        .query_map
-        .get("url")
-        .into_iter()
-        .flatten()
-        .collect();
-    if !urls.is_empty() {
-        let follow_if_http = false;
-        for url in urls {
-            if let Some(receiver) =
-                url_to_receiver(egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
-            {
-                // We may be here because the user clicked Back/Forward in the browser while trying
-                // out examples. If we re-download the same file we should clear out the old data first.
-                command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-                    receiver.source().clone(),
-                ));
-
-                command_sender.send_system(SystemCommand::AddReceiver(receiver));
-            }
-        }
-    }
-
-    egui_ctx.request_repaint(); // wake up to receive the messages
+pub fn window() -> Result<Window, JsValue> {
+    web_sys::window().ok_or_else(|| js_error("failed to get window object"))
 }
 
 enum EndpointCategory {
@@ -184,23 +86,23 @@ enum EndpointCategory {
     WebSocket(String),
 
     /// An eventListener for rrd posted from containing html
-    WebEventListener,
+    WebEventListener(String),
 }
 
 impl EndpointCategory {
-    fn categorize_uri(uri: &str) -> Self {
+    fn categorize_uri(uri: String) -> Self {
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::HttpRrd(uri.into())
+            Self::HttpRrd(uri)
         } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-            Self::WebSocket(uri.into())
+            Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
-            Self::WebEventListener
+            Self::WebEventListener(uri)
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
             re_log::info!("Assuming WebSocket endpoint");
             if uri.contains("://") {
-                Self::WebSocket(uri.into())
+                Self::WebSocket(uri)
             } else {
                 Self::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
             }
@@ -212,7 +114,7 @@ impl EndpointCategory {
 pub fn url_to_receiver(
     egui_ctx: egui::Context,
     follow_if_http: bool,
-    url: &str,
+    url: String,
 ) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
@@ -227,13 +129,12 @@ pub fn url_to_receiver(
                 Some(ui_waker),
             ),
         ),
-        EndpointCategory::WebEventListener => {
+        EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(
                 re_smart_channel::SmartMessageSource::RrdWebEventCallback,
                 re_smart_channel::SmartChannelSource::RrdWebEventListener,
             );
-            let url = url.to_owned();
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
                 move |msg| {
                     ui_waker();
@@ -263,5 +164,62 @@ pub fn url_to_receiver(
         }
         EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
             .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
+    }
+}
+
+// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
+#[derive(Clone, Deserialize)]
+#[repr(transparent)]
+pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
+
+impl Callback {
+    #[inline]
+    pub fn call(&self) -> Result<JsValue, JsValue> {
+        let window: JsValue = window()?.into();
+        self.0.call0(&window)
+    }
+}
+
+// Deserializes from JS string or array of strings.
+#[derive(Clone)]
+pub struct StringOrStringArray(Vec<String>);
+
+impl StringOrStringArray {
+    pub fn into_inner(self) -> Vec<String> {
+        self.0
+    }
+}
+
+impl std::ops::Deref for StringOrStringArray {
+    type Target = Vec<String>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for StringOrStringArray {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        fn from_value(value: JsValue) -> Option<Vec<String>> {
+            if let Some(value) = value.as_string() {
+                return Some(vec![value]);
+            }
+
+            let array = value.dyn_into::<js_sys::Array>().ok()?;
+            let mut out = Vec::with_capacity(array.length() as usize);
+            for item in array {
+                out.push(item.as_string()?);
+            }
+            Some(out)
+        }
+
+        let value = serde_wasm_bindgen::preserve::deserialize(deserializer)?;
+        from_value(value)
+            .map(Self)
+            .ok_or_else(|| serde::de::Error::custom("value is not a string or array of strings"))
     }
 }

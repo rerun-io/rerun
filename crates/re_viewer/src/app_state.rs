@@ -132,6 +132,7 @@ impl AppState {
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
+        is_history_enabled: bool,
     ) {
         re_tracing::profile_function!();
 
@@ -417,7 +418,7 @@ impl AppState {
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
                 if show_welcome {
-                    welcome_screen.ui(ui, command_sender, welcome_screen_state);
+                    welcome_screen.ui(ui, command_sender, welcome_screen_state, is_history_enabled);
                 } else {
                     viewport.viewport_ui(ui, &ctx, view_states);
                 }

@@ -47,11 +47,12 @@ export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
 
-interface WebViewerOptions {
+export interface WebViewerOptions {
   manifest_url?: string;
   render_backend?: Backend;
   hide_welcome_screen?: boolean;
   allow_fullscreen?: boolean;
+  enable_history?: boolean;
 
   width?: string;
   height?: string;
@@ -59,7 +60,9 @@ interface WebViewerOptions {
 
 // `AppOptions` and `WebViewerOptions` must be compatible
 // otherwise we need to restructure how we pass options to the viewer
-interface AppOptions extends WebViewerOptions {
+
+/** @private */
+export interface AppOptions extends WebViewerOptions {
   url?: string;
   manifest_url?: string;
   render_backend?: Backend;
@@ -68,6 +71,7 @@ interface AppOptions extends WebViewerOptions {
     [K in Panel]: PanelState;
   }>;
   fullscreen?: FullscreenOptions;
+  enable_history?: boolean;
 }
 
 interface FullscreenOptions {
@@ -98,7 +102,7 @@ type EventsWithoutValue = {
 type Cancel = () => void;
 
 function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export class WebViewer {

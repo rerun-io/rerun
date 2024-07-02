@@ -66,5 +66,8 @@
     },
     "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    }
+    },
+    // Uncomment the following option and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
+    // Don't forget to put it in a comment again before committing.
+    // "rust-analyzer.cargo.target": "wasm32-unknown-unknown"
 }
