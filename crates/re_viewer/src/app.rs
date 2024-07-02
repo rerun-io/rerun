@@ -81,6 +81,19 @@ pub struct StartupOptions {
     /// Default overrides for state of top/side/bottom panels.
     pub panel_state_overrides: PanelStateOverrides,
 
+    /// Whether or not to enable usage of the `History` API on web.
+    ///
+    /// It is disabled by default.
+    ///
+    /// This should only be enabled when it is acceptable for `rerun`
+    /// to push its own entries into browser history.
+    ///
+    /// That only makes sense if it has "taken over" a page, and is
+    /// the only thing on that page. If you are embedding multiple
+    /// viewers onto the same page, then it's better to turn this off.
+    ///
+    /// We use browser history in a limited way to track the currently
+    /// open example recording, see [`crate::history`].
     #[cfg(target_arch = "wasm32")]
     pub enable_history: bool,
 }
@@ -134,7 +147,7 @@ pub struct App {
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) popstate_listener: Option<crate::web_tools::PopstateListener>,
+    pub(crate) popstate_listener: Option<crate::history::PopstateListener>,
 
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
@@ -1488,10 +1501,10 @@ impl eframe::App for App {
                 egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
 
             if back_pressed {
-                crate::web_tools::go_back();
+                crate::history::go_back();
             }
             if fwd_pressed {
-                crate::web_tools::go_forward();
+                crate::history::go_forward();
             }
         }
 

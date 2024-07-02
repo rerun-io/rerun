@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <!-- Rerun SDK-bundled web viewer. -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -327,21 +327,26 @@
         console.debug("Wasm loaded. Starting app…");
 
         const query = new URLSearchParams(window.location.search);
+
         /*
-          url: Option<String>,
+          url: Option<StringOrStringArray>,
           manifest_url: Option<String>,
           render_backend: Option<String>,
           hide_welcome_screen: Option<bool>,
           panel_state_overrides: Option<PanelStateOverrides>,
           fullscreen: Option<FullscreenOptions>,
+          enable_history: Option<bool>,
+          notebook: Option<bool>,
+          persist: Option<bool>,
         */
         const options = {
-          app_id: query.get("app_id"),
           url: query.get("url"),
           manifest_url: query.get("manifest_url"),
           render_backend: query.get("renderer"),
           hide_welcome_screen: query.has("hide_welcome_screen"),
-
+          // panel_state_overrides: undefined,
+          // fullscreen: undefined,
+          enable_history: true,
           notebook: get_query_bool(query, "notebook", false),
           persist: get_query_bool(query, "persist", true),
         };

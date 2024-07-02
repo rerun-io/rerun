@@ -449,7 +449,8 @@ fn open_example_url(
 
     #[cfg(target_arch = "wasm32")]
     if _is_history_enabled {
-        use crate::web_tools::{history, HistoryEntry, HistoryExt, JsResultExt};
+        use crate::history::{history, HistoryEntry, HistoryExt as _};
+        use crate::web_tools::JsResultExt as _;
 
         if let Some(history) = history().ok_or_log_js_error() {
             let entry = HistoryEntry::new().rrd_url(rrd_url.to_owned());
