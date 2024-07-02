@@ -364,27 +364,50 @@ impl ComponentUiRegistry {
             return;
         };
 
-        if let Some(component_raw) =
-            component.instance_raw(db.resolver(), component_name, instance.get() as _)
-        {
-            self.ui_raw(
-                ctx,
-                ui,
-                ui_layout,
-                query,
-                db,
-                entity_path,
-                component_name,
-                component_raw.as_ref(),
-            );
-        } else {
-            let num_instances = if instance.is_all() {
-                component.num_instances() as _
-            } else {
-                0
-            };
-            none_or_many_values_ui(ui, num_instances);
+        // Don't use component.raw_instance here since we want to handle the case where there's several
+        // elements differently.
+        // Also, it allows us to slice the array without cloning any elements.
+        let cell = match component.resolved(db.resolver()) {
+            re_query::PromiseResult::Pending => {
+                re_log::error_once!("Couldn't get {component_name}: promise still pending");
+                ui.error_label("pending...");
+                return;
+            }
+            re_query::PromiseResult::Ready(cell) => cell,
+            re_query::PromiseResult::Error(err) => {
+                re_log::error_once!(
+                    "Couldn't get {component_name}: {}",
+                    re_error::format_ref(&*err)
+                );
+                ui.error_label(&re_error::format_ref(&*err));
+                return;
+            }
+        };
+
+        // Component ui can only show a single instance.
+        if cell.num_instances() == 0 || (instance.is_all() && cell.num_instances() > 1) {
+            none_or_many_values_ui(ui, cell.num_instances() as _);
+            return;
         }
+
+        let index = if instance.is_all() {
+            // Per above check, there's a single instance, show it.
+            0
+        } else {
+            instance.get() as usize
+        };
+        let component_raw = cell.as_arrow_ref().sliced(index, 1);
+
+        self.ui_raw(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            db,
+            entity_path,
+            component_name,
+            component_raw.as_ref(),
+        );
     }
 
     /// Show a ui for a single raw component.
@@ -646,7 +669,7 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> 
 }
 
 fn none_or_many_values_ui(ui: &mut egui::Ui, num_instances: usize) {
-    if num_instances == 1 {
+    if num_instances == 0 {
         ui.label("(empty)");
     } else {
         ui.label(format!("{} values", re_format::format_uint(num_instances)));
