@@ -577,7 +577,7 @@ pub trait UiExt {
     }
 
     /// Convenience function to create a [`crate::SectionCollapsingHeader`].
-    #[allow(clippy:unused_self)]
+    #[allow(clippy::unused_self)]
     fn section_collapsing_header<'a>(
         &self,
         label: impl Into<egui::WidgetText>,

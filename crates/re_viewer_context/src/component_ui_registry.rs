@@ -396,6 +396,10 @@ impl ComponentUiRegistry {
         } else {
             instance.get() as usize
         };
+
+        // Enforce clamp-to-border semantics.
+        // TODO(andreas): Is that always what we want?
+        let index = index.clamp(0, (cell.num_instances() as usize).saturating_sub(1));
         let component_raw = cell.as_arrow_ref().sliced(index, 1);
 
         self.ui_raw(
