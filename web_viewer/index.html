@@ -389,25 +389,6 @@
         /** @type {string} */ key,
         /** @type {boolean} */ fallback,
       ) {
-        /*
-        if values.len() == 1 {
-            match values[0].as_str() {
-                "0" => false,
-                "1" => true,
-                other => {
-                    re_log::warn!(
-                            "Unexpected value for '{key}' query: {other:?}. Expected either '0' or '1'. Defaulting to '{default_int}'."
-                        );
-                    default
-                }
-            }
-        } else {
-            re_log::warn!(
-                "Found {} values for '{key}' query. Expected one or none. Defaulting to '{default_int}'.",
-                values.len()
-            );
-            default
-        }*/
         const values = query.getAll(key);
         if (values.length !== 1) {
           console.warn(
