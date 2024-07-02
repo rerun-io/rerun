@@ -1,13 +1,54 @@
-use std::{ops::ControlFlow, sync::Arc};
+//! Web-specific tools used by various parts of the application.
 
 use anyhow::Context as _;
+use parking_lot::Mutex;
+use re_log::ResultExt;
+use re_viewer_context::StoreHub;
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
+use serde::Deserialize;
+use std::sync::OnceLock;
+use std::{ops::ControlFlow, sync::Arc};
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast as _;
+use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
+use web_sys::History;
+use web_sys::UrlSearchParams;
+use web_sys::Window;
 
-use re_log::ResultExt as _;
-use re_viewer_context::CommandSender;
+pub trait JsResultExt<T> {
+    /// Logs an error if the result is an error and returns the result.
+    fn ok_or_log_js_error(self) -> Option<T>;
 
-/// Web-specific tools used by various parts of the application.
+    /// Logs an error if the result is an error and returns the result, but only once.
+    fn ok_or_log_js_error_once(self) -> Option<T>;
+
+    /// Log a warning if there is an `Err`, but only log the exact same message once.
+    fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
+
+    /// Unwraps in debug builds otherwise logs an error if the result is an error and returns the result.
+    fn unwrap_debug_or_log_js_error(self) -> Option<T>;
+}
+
+impl<T> JsResultExt<T> for Result<T, JsValue> {
+    fn ok_or_log_js_error(self) -> Option<T> {
+        self.map_err(string_from_js_value).ok_or_log_error()
+    }
+
+    fn ok_or_log_js_error_once(self) -> Option<T> {
+        self.map_err(string_from_js_value).ok_or_log_error_once()
+    }
+
+    fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T> {
+        self.map_err(string_from_js_value).warn_on_err_once(msg)
+    }
+
+    fn unwrap_debug_or_log_js_error(self) -> Option<T> {
+        self.map_err(string_from_js_value)
+            .unwrap_debug_or_log_error()
+    }
+}
 
 /// Useful in error handlers
 #[allow(clippy::needless_pass_by_value)]
@@ -25,10 +66,12 @@ pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
     format!("{s:#?}")
 }
 
+pub fn js_error(msg: impl std::fmt::Display) -> JsValue {
+    JsError::new(&msg.to_string()).into()
+}
+
 pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_bindgen::JsValue> {
-    let Some(window) = web_sys::window() else {
-        return Err("Failed to get window".into());
-    };
+    let window = window()?;
     let location = window.location();
 
     let url = web_sys::Url::new(&location.href()?)?;
@@ -37,141 +80,278 @@ pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_
     location.assign(&url.href())
 }
 
-/// Percent-encode the given string so you can put it in a URL.
-pub fn percent_encode(s: &str) -> String {
-    format!("{}", js_sys::encode_uri_component(s))
+static STORED_HISTORY_ENTRY: OnceLock<Arc<Mutex<Option<HistoryEntry>>>> = OnceLock::new();
+
+fn stored_history_entry() -> &'static Arc<Mutex<Option<HistoryEntry>>> {
+    STORED_HISTORY_ENTRY.get_or_init(|| Arc::new(Mutex::new(None)))
+}
+
+fn get_stored_history_entry() -> Option<HistoryEntry> {
+    stored_history_entry().lock().clone()
+}
+
+fn set_stored_history_entry(entry: Option<HistoryEntry>) {
+    *stored_history_entry().lock() = entry;
+}
+
+type EventListener<Event> = dyn FnMut(Event) -> Result<(), JsValue>;
+
+/// Listen for `popstate` event, which comes when the user hits the back/forward buttons.
+///
+/// <https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event>
+pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
+    let egui_ctx = app.egui_ctx.clone();
+    let command_sender = app.command_sender.clone();
+
+    let closure = Closure::wrap(Box::new({
+        move |event: web_sys::PopStateEvent| {
+            let new_state = deserialize_from_state(event.state())?;
+            handle_popstate(&egui_ctx, &command_sender, new_state)?;
+            Ok(())
+        }
+    }) as Box<EventListener<_>>);
+
+    set_stored_history_entry(history()?.current_entry()?);
+
+    window()?
+        .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
+        .ok_or_log_js_error();
+
+    app.popstate_listener = Some(PopstateListener(Some(closure)));
+
+    Ok(())
+}
+
+pub struct PopstateListener(Option<Closure<EventListener<web_sys::PopStateEvent>>>);
+
+impl Drop for PopstateListener {
+    fn drop(&mut self) {
+        let Some(window) = window().ok_or_log_js_error() else {
+            return;
+        };
+
+        let closure = self.0.take().unwrap();
+        window
+            .remove_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
+            .ok_or_log_js_error();
+        drop(closure);
+    }
+}
+
+fn handle_popstate(
+    egui_ctx: &egui::Context,
+    command_sender: &CommandSender,
+    new_state: Option<HistoryEntry>,
+) -> Result<(), JsValue> {
+    let prev_state = get_stored_history_entry();
+
+    re_log::debug!("popstate: prev={prev_state:?} new={new_state:?}");
+
+    if prev_state == new_state {
+        re_log::debug!("popstate: no change");
+
+        return Ok(());
+    }
+
+    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.urls.is_empty()) {
+        re_log::debug!("popstate: clear recordings + go to welcome screen");
+
+        // the user navigated back to the history entry where the viewer was initially opened
+        // in that case they likely expect to land back at the welcome screen:
+        command_sender.send_system(SystemCommand::CloseAllRecordings);
+        command_sender.send_system(SystemCommand::ActivateApp(StoreHub::welcome_screen_app_id()));
+
+        set_stored_history_entry(new_state);
+        egui_ctx.request_repaint();
+
+        return Ok(());
+    }
+
+    let Some(entry) = new_state else {
+        unreachable!();
+    };
+
+    let follow_if_http = false;
+    for url in &entry.urls {
+        // we continue in case of errors because some receivers may be valid
+        let Some(receiver) =
+            url_to_receiver(egui_ctx.clone(), follow_if_http, url.clone()).ok_or_log_error()
+        else {
+            continue;
+        };
+
+        command_sender.send_system(SystemCommand::AddReceiver(receiver));
+
+        re_log::debug!("popstate: add receiver {url:?}");
+    }
+
+    set_stored_history_entry(Some(entry));
+    egui_ctx.request_repaint();
+
+    Ok(())
 }
 
 pub fn go_back() -> Option<()> {
-    let history = web_sys::window()?
-        .history()
-        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-        .ok_or_log_error()?;
-    history
-        .back()
-        .map_err(|err| format!("Failed to go back: {}", string_from_js_value(err)))
-        .ok_or_log_error()
+    let history = history().ok_or_log_js_error()?;
+    history.back().ok_or_log_js_error()
 }
 
 pub fn go_forward() -> Option<()> {
-    let history = web_sys::window()?
-        .history()
-        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-        .ok_or_log_error()?;
-    history
-        .forward()
-        .map_err(|err| format!("Failed to go forward: {}", string_from_js_value(err)))
-        .ok_or_log_error()
+    let history = history().ok_or_log_js_error()?;
+    history.forward().ok_or_log_js_error()
 }
 
-/// The current percent-encoded URL suffix, e.g. "?foo=bar#baz".
-pub fn current_url_suffix() -> Option<String> {
-    let location = web_sys::window()?.location();
-    let search = location.search().unwrap_or_default();
-    let hash = location.hash().unwrap_or_default();
-    Some(format!("{search}{hash}"))
+/// A history entry is actually stored in two places:
+/// - State object
+/// - URL
+///
+/// Ideally we wouldn't have to, but we want two things:
+/// - Listen to `popstate` events and handle navigations client-side,
+///   so that the forward/back buttons can be used to navigate between
+///   examples and the welcome screen.
+/// - Add a `?url` query param to the address bar when navigating to
+///   an example, so that examples can be shared directly by just
+///   copying the link.
+#[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct HistoryEntry {
+    /// Data source URL
+    ///
+    /// We support loading multiple URLs at the same time
+    ///
+    /// `?url=`
+    pub urls: Vec<String>,
 }
 
-/// Push a relative url on the web `History`,
-/// so that the user can use the back button to navigate to it.
-///
-/// If this is already the current url, nothing happens.
-///
-/// The url must be percent encoded.
-///
-/// Example:
-/// ```
-/// push_history("foo/bar?baz=qux#fragment");
-/// ```
-pub fn push_history(new_relative_url: &str) -> Option<()> {
-    let current_relative_url = current_url_suffix().unwrap_or_default();
+// Builder methods
+impl HistoryEntry {
+    pub const KEY: &'static str = "__rerun";
 
-    if current_relative_url == new_relative_url {
-        re_log::debug!("Ignoring navigation to {new_relative_url:?} as we're already there");
-    } else {
-        re_log::debug!(
-            "Existing url is {current_relative_url:?}; navigating to {new_relative_url:?}"
-        );
-
-        let history = web_sys::window()?
-            .history()
-            .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-            .ok_or_log_error()?;
-        // Instead of setting state to `null`, try to preserve existing state.
-        // This helps with ensuring JS frameworks can perform client-side routing.
-        // If we ever need to store anything in `state`, we should rethink how
-        // we handle this.
-        let existing_state = history.state().unwrap_or(JsValue::NULL);
-        history
-            .push_state_with_url(&existing_state, "", Some(new_relative_url))
-            .map_err(|err| {
-                format!(
-                    "Failed to push history state: {}",
-                    string_from_js_value(err)
-                )
-            })
-            .ok_or_log_error()?;
+    pub fn new() -> Self {
+        Self { urls: Vec::new() }
     }
-    Some(())
+
+    /// Set the URL of the RRD to load when using this entry.
+    #[inline]
+    pub fn rrd_url(mut self, url: String) -> Self {
+        self.urls.push(url);
+        self
+    }
 }
 
-/// Replace the current relative url with an new one.
-pub fn replace_history(new_relative_url: &str) -> Option<()> {
-    let history = web_sys::window()?
-        .history()
-        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
-        .ok_or_log_error()?;
-    // NOTE: See `existing_state` in `push_history` above for info on why this is here.
-    let existing_state = history.state().unwrap_or(JsValue::NULL);
-    history
-        .replace_state_with_url(&existing_state, "", Some(new_relative_url))
-        .map_err(|err| {
-            format!(
-                "Failed to push history state: {}",
-                string_from_js_value(err)
-            )
-        })
-        .ok_or_log_error()
-}
+// Serialization
+impl HistoryEntry {
+    pub fn to_query_string(&self) -> Result<String, JsValue> {
+        use std::fmt::Write;
 
-/// Parse the `?query` parst of the url, and translate it into commands to control the application.
-pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &CommandSender) {
-    use re_viewer_context::{SystemCommand, SystemCommandSender as _};
-
-    let location = eframe::web::web_location();
-
-    if let Some(app_ids) = location.query_map.get("app_id") {
-        if let Some(app_id) = app_ids.last() {
-            let app_id = re_log_types::ApplicationId::from(app_id.as_str());
-            command_sender.send_system(SystemCommand::ActivateApp(app_id));
+        let params = UrlSearchParams::new()?;
+        for url in &self.urls {
+            params.append("url", url);
         }
+        let mut out = "?".to_owned();
+        write!(&mut out, "{}", params.to_string()).ok();
+
+        Ok(out)
+    }
+}
+
+pub fn window() -> Result<Window, JsValue> {
+    web_sys::window().ok_or_else(|| js_error("failed to get window object"))
+}
+
+pub fn history() -> Result<History, JsValue> {
+    window()?.history()
+}
+
+pub trait HistoryExt {
+    /// Push a history entry onto the stack, which becomes the latest entry.
+    fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
+
+    /// Replace the latest entry.
+    fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue>;
+
+    /// Get the latest entry.
+    fn current_entry(&self) -> Result<Option<HistoryEntry>, JsValue>;
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(catch, js_namespace = ["window"], js_name = structuredClone)]
+    /// The `structuredClone()` method.
+    ///
+    /// [MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/structuredClone)
+    pub fn structured_clone(value: &JsValue) -> Result<JsValue, JsValue>;
+}
+
+/// Get the current raw history state.
+///
+/// The return value is an object which may contain properties
+/// added by other JS code. We need to be careful about not
+/// trampling over those.
+///
+/// The returned object has been deeply cloned, so it is safe
+/// to add our own keys to the object, as it won't update the
+/// current browser history.
+fn get_raw_state(history: &History) -> Result<JsValue, JsValue> {
+    let state = history.state().unwrap_or(JsValue::UNDEFINED);
+
+    if state.is_undefined() || state.is_null() {
+        // no state - return empty object
+        return Ok(js_sys::Object::new().into());
     }
 
-    // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
-    let urls: Vec<&String> = location
-        .query_map
-        .get("url")
-        .into_iter()
-        .flatten()
-        .collect();
-    if !urls.is_empty() {
-        let follow_if_http = false;
-        for url in urls {
-            if let Some(receiver) =
-                url_to_receiver(egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
-            {
-                // We may be here because the user clicked Back/Forward in the browser while trying
-                // out examples. If we re-download the same file we should clear out the old data first.
-                command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-                    receiver.source().clone(),
-                ));
-
-                command_sender.send_system(SystemCommand::AddReceiver(receiver));
-            }
-        }
+    if !state.is_object() {
+        // invalid state
+        return Err(JsError::new("history state is not an object").into());
     }
 
-    egui_ctx.request_repaint(); // wake up to receive the messages
+    // deeply clone state
+    structured_clone(&state)
+}
+
+fn deserialize_from_state(state: JsValue) -> Result<Option<HistoryEntry>, JsValue> {
+    let key = JsValue::from_str(HistoryEntry::KEY);
+    let value = js_sys::Reflect::get(&state, &key)?;
+    if value.is_undefined() || value.is_null() {
+        return Ok(None);
+    }
+    let entry = serde_wasm_bindgen::from_value(value)?;
+    Ok(Some(entry))
+}
+
+/// Get the state from `history`, deeply-cloned, and return it with updated values from the given `entry`.
+///
+/// This does _not_ mutate the browser history.
+fn get_updated_state(history: &History, entry: &HistoryEntry) -> Result<JsValue, JsValue> {
+    let state = get_raw_state(history)?;
+    let key = JsValue::from_str(HistoryEntry::KEY);
+    let entry = serde_wasm_bindgen::to_value(entry)?;
+    js_sys::Reflect::set(&state, &key, &entry)?;
+    Ok(state)
+}
+
+impl HistoryExt for History {
+    fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
+        let state = get_updated_state(self, &entry)?;
+        let url = entry.to_query_string()?;
+        self.push_state_with_url(&state, "", Some(&url))?;
+        set_stored_history_entry(Some(entry));
+
+        Ok(())
+    }
+
+    fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
+        let state = get_updated_state(self, &entry)?;
+        let url = entry.to_query_string()?;
+        self.replace_state_with_url(&state, "", Some(&url))?;
+        set_stored_history_entry(Some(entry));
+
+        Ok(())
+    }
+
+    fn current_entry(&self) -> Result<Option<HistoryEntry>, JsValue> {
+        let state = get_raw_state(self)?;
+        deserialize_from_state(state)
+    }
 }
 
 enum EndpointCategory {
@@ -184,23 +364,23 @@ enum EndpointCategory {
     WebSocket(String),
 
     /// An eventListener for rrd posted from containing html
-    WebEventListener,
+    WebEventListener(String),
 }
 
 impl EndpointCategory {
-    fn categorize_uri(uri: &str) -> Self {
+    fn categorize_uri(uri: String) -> Self {
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            Self::HttpRrd(uri.into())
+            Self::HttpRrd(uri)
         } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
-            Self::WebSocket(uri.into())
+            Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
-            Self::WebEventListener
+            Self::WebEventListener(uri)
         } else {
             // If this is something like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
             re_log::info!("Assuming WebSocket endpoint");
             if uri.contains("://") {
-                Self::WebSocket(uri.into())
+                Self::WebSocket(uri)
             } else {
                 Self::WebSocket(format!("{}://{uri}", re_ws_comms::PROTOCOL))
             }
@@ -212,7 +392,7 @@ impl EndpointCategory {
 pub fn url_to_receiver(
     egui_ctx: egui::Context,
     follow_if_http: bool,
-    url: &str,
+    url: String,
 ) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
@@ -227,13 +407,12 @@ pub fn url_to_receiver(
                 Some(ui_waker),
             ),
         ),
-        EndpointCategory::WebEventListener => {
+        EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(
                 re_smart_channel::SmartMessageSource::RrdWebEventCallback,
                 re_smart_channel::SmartChannelSource::RrdWebEventListener,
             );
-            let url = url.to_owned();
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_event_listener(Arc::new({
                 move |msg| {
                     ui_waker();
@@ -263,5 +442,62 @@ pub fn url_to_receiver(
         }
         EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
             .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
+    }
+}
+
+// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
+#[derive(Clone, Deserialize)]
+#[repr(transparent)]
+pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
+
+impl Callback {
+    #[inline]
+    pub fn call(&self) -> Result<JsValue, JsValue> {
+        let window: JsValue = window()?.into();
+        self.0.call0(&window)
+    }
+}
+
+// Deserializes from JS string or array of strings.
+#[derive(Clone)]
+pub struct StringOrStringArray(Vec<String>);
+
+impl StringOrStringArray {
+    pub fn into_inner(self) -> Vec<String> {
+        self.0
+    }
+}
+
+impl std::ops::Deref for StringOrStringArray {
+    type Target = Vec<String>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for StringOrStringArray {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        fn from_value(value: JsValue) -> Option<Vec<String>> {
+            if let Some(value) = value.as_string() {
+                return Some(vec![value]);
+            }
+
+            let array = value.dyn_into::<js_sys::Array>().ok()?;
+            let mut out = Vec::with_capacity(array.length() as usize);
+            for item in array {
+                out.push(item.as_string()?);
+            }
+            Some(out)
+        }
+
+        let value = serde_wasm_bindgen::preserve::deserialize(deserializer)?;
+        from_value(value)
+            .map(Self)
+            .ok_or_else(|| serde::de::Error::custom("value is not a string or array of strings"))
     }
 }
