@@ -87,7 +87,7 @@ impl TypedComponentFallbackProvider<components::Color> for BarChartVisualizerSys
 impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualizerSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> components::TensorData {
         // Provide tensor data which visualizes as a series of simple steps.
-        [0_i64, 1, 2, 3, 4].as_slice().into()
+        [0_u8, 1, 2, 3, 4].as_slice().into()
     }
 }
 
