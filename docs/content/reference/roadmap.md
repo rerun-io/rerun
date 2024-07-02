@@ -2,7 +2,8 @@
 title: Roadmap
 order: 200
 ---
-Rerun is building a visualization engine for streams of multimodal data that's easy to use, adapt, and extend.
+Rerun is building a data management and visualization engine for multimodal data that changes over time.
+We aim to make it fast, and easy to use, and easy to adapt and integrate into your existing workflows.
 
 Open an issue or pull request on [GitHub](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/PXtCgFBSmH) to let the community know what you'd like to see.
 
@@ -16,26 +17,29 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ## Roadmap of major feature areas
 
-### Early April 2024: release 0.15
-- Layout and viewport content from code (blueprint part 1)
-- Data-loader plugins callable from the SDK
-- Linux ARM64 support in pre-built artifacts
+### Early July 2024: release 0.17
+- Blueprint component overrides & defaults (from code & UI)
+- Redesigned selection view to make inspecting and editing visualization options easier
+- Improved experience for embedding Rerun in web pages
+- Improved notebook experience, including live visualizations from running cells
+- A lot more blueprint configurability through code (still Python only)
 
-### Near term: now - end of Q2 2024
-- Property overrides from code (blueprint part 2)
-    - Includes setting visible time range from code
-- Broader coverage of robotics and spatial computing data types
-- Extension mechanisms for dynamically reading from external storage
-    - For example files like: VRS, MCAP, or mp4
-    - Also brings support for datasets that are bigger than RAM in the native viewer
+### Near term: summer 2024
+- Time-batch api: the ability to insert large chunks of e.g. time series in a single call
+- Improved ingestion performance for large sets of small data (time series)
+- Query api for reading back data from the SDK
+- Improved support for working directly with Arrow data and the Rerun extension types
+- A generic multimodal table view
 
 ### Medium term (Q3-4 2024)
-- Make Rerun easier to use when training and evaluating ML models
-- Deeper support for modalities like text and audio
+- Audio and maps support
+- Decoding h264 video in the viewer
+- Official ROS2 bridge
 - Callbacks and the ability to build interactive applications with Rerun
     - For example: UI for tweaking configs, custom data annotation tools, etc
+- Rerun data platform (commercial)
+    - Get in touch on hi@rerun.io if you're interested in becoming a design partner
 
 ### Longer term
 - Extensibility of all parts of the stack
-- Easily query data recordings from user code
 - Data format stability
