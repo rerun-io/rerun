@@ -203,7 +203,6 @@ impl SelectionPanel {
 
             Item::Container(container_id) => {
                 container_top_level_properties(ctx, blueprint, ui, container_id);
-                ui.add_space(12.0);
                 container_children(ctx, blueprint, ui, container_id);
             }
 
@@ -455,6 +454,7 @@ fn clone_space_view_button_ui(
     blueprint: &ViewportBlueprint,
     view_id: SpaceViewId,
 ) {
+    //TODO(#6707): use `ButtonContent` when it exists
     if ui
         .list_item()
         .show_flat(ui, LabelContent::new("Clone this view"))
@@ -570,16 +570,6 @@ fn container_children(
         return;
     };
 
-    ui.horizontal(|ui| {
-        ui.strong("Contents");
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.small_icon_button(&icons::ADD).clicked() {
-                show_add_space_view_or_container_modal(*container_id);
-            }
-        });
-    });
-
     let show_content = |ui: &mut egui::Ui| {
         let mut has_child = false;
         for child_contents in &container.contents {
@@ -595,23 +585,14 @@ fn container_children(
         }
     };
 
-    egui::Frame {
-        outer_margin: egui::Margin::ZERO,
-        inner_margin: egui::Margin::ZERO,
-        stroke: ui.visuals().widgets.noninteractive.bg_stroke,
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        list_item::list_item_scope(ui, "children list", |ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
-
-            egui::Frame {
-                inner_margin: egui::Margin::symmetric(4.0, 0.0),
-                ..Default::default()
-            }
-            .show(ui, show_content);
-        });
-    });
+    ui.section_collapsing_header("Contents")
+        .button(
+            list_item::ItemActionButton::new(&re_ui::icons::ADD, || {
+                show_add_space_view_or_container_modal(*container_id);
+            })
+            .hover_text("Add a new space view or container to this container"),
+        )
+        .show(ui, show_content);
 }
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
@@ -947,107 +928,91 @@ fn container_top_level_properties(
         return;
     };
 
-    egui::Grid::new("container_top_level_properties")
-        .num_columns(2)
-        .show(ui, |ui| {
-            let mut name = container.display_name.clone().unwrap_or_default();
-            ui.label("Name").on_hover_text(
-                "The name of the container used for display purposes. This can be any text string.",
-            );
-            ui.text_edit_singleline(&mut name);
-            container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+    ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
+        let mut name = container.display_name.clone().unwrap_or_default();
+        ui.add(egui::TextEdit::singleline(&mut name));
+        container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+    }));
 
-            ui.end_row();
+    ui.list_item_flat_noninteractive(PropertyContent::new("Kind").value_fn(|ui, _| {
+        let mut container_kind = container.container_kind;
+        container_kind_selection_ui(ui, &mut container_kind);
+        blueprint.set_container_kind(*container_id, container_kind);
+    }));
 
-            ui.label("Kind");
-
-            let mut container_kind = container.container_kind;
-            container_kind_selection_ui(ui, &mut container_kind);
-
-            blueprint.set_container_kind(*container_id, container_kind);
-
-            ui.end_row();
-
-            if container.container_kind == ContainerKind::Grid {
-                ui.label("Columns");
-
-                fn columns_to_string(columns: &Option<u32>) -> String {
-                    match columns {
-                        None => "Auto".to_owned(),
-                        Some(cols) => cols.to_string(),
-                    }
+    if container.container_kind == ContainerKind::Grid {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Columns").value_fn(|ui, _| {
+            fn columns_to_string(columns: &Option<u32>) -> String {
+                match columns {
+                    None => "Auto".to_owned(),
+                    Some(cols) => cols.to_string(),
                 }
-
-                let mut new_columns = container.grid_columns;
-
-                egui::ComboBox::from_id_source("container_grid_columns")
-                    .selected_text(columns_to_string(&new_columns))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut new_columns, None, columns_to_string(&None));
-
-                        ui.separator();
-
-                        for columns in 1..=container.contents.len() as u32 {
-                            ui.selectable_value(
-                                &mut new_columns,
-                                Some(columns),
-                                columns_to_string(&Some(columns)),
-                            );
-                        }
-                    });
-
-                container.set_grid_columns(ctx, new_columns);
-
-                ui.end_row();
             }
 
-            if ui
-                .button("Simplify hierarchy")
-                .on_hover_text("Simplify this container and its children")
-                .clicked()
-            {
-                blueprint.simplify_container(
-                    container_id,
-                    egui_tiles::SimplificationOptions {
-                        prune_empty_tabs: true,
-                        prune_empty_containers: true,
-                        prune_single_child_tabs: false,
-                        prune_single_child_containers: false,
-                        all_panes_must_have_tabs: true,
-                        join_nested_linear_containers: true,
-                    },
-                );
-            }
-            ui.end_row();
+            let mut new_columns = container.grid_columns;
 
-            // ---
+            egui::ComboBox::from_id_source("container_grid_columns")
+                .selected_text(columns_to_string(&new_columns))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut new_columns, None, columns_to_string(&None));
 
-            fn equal_shares(shares: &[f32]) -> bool {
-                shares.iter().all(|&share| share == shares[0])
-            }
+                    ui.separator();
 
-            let all_shares_are_equal =
-                equal_shares(&container.col_shares) && equal_shares(&container.row_shares);
-
-            if container.contents.len() > 1
-                && match container.container_kind {
-                    ContainerKind::Tabs => false,
-                    ContainerKind::Horizontal | ContainerKind::Vertical | ContainerKind::Grid => {
-                        true
+                    for columns in 1..=container.contents.len() as u32 {
+                        ui.selectable_value(
+                            &mut new_columns,
+                            Some(columns),
+                            columns_to_string(&Some(columns)),
+                        );
                     }
-                }
-                && ui
-                    .add_enabled(
-                        !all_shares_are_equal,
-                        egui::Button::new("Distribute content equally"),
-                    )
-                    .on_hover_text("Make all children the same size")
-                    .clicked()
-            {
-                blueprint.make_all_children_same_size(container_id);
-            }
-            ui.end_row();
-        });
+                });
+
+            container.set_grid_columns(ctx, new_columns);
+        }));
+    }
+
+    //TODO(#6707): use `ButtonContent` when it exists
+    if ui
+        .list_item()
+        .show_flat(ui, LabelContent::new("Simplify hierarchy"))
+        .on_hover_text("Simplify this container and its children")
+        .clicked()
+    {
+        blueprint.simplify_container(
+            container_id,
+            egui_tiles::SimplificationOptions {
+                prune_empty_tabs: true,
+                prune_empty_containers: true,
+                prune_single_child_tabs: false,
+                prune_single_child_containers: false,
+                all_panes_must_have_tabs: true,
+                join_nested_linear_containers: true,
+            },
+        );
+    }
+
+    fn equal_shares(shares: &[f32]) -> bool {
+        shares.iter().all(|&share| share == shares[0])
+    }
+
+    let all_shares_are_equal =
+        equal_shares(&container.col_shares) && equal_shares(&container.row_shares);
+
+    //TODO(#6707): use `ButtonContent` when it exists
+    if container.contents.len() > 1
+        && match container.container_kind {
+            ContainerKind::Tabs => false,
+            ContainerKind::Horizontal | ContainerKind::Vertical | ContainerKind::Grid => true,
+        }
+        && ui
+            .list_item()
+            .interactive(!all_shares_are_equal)
+            .show_flat(ui, LabelContent::new("Distribute content equally"))
+            .on_hover_text("Make all children the same size")
+            .clicked()
+    {
+        blueprint.make_all_children_same_size(container_id);
+    }
 }
 
 fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKind) {
