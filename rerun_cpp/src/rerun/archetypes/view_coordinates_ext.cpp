@@ -168,6 +168,30 @@ namespace rerun {
             /// X=Back, Y=Right, Z=Down
             RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates BRD;
 
+            /// X=Up, Y=Left, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates UL;
+
+            /// X=Left, Y=Up, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates LU;
+
+            /// X=Up, Y=Right, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates UR;
+
+            /// X=Right, Y=Up, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates RU;
+
+            /// X=Down, Y=Left, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates DL;
+
+            /// X=Left, Y=Down, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates LD;
+
+            /// X=Down, Y=Right, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates DR;
+
+            /// X=Right, Y=Down, Z=Unused
+            RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates RD;
+
             /// X=Up, Y=Right, Z=Forward
             RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates RIGHT_HAND_X_UP;
 
@@ -308,6 +332,22 @@ namespace rerun {
             ViewCoordinates(rerun::components::ViewCoordinates::BDR);
         const ViewCoordinates ViewCoordinates::BRD =
             ViewCoordinates(rerun::components::ViewCoordinates::BRD);
+        const ViewCoordinates ViewCoordinates::UL =
+            ViewCoordinates(rerun::components::ViewCoordinates::UL);
+        const ViewCoordinates ViewCoordinates::LU =
+            ViewCoordinates(rerun::components::ViewCoordinates::LU);
+        const ViewCoordinates ViewCoordinates::UR =
+            ViewCoordinates(rerun::components::ViewCoordinates::UR);
+        const ViewCoordinates ViewCoordinates::RU =
+            ViewCoordinates(rerun::components::ViewCoordinates::RU);
+        const ViewCoordinates ViewCoordinates::DL =
+            ViewCoordinates(rerun::components::ViewCoordinates::DL);
+        const ViewCoordinates ViewCoordinates::LD =
+            ViewCoordinates(rerun::components::ViewCoordinates::LD);
+        const ViewCoordinates ViewCoordinates::DR =
+            ViewCoordinates(rerun::components::ViewCoordinates::DR);
+        const ViewCoordinates ViewCoordinates::RD =
+            ViewCoordinates(rerun::components::ViewCoordinates::RD);
         const ViewCoordinates ViewCoordinates::RIGHT_HAND_X_UP =
             ViewCoordinates(rerun::components::ViewCoordinates::RIGHT_HAND_X_UP);
         const ViewCoordinates ViewCoordinates::RIGHT_HAND_X_DOWN =
