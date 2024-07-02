@@ -72,19 +72,19 @@ impl<'a> HybridLatestAtResults<'a> {
             .ok()
     }
 
-    /// Utility for retrieving a single instance of a component, ignoring defaults.
+    /// Utility for retrieving the first instance of a component, ignoring defaults.
     #[inline]
     pub fn get_required_mono<T: re_types_core::Component>(&self) -> Option<T> {
         self.get_required_instance(0)
     }
 
-    /// Utility for retrieving a single instance of a component.
+    /// Utility for retrieving the first instance of a component.
     #[inline]
     pub fn get_mono<T: re_types_core::Component>(&self) -> Option<T> {
         self.get_instance(0)
     }
 
-    /// Utility for retrieving a single instance of a component.
+    /// Utility for retrieving the first instance of a component.
     #[inline]
     pub fn get_mono_with_fallback<T: re_types_core::Component + Default>(&self) -> T {
         self.get_instance_with_fallback(0)
@@ -92,7 +92,7 @@ impl<'a> HybridLatestAtResults<'a> {
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
     ///
-    /// If overrides are present, they will only be used respectively if they have a component at the specified index.
+    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
     pub fn get_required_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
         let component_name = T::name();
@@ -109,20 +109,20 @@ impl<'a> HybridLatestAtResults<'a> {
 
     /// Utility for retrieving a single instance of a component.
     ///
-    /// If overrides are present, they will only be used respectively if they have a component at the specified index.
+    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
     pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
         self.get_required_instance(index).or_else(|| {
             // No override & no store -> try default instead
             self.defaults
                 .get(T::name())
-                .and_then(|r| r.try_instance::<T>(&self.resolver, 0))
+                .and_then(|r| r.try_instance::<T>(&self.resolver, index))
         })
     }
 
     /// Utility for retrieving a single instance of a component.
     ///
-    /// If overrides are present, they will only be used respectively if they have a component at the specified index.
+    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
     pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
         &self,
