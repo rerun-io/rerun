@@ -55,7 +55,7 @@ class Points3D(Points3DExt, Archetype):
 
     # Two blue points with scene unit radii of 0.1 and 0.3.
     rr.log(
-        "scene_unit_points",
+        "scene_units",
         rr.Points3D(
             [[0, 1, 0], [1, 1, 1]],
             # By default, radii are interpreted as world-space units.
@@ -68,7 +68,7 @@ class Points3D(Points3DExt, Archetype):
     # UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
     # For 100% ui scaling, UI points are equal to pixels.
     rr.log(
-        "ui_points_points",
+        "ui_points",
         rr.Points3D(
             [[0, 0, 0], [1, 0, 1]],
             # rr.Radius.ui_points produces radii that the viewer interprets as given in ui points.

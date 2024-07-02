@@ -65,7 +65,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     // Two blue points with scene unit radii of 0.1 and 0.3.
 ///     rec.log(
-///         "scene_unit_points",
+///         "scene_units",
 ///         &rerun::Points3D::new([(0.0, 1.0, 0.0), (1.0, 1.0, 1.0)])
 ///             // By default, radii are interpreted as world-space units.
 ///             .with_radii([0.1, 0.3])
@@ -76,7 +76,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
 ///     // For 100% ui scaling, UI points are equal to pixels.
 ///     rec.log(
-///         "ui_points_points",
+///         "ui_points",
 ///         &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 0.0, 1.0)])
 ///             // rerun::Radius::new_ui_points produces a radius that the viewer interprets as given in ui points.
 ///             .with_radii([
