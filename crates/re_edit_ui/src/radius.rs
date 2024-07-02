@@ -36,8 +36,10 @@ pub fn edit_radius_ui(
         {
             // When we change the type of units,the value is likely going to be _very wrong_.
             // Unfortunately, we don't have knowledge of a fallback here, so we use hardcoded "reasonable" values.
+            //
+            // Careful, if these "start values" are too big, they may cause overdraw issues on point clouds too often
             if is_scene_units {
-                abs_value = 0.5;
+                abs_value = 0.1;
             } else {
                 abs_value = 2.5;
             };
