@@ -266,6 +266,7 @@ pub trait HistoryExt: private::Sealed {
 }
 
 impl private::Sealed for History {}
+
 impl HistoryExt for History {
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
         let state = get_updated_state(self, &entry)?;
