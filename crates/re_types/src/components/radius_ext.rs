@@ -43,12 +43,46 @@ impl Radius {
     /// If this radius is in scene units, returns the radius in scene units.
     #[inline]
     pub fn scene_units(&self) -> Option<f32> {
+        // Ensure negative zero is treated as a point size.
         self.0.is_sign_positive().then_some(self.0)
     }
 
     /// If this radius is in ui points, returns the radius in ui points.
     #[inline]
     pub fn ui_points(&self) -> Option<f32> {
+        // Ensure negative zero is treated as a point size.
         self.0.is_sign_negative().then_some(-self.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Radius;
+
+    #[test]
+    fn scene_point_distinction() {
+        let radius = Radius(1.0);
+        assert_eq!(radius.scene_units(), Some(1.0));
+        assert_eq!(radius.ui_points(), None);
+
+        let radius = Radius(-1.0);
+        assert_eq!(radius.scene_units(), None);
+        assert_eq!(radius.ui_points(), Some(1.0));
+
+        let radius = Radius(f32::INFINITY);
+        assert_eq!(radius.scene_units(), Some(f32::INFINITY));
+        assert_eq!(radius.ui_points(), None);
+
+        let radius = Radius(f32::NEG_INFINITY);
+        assert_eq!(radius.scene_units(), None);
+        assert_eq!(radius.ui_points(), Some(f32::INFINITY));
+
+        let radius = Radius(0.0);
+        assert_eq!(radius.scene_units(), Some(0.0));
+        assert_eq!(radius.ui_points(), None);
+
+        let radius = Radius(-0.0);
+        assert_eq!(radius.scene_units(), None);
+        assert_eq!(radius.ui_points(), Some(0.0));
     }
 }

@@ -37,13 +37,15 @@ impl Size {
 
     /// Get the scene-size of this, if stored as a scene size.
     #[inline]
-    pub fn scene(&self) -> Option<f32> {
+    pub fn scene_units(&self) -> Option<f32> {
+        // Ensure negative zero is treated as a point size.
         self.0.is_sign_positive().then_some(self.0)
     }
 
     /// Get the point size of this, if stored as a point size.
     #[inline]
-    pub fn points(&self) -> Option<f32> {
+    pub fn ui_points(&self) -> Option<f32> {
+        // Ensure negative zero is treated as a point size.
         self.0.is_sign_negative().then_some(-self.0)
     }
 }
@@ -84,5 +86,37 @@ impl From<Size> for SizeHalf {
     #[inline]
     fn from(size: Size) -> Self {
         Self(half::f16::from_f32(size.0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Size;
+
+    #[test]
+    fn scene_point_distinction() {
+        let size = Size(1.0);
+        assert_eq!(size.scene_units(), Some(1.0));
+        assert_eq!(size.ui_points(), None);
+
+        let size = Size(-1.0);
+        assert_eq!(size.scene_units(), None);
+        assert_eq!(size.ui_points(), Some(1.0));
+
+        let size = Size(f32::INFINITY);
+        assert_eq!(size.scene_units(), Some(f32::INFINITY));
+        assert_eq!(size.ui_points(), None);
+
+        let size = Size(f32::NEG_INFINITY);
+        assert_eq!(size.scene_units(), None);
+        assert_eq!(size.ui_points(), Some(f32::INFINITY));
+
+        let size = Size(0.0);
+        assert_eq!(size.scene_units(), Some(0.0));
+        assert_eq!(size.ui_points(), None);
+
+        let size = Size(-0.0);
+        assert_eq!(size.scene_units(), None);
+        assert_eq!(size.ui_points(), Some(0.0));
     }
 }
