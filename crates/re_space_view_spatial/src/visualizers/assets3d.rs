@@ -1,4 +1,3 @@
-use re_entity_db::EntityPath;
 use re_log_types::{hash::Hash64, Instance, RowId, TimeInt};
 use re_query::range_zip_1x2;
 use re_renderer::renderer::MeshInstance;
@@ -47,10 +46,11 @@ impl Asset3DVisualizer {
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Asset3DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let mesh = Asset3D {
                 blob: data.blob.clone(),
@@ -146,14 +146,12 @@ impl VisualizerSystem for Asset3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let blobs = match results.get_dense::<Blob>(resolver) {
+                let blobs = match results.get_required_component_dense::<Blob>(resolver) {
                     Some(blobs) => blobs?,
                     _ => return Ok(()),
                 };
@@ -175,14 +173,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                     })
                 });
 
-                self.process_data(
-                    ctx,
-                    render_ctx,
-                    &mut instances,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
                 Ok(())
             },
         )?;

@@ -7,9 +7,10 @@ use re_types::{
     components::{ClassId, Color, KeypointId, LineStrip3D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -86,12 +87,14 @@ impl Lines3DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Lines3DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.strips.len();
             if num_instances == 0 {
@@ -112,7 +115,7 @@ impl Lines3DVisualizer {
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             if num_instances <= self.max_labels {
                 self.data.ui_labels.extend(Self::process_labels(
@@ -220,14 +223,12 @@ impl VisualizerSystem for Lines3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let strips = match results.get_dense::<LineStrip3D>(resolver) {
+                let strips = match results.get_required_component_dense::<LineStrip3D>(resolver) {
                     Some(strips) => strips?,
                     _ => return Ok(()),
                 };
@@ -274,13 +275,7 @@ impl VisualizerSystem for Lines3DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    &mut line_builder,
-                    view_query,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
 
                 Ok(())
             },
@@ -302,4 +297,10 @@ impl VisualizerSystem for Lines3DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Lines3DVisualizer => []);
+impl TypedComponentFallbackProvider<Color> for Lines3DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Lines3DVisualizer => [Color]);

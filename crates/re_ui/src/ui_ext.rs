@@ -577,7 +577,7 @@ pub trait UiExt {
     }
 
     /// Convenience function to create a [`crate::SectionCollapsingHeader`].
-    #[allow(clippy:unused_self)]
+    #[allow(clippy::unused_self)]
     fn section_collapsing_header<'a>(
         &self,
         label: impl Into<egui::WidgetText>,
@@ -621,7 +621,12 @@ pub trait UiExt {
             .at_least(DesignTokens::small_icon_size().y);
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, selected, galley.text())
+            egui::WidgetInfo::selected(
+                egui::WidgetType::SelectableLabel,
+                ui.is_enabled(),
+                selected,
+                galley.text(),
+            )
         });
 
         if ui.is_rect_visible(rect) {
@@ -798,7 +803,9 @@ pub trait UiExt {
             *on = !*on;
             response.mark_changed();
         }
-        response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, *on, ""));
+        response.widget_info(|| {
+            egui::WidgetInfo::selected(egui::WidgetType::Checkbox, ui.is_enabled(), *on, "")
+        });
 
         if ui.is_rect_visible(visual_rect) {
             let how_on = ui.ctx().animate_bool(response.id, *on);

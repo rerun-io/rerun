@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-use re_entity_db::EntityPath;
 use re_log_types::{hash::Hash64, Instance, RowId, TimeInt};
 use re_query::range_zip_1x7;
 use re_renderer::renderer::MeshInstance;
@@ -61,10 +60,11 @@ impl Mesh3DVisualizer {
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let primary_row_id = data.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
@@ -178,17 +178,16 @@ impl VisualizerSystem for Mesh3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let vertex_positions = match results.get_dense::<Position3D>(resolver) {
-                    Some(positions) => positions?,
-                    _ => return Ok(()),
-                };
+                let vertex_positions =
+                    match results.get_required_component_dense::<Position3D>(resolver) {
+                        Some(positions) => positions?,
+                        _ => return Ok(()),
+                    };
 
                 let vertex_normals = results.get_or_empty_dense(resolver)?;
                 let vertex_colors = results.get_or_empty_dense(resolver)?;
@@ -237,14 +236,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    ctx,
-                    render_ctx,
-                    &mut instances,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
                 Ok(())
             },
         )?;

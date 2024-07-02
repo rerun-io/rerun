@@ -63,13 +63,13 @@ impl DepthImageVisualizer {
         ctx: &QueryContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = DepthImageComponentData<'a>>,
     ) {
         let is_3d_view =
             ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
 
+        let entity_path = ctx.target_entity_path;
         let meaning = TensorDataMeaning::Depth;
 
         for data in data {
@@ -303,14 +303,12 @@ impl VisualizerSystem for DepthImageVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let tensors = match results.get_dense::<TensorData>(resolver) {
+                let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
                     Some(tensors) => tensors?,
                     _ => return Ok(()),
                 };
@@ -341,7 +339,6 @@ impl VisualizerSystem for DepthImageVisualizer {
                     ctx,
                     &mut depth_clouds,
                     transforms,
-                    entity_path,
                     spatial_ctx,
                     &mut data,
                 );

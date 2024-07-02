@@ -315,6 +315,7 @@ impl ListItemContent for PropertyContent<'_> {
         context.response.widget_info(|| {
             egui::WidgetInfo::selected(
                 egui::WidgetType::SelectableLabel,
+                ui.is_enabled(),
                 context.list_item.selected,
                 galley.text(),
             )

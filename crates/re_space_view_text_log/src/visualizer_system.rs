@@ -1,11 +1,12 @@
 use re_data_store::ResolvedTimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
-use re_query::{clamped_zip_1x2, range_zip_1x2, PromiseResult, RangeData};
+use re_query::{clamped_zip_1x2, range_zip_1x2};
+use re_space_view::{range_with_blueprint_resolved_data, RangeResultsExt};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Component, Loggable as _,
+    Loggable as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
@@ -14,7 +15,6 @@ use re_viewer_context::{
 
 #[derive(Debug, Clone)]
 pub struct Entry {
-    // props
     pub row_id: RowId,
 
     pub entity_path: EntityPath,
@@ -51,64 +51,18 @@ impl VisualizerSystem for TextLogSystem {
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let resolver = ctx.recording().resolver();
+        re_tracing::profile_function!();
+
         let query =
             re_data_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
-            re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
-
-            let results = ctx.recording().query_caches().range(
-                ctx.recording_store(),
-                &query,
-                &data_result.entity_path,
-                [Text::name(), TextLogLevel::name(), Color::name()],
-            );
-
-            let all_bodies = {
-                let Some(all_bodies) = results.get(Text::name()) else {
-                    continue;
-                };
-                all_bodies.to_dense::<Text>(resolver)
-            };
-            check_range(&all_bodies)?;
-
-            let all_levels = results
-                .get_or_empty(TextLogLevel::name())
-                .to_dense::<TextLogLevel>(resolver);
-            check_range(&all_levels)?;
-
-            let all_colors = results
-                .get_or_empty(Color::name())
-                .to_dense::<Color>(resolver);
-            check_range(&all_colors)?;
-
-            let all_frames = range_zip_1x2(
-                all_bodies.range_indexed(),
-                all_levels.range_indexed(),
-                all_colors.range_indexed(),
-            );
-
-            for (&(data_time, row_id), bodies, levels, colors) in all_frames {
-                let levels = levels.unwrap_or(&[]).iter().cloned().map(Some);
-                let colors = colors.unwrap_or(&[]).iter().copied().map(Some);
-
-                let level_default_fn = || None;
-                let color_default_fn = || None;
-
-                let results =
-                    clamped_zip_1x2(bodies, levels, level_default_fn, colors, color_default_fn);
-
-                for (body, level, color) in results {
-                    self.entries.push(Entry {
-                        row_id,
-                        entity_path: data_result.entity_path.clone(),
-                        time: data_time,
-                        color,
-                        body: body.clone(),
-                        level,
-                    });
-                }
+            if let Err(err) = self.process_entity(ctx, &query, data_result) {
+                re_log::error_once!(
+                    "Error visualizing text logs for {:?}: {:?}",
+                    data_result.entity_path,
+                    err
+                );
             }
         }
 
@@ -130,22 +84,63 @@ impl VisualizerSystem for TextLogSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);
+impl TextLogSystem {
+    fn process_entity(
+        &mut self,
+        ctx: &ViewContext<'_>,
+        query: &re_data_store::RangeQuery,
+        data_result: &re_viewer_context::DataResult,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        re_tracing::profile_function!();
+        let resolver = ctx.recording().resolver();
 
-// TODO(#5607): what should happen if the promise is still pending?
-#[inline]
-fn check_range<'a, C: Component>(results: &'a RangeData<'a, C>) -> re_query::Result<()> {
-    let (front_status, back_status) = results.status();
-    match front_status {
-        PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-        PromiseResult::Ready(_) => {}
-    }
-    match back_status {
-        PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
-        PromiseResult::Ready(_) => {}
-    }
+        let results = range_with_blueprint_resolved_data(
+            ctx,
+            None,
+            query,
+            data_result,
+            [Text::name(), TextLogLevel::name(), Color::name()],
+        );
 
-    Ok(())
+        let Some(all_texts) = results
+            .get_required_component_dense::<Text>(resolver)
+            .transpose()?
+        else {
+            return Ok(());
+        };
+
+        let all_levels = results.get_or_empty_dense::<TextLogLevel>(resolver)?;
+        let all_colors = results.get_or_empty_dense::<Color>(resolver)?;
+        let all_frames = range_zip_1x2(
+            all_texts.range_indexed(),
+            all_levels.range_indexed(),
+            all_colors.range_indexed(),
+        );
+
+        for (&(data_time, row_id), bodies, levels, colors) in all_frames {
+            let levels = levels.unwrap_or(&[]).iter().cloned().map(Some);
+            let colors = colors.unwrap_or(&[]).iter().copied().map(Some);
+
+            let level_default_fn = || None;
+            let color_default_fn = || None;
+
+            let results =
+                clamped_zip_1x2(bodies, levels, level_default_fn, colors, color_default_fn);
+
+            for (text, level, color) in results {
+                self.entries.push(Entry {
+                    row_id,
+                    entity_path: data_result.entity_path.clone(),
+                    time: data_time,
+                    color,
+                    body: text.clone(),
+                    level,
+                });
+            }
+        }
+
+        Ok(())
+    }
 }
+
+re_viewer_context::impl_component_fallback_provider!(TextLogSystem => []);

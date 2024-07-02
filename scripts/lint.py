@@ -664,23 +664,22 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 force_capitalized = [
     "2D",
     "3D",
-    "Apache",
     "API",
     "APIs",
+    "Apache",
     "April",
     "Bevy",
     "C",
     "C++",
     "C++17,",  # easier than coding up a special case
-    "C++17",
     "Colab",
-    "Google",
     "GUI",
+    "Google",
+    "July",
     "Jupyter",
     "Linux",
     "Mac",
     "Numpy",
-    "nuScenes",
     "Pixi",
     "Python",
     "Q1",
@@ -692,6 +691,7 @@ force_capitalized = [
     "SAM",
     "UI",
     "Wasm",
+    "nuScenes",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     # "Windows", # Consider "multiple plot windows"
 ]

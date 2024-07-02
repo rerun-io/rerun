@@ -94,14 +94,13 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
+                let entity_path = ctx.target_entity_path;
                 let resolver = ctx.recording().resolver();
 
-                let tensors = match results.get_dense::<TensorData>(resolver) {
+                let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
                     Some(tensors) => tensors?,
                     _ => return Ok(()),
                 };

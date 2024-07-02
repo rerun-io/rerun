@@ -10,8 +10,7 @@ use re_query::LatestAtMonoResult;
 use re_types::components::AnnotationContext;
 use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
-use super::{auto_color, ViewerContext};
-use crate::DefaultColor;
+use super::{auto_color_egui, ViewerContext};
 
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 
@@ -135,33 +134,20 @@ pub struct ResolvedAnnotationInfo {
 impl ResolvedAnnotationInfo {
     /// `rgba` should be unmultiplied
     #[inline]
-    pub fn color(
-        &self,
-        rgba: Option<[u8; 4]>,
-        default_color: DefaultColor<'_>,
-    ) -> re_renderer::Color32 {
+    pub fn color(&self, rgba: Option<[u8; 4]>) -> Option<re_renderer::Color32> {
         if let Some([r, g, b, a]) = rgba {
-            if a == 255 {
+            Some(if a == 255 {
                 // Common-case optimization
                 re_renderer::Color32::from_rgb(r, g, b)
             } else {
                 re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-            }
-        } else if let Some(color) = self.annotation_info.as_ref().and_then(|info| {
-            info.color
-                .map(|c| c.into())
-                .or_else(|| Some(auto_color(info.id)))
-        }) {
-            color
+            })
         } else {
-            match (self.class_id, default_color) {
-                (Some(class_id), _) if class_id.0 != 0 => auto_color(class_id.0),
-                (_, DefaultColor::TransparentBlack) => re_renderer::Color32::TRANSPARENT,
-                (_, DefaultColor::OpaqueWhite) => re_renderer::Color32::WHITE,
-                (_, DefaultColor::EntityPath(entity_path)) => {
-                    auto_color((entity_path.hash64() % std::u16::MAX as u64) as u16)
-                }
-            }
+            self.annotation_info.as_ref().and_then(|info| {
+                info.color
+                    .map(|c| c.into())
+                    .or_else(|| Some(auto_color_egui(info.id)))
+            })
         }
     }
 

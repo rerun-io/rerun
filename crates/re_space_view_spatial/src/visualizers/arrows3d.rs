@@ -7,9 +7,10 @@ use re_types::{
     components::{ClassId, Color, KeypointId, Position3D, Radius, Text, Vector3D},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -86,12 +87,14 @@ impl Arrows3DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Arrows3DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.vectors.len();
             if num_instances == 0 {
@@ -112,7 +115,7 @@ impl Arrows3DVisualizer {
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             if num_instances <= self.max_labels {
                 let origins = clamped(data.origins, num_instances);
@@ -229,14 +232,12 @@ impl VisualizerSystem for Arrows3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let vectors = match results.get_dense::<Vector3D>(resolver) {
+                let vectors = match results.get_required_component_dense::<Vector3D>(resolver) {
                     Some(vectors) => vectors?,
                     _ => return Ok(()),
                 };
@@ -282,13 +283,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    &mut line_builder,
-                    view_query,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
 
                 Ok(())
             },
@@ -310,4 +305,10 @@ impl VisualizerSystem for Arrows3DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Arrows3DVisualizer => []);
+impl TypedComponentFallbackProvider<Color> for Arrows3DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Arrows3DVisualizer => [Color]);

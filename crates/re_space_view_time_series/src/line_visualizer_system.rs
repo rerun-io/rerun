@@ -9,11 +9,10 @@ use re_types::{
     Archetype as _, Loggable,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::overrides::fallback_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
@@ -68,7 +67,7 @@ impl VisualizerSystem for SeriesLineSystem {
 
 impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        fallback_color(ctx.target_entity_path)
+        auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
@@ -206,7 +205,7 @@ impl SeriesLineSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalars) = results.get_dense::<Scalar>(resolver) else {
+            let Some(all_scalars) = results.get_required_component_dense::<Scalar>(resolver) else {
                 return Ok(());
             };
 

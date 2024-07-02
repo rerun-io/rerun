@@ -1,6 +1,6 @@
 use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{TimeInt, Timeline};
 use re_space_view::{
     latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,
 };
@@ -94,7 +94,6 @@ where
     A: Archetype,
     F: FnMut(
         &QueryContext<'_>,
-        &EntityPath,
         &SpatialSceneEntityContext<'_>,
         &HybridResults<'_>,
     ) -> Result<(), SpaceViewSystemExecutionError>,
@@ -158,12 +157,10 @@ where
         let mut query_ctx = ctx.query_context(data_result, &latest_at);
         query_ctx.archetype_name = Some(A::name());
 
-        fun(
-            &query_ctx,
-            &data_result.entity_path,
-            &entity_context,
-            &results,
-        )?;
+        {
+            re_tracing::profile_scope!(format!("{}", data_result.entity_path));
+            fun(&query_ctx, &entity_context, &results)?;
+        }
     }
 
     Ok(())
