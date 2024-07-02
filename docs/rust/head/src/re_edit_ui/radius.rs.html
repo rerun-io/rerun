@@ -65,6 +65,8 @@
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>egui::NumExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_types::components::Radius;
 <span class="kw">use </span>re_viewer_context::ViewerContext;
@@ -103,8 +105,10 @@
         {
             <span class="comment">// When we change the type of units,the value is likely going to be _very wrong_.
             // Unfortunately, we don't have knowledge of a fallback here, so we use hardcoded "reasonable" values.
+            //
+            // Careful, if these "start values" are too big, they may cause overdraw issues on point clouds too often
             </span><span class="kw">if </span>is_scene_units {
-                abs_value = <span class="number">0.5</span>;
+                abs_value = <span class="number">0.1</span>;
             } <span class="kw">else </span>{
                 abs_value = <span class="number">2.5</span>;
             };

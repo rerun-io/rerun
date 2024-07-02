@@ -2,14 +2,14 @@
     <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_data_ui/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Function <a href="../index.html">re_data_ui</a>::<wbr><a href="index.html">image</a>::<wbr><a class="fn" href="#">try_show_zoomed_image_region</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/re_data_ui/image.rs.html#593-692">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>fn try_show_zoomed_image_region(
     render_ctx: &amp;<a class="struct" href="../../re_renderer/context/struct.RenderContext.html" title="struct re_renderer::context::RenderContext">RenderContext</a>,
     ui: &amp;mut Ui,
-    tensor_data_row_id: <a class="struct" href="../../re_log_types/data_row/struct.RowId.html" title="struct re_log_types::data_row::RowId">RowId</a>,
-    tensor: &amp;<a class="struct" href="../../re_types/tensor_data/struct.DecodedTensor.html" title="struct re_types::tensor_data::DecodedTensor">DecodedTensor</a>,
-    tensor_stats: &amp;<a class="struct" href="../../re_viewer_context/tensor/tensor_stats/struct.TensorStats.html" title="struct re_viewer_context::tensor::tensor_stats::TensorStats">TensorStats</a>,
-    annotations: &amp;<a class="struct" href="../../re_viewer_context/annotations/struct.Annotations.html" title="struct re_viewer_context::annotations::Annotations">Annotations</a>,
-    meaning: <a class="enum" href="../../re_types/tensor_data/enum.TensorDataMeaning.html" title="enum re_types::tensor_data::TensorDataMeaning">TensorDataMeaning</a>,
+    tensor_data_row_id: RowId,
+    tensor: &amp;DecodedTensor,
+    tensor_stats: &amp;TensorStats,
+    annotations: &amp;Annotations,
+    meaning: TensorDataMeaning,
     meter: <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.f32.html">f32</a>&gt;,
     debug_name: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.str.html">str</a>,
     center_texel: [<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.isize.html">isize</a>; <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.array.html">2</a>],
-    colormap: <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../../re_types/components/_components/colormap/enum.Colormap.html" title="enum re_types::components::_components::colormap::Colormap">Colormap</a>&gt;
+    colormap: <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Colormap&gt;
 ) -&gt; <a class="type" href="https://docs.rs/anyhow/1.0.79/anyhow/type.Result.html" title="type anyhow::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.unit.html">()</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><code>meter</code>: iff this is a depth map, how long is one meter?</p>
 </div></details></section></div></main></body></html>
