@@ -12,20 +12,7 @@ fn world_size_from_point_size(size_in_points: f32, camera_distance: f32) -> f32 
 // world_size_scale:
 //      Scale factor that is applied iff the size is a world size.
 //      This is usually part of your object->world transform.
-fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_size: f32, world_size_scale: f32) -> f32 {
-    // Resolve auto size.
-    var unresolved_size: f32;
-    if _unresolved_size >= f32max {
-        // positive max for small auto size
-        unresolved_size = auto_size;
-    } else if _unresolved_size <= f32min {
-        // negative max for large auto size
-        let large_factor = 1.33;
-        unresolved_size = auto_size * large_factor;
-    } else {
-        unresolved_size = _unresolved_size;
-    }
-
+fn unresolved_size_to_world(unresolved_size: f32, camera_distance: f32, world_size_scale: f32) -> f32 {
     // Is it a world size?
     if unresolved_size > 0.0 {
         return unresolved_size * world_size_scale;

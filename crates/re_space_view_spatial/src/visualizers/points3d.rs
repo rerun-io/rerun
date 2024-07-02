@@ -117,7 +117,11 @@ impl Points3DVisualizer {
             );
 
             let positions = bytemuck::cast_slice(data.positions);
-            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+
+            // Has not custom fallback for radius, so we use the default.
+            // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
+            let radii =
+                process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
             let colors =
                 process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
 

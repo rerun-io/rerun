@@ -369,8 +369,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            state.default_sizes_ui(ui);
-
             ui.grid_left_hand_label("Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen");
             ui.vertical(|ui| {

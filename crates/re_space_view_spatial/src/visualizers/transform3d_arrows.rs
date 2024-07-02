@@ -132,7 +132,7 @@ pub fn add_axis_arrows(
 
     // TODO(andreas): It would be nice if could display the ViewCoordinates axis names (left/right/up) as a tooltip on hover.
 
-    let line_radius = re_renderer::Size::new_points(1.0);
+    let line_radius = re_renderer::Size::new_ui_points(1.0);
 
     let mut line_batch = line_builder
         .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))

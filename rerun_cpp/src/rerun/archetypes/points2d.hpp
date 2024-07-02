@@ -24,7 +24,7 @@
 namespace rerun::archetypes {
     /// **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ### Randomly distributed 2D points with varying color and radius
     /// ![image](https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png)
@@ -64,6 +64,43 @@ namespace rerun::archetypes {
     ///     rec.log("random", rerun::Points2D(points2d).with_colors(colors).with_radii(radii));
     ///
     ///     // TODO(#5520): log VisualBounds2D
+    /// }
+    /// ```
+    ///
+    /// ### Log points with radii given in UI points
+    /// ![image](https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_points2d_ui_radius");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     // Two blue points with scene unit radii of 0.1 and 0.3.
+    ///     rec.log(
+    ///         "scene_units",
+    ///         rerun::Points2D({{0.0f, 0.0f}, {0.0f, 1.0f}})
+    ///             // By default, radii are interpreted as world-space units.
+    ///             .with_radii({0.1f, 0.3f})
+    ///             .with_colors(rerun::Color(0, 0, 255))
+    ///     );
+    ///
+    ///     // Two red points with ui point radii of 40 and 60.
+    ///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    ///     // For 100% ui scaling, UI points are equal to pixels.
+    ///     rec.log(
+    ///         "ui_points",
+    ///         rerun::Points2D({{1.0f, 0.0f}, {1.0f, 1.0f}})
+    ///             // rerun::Radius::ui_points produces radii that the viewer interprets as given in ui points.
+    ///             .with_radii({
+    ///                 rerun::Radius::ui_points(40.0f),
+    ///                 rerun::Radius::ui_points(60.0f),
+    ///             })
+    ///             .with_colors(rerun::Color(255, 0, 0))
+    ///     );
+    ///
+    ///     // TODO(#5521): log VisualBounds2D
     /// }
     /// ```
     struct Points2D {

@@ -169,7 +169,7 @@ pub mod gpu_data {
     impl Default for LineStripInfo {
         fn default() -> Self {
             Self {
-                radius: crate::Size::AUTO.into(),
+                radius: crate::Size::new_ui_points(1.5).into(),
                 color: Color32::WHITE,
                 stippling: 0,
                 flags: LineStripFlags::empty(),
