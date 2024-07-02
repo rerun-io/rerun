@@ -161,7 +161,7 @@ pub fn go_forward() -> Option<()> {
 /// - Add a `?url` query param to the address bar when navigating to
 ///   an example, so that examples can be shared directly by just
 ///   copying the link.
-#[derive(Clone, Default, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {
     /// Data source URL
     ///
@@ -180,6 +180,7 @@ impl HistoryEntry {
     }
 
     /// Set the URL of the RRD to load when using this entry.
+    #[inline]
     pub fn rrd_url(mut self, url: String) -> Self {
         self.urls.push(url);
         self
@@ -381,6 +382,7 @@ pub fn url_to_receiver(
 pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
 
 impl Callback {
+    #[inline]
     pub fn call(&self) -> Result<JsValue, JsValue> {
         let window: JsValue = window()?.into();
         self.0.call0(&window)
@@ -400,6 +402,7 @@ impl StringOrStringArray {
 impl std::ops::Deref for StringOrStringArray {
     type Target = Vec<String>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -417,7 +420,7 @@ impl<'de> Deserialize<'de> for StringOrStringArray {
 
             let array = value.dyn_into::<js_sys::Array>().ok()?;
             let mut out = Vec::with_capacity(array.length() as usize);
-            for item in array.into_iter() {
+            for item in array {
                 out.push(item.as_string()?);
             }
             Some(out)
