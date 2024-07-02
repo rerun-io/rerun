@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ArchetypeFieldReflection","ArchetypeReflection","ComponentReflection","Reflection"],"trait":["Enum"],"type":["ArchetypeReflectionMap","ComponentReflectionMap"]};

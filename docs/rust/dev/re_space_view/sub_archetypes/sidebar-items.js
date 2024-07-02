@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_blueprint_component","entity_path_for_view_property","get_blueprint_component","query_view_property","query_view_property_or_default","view_property"]};

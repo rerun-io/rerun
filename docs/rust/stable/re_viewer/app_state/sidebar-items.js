@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["WATERMARK"],"fn":["check_for_clicked_hyperlinks","default_blueprint_panel_width","default_selection_panel_width","recording_config_entry"],"struct":["AppState","WelcomeScreenState"]};

@@ -1,0 +1,95 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Line renderer for efficient rendering of many line(strips)"><title>re_renderer::renderer::lines - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../re_renderer/index.html">re_renderer</a><span class="version">0.16.1</span></h2></div><h2 class="location"><a href="#">Module lines</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></section><h2><a href="../index.html">In re_renderer::renderer</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_renderer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">re_renderer</a>::<wbr><a href="../index.html">renderer</a>::<wbr><a class="mod" href="#">lines</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../../src/re_renderer/renderer/lines.rs.html#1-784">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Line renderer for efficient rendering of many line(strips)</p>
+<h2 id="how-it-works"><a href="#how-it-works">How it works:</a></h2>
+<p>Each drawn line strip consists of a series of quads and all quads are rendered in a single draw call.
+The only data we upload are the user provided positions (the “skeleton” of the line so to speak) and line strip wide configurations.
+The quads are oriented and spanned in a vertex shader.</p>
+<p>It is tempting to use instancing and store per-instance (==quad) data in a instance-stepped vertex buffer.
+However, GPUs are notoriously bad at processing instances with a small batch size as
+<a href="https://gamedev.net/forums/topic/676540-fastest-way-to-draw-quads/5279146/">various</a>
+<a href="https://gamedev.net/forums/topic/702292-performance-fastest-quad-drawing/5406023/">people</a>
+<a href="https://www.reddit.com/r/vulkan/comments/le74sr/why_gpu_instancing_is_slow_for_small_meshes/">point</a>
+<a href="https://www.reddit.com/r/vulkan/comments/47kfve/instanced_rendering_performance/">out</a>
+<a href="https://www.reddit.com/r/opengl/comments/q7yikr/how_to_draw_several_quads_through_instancing/">…</a>.</p>
+<p>Instead, we use a single (un-instanced) triangle list draw call and use the vertex id to orient ourselves in the vertex shader
+(e.g. the index of the current quad is <code>vertex_idx / 6</code> etc.).
+Our triangle list topology pretends that there is only a single strip, but in reality we want to render several in one draw call.
+So every time a new line strip starts (except on the first strip) we need to discard a quad by collapsing vertices into their predecessors.</p>
+<p>All data we fetch in the vertex shader is uploaded as textures in order to maintain WebGL compatibility.
+(at the full webgpu feature level we could use raw buffers instead which are easier to handle and a better match for our access pattern)</p>
+<p>Data is provided in two separate textures, the “position data texture” and the “line strip texture”.
+The “line strip texture” contains packed information over properties that are global to a single strip (see <code>gpu_data::LineStripInfo</code>)
+Data in the “position data texture” is laid out a follows (see <code>gpu_data::PositionRadius</code>):</p>
+<div class="example-wrap"><pre class="language-raw"><code>                  ___________________________________________________________________
+position data    | pos, strip_idx | pos, strip_idx | pos, strip_idx | pos, strip_idx | …
+                  ___________________________________________________________________
+(vertex shader)  |             quad 0              |              quad 2             |
+                                   ______________________________________________________________
+                                  |               quad 1            |              quad 3        | …
+</code></pre></div><h3 id="why-not-a-triangle-strip-instead-if-list"><a href="#why-not-a-triangle-strip-instead-if-list">Why not a triangle <em>strip</em> instead if <em>list</em>?</a></h3>
+<p>As long as we’re not able to restart the strip (requires indices!), we can’t discard a quad in a triangle strip setup.
+However, this could be solved with an index buffer which has the ability to restart triangle strips (something we haven’t tried yet).</p>
+<p>Another much more tricky issue is handling of line miters:
+Let’s have a look at a corner between two line positions (line positions marked with <code>X</code>)</p>
+<div class="example-wrap"><pre class="language-raw"><code>o--------------------------o
+                           /
+X=================X       /
+                 //      /
+o---------o     //      /
+         /     //      /
+        o      X      o
+</code></pre></div>
+<p>If we want to keep the line along its skeleton with constant radius, the top right corner
+would move further and further outward as we decrease the angle of the joint. Eventually it reaches infinity!
+(i.e. not great to fix it up with discard in the fragment shader either)</p>
+<p>To prevent this we need to generate this shape:</p>
+<div class="example-wrap"><pre class="language-raw"><code>a-------------------b
+                      \
+X=================X    \
+                 //     \
+c---------d     //      e
+         /     //      /
+        f      X      g
+</code></pre></div>
+<p>To achieve this we need to do one of:</p>
+<ol>
+<li>generating a new triangle at <code>[d,b,e]</code>
+<ul>
+<li>can’t do that without significant preprocessing, makes the entire pipeline much more complicated</li>
+</ul>
+</li>
+<li>twist one of the quads, making both quads overlap in the area of <code>[d,b,e]</code> (doesn’t add any new vertices)
+<ul>
+<li>unless (!) we duplicate vertices at one of the quads, the twist would need to continue for the rest of the strip!</li>
+</ul>
+</li>
+<li>make one quad stop before the joint by forming <code>[a,b,d,c]</code>, the other one taking over the joint by forming <code>[b,e,g,f]</code>
+<ul>
+<li>implies breaking up the quads (point d would be part of one quad but not the other)</li>
+</ul>
+</li>
+</ol>
+<p>(2) and (3) can be implemented relatively easy if we’re using a triangle strip!
+(2) can be implemented in theory with a triangle list, but means that any joint has ripple effects on the rest of the list.</p>
+<p>TODO(andreas): Implement (3). Right now we don’t implement line caps at all.</p>
+<h3 id="line-startend-caps-arrowsroundedetc"><a href="#line-startend-caps-arrowsroundedetc">Line start/end caps (arrows/rounded/etc.)</a></h3>
+<p>Yet another place where our triangle <em>strip</em> comes in handy is that we can take triangles from superfluous quads to form pointy arrows.
+Again, we keep all the geometry calculating logic in the vertex shader.</p>
+<p>For all batches, independent whether we use caps or not our topology is as follow:
+_________________________________________________
+\  |                     |\  |                   |<br />
+\ |  … n strip quads …  | \ | … m strip quads … | <br />
+|<em><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong>|</strong>|</strong></strong></strong></strong></strong></strong></strong></strong></strong></em>|__<br />
+(start cap triangle only)         (start+end triangle)              (end triangle only)</p>
+<h3 id="things-we-might-try-in-the-future"><a href="#things-we-might-try-in-the-future">Things we might try in the future</a></h3>
+<ul>
+<li>more line properties</li>
+<li>more per-position attributes</li>
+<li>experiment with indexed primitives to lower amount of vertices processed
+<ul>
+<li>note that this would let us remove the degenerated quads between lines, making the approach cleaner and removing the “restart bit”</li>
+</ul>
+</li>
+</ul>
+</div></details><h2 id="modules" class="section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="gpu_data/index.html" title="mod re_renderer::renderer::lines::gpu_data">gpu_data</a></div></li></ul><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.LineBatchInfo.html" title="struct re_renderer::renderer::lines::LineBatchInfo">LineBatchInfo</a></div><div class="desc docblock-short">Data that is valid for a batch of line strips.</div></li><li><div class="item-name"><a class="struct" href="struct.LineDrawData.html" title="struct re_renderer::renderer::lines::LineDrawData">LineDrawData</a></div><div class="desc docblock-short">A line drawing operation. Encompasses several lines, each consisting of a list of positions.
+Expected to be recrated every frame.</div></li><li><div class="item-name"><a class="struct" href="struct.LineRenderer.html" title="struct re_renderer::renderer::lines::LineRenderer">LineRenderer</a></div></li><li><div class="item-name"><a class="struct" href="struct.LineStripBatch.html" title="struct re_renderer::renderer::lines::LineStripBatch">LineStripBatch</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">Internal, ready to draw representation of <a href="struct.LineBatchInfo.html" title="struct re_renderer::renderer::lines::LineBatchInfo"><code>LineBatchInfo</code></a></div></li><li><div class="item-name"><a class="struct" href="struct.LineStripFlags.html" title="struct re_renderer::renderer::lines::LineStripFlags">LineStripFlags</a></div><div class="desc docblock-short">Property flags for a line strip</div></li></ul><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.LineDrawDataError.html" title="enum re_renderer::renderer::lines::LineDrawDataError">LineDrawDataError</a></div></li></ul></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["default_created_space_views"]};

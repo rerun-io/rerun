@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["SIMPLE_COMMENT_PREFIX"],"fn":["is_tuple_struct_from_obj","iter_archetype_components","quote_comment","string_from_quoted"]};

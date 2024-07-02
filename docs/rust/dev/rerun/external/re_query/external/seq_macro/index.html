@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="github crates-io docs-rs"><title>rerun::external::re_query::external::seq_macro - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../../crates.js"></script><script defer src="../../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../rerun/index.html">rerun</a><span class="version">0.16.1-rc.2</span></h2></div><div class="sidebar-elems"><ul class="block">
+            <li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#macros">Macros</a></li></ul></section><h2><a href="../index.html">In rerun::external::re_query::external</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../../rerun/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a href="../../../../index.html">rerun</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_query</a>::<wbr><a href="../index.html">external</a>::<wbr><a class="mod" href="#">seq_macro</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="https://docs.rs/seq-macro/0.3.5/src/seq_macro/lib.rs.html#1-372">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><a href="https://github.com/dtolnay/seq-macro"><img src="https://img.shields.io/badge/github-8da0cb?style=for-the-badge&amp;labelColor=555555&amp;logo=github" alt="github" /></a> <a href="https://crates.io/crates/seq-macro"><img src="https://img.shields.io/badge/crates.io-fc8d62?style=for-the-badge&amp;labelColor=555555&amp;logo=rust" alt="crates-io" /></a> <a href="https://docs.rs/seq-macro"><img src="https://img.shields.io/badge/docs.rs-66c2a5?style=for-the-badge&amp;labelColor=555555&amp;logo=docs.rs" alt="docs-rs" /></a></p>
+<br>
+<h2 id="imagine-for-loops-in-a-macro"><a href="#imagine-for-loops-in-a-macro">Imagine for-loops in a macro</a></h2>
+<p>This crate provides a <code>seq!</code> macro to repeat a fragment of source code and
+substitute into each repetition a sequential numeric counter.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>seq_macro::seq;
+
+<span class="kw">fn </span>main() {
+    <span class="kw">let </span>tuple = (<span class="number">1000</span>, <span class="number">100</span>, <span class="number">10</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>sum = <span class="number">0</span>;
+
+    <span class="comment">// Expands to:
+    //
+    //     sum += tuple.0;
+    //     sum += tuple.1;
+    //     sum += tuple.2;
+    //
+    // This cannot be written using an ordinary for-loop because elements of
+    // a tuple can only be accessed by their integer literal index, not by a
+    // variable.
+    </span><span class="macro">seq!</span>(N <span class="kw">in </span><span class="number">0</span>..=<span class="number">2 </span>{
+        sum += tuple.N;
+    });
+
+    <span class="macro">assert_eq!</span>(sum, <span class="number">1110</span>);
+}</code></pre></div>
+<ul>
+<li>
+<p>If the input tokens contain a section surrounded by <code>#(</code> … <code>)*</code> then
+only that part is repeated.</p>
+</li>
+<li>
+<p>The numeric counter can be pasted onto the end of some prefix to form
+sequential identifiers.</p>
+</li>
+</ul>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>seq_macro::seq;
+
+<span class="macro">seq!</span>(N <span class="kw">in </span><span class="number">64</span>..=<span class="number">127 </span>{
+    <span class="attr">#[derive(Debug)]
+    </span><span class="kw">enum </span>Demo {
+        <span class="comment">// Expands to Variant64, Variant65, ...
+        </span>#(
+            Variant~N,
+        )*
+    }
+});
+
+<span class="kw">fn </span>main() {
+    <span class="macro">assert_eq!</span>(<span class="string">"Variant99"</span>, <span class="macro">format!</span>(<span class="string">"{:?}"</span>, Demo::Variant99));
+}</code></pre></div>
+<ul>
+<li>
+<p>Byte and character ranges are supported: <code>b'a'..=b'z'</code>, <code>'a'..='z'</code>.</p>
+</li>
+<li>
+<p>If the range bounds are written in binary, octal, hex, or with zero
+padding, those features are preserved in any generated tokens.</p>
+</li>
+</ul>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>seq_macro::seq;
+
+<span class="macro">seq!</span>(P <span class="kw">in </span><span class="number">0x000</span>..=<span class="number">0x00F </span>{
+    <span class="comment">// expands to structs Pin000, ..., Pin009, Pin00A, ..., Pin00F
+    </span><span class="kw">struct </span>Pin~P;
+});</code></pre></div>
+</div></details><h2 id="macros" class="section-header"><a href="#macros">Macros</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.seq.html" title="macro rerun::external::re_query::external::seq_macro::seq">seq</a></div></li></ul></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["array_to_rust","build_row_from_components"]};

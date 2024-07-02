@@ -1,0 +1,144 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This module implements one half of our cross-platform #import system."><title>re_renderer::file_resolver - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../re_renderer/index.html">re_renderer</a><span class="version">0.16.1-rc.2</span></h2></div><h2 class="location"><a href="#">Module file_resolver</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Aliases</a></li></ul></section><h2><a href="../index.html">In crate re_renderer</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_renderer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">re_renderer</a>::<wbr><a class="mod" href="#">file_resolver</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/re_renderer/file_resolver.rs.html#1-874">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module implements one half of our cross-platform #import system.</p>
+<p>The other half is provided as an extension to the build system, see the <code>build.rs</code> file
+at the root of this crate.</p>
+<p>While it is agnostic to the type of files being imported, in practice this is only used
+for shaders, thus this is what this documentation will linger on.
+In particular, integration with our hot-reloading capabilities can get tricky depending
+on the platform/target.</p>
+<h3 id="usage"><a href="#usage">Usage</a></h3>
+<p><code>#import &lt;x/y/z/my_file.wgsl&gt;</code></p>
+<h4 id="syntax"><a href="#syntax">Syntax</a></h4>
+<p>Import clauses follow the general form of <code>#import &lt;x/y/z/my_file.wgsl&gt;</code>.
+The path to be imported can be either absolute or relative to the path of the importer,
+or relative to any of the paths set in the search path (<code>RERUN_SHADER_PATH</code>).</p>
+<p>The actual parsing rules themselves are very barebones:</p>
+<ul>
+<li>An import clause can only span one line.</li>
+<li>An import clause line must start with <code>#import </code> (exl. whitespaces).</li>
+<li>Everything between the first <code>&lt;</code> and the last <code>&gt;</code> is interpreted as the import
+path, as-is. We do so because, between the 4 major platforms (Linux, macOS, Window, Web),
+basically any string is a valid path.</li>
+</ul>
+<p>Everything is <code>trim()</code>ed at every step, you do not need to worry about whitespaces.</p>
+<h4 id="resolution"><a href="#resolution">Resolution</a></h4>
+<p>Resolution is done in three steps:</p>
+<ol>
+<li>
+<p>First, we try to interpret the imported path as absolute.
+1.1. If this is possible and leads to an existing file, we’re done.
+1.2. Otherwise, we go to 2.</p>
+</li>
+<li>
+<p>Second, we try to interpret the imported path as relative to the importer’s.
+2.1. If this leads to an existing file, we’re done.
+2.2. Otherwise, we go to 3.</p>
+</li>
+<li>
+<p>Finally, we try to interpret the imported path as relative to all the directories
+present in the search path, in their prefined priority order, similar to e.g. how
+the standard <code>$PATH</code> environment variable behaves.
+3.1. If this leads to an existing file, we’re done.
+3.2. Otherwise, resolution failed: throw an error.</p>
+</li>
+</ol>
+<h4 id="interpolation"><a href="#interpolation">Interpolation</a></h4>
+<p>Interpolation is done in the simplest way possible: the entire line containing the import
+clause is overwritten with the contents of the imported file.
+This is of course a recursive process.</p>
+<h5 id="a-word-about-pragma-semantics"><a href="#a-word-about-pragma-semantics">A word about <code>#pragma</code> semantics</a></h5>
+<p>Imports can behave in two different ways: <code>#pragma once</code> and <code>#pragma many</code>.</p>
+<p><code>#pragma once</code> means that each unique #import clause is only be resolved once even if it
+used several times, e.g. assuming that <code>a.txt</code> contains the string <code>&quot;xyz&quot;</code> then:</p>
+<div class="example-wrap"><pre class="language-raw"><code>#import &lt;a.txt&gt;
+#import &lt;a.txt&gt;
+</code></pre></div>
+<p>becomes</p>
+<div class="example-wrap"><pre class="language-raw"><code>xyz
+</code></pre></div>
+<p><code>#pragma many</code> on the other hand will resolve the clause as many times as it is used:</p>
+<div class="example-wrap"><pre class="language-raw"><code>#import &lt;a.txt&gt;
+#import &lt;a.txt&gt;
+</code></pre></div>
+<p>becomes</p>
+<div class="example-wrap"><pre class="language-raw"><code>xyz
+xyz
+</code></pre></div>
+<p>At the moment, our import system only provides support for <code>#pragma once</code> semantics.</p>
+<h3 id="hot-reloading-platform-specifics"><a href="#hot-reloading-platform-specifics">Hot-reloading: platform specifics</a></h3>
+<p>This import system transparently integrates with the renderer’s hot-reloading capabilities.
+What that actually means in practice depends on the platform/target.</p>
+<p>A general over-simplification of what we’re aiming for can be expressed as:</p>
+<blockquote>
+<p>Be lazy in debug, be eager in release.</p>
+</blockquote>
+<p>When targeting native debug builds, we want everything to be as lazy as possible, everything
+to happen just-in-time, e.g.:</p>
+<ul>
+<li>We always talk directly with the filesystem and check for missing files at the last moment.</li>
+<li>We do resolution &amp; interpolation just-in-time, e.g. just before calling
+<code>create_shader_module</code>.</li>
+<li>Etc.</li>
+</ul>
+<p>On the web, we don’t even have an actual filesystem to access at runtime, so not only we’d
+like to be as eager can be, we don’t have much of a choice to begin with.
+That said, we don’t want to be <em>too</em> eager either: while we do have to make sure that every
+single shader that we’re gonna use (whether directly or indirectly via an import) ends up
+in the final artifact one way or another, we still want to delay interpolation as much as
+we can, otherwise we’d be bloating the binary artifact with N copies of the exact same
+shader code.</p>
+<p>Still, we’d like to limit the number of differences between targets/platforms.
+And indeed, the current implementation uses a virtual filesystem approach to effectively
+remove any difference between how the different platforms behave at run-time.</p>
+<h4 id="debug-builds-excl-web"><a href="#debug-builds-excl-web">Debug builds (excl. web)</a></h4>
+<p>Native debug builds are straightforward:</p>
+<ul>
+<li>We handle resolution &amp; interpolation just-in-time (i.e. when fetching file contents).</li>
+<li>We always talk directly to the filesystem.</li>
+</ul>
+<p>No surprises there.</p>
+<h4 id="release-builds-incl-web"><a href="#release-builds-incl-web">Release builds (incl. web)</a></h4>
+<p>Things are very different for release artifacts, as 1) we disable hot-reloading there and
+2) we never interact with the OS filesystem at run-time.
+Still, in practice, we handle release builds just the same as debug ones.</p>
+<p>What happens there is we have a virtual, hermetic, in-memory filesystem that gets pre-loaded
+with all the shaders defined within the Cargo workspace.
+This happens in part through a build script that you can find at the root of this crate.</p>
+<p>From there, everything behaves exactly the same as usual. In fact, there is only one code
+path for all platforms at run-time.</p>
+<p>There are many issues to deal with along the way though: paths comparisons across
+environments and build-time/run-time, hermeticism, etc…
+We won’t cover those here: please refer to the code if you’re curious.</p>
+<h3 id="for-developers"><a href="#for-developers">For developers</a></h3><h4 id="canonicalization-vs-normalization"><a href="#canonicalization-vs-normalization">Canonicalization vs. Normalization</a></h4>
+<p>Comparing paths can get tricky, especially when juggling target environments and
+run-time vs. compile-time constraints.
+For this reason you’ll see plenty mentions of canonicalization and normalization all over
+the code: better make sure there’s no confusion here.</p>
+<p>Canonicalization (i.e. <code>std::fs::canonicalize</code>) relies on syscalls to both normalize a path
+(including following symlinks!) and make sure the file it references actually exist.</p>
+<p>It’s the strictest form of path normalization you can get (and therefore ideal), but
+requires 1) to have access to an actual filesystem at run-time and 2) that the file
+being referenced already exists.</p>
+<p>Normalization (not available in <code>std</code>) on the other hand is purely lexicographical: it
+normalizes paths as best as it can without ever touching the filesystem.</p>
+<p>See also “<a href="https://9p.io/sys/doc/lexnames.html">Getting Dot-Dot Right</a>”.</p>
+<h4 id="hermeticism"><a href="#hermeticism">Hermeticism</a></h4>
+<p>When shipping release artifacts (whether web or otherwise), we want to avoid leaking state
+from the original build environments into the final binary (think: paths, timestamps, etc).
+We need to the build to be <em>hermetic</em>.</p>
+<p>Rust’s <code>file!()</code> macro already takes care of that to some extent, and we need to match that
+behavior on our side (e.g. by not leaking local paths), otherwise we won’t be able to
+compare paths at runtime.</p>
+<p>Think of it as <code>chroot</code>ing into our Cargo workspace :)</p>
+<p>In our case, there’s an extra invariant on top on that: we must never embed shaders from
+outside the workspace into our release artifacts!</p>
+<h3 id="things-we-dont-support"><a href="#things-we-dont-support">Things we don’t support</a></h3>
+<ul>
+<li>Async: everything in this module is done using standard synchronous APIs.</li>
+<li>Compression, minification, etc: everything we embed is embedded as-is.</li>
+<li>Importing via network requests: only the (virtual) filesystem is supported for now.</li>
+<li>Implicit file suffixes: e.g. <code>#import &lt;myshader&gt;</code> for <code>myshader.wglsl</code>.</li>
+<li>Embedding raw Naga modules: not yet, though we have everything in place for it.</li>
+</ul>
+</div></details><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.FileResolver.html" title="struct re_renderer::file_resolver::FileResolver">FileResolver</a></div><div class="desc docblock-short">The <code>FileResolver</code> handles both resolving import clauses and doing the actual string
+interpolation.</div></li><li><div class="item-name"><a class="struct" href="struct.ImportClause.html" title="struct re_renderer::file_resolver::ImportClause">ImportClause</a></div><div class="desc docblock-short">A pre-parsed import clause, as in <code>#import &lt;something&gt;</code>.</div></li><li><div class="item-name"><a class="struct" href="struct.InterpolatedFile.html" title="struct re_renderer::file_resolver::InterpolatedFile">InterpolatedFile</a></div></li><li><div class="item-name"><a class="struct" href="struct.SearchPath.html" title="struct re_renderer::file_resolver::SearchPath">SearchPath</a></div><div class="desc docblock-short">Specifies where to look for imports when both absolute and relative resolution fail.</div></li></ul><h2 id="functions" class="section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.new_recommended.html" title="fn re_renderer::file_resolver::new_recommended">new_recommended</a></div><div class="desc docblock-short">Returns the recommended <code>FileResolver</code> for the current platform/target.</div></li></ul><h2 id="types" class="section-header"><a href="#types">Type Aliases</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.RecommendedFileResolver.html" title="type re_renderer::file_resolver::RecommendedFileResolver">RecommendedFileResolver</a></div><div class="desc docblock-short">The recommended <code>FileResolver</code> type for the current platform/target.</div></li></ul></section></div></main></body></html>

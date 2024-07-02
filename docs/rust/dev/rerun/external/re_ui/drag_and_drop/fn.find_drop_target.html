@@ -1,0 +1,118 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Compute the geometry of the drag cursor and where the dragged item should be inserted."><title>find_drop_target in rerun::external::re_ui::drag_and_drop - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../rerun/index.html">rerun</a><span class="version">0.16.1-rc.2</span></h2></div><div class="sidebar-elems"><h2><a href="index.html">In rerun::external::re_ui::drag_and_drop</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../rerun/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Function <a href="../../../index.html">rerun</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">re_ui</a>::<wbr><a href="index.html">drag_and_drop</a>::<wbr><a class="fn" href="#">find_drop_target</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../../../src/re_ui/drag_and_drop.rs.html#178-184">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>pub fn find_drop_target&lt;ItemId&gt;(
+    ui: &amp;<a class="struct" href="../../eframe/egui/struct.Ui.html" title="struct rerun::external::eframe::egui::Ui">Ui</a>,
+    item_context: &amp;<a class="struct" href="struct.ItemContext.html" title="struct rerun::external::re_ui::drag_and_drop::ItemContext">ItemContext</a>&lt;ItemId&gt;,
+    item_rect: <a class="struct" href="../../eframe/egui/struct.Rect.html" title="struct rerun::external::eframe::egui::Rect">Rect</a>,
+    body_rect: <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../eframe/egui/struct.Rect.html" title="struct rerun::external::eframe::egui::Rect">Rect</a>&gt;,
+    item_height: <a class="primitive" href="https://doc.rust-lang.org/1.76.0/std/primitive.f32.html">f32</a>
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.76.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.DropTarget.html" title="struct rerun::external::re_ui::drag_and_drop::DropTarget">DropTarget</a>&lt;ItemId&gt;&gt;<div class="where">where
+    ItemId: <a class="trait" href="https://doc.rust-lang.org/1.76.0/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a>,</div></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Compute the geometry of the drag cursor and where the dragged item should be inserted.</p>
+<p>This function performs the following tasks:</p>
+<ul>
+<li>based on <code>item_rect</code> and <code>body_rect</code>, establish the geometry of actual drop zones (see below)</li>
+<li>test the mouse cursor against these zones</li>
+<li>if one is a match:
+<ul>
+<li>compute the geometry of a drop insertion indicator</li>
+<li>use the context provided in <code>item_context</code> to return the “logical” drop target (ie. the target container and
+position within it)</li>
+</ul>
+</li>
+</ul>
+<p>This function implements the following logic:</p>
+<div class="example-wrap"><pre class="language-text"><code>
+                       insert         insert last in container before me
+                     before me           (if any) or insert before me
+                         │                             │
+                     ╔═══▼═════════════════════════════▼══════════════════╗
+                     ║      │                                             ║
+        leaf item    ║ ─────┴──────────────────────────────────────────── ║
+                     ║                                                    ║
+                     ╚═════════════════════▲══════════════════════════════╝
+                                           │
+                                    insert after me
+
+
+                       insert         insert last in container before me
+                     before me           (if any) or insert before me
+                         │                             │
+                     ╔═══▼═════════════════════════════▼══════════════════╗
+        leaf item    ║      │                                             ║
+        with body    ║ ─────┴──────────────────────────────────────────── ║
+                     ║                                                    ║
+                     ╚══════╦══════════════════════════════════════▲══════╣ ─┐
+                     │      ║                                      │      ║  │
+                     │      ║                                   insert    ║  │
+                     │      ║                                  after me   ║  │
+                     │      ╠══                                         ══╣  │
+                     │      ║             no insertion possible           ║  │
+                     │      ║             here by definition of           ║  │ body
+                     │      ║              parent being a leaf            ║  │
+                     │      ╠══                                         ══╣  │
+                     │      ║                                             ║  │
+                     │      ║                                             ║  │
+                     │      ║                                             ║  │
+                     └──▲── ╚══════════════════════════▲══════════════════╝ ─┘
+                        │                              │
+                     insert                         insert
+                    after me                       after me
+
+
+                       insert         insert last in container before me
+                     before me           (if any) or insert before me
+                         │                             │
+                     ╔═══▼═════════════════════════════▼══════════════════╗
+   container item    ║      │                                             ║
+ (empty/collapsed    ║ ─────┼──────────────────────────────────────────── ║
+            body)    ║      │                                             ║
+                     ╚═══▲═════════════════════════════▲══════════════════╝
+                         │                             │
+                      insert                   insert inside me
+                     after me                     at pos = 0
+
+
+                       insert         insert last in container before me
+                     before me           (if any) or insert before me
+                         │                             │
+                     ╔═══▼═════════════════════════════▼══════════════════╗
+   container item    ║      │                                             ║
+        with body    ║ ─────┴──────────────────────────────────────────── ║
+                     ║                                                    ║
+                     ╚═▲════╦═════════════════════════════════════════════╣ ─┐
+                       │    ║                                             ║  │
+                    insert  ║                                             ║  │
+                 inside me  ║                                             ║  │
+                at pos = 0  ╠══                                         ══╣  │
+                            ║                  same logic                 ║  │
+                            ║                 recursively                 ║  │ body
+                    insert  ║                 applied here                ║  │
+                  after me  ╠══                                         ══╣  │
+                       │    ║                                             ║  │
+                     ┌─▼─── ║                                             ║  │
+                     │      ║                                             ║  │
+                     └───── ╚═════════════════════════════════════════════╝ ─┘
+
+                                             not a valid drop zone
+                                                       │
+                     ╔═════════════════════════════════▼══════════════════╗
+   root container    ║                                                    ║
+             item    ║ ────────────────────────────────────────────────── ║
+                     ║                                                    ║
+                     ╚════════════════════════▲═══════════════════════════╝
+                                              │
+                                      insert inside me
+                                         at pos = 0
+</code></pre></div>
+<p>Here are a few observations of the above that help navigate the “if-statement-of-death”
+in the implementation:</p>
+<ul>
+<li>The top parts of the item are treated the same in most cases (root container is an
+exception).</li>
+<li>Handling of the body can be simplified by making the sensitive area either a small
+corner (container case), or the entire body (leaf case). Then, that area always maps
+to “insert after me”.</li>
+<li>The bottom parts have the most difference between cases and need case-by-case handling.
+In both leaf item cases, the entire bottom part maps to “insert after me”, though.</li>
+</ul>
+<p><strong>Note</strong>: in debug builds, press <code>Alt</code> to visualize the drag zones while dragging.</p>
+</div></details></section></div></main></body></html>

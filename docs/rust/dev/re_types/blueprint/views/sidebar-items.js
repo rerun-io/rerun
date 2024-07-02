@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["bar_chart_view","spatial2d_view","spatial3d_view","tensor_view","text_document_view","text_log_view","time_series_view"],"struct":["BarChartView","Spatial2DView","Spatial3DView","TensorView","TextDocumentView","TextLogView","TimeSeriesView"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["blueprint_panel_ui","reset_blueprint_button_ui"]};

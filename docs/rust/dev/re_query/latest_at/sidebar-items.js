@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["helpers","query","results","to_archetype"]};

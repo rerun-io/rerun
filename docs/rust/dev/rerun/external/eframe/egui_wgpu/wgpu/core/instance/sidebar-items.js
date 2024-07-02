@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AdapterInputs","GetSurfaceSupportError","IsSurfaceSupportedError","RequestAdapterError","RequestDeviceError"],"fn":["parse_backends_from_comma_list"],"struct":["Adapter","FailedLimit","HalSurface","Instance","InvalidAdapter","Surface"],"type":["RequestAdapterOptions"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["bool_toggle","enum_combobox","float_drag","singleline_string"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["VIEWPORT_PATH"],"enum":["SelectionUpdateBehavior"],"fn":["container_kind_from_egui","container_kind_to_egui","contents_name_style","context_menu_ui_for_item","icon_for_container_kind"],"mod":["external","space_view_heuristics"],"struct":["ContainerBlueprint","Viewport","ViewportBlueprint","ViewportState"]};

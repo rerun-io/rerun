@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Outlines as postprocessing effect."><title>re_renderer::draw_phases::outlines - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../re_renderer/index.html">re_renderer</a><span class="version">0.16.1</span></h2></div><h2 class="location"><a href="#">Module outlines</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></section><h2><a href="../index.html">In re_renderer::draw_phases</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_renderer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">re_renderer</a>::<wbr><a href="../index.html">draw_phases</a>::<wbr><a class="mod" href="#">outlines</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../../src/re_renderer/draw_phases/outlines.rs.html#1-548">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Outlines as postprocessing effect.</p>
+<p>This module provides the <a href="struct.OutlineMaskProcessor.html" title="struct re_renderer::draw_phases::outlines::OutlineMaskProcessor"><code>OutlineMaskProcessor</code></a> which handles render passes around outlines.
+The outlines themselves are evaluated and drawn by the main compositor.</p>
+<p>There are two channels (in shader code referred to as A and B) that are handled simultaneously.
+For configuring the look of the outline refer to <a href="struct.OutlineConfig.html" title="struct re_renderer::draw_phases::outlines::OutlineConfig"><code>OutlineConfig</code></a>.
+For setting outlines for an individual primitive from another <a href="../../renderer/trait.Renderer.html" title="trait re_renderer::renderer::Renderer"><code>crate::renderer::Renderer</code></a>/<a href="../../renderer/trait.DrawData.html" title="trait re_renderer::renderer::DrawData"><code>crate::renderer::DrawData</code></a>,
+check for <a href="struct.OutlineMaskPreference.html" title="struct re_renderer::draw_phases::outlines::OutlineMaskPreference"><code>OutlineMaskPreference</code></a> settings on that primitive.</p>
+<h2 id="how-it-works"><a href="#how-it-works">How it works:</a></h2>
+<p>The basic approach follows closely @bgolus’ <a href="https://bgolus.medium.com/the-quest-for-very-wide-outlines-ba82ed442cd9">blog post</a>
+on jump-flooding based outlines.</p>
+<p>Quick recap &amp; overview:</p>
+<ul>
+<li>Render scene into a mask texture</li>
+<li>Extract a contour from the mask texture, for each contour pixel write the position in the (to-be) voronoi texture.
+<ul>
+<li>in our case we extract all pixels at which the mask changes (details below)</li>
+</ul>
+</li>
+<li>Jump-flooding iterations: For each pixel in the voronoi texture,
+sample the current pixel and an 8-neighborhood at a certain, for each pass decreasing, distance and write out the closest position seen so far.
+<ul>
+<li>This is repeated for <code>log2(outline_width)</code> iterations.</li>
+</ul>
+</li>
+<li>During composition, extract an outline by checking the distance to the closest contour using the voronoi texture</li>
+</ul>
+<h3 id="what-makes-our-implementation-a-little-bit-special"><a href="#what-makes-our-implementation-a-little-bit-special">What makes our implementation (a little bit) special:</a></h3>
+<p>In short: We have more complex outline relationships but do so without additional passes!</p>
+<ul>
+<li>Different objects may have outlines between each other
+<ul>
+<li>This is achieved by making the mask texture a 2 channel texture, where each channel is a different 8bit object id.
+<ul>
+<li>object ids are arbitrary and only for the purpose of distinguishing between outlines</li>
+</ul>
+</li>
+<li>Since we now no longer can resolve anti-aliasing in a straight forward manner (can’t blend object ids!),
+<ul>
+<li>This implies a custom resolve during contour extraction!</li>
+</ul>
+</li>
+<li>It seems to force our hand towards outlines that extend inwards:
+<ul>
+<li>For each channel A &amp; B we only get a single voronoi texture (fused into one 4 channel texture),
+meaning that we only have a single unsigned distance to the closest contour.
+If we don’t want to ignore objects drawn upon each other, we need to compute the distance to any contour (== pixel where object id changes).</li>
+<li>It might be possible to mask out inner outlines during composition, but it’s not clear what the exact masking rules are for this.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>We use two channels (A and B) for outlines, so that we can have two independent outlines (even for the same object if desired)
+<ul>
+<li>We do this in a single pass by using a 2 channel texture on the mask (object id A, object id B) and
+a 4 channel texture on the voronoi texture (xy coordinates for A, xy coordinates for B)</li>
+</ul>
+</li>
+</ul>
+<p>More details can be found in the respective shader code.</p>
+</div></details><h2 id="modules" class="section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="gpu_data/index.html" title="mod re_renderer::draw_phases::outlines::gpu_data">gpu_data</a><span title="Restricted Visibility">&nbsp;🔒</span> </div></li></ul><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.OutlineConfig.html" title="struct re_renderer::draw_phases::outlines::OutlineConfig">OutlineConfig</a></div></li><li><div class="item-name"><a class="struct" href="struct.OutlineMaskPreference.html" title="struct re_renderer::draw_phases::outlines::OutlineMaskPreference">OutlineMaskPreference</a></div><div class="desc docblock-short">What outline (if any) should be drawn.</div></li><li><div class="item-name"><a class="struct" href="struct.OutlineMaskProcessor.html" title="struct re_renderer::draw_phases::outlines::OutlineMaskProcessor">OutlineMaskProcessor</a></div></li></ul></section></div></main></body></html>

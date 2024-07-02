@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["to_textured_rect"],"struct":["ImageComponentData","ImageGrouping","ImageVisualizer","ImageVisualizerEntityFilter","ViewerImage"]};

@@ -1,0 +1,916 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/re_space_view_spatial/src/space_view_2d.rs`."><title>space_view_2d.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<a href="#2" id="2">2</a>
+<a href="#3" id="3">3</a>
+<a href="#4" id="4">4</a>
+<a href="#5" id="5">5</a>
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
+<a href="#49" id="49">49</a>
+<a href="#50" id="50">50</a>
+<a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashSet;
+<span class="kw">use </span>nohash_hasher::{IntMap, IntSet};
+
+<span class="kw">use </span>re_entity_db::{EntityDb, EntityProperties, EntityTree};
+<span class="kw">use </span>re_format::format_f32;
+<span class="kw">use </span>re_log_types::EntityPath;
+<span class="kw">use </span>re_types::{
+    archetypes::{DepthImage, Image},
+    blueprint::archetypes::{Background, VisualBounds2D},
+    blueprint::components <span class="kw">as </span>blueprint_components,
+    Archetype, ComponentName, SpaceViewClassIdentifier,
+};
+<span class="kw">use </span>re_viewer_context::{
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt <span class="kw">as _</span>,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
+};
+
+<span class="kw">use crate</span>::{
+    contexts::{register_spatial_contexts, PrimitiveCounter},
+    heuristics::{
+        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
+    },
+    max_image_dimension_subscriber::{ImageDimensions, MaxImageDimensions},
+    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
+    ui::SpatialSpaceViewState,
+    view_kind::SpatialSpaceViewKind,
+    visualizers::register_2d_spatial_visualizers,
+};
+
+<span class="attr">#[derive(Default)]
+</span><span class="kw">pub struct </span>VisualizableFilterContext2D {
+    <span class="comment">// TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
+    </span><span class="kw">pub </span>entities_in_main_2d_space: IntSet&lt;EntityPath&gt;,
+    <span class="kw">pub </span>reprojectable_3d_entities: IntSet&lt;EntityPath&gt;,
+}
+
+<span class="kw">impl </span>VisualizableFilterContext <span class="kw">for </span>VisualizableFilterContext2D {
+    <span class="kw">fn </span>as_any(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>std::any::Any {
+        <span class="self">self
+    </span>}
+}
+
+<span class="attr">#[derive(Default)]
+</span><span class="kw">pub struct </span>SpatialSpaceView2D;
+
+<span class="kw">use </span>re_types::View;
+<span class="kw">type </span>ViewType = re_types::blueprint::views::Spatial2DView;
+
+<span class="kw">impl </span>SpaceViewClass <span class="kw">for </span>SpatialSpaceView2D {
+    <span class="kw">fn </span>identifier() -&gt; SpaceViewClassIdentifier {
+        ViewType::identifier()
+    }
+
+    <span class="kw">fn </span>display_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
+        <span class="string">"2D"
+    </span>}
+
+    <span class="kw">fn </span>icon(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>re_ui::Icon {
+        <span class="kw-2">&amp;</span>re_ui::icons::SPACE_VIEW_2D
+    }
+
+    <span class="kw">fn </span>help_text(<span class="kw-2">&amp;</span><span class="self">self</span>, re_ui: <span class="kw-2">&amp;</span>re_ui::ReUi) -&gt; egui::WidgetText {
+        <span class="kw">super</span>::ui_2d::help_text(re_ui)
+    }
+
+    <span class="kw">fn </span>on_register(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        system_registry: <span class="kw-2">&amp;mut </span>re_viewer_context::SpaceViewSystemRegistrator&lt;<span class="lifetime">'_</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SpaceViewClassRegistryError&gt; {
+        <span class="comment">// Ensure spatial topology &amp; max image dimension is registered.
+        </span><span class="kw">crate</span>::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+        <span class="kw">crate</span>::max_image_dimension_subscriber::MaxImageDimensionSubscriber::subscription_handle();
+
+        register_spatial_contexts(system_registry)<span class="question-mark">?</span>;
+        register_2d_spatial_visualizers(system_registry)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>new_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>SpaceViewState&gt; {
+        Box::&lt;SpatialSpaceViewState&gt;::default()
+    }
+
+    <span class="kw">fn </span>preferred_tile_aspect_ratio(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SpaceViewState) -&gt; <span class="prelude-ty">Option</span>&lt;f32&gt; {
+        state
+            .downcast_ref::&lt;SpatialSpaceViewState&gt;()
+            .ok()
+            .map(|state| {
+                <span class="kw">let </span>size = state.bounding_boxes.accumulated.size();
+                size.x / size.y
+            })
+    }
+
+    <span class="kw">fn </span>layout_priority(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; re_viewer_context::SpaceViewClassLayoutPriority {
+        re_viewer_context::SpaceViewClassLayoutPriority::High
+    }
+
+    <span class="kw">fn </span>recommended_root_for_entities(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        entities: <span class="kw-2">&amp;</span>IntSet&lt;EntityPath&gt;,
+        entity_db: <span class="kw-2">&amp;</span>EntityDb,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;EntityPath&gt; {
+        <span class="kw">let </span>common_ancestor = EntityPath::common_ancestor_of(entities.iter());
+
+        <span class="comment">// For a 2D space view, the origin of the subspace defined by the common ancestor is always
+        // better.
+        </span>SpatialTopology::access(entity_db.store_id(), |topo| {
+            topo.subspace_for_entity(<span class="kw-2">&amp;</span>common_ancestor).origin.clone()
+        })
+    }
+
+    <span class="kw">fn </span>visualizable_filter_context(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        space_origin: <span class="kw-2">&amp;</span>EntityPath,
+        entity_db: <span class="kw-2">&amp;</span>re_entity_db::EntityDb,
+    ) -&gt; Box&lt;<span class="kw">dyn </span>VisualizableFilterContext&gt; {
+        <span class="macro">re_tracing::profile_function!</span>();
+
+        <span class="comment">// TODO(andreas): The `VisualizableFilterContext` depends entirely on the spatial topology.
+        // If the topology hasn't changed, we don't need to recompute any of this.
+        // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
+
+        </span><span class="kw">let </span>context = SpatialTopology::access(entity_db.store_id(), |topo| {
+            <span class="kw">let </span>primary_space = topo.subspace_for_entity(space_origin);
+            <span class="kw">if </span>!primary_space.supports_2d_content() {
+                <span class="comment">// If this is strict 3D space, only display the origin entity itself.
+                // Everything else we have to assume requires some form of transformation.
+                </span><span class="kw">return </span>VisualizableFilterContext2D {
+                    entities_in_main_2d_space: std::iter::once(space_origin.clone()).collect(),
+                    reprojectable_3d_entities: Default::default(),
+                };
+            }
+
+            <span class="comment">// All space are visualizable + the parent space if it is connected via a pinhole.
+            // For the moment we don't allow going down pinholes again.
+            </span><span class="kw">let </span>reprojectable_3d_entities =
+                <span class="kw">if </span>primary_space.connection_to_parent.is_connected_pinhole() {
+                    topo.subspace_for_subspace_origin(primary_space.parent_space)
+                        .map(|parent_space| parent_space.entities.clone())
+                        .unwrap_or_default()
+                } <span class="kw">else </span>{
+                    Default::default()
+                };
+
+            VisualizableFilterContext2D {
+                entities_in_main_2d_space: primary_space.entities.clone(),
+                reprojectable_3d_entities,
+            }
+        });
+
+        Box::new(context.unwrap_or_default())
+    }
+
+    <span class="kw">fn </span>on_frame_start(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
+        state: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>SpaceViewState,
+        ent_paths: <span class="kw-2">&amp;</span>PerSystemEntities,
+        auto_properties: <span class="kw-2">&amp;mut </span>re_entity_db::EntityPropertyMap,
+    ) {
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(state) = state.downcast_mut::&lt;SpatialSpaceViewState&gt;() <span class="kw">else </span>{
+            <span class="kw">return</span>;
+        };
+        <span class="kw-2">*</span>auto_properties = generate_auto_legacy_properties(
+            ctx,
+            ent_paths,
+            <span class="kw-2">&amp;</span>state.bounding_boxes.accumulated,
+            SpatialSpaceViewKind::TwoD,
+        );
+    }
+
+    <span class="kw">fn </span>spawn_heuristics(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
+    ) -&gt; re_viewer_context::SpaceViewSpawnHeuristics {
+        <span class="macro">re_tracing::profile_function!</span>();
+
+        <span class="kw">let </span>indicated_entities = default_visualized_entities_for_visualizer_kind(
+            ctx,
+            <span class="self">Self</span>::identifier(),
+            SpatialSpaceViewKind::TwoD,
+        );
+
+        <span class="kw">let </span>image_dimensions = MaxImageDimensions::access(ctx.recording_id(), |image_dimensions| {
+            image_dimensions.clone()
+        })
+        .unwrap_or_default();
+
+        <span class="comment">// Spawn a space view at each subspace that has any potential 2D content.
+        // Note that visualizability filtering is all about being in the right subspace,
+        // so we don't need to call the visualizers' filter functions here.
+        </span>SpatialTopology::access(ctx.recording_id(), |topo| {
+            SpaceViewSpawnHeuristics::new(topo.iter_subspaces().flat_map(|subspace| {
+                <span class="kw">if </span>!subspace.supports_2d_content()
+                    || subspace.entities.is_empty()
+                    || indicated_entities.is_disjoint(<span class="kw-2">&amp;</span>subspace.entities)
+                {
+                    <span class="kw">return </span>Vec::new();
+                }
+
+                <span class="comment">// Collect just the 2D-relevant entities in this subspace
+                </span><span class="kw">let </span>relevant_entities: IntSet&lt;EntityPath&gt; = subspace
+                    .entities
+                    .iter()
+                    .filter(|e| indicated_entities.contains(e))
+                    .cloned()
+                    .collect();
+
+                <span class="comment">// For explicit 2D spaces with a pinhole at the origin, otherwise start at the common ancestor.
+                // This generally avoids the `/` root entity unless it's required as a common ancestor.
+                </span><span class="kw">let </span>recommended_root = <span class="kw">if </span>subspace
+                    .connection_to_parent
+                    .contains(SubSpaceConnectionFlags::Pinhole)
+                {
+                    subspace.origin.clone()
+                } <span class="kw">else </span>{
+                    EntityPath::common_ancestor_of(relevant_entities.iter())
+                };
+
+                <span class="kw">let </span><span class="kw-2">mut </span>recommended_space_views = Vec::&lt;RecommendedSpaceView&gt;::new();
+
+                recommended_space_views_with_image_splits(
+                    ctx,
+                    <span class="kw-2">&amp;</span>image_dimensions,
+                    <span class="kw-2">&amp;</span>recommended_root,
+                    <span class="kw-2">&amp;</span>relevant_entities,
+                    <span class="kw-2">&amp;mut </span>recommended_space_views,
+                );
+
+                recommended_space_views
+            }))
+        })
+        .unwrap_or_default()
+    }
+
+    <span class="kw">fn </span>selection_ui(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ctx: <span class="kw-2">&amp;</span>re_viewer_context::ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
+        ui: <span class="kw-2">&amp;mut </span>egui::Ui,
+        state: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>SpaceViewState,
+        _space_origin: <span class="kw-2">&amp;</span>EntityPath,
+        space_view_id: SpaceViewId,
+        _root_entity_properties: <span class="kw-2">&amp;mut </span>EntityProperties,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SpaceViewSystemExecutionError&gt; {
+        <span class="kw">let </span>state = state.downcast_mut::&lt;SpatialSpaceViewState&gt;()<span class="question-mark">?</span>;
+        ctx.re_ui
+            .selection_grid(ui, <span class="string">"spatial_settings_ui"</span>)
+            .show(ui, |ui| {
+                state.default_sizes_ui(ctx, ui);
+
+                <span class="kw">crate</span>::ui::background_ui(ctx, ui, space_view_id, Background::DEFAULT_2D);
+
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
+
+                visual_bounds_ui(ctx, space_view_id, ui);
+            });
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>ui(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
+        ui: <span class="kw-2">&amp;mut </span>egui::Ui,
+        state: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>SpaceViewState,
+        _root_entity_properties: <span class="kw-2">&amp;</span>EntityProperties,
+        query: <span class="kw-2">&amp;</span>ViewQuery&lt;<span class="lifetime">'_</span>&gt;,
+        system_output: re_viewer_context::SystemExecutionOutput,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SpaceViewSystemExecutionError&gt; {
+        <span class="macro">re_tracing::profile_function!</span>();
+
+        <span class="kw">let </span>state = state.downcast_mut::&lt;SpatialSpaceViewState&gt;()<span class="question-mark">?</span>;
+        state.bounding_boxes.update(<span class="kw-2">&amp;</span>system_output.view_systems);
+        state.scene_num_primitives = system_output
+            .context_systems
+            .get::&lt;PrimitiveCounter&gt;()<span class="question-mark">?
+            </span>.num_primitives
+            .load(std::sync::atomic::Ordering::Relaxed);
+
+        <span class="kw">crate</span>::ui_2d::view_2d(ctx, ui, state, query, system_output)
+    }
+}
+
+<span class="kw">fn </span>visual_bounds_ui(ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;, space_view_id: SpaceViewId, ui: <span class="kw-2">&amp;mut </span>egui::Ui) {
+    <span class="kw">let </span>tooltip = <span class="string">"The area guaranteed to be visible.\n\
+                   Depending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically."</span>;
+    re_space_view::edit_blueprint_component::&lt;
+        VisualBounds2D,
+        blueprint_components::VisualBounds2D,
+        (),
+    &gt;(
+        ctx,
+        space_view_id,
+        |bounds2d_opt: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;blueprint_components::VisualBounds2D&gt;| {
+            ctx.re_ui
+                .grid_left_hand_label(ui, <span class="string">"Visible bounds"</span>)
+                .on_hover_text(tooltip);
+            ui.vertical(|ui| {
+                ui.style_mut().wrap = <span class="prelude-val">Some</span>(<span class="bool-val">false</span>);
+
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(bounds2d) = bounds2d_opt {
+                    <span class="kw">let </span>rect = egui::Rect::from(<span class="kw-2">*</span>bounds2d);
+                    <span class="kw">let </span>(min, max) = (rect.min, rect.max);
+                    ui.label(<span class="macro">format!</span>(<span class="string">"x [{} - {}]"</span>, format_f32(min.x), format_f32(max.x),));
+                    ui.label(<span class="macro">format!</span>(<span class="string">"y [{} - {}]"</span>, format_f32(min.y), format_f32(max.y),));
+
+                    <span class="kw">if </span>ui.button(<span class="string">"Reset visible bounds"</span>).clicked() {
+                        <span class="kw-2">*</span>bounds2d_opt = <span class="prelude-val">None</span>;
+                    }
+                } <span class="kw">else </span>{
+                    ui.weak(<span class="string">"Default"</span>);
+                }
+            });
+            ui.end_row();
+        },
+    );
+}
+
+<span class="comment">// Count the number of image entities with the given component exist that aren't
+// children of other entities in the bucket.
+</span><span class="kw">fn </span>count_non_nested_images_with_component(
+    image_dimensions: <span class="kw-2">&amp;</span>IntMap&lt;EntityPath, ImageDimensions&gt;,
+    entity_bucket: <span class="kw-2">&amp;</span>IntSet&lt;EntityPath&gt;,
+    subtree: <span class="kw-2">&amp;</span>EntityTree,
+    component_name: <span class="kw-2">&amp;</span>ComponentName,
+) -&gt; usize {
+    <span class="kw">if </span>image_dimensions.contains_key(<span class="kw-2">&amp;</span>subtree.path) {
+        <span class="comment">// bool true -&gt; 1
+        </span>subtree.entity.components.contains_key(component_name) <span class="kw">as </span>usize
+    } <span class="kw">else if </span>!entity_bucket
+        .iter()
+        .any(|e| e.is_descendant_of(<span class="kw-2">&amp;</span>subtree.path))
+    {
+        <span class="number">0 </span><span class="comment">// early-out optimization
+    </span>} <span class="kw">else </span>{
+        subtree
+            .children
+            .values()
+            .map(|child| {
+                count_non_nested_images_with_component(
+                    image_dimensions,
+                    entity_bucket,
+                    child,
+                    component_name,
+                )
+            })
+            .sum()
+    }
+}
+
+<span class="comment">// Find the image dimensions of every image-entity in the bucket that is not
+// not nested under another image.
+//
+// We track a set of just height/width as different channels could be allowed to
+// stack.
+</span><span class="kw">fn </span>find_non_nested_image_dimensions(
+    image_dimensions: <span class="kw-2">&amp;</span>IntMap&lt;EntityPath, ImageDimensions&gt;,
+    entity_bucket: <span class="kw-2">&amp;</span>IntSet&lt;EntityPath&gt;,
+    subtree: <span class="kw-2">&amp;</span>EntityTree,
+    found_image_dimensions: <span class="kw-2">&amp;mut </span>HashSet&lt;[u64; <span class="number">2</span>]&gt;,
+) {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(dimensions) = image_dimensions.get(<span class="kw-2">&amp;</span>subtree.path) {
+        <span class="comment">// If we found an image entity, add its dimensions to the set.
+        </span>found_image_dimensions.insert([dimensions.height, dimensions.width]);
+    } <span class="kw">else if </span>entity_bucket
+        .iter()
+        .any(|e| e.is_descendant_of(<span class="kw-2">&amp;</span>subtree.path))
+    {
+        <span class="comment">// Otherwise recurse
+        </span><span class="kw">for </span>child <span class="kw">in </span>subtree.children.values() {
+            find_non_nested_image_dimensions(
+                image_dimensions,
+                entity_bucket,
+                child,
+                found_image_dimensions,
+            );
+        }
+    }
+}
+
+<span class="kw">fn </span>recommended_space_views_with_image_splits(
+    ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
+    image_dimensions: <span class="kw-2">&amp;</span>IntMap&lt;EntityPath, ImageDimensions&gt;,
+    recommended_root: <span class="kw-2">&amp;</span>EntityPath,
+    entities: <span class="kw-2">&amp;</span>IntSet&lt;EntityPath&gt;,
+    recommended: <span class="kw-2">&amp;mut </span>Vec&lt;RecommendedSpaceView&gt;,
+) {
+    <span class="macro">re_tracing::profile_function!</span>();
+
+    <span class="kw">let </span>tree = ctx.recording().tree();
+
+    <span class="kw">let </span><span class="prelude-val">Some</span>(subtree) = tree.subtree(recommended_root) <span class="kw">else </span>{
+        <span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) {
+            <span class="macro">re_log::warn_once!</span>(<span class="string">"Ancestor of entity not found in entity tree."</span>);
+        }
+        <span class="kw">return</span>;
+    };
+
+    <span class="kw">let </span><span class="kw-2">mut </span>found_image_dimensions = Default::default();
+
+    find_non_nested_image_dimensions(
+        image_dimensions,
+        entities,
+        subtree,
+        <span class="kw-2">&amp;mut </span>found_image_dimensions,
+    );
+
+    <span class="kw">let </span>image_count = count_non_nested_images_with_component(
+        image_dimensions,
+        entities,
+        subtree,
+        <span class="kw-2">&amp;</span>Image::indicator().name(),
+    );
+
+    <span class="kw">let </span>depth_count = count_non_nested_images_with_component(
+        image_dimensions,
+        entities,
+        subtree,
+        <span class="kw-2">&amp;</span>DepthImage::indicator().name(),
+    );
+
+    <span class="comment">// If there are images of multiple dimensions, more than 1 image, or more than 1 depth image
+    // then split the space.
+    </span><span class="kw">if </span>found_image_dimensions.len() &gt; <span class="number">1 </span>|| image_count &gt; <span class="number">1 </span>|| depth_count &gt; <span class="number">1 </span>{
+        <span class="comment">// Otherwise, split the space and recurse
+
+        // If the root also had a visualizable entity, give it its own space.
+        // TODO(jleibs): Maybe merge this entity into each child
+        </span><span class="kw">if </span>entities.contains(recommended_root) {
+            recommended.push(RecommendedSpaceView::new_single_entity(
+                recommended_root.clone(),
+            ));
+        }
+
+        <span class="comment">// And then recurse into the children
+        </span><span class="kw">for </span>child <span class="kw">in </span>subtree.children.values() {
+            <span class="kw">let </span>sub_bucket: IntSet&lt;<span class="kw">_</span>&gt; = entities
+                .iter()
+                .filter(|e| e.starts_with(<span class="kw-2">&amp;</span>child.path))
+                .cloned()
+                .collect();
+
+            <span class="kw">if </span>!sub_bucket.is_empty() {
+                recommended_space_views_with_image_splits(
+                    ctx,
+                    image_dimensions,
+                    <span class="kw-2">&amp;</span>child.path,
+                    <span class="kw-2">&amp;</span>sub_bucket,
+                    recommended,
+                );
+            }
+        }
+    } <span class="kw">else </span>{
+        <span class="comment">// Otherwise we can use the space as it is.
+        </span>recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
+    }
+}
+</code></pre></div></section></main></body></html>

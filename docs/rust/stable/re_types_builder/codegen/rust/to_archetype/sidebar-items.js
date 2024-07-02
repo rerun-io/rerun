@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["COMMENT_RECOMMENDED_OPTIONAL_TOKEN","COMMENT_REQUIRED_TOKEN","COMMENT_SEPARATOR_TOKEN","NEWLINE_TOKEN"],"fn":["generate_impls","generate_mod","generate_to_archetype_impls","quote_fqname_as_type_path","quote_to_archetype_impl"]};

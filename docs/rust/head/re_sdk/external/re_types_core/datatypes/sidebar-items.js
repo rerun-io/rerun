@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TimeRangeBoundary"],"struct":["EntityPath","Float32","TimeInt","TimeRange","UInt32","UInt64","Utf8","VisibleTimeRange"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["entity_properties_component","entity_properties_component_ext"],"struct":["EntityPropertiesComponent"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ResourceHandle","ResourceLifeTime","ResourceManagerError","TextureCreationError","TextureManager2DError"],"struct":["GpuTexture2D","MeshManager","Texture2DCreationDesc","TextureManager2D"],"type":["GpuMeshHandle"]};

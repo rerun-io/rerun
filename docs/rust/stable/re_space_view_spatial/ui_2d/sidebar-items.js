@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["help_text","pinhole_resolution_rect","re_render_rect_from_egui_rect","scale_rect","setup_target_config","show_projections_from_3d_space","ui_from_scene","valid_bound","view_2d"]};

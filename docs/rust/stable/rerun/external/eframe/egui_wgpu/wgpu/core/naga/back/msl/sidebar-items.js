@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["BindSamplerTarget","EntryPointError","Error"],"fn":["write_string"],"mod":["sampler"],"struct":["BindTarget","EntryPointResources","Options","PipelineOptions","TranslationInfo","Writer"],"type":["BindingMap","EntryPointResourceMap","InlineSamplerIndex","Slot"]};

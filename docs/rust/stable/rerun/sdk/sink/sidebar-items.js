@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["BinaryStreamSinkError","FileSinkError"],"struct":["BinaryStreamSink","BinaryStreamStorage","BufferedSink","FileSink","MemorySink","MemorySinkStorage","TcpSink"],"trait":["LogSink"]};

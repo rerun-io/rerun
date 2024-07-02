@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["full_span_scope","get_full_span"]};

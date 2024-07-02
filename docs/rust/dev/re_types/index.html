@@ -1,0 +1,141 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The standard Rerun data types, component types, and archetypes."><title>re_types - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="re_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../re_types/index.html">re_types</a><span class="version">0.16.1-rc.2</span></h2></div><div class="sidebar-elems"><ul class="block">
+            <li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#constants">Constants</a></li><li><a href="#traits">Traits</a></li><li><a href="#types">Type Aliases</a></li></ul></section></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../re_types/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">re_types</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/re_types/lib.rs.html#1-284">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The standard Rerun data types, component types, and archetypes.</p>
+<p>This crate contains both the IDL definitions for Rerun types (flatbuffers) as well as the code
+generated from those using <code>re_types_builder</code>.</p>
+<p>All builtin archetypes, components, datatypes and space view definitions can be found in their
+respective top-level modules.</p>
+<h3 id="contributing"><a href="#contributing">Contributing</a></h3><h4 id="organization"><a href="#organization">Organization</a></h4>
+<ul>
+<li><code>definitions/</code> contains IDL definitions for all Rerun types (data, components, archetypes).</li>
+<li><code>src/</code> contains the code generated for Rust.</li>
+<li><code>rerun_py/rerun/rerun2/</code> (at the root of this workspace) contains the code generated for Python.</li>
+</ul>
+<p>While most of the code in this crate is auto-generated, some manual extensions are littered
+throughout: look for files ending in <code>_ext.rs</code>, <code>_ext.py</code>, or <code>_ext.cpp</code> (also see the “Extensions”
+section of this document).</p>
+<h4 id="build-cache"><a href="#build-cache">Build cache</a></h4>
+<p>Updating either the source code of the code generator itself (<code>re_types_builder</code>) or any of the
+.fbs files should re-trigger the code generation process the next time <code>re_types</code> is built.
+Manual extension files will be left untouched.</p>
+<p>Caching is controlled by a versioning hash that is stored in <code>store_hash.txt</code>.
+If you suspect something is wrong with the caching mechanism and that your changes aren’t taken
+into account when they should, try and remove <code>source_hash.txt</code>.
+If that fixes the issue, you’ve found a bug.</p>
+<h4 id="how-to-add-a-new-datatypecomponentarchetype"><a href="#how-to-add-a-new-datatypecomponentarchetype">How-to: add a new datatype/component/archetype</a></h4>
+<p>Create the appropriate .fbs file in the appropriate place, and make sure it gets included in
+some way (most likely indirectly) by <code>archetypes.fbs</code>, which is the main entrypoint for
+codegen.
+Generally, the easiest thing to do is to add your new type to one of the centralized manifests,
+e.g. for a new component, include it into <code>components.fbs</code>.</p>
+<p>Your file should get picked up automatically by the code generator.
+Once the code for your new component has been generated, implement whatever extensions you need
+and make sure to tests any custom constructors you add.</p>
+<h4 id="how-to-remove-an-existing-datatypecomponentarchetype"><a href="#how-to-remove-an-existing-datatypecomponentarchetype">How-to: remove an existing datatype/component/archetype</a></h4>
+<p>Simply get rid of the type in question and rebuild <code>re_types</code> to trigger codegen.</p>
+<p>Beware though: if you remove a whole definition file re-running codegen will not remove the
+associated generated files, you’ll have to do that yourself.</p>
+<h4 id="extensions"><a href="#extensions">Extensions</a></h4><h5 id="rust"><a href="#rust">Rust</a></h5>
+<p>Generated Rust code can be manually extended by adding sibling files with the <code>_ext.rs</code>
+prefix. E.g. to extend <code>vec2d.rs</code>, create a <code>vec2d_ext.rs</code>.</p>
+<p>Trigger the codegen (e.g. by removing <code>source_hash.txt</code>) to generate the right <code>mod</code> clauses
+automatically.</p>
+<p>The simplest way to get started is to look at any of the existing examples.</p>
+<h5 id="python"><a href="#python">Python</a></h5>
+<p>Generated Python code can be manually extended by adding a sibling file with the <code>_ext.py</code>
+prefix. E.g. to extend <code>vec2d.py</code>, create a <code>vec2d_ext.py</code>.</p>
+<p>This sibling file needs to implement an extension class that is mixed in with the
+auto-generated class.
+The simplest way to get started is to look at any of the existing examples.</p>
+<h5 id="c"><a href="#c">C++</a></h5>
+<p>Generated C++ code can be manually extended by adding a sibling file with the <code>_ext.cpp</code> suffix.
+E.g. to extend <code>vec2d.cpp</code>, create a <code>vec2d_ext.cpp</code>.</p>
+<p>The sibling file is compiled as-is as part of the <code>rerun_cpp</code> crate.</p>
+<p>Any include directive used in the extension is automatically added to the generated header,
+except to the generated header itself.</p>
+<p>In order to extend the generated type declaration in the header,
+you can specify a single code-block that you want to be injected into the type declaration by
+starting it with <code>&lt;CODEGEN_COPY_TO_HEADER&gt;</code> and ending it with <code>&lt;/CODEGEN_COPY_TO_HEADER&gt;</code>.
+Note that it is your responsibility to make sure that the cpp file is valid C++ code -
+the code generator &amp; build will not adjust the extension file for you!</p>
+<h4 id="language-specific-documentation"><a href="#language-specific-documentation">Language-specific documentation</a></h4>
+<p>You can prefix any doc comment line with <code>\{tag}</code>, where <code>{tag}</code> is one of <code>py</code>, <code>cpp</code>, <code>rs</code>,
+and that part of the docs will only be present in the files generated for that specific
+language.</p>
+<h4 id="examples"><a href="#examples">Examples</a></h4>
+<p>You can add an example to <code>docs/snippets/all</code>, and then include its source code in
+the docs using the <code>\example</code> tag. The example will also be included in the list of
+examples for type’s generated docs.</p>
+<p>The <code>\example</code> tag supports the following arguments:</p>
+<ul>
+<li><code>title</code>: a short description of the example which will be shown before the source code</li>
+<li><code>image</code>: a link to an image, with special handling for images uploaded
+using <code>scripts/upload_image.py</code> to <code>static.rerun.io</code></li>
+<li><code>!api</code>: if present, the example will <em>not</em> be included in comments embedded in the generated code</li>
+</ul>
+<div class="example-wrap"><pre class="language-text"><code>\example example_file_name title=&quot;Some title&quot; image=&quot;https://link.to/any_image.png&quot;
+</code></pre></div>
+<p>If the url does not start with <code>https://static.rerun.io/</code>, then it will be used as the
+<code>src</code> attribute in an <code>img</code> HTML tag, without any changes:</p>
+<div class="example-wrap"><pre class="language-html"><code>&lt;img src=&quot;https://link.to/any_image.png&quot;&gt;
+</code></pre></div>
+<p>Otherwise the URL is treated as a rerun screenshot, which expects the following link format:</p>
+<div class="example-wrap"><pre class="language-text"><code>https://static.rerun.io/{name}/{hash}/{max_width}.{ext}
+</code></pre></div>
+<p>These parameters will be used to generate an image stack:</p>
+<ul>
+<li><code>name</code>: the original filename of the uploaded screenshot, without its extension</li>
+<li><code>hash</code>: the content hash of the original screenshot</li>
+<li><code>max_width</code>: the maximum width available for this screenshot.
+<ul>
+<li>If the value is not a valid integer suffixed by <code>w</code> (e.g. <code>1200w</code>), then the image stack will only include the <code>full</code> size.</li>
+<li>If the value <em>is</em> a valid integer, then sizes <em>larger</em> than the value will be omitted from the stack.</li>
+</ul>
+</li>
+<li><code>ext</code>: the file extension of the image (<code>png</code>, <code>jpeg</code>, etc.)</li>
+</ul>
+<p>Given a URL like <code>https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/1024w.png</code>,
+the docs codegen will generate the following image stack:</p>
+<div class="example-wrap"><pre class="language-html"><code>&lt;picture&gt;
+  &lt;source media=&quot;(max-width: 480px)&quot; srcset=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/480w.png&quot;&gt;
+  &lt;source media=&quot;(max-width: 768px)&quot; srcset=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/768w.png&quot;&gt;
+  &lt;source media=&quot;(max-width: 1024px)&quot; srcset=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/1024w.png&quot;&gt;
+  &lt;img src=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/full.png&quot; alt=&quot;screenshot of {title} example&quot;&gt;
+&lt;/picture&gt;
+</code></pre></div>
+<p>The <code>1200px</code> size was omitted from the stack.</p>
+<h5 id="how-to-use-this-with-scriptsupload_imagepy"><a href="#how-to-use-this-with-scriptsupload_imagepy">How to use this with <code>scripts/upload_image.py</code></a></h5>
+<p>Running <code>scripts/upload_image.py {file}</code> will generate an image stack.
+You need to take the <em>maximum width</em> available in that stack, and use it as the value of <code>image=</code> in <code>\example</code>.</p>
+<p>For example, if the image stack generated by the script is:</p>
+<div class="example-wrap"><pre class="language-html"><code>&lt;picture&gt;
+  &lt;source media=&quot;(max-width: 480px)&quot; srcset=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/480w.png&quot;&gt;
+  &lt;source media=&quot;(max-width: 768px)&quot; srcset=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/768w.png&quot;&gt;
+  &lt;source media=&quot;(max-width: 1024px)&quot; srcset=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/1024w.png&quot;&gt;
+  &lt;img src=&quot;https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/full.png&quot;&gt;
+&lt;/picture&gt;
+</code></pre></div>
+<p>Then the url you should use is <code>https://static.rerun.io/my_screenshot/9066060e59ee9d2d7d98b214b8db0b8f2e8ab4b8/1024w.png</code>.</p>
+<p>It works this way because <code>upload_image.py</code> does not upscale screenshots, it only downscales them.
+We need to know what the maximum width we can use is, because we can’t just provide all the widths all the time.
+If the currently-used <code>max-width</code> source fails to load, it will show the blank image icon.
+There is no way to provide a fallback in <code>&lt;picture&gt;</code> if a specific <code>max-width</code> source fails to load.
+Browsers will not automatically try to load the other sources!</p>
+<h3 id="feature-flags"><a href="#feature-flags">Feature flags</a></h3>
+<ul>
+<li><strong><code>all</code></strong> —  All features except <code>testing</code>.</li>
+<li><strong><code>ecolor</code></strong> —  Enable color conversions.</li>
+<li><strong><code>egui_plot</code></strong> —  Enable conversions to plot primitives</li>
+<li><strong><code>glam</code></strong> —  Add support for some math operations using <a href="https://crates.io/crates/glam/"><code>glam</code></a>.</li>
+<li><strong><code>image</code></strong> —  Integration with the <a href="https://crates.io/crates/image/"><code>image</code></a> crate, plus JPEG support.</li>
+<li><strong><code>serde</code></strong> —  Enable (de)serialization using serde.</li>
+<li><strong><code>testing</code></strong> —  Include testing archetypes/components/datatypes into the crate.
+Only useful for testing purposes.</li>
+</ul>
+</div></details><h2 id="modules" class="section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="archetypes/index.html" title="mod re_types::archetypes">archetypes</a></div><div class="desc docblock-short">Acrchetype are the high-level things you can log, like <a href="archetypes/_archetypes/image/struct.Image.html" title="struct re_types::archetypes::_archetypes::image::Image"><code>Image</code></a>, <a href="archetypes/_archetypes/points3d/struct.Points3D.html" title="struct re_types::archetypes::_archetypes::points3d::Points3D"><code>Points3D</code></a>, etc.</div></li><li><div class="item-name"><a class="mod" href="blueprint/index.html" title="mod re_types::blueprint">blueprint</a></div><div class="desc docblock-short">The blueprint-specific components.</div></li><li><div class="item-name"><a class="mod" href="components/index.html" title="mod re_types::components">components</a></div><div class="desc docblock-short">Components are the basic building blocks of <a href="archetypes/index.html" title="mod re_types::archetypes"><code>archetypes</code></a>.</div></li><li><div class="item-name"><a class="mod" href="datatypes/index.html" title="mod re_types::datatypes">datatypes</a></div><div class="desc docblock-short">The low-level datatypes that <a href="components/index.html" title="mod re_types::components"><code>components</code></a> are built from.</div></li><li><div class="item-name"><a class="mod" href="external/index.html" title="mod re_types::external">external</a></div><div class="desc docblock-short">Re-exports of external crates that are used throughout the codebase.</div></li><li><div class="item-name"><a class="mod" href="image/index.html" title="mod re_types::image">image</a></div><div class="desc docblock-short">Image-related utilities.</div></li><li><div class="item-name"><a class="mod" href="macros/index.html" title="mod re_types::macros">macros</a></div></li><li><div class="item-name"><a class="mod" href="tensor_data/index.html" title="mod re_types::tensor_data">tensor_data</a></div><div class="desc docblock-short">Internal helpers; not part of the public API.</div></li><li><div class="item-name"><a class="mod" href="testing/index.html" title="mod re_types::testing">testing</a></div></li><li><div class="item-name"><a class="mod" href="view_coordinates/index.html" title="mod re_types::view_coordinates">view_coordinates</a></div></li></ul><h2 id="macros" class="section-header"><a href="#macros">Macros</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.delegate_arrow_tuid.html" title="macro re_types::delegate_arrow_tuid">delegate_arrow_tuid</a></div><div class="desc docblock-short">Implements <a href="trait.Component.html" title="trait re_types::Component"><code>crate::Component</code></a> for any given type that is a simple wrapper
+(newtype) around a <a href="../re_tuid/struct.Tuid.html" title="struct re_tuid::Tuid"><code>Tuid</code></a>.</div></li><li><div class="item-name"><a class="macro" href="macro.impl_into_cow.html" title="macro re_types::impl_into_cow">impl_into_cow</a></div><div class="desc docblock-short">Implements <code>From&lt;Self&gt;</code> and <code>From&lt;'a Self&gt;</code> for <code>Cow&lt;Self&gt;</code>.</div></li></ul><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.ArchetypeName.html" title="struct re_types::ArchetypeName">ArchetypeName</a></div><div class="desc docblock-short">The fully-qualified name of an <a href="trait.Archetype.html" title="trait re_types::Archetype"><code>Archetype</code></a>, e.g. <code>rerun.archetypes.Points3D</code>.</div></li><li><div class="item-name"><a class="struct" href="struct.ArrowBuffer.html" title="struct re_types::ArrowBuffer">ArrowBuffer</a></div><div class="desc docblock-short">Convenience-wrapper around an arrow [<code>Buffer</code>] that is known to contain a
+a primitive type.</div></li><li><div class="item-name"><a class="struct" href="struct.ArrowString.html" title="struct re_types::ArrowString">ArrowString</a></div><div class="desc docblock-short">Convenience-wrapper around an arrow [<code>Buffer</code>] that is known to contain a
+UTF-8 encoded string.</div></li><li><div class="item-name"><a class="struct" href="struct.ComponentName.html" title="struct re_types::ComponentName">ComponentName</a></div><div class="desc docblock-short">The fully-qualified name of a <a href="trait.Component.html" title="trait re_types::Component"><code>Component</code></a>, e.g. <code>rerun.components.Position2D</code>.</div></li><li><div class="item-name"><a class="struct" href="struct.DatatypeName.html" title="struct re_types::DatatypeName">DatatypeName</a></div><div class="desc docblock-short">The fully-qualified name of a <a href="trait.Datatype.html" title="trait re_types::Datatype"><code>Datatype</code></a>, e.g. <code>rerun.datatypes.Vec2D</code>.</div></li><li><div class="item-name"><a class="struct" href="struct.GenericIndicatorComponent.html" title="struct re_types::GenericIndicatorComponent">GenericIndicatorComponent</a></div><div class="desc docblock-short">A generic <a href="%5B%60Archetype::Indicator%60%5D">indicator component</a> that can be specialized for any <a href="trait.Archetype.html" title="trait re_types::Archetype"><code>Archetype</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.NamedIndicatorComponent.html" title="struct re_types::NamedIndicatorComponent">NamedIndicatorComponent</a></div><div class="desc docblock-short">An arbitrary named <a href="%5B%60Archetype::Indicator%60%5D">indicator component</a>.</div></li><li><div class="item-name"><a class="struct" href="struct.SpaceViewClassIdentifier.html" title="struct re_types::SpaceViewClassIdentifier">SpaceViewClassIdentifier</a></div><div class="desc docblock-short">The unique name of a space view type.</div></li></ul><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.DeserializationError.html" title="enum re_types::DeserializationError">DeserializationError</a></div></li><li><div class="item-name"><a class="enum" href="enum.MaybeOwnedComponentBatch.html" title="enum re_types::MaybeOwnedComponentBatch">MaybeOwnedComponentBatch</a></div><div class="desc docblock-short">Holds either an owned <a href="trait.ComponentBatch.html" title="trait re_types::ComponentBatch"><code>ComponentBatch</code></a> that lives on heap, or a reference to one.</div></li><li><div class="item-name"><a class="enum" href="enum.SerializationError.html" title="enum re_types::SerializationError">SerializationError</a></div></li></ul><h2 id="constants" class="section-header"><a href="#constants">Constants</a></h2><ul class="item-table"><li><div class="item-name"><a class="constant" href="constant.DISPLAY_PRECISION.html" title="constant re_types::DISPLAY_PRECISION">DISPLAY_PRECISION</a></div><div class="desc docblock-short">Number of decimals shown for all vector display methods.</div></li></ul><h2 id="traits" class="section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Archetype.html" title="trait re_types::Archetype">Archetype</a></div><div class="desc docblock-short">An archetype is a high-level construct that represents a set of <a href="trait.Component.html" title="trait re_types::Component"><code>Component</code></a>s that usually
+play well with each other (i.e. they compose nicely).</div></li><li><div class="item-name"><a class="trait" href="trait.AsComponents.html" title="trait re_types::AsComponents">AsComponents</a></div><div class="desc docblock-short">Describes the interface for interpreting an object as a bundle of <a href="trait.Component.html" title="trait re_types::Component"><code>Component</code></a>s.</div></li><li><div class="item-name"><a class="trait" href="trait.Component.html" title="trait re_types::Component">Component</a></div><div class="desc docblock-short">A <a href="trait.Component.html" title="trait re_types::Component"><code>Component</code></a> describes semantic data that can be used by any number of <a href="trait.Archetype.html" title="trait re_types::Archetype"><code>Archetype</code></a>s.</div></li><li><div class="item-name"><a class="trait" href="trait.ComponentBatch.html" title="trait re_types::ComponentBatch">ComponentBatch</a></div><div class="desc docblock-short">A <a href="trait.ComponentBatch.html" title="trait re_types::ComponentBatch"><code>ComponentBatch</code></a> represents an array’s worth of <a href="trait.Component.html" title="trait re_types::Component"><code>Component</code></a> instances.</div></li><li><div class="item-name"><a class="trait" href="trait.Datatype.html" title="trait re_types::Datatype">Datatype</a></div><div class="desc docblock-short">A <a href="trait.Datatype.html" title="trait re_types::Datatype"><code>Datatype</code></a> describes plain old data that can be used by any number of <a href="trait.Component.html" title="trait re_types::Component"><code>Component</code></a>s.</div></li><li><div class="item-name"><a class="trait" href="trait.DatatypeBatch.html" title="trait re_types::DatatypeBatch">DatatypeBatch</a></div><div class="desc docblock-short">A <a href="trait.DatatypeBatch.html" title="trait re_types::DatatypeBatch"><code>DatatypeBatch</code></a> represents an array’s worth of <a href="trait.Datatype.html" title="trait re_types::Datatype"><code>Datatype</code></a> instances.</div></li><li><div class="item-name"><a class="trait" href="trait.Loggable.html" title="trait re_types::Loggable">Loggable</a></div><div class="desc docblock-short">A <a href="trait.Loggable.html" title="trait re_types::Loggable"><code>Loggable</code></a> represents a single instance in an array of loggable data.</div></li><li><div class="item-name"><a class="trait" href="trait.LoggableBatch.html" title="trait re_types::LoggableBatch">LoggableBatch</a></div><div class="desc docblock-short">A <a href="trait.LoggableBatch.html" title="trait re_types::LoggableBatch"><code>LoggableBatch</code></a> represents an array’s worth of <a href="trait.Loggable.html" title="trait re_types::Loggable"><code>Loggable</code></a> instances, ready to be
+serialized.</div></li><li><div class="item-name"><a class="trait" href="trait.ResultExt.html" title="trait re_types::ResultExt">ResultExt</a></div></li><li><div class="item-name"><a class="trait" href="trait.SizeBytes.html" title="trait re_types::SizeBytes">SizeBytes</a></div><div class="desc docblock-short">Approximations of stack and heap size for both internal and external types.</div></li><li><div class="item-name"><a class="trait" href="trait.View.html" title="trait re_types::View">View</a></div><div class="desc docblock-short">Views are the panels shown in the viewer’s viewport and the primary means of
+inspecting &amp; visualizing previously logged data.</div></li></ul><h2 id="types" class="section-header"><a href="#types">Type Aliases</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.ComponentNameSet.html" title="type re_types::ComponentNameSet">ComponentNameSet</a></div></li><li><div class="item-name"><a class="type" href="type.DeserializationResult.html" title="type re_types::DeserializationResult">DeserializationResult</a></div></li><li><div class="item-name"><a class="type" href="type.SerializationResult.html" title="type re_types::SerializationResult">SerializationResult</a></div></li><li><div class="item-name"><a class="type" href="type._Backtrace.html" title="type re_types::_Backtrace">_Backtrace</a></div></li></ul></section></div></main></body></html>

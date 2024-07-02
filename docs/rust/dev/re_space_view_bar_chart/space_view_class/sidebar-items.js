@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["to_egui_plot_corner"],"struct":["BarChartSpaceView"],"type":["ViewType"]};

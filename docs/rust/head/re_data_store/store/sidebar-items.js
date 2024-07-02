@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["DataStore","DataStoreConfig","DataTypeRegistry","IndexedBucket","IndexedBucketInner","IndexedTable","MetadataRegistry","StaticCell","StaticTable","StoreGeneration"],"type":["InsertIdVec"]};

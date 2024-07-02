@@ -1,0 +1,94 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Welcome to arrow2’s documentation. Thanks for checking it out!"><title>re_space_view::external::re_data_store::external::arrow2 - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="re_space_view" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../../crates.js"></script><script defer src="../../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../re_space_view/index.html">re_space_view</a><span class="version">0.16.1-rc.2</span></h2></div><div class="sidebar-elems"><ul class="block">
+            <li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></section><h2><a href="../index.html">In re_space_view::external::re_data_store::external</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../../re_space_view/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a href="../../../../index.html">re_space_view</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_data_store</a>::<wbr><a href="../index.html">external</a>::<wbr><a class="mod" href="#">arrow2</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Welcome to arrow2’s documentation. Thanks for checking it out!</p>
+<p>This is a library for efficient in-memory data operations with
+<a href="https://arrow.apache.org/docs/format/Columnar.html">Arrow in-memory format</a>.
+It is a re-write from the bottom up of the official <code>arrow</code> crate with soundness
+and type safety in mind.</p>
+<p>Check out <a href="https://jorgecarleitao.github.io/arrow2/main/guide/">the guide</a> for an introduction.
+Below is an example of some of the things you can do with it:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::sync::Arc;
+
+<span class="kw">use </span>re_arrow2::array::<span class="kw-2">*</span>;
+<span class="kw">use </span>re_arrow2::datatypes::{Field, DataType, Schema};
+<span class="kw">use </span>re_arrow2::compute::arithmetics;
+<span class="kw">use </span>re_arrow2::error::Result;
+<span class="comment">// use re_arrow2::io::parquet::write::*;
+</span><span class="kw">use </span>re_arrow2::chunk::Chunk;
+
+<span class="kw">fn </span>main() -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="comment">// declare arrays
+    </span><span class="kw">let </span>a = Int32Array::from(<span class="kw-2">&amp;</span>[<span class="prelude-val">Some</span>(<span class="number">1</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>)]);
+    <span class="kw">let </span>b = Int32Array::from(<span class="kw-2">&amp;</span>[<span class="prelude-val">Some</span>(<span class="number">2</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">6</span>)]);
+
+    <span class="comment">// compute (probably the fastest implementation of a nullable op you can find out there)
+    </span><span class="kw">let </span>c = arithmetics::basic::mul_scalar(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span><span class="number">2</span>);
+    <span class="macro">assert_eq!</span>(c, b);
+
+    <span class="comment">// declare a schema with fields
+    </span><span class="kw">let </span>schema = Schema::from(<span class="macro">vec!</span>[
+        Field::new(<span class="string">"c1"</span>, DataType::Int32, <span class="bool-val">true</span>),
+        Field::new(<span class="string">"c2"</span>, DataType::Int32, <span class="bool-val">true</span>),
+    ]);
+
+    <span class="comment">// declare chunk
+    </span><span class="kw">let </span>chunk = Chunk::new(<span class="macro">vec!</span>[a.arced(), b.arced()]);
+
+    <span class="comment">// // write to parquet (probably the fastest implementation of writing to parquet out there)
+
+    // let options = WriteOptions {
+    //     write_statistics: true,
+    //     compression: CompressionOptions::Snappy,
+    //     version: Version::V1,
+    //     data_pagesize_limit: None,
+    // };
+
+    // let row_groups = RowGroupIterator::try_new(
+    //     vec![Ok(chunk)].into_iter(),
+    //     &amp;schema,
+    //     options,
+    //     vec![vec![Encoding::Plain], vec![Encoding::Plain]],
+    // )?;
+
+    // // anything implementing `std::io::Write` works
+    // let mut file = vec![];
+
+    // let mut writer = FileWriter::try_new(file, schema, options)?;
+
+    // // Write the file.
+    // for group in row_groups {
+    //     writer.write(group?)?;
+    // }
+    // let _ = writer.end(None)?;
+
+    </span><span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<h3 id="cargo-features"><a href="#cargo-features">Cargo features</a></h3>
+<p>This crate has a significant number of cargo features to reduce compilation
+time and number of dependencies. The feature <code>&quot;full&quot;</code> activates most
+functionality, such as:</p>
+<ul>
+<li><code>io_ipc</code>: to interact with the Arrow IPC format</li>
+<li><code>io_ipc_compression</code>: to read and write compressed Arrow IPC (v2)</li>
+<li><code>io_csv</code> to read and write CSV</li>
+<li><code>io_json</code> to read and write JSON</li>
+<li><code>io_flight</code> to read and write to Arrow’s Flight protocol</li>
+<li><code>io_parquet</code> to read and write parquet</li>
+<li><code>io_parquet_compression</code> to read and write compressed parquet</li>
+<li><code>io_print</code> to write batches to formatted ASCII tables</li>
+<li><code>compute</code> to operate on arrays (addition, sum, sort, etc.)</li>
+</ul>
+<p>The feature <code>simd</code> (not part of <code>full</code>) produces more explicit SIMD instructions
+via <a href="https://doc.rust-lang.org/nightly/std/simd/index.html"><code>std::simd</code></a>, but requires the
+nightly channel.</p>
+</div></details><h2 id="modules" class="section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="array/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::array">array</a></div><div class="desc docblock-short">Contains the <a href="array/trait.Array.html" title="trait re_space_view::external::re_data_store::external::arrow2::array::Array"><code>Array</code></a> and <a href="array/trait.MutableArray.html" title="trait re_space_view::external::re_data_store::external::arrow2::array::MutableArray"><code>MutableArray</code></a> trait objects declaring arrays,
+as well as concrete arrays (such as <a href="array/struct.Utf8Array.html" title="struct re_space_view::external::re_data_store::external::arrow2::array::Utf8Array"><code>Utf8Array</code></a> and <a href="array/struct.MutableUtf8Array.html" title="struct re_space_view::external::re_data_store::external::arrow2::array::MutableUtf8Array"><code>MutableUtf8Array</code></a>).</div></li><li><div class="item-name"><a class="mod" href="bitmap/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::bitmap">bitmap</a></div><div class="desc docblock-short">contains <a href="bitmap/struct.Bitmap.html" title="struct re_space_view::external::re_data_store::external::arrow2::bitmap::Bitmap"><code>Bitmap</code></a> and <a href="bitmap/struct.MutableBitmap.html" title="struct re_space_view::external::re_data_store::external::arrow2::bitmap::MutableBitmap"><code>MutableBitmap</code></a>, containers of <code>bool</code>.</div></li><li><div class="item-name"><a class="mod" href="buffer/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::buffer">buffer</a></div><div class="desc docblock-short">Contains <a href="buffer/struct.Buffer.html" title="struct re_space_view::external::re_data_store::external::arrow2::buffer::Buffer"><code>Buffer</code></a>, an immutable container for all Arrow physical types (e.g. i32, f64).</div></li><li><div class="item-name"><a class="mod" href="chunk/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::chunk">chunk</a></div><div class="desc docblock-short">Contains <a href="chunk/struct.Chunk.html" title="struct re_space_view::external::re_data_store::external::arrow2::chunk::Chunk"><code>Chunk</code></a>, a container of <a href="array/trait.Array.html" title="trait re_space_view::external::re_data_store::external::arrow2::array::Array"><code>Array</code></a> where every array has the
+same length.</div></li><li><div class="item-name"><a class="mod" href="compute/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::compute">compute</a></div><div class="desc docblock-short">contains a wide range of compute operations (e.g.
+[<code>arithmetics</code>], [<code>aggregate</code>],
+[<code>filter</code>], [<code>comparison</code>], and [<code>sort</code>])</div></li><li><div class="item-name"><a class="mod" href="datatypes/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::datatypes">datatypes</a></div><div class="desc docblock-short">Contains all metadata, such as <a href="datatypes/enum.PhysicalType.html" title="enum re_space_view::external::re_data_store::external::arrow2::datatypes::PhysicalType"><code>PhysicalType</code></a>, <a href="datatypes/enum.DataType.html" title="enum re_space_view::external::re_data_store::external::arrow2::datatypes::DataType"><code>DataType</code></a>, <a href="datatypes/struct.Field.html" title="struct re_space_view::external::re_data_store::external::arrow2::datatypes::Field"><code>Field</code></a> and <a href="datatypes/struct.Schema.html" title="struct re_space_view::external::re_data_store::external::arrow2::datatypes::Schema"><code>Schema</code></a>.</div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::error">error</a></div><div class="desc docblock-short">Defines <a href="error/enum.Error.html" title="enum re_space_view::external::re_data_store::external::arrow2::error::Error"><code>Error</code></a>, representing all errors returned by this crate.</div></li><li><div class="item-name"><a class="mod" href="ffi/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::ffi">ffi</a></div><div class="desc docblock-short">contains FFI bindings to import and export <a href="array/trait.Array.html" title="trait re_space_view::external::re_data_store::external::arrow2::array::Array"><code>Array</code></a> via
+Arrow’s <a href="https://arrow.apache.org/docs/format/CDataInterface.html">C Data Interface</a></div></li><li><div class="item-name"><a class="mod" href="io/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::io">io</a></div><div class="desc docblock-short">Contains modules to interface with other formats such as [<code>csv</code>],
+[<code>parquet</code>], [<code>json</code>], <a href="io/ipc/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::io::ipc"><code>ipc</code></a>, <a href="io/print/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::io::print"><code>print</code></a> and [<code>avro</code>].</div></li><li><div class="item-name"><a class="mod" href="mmap/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::mmap">mmap</a></div><div class="desc docblock-short">Memory maps regions defined on the IPC format into <a href="array/trait.Array.html" title="trait re_space_view::external::re_data_store::external::arrow2::array::Array"><code>Array</code></a>.</div></li><li><div class="item-name"><a class="mod" href="offset/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::offset">offset</a></div><div class="desc docblock-short">Contains the declaration of <a href="types/trait.Offset.html" title="trait re_space_view::external::re_data_store::external::arrow2::types::Offset"><code>Offset</code></a></div></li><li><div class="item-name"><a class="mod" href="scalar/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::scalar">scalar</a></div><div class="desc docblock-short">contains the <a href="scalar/trait.Scalar.html" title="trait re_space_view::external::re_data_store::external::arrow2::scalar::Scalar"><code>Scalar</code></a> trait object representing individual items of <a href="array/trait.Array.html" title="trait re_space_view::external::re_data_store::external::arrow2::array::Array"><code>Array</code></a>s,
+as well as concrete implementations such as <a href="scalar/struct.BooleanScalar.html" title="struct re_space_view::external::re_data_store::external::arrow2::scalar::BooleanScalar"><code>BooleanScalar</code></a>.</div></li><li><div class="item-name"><a class="mod" href="temporal_conversions/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::temporal_conversions">temporal_conversions</a></div><div class="desc docblock-short">Conversion methods for dates and times.</div></li><li><div class="item-name"><a class="mod" href="trusted_len/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::trusted_len">trusted_len</a></div><div class="desc docblock-short">Declares <a href="trusted_len/trait.TrustedLen.html" title="trait re_space_view::external::re_data_store::external::arrow2::trusted_len::TrustedLen"><code>TrustedLen</code></a>.</div></li><li><div class="item-name"><a class="mod" href="types/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::types">types</a></div><div class="desc docblock-short">Sealed traits and implementations to handle all <em>physical types</em> used in this crate.</div></li><li><div class="item-name"><a class="mod" href="util/index.html" title="mod re_space_view::external::re_data_store::external::arrow2::util">util</a></div><div class="desc docblock-short">Misc utilities used in different places in the crate.</div></li></ul><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.AHashMap.html" title="struct re_space_view::external::re_data_store::external::arrow2::AHashMap">AHashMap</a></div><div class="desc docblock-short">A <a href="https://doc.rust-lang.org/1.76.0/std/collections/hash/map/struct.HashMap.html" title="struct std::collections::hash::map::HashMap"><code>HashMap</code></a> using <a href="crate::RandomState"><code>RandomState</code></a> to hash the items.
+(Requires the <code>std</code> feature to be enabled.)</div></li></ul><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Either.html" title="enum re_space_view::external::re_data_store::external::arrow2::Either">Either</a></div><div class="desc docblock-short">The enum <code>Either</code> with variants <code>Left</code> and <code>Right</code> is a general purpose
+sum type with two cases.</div></li></ul></section></div></main></body></html>

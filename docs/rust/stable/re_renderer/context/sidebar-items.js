@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["STARTUP_FRAME_IDX"],"fn":["adapter_info_summary","log_adapter_info"],"struct":["ActiveFrameContext","FrameGlobalCommandEncoder","RenderContext","Renderers"]};

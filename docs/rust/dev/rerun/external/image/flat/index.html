@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Image representations for ffi."><title>rerun::external::image::flat - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../rerun/index.html">rerun</a><span class="version">0.16.1-rc.2</span></h2></div><h2 class="location"><a href="#">Module flat</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></section><h2><a href="../index.html">In rerun::external::image</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../rerun/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../../index.html">rerun</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">image</a>::<wbr><a class="mod" href="#">flat</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Image representations for ffi.</p>
+<h2 id="usage"><a href="#usage">Usage</a></h2>
+<p>Imagine you want to offer a very simple ffi interface: The caller provides an image buffer and
+your program creates a thumbnail from it and dumps that image as <code>png</code>. This module is designed
+to help you transition from raw memory data to Rust representation.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::ptr;
+<span class="kw">use </span>std::slice;
+<span class="kw">use </span>image::Rgb;
+<span class="kw">use </span>image::flat::{FlatSamples, SampleLayout};
+<span class="kw">use </span>image::imageops::thumbnail;
+
+<span class="attr">#[no_mangle]
+</span><span class="kw">pub extern </span><span class="string">"C" </span><span class="kw">fn </span>store_rgb8_compressed(
+    data: <span class="kw-2">*const </span>u8, len: usize,
+    layout: <span class="kw-2">*const </span>SampleLayout
+)
+    -&gt; bool
+{
+    <span class="kw">let </span>samples = <span class="kw">unsafe </span>{ slice::from_raw_parts(data, len) };
+    <span class="kw">let </span>layout = <span class="kw">unsafe </span>{ ptr::read(layout) };
+
+    <span class="kw">let </span>buffer = FlatSamples {
+        samples,
+        layout,
+        color_hint: <span class="prelude-val">None</span>,
+    };
+
+    <span class="kw">let </span>view = <span class="kw">match </span>buffer.as_view::&lt;Rgb&lt;u8&gt;&gt;() {
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>, <span class="comment">// Invalid layout.
+        </span><span class="prelude-val">Ok</span>(view) =&gt; view,
+    };
+
+    thumbnail(<span class="kw-2">&amp;</span>view, <span class="number">64</span>, <span class="number">64</span>)
+        .save(<span class="string">"output.png"</span>)
+        .map(|<span class="kw">_</span>| <span class="bool-val">true</span>)
+        .unwrap_or_else(|<span class="kw">_</span>| <span class="bool-val">false</span>)
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.FlatSamples.html" title="struct rerun::external::image::flat::FlatSamples">FlatSamples</a></div><div class="desc docblock-short">A flat buffer over a (multi channel) image.</div></li><li><div class="item-name"><a class="struct" href="struct.SampleLayout.html" title="struct rerun::external::image::flat::SampleLayout">SampleLayout</a></div><div class="desc docblock-short">A ffi compatible description of a sample buffer.</div></li><li><div class="item-name"><a class="struct" href="struct.View.html" title="struct rerun::external::image::flat::View">View</a></div><div class="desc docblock-short">A flat buffer that can be used as an image view.</div></li><li><div class="item-name"><a class="struct" href="struct.ViewMut.html" title="struct rerun::external::image::flat::ViewMut">ViewMut</a></div><div class="desc docblock-short">A mutable owning version of a flat buffer.</div></li></ul><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Error.html" title="enum rerun::external::image::flat::Error">Error</a></div><div class="desc docblock-short">Denotes invalid flat sample buffers when trying to convert to stricter types.</div></li><li><div class="item-name"><a class="enum" href="enum.NormalForm.html" title="enum rerun::external::image::flat::NormalForm">NormalForm</a></div><div class="desc docblock-short">Different normal forms of buffers.</div></li></ul></section></div></main></body></html>
