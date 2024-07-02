@@ -89,7 +89,7 @@ impl CodeGenerator for DocsCodeGenerator {
 built-in support. When logged, each archetype also includes an _indicator component_ which captures
 the intent of the logging code and triggers the activation of the corresponding visualizers. See
 [Entities and Compponents](../../concepts/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.,
+[Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.",
                 &archetypes,
