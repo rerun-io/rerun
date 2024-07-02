@@ -7,7 +7,6 @@
 
 mod aggregation;
 mod line_visualizer_system;
-mod overrides;
 mod point_visualizer_system;
 mod space_view_class;
 mod util;

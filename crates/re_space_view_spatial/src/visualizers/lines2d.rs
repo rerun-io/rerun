@@ -7,9 +7,9 @@ use re_types::{
     components::{ClassId, Color, DrawOrder, KeypointId, LineStrip2D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -84,12 +84,14 @@ impl Lines2DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Lines2DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.strips.len();
             if num_instances == 0 {
@@ -110,7 +112,7 @@ impl Lines2DVisualizer {
             let radii =
                 process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             if num_instances <= self.max_labels {
                 self.data.ui_labels.extend(Self::process_labels(
@@ -212,9 +214,7 @@ impl VisualizerSystem for Lines2DVisualizer {
             ctx,
             view_query,
             context_systems,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
@@ -266,13 +266,7 @@ impl VisualizerSystem for Lines2DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    &mut line_builder,
-                    view_query,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
 
                 Ok(())
             },
@@ -294,10 +288,16 @@ impl VisualizerSystem for Lines2DVisualizer {
     }
 }
 
+impl TypedComponentFallbackProvider<Color> for Lines2DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
 impl TypedComponentFallbackProvider<DrawOrder> for Lines2DVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
         DrawOrder::DEFAULT_LINES2D
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Lines2DVisualizer => [DrawOrder]);
+re_viewer_context::impl_component_fallback_provider!(Lines2DVisualizer => [Color, DrawOrder]);
