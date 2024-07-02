@@ -139,6 +139,10 @@ pub const SPACE_VIEW_TIMESERIES: Icon = Icon::new(
     "spaceview_chart",
     include_bytes!("../data/icons/spaceview_timeseries.png"),
 );
+pub const SPACE_VIEW_MAP: Icon = Icon::new(
+    "spaceview_map",
+    include_bytes!("../data/icons/spaceview_map.png"),
+);
 pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
     "spaceview_unknown",
     include_bytes!("../data/icons/spaceview_unknown.png"),

@@ -251,6 +251,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "Tabs",
             "SpaceView",
             "BarChartView",
+            "MapView",
             "Spatial2DView",
             "Spatial3DView",
             "TensorView",
