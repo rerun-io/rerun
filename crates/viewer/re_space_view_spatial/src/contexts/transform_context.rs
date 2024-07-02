@@ -10,7 +10,7 @@ use re_types::{
     },
     ComponentNameSet, Loggable as _,
 };
-use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
+use re_viewer_context::{DataResult, IdentifiedViewSystem, ViewContext, ViewContextSystem};
 
 use crate::visualizers::image_view_coordinates;
 
@@ -137,9 +137,9 @@ impl ViewContextSystem for TransformContext {
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
+                ctx,
                 current_tree,
-                ctx.recording(),
-                &time_query,
+                &query.individual_override_root.join(&current_tree.path),
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
                 |_| 500.0,
@@ -213,7 +213,6 @@ impl TransformContext {
                     .map(|data_result| {
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<Pinhole>(ctx, query);
-
                         results.get_mono_with_fallback::<ImagePlaneDistance>()
                     })
                     .unwrap_or_default()
@@ -221,9 +220,9 @@ impl TransformContext {
             };
 
             let reference_from_child = match transform_at(
+                ctx,
                 child_tree,
-                entity_db,
-                query,
+                &view_query.individual_override_root.join(&child_tree.path),
                 lookup_image_plane,
                 &mut encountered_pinhole,
             ) {
@@ -271,17 +270,23 @@ impl TransformContext {
     /// which would remove the need for this.
     pub fn reference_from_entity_ignoring_pinhole(
         &self,
-        ent_path: &EntityPath,
-        entity_db: &EntityDb,
-        query: &LatestAtQuery,
+        ctx: &ViewContext<'_>,
+        data_result: &DataResult,
     ) -> Option<glam::Affine3A> {
+        let ent_path = &data_result.entity_path;
         let transform_info = self.transform_per_entity.get(ent_path)?;
         if let (true, Some(parent)) = (
             transform_info.parent_pinhole.as_ref() == Some(ent_path),
             ent_path.parent(),
         ) {
             self.reference_from_entity(&parent).map(|t| {
-                t * get_cached_transform(ent_path, entity_db, query)
+                let Some(override_path) = data_result.individual_override_path() else {
+                    // Should never happen. Artifact of how data results are built currently.
+                    re_log::debug_once!("Data result was not yet populated.");
+                    return glam::Affine3A::IDENTITY;
+                };
+
+                t * get_cached_transform(ctx, ent_path, override_path)
                     .map_or(glam::Affine3A::IDENTITY, |transform| {
                         transform.into_parent_from_child_transform()
                     })
@@ -302,37 +307,47 @@ impl TransformContext {
     }
 }
 
-fn get_cached_transform(
+/// Usually we do this on `DataResult`, but we don't have one here.
+fn latest_at_override_or_store<C: re_types::Component>(
+    ctx: &ViewContext<'_>,
     entity_path: &EntityPath,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
-) -> Option<Transform3D> {
-    entity_db
-        .latest_at_component::<Transform3D>(entity_path, query)
+    entity_override_path: &EntityPath,
+) -> Option<C> {
+    ctx.blueprint_db()
+        .latest_at_component::<C>(entity_override_path, ctx.blueprint_query())
+        .or_else(|| {
+            ctx.recording()
+                .latest_at_component::<C>(entity_path, &ctx.current_query())
+        })
         .map(|res| res.value)
 }
 
+fn get_cached_transform(
+    ctx: &ViewContext<'_>,
+    entity_path: &EntityPath,
+    entity_override_path: &EntityPath,
+) -> Option<Transform3D> {
+    latest_at_override_or_store(ctx, entity_path, entity_override_path)
+}
+
 fn get_cached_pinhole(
-    entity_path: &re_log_types::EntityPath,
-    entity_db: &EntityDb,
-    query: &re_chunk_store::LatestAtQuery,
+    ctx: &ViewContext<'_>,
+    entity_path: &EntityPath,
+    entity_override_path: &EntityPath,
 ) -> Option<(PinholeProjection, ViewCoordinates)> {
-    entity_db
-        .latest_at_component::<PinholeProjection>(entity_path, query)
-        .map(|image_from_camera| {
-            (
-                image_from_camera.value,
-                entity_db
-                    .latest_at_component::<ViewCoordinates>(entity_path, query)
-                    .map_or(ViewCoordinates::RDF, |res| res.value),
-            )
-        })
+    latest_at_override_or_store(ctx, entity_path, entity_override_path).map(|image_from_camera| {
+        (
+            image_from_camera,
+            latest_at_override_or_store(ctx, entity_path, entity_override_path)
+                .unwrap_or(ViewCoordinates::RDF),
+        )
+    })
 }
 
 fn transform_at(
+    ctx: &ViewContext<'_>,
     subtree: &EntityTree,
-    entity_db: &EntityDb,
-    query: &LatestAtQuery,
+    entity_override_path: &EntityPath,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransformReason> {
@@ -340,7 +355,7 @@ fn transform_at(
 
     let entity_path = &subtree.path;
 
-    let pinhole = get_cached_pinhole(entity_path, entity_db, query);
+    let pinhole = get_cached_pinhole(ctx, entity_path, entity_override_path);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
             return Err(UnreachableTransformReason::NestedPinholeCameras);
@@ -349,7 +364,7 @@ fn transform_at(
         }
     }
 
-    let transform3d = get_cached_transform(entity_path, entity_db, query)
+    let transform3d = get_cached_transform(ctx, entity_path, entity_override_path)
         .map(|transform| transform.clone().into_parent_from_child_transform());
 
     let pinhole = pinhole.map(|(image_from_camera, camera_xyz)| {
@@ -390,9 +405,8 @@ fn transform_at(
     });
 
     let is_disconnect_space = || {
-        entity_db
-            .latest_at_component::<DisconnectedSpace>(entity_path, query)
-            .map_or(false, |res| **res.value)
+        latest_at_override_or_store::<DisconnectedSpace>(ctx, entity_path, entity_override_path)
+            .map_or(false, |res| res.0)
     };
 
     // If there is any other transform, we ignore `DisconnectedSpace`.

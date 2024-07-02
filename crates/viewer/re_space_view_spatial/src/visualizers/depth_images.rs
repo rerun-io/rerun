@@ -185,11 +185,15 @@ impl DepthImageVisualizer {
         };
 
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
-        let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
-            parent_pinhole_path,
-            ctx.recording(),
-            ctx.query,
-        );
+        // let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
+        //     ctx,
+        //     data_result,
+        //     parent_pinhole_path,
+        //     ctx.recording(),
+        //     ctx.query,
+        // );
+        let world_from_view = Some(glam::Affine3A::IDENTITY); // TODO: fix this
+
         let Some(world_from_view) = world_from_view else {
             anyhow::bail!("Couldn't fetch pinhole extrinsics at {parent_pinhole_path:?}");
         };

@@ -36,6 +36,8 @@ use crate::{SpaceViewBlueprint, ViewProperty};
 /// [`SpaceViewBlueprint::duplicate`].
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
+    pub individual_override_root: EntityPath,
+    pub recursive_override_root: EntityPath,
 
     pub view_class_identifier: SpaceViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
@@ -83,8 +85,15 @@ impl SpaceViewContents {
             blueprint_archetypes::SpaceViewContents::name().short_name(),
         ));
 
+        let individual_override_root =
+            blueprint_entity_path.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
+        let recursive_override_root =
+            blueprint_entity_path.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
+
         Self {
             blueprint_entity_path,
+            individual_override_root,
+            recursive_override_root,
             view_class_identifier,
             entity_path_filter,
         }
@@ -120,8 +129,17 @@ impl SpaceViewContents {
 
         let entity_path_filter = EntityPathFilter::from_query_expressions(query, space_env);
 
+        let individual_override_root = property
+            .blueprint_store_path
+            .join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
+        let recursive_override_root = property
+            .blueprint_store_path
+            .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
+
         Self {
             blueprint_entity_path: property.blueprint_store_path,
+            individual_override_root,
+            recursive_override_root,
             view_class_identifier,
             entity_path_filter,
         }
@@ -161,23 +179,18 @@ impl SpaceViewContents {
     }
 
     pub fn build_resolver<'a>(
-        &self,
+        &'a self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
         space_view: &'a SpaceViewBlueprint,
         applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> DataQueryPropertyResolver<'a> {
-        let base_override_root = &self.blueprint_entity_path;
-        let individual_override_root =
-            base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
-        let recursive_override_root =
-            base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
         DataQueryPropertyResolver {
             space_view_class_registry,
             space_view,
-            individual_override_root,
-            recursive_override_root,
+            individual_override_root: &self.individual_override_root,
+            recursive_override_root: &self.recursive_override_root,
             applicable_entities_per_visualizer,
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
@@ -265,6 +278,7 @@ impl SpaceViewContents {
             tree: DataResultTree::new(data_results, root_handle),
             num_matching_entities,
             num_visualized_entities,
+            individual_override_root: self.individual_override_root.clone(),
         }
     }
 }
@@ -360,8 +374,8 @@ impl<'a> QueryExpressionEvaluator<'a> {
 pub struct DataQueryPropertyResolver<'a> {
     space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     space_view: &'a SpaceViewBlueprint,
-    individual_override_root: EntityPath,
-    recursive_override_root: EntityPath,
+    individual_override_root: &'a EntityPath,
+    recursive_override_root: &'a EntityPath,
     applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
     visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,

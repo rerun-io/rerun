@@ -111,11 +111,7 @@ where
             if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
                 transforms.reference_from_entity(&data_result.entity_path)
             } else {
-                transforms.reference_from_entity_ignoring_pinhole(
-                    &data_result.entity_path,
-                    ctx.recording(),
-                    &latest_at,
-                )
+                transforms.reference_from_entity_ignoring_pinhole(ctx, data_result)
             };
 
         let Some(world_from_entity) = world_from_entity else {

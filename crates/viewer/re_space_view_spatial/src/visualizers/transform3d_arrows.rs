@@ -70,11 +70,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
-            let Some(world_from_obj) = transforms.reference_from_entity_ignoring_pinhole(
-                &data_result.entity_path,
-                ctx.recording(),
-                &latest_at_query,
-            ) else {
+            let Some(world_from_obj) =
+                transforms.reference_from_entity_ignoring_pinhole(ctx, data_result)
+            else {
                 continue;
             };
 

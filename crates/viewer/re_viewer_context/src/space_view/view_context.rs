@@ -57,6 +57,12 @@ impl<'a> ViewContext<'a> {
         self.viewer_ctx.blueprint_db()
     }
 
+    /// The query for the active blueprint.
+    #[inline]
+    pub fn blueprint_query(&self) -> &LatestAtQuery {
+        self.viewer_ctx.blueprint_query
+    }
+
     /// The `StoreId` of the active recording.
     #[inline]
     pub fn recording_id(&self) -> &re_log_types::StoreId {

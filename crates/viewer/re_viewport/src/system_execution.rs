@@ -87,6 +87,7 @@ pub fn execute_systems_for_space_view<'a>(
         timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
         latest_at,
         highlights,
+        individual_override_root: &query_result.individual_override_root,
     };
 
     let mut context_systems = ctx
