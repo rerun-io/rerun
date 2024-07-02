@@ -1,10 +1,12 @@
 //! Web-specific tools used by various parts of the application.
 
 use anyhow::Context as _;
+use parking_lot::Mutex;
 use re_log::ResultExt;
 use re_viewer_context::StoreHub;
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 use serde::Deserialize;
+use std::sync::OnceLock;
 use std::{ops::ControlFlow, sync::Arc};
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -78,43 +80,95 @@ pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_
     location.assign(&url.href())
 }
 
+static STORED_HISTORY_ENTRY: OnceLock<Arc<Mutex<Option<HistoryEntry>>>> = OnceLock::new();
+
+fn stored_history_entry() -> &'static Arc<Mutex<Option<HistoryEntry>>> {
+    STORED_HISTORY_ENTRY.get_or_init(|| Arc::new(Mutex::new(None)))
+}
+
+fn get_stored_history_entry() -> Option<HistoryEntry> {
+    stored_history_entry().lock().clone()
+}
+
+fn set_stored_history_entry(entry: Option<HistoryEntry>) {
+    *stored_history_entry().lock() = entry;
+}
+
+type EventListener<Event> = dyn FnMut(Event) -> Result<(), JsValue>;
+
 /// Listen for `popstate` event, which comes when the user hits the back/forward buttons.
 ///
 /// <https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event>
-pub fn install_popstate_listener(
-    egui_ctx: egui::Context,
-    command_sender: CommandSender,
-) -> Result<(), JsValue> {
+pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
+    let egui_ctx = app.egui_ctx.clone();
+    let command_sender = app.command_sender.clone();
+
     let closure = Closure::wrap(Box::new({
-        let mut prev = history()?.current_entry()?;
-        move |_: web_sys::Event| {
-            handle_popstate(&mut prev, &egui_ctx, &command_sender).ok_or_log_js_error();
+        move |event: web_sys::PopStateEvent| {
+            let new_state = deserialize_from_state(event.state())?;
+            handle_popstate(&egui_ctx, &command_sender, new_state)?;
+            Ok(())
         }
-    }) as Box<dyn FnMut(_)>);
+    }) as Box<EventListener<_>>);
+
+    set_stored_history_entry(history()?.current_entry()?);
 
     window()?
         .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
         .ok_or_log_js_error();
-    closure.forget();
+
+    app.popstate_listener = Some(PopstateListener(Some(closure)));
+
     Ok(())
 }
 
+pub struct PopstateListener(Option<Closure<EventListener<web_sys::PopStateEvent>>>);
+
+impl Drop for PopstateListener {
+    fn drop(&mut self) {
+        let Some(window) = window().ok_or_log_js_error() else {
+            return;
+        };
+
+        let closure = self.0.take().unwrap();
+        window
+            .remove_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
+            .ok_or_log_js_error();
+        drop(closure);
+    }
+}
+
 fn handle_popstate(
-    prev: &mut Option<HistoryEntry>,
     egui_ctx: &egui::Context,
     command_sender: &CommandSender,
+    new_state: Option<HistoryEntry>,
 ) -> Result<(), JsValue> {
-    let current = history()?.current_entry()?;
-    if &current == prev {
+    let prev_state = get_stored_history_entry();
+
+    re_log::debug!("popstate: prev={prev_state:?} new={new_state:?}");
+
+    if prev_state == new_state {
+        re_log::debug!("popstate: no change");
+
         return Ok(());
     }
 
-    let Some(entry) = current else {
+    if new_state.is_none() || new_state.as_ref().is_some_and(|v| v.urls.is_empty()) {
+        re_log::debug!("popstate: clear recordings + go to welcome screen");
+
         // the user navigated back to the history entry where the viewer was initially opened
         // in that case they likely expect to land back at the welcome screen:
+        command_sender.send_system(SystemCommand::CloseAllRecordings);
         command_sender.send_system(SystemCommand::ActivateApp(StoreHub::welcome_screen_app_id()));
 
+        set_stored_history_entry(new_state);
+        egui_ctx.request_repaint();
+
         return Ok(());
+    }
+
+    let Some(entry) = new_state else {
+        unreachable!();
     };
 
     let follow_if_http = false;
@@ -126,15 +180,12 @@ fn handle_popstate(
             continue;
         };
 
-        // We may be here because the user clicked Back/Forward in the browser while trying
-        // out examples. If we re-download the same file we should clear out the old data first.
-        command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
-            receiver.source().clone(),
-        ));
         command_sender.send_system(SystemCommand::AddReceiver(receiver));
+
+        re_log::debug!("popstate: add receiver {url:?}");
     }
 
-    *prev = Some(entry);
+    set_stored_history_entry(Some(entry));
     egui_ctx.request_repaint();
 
     Ok(())
@@ -242,11 +293,29 @@ extern "C" {
 /// current browser history.
 fn get_raw_state(history: &History) -> Result<JsValue, JsValue> {
     let state = history.state().unwrap_or(JsValue::UNDEFINED);
+
+    if state.is_undefined() || state.is_null() {
+        // no state - return empty object
+        return Ok(js_sys::Object::new().into());
+    }
+
     if !state.is_object() {
+        // invalid state
         return Err(JsError::new("history state is not an object").into());
     }
 
+    // deeply clone state
     structured_clone(&state)
+}
+
+fn deserialize_from_state(state: JsValue) -> Result<Option<HistoryEntry>, JsValue> {
+    let key = JsValue::from_str(HistoryEntry::KEY);
+    let value = js_sys::Reflect::get(&state, &key)?;
+    if value.is_undefined() || value.is_null() {
+        return Ok(None);
+    }
+    let entry = serde_wasm_bindgen::from_value(value)?;
+    Ok(Some(entry))
 }
 
 /// Get the state from `history`, deeply-cloned, and return it with updated values from the given `entry`.
@@ -264,24 +333,24 @@ impl HistoryExt for History {
     fn push_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
         let state = get_updated_state(self, &entry)?;
         let url = entry.to_query_string()?;
-        self.push_state_with_url(&state, "", Some(&url))
+        self.push_state_with_url(&state, "", Some(&url))?;
+        set_stored_history_entry(Some(entry));
+
+        Ok(())
     }
 
     fn replace_entry(&self, entry: HistoryEntry) -> Result<(), JsValue> {
         let state = get_updated_state(self, &entry)?;
         let url = entry.to_query_string()?;
-        self.replace_state_with_url(&state, "", Some(&url))
+        self.replace_state_with_url(&state, "", Some(&url))?;
+        set_stored_history_entry(Some(entry));
+
+        Ok(())
     }
 
     fn current_entry(&self) -> Result<Option<HistoryEntry>, JsValue> {
         let state = get_raw_state(self)?;
-        let key = JsValue::from_str(HistoryEntry::KEY);
-        let value = js_sys::Reflect::get(&state, &key)?;
-        if value.is_undefined() || value.is_null() {
-            return Ok(None);
-        }
-
-        Ok(Some(serde_wasm_bindgen::from_value(value)?))
+        deserialize_from_state(state)
     }
 }
 

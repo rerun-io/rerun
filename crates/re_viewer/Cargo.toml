@@ -100,6 +100,7 @@ egui.workspace = true
 ehttp.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
+parking_lot.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
 rfd.workspace = true
 ron.workspace = true
@@ -121,6 +122,7 @@ wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [
   "History",
   "Location",
+  "PopStateEvent",
   "Storage",
   "Url",
   "UrlSearchParams",

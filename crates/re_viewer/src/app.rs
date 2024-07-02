@@ -133,6 +133,9 @@ pub struct App {
     pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
 
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) popstate_listener: Option<crate::web_tools::PopstateListener>,
+
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
 
@@ -277,6 +280,9 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx,
             screenshotter,
+
+            #[cfg(target_arch = "wasm32")]
+            popstate_listener: None,
 
             #[cfg(not(target_arch = "wasm32"))]
             profiler: Default::default(),

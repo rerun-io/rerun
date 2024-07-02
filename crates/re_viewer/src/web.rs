@@ -373,8 +373,7 @@ fn create_app(
     );
 
     if enable_history {
-        install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone())
-            .ok_or_log_js_error();
+        install_popstate_listener(&mut app).ok_or_log_js_error();
     }
 
     if let Some(manifest_url) = app_options.manifest_url {
