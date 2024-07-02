@@ -153,7 +153,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_bool(self, mut b: bool) -> Self {
         self.value_fn(move |ui: &mut Ui, _| {
-            ui.add_enabled_ui(false, |ui| ui.toggle_switch(15.0, &mut b));
+            ui.add_enabled_ui(false, |ui| ui.re_checkbox(&mut b, ""));
         })
     }
 
@@ -161,10 +161,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_bool_mut(self, b: &'a mut bool) -> Self {
         self.value_fn(|ui: &mut Ui, _| {
-            ui.visuals_mut().widgets.hovered.expansion = 0.0;
-            ui.visuals_mut().widgets.active.expansion = 0.0;
-
-            ui.toggle_switch(15.0, b);
+            ui.re_checkbox(b, "");
         })
     }
 
