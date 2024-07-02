@@ -15,7 +15,7 @@ combine to produce what you see: the "recording" and the "blueprint."
 -   The blueprint is the configuration that determines how the data from the
     recording is displayed.
 
-Both of these pieces are crucial -- without the recording there is nothing to
+Both of these pieces are crucial—without the recording there is nothing to
 show, and without the blueprint there is no way to show it. Even if you have
 used Rerun before without explicitly loading a blueprint, the Viewer was
 actually creating one for you. Without a blueprint, there is literally nothing

@@ -12,11 +12,11 @@ This section explains the process by which logged data is used to produce a visu
 <!-- schematics source: https://excalidraw.com/#json=8G274_acK-zYc7Cq2ONf0,GaIabh3FBulcjNx9ZqJrXg -->
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-base/dbe3202b78ff44e35dab0844b3494e3a68c7e551/1200w.png">
+  <img src="https://static.rerun.io/viscomp-base/02d6fe87db0d33b6e9e4dc2d647b3c473e6ce50b/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-base/02d6fe87db0d33b6e9e4dc2d647b3c473e6ce50b/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-base/02d6fe87db0d33b6e9e4dc2d647b3c473e6ce50b/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-base/02d6fe87db0d33b6e9e4dc2d647b3c473e6ce50b/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-base/02d6fe87db0d33b6e9e4dc2d647b3c473e6ce50b/1200w.png">
 </picture>
 
 In the Rerun viewer, visualizations happen within _views_, which are defined by their [_blueprint_](blueprint.md).
@@ -25,17 +25,21 @@ The first step for a view to display its content is to determine which entities 
 This is determined by the [entity query](../reference/entity-queries.md), which is part of the view blueprint.
 The query is run against the data store to generate the list of view entities.
 
-Views rely on visualizers to display each of their entities. For example, [3D views](../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds, and [time series views](../reference/types/views/time_series_view.md) use the `SeriesLine` visualizer to display time series line plots. Which visualizers are available is highly dependent on the specific kind of view. For example, the `SeriesLine` visualizer only exist for time series views—not, e.g., 3D views.
+Views rely on visualizers to display each of their entities.
+For example, [3D views](../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
+and [time series views](../reference/types/views/time_series_view.md) use the `SeriesLine` visualizer to display time series line plots.
+Which visualizers are available is highly dependent on the specific kind of view.
+For example, the `SeriesLine` visualizer only exist for time series views—not, e.g., for 3D views.
 
 For a given view, visualizers are selected for each of its entities based on their content.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../reference/types/archetypes.md).
-For example, in a 3D view, an entity logged with the [`Points3D`](../reference/types/archetypes/points3d.md) results in the `Points3D` visualizer being selected by default.
+For example, in a 3D view, an entity logged with the [`Points3D`](../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
 This happens because [archetypes](../reference/types/archetypes.md) include an _indicator component_ to capture the intent of the logging code.
 This indicator component in turn triggers the default activation of the associated visualizer.
 (We will see that this process can be influenced by both the user interface and the blueprints.)
 
 Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../reference/types/components/position3d.md), [`Radius`](../reference/types/components/radius.md), and [`Color`](../reference/types/components/color.md) components. For each of these (and the others it also supports), the visualizer must determine a value. By default, it will use the value that was logged to the data store, if any. Otherwise, it will use some fallback value that
- depends on the actual type of visualizer and view. (Again, we will see that this can be influenced by the user interface and the blueprint.)
+ depends on the actual type of visualizer and view.
 
 For an illustration, let's consider a simple example with just two [`Boxes2D`](../reference/types/archetypes/boxes2d.md):
 
@@ -56,11 +60,11 @@ All components used by the visualizer are represented, along with their correspo
 ## Per-entity component override
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-component-override/c988af3298c31cc7a41dee234040ba28112c4520/1200w.png">
+  <img src="https://static.rerun.io/viscomp-component-override/aebe94bb431e28d49acd5e5cedc6bfe4905ff1c5/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-override/aebe94bb431e28d49acd5e5cedc6bfe4905ff1c5/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-override/aebe94bb431e28d49acd5e5cedc6bfe4905ff1c5/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-component-override/aebe94bb431e28d49acd5e5cedc6bfe4905ff1c5/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-component-override/aebe94bb431e28d49acd5e5cedc6bfe4905ff1c5/1200w.png">
 </picture>
 
 To customize a visualization, the blueprint may override any component value for any view entity.
@@ -84,14 +88,14 @@ The override is listed above the store and fallback value since it has precedenc
 ## Per-view component default
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-component-default/1a1dd1cc3c98418976f95142556aade0e0eec63c/1200w.png">
+  <img src="https://static.rerun.io/viscomp-component-default/8473f99cc1cad8f6d15a16019c2c0d18edd77220/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-component-default/8473f99cc1cad8f6d15a16019c2c0d18edd77220/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-component-default/8473f99cc1cad8f6d15a16019c2c0d18edd77220/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-component-default/8473f99cc1cad8f6d15a16019c2c0d18edd77220/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-component-default/8473f99cc1cad8f6d15a16019c2c0d18edd77220/1200w.png">
 </picture>
 
-The blueprint may also specify a default value for all components of a given type, should their value not be logged to the store or overridden for a given view entity. This makes it easy to configure visual properties for a potentially large number of entities a view may contain.
+The blueprint may also specify a default value for all components of a given type, should their value not be logged to the store or overridden for a given view entity. This makes it easy to configure visual properties for a potentially large number of entities.
 
 This is how it is achieved with the blueprint API:
 
@@ -141,11 +145,11 @@ So far, we discussed how visualizers determine values for the components they ar
 (relevant [issue](https://github.com/rerun-io/rerun/issues/6626)).
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-full/933a444503599be8e503fdb01f1daca1066721f6/1200w.png">
+  <img src="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viscomp-full/945b98084d12be14a5258f2ba00786cb6ec7d19a/1200w.png">
 </picture>
 
 
