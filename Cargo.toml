@@ -60,6 +60,7 @@ re_smart_channel = { path = "crates/re_smart_channel", version = "=0.17.0-alpha.
 re_space_view = { path = "crates/re_space_view", version = "=0.17.0-alpha.8", default-features = false }
 re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.17.0-alpha.8", default-features = false }
 re_space_view_dataframe = { path = "crates/re_space_view_dataframe", version = "=0.17.0-alpha.8", default-features = false }
+re_space_view_map = { path = "crates/re_space_view_map", version = "=0.17.0-alpha.8", default-features = false }
 re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.17.0-alpha.8", default-features = false }
 re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.17.0-alpha.8", default-features = false }
 re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.17.0-alpha.8", default-features = false }

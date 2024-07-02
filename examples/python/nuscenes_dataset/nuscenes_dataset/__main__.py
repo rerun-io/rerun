@@ -12,6 +12,7 @@ import rerun.blueprint as rrb
 from nuscenes import nuscenes
 
 from .download_dataset import MINISPLIT_SCENES, download_minisplit
+from .export_gps import derive_latlon
 
 DESCRIPTION = """
 # nuScenes
@@ -82,6 +83,9 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
 
+    location = nusc.get("log", scene["log_token"])["location"]
+    print(f"Visualizing scene {scene_name} in {location}")
+
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
     first_sample_token = scene["first_sample_token"]
@@ -104,13 +108,15 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
     first_timestamp_us = nusc.get("sample_data", first_lidar_token)["timestamp"]
     max_timestamp_us = first_timestamp_us + 1e6 * max_time_sec
 
-    log_lidar_and_ego_pose(first_lidar_token, nusc, max_timestamp_us)
+    log_lidar_and_ego_pose(location, first_lidar_token, nusc, max_timestamp_us)
     log_cameras(first_camera_tokens, nusc, max_timestamp_us)
     log_radars(first_radar_tokens, nusc, max_timestamp_us)
     log_annotations(first_sample_token, nusc, max_timestamp_us)
 
 
-def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
+def log_lidar_and_ego_pose(
+    location: str, first_lidar_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float
+) -> None:
     """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token
 
@@ -135,6 +141,15 @@ def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes, max_
             ),
         )
         current_lidar_token = sample_data["next"]
+
+        # log GPS data
+        (lat, long) = derive_latlon(location, ego_pose)
+        rr.log(
+            "world/ego_vehicle/gps",
+            rr.Points3D(
+                [lat, long, ego_pose["translation"][2]],
+            ),
+        )
 
         data_file_path = nusc.dataroot / sample_data["filename"]
         pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
@@ -275,7 +290,17 @@ def main() -> None:
     blueprint = rrb.Vertical(
         rrb.Horizontal(
             rrb.Spatial3DView(name="3D", origin="world"),
-            rrb.TextDocumentView(origin="description", name="Description"),
+            rrb.Vertical(
+                rrb.TextDocumentView(origin="description", name="Description"),
+                rrb.MapView(
+                    origin="world/ego_vehicle/gps",
+                    name="MapView",
+                    map_options=rrb.archetypes.MapOptions(
+                        provider=rrb.components.MapProvider.OpenStreetMap, zoom=18, access_token=None
+                    ),
+                ),
+                row_shares=[1, 1],
+            ),
             column_shares=[3, 1],
         ),
         rrb.Grid(*sensor_space_views),

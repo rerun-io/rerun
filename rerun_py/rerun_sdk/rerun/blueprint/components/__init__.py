@@ -32,10 +32,12 @@ from .included_content import IncludedContent, IncludedContentBatch, IncludedCon
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .interactive import Interactive, InteractiveBatch, InteractiveType
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
+from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike, MapProviderType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
+from .secret import Secret, SecretBatch, SecretType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
@@ -60,6 +62,7 @@ from .visualizer_overrides import (
     VisualizerOverridesLike,
     VisualizerOverridesType,
 )
+from .zoom_level import ZoomLevel, ZoomLevelArrayLike, ZoomLevelBatch, ZoomLevelLike, ZoomLevelType
 
 __all__ = [
     "ActiveTab",
@@ -112,6 +115,11 @@ __all__ = [
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
+    "MapProvider",
+    "MapProviderArrayLike",
+    "MapProviderBatch",
+    "MapProviderLike",
+    "MapProviderType",
     "PanelState",
     "PanelStateArrayLike",
     "PanelStateBatch",
@@ -128,6 +136,9 @@ __all__ = [
     "RowShareBatch",
     "RowShareLike",
     "RowShareType",
+    "Secret",
+    "SecretBatch",
+    "SecretType",
     "SpaceViewClass",
     "SpaceViewClassBatch",
     "SpaceViewClassType",
@@ -164,4 +175,9 @@ __all__ = [
     "VisualizerOverridesBatch",
     "VisualizerOverridesLike",
     "VisualizerOverridesType",
+    "ZoomLevel",
+    "ZoomLevelArrayLike",
+    "ZoomLevelBatch",
+    "ZoomLevelLike",
+    "ZoomLevelType",
 ]

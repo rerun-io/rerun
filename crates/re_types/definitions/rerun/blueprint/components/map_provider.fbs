@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+/// Name of the map provider to be used in Map views.
+enum MapProvider: byte (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy, PartialEq, Eq"
+) {
+    /// OpenStreetMap is the default map provider.
+    OpenStreetMap (default),
+
+    /// Mapbox Streets is a minimalistic map designed by Mapbox.
+    MapboxStreets,
+
+    /// Mapbox Dark is a dark themed map designed by Mapbox.
+    MapboxDark,
+
+    /// Mapbox Satellite is a satellite map designed by Mapbox.
+    MapboxSatellite,
+}

@@ -4,6 +4,7 @@
 
 #include "blueprint/archetypes/background.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"
+#include "blueprint/archetypes/map_options.hpp"
 #include "blueprint/archetypes/panel_blueprint.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
 #include "blueprint/archetypes/scalar_axis.hpp"

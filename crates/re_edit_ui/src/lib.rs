@@ -14,10 +14,14 @@ mod visual_bounds2d;
 
 use datatype_editors::{
     edit_bool, edit_bool_raw, edit_enum, edit_f32_min_to_max_float_raw, edit_f32_zero_to_max,
-    edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one, edit_singleline_string,
+    edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one, edit_singleline_secret_string,
+    edit_singleline_string,
 };
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
+    blueprint::components::{
+        BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, Secret, ViewFit, Visible,
+        ZoomLevel,
+    },
     components::{
         AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, DrawOrder, FillRatio,
         GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity,
@@ -60,12 +64,20 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
 
     registry.add_singleline_editor_ui::<Text>(edit_singleline_string);
     registry.add_singleline_editor_ui::<Name>(edit_singleline_string);
+    registry.add_singleline_editor_ui::<Secret>(edit_singleline_secret_string);
+
+    registry.add_singleline_editor_ui::<DepthMeter>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_editor_ui::<MarkerSize>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_editor_ui::<Radius>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_editor_ui::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_editor_ui::<ZoomLevel>(edit_f32_zero_to_max_float_raw);
 
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<BackgroundKind>(ui, value));
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Colormap>(ui, value));
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Corner2D>(ui, value));
     registry
         .add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<MagnificationFilter>(ui, value));
+    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<MapProvider>(ui, value));
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<AggregationPolicy>(ui, value));
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<ViewFit>(ui, value));
 
