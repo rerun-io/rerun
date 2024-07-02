@@ -5,8 +5,8 @@ use re_entity_db::EntityPath;
 use re_space_view::{diff_component_filter, DataResultQuery as _};
 use re_types::{
     archetypes::BarChart,
-    components::{self, Color},
-    datatypes::TensorData,
+    components::{self},
+    datatypes,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -17,7 +17,7 @@ use re_viewer_context::{
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartVisualizerSystem {
-    pub charts: BTreeMap<EntityPath, (TensorData, Color)>,
+    pub charts: BTreeMap<EntityPath, (datatypes::TensorData, components::Color)>,
 }
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
@@ -30,9 +30,7 @@ struct BarChartVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter {
     fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_vector()
-        })
+        diff_component_filter(event, |tensor: &components::TensorData| tensor.is_vector())
     }
 }
 
@@ -80,10 +78,17 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<Color> for BarChartVisualizerSystem {
-    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+impl TypedComponentFallbackProvider<components::Color> for BarChartVisualizerSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Color {
         auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => [Color]);
+impl TypedComponentFallbackProvider<components::TensorData> for BarChartVisualizerSystem {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> components::TensorData {
+        // Provide tensor data which visualizes as a series of simple steps.
+        [0_i64, 1, 2, 3, 4].as_slice().into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => [components::TensorData, components::Color]);
