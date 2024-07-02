@@ -92,7 +92,7 @@ impl<'a> HybridLatestAtResults<'a> {
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
     ///
-    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
+    /// If overrides are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
     pub fn get_required_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
         let component_name = T::name();
@@ -109,7 +109,7 @@ impl<'a> HybridLatestAtResults<'a> {
 
     /// Utility for retrieving a single instance of a component.
     ///
-    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
+    /// If overrides are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
     pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
         self.get_required_instance(index).or_else(|| {
@@ -122,7 +122,7 @@ impl<'a> HybridLatestAtResults<'a> {
 
     /// Utility for retrieving a single instance of a component.
     ///
-    /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
+    /// If overrides are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
     pub fn get_instance_with_fallback<T: re_types_core::Component + Default>(
         &self,
