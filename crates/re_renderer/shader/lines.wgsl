@@ -217,7 +217,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
     let camera_distance = distance(camera_ray.origin, center_position);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
-    var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, frame.auto_size_lines, world_scale_factor);
+    var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, world_scale_factor);
 
     // If the triangle cap is longer than the quad would be otherwise, we need to stunt it, otherwise we'd get artifacts.
     var triangle_cap_length = batch.triangle_cap_length_factor * strip_radius;

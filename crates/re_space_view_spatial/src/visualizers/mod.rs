@@ -185,11 +185,12 @@ pub fn process_radius_slice(
     entity_path: &EntityPath,
     num_instances: usize,
     radii: &[re_types::components::Radius],
+    fallback_radius: re_types::components::Radius,
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
 
     if radii.is_empty() {
-        vec![re_renderer::Size::AUTO; num_instances]
+        vec![re_renderer::Size(fallback_radius.0); num_instances]
     } else {
         entity_iterator::clamped(radii, num_instances)
             .map(|radius| process_radius(entity_path, *radius))
@@ -201,18 +202,13 @@ fn process_radius(
     entity_path: &EntityPath,
     radius: re_types::components::Radius,
 ) -> re_renderer::Size {
-    if 0.0 <= radius.0 && radius.0.is_finite() {
-        re_renderer::Size::new_scene(radius.0)
-    } else {
-        if radius.0 < 0.0 {
-            re_log::warn_once!("Found negative radius in entity {entity_path}");
-        } else if radius.0.is_infinite() {
-            re_log::warn_once!("Found infinite radius in entity {entity_path}");
-        } else {
-            re_log::warn_once!("Found NaN radius in entity {entity_path}");
-        }
-        re_renderer::Size::AUTO
+    if radius.0.is_infinite() {
+        re_log::warn_once!("Found infinite radius in entity {entity_path}");
+    } else if radius.0.is_nan() {
+        re_log::warn_once!("Found NaN radius in entity {entity_path}");
     }
+
+    re_renderer::Size(radius.0)
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
@@ -329,6 +325,9 @@ pub fn load_keypoint_connections(
         .world_from_obj(ent_context.world_from_entity)
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
+    // TODO(andreas): Make configurable. Should we pick up the point's radius and make this proportional?
+    let line_radius = re_renderer::Size(re_types::components::Radius::default().0);
+
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let resolved_class_description = ent_context
             .annotations
@@ -357,7 +356,7 @@ pub fn load_keypoint_connections(
             };
             line_batch
                 .add_segment(*a, *b)
-                .radius(re_renderer::Size::AUTO)
+                .radius(line_radius)
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.

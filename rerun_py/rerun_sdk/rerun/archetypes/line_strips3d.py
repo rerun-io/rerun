@@ -23,8 +23,8 @@ class LineStrips3D(Archetype):
     """
     **Archetype**: 3D line strips with positions and optional colors, radii, labels, etc.
 
-    Example
-    -------
+    Examples
+    --------
     ### Many strips:
     ```python
     import rerun as rr
@@ -65,6 +65,48 @@ class LineStrips3D(Archetype):
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1200w.png">
       <img src="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Lines with scene & UI radius each:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_line_strip3d_ui_radius", spawn=True)
+
+    # A blue line with a scene unit radii of 0.01.
+    points = [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 0, 1]]
+    rr.log(
+        "scene_unit_line",
+        rr.LineStrips3D(
+            [points],
+            # By default, radii are interpreted as world-space units.
+            radii=0.01,
+            colors=[0, 0, 255],
+        ),
+    )
+
+    # A red line with a ui point radii of 5.
+    # UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    # For 100% ui scaling, UI points are equal to pixels.
+    points = [[3, 0, 0], [3, 0, 1], [4, 0, 0], [4, 0, 1]]
+    rr.log(
+        "ui_points_line",
+        rr.LineStrips3D(
+            [points],
+            # rr.Radius.ui_points produces radii that the viewer interprets as given in ui points.
+            radii=rr.Radius.ui_points(5.0),
+            colors=[255, 0, 0],
+        ),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/1200w.png">
+      <img src="https://static.rerun.io/line_strip3d_ui_radius/99ed4d16eef710f6ee3e97ddf457ea4f0bc48133/full.png" width="640">
     </picture>
     </center>
 

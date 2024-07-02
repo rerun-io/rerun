@@ -7,4 +7,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry.
+Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry.

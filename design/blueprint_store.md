@@ -225,7 +225,7 @@ In turn any user-interactions that modify the layout will be saved back to the b
 on the next frame.
 
 ### UI components
-The ui components are quite specific for the type of blueprint. Here are a few example:
+The UI components are quite specific for the type of blueprint. Here are a few example:
 
 * `root`:
     * `TimeControl` (globally selected timeline, time, play state, etc)

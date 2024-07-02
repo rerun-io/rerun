@@ -20,9 +20,33 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: The radius of something, e.g. a point, in world-space units.
+    /// **Component**: The radius of something, e.g. a point.
+    ///
+    /// Internally, positive values indicate scene units, whereas negative values
+    /// are interpreted as UI points.
+    ///
+    /// UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    /// at 100% UI scaling, UI points are equal to pixels
+    /// The Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
     struct Radius {
         float value;
+
+      public:
+        // Extensions to generated type defined in 'radius_ext.cpp'
+
+        /// Creates a new radius in scene units.
+        ///
+        /// Values passed must be finite positive.
+        static Radius scene_units(float radius_in_scene_units) {
+            return Radius(radius_in_scene_units);
+        }
+
+        /// Creates a new radius in ui points.
+        ///
+        /// Values passed must be finite positive.
+        static Radius ui_points(float radius_in_ui_points) {
+            return Radius(-radius_in_ui_points);
+        }
 
       public:
         Radius() = default;

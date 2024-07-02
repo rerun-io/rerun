@@ -6,8 +6,11 @@
 # for one or more specific SDKs.
 [opt_out.run]
 "archetypes/image_advanced" = ["cpp", "rust"] # Missing examples
-
-"tutorials/annotation-context" = [ # Not a complete examples
+"concetps/viscomp-base" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rust
+"concetps/viscomp-component-default" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rust
+"concetps/viscomp-component-override" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rust
+"concetps/viscomp-visualizer-override" = ["cpp", "rust"] # Blueprint API doesn't exist for C++/Rustt
+"tutorials/annotation-context" = [ # Not a complete example
   "cpp",
   "rust",
   "py",

@@ -21,12 +21,7 @@ struct FrameUniformBuffer {
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
     tan_half_fov: vec2f,
-
-    // Size used for all point radii given with Size::AUTO.
-    auto_size_points: f32,
-
-    // Size used for all line radii given with Size::AUTO.
-    auto_size_lines: f32,
+    _padding: vec2f,
 
     /// re_renderer defined device tier.
     device_tier: u32,
