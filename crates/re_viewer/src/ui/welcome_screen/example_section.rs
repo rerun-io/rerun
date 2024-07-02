@@ -453,7 +453,7 @@ fn open_example_url(
         use crate::web_tools::JsResultExt as _;
 
         if let Some(history) = history().ok_or_log_js_error() {
-            let entry = HistoryEntry::new().rrd_url(rrd_url.to_owned());
+            let entry = HistoryEntry::default().rrd_url(rrd_url.to_owned());
             history.push_entry(entry).ok_or_log_js_error();
         }
     }

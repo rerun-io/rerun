@@ -42,10 +42,6 @@ pub struct HistoryEntry {
 impl HistoryEntry {
     pub const KEY: &'static str = "__rerun";
 
-    pub fn new() -> Self {
-        Self { urls: Vec::new() }
-    }
-
     /// Set the URL of the RRD to load when using this entry.
     #[inline]
     pub fn rrd_url(mut self, url: String) -> Self {
@@ -106,12 +102,18 @@ pub fn install_popstate_listener(app: &mut crate::App) -> Result<(), JsValue> {
         .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
         .ok_or_log_js_error();
 
-    app.popstate_listener = Some(PopstateListener(Some(closure)));
+    app.popstate_listener = Some(PopstateListener::new(closure));
 
     Ok(())
 }
 
 pub struct PopstateListener(Option<Closure<EventListener<web_sys::PopStateEvent>>>);
+
+impl PopstateListener {
+    fn new(closure: Closure<EventListener<web_sys::PopStateEvent>>) -> Self {
+        Self(Some(closure))
+    }
+}
 
 impl Drop for PopstateListener {
     fn drop(&mut self) {
@@ -119,7 +121,11 @@ impl Drop for PopstateListener {
             return;
         };
 
-        let closure = self.0.take().unwrap();
+        // The closure is guaranteed to be `Some`, because the field isn't
+        // accessed outside of the constructor.
+        let Some(closure) = self.0.take() else {
+            unreachable!();
+        };
         window
             .remove_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
             .ok_or_log_js_error();
