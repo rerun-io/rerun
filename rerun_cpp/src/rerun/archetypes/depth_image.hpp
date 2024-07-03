@@ -80,6 +80,9 @@ namespace rerun::archetypes {
         ///
         /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
         /// and a range of up to ~65 meters (2^16 / 1000).
+        ///
+        /// Note that the effect on 2D views is what physical depth values are shown when interacting with the image,
+        /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
         std::optional<rerun::components::DepthMeter> meter;
 
         /// Colormap to use for rendering the depth image.
@@ -92,6 +95,8 @@ namespace rerun::archetypes {
         /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
         /// if it is at the same depth, leaving no gaps.
         /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+        ///
+        /// TODO(#6744): This applies only to 3D views!
         std::optional<rerun::components::FillRatio> point_fill_ratio;
 
         /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
@@ -148,6 +153,9 @@ namespace rerun::archetypes {
         ///
         /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
         /// and a range of up to ~65 meters (2^16 / 1000).
+        ///
+        /// Note that the effect on 2D views is what physical depth values are shown when interacting with the image,
+        /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
         DepthImage with_meter(rerun::components::DepthMeter _meter) && {
             meter = std::move(_meter);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -168,6 +176,8 @@ namespace rerun::archetypes {
         /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
         /// if it is at the same depth, leaving no gaps.
         /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+        ///
+        /// TODO(#6744): This applies only to 3D views!
         DepthImage with_point_fill_ratio(rerun::components::FillRatio _point_fill_ratio) && {
             point_fill_ratio = std::move(_point_fill_ratio);
             // See: https://github.com/rerun-io/rerun/issues/4027
