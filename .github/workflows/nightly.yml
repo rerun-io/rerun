@@ -402,11 +402,11 @@ jobs:
 
             ## Wheels can be installed with:
             ```
-            pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA }}/wheels --upgrade rerun-sdk
+            pip install --pre --no-index -f https://build.rerun.io/commit/${{ env.SHORT_SHA }}/wheels --upgrade rerun-sdk
             ```
             or
             ```
-            pip install --pre -f https://github.com/rerun-io/rerun/releases/download/prerelease --upgrade rerun-sdk
+            pip install --pre --no-index -f https://github.com/rerun-io/rerun/releases/download/prerelease --upgrade rerun-sdk
             ```
 
             ## CMake fetch-content for C++ SDK
