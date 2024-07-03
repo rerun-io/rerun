@@ -1,6 +1,7 @@
 use re_log_types::EntityPathHash;
 
-use crate::{view_kind::SpatialSpaceViewKind, visualizers::UiLabel};
+use super::UiLabel;
+use crate::view_kind::SpatialSpaceViewKind;
 
 /// Common data struct for all spatial scene elements.
 ///

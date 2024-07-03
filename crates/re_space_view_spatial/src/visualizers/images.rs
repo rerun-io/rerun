@@ -20,10 +20,7 @@ use crate::{
     PickableImageRect, SpatialSpaceView2D,
 };
 
-use super::{
-    tensor_to_textured_rect, textured_rect_utils::bounding_box_for_textured_rect,
-    SpatialViewVisualizerData,
-};
+use super::{bounding_box_for_textured_rect, tensor_to_textured_rect, SpatialViewVisualizerData};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
