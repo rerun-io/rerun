@@ -121,30 +121,29 @@ impl Arrows3DVisualizer {
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many arrows but only a single label, place the single label at the middle of the visualization.
-                let obj_space_bbox_center;
-                let (num_positions, label_positions) =
-                    if data.labels.len() == 1 && num_instances > 1 {
-                        // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                        obj_space_bbox_center = obj_space_bounding_box.center();
-                        (
-                            1,
-                            itertools::Either::Left(std::iter::once(obj_space_bbox_center)),
-                        )
-                    } else {
-                        // Take middle point of every arrow.
-                        let origins = clamped(data.origins, num_instances)
-                            .chain(std::iter::repeat(&Position3D::ZERO));
-                        // Note that this is unfortunately not a FixedSizeIterator, which is why we have to pass along the number of positions.
-                        (
-                            num_instances,
-                            itertools::Either::Right(data.vectors.iter().zip(origins).map(
-                                |(vector, origin)| {
-                                    // `0.45` rather than `0.5` to account for cap and such
-                                    (glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0)) * 0.45
-                                },
-                            )),
-                        )
-                    };
+                let (num_positions, label_positions) = if data.labels.len() == 1
+                    && num_instances > 1
+                {
+                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                    (
+                        1,
+                        itertools::Either::Left(std::iter::once(obj_space_bounding_box.center())),
+                    )
+                } else {
+                    // Take middle point of every arrow.
+                    let origins = clamped(data.origins, num_instances)
+                        .chain(std::iter::repeat(&Position3D::ZERO));
+                    // Note that this is unfortunately not a FixedSizeIterator, which is why we have to pass along the number of positions.
+                    (
+                        num_instances,
+                        itertools::Either::Right(data.vectors.iter().zip(origins).map(
+                            |(vector, origin)| {
+                                // `0.45` rather than `0.5` to account for cap and such
+                                (glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0)) * 0.45
+                            },
+                        )),
+                    )
+                };
 
                 self.data.ui_labels.extend(process_labels_3d(
                     entity_path,

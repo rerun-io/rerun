@@ -120,14 +120,14 @@ impl Arrows2DVisualizer {
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many arrows but only a single label, place the single label at the middle of the visualization.
-                let obj_space_bbox_center;
                 let (num_positions, label_positions) =
                     if data.labels.len() == 1 && num_instances > 1 {
                         // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                        obj_space_bbox_center = obj_space_bounding_box.center().truncate();
                         (
                             1,
-                            itertools::Either::Left(std::iter::once(obj_space_bbox_center)),
+                            itertools::Either::Left(std::iter::once(
+                                obj_space_bounding_box.center().truncate(),
+                            )),
                         )
                     } else {
                         // Take middle point of every arrow.

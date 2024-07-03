@@ -129,11 +129,11 @@ impl Points2DVisualizer {
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many points but only a single label, place the single label at the middle of the visualization.
-                let obj_space_bbox_center;
                 let label_positions = if data.labels.len() == 1 && data.positions.len() > 1 {
                     // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                    obj_space_bbox_center = obj_space_bounding_box.center().truncate();
-                    itertools::Either::Left(std::iter::once(obj_space_bbox_center))
+                    itertools::Either::Left(std::iter::once(
+                        obj_space_bounding_box.center().truncate(),
+                    ))
                 } else {
                     itertools::Either::Right(
                         data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
