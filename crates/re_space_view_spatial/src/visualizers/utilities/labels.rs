@@ -33,7 +33,7 @@ pub const MAX_NUM_LABELS_PER_ENTITY: usize = 10;
 
 pub fn process_labels_3d<'a>(
     entity_path: &'a EntityPath,
-    positions: impl ExactSizeIterator<Item = &'a glam::Vec3> + 'a,
+    positions: impl ExactSizeIterator<Item = glam::Vec3> + 'a,
     labels: &'a [re_types::components::Text],
     colors: &'a [egui::Color32],
     annotation_infos: &'a ResolvedAnnotationInfos,
@@ -49,7 +49,7 @@ pub fn process_labels_3d<'a>(
                 (point, Some(label)) => Some(UiLabel {
                     text: label,
                     color: *color,
-                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(*point)),
+                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(point)),
                     labeled_instance: InstancePathHash::instance(
                         entity_path,
                         Instance::from(i as u64),

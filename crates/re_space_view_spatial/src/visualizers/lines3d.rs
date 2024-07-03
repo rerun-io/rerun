@@ -1,4 +1,3 @@
-use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::Instance;
 use re_query::range_zip_1x5;
 use re_renderer::PickingLayerInstanceId;
@@ -8,21 +7,19 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
-    visualizers::{UiLabel, UiLabelTarget},
+    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
+    visualizers::process_labels_3d,
 };
 
 use super::{
-    entity_iterator::clamped, filter_visualizable_3d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -42,46 +39,6 @@ impl Default for Lines3DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Lines3DVisualizer {
-    fn process_labels<'a>(
-        entity_path: &'a EntityPath,
-        strips: &'a [LineStrip3D],
-        labels: &'a [Text],
-        colors: &'a [egui::Color32],
-        annotation_infos: &'a ResolvedAnnotationInfos,
-        world_from_obj: glam::Affine3A,
-    ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = clamped(labels, strips.len());
-        itertools::izip!(annotation_infos.iter(), strips, labels, colors,)
-            .enumerate()
-            .filter_map(move |(i, (annotation_info, strip, label, color))| {
-                let label = annotation_info.label(Some(label.as_str()));
-                match (strip, label) {
-                    (strip, Some(label)) => {
-                        let midpoint = strip
-                            .0
-                            .iter()
-                            .copied()
-                            .map(glam::Vec3::from)
-                            .sum::<glam::Vec3>()
-                            / (strip.0.len() as f32);
-
-                        Some(UiLabel {
-                            text: label,
-                            color: *color,
-                            target: UiLabelTarget::Position3D(
-                                world_from_obj.transform_point3(midpoint),
-                            ),
-                            labeled_instance: InstancePathHash::instance(
-                                entity_path,
-                                Instance::from(i as u64),
-                            ),
-                        })
-                    }
-                    _ => None,
-                }
-            })
-    }
-
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -114,17 +71,6 @@ impl Lines3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            if num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                self.data.ui_labels.extend(Self::process_labels(
-                    entity_path,
-                    data.strips,
-                    data.labels,
-                    &colors,
-                    &annotation_infos,
-                    ent_context.world_from_entity,
-                ));
-            }
-
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
                 .depth_offset(ent_context.depth_offset)
@@ -132,15 +78,15 @@ impl Lines3DVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut bounding_box = macaw::BoundingBox::nothing();
+            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
 
             let mut num_rendered_strips = 0usize;
             for (i, (strip, radius, color)) in
-                itertools::izip!(data.strips, radii, colors).enumerate()
+                itertools::izip!(data.strips, radii, &colors).enumerate()
             {
                 let lines = line_batch
                     .add_strip(strip.0.iter().copied().map(Into::into))
-                    .color(color)
+                    .color(*color)
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
@@ -153,7 +99,7 @@ impl Lines3DVisualizer {
                 }
 
                 for p in &strip.0 {
-                    bounding_box.extend((*p).into());
+                    obj_space_bounding_box.extend((*p).into());
                 }
 
                 num_rendered_strips += 1;
@@ -162,9 +108,39 @@ impl Lines3DVisualizer {
 
             self.data.add_bounding_box(
                 entity_path.hash(),
-                bounding_box,
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
+
+            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
+                // If there's many strips but only a single label, place the single label at the middle of the visualization.
+                let obj_space_bbox_center;
+                let label_positions = if data.labels.len() == 1 && data.strips.len() > 1 {
+                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                    obj_space_bbox_center = obj_space_bounding_box.center();
+                    itertools::Either::Left(std::iter::once(obj_space_bbox_center))
+                } else {
+                    // Take middle point of every strip.
+                    itertools::Either::Right(data.strips.iter().map(|strip| {
+                        strip
+                            .0
+                            .iter()
+                            .copied()
+                            .map(glam::Vec3::from)
+                            .sum::<glam::Vec3>()
+                            / (strip.0.len() as f32)
+                    }))
+                };
+
+                self.data.ui_labels.extend(process_labels_3d(
+                    entity_path,
+                    label_positions,
+                    data.labels,
+                    &colors,
+                    &annotation_infos,
+                    ent_context.world_from_entity,
+                ));
+            }
         }
     }
 }
