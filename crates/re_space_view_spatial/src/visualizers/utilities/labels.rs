@@ -1,4 +1,8 @@
 use re_entity_db::InstancePathHash;
+use re_log_types::{EntityPath, Instance};
+use re_viewer_context::ResolvedAnnotationInfos;
+
+use super::entity_iterator::clamped;
 
 #[derive(Clone)]
 pub enum UiLabelTarget {
@@ -26,3 +30,32 @@ pub struct UiLabel {
 
 /// Maximum number of labels after which we stop displaying labels for that entity all together.
 pub const MAX_NUM_LABELS_PER_ENTITY: usize = 10;
+
+pub fn process_labels_3d<'a>(
+    entity_path: &'a EntityPath,
+    positions: impl ExactSizeIterator<Item = &'a glam::Vec3> + 'a,
+    labels: &'a [re_types::components::Text],
+    colors: &'a [egui::Color32],
+    annotation_infos: &'a ResolvedAnnotationInfos,
+    world_from_obj: glam::Affine3A,
+) -> impl Iterator<Item = UiLabel> + 'a {
+    let labels = clamped(labels, positions.len());
+
+    itertools::izip!(annotation_infos.iter(), positions, labels, colors)
+        .enumerate()
+        .filter_map(move |(i, (annotation_info, point, label, color))| {
+            let label = annotation_info.label(Some(label.as_str()));
+            match (point, label) {
+                (point, Some(label)) => Some(UiLabel {
+                    text: label,
+                    color: *color,
+                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(*point)),
+                    labeled_instance: InstancePathHash::instance(
+                        entity_path,
+                        Instance::from(i as u64),
+                    ),
+                }),
+                _ => None,
+            }
+        })
+}
