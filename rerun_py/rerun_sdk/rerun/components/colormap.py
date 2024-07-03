@@ -80,15 +80,7 @@ class Colormap(Enum):
     """
 
 
-ColormapLike = Union[
-    Colormap,
-    Literal["grayscale"]
-    | Literal["inferno"]
-    | Literal["magma"]
-    | Literal["plasma"]
-    | Literal["turbo"]
-    | Literal["viridis"],
-]
+ColormapLike = Union[Colormap, Literal["grayscale", "inferno", "magma", "plasma", "turbo", "viridis"]]
 ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
 
 

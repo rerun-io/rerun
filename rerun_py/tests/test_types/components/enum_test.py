@@ -42,10 +42,7 @@ class EnumTest(Enum):
     """Baby's got it."""
 
 
-EnumTestLike = Union[
-    EnumTest,
-    Literal["up"] | Literal["down"] | Literal["right"] | Literal["left"] | Literal["forward"] | Literal["back"],
-]
+EnumTestLike = Union[EnumTest, Literal["up", "down", "right", "left", "forward", "back"]]
 EnumTestArrayLike = Union[EnumTestLike, Sequence[EnumTestLike]]
 
 
