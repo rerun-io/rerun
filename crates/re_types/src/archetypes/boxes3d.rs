@@ -81,6 +81,9 @@ pub struct Boxes3D {
     pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional text labels for the boxes.
+    ///
+    /// If there's a single label present, it will be placed at the center of the entity.
+    /// Otherwise, each instance will have its own label.
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// Optional `ClassId`s for the boxes.
@@ -392,6 +395,9 @@ impl Boxes3D {
     }
 
     /// Optional text labels for the boxes.
+    ///
+    /// If there's a single label present, it will be placed at the center of the entity.
+    /// Otherwise, each instance will have its own label.
     #[inline]
     pub fn with_labels(
         mut self,

@@ -43,6 +43,9 @@ table Arrows3D (
   colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional text labels for the arrows.
+  ///
+  /// If there's a single label present, it will be placed at the center of the entity.
+  /// Otherwise, each instance will have its own label.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Optional class Ids for the points.

@@ -134,6 +134,9 @@ class LineStrips3D(Archetype):
             Optional colors for the line strips.
         labels:
             Optional text labels for the line strips.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
         class_ids:
             Optional `ClassId`s for the lines.
 
@@ -196,6 +199,9 @@ class LineStrips3D(Archetype):
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     # Optional text labels for the line strips.
+    #
+    # If there's a single label present, it will be placed at the center of the entity.
+    # Otherwise, each instance will have its own label.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
