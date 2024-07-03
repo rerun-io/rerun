@@ -77,12 +77,12 @@ impl Lines2DVisualizer {
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
             let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
-            for (i, (strip, radius, color)) in
+            for (i, (strip, radius, &color)) in
                 itertools::izip!(data.strips, radii, &colors).enumerate()
             {
                 let lines = line_batch
                     .add_strip_2d(strip.0.iter().copied().map(Into::into))
-                    .color(*color)
+                    .color(color)
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
@@ -127,6 +127,7 @@ impl Lines2DVisualizer {
 
                 self.data.ui_labels.extend(process_labels_2d(
                     entity_path,
+                    label_positions.len(),
                     label_positions,
                     data.labels,
                     &colors,

@@ -145,6 +145,7 @@ impl Points3DVisualizer {
 
                 self.data.ui_labels.extend(process_labels_3d(
                     entity_path,
+                    label_positions.len(),
                     label_positions.iter().copied(),
                     data.labels,
                     &colors,

@@ -1,4 +1,3 @@
-use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::Instance;
 use re_query::range_zip_1x6;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
@@ -8,20 +7,20 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
-    visualizers::{filter_visualizable_3d_entities, UiLabel, UiLabelTarget},
+    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
+    visualizers::filter_visualizable_3d_entities,
 };
 
 use super::{
     entity_iterator::clamped, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_labels_3d, process_radius_slice, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -41,47 +40,6 @@ impl Default for Arrows3DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Arrows3DVisualizer {
-    fn process_labels<'a>(
-        entity_path: &'a EntityPath,
-        vectors: &'a [Vector3D],
-        origins: impl Iterator<Item = &'a Position3D> + 'a,
-        labels: &'a [Text],
-        colors: &'a [egui::Color32],
-        annotation_infos: &'a ResolvedAnnotationInfos,
-        world_from_obj: glam::Affine3A,
-    ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = clamped(labels, vectors.len());
-        let origins = origins.chain(std::iter::repeat(&Position3D::ZERO));
-        itertools::izip!(annotation_infos.iter(), vectors, origins, labels, colors)
-            .enumerate()
-            .filter_map(
-                move |(i, (annotation_info, vector, origin, label, color))| {
-                    let label = annotation_info.label(Some(label.as_str()));
-                    match (vector, label) {
-                        (vector, Some(label)) => {
-                            let midpoint =
-                             // `0.45` rather than `0.5` to account for cap and such
-                            (glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0)) * 0.45;
-                            let midpoint = world_from_obj.transform_point3(midpoint);
-
-                            Some(UiLabel {
-                                text: label,
-                                color: *color,
-                                target: UiLabelTarget::Position3D(
-                                    world_from_obj.transform_point3(midpoint),
-                                ),
-                                labeled_instance: InstancePathHash::instance(
-                                    entity_path,
-                                    Instance::from(i as u64),
-                                ),
-                            })
-                        }
-                        _ => None,
-                    }
-                },
-            )
-    }
-
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -114,31 +72,18 @@ impl Arrows3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            if num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                let origins = clamped(data.origins, num_instances);
-                self.data.ui_labels.extend(Self::process_labels(
-                    entity_path,
-                    data.vectors,
-                    origins,
-                    data.labels,
-                    &colors,
-                    &annotation_infos,
-                    ent_context.world_from_entity,
-                ));
-            }
-
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
                 .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut bounding_box = macaw::BoundingBox::nothing();
+            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
 
             let origins =
                 clamped(data.origins, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
-            for (i, (vector, origin, radius, color)) in
-                itertools::izip!(data.vectors, origins, radii, colors).enumerate()
+            for (i, (vector, origin, radius, &color)) in
+                itertools::izip!(data.vectors, origins, radii, &colors).enumerate()
             {
                 let vector: glam::Vec3 = vector.0.into();
                 let origin: glam::Vec3 = origin.0.into();
@@ -164,15 +109,53 @@ impl Arrows3DVisualizer {
                     segment.outline_mask_ids(*outline_mask_ids);
                 }
 
-                bounding_box.extend(origin);
-                bounding_box.extend(end);
+                obj_space_bounding_box.extend(origin);
+                obj_space_bounding_box.extend(end);
             }
 
             self.data.add_bounding_box(
                 entity_path.hash(),
-                bounding_box,
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
+
+            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
+                // If there's many arrows but only a single label, place the single label at the middle of the visualization.
+                let obj_space_bbox_center;
+                let (num_positions, label_positions) =
+                    if data.labels.len() == 1 && data.vectors.len() > 1 {
+                        // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                        obj_space_bbox_center = obj_space_bounding_box.center();
+                        (
+                            1,
+                            itertools::Either::Left(std::iter::once(obj_space_bbox_center)),
+                        )
+                    } else {
+                        // Take middle point of every arrow.
+                        let origins = clamped(data.origins, num_instances)
+                            .chain(std::iter::repeat(&Position3D::ZERO));
+                        // Note that this is unfortunately not a FixedSizeIterator, which is why we have to pass along the number of positions.
+                        (
+                            num_instances,
+                            itertools::Either::Right(data.vectors.iter().zip(origins).map(
+                                |(vector, origin)| {
+                                    // `0.45` rather than `0.5` to account for cap and such
+                                    (glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0)) * 0.45
+                                },
+                            )),
+                        )
+                    };
+
+                self.data.ui_labels.extend(process_labels_3d(
+                    entity_path,
+                    num_positions,
+                    label_positions,
+                    data.labels,
+                    &colors,
+                    &annotation_infos,
+                    ent_context.world_from_entity,
+                ));
+            }
         }
     }
 }
