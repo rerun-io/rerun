@@ -29,7 +29,9 @@ pub struct UiLabel {
 }
 
 /// Maximum number of labels after which we stop displaying labels for that entity all together.
-pub const MAX_NUM_LABELS_PER_ENTITY: usize = 10;
+///
+/// TODO(#4451): Hiding of labels should be configurable. This can be the heuristic for it.
+pub const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 
 pub fn process_labels_3d<'a>(
     entity_path: &'a EntityPath,
