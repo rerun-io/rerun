@@ -136,18 +136,21 @@ impl ResolvedAnnotationInfo {
     #[inline]
     pub fn color(&self, rgba: Option<[u8; 4]>) -> Option<re_renderer::Color32> {
         if let Some([r, g, b, a]) = rgba {
+            // Use passed color.
             Some(if a == 255 {
                 // Common-case optimization
                 re_renderer::Color32::from_rgb(r, g, b)
             } else {
                 re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
             })
+        } else if let Some(info) = self.annotation_info.as_ref() {
+            // Use annotation context based color.
+            info.color
+                .map(|c| c.into())
+                .or_else(|| Some(auto_color_egui(info.id)))
         } else {
-            self.annotation_info.as_ref().and_then(|info| {
-                info.color
-                    .map(|c| c.into())
-                    .or_else(|| Some(auto_color_egui(info.id)))
-            })
+            // Use class id based color (or give up).
+            self.class_id.map(|class_id| auto_color_egui(class_id.0))
         }
     }
 
