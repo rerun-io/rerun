@@ -875,7 +875,7 @@ fn code_for_enum(
         "Literal[{}]",
         obj.fields
             .iter()
-            .map(|v| format!("\"{}\"", v.pascal_case_name().to_lowercase()))
+            .map(|v| format!("{:?}", v.pascal_case_name().to_lowercase()))
             .join(", ")
     );
     code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
