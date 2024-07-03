@@ -487,15 +487,22 @@ pub fn data_density_graph_ui(
             ctx.selection_state().set_selection(item.to_item());
             time_ctrl.set_time(hovered_time_range.min());
             time_ctrl.pause();
-        } else if ui.ctx().dragged_id().is_none() {
-            show_row_ids_tooltip(
-                ctx,
-                time_ctrl,
-                db,
+        } else if ui.ctx().dragged_id().is_none() && 0 < num_hovered_messages {
+            egui::show_tooltip_at_pointer(
                 ui.ctx(),
-                item,
-                hovered_time_range,
-                num_hovered_messages,
+                ui.layer_id(),
+                egui::Id::new("data_tooltip"),
+                |ui| {
+                    show_row_ids_tooltip(
+                        ctx,
+                        ui,
+                        time_ctrl,
+                        db,
+                        item,
+                        hovered_time_range,
+                        num_hovered_messages,
+                    );
+                },
             );
         }
     }
@@ -522,45 +529,39 @@ fn make_brighter(color: Color32) -> Color32 {
 
 fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
     time_ctrl: &TimeControl,
     db: &re_entity_db::EntityDb,
-    egui_ctx: &egui::Context,
     item: &TimePanelItem,
     time_range: ResolvedTimeRange,
     num_events: usize,
 ) {
     use re_data_ui::DataUi as _;
 
-    if num_events == 0 {
-        return;
+    if num_events == 1 {
+        ui.label(format!("{num_events} event"));
+    } else {
+        ui.label(format!("{num_events} events"));
     }
 
-    egui::show_tooltip_at_pointer(egui_ctx, egui::Id::new("data_tooltip"), |ui| {
-        if num_events == 1 {
-            ui.label(format!("{num_events} event"));
-        } else {
-            ui.label(format!("{num_events} events"));
-        }
+    let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
 
-        let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
+    let ui_layout = UiLayout::Tooltip;
 
-        let ui_layout = UiLayout::Tooltip;
+    let TimePanelItem {
+        entity_path,
+        component_name,
+    } = item;
 
-        let TimePanelItem {
-            entity_path,
-            component_name,
-        } = item;
-
-        if let Some(component_name) = component_name {
-            let component_path = ComponentPath::new(entity_path.clone(), *component_name);
-            item_ui::component_path_button(ctx, ui, &component_path, db);
-            ui.add_space(8.0);
-            component_path.data_ui(ctx, ui, ui_layout, &query, db);
-        } else {
-            let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
-            item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
-            ui.add_space(8.0);
-            instance_path.data_ui(ctx, ui, ui_layout, &query, db);
-        }
-    });
+    if let Some(component_name) = component_name {
+        let component_path = ComponentPath::new(entity_path.clone(), *component_name);
+        item_ui::component_path_button(ctx, ui, &component_path, db);
+        ui.add_space(8.0);
+        component_path.data_ui(ctx, ui, ui_layout, &query, db);
+    } else {
+        let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
+        item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
+        ui.add_space(8.0);
+        instance_path.data_ui(ctx, ui, ui_layout, &query, db);
+    }
 }
