@@ -45,17 +45,39 @@ pub fn process_labels_3d<'a>(
         .enumerate()
         .filter_map(move |(i, (annotation_info, point, label, color))| {
             let label = annotation_info.label(Some(label.as_str()));
-            match (point, label) {
-                (point, Some(label)) => Some(UiLabel {
+            label.map(|label| UiLabel {
+                text: label,
+                color: *color,
+                target: UiLabelTarget::Position3D(world_from_obj.transform_point3(point)),
+                labeled_instance: InstancePathHash::instance(entity_path, Instance::from(i as u64)),
+            })
+        })
+}
+
+pub fn process_labels_2d<'a>(
+    entity_path: &'a EntityPath,
+    positions: impl ExactSizeIterator<Item = glam::Vec2> + 'a,
+    labels: &'a [re_types::components::Text],
+    colors: &'a [egui::Color32],
+    annotation_infos: &'a ResolvedAnnotationInfos,
+    world_from_obj: glam::Affine3A,
+) -> impl Iterator<Item = UiLabel> + 'a {
+    let labels = clamped(labels, positions.len());
+    itertools::izip!(annotation_infos.iter(), positions, labels, colors)
+        .enumerate()
+        .filter_map(move |(i, (annotation_info, point, label, color))| {
+            let label = annotation_info.label(Some(label.as_str()));
+            label.map(|label| {
+                let point = world_from_obj.transform_point3(glam::Vec3::new(point.x, point.y, 0.0));
+                UiLabel {
                     text: label,
                     color: *color,
-                    target: UiLabelTarget::Position3D(world_from_obj.transform_point3(point)),
+                    target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
                     labeled_instance: InstancePathHash::instance(
                         entity_path,
                         Instance::from(i as u64),
                     ),
-                }),
-                _ => None,
-            }
+                }
+            })
         })
 }
