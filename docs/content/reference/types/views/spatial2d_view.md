@@ -52,7 +52,6 @@ snippet: views/spatial2d
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`Pinhole`](../archetypes/pinhole.md)
-* [`Pinhole`](../archetypes/pinhole.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`Arrows3D`](../archetypes/arrows3d.md) (if logged above active projection)
