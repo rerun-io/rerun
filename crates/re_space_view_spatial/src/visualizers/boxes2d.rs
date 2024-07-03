@@ -115,7 +115,7 @@ impl Boxes2DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            if num_instances <= self.max_labels {
+            if num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 let centers = clamped(data.centers, num_instances);
                 self.data.ui_labels.extend(Self::process_labels(
                     entity_path,

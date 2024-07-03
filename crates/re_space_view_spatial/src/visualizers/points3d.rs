@@ -26,21 +26,18 @@ use crate::{
 
 use super::{
     entity_iterator::clamped, filter_visualizable_3d_entities, SpatialViewVisualizerData,
-    SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    MAX_NUM_LABELS_PER_ENTITY, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
 // ---
 
 pub struct Points3DVisualizer {
-    /// If the number of points in the batch is > max_labels, don't render point labels.
-    pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Points3DVisualizer {
     fn default() -> Self {
         Self {
-            max_labels: 10,
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
         }
     }
@@ -164,7 +161,7 @@ impl Points3DVisualizer {
 
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
-            if num_instances <= self.max_labels {
+            if num_instances <= MAX_NUM_LABELS_PER_ENTITY {
                 self.data.ui_labels.extend(Self::process_labels(
                     entity_path,
                     positions,

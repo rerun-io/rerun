@@ -27,15 +27,12 @@ use super::{
 // ---
 
 pub struct Arrows3DVisualizer {
-    /// If the number of arrows in the batch is > max_labels, don't render point labels.
-    pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Arrows3DVisualizer {
     fn default() -> Self {
         Self {
-            max_labels: 10,
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
         }
     }
@@ -117,7 +114,7 @@ impl Arrows3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            if num_instances <= self.max_labels {
+            if num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 let origins = clamped(data.origins, num_instances);
                 self.data.ui_labels.extend(Self::process_labels(
                     entity_path,

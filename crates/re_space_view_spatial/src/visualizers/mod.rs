@@ -59,6 +59,9 @@ pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.0;
 /// Gap between points and their outline.
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
+/// Maximum number of labels after which we stop displaying labels for that entity all together.
+pub const MAX_NUM_LABELS_PER_ENTITY: usize = 10;
+
 pub fn register_2d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
