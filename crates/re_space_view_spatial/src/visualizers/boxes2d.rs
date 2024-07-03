@@ -50,32 +50,31 @@ impl Boxes2DVisualizer {
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = clamped(labels, half_sizes.len());
+        let labels = clamped(labels, annotation_infos.len());
+        let colors = clamped(colors, annotation_infos.len()); // Assumes colors is already populated with at least one color.
         let centers = centers.chain(std::iter::repeat(&Position2D::ZERO));
+
         itertools::izip!(annotation_infos.iter(), half_sizes, centers, labels, colors)
             .enumerate()
             .filter_map(
                 move |(i, (annotation_info, half_size, center, label, color))| {
                     let label = annotation_info.label(Some(label.as_str()));
-                    match (half_size, label) {
-                        (half_size, Some(label)) => {
-                            let min = half_size.box_min(*center);
-                            let max = half_size.box_max(*center);
-                            Some(UiLabel {
-                                text: label,
-                                color: *color,
-                                target: UiLabelTarget::Rect(egui::Rect::from_min_max(
-                                    egui::pos2(min.x, min.y),
-                                    egui::pos2(max.x, max.y),
-                                )),
-                                labeled_instance: InstancePathHash::instance(
-                                    entity_path,
-                                    Instance::from(i as u64),
-                                ),
-                            })
+                    label.map(|label| {
+                        let min = half_size.box_min(*center);
+                        let max = half_size.box_max(*center);
+                        UiLabel {
+                            text: label,
+                            color: *color,
+                            target: UiLabelTarget::Rect(egui::Rect::from_min_max(
+                                egui::pos2(min.x, min.y),
+                                egui::pos2(max.x, max.y),
+                            )),
+                            labeled_instance: InstancePathHash::instance(
+                                entity_path,
+                                Instance::from(i as u64),
+                            ),
                         }
-                        _ => None,
-                    }
+                    })
                 },
             )
     }
@@ -161,7 +160,6 @@ impl Boxes2DVisualizer {
                     // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
                     self.data.ui_labels.extend(process_labels_2d(
                         entity_path,
-                        1,
                         std::iter::once(obj_space_bounding_box.center().truncate()),
                         data.labels,
                         &colors,

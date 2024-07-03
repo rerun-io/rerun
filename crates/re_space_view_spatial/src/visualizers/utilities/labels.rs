@@ -35,15 +35,14 @@ pub const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 
 pub fn process_labels_3d<'a>(
     entity_path: &'a EntityPath,
-    num_positions: usize,
     positions: impl Iterator<Item = glam::Vec3> + 'a,
     labels: &'a [re_types::components::Text],
     colors: &'a [egui::Color32],
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
-    let labels = clamped(labels, num_positions);
-    let colors = clamped(colors, num_positions);
+    let labels = clamped(labels, annotation_infos.len());
+    let colors = clamped(colors, annotation_infos.len()); // Assumes colors is already populated with at least one color.
 
     itertools::izip!(annotation_infos.iter(), positions, labels, colors)
         .enumerate()
@@ -60,15 +59,14 @@ pub fn process_labels_3d<'a>(
 
 pub fn process_labels_2d<'a>(
     entity_path: &'a EntityPath,
-    num_positions: usize,
     positions: impl Iterator<Item = glam::Vec2> + 'a,
     labels: &'a [re_types::components::Text],
     colors: &'a [egui::Color32],
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
-    let labels = clamped(labels, num_positions);
-    let colors = clamped(colors, num_positions);
+    let labels = clamped(labels, annotation_infos.len());
+    let colors = clamped(colors, annotation_infos.len()); // Assumes colors is already populated with at least one color.
 
     itertools::izip!(annotation_infos.iter(), positions, labels, colors)
         .enumerate()

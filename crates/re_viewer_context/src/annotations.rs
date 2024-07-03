@@ -197,6 +197,21 @@ impl ResolvedAnnotationInfos {
             Self::Many(infos) => Either::Right(infos.iter()),
         }
     }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Same(n, _) => *n,
+            Self::Many(infos) => infos.len(),
+        }
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Same(n, _) => *n == 0,
+            Self::Many(infos) => infos.is_empty(),
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------

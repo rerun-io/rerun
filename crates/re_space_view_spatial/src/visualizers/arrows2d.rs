@@ -120,34 +120,25 @@ impl Arrows2DVisualizer {
 
             if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
                 // If there's many arrows but only a single label, place the single label at the middle of the visualization.
-                let (num_positions, label_positions) =
-                    if data.labels.len() == 1 && num_instances > 1 {
-                        // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
-                        (
-                            1,
-                            itertools::Either::Left(std::iter::once(
-                                obj_space_bounding_box.center().truncate(),
-                            )),
-                        )
-                    } else {
-                        // Take middle point of every arrow.
-                        let origins = clamped(data.origins, num_instances)
-                            .chain(std::iter::repeat(&Position2D::ZERO));
-                        // Note that this is unfortunately not a FixedSizeIterator, which is why we have to pass along the number of positions.
-                        (
-                            num_instances,
-                            itertools::Either::Right(data.vectors.iter().zip(origins).map(
-                                |(vector, origin)| {
-                                    // `0.45` rather than `0.5` to account for cap and such
-                                    (glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0)) * 0.45
-                                },
-                            )),
-                        )
-                    };
+                let label_positions = if data.labels.len() == 1 && num_instances > 1 {
+                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                    itertools::Either::Left(std::iter::once(
+                        obj_space_bounding_box.center().truncate(),
+                    ))
+                } else {
+                    // Take middle point of every arrow.
+                    let origins = clamped(data.origins, num_instances)
+                        .chain(std::iter::repeat(&Position2D::ZERO));
+                    itertools::Either::Right(data.vectors.iter().zip(origins).map(
+                        |(vector, origin)| {
+                            // `0.45` rather than `0.5` to account for cap and such
+                            (glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0)) * 0.45
+                        },
+                    ))
+                };
 
                 self.data.ui_labels.extend(process_labels_2d(
                     entity_path,
-                    num_positions,
                     label_positions,
                     data.labels,
                     &colors,

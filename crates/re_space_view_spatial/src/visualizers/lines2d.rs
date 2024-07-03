@@ -127,7 +127,6 @@ impl Lines2DVisualizer {
 
                 self.data.ui_labels.extend(process_labels_2d(
                     entity_path,
-                    label_positions.len(),
                     label_positions,
                     data.labels,
                     &colors,
