@@ -147,18 +147,29 @@ impl Points2DVisualizer {
                 }
             }
 
-            self.data.add_bounding_box_from_points(
+            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
+            self.data.add_bounding_box(
                 entity_path.hash(),
-                positions.iter().copied(),
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
 
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
-            if num_instances <= MAX_NUM_LABELS_PER_ENTITY {
+            if data.labels.len() == 1 || num_instances <= MAX_NUM_LABELS_PER_ENTITY {
+                // If there's many points but only a single label, place the single label at the middle of the visualization.
+                let obj_space_bbox_center;
+                let label_positions = if data.labels.len() == 1 && positions.len() > 1 {
+                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                    obj_space_bbox_center = [obj_space_bounding_box.center()];
+                    &obj_space_bbox_center
+                } else {
+                    positions.as_slice()
+                };
+
                 self.data.ui_labels.extend(Self::process_labels(
                     entity_path,
-                    &positions,
+                    label_positions,
                     data.labels,
                     &colors,
                     &annotation_infos,
