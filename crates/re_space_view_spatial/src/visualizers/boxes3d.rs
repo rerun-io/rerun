@@ -1,4 +1,3 @@
-use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::Instance;
 use re_query::range_zip_1x7;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
@@ -8,21 +7,17 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialSpaceViewKind,
-    visualizers::{UiLabel, UiLabelTarget},
-};
+use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind};
 
 use super::{
     entity_iterator::clamped, filter_visualizable_3d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -40,35 +35,6 @@ impl Default for Boxes3DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Boxes3DVisualizer {
-    fn process_labels<'a>(
-        entity_path: &'a EntityPath,
-        half_sizes: &'a [HalfSizes3D],
-        centers: impl Iterator<Item = &'a Position3D> + 'a,
-        labels: &'a [Text],
-        colors: &'a [egui::Color32],
-        annotation_infos: &'a ResolvedAnnotationInfos,
-        world_from_entity: glam::Affine3A,
-    ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = clamped(labels, half_sizes.len());
-        let centers = centers.chain(std::iter::repeat(&Position3D::ZERO));
-        itertools::izip!(annotation_infos.iter(), centers, labels, colors)
-            .enumerate()
-            .filter_map(move |(i, (annotation_info, center, label, color))| {
-                let label = annotation_info.label(Some(label.as_str()));
-                label.map(|label| UiLabel {
-                    text: label,
-                    color: *color,
-                    target: UiLabelTarget::Position3D(
-                        world_from_entity.transform_point3(center.0.into()),
-                    ),
-                    labeled_instance: InstancePathHash::instance(
-                        entity_path,
-                        Instance::from(i as u64),
-                    ),
-                })
-            })
-    }
-
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -101,17 +67,6 @@ impl Boxes3DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            let centers = clamped(data.centers, num_instances);
-            self.0.ui_labels.extend(Self::process_labels(
-                entity_path,
-                data.half_sizes,
-                centers,
-                data.labels,
-                &colors,
-                &annotation_infos,
-                ent_context.world_from_entity,
-            ));
-
             let mut line_batch = line_builder
                 .batch("boxes3d")
                 .depth_offset(ent_context.depth_offset)
@@ -119,17 +74,17 @@ impl Boxes3DVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut bounding_box = macaw::BoundingBox::nothing();
+            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
 
             let centers =
                 clamped(data.centers, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
             let rotations = clamped(data.rotations, num_instances)
                 .chain(std::iter::repeat(&Rotation3D::IDENTITY));
-            for (i, (half_size, &center, rotation, radius, color)) in
-                itertools::izip!(data.half_sizes, centers, rotations, radii, colors).enumerate()
+            for (i, (half_size, &center, rotation, radius, &color)) in
+                itertools::izip!(data.half_sizes, centers, rotations, radii, &colors).enumerate()
             {
-                bounding_box.extend(half_size.box_min(center));
-                bounding_box.extend(half_size.box_max(center));
+                obj_space_bounding_box.extend(half_size.box_min(center));
+                obj_space_bounding_box.extend(half_size.box_max(center));
 
                 let center = center.into();
 
@@ -156,9 +111,44 @@ impl Boxes3DVisualizer {
 
             self.0.add_bounding_box(
                 entity_path.hash(),
-                bounding_box,
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
+
+            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
+                // If there's many boxes but only a single label, place the single label at the middle of the visualization.
+                let obj_space_bbox_center;
+                let (num_positions, label_positions) =
+                    if data.labels.len() == 1 && num_instances > 1 {
+                        // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                        obj_space_bbox_center = obj_space_bounding_box.center();
+                        (
+                            1,
+                            itertools::Either::Left(std::iter::once(obj_space_bbox_center)),
+                        )
+                    } else {
+                        // Take center point of every box.
+                        // Note that this is unfortunately not a FixedSizeIterator, which is why we have to pass along the number of positions.
+                        (
+                            num_instances,
+                            itertools::Either::Right(
+                                clamped(data.centers, num_instances)
+                                    .chain(std::iter::repeat(&Position3D::ZERO))
+                                    .map(|&c| c.into()),
+                            ),
+                        )
+                    };
+
+                self.0.ui_labels.extend(process_labels_3d(
+                    entity_path,
+                    num_positions,
+                    label_positions,
+                    data.labels,
+                    &colors,
+                    &annotation_infos,
+                    ent_context.world_from_entity,
+                ));
+            }
         }
     }
 }

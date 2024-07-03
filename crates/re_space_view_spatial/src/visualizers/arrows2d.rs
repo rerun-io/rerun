@@ -122,7 +122,7 @@ impl Arrows2DVisualizer {
                 // If there's many arrows but only a single label, place the single label at the middle of the visualization.
                 let obj_space_bbox_center;
                 let (num_positions, label_positions) =
-                    if data.labels.len() == 1 && data.vectors.len() > 1 {
+                    if data.labels.len() == 1 && num_instances > 1 {
                         // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
                         obj_space_bbox_center = obj_space_bounding_box.center().truncate();
                         (
