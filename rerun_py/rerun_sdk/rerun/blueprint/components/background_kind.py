@@ -48,7 +48,7 @@ class BackgroundKind(Enum):
     """Simple uniform color."""
 
 
-BackgroundKindLike = Union[BackgroundKind, Literal["gradientdark"] | Literal["gradientbright"] | Literal["solidcolor"]]
+BackgroundKindLike = Union[BackgroundKind, Literal["gradientdark", "gradientbright", "solidcolor"]]
 BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]]
 
 

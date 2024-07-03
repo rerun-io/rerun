@@ -34,7 +34,7 @@ class PanelState(Enum):
     """Fully expanded."""
 
 
-PanelStateLike = Union[PanelState, Literal["hidden"] | Literal["collapsed"] | Literal["expanded"]]
+PanelStateLike = Union[PanelState, Literal["hidden", "collapsed", "expanded"]]
 PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]
 
 
