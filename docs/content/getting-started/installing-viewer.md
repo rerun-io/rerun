@@ -33,7 +33,7 @@ Add the [Rerun crate](https://crates.io/crates/rerun) using `cargo add rerun`. Y
 ## Installing the Viewer
 
 The [Viewer](../reference/viewer/overview.md) can be installed independent of the library language you're using.
-Make sure that your library version matches the version of the Viewer you're using.
+Make sure that your library version matches the version of the Viewer you're using, because [our data format is not yet stable across different versions](https://github.com/rerun-io/rerun/issues/6410).
 
 There are many ways to install the viewer. Please pick whatever works best for your setup:
 
