@@ -21,22 +21,19 @@ use crate::{
 
 use super::{
     entity_iterator::clamped, filter_visualizable_2d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_annotation_and_keypoint_slices, process_color_slice, process_labels_2d,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
 
 pub struct Boxes2DVisualizer {
-    /// If the number of points in the batch is > max_labels, don't render box labels.
-    pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Boxes2DVisualizer {
     fn default() -> Self {
         Self {
-            max_labels: 20,
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
@@ -115,18 +112,6 @@ impl Boxes2DVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            if num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
-                let centers = clamped(data.centers, num_instances);
-                self.data.ui_labels.extend(Self::process_labels(
-                    entity_path,
-                    data.half_sizes,
-                    centers,
-                    data.labels,
-                    &colors,
-                    &annotation_infos,
-                ));
-            }
-
             let mut line_batch = line_builder
                 .batch("boxes2d")
                 .depth_offset(ent_context.depth_offset)
@@ -134,17 +119,17 @@ impl Boxes2DVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut bounding_box = macaw::BoundingBox::nothing();
+            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
 
             let centers =
                 clamped(data.centers, num_instances).chain(std::iter::repeat(&Position2D::ZERO));
-            for (i, (half_size, center, radius, color)) in
-                itertools::izip!(data.half_sizes, centers, radii, colors).enumerate()
+            for (i, (half_size, center, radius, &color)) in
+                itertools::izip!(data.half_sizes, centers, radii, &colors).enumerate()
             {
                 let min = half_size.box_min(*center);
                 let max = half_size.box_max(*center);
-                bounding_box.extend(min.extend(0.0));
-                bounding_box.extend(max.extend(0.0));
+                obj_space_bounding_box.extend(min.extend(0.0));
+                obj_space_bounding_box.extend(max.extend(0.0));
 
                 let rectangle = line_batch
                     .add_rectangle_outline_2d(
@@ -166,9 +151,36 @@ impl Boxes2DVisualizer {
 
             self.data.add_bounding_box(
                 entity_path.hash(),
-                bounding_box,
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
+
+            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
+                if data.labels.len() == 1 && num_instances > 1 {
+                    // If there's many boxes but only a single label, place the single label at the middle of the visualization.
+                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                    self.data.ui_labels.extend(process_labels_2d(
+                        entity_path,
+                        1,
+                        std::iter::once(obj_space_bounding_box.center().truncate()),
+                        data.labels,
+                        &colors,
+                        &annotation_infos,
+                        ent_context.world_from_entity,
+                    ));
+                } else {
+                    let centers = clamped(data.centers, num_instances)
+                        .chain(std::iter::repeat(&Position2D::ZERO));
+                    self.data.ui_labels.extend(Self::process_labels(
+                        entity_path,
+                        data.half_sizes,
+                        centers,
+                        data.labels,
+                        &colors,
+                        &annotation_infos,
+                    ));
+                }
+            }
         }
     }
 }
