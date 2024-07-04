@@ -205,7 +205,7 @@ If no default blueprint was set or it didn't set any value for this field, this 
             egui::Button::new("Reset to empty"),
         )
         .on_hover_text(
-"Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
+"Resets this property to an unset value, meaning that a heuristically determined value will be used instead.
 This has the same effect as not setting the value in the blueprint at all."
         )
         .on_disabled_hover_text("The property is already unset.");
