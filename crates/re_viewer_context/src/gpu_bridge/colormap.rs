@@ -113,6 +113,10 @@ pub fn colormap_dropdown_button_ui(
             response |= colormap_variant_ui(render_ctx, ui, option, map);
         }
 
+        if response.clicked() {
+            response.mark_changed();
+        }
+
         response
     };
 
