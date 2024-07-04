@@ -716,14 +716,14 @@ allow_capitalized_as_lower = [word.lower() for word in allow_capitalized]
 
 def split_words(input_string: str) -> list[str]:
     result = []
-    word = ''
+    word = ""
     for char in input_string:
         if char.isalpha() or char.isdigit() or char in "/_@`.!?+-()":
             word += char
         else:
             if word:
                 result.append(word)
-                word = ''
+                word = ""
             result.append(char)
     if word:
         result.append(word)
@@ -738,7 +738,7 @@ def test_split_words():
         ("`rerun`", ["`rerun`"]),
     ]
 
-    for (input, expected) in test_cases:
+    for input, expected in test_cases:
         actual = split_words(input)
         assert actual == expected, f"Expected '{input}' to split into {expected}, got {actual}"
 
