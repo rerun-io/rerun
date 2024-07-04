@@ -736,10 +736,7 @@ impl ComponentUiRegistry {
         };
         if let Some(edit_or_view) = edit_or_view.get(&component_name) {
             if let Some(updated) = (*edit_or_view)(ctx, ui, raw_current_value, EditOrView::Edit) {
-                ctx.save_blueprint_data_cell(
-                    blueprint_write_path,
-                    re_log_types::DataCell::from_arrow(component_name, updated),
-                );
+                ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
             }
             return true;
         }
