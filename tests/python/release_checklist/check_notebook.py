@@ -7,7 +7,7 @@ from uuid import uuid4
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Notebook
 
 Make sure to check that notebooks (both local and Google Colab) work properly with the latest release candidate.

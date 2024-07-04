@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Static components
 
 In the streams view, check the hover tooltips and selection panel for each `Position2D` components. They should both

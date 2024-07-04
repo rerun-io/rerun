@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Plot overrides
 
 This checks whether one can override all properties in a plot.

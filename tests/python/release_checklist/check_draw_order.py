@@ -8,7 +8,7 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # 2D Draw order
 
 This checks whether the draw order correctly determines the layering of 2D content.

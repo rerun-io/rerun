@@ -9,7 +9,7 @@ from uuid import uuid4
 import numpy as np
 import rerun as rr
 
-README = """
+README = """\
 # Component UI
 
 In the streams view, for each top-level entity, select it, and check that the component list in the selection panel looks Nice(tm).

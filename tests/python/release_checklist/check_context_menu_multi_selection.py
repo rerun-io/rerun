@@ -7,7 +7,7 @@ from uuid import uuid4
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Context Menu - Multi-selection
 
 For each of the multi-selection below, check the context menu content as per the following table.
