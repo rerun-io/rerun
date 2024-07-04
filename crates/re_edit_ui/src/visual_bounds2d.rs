@@ -80,63 +80,73 @@ fn range_mut_ui(ui: &mut egui::Ui, [start, end]: &mut [f64; 2]) -> egui::Respons
 pub fn singleline_edit_visual_bounds2d(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    value: &mut VisualBounds2D,
+    value: &mut MaybeMutRef<'_, VisualBounds2D>,
 ) -> egui::Response {
-    // Not a lot of space in a single line, so edit width/height instead.
-    let width = value.x_range.0[1] - value.x_range.0[0];
-    let height = value.y_range.0[1] - value.y_range.0[0];
+    if let Some(value) = value.as_mut() {
+        // Not a lot of space in a single line, so edit width/height instead.
+        let width = value.x_range.0[1] - value.x_range.0[0];
+        let height = value.y_range.0[1] - value.y_range.0[0];
 
-    let mut width_edit = width;
-    let mut height_edit = height;
+        let mut width_edit = width;
+        let mut height_edit = height;
 
-    let speed_func = |v: f64| (v.abs() * 0.01).at_least(0.001);
+        let speed_func = |v: f64| (v.abs() * 0.01).at_least(0.001);
 
-    let response_width = ui.add(
-        egui::DragValue::new(&mut width_edit)
-            .clamp_to_range(false)
-            .range(0.001..=f64::MAX)
-            .max_decimals(1)
-            .speed(speed_func(width)),
-    );
-    ui.label("×");
-    let response_height = ui.add(
-        egui::DragValue::new(&mut height_edit)
-            .clamp_to_range(false)
-            .range(0.001..=f64::MAX)
-            .max_decimals(1)
-            .speed(speed_func(height)),
-    );
-    let response = response_height | response_width;
+        let response_width = ui.add(
+            egui::DragValue::new(&mut width_edit)
+                .clamp_to_range(false)
+                .range(0.001..=f64::MAX)
+                .max_decimals(1)
+                .speed(speed_func(width)),
+        );
+        ui.label("×");
+        let response_height = ui.add(
+            egui::DragValue::new(&mut height_edit)
+                .clamp_to_range(false)
+                .range(0.001..=f64::MAX)
+                .max_decimals(1)
+                .speed(speed_func(height)),
+        );
+        let response = response_height | response_width;
 
-    // Empirically it's quite confusing to edit width/height separately for the visual bounds.
-    // So we lock the aspect ratio.
+        // Empirically it's quite confusing to edit width/height separately for the visual bounds.
+        // So we lock the aspect ratio.
 
-    if response.changed() {
-        let aspect_ratio = width / height;
+        if response.changed() {
+            let aspect_ratio = width / height;
 
-        if width != width_edit {
-            height_edit = width_edit / aspect_ratio;
-        } else {
-            width_edit = height_edit * aspect_ratio;
+            if width != width_edit {
+                height_edit = width_edit / aspect_ratio;
+            } else {
+                width_edit = height_edit * aspect_ratio;
+            }
+
+            let d_width = width_edit - width;
+            let d_height = height_edit - height;
+
+            *value = Range2D {
+                x_range: [
+                    value.x_range.0[0] - d_width * 0.5,
+                    value.x_range.0[1] + d_width * 0.5,
+                ]
+                .into(),
+                y_range: [
+                    value.y_range.0[0] - d_height * 0.5,
+                    value.y_range.0[1] + d_height * 0.5,
+                ]
+                .into(),
+            }
+            .into();
         }
 
-        let d_width = width_edit - width;
-        let d_height = height_edit - height;
-
-        *value = Range2D {
-            x_range: [
-                value.x_range.0[0] - d_width * 0.5,
-                value.x_range.0[1] + d_width * 0.5,
-            ]
-            .into(),
-            y_range: [
-                value.y_range.0[0] - d_height * 0.5,
-                value.y_range.0[1] + d_height * 0.5,
-            ]
-            .into(),
-        }
-        .into();
+        response
+    } else {
+        let width = value.x_range.0[1] - value.x_range.0[0];
+        let height = value.y_range.0[1] - value.y_range.0[0];
+        ui.label(format!(
+            "{} × {}",
+            re_format::format_f64(width),
+            re_format::format_f64(height)
+        ))
     }
-
-    response
 }

@@ -71,5 +71,5 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<ViewFit>(ui, value));
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
-    registry.add_singleline_editor_ui(visual_bounds2d::singleline_edit_visual_bounds2d);
+    registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
 }
