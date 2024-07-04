@@ -45,7 +45,22 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
         let mut field = ffi::import_field_from_c(schema.as_ref())
             .map_err(|err| PyValueError::new_err(format!("Error importing Field: {err}")))?;
 
-        let array = ffi::import_array_from_c(*array, field.data_type.clone())
+        // NOTE: Do not carry the extension metadata beyond the FFI barrier in order the match the
+        // data sent by other SDKs.
+        //
+        // We've stopped using datatype extensions overall, as they generally have been creating more
+        // problems than they have solved.
+        //
+        // With the addition of `Chunk` and `ChunkMetadata`, it is likely that we will get rid of extension types
+        // entirely at some point, since it looks like we won't have any use for them anymore.
+        //
+        // Doing so will require a more extensive refactoring of the Python SDK though, so until we're absolutely
+        // certain where we're going, this is a nice, painless and easily reversible solution.
+        //
+        // See <https://github.com/rerun-io/rerun/issues/6606>.
+        let datatype = field.data_type().to_logical_type().clone();
+
+        let array = ffi::import_array_from_c(*array, datatype)
             .map_err(|err| PyValueError::new_err(format!("Error importing Array: {err}")))?;
 
         if let Some(name) = name {
