@@ -12,40 +12,48 @@ README = """
 
 This checks that component and visualizer overrides behave as expected for 2D views.
 
----
-
-* Start with view **1)**.
-    * Double-click any of the arrows to select the arrow batch.
-    * Remove the extra `Points2D` visualizer.
-    * Remove all extra component overrides on the remaining `Arrows2D` visualizer.
-    * You should end up with the exact same view as the one on the right of view **1)**, which itself should look exactly like view **2)**.
-
-For reference, here is what view **1)** should look like:\
-![View 1](https://static.rerun.io/check_overrides_2d_view_1/5454441272b0abee8dbc8d7a342ecfc4036cbe9b/480w.png)
+Specifically that…:
+* …Adding and removing overrides/defaults using the blueprint APIs work.
+* …Adding and removing overrides/defaults using the UI work.
+* …Rendering behaves properly.
 
 ---
 
-* Move over to view **2)**.
-    * Double-click any of the arrows to select the arrow batch.
-    * Remove all extra component defaults on the `Arrows2D` visualizer.
-    * You should end up with the exact same view as the one on the right of view **2)**, which itself should look exactly like view **3)**..
-
-For reference, here is what view **2)** should look like:\
-![View 2](https://static.rerun.io/check_overrides_2d_view_2/2d6f9d0cba38b3697114c4108d5d99fc5b0fd174/480w.png)
+First things firsts, check that the views in the first column render properly:
+* View **1)** should look like this:
+  - ![View 1](https://static.rerun.io/check_overrides_2d_view_1/5454441272b0abee8dbc8d7a342ecfc4036cbe9b/480w.png)
+* View **2)** should look like this:
+  - ![View 2](https://static.rerun.io/check_overrides_2d_view_2/2d6f9d0cba38b3697114c4108d5d99fc5b0fd174/480w.png)
+* View **3)** should look like this:
+  - NOTE: The color might differ if you're running on the web. That's fine.
+  - ![View 3](https://static.rerun.io/check_overrides_2d_view_3/b1409c2862103a5bddce2233995aabb1307f3964/480w.png)
 
 ---
 
-* Move over to view **3)**.
-    * Double-click any of the arrows to select the arrow batch.
-    * Add overrides to the view until you end up with the exact same view as the one on the right of view **3)**.
+Then we'll modify view **1)**. The goal is to make it look exactly like the view on the top right:
+* Double-click any of the arrows to select the arrow batch.
+* Remove the extra `Points2D` visualizer.
+* Remove all extra component overrides on the remaining `Arrows2D` visualizer.
+* You should end up with the exact same view as the one on the right of view **1)**, which itself should look exactly like view **2)**.
 
-For reference, here is what view **3)** should look like:\
-![View 3](https://static.rerun.io/check_overrides_2d_view_3/b1409c2862103a5bddce2233995aabb1307f3964/480w.png)
+---
 
-and what the resulting view should look like:\
-![View final](https://static.rerun.io/check_overrides_2d_view_final/07c309c9ccb51fc3a5d884b0d95ebf9d44e5b95c/480w.png)
+Then we'll modify view **2)**. The goal is to make it look exactly like the view on the middle right:
+* Double-click any of the arrows to select the arrow batch.
+* Remove all extra component defaults on the `Arrows2D` visualizer.
+* You should end up with the exact same view as the one on the right of view **2)**, which itself should look exactly like view **3)**.
 
-👏
+---
+
+Finally, we'll modify view **3)**. The goal is to make it look exactly like the view on the bottom right:
+* Double-click any of the arrows to select the arrow batch.
+* Add overrides to the view until you end up with the exact same view as the one on the right of view **3)**.
+* The resulting view should look like this:
+  - ![View final](https://static.rerun.io/check_overrides_2d_view_final/07c309c9ccb51fc3a5d884b0d95ebf9d44e5b95c/480w.png)
+
+---
+
+👏👏👏
 """
 
 
