@@ -21,18 +21,7 @@ impl DataUi for ViewCoordinates {
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        match ui_layout {
-            UiLayout::List => {
-                ui_layout
-                    .label(ui, self.describe_short())
-                    .on_hover_text(self.describe());
-            }
-            UiLayout::SelectionPanelFull
-            | UiLayout::SelectionPanelLimitHeight
-            | UiLayout::Tooltip => {
-                ui_layout.label(ui, self.describe());
-            }
-        }
+        ui_layout.label(ui, self.describe());
     }
 }
 
