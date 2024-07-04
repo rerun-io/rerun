@@ -33,7 +33,7 @@ fn edit_singleline_string_impl(
 pub fn display_text_ui(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _layout: UiLayout,
+    ui_layout: UiLayout,
     _query: &LatestAtQuery,
     _db: &EntityDb,
     _path: &EntityPath,
@@ -53,14 +53,14 @@ pub fn display_text_ui(
         return;
     };
 
-    ui.label(text.as_str());
+    ui_layout.data_label(ui, text);
 }
 
 // TODO(#6661): Should be merged with edit_singleline_string.
 pub fn display_name_ui(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _layout: UiLayout,
+    ui_layout: UiLayout,
     _query: &LatestAtQuery,
     _db: &EntityDb,
     _path: &EntityPath,
@@ -80,5 +80,5 @@ pub fn display_name_ui(
         return;
     };
 
-    ui.label(name.as_str());
+    ui_layout.data_label(ui, name);
 }
