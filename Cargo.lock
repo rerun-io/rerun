@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "clock"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -1393,7 +1393,7 @@ checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
 
 [[package]]
 name = "custom_data_loader"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "re_build_tools",
  "rerun",
@@ -1401,7 +1401,7 @@ dependencies = [
 
 [[package]]
 name = "custom_space_view"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
@@ -1411,7 +1411,7 @@ dependencies = [
 
 [[package]]
 name = "custom_store_subscriber"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "re_build_tools",
  "rerun",
@@ -1522,7 +1522,7 @@ dependencies = [
 
 [[package]]
 name = "dna"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "itertools 0.13.0",
  "rand",
@@ -1974,7 +1974,7 @@ dependencies = [
 
 [[package]]
 name = "extend_viewer_ui"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
@@ -2582,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "incremental_logging"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -2931,7 +2931,7 @@ dependencies = [
 
 [[package]]
 name = "log_benchmark"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -2942,7 +2942,7 @@ dependencies = [
 
 [[package]]
 name = "log_file"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -3082,14 +3082,14 @@ dependencies = [
 
 [[package]]
 name = "minimal"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "rerun",
 ]
 
 [[package]]
 name = "minimal_options"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -3099,7 +3099,7 @@ dependencies = [
 
 [[package]]
 name = "minimal_serve"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "rerun",
 ]
@@ -3539,7 +3539,7 @@ dependencies = [
 
 [[package]]
 name = "objectron"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -3728,7 +3728,7 @@ dependencies = [
 
 [[package]]
 name = "plot_dashboard_stress"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -4155,7 +4155,7 @@ checksum = "42a9830a0e1b9fb145ebb365b8bc4ccd75f290f98c0247deafbbe2c75cefb544"
 
 [[package]]
 name = "raw_mesh"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "bytes",
@@ -5516,7 +5516,7 @@ dependencies = [
 
 [[package]]
 name = "rerun-loader-rust-file"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "argh",
@@ -5537,7 +5537,7 @@ dependencies = [
 
 [[package]]
 name = "rerun_py"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "crossbeam",
  "document-features",
@@ -5635,7 +5635,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_annotation_context"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5645,7 +5645,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_arrows2d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5655,7 +5655,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_arrows3d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5665,7 +5665,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_boxes2d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5675,7 +5675,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_boxes3d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5685,7 +5685,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_depth_image"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5696,7 +5696,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_disconnected_space"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5706,7 +5706,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_image"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5719,7 +5719,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_line_strips2d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5729,7 +5729,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_line_strips3d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5739,7 +5739,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_pinhole"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5749,7 +5749,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_points2d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5759,7 +5759,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_points3d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5769,7 +5769,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_segmentation_image"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5780,7 +5780,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_tensor"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5791,7 +5791,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_text_document"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5801,7 +5801,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_text_log"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5811,7 +5811,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_transform3d"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5821,7 +5821,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_view_coordinates"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5831,7 +5831,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_visible_time_ranges"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -5847,7 +5847,7 @@ checksum = "3cd14fd5e3b777a7422cca79358c57a8f6e3a703d9ac187448d0daf220c2407f"
 
 [[package]]
 name = "run_wasm"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "cargo-run-wasm",
  "pico-args",
@@ -6127,7 +6127,7 @@ dependencies = [
 
 [[package]]
 name = "shared_recording"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "rerun",
 ]
@@ -6263,7 +6263,7 @@ dependencies = [
 
 [[package]]
 name = "snippets"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "itertools 0.13.0",
  "ndarray",
@@ -6285,7 +6285,7 @@ dependencies = [
 
 [[package]]
 name = "spawn_viewer"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "rerun",
 ]
@@ -6319,7 +6319,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stdio"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "rerun",
 ]
@@ -6415,7 +6415,7 @@ dependencies = [
 
 [[package]]
 name = "template"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "rerun",
 ]
@@ -6431,7 +6431,7 @@ dependencies = [
 
 [[package]]
 name = "test_api"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
@@ -6446,7 +6446,7 @@ dependencies = [
 
 [[package]]
 name = "test_image_memory"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "mimalloc",
  "re_format",
@@ -6455,7 +6455,7 @@ dependencies = [
 
 [[package]]
 name = "test_pinhole_projection"
-version = "0.17.0-alpha.4"
+version = "0.17.0-alpha.9"
 dependencies = [
  "anyhow",
  "clap",
