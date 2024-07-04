@@ -17,7 +17,7 @@ A vector in 3D space.
 
 ## Used by
 
-* [`HalfSize3D`](../components/half_size3d.md)
+* [`HalfSize3D`](../components/half_size3d.md?speculative-link)
 * [`LineStrip3D`](../components/line_strip3d.md)
 * [`Position3D`](../components/position3d.md)
 * [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
