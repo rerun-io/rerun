@@ -21,7 +21,7 @@ or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 
 You need the separate support package [`rerun-notebook`](https://pypi.org/project/rerun-notebook/) to use this feature. Typically this is installed using:
 ```bash
-pip instal "rerun-sdk[notebook]"
+pip install "rerun-sdk[notebook]"
 ```
 
 In order to show a Rerun Viewer inline within a notebook, you can call:

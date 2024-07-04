@@ -15,7 +15,7 @@ or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 
 You need the separate support package [`rerun-notebook`](https://pypi.org/project/rerun-notebook/) to use this feature. Typically this is installed using:
 ```bash
-pip instal "rerun-sdk[notebook]"
+pip install "rerun-sdk[notebook]"
 ```
 
 Check out the [minimal notebook example](https://rerun.io/examples/integrations/notebook?speculative-link) for a quick start.
