@@ -55,8 +55,7 @@ pub(crate) fn edit_marker_shape_ui(
         )
     } else {
         let marker: MarkerShape = *marker.as_ref();
-        ui.list_item().show_flat(
-            ui,
+        ui.list_item_flat_noninteractive(
             re_ui::list_item::LabelContent::new(marker.to_string())
                 .min_desired_width(item_width)
                 .with_icon_fn(|ui, rect, visuals| {
