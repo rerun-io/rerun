@@ -72,7 +72,7 @@ fn colormap_variant_ui(
 ) -> egui::Response {
     let list_item = list_item::ListItem::new().selected(option == map);
 
-    let response = if let Some(render_ctx) = render_ctx {
+    let mut response = if let Some(render_ctx) = render_ctx {
         list_item.show_flat(
             ui,
             list_item::PropertyContent::new(option.to_string())
@@ -89,6 +89,7 @@ fn colormap_variant_ui(
 
     if response.clicked() {
         *map = *option;
+        response.mark_changed();
     }
 
     response
@@ -111,10 +112,6 @@ pub fn colormap_dropdown_button_ui(
 
         for option in iter {
             response |= colormap_variant_ui(render_ctx, ui, option, map);
-        }
-
-        if response.clicked() {
-            response.mark_changed();
         }
 
         response
