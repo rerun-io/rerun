@@ -46,16 +46,7 @@ impl DataUi for datatypes::Rotation3D {
                             ui.end_row();
 
                             ui.label("angle");
-                            match angle {
-                                Angle::Radians(v) => {
-                                    ui.label(format!("{}rad", re_format::format_f32(*v)));
-                                }
-                                Angle::Degrees(v) => {
-                                    // TODO(andreas): Convert to arc minutes/seconds for very small angles.
-                                    // That code should be in re_format!
-                                    ui.label(format!("{}°", re_format::format_f32(*v),));
-                                }
-                            }
+                            ui.label(angle.to_string());
                             ui.end_row();
                         });
                     }
