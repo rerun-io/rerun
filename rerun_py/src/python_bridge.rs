@@ -1090,11 +1090,11 @@ fn log_arrow_msg(
 ///
 /// Params
 /// ------
-/// entity_path: str
+/// entity_path: `str`
 ///     The entity path to log the chunk to.
-/// timelines: Dict[str, ArrowPrimitiveArray<i64>]
+/// timelines: `Dict[str, ArrowPrimitiveArray<i64>]`
 ///     A dictionary mapping timeline names to their values.
-/// components: Dict[str, ArrowListArray<i32>]
+/// components: `Dict[str, ArrowListArray<i32>]`
 ///     A dictionary mapping component names to their values.
 #[pyfunction]
 #[pyo3(signature = (
