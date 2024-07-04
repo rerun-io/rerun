@@ -75,7 +75,7 @@ pub struct OpenRecording {
     pub data_source: Option<&'static str>,
 }
 
-/// Basic information about a recording's data store.
+/// Basic information about a recording's chunk store.
 pub struct StoreInfo {
     /// Name of the application.
     ///

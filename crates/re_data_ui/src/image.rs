@@ -1,7 +1,8 @@
 use egui::{Color32, Vec2};
 use itertools::Itertools as _;
 
-use re_log_types::{EntityPath, RowId};
+use re_chunk_store::RowId;
+use re_log_types::EntityPath;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{ClassId, Colormap, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
@@ -54,7 +55,7 @@ impl EntityDataUi for re_types::components::TensorData {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!();
@@ -94,7 +95,7 @@ impl EntityDataUi for re_types::components::TensorData {
 #[allow(clippy::too_many_arguments)]
 pub fn tensor_ui(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_chunk_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
@@ -661,6 +662,8 @@ fn try_show_zoomed_image_region(
         ui.separator();
 
         ui.vertical(|ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+
             tensor_pixel_value_ui(ui, tensor, annotations, [x as _, y as _], meaning, meter);
 
             // Show a big sample of the color of the middle texel:

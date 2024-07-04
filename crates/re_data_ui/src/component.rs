@@ -20,7 +20,7 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         let Some(component_name) = self.results.component_name(db.resolver()) else {

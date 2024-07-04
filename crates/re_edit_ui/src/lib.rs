@@ -12,20 +12,21 @@ mod range1d;
 mod response_utils;
 mod visual_bounds2d;
 
+use crate::response_utils::response_with_changes_of_inner;
 use datatype_editors::{
-    edit_bool, edit_bool_raw, edit_enum, edit_f32_min_to_max_float_raw, edit_f32_zero_to_max,
-    edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one, edit_singleline_string,
+    display_name_ui, display_text_ui, edit_bool, edit_bool_raw, edit_enum,
+    edit_f32_min_to_max_float_raw, edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw,
+    edit_f32_zero_to_one, edit_singleline_string,
 };
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, DrawOrder, FillRatio,
-        GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity,
-        StrokeWidth, Text,
+        AggregationPolicy, AxisLength, Color, DepthMeter, DrawOrder, FillRatio, GammaCorrection,
+        ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity, StrokeWidth, Text,
     },
     Loggable as _,
 };
-
+use re_viewer_context::gpu_bridge::colormap_dropdown_button_ui;
 // ----
 
 /// Registers all editors of this crate in the component UI registry.
@@ -59,10 +60,14 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui::<LockRangeDuringZoom>(edit_bool);
 
     registry.add_singleline_editor_ui::<Text>(edit_singleline_string);
+    registry.add_display_ui(Text::name(), Box::new(display_text_ui));
     registry.add_singleline_editor_ui::<Name>(edit_singleline_string);
+    registry.add_display_ui(Name::name(), Box::new(display_name_ui));
 
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<BackgroundKind>(ui, value));
-    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Colormap>(ui, value));
+    registry.add_singleline_editor_ui(|ctx, ui, value| {
+        response_with_changes_of_inner(colormap_dropdown_button_ui(ctx.render_ctx, ui, value))
+    });
     registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Corner2D>(ui, value));
     registry
         .add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<MagnificationFilter>(ui, value));

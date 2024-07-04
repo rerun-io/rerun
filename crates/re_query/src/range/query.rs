@@ -1,16 +1,15 @@
 use std::sync::Arc;
 
+use arrow2::array::Array;
+use itertools::Itertools;
 use parking_lot::RwLock;
 
-use re_data_store::LatestAtQuery;
-use re_data_store::{DataStore, RangeQuery, TimeInt};
+use re_chunk::RowId;
+use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types_core::ComponentName;
-use re_types_core::SizeBytes;
+use re_types_core::{ComponentName, SizeBytes};
 
-use crate::{
-    CacheKey, Caches, Promise, RangeComponentResults, RangeComponentResultsInner, RangeResults,
-};
+use crate::{CacheKey, Caches, RangeComponentResults, RangeComponentResultsInner, RangeResults};
 
 // ---
 
@@ -22,7 +21,7 @@ impl Caches {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn range(
         &self,
-        store: &DataStore,
+        store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
@@ -70,12 +69,10 @@ impl Caches {
                         let hole_end =
                             TimeInt::new_temporal(query.range().min().as_i64().saturating_sub(1));
                         if hole_start < hole_end {
-                            if let Some((data_time, _, _)) = store.latest_at(
-                                &LatestAtQuery::new(query.timeline(), hole_end),
-                                entity_path,
-                                component_name,
-                                &[component_name],
-                            ) {
+                            let query = &LatestAtQuery::new(query.timeline(), hole_end);
+                            if let Some((data_time, _, _)) =
+                                crate::latest_at(store, query, entity_path, component_name)
+                            {
                                 if data_time > hole_start {
                                     re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
                                     cache.pending_invalidation = Some(TimeInt::MIN);
@@ -89,12 +86,10 @@ impl Caches {
                         let hole_end =
                             TimeInt::new_temporal(time_range.min().as_i64().saturating_sub(1));
                         if hole_start < hole_end {
-                            if let Some((data_time, _, _)) = store.latest_at(
-                                &LatestAtQuery::new(query.timeline(), hole_end),
-                                entity_path,
-                                component_name,
-                                &[component_name],
-                            ) {
+                            let query = &LatestAtQuery::new(query.timeline(), hole_end);
+                            if let Some((data_time, _, _)) =
+                                crate::latest_at(store, query, entity_path, component_name)
+                            {
                                 if data_time > hole_start {
                                     re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
                                     cache.pending_invalidation = Some(TimeInt::MIN);
@@ -205,11 +200,36 @@ impl SizeBytes for RangeCache {
     }
 }
 
+/// Implements the complete end-to-end range logic:
+/// * Find all applicable `Chunk`s
+/// * Apply a range filter to all of them
+/// * Concatenate all the results (will sort them later)
+pub fn range<'a>(
+    store: &'a ChunkStore,
+    query: &'a RangeQuery,
+    entity_path: &EntityPath,
+    component_name: ComponentName,
+) -> impl Iterator<Item = (TimeInt, RowId, Box<dyn Array>)> + 'a {
+    store
+        .range_relevant_chunks(query, entity_path, component_name)
+        .into_iter()
+        .map(move |chunk| chunk.range(query, component_name))
+        .filter(|chunk| !chunk.is_empty())
+        .flat_map(move |chunk| {
+            chunk
+                .iter_rows(&query.timeline(), &component_name)
+                .filter_map(|(data_time, row_id, array)| {
+                    array.map(|array| (data_time, row_id, array))
+                })
+                .collect_vec()
+        })
+}
+
 impl RangeCache {
     /// Queries cached range data for a single component.
     pub fn range(
         &mut self,
-        store: &DataStore,
+        store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -228,20 +248,11 @@ impl RangeCache {
         if let Some(query_front) = query_front.as_ref() {
             re_tracing::profile_scope!("front");
 
-            for (data_time, row_id, mut cells) in
-                store.range(query_front, entity_path, [component_name])
+            for (data_time, row_id, array) in range(store, query_front, entity_path, component_name)
             {
-                // Soundness:
-                // * `cells[0]` is guaranteed to exist since we passed in `&[component_name]`
-                // * `cells[0]` is guaranteed to be non-null, otherwise this whole result would be null
-                let Some(cell) = cells[0].take() else {
-                    debug_assert!(cells[0].is_some(), "unreachable: `cells[0]` is missing");
-                    continue;
-                };
-
                 per_data_time
                     .promises_front
-                    .push(((data_time, row_id), Promise::new(cell)));
+                    .push(((data_time, row_id), array));
             }
             {
                 re_tracing::profile_scope!("sort front");
@@ -254,22 +265,13 @@ impl RangeCache {
         if let Some(query_back) = per_data_time.compute_back_query(query, query_front.as_ref()) {
             re_tracing::profile_scope!("back");
 
-            for (data_time, row_id, mut cells) in store
-                .range(&query_back, entity_path, [component_name])
+            for (data_time, row_id, array) in range(store, &query_back, entity_path, component_name)
                 // If there's static data to be found, the front query will take care of it already.
                 .filter(|(data_time, _, _)| !data_time.is_static())
             {
-                // Soundness:
-                // * `cells[0]` is guaranteed to exist since we passed in `&[component_name]`
-                // * `cells[0]` is guaranteed to be non-null, otherwise this whole result would be null
-                let Some(cell) = cells[0].take() else {
-                    debug_assert!(cells[0].is_some(), "unreachable: `cells[0]` is missing");
-                    continue;
-                };
-
                 per_data_time
                     .promises_back
-                    .push(((data_time, row_id), Promise::new(cell)));
+                    .push(((data_time, row_id), array));
             }
             {
                 re_tracing::profile_scope!("sort back");

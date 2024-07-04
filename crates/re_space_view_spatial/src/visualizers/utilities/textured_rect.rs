@@ -1,3 +1,4 @@
+use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_types::{
@@ -13,7 +14,7 @@ pub fn tensor_to_textured_rect(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
-    tensor_data_row_id: re_log_types::RowId,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,

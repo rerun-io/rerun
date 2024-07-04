@@ -134,7 +134,7 @@ fn view_property_component_ui(
         .component_ui_registry
         .registered_ui_types(component_name);
 
-    let mut list_item_response = if ui_types.contains(ComponentUiTypes::MultiLineEditor) {
+    let list_item_response = if ui_types.contains(ComponentUiTypes::MultiLineEditor) {
         let default_open = false;
         let id = egui::Id::new((blueprint_path.hash(), component_name));
         ui.list_item()
@@ -164,51 +164,58 @@ fn view_property_component_ui(
             .show_hierarchical(ui, singleline_list_item_content)
     };
 
-    list_item_response = list_item_response.on_hover_ui(|ui| {
+    list_item_response.on_hover_ui(|ui| {
         let id = egui::Id::new((archetype_name, field.display_name));
         ui.markdown_ui(id, field.docstring_md);
     });
-
-    view_property_context_menu(
-        ctx.viewer_ctx,
-        &list_item_response,
-        blueprint_path,
-        component_name,
-        component_results,
-    );
 }
 
-fn view_property_context_menu(
+fn menu_more(
     ctx: &ViewerContext<'_>,
-    list_item_response: &egui::Response,
+    ui: &mut egui::Ui,
     blueprint_path: &re_log_types::EntityPath,
     component_name: ComponentName,
     component_results: &re_query::LatestAtComponentResults,
 ) {
-    list_item_response.context_menu(|ui| {
-        if ui.button("Reset to default blueprint.")
-        .on_hover_text("Resets this property to the value in the default blueprint.\n
-        If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty.")
-        .clicked() {
-            ctx.reset_blueprint_component_by_name(blueprint_path, component_name);
-            ui.close_menu();
-        }
+    let resolver = ctx.blueprint_db().resolver();
 
-        let blueprint_db = ctx.blueprint_db();
-        ui.add_enabled_ui(!component_results.is_empty(blueprint_db.resolver()), |ui| {
-            if ui.button("Reset to empty.")
-                .on_hover_text("Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
-This has the same effect as not setting the value in the blueprint at all.")
-                .on_disabled_hover_text("The property is already unset.")
-                .clicked() {
-                ctx.save_empty_blueprint_component_by_name(blueprint_path, component_name);
-                ui.close_menu();
-            }
-        });
+    let property_differs_from_default = component_results.raw(resolver, component_name)
+        != ctx.raw_latest_at_in_default_blueprint(blueprint_path, component_name);
 
-        // TODO(andreas): The next logical thing here is now to save it to the default blueprint!
-        // This should be fairly straight forward except that we need to make sure that a default blueprint exists in the first place.
-    });
+    let response = ui
+        .add_enabled(
+            property_differs_from_default,
+            egui::Button::new("Reset to default blueprint"),
+        )
+        .on_hover_text(
+"Resets this property to the value in the default blueprint.
+If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty."
+        )
+        .on_disabled_hover_text(
+            "The property is already set to the same value it has in the default blueprint",
+        );
+    if response.clicked() {
+        ctx.reset_blueprint_component_by_name(blueprint_path, component_name);
+        ui.close_menu();
+    }
+
+    let response = ui
+        .add_enabled(
+            !component_results.is_empty(resolver),
+            egui::Button::new("Unset"),
+        )
+        .on_hover_text(
+"Resets this property to an unset value, meaning that a heuristically determined value will be used instead.
+This has the same effect as not setting the value in the blueprint at all."
+        )
+        .on_disabled_hover_text("The property is already unset.");
+    if response.clicked() {
+        ctx.save_empty_blueprint_component_by_name(blueprint_path, component_name);
+        ui.close_menu();
+    }
+
+    // TODO(andreas): The next logical thing here is now to save it to the default blueprint!
+    // This should be fairly straight forward except that we need to make sure that a default blueprint exists in the first place.
 }
 
 fn singleline_list_item_content<'a>(
@@ -220,9 +227,14 @@ fn singleline_list_item_content<'a>(
     fallback_provider: &'a dyn ComponentFallbackProvider,
 ) -> list_item::PropertyContent<'a> {
     list_item::PropertyContent::new(display_name)
-        .action_button(&re_ui::icons::RESET, move || {
-            ctx.viewer_ctx
-                .reset_blueprint_component_by_name(blueprint_path, component_name);
+        .menu_button(&re_ui::icons::MORE, move |ui| {
+            menu_more(
+                ctx.viewer_ctx,
+                ui,
+                blueprint_path,
+                component_name,
+                component_results,
+            );
         })
         .value_fn(move |ui, _| {
             ctx.viewer_ctx.component_ui_registry.singleline_edit_ui(

@@ -7,7 +7,7 @@ use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use egui::util::hash;
 use wgpu::TextureFormat;
 
-use re_log_types::RowId;
+use re_chunk::RowId;
 use re_renderer::{
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
@@ -255,7 +255,7 @@ fn class_id_tensor_to_gpu(
                 let color = annotations
                     .resolved_class_description(Some(ClassId::from(id as u16)))
                     .annotation_info()
-                    .color(None)
+                    .color()
                     .unwrap_or(re_renderer::Color32::TRANSPARENT);
                 color.to_array() // premultiplied!
             })

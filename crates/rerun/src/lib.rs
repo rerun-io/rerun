@@ -136,9 +136,10 @@ pub use run::{run, CallSource};
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 
-/// Everything needed to build custom `StoreSubscriber`s.
-pub use re_entity_db::external::re_data_store::{
-    DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreSubscriber,
+/// Everything needed to build custom `ChunkStoreSubscriber`s.
+pub use re_entity_db::external::re_chunk_store::{
+    ChunkStore, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreGeneration,
+    ChunkStoreSubscriber,
 };
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name

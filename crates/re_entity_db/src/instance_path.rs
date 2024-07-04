@@ -1,6 +1,7 @@
 use std::{hash::Hash, str::FromStr};
 
-use re_log_types::{DataPath, EntityPath, EntityPathHash, Instance, PathParseError, RowId};
+use re_chunk::RowId;
+use re_log_types::{DataPath, EntityPath, EntityPathHash, Instance, PathParseError};
 
 use crate::{EntityDb, VersionedInstancePath, VersionedInstancePathHash};
 

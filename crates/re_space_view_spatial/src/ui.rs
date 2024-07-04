@@ -16,7 +16,10 @@ use re_types::{
     tensor_data::TensorDataMeaning,
     Loggable as _,
 };
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::{
+    list_item::{list_item_scope, PropertyContent},
+    ContextExt as _, UiExt as _,
+};
 use re_viewer_context::{
     HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
@@ -441,7 +444,7 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
 
         struct PickedImageInfo {
-            row_id: re_log_types::RowId,
+            row_id: re_chunk_store::RowId,
             tensor: TensorData,
             meaning: TensorDataMeaning,
             coordinates: [u32; 2],
@@ -557,16 +560,18 @@ pub fn picking(
         } else {
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
-                hit_ui(ui, hit);
-                item_ui::instance_path_button(
-                    ctx,
-                    &query.latest_at_query(),
-                    ctx.recording(),
-                    ui,
-                    Some(query.space_view_id),
-                    &instance_path,
-                );
-                instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                list_item_scope(ui, "spatial_hover", |ui| {
+                    hit_ui(ui, hit);
+                    item_ui::instance_path_button(
+                        ctx,
+                        &query.latest_at_query(),
+                        ctx.recording(),
+                        ui,
+                        Some(query.space_view_id),
+                        &instance_path,
+                    );
+                    instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                });
             })
         };
     }
@@ -629,7 +634,7 @@ fn image_hover_ui(
     ui_clip_rect: egui::Rect,
     coords: [u32; 2],
     space_from_ui: egui::emath::RectTransform,
-    tensor_data_row_id: re_log_types::RowId,
+    tensor_data_row_id: re_chunk_store::RowId,
     annotations: &AnnotationSceneContext,
     meaning: TensorDataMeaning,
     meter: Option<f32>,
@@ -702,7 +707,11 @@ fn image_hover_ui(
 fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
     if hit.hit_type == PickingHitType::GpuPickingResult {
         let glam::Vec3 { x, y, z } = hit.space_position;
-        ui.label(format!("Hover position: [{x:.5}, {y:.5}, {z:.5}]"));
+        ui.list_item_flat_noninteractive(PropertyContent::new("Hover position").value_fn(
+            |ui, _| {
+                ui.add(egui::Label::new(format!("[{x:.5}, {y:.5}, {z:.5}]")).extend());
+            },
+        ));
     }
 }
 

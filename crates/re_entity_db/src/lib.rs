@@ -22,35 +22,26 @@ pub use self::{
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
 };
 
-pub(crate) use self::entity_tree::{ClearCascade, CompactedStoreEvents};
-
-use re_log_types::DataTableError;
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
 pub mod external {
-    pub use re_data_store;
+    pub use re_chunk_store;
     pub use re_query;
 }
 
 // ----------------------------------------------------------------------------
 
-/// The errors that can occur when misusing the data store.
+/// The errors that can occur when misusing the chunk store.
 ///
 /// Most of these indicate a problem with either the logging SDK,
 /// or how the logging SDK is being used (PEBKAC).
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("The incoming data was inconsistent: {0}")]
-    DataRead(#[from] re_log_types::DataReadError),
-
-    #[error("Error with one the underlying data table: {0}")]
-    DataTable(#[from] DataTableError),
+    #[error(transparent)]
+    Write(#[from] re_chunk_store::ChunkStoreError),
 
     #[error(transparent)]
-    Write(#[from] re_data_store::WriteError),
-
-    #[error(transparent)]
-    DataRow(#[from] re_log_types::DataRowError),
+    Chunk(#[from] re_chunk::ChunkError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

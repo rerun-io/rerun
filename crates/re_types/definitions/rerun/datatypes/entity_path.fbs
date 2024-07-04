@@ -10,7 +10,7 @@ namespace rerun.datatypes;
 
 // ---
 
-/// A path to an entity in the `DataStore`.
+/// A path to an entity in the `ChunkStore`.
 table EntityPath  (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",

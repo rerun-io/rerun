@@ -37,7 +37,7 @@ The visualizations in this example were created with the following Rerun code.
 The input document is logged as [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) object to the `{page_path}/Image` entity.
 
 ```python
-    rr.log(f"{page_path}/Image", rr.Image(coloured_image))
+    rr.log(f"{page_path}/Image", rr.Image(image_rgb))
 ```
 
 ### Label mapping
@@ -180,8 +180,8 @@ python -m ocr --help
 ```
 
 Depending on your system, pip may grab suboptimal packages, causing slow runtimes.
-Installing with [pixi](https://pixi.sh/) has been observed to run significantly faster in this case and it will automatically install `poppler` which is required to run the example on pdf files.
-To do so, simply run this command after checking out the repository and installing pixi:
+Installing with [Pixi](https://pixi.sh/) has been observed to run significantly faster in this case and it will automatically install `poppler` which is required to run the example on PDF files.
+To do so, simply run this command after checking out the repository and installing Pixi:
 
 ```bash
 pixi run -e examples-ocr ocr

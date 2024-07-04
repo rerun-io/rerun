@@ -1,4 +1,5 @@
-use re_log_types::{hash::Hash64, Instance, RowId, TimeInt};
+use re_chunk_store::RowId;
+use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_query::range_zip_1x2;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
@@ -13,6 +14,7 @@ use re_viewer_context::{
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+
 use crate::{
     contexts::SpatialSceneEntityContext,
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,

@@ -9,11 +9,11 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow};
+use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, ArrowMsg, BlueprintActivationCommand, DataCellError,
-    EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, TableId, Time, TimeInt,
-    TimePoint, TimeType, Timeline, TimelineName,
+    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
+    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
+    TimelineName,
 };
 use re_types_core::{AsComponents, ComponentBatch, SerializationError};
 
@@ -54,10 +54,6 @@ pub enum RecordingStreamError {
     #[error("Failed to spawn the underlying batcher: {0}")]
     ChunkBatcher(#[from] ChunkBatcherError),
 
-    /// Error within the underlying data cell.
-    #[error("Failed to instantiate data cell: {0}")]
-    DataCell(#[from] DataCellError),
-
     /// Error within the underlying serializer.
     #[error("Failed to serialize component data: {0}")]
     Serialization(#[from] SerializationError),
@@ -80,10 +76,6 @@ pub enum RecordingStreamError {
     #[cfg(feature = "web_viewer")]
     #[error(transparent)]
     WebSink(#[from] crate::web_viewer::WebViewerSinkError),
-
-    /// An error that can occur because a row in the store has inconsistent columns.
-    #[error(transparent)]
-    DataReadError(#[from] re_log_types::DataReadError),
 
     /// An error occurred while attempting to use a [`re_data_loader::DataLoader`].
     #[cfg(feature = "data_loaders")]
@@ -740,7 +732,7 @@ impl RecordingStreamInner {
             );
             sink.send(
                 re_log_types::SetStoreInfo {
-                    row_id: re_log_types::RowId::new(),
+                    row_id: *RowId::new(),
                     info: info.clone(),
                 }
                 .into(),
@@ -1220,7 +1212,7 @@ fn forwarding_thread(
                     );
                     new_sink.send(
                         re_log_types::SetStoreInfo {
-                            row_id: re_log_types::RowId::new(),
+                            row_id: *RowId::new(),
                             info: info.clone(),
                         }
                         .into(),
@@ -1252,25 +1244,15 @@ fn forwarding_thread(
         // NOTE: Always pop chunks first, this is what makes `Command::PopPendingChunks` possible,
         // which in turns makes `RecordingStream::flush_blocking` well defined.
         while let Ok(chunk) = chunks.try_recv() {
-            let timepoint_max = chunk.timepoint_max();
-            let chunk = match chunk.to_transport() {
+            let mut msg = match chunk.to_arrow_msg() {
                 Ok(chunk) => chunk,
                 Err(err) => {
                     re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
                     continue;
                 }
             };
-
-            sink.send(LogMsg::ArrowMsg(
-                info.store_id.clone(),
-                ArrowMsg {
-                    table_id: TableId::new(),
-                    timepoint_max,
-                    schema: chunk.schema,
-                    chunk: chunk.data,
-                    on_release: on_release.clone(),
-                },
-            ));
+            msg.on_release = on_release.clone();
+            sink.send(LogMsg::ArrowMsg(info.store_id.clone(), msg));
         }
 
         select! {
@@ -1282,8 +1264,7 @@ fn forwarding_thread(
                     break;
                 };
 
-                let timepoint_max = chunk.timepoint_max();
-                let chunk = match chunk.to_transport() {
+                let msg = match chunk.to_arrow_msg() {
                     Ok(chunk) => chunk,
                     Err(err) => {
                         re_log::error!(%err, "couldn't serialize chunk; data dropped (this is a bug in Rerun!)");
@@ -1291,16 +1272,7 @@ fn forwarding_thread(
                     }
                 };
 
-                sink.send(LogMsg::ArrowMsg(
-                    info.store_id.clone(),
-                    ArrowMsg {
-                        table_id: TableId::new(),
-                        timepoint_max,
-                        schema: chunk.schema,
-                        chunk: chunk.data,
-                        on_release: on_release.clone(),
-                    },
-                ));
+                sink.send(LogMsg::ArrowMsg(info.store_id.clone(), msg));
             }
 
             recv(cmds_rx) -> res => {
@@ -2075,7 +2047,6 @@ impl RecordingStream {
 #[cfg(test)]
 mod tests {
     use re_chunk::TransportChunk;
-    use re_log_types::RowId;
 
     use super::*;
 
@@ -2111,7 +2082,7 @@ mod tests {
         // buffered mode.
         match msgs.pop().unwrap() {
             LogMsg::SetStoreInfo(msg) => {
-                assert!(msg.row_id != RowId::ZERO);
+                assert!(msg.row_id != *RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
             _ => panic!("expected SetStoreInfo"),
@@ -2122,7 +2093,7 @@ mod tests {
         // This arrives _before_ the data itself since we're using manual flushing.
         match msgs.pop().unwrap() {
             LogMsg::SetStoreInfo(msg) => {
-                assert!(msg.row_id != RowId::ZERO);
+                assert!(msg.row_id != *RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
             _ => panic!("expected SetStoreInfo"),
@@ -2175,7 +2146,7 @@ mod tests {
         // buffered mode.
         match msgs.pop().unwrap() {
             LogMsg::SetStoreInfo(msg) => {
-                assert!(msg.row_id != RowId::ZERO);
+                assert!(msg.row_id != *RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
             _ => panic!("expected SetStoreInfo"),
@@ -2186,7 +2157,7 @@ mod tests {
         // This arrives _before_ the data itself since we're using manual flushing.
         match msgs.pop().unwrap() {
             LogMsg::SetStoreInfo(msg) => {
-                assert!(msg.row_id != RowId::ZERO);
+                assert!(msg.row_id != *RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
             _ => panic!("expected SetStoreInfo"),
@@ -2244,7 +2215,7 @@ mod tests {
             // to in-memory mode.
             match msgs.pop().unwrap() {
                 LogMsg::SetStoreInfo(msg) => {
-                    assert!(msg.row_id != RowId::ZERO);
+                    assert!(msg.row_id != *RowId::ZERO);
                     similar_asserts::assert_eq!(store_info, msg.info);
                 }
                 _ => panic!("expected SetStoreInfo"),
@@ -2254,7 +2225,7 @@ mod tests {
             // TODO(jleibs): Avoid a redundant StoreInfo message.
             match msgs.pop().unwrap() {
                 LogMsg::SetStoreInfo(msg) => {
-                    assert!(msg.row_id != RowId::ZERO);
+                    assert!(msg.row_id != *RowId::ZERO);
                     similar_asserts::assert_eq!(store_info, msg.info);
                 }
                 _ => panic!("expected SetStoreInfo"),

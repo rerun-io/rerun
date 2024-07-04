@@ -25,12 +25,12 @@ impl std::fmt::Display for Angle {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Radians(v) => {
-                v.fmt(f)?;
-                write!(f, " rad",)
+                write!(f, "{} rad", re_format::format_f32(*v))
             }
             Self::Degrees(v) => {
-                v.fmt(f)?;
-                write!(f, " deg")
+                // TODO(andreas): Convert to arc minutes/seconds for very small angles.
+                // That code should be in re_format!
+                write!(f, "{} °", re_format::format_f32(*v))
             }
         }
     }

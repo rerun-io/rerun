@@ -41,7 +41,6 @@ rr.notebook_show(recording=rec)
 ```
 
 ## Running in Jupyter
-
 The easiest way to get a feel for working with notebooks is to use it.
 
 First, install the requirements (this includes jupyter, the Rerun SDK, and the notebook support package)

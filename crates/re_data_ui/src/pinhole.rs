@@ -1,3 +1,4 @@
+use re_format::format_f32;
 use re_types::components::{PinholeProjection, Resolution};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -9,7 +10,7 @@ impl DataUi for PinholeProjection {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         match ui_layout {
@@ -43,10 +44,10 @@ impl DataUi for Resolution {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;
-        ui_layout.data_label(ui, format!("{x}×{y}"));
+        ui_layout.data_label(ui, format!("{} × {}", format_f32(x), format_f32(y)));
     }
 }
