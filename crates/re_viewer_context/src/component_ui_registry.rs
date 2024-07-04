@@ -229,19 +229,6 @@ impl ComponentUiRegistry {
         .insert(name, editor_callback);
     }
 
-    /// Registers how to edit a given component in the ui.
-    ///
-    /// If the component has already a multi line editor registered, the new callback replaces the old one.
-    /// Prefer [`ComponentUiRegistry::add_multiline_editor_ui`] whenever possible
-    pub fn add_untyped_multiline_editor_ui(
-        &mut self,
-        name: ComponentName,
-        editor_callback: UntypedComponentEditCallback,
-    ) {
-        self.component_multiline_editors
-            .insert(name, editor_callback);
-    }
-
     fn add_typed_editor_ui<C: re_types::Component>(
         &mut self,
         editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
