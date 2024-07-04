@@ -198,6 +198,7 @@ impl ResolvedAnnotationInfos {
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         match self {
             Self::Same(n, _) => *n,
@@ -205,6 +206,7 @@ impl ResolvedAnnotationInfos {
         }
     }
 
+    #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
         match self {
