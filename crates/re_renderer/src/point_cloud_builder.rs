@@ -192,14 +192,25 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
             // TODO(andreas): It would be nice to pass on the iterator as is so we don't have to do yet another
             // copy of the data and instead write into the buffers directly - if done right this should be the fastest.
             // But it's surprisingly tricky to do this effectively.
-            let vertices = izip!(
-                positions.iter().copied(),
-                radii.iter().copied().chain(std::iter::repeat(
-                    *radii.last().unwrap_or(&Size::ONE_UI_POINT)
-                ))
-            )
-            .map(|(pos, radius)| PositionRadius { pos, radius })
-            .collect_vec();
+            let vertices = if positions.len() == radii.len() {
+                let vertices = izip!(positions.iter().copied(), radii.iter().copied())
+                    .map(|(pos, radius)| PositionRadius { pos, radius });
+
+                re_tracing::profile_scope!("collect_vec");
+                vertices.collect_vec()
+            } else {
+                let vertices = izip!(
+                    positions.iter().copied(),
+                    radii.iter().copied().chain(std::iter::repeat(
+                        *radii.last().unwrap_or(&Size::ONE_UI_POINT)
+                    ))
+                )
+                .map(|(pos, radius)| PositionRadius { pos, radius });
+
+                re_tracing::profile_scope!("collect_vec");
+                vertices.collect_vec()
+            };
+
             self.0
                 .position_radius_buffer
                 .extend_from_slice(&vertices)
