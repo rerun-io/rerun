@@ -1,3 +1,4 @@
+use re_format::format_f32;
 use re_types::components::{PinholeProjection, Resolution};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -47,6 +48,6 @@ impl DataUi for Resolution {
         _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;
-        ui_layout.data_label(ui, format!("{x}×{y}"));
+        ui_layout.data_label(ui, format!("{} × {}", format_f32(x), format_f32(y)));
     }
 }
