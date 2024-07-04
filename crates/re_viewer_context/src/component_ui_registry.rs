@@ -100,8 +100,11 @@ impl UiLayout {
     ///
     /// Import: for data only, labels should use [`UiLayout::data_label`] instead.
     // TODO(#6315): must be merged with `Self::label` and have an improved API
-    pub fn data_label(self, ui: &mut egui::Ui, string: impl AsRef<str>) {
-        let string = string.as_ref();
+    pub fn data_label(self, ui: &mut egui::Ui, string: impl AsRef<str>) -> egui::Response {
+        self.data_label_impl(ui, string.as_ref())
+    }
+
+    fn data_label_impl(self, ui: &mut egui::Ui, string: &str) -> egui::Response {
         let font_id = egui::TextStyle::Monospace.resolve(ui.style());
         let color = ui.visuals().text_color();
         let wrap_width = ui.available_width();
@@ -131,11 +134,11 @@ impl UiLayout {
         let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
         if needs_scroll_area {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.label(galley);
-            });
+            egui::ScrollArea::vertical()
+                .show(ui, |ui| ui.label(galley))
+                .inner
         } else {
-            ui.label(galley);
+            ui.label(galley)
         }
     }
 }
