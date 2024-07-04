@@ -182,10 +182,10 @@ fn menu_more(
     let property_differs_from_default = component_results.raw(resolver, component_name)
         != ctx.raw_latest_at_in_default_blueprint(blueprint_path, component_name);
     ui.add_enabled_ui(property_differs_from_default, |ui| {
-    if ui.button("Reset to default blueprint.")
+    if ui.button("Reset to default blueprint")
         .on_hover_text("Resets this property to the value in the default blueprint.\n
         If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty.")
-        .on_disabled_hover_text("The property is already set to the same value it has in the default blueprint.")
+        .on_disabled_hover_text("The property is already set to the same value it has in the default blueprint")
         .clicked() {
             ctx.reset_blueprint_component_by_name(blueprint_path, component_name);
             ui.close_menu();
@@ -193,7 +193,7 @@ fn menu_more(
     });
 
     ui.add_enabled_ui(!component_results.is_empty(resolver), |ui| {
-            if ui.button("Reset to empty.")
+            if ui.button("Reset to empty")
                 .on_hover_text("Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
 This has the same effect as not setting the value in the blueprint at all.")
                 .on_disabled_hover_text("The property is already unset.")
