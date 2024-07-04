@@ -109,6 +109,7 @@ examples = [
   "ros_node",
   "ros2_bridge",
   "ros_bridge",
+  "notebook_neural_field_2d",
   "urdf_loader",
   "vrs",
   "revy",
