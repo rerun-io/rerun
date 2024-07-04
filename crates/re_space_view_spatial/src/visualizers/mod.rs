@@ -147,7 +147,7 @@ pub fn process_color_slice<'a>(
             ResolvedAnnotationInfos::Same(count, annotation_info) => {
                 re_tracing::profile_scope!("no colors, same annotation");
                 let color = annotation_info
-                    .color(None)
+                    .color()
                     .unwrap_or_else(|| fallback_provider.fallback_for(ctx).into());
                 vec![color; *count]
             }
@@ -156,7 +156,7 @@ pub fn process_color_slice<'a>(
                 let fallback = fallback_provider.fallback_for(ctx).into();
                 annotation_info
                     .iter()
-                    .map(|annotation_info| annotation_info.color(None).unwrap_or(fallback))
+                    .map(|annotation_info| annotation_info.color().unwrap_or(fallback))
                     .collect()
             }
         }
