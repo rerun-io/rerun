@@ -161,31 +161,15 @@ pub fn process_color_slice<'a>(
             }
         }
     } else {
+        // If we have colors we can ignore the annotation infos/contexts:
+        re_tracing::profile_scope!("many-colors");
         let colors = entity_iterator::clamped(colors, num_instances);
-        let fallback = fallback_provider.fallback_for(ctx).into();
-        match annotation_infos {
-            ResolvedAnnotationInfos::Same(_count, annotation_info) => {
-                re_tracing::profile_scope!("many-colors, same annotation");
-                colors
-                    .map(|color| {
-                        annotation_info
-                            .color(Some(color.to_array()))
-                            .unwrap_or(fallback)
-                    })
-                    .collect()
-            }
-            ResolvedAnnotationInfos::Many(annotation_infos) => {
-                re_tracing::profile_scope!("many-colors, many annotations");
-                colors
-                    .zip(annotation_infos.iter())
-                    .map(move |(color, annotation_info)| {
-                        annotation_info
-                            .color(Some(color.to_array()))
-                            .unwrap_or(fallback)
-                    })
-                    .collect()
-            }
-        }
+        colors
+            .map(|color| {
+                let [r, g, b, a] = color.to_array();
+                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+            })
+            .collect()
     }
 }
 
