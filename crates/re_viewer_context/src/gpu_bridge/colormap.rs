@@ -64,40 +64,63 @@ fn colormap_preview_ui(
     Ok(response)
 }
 
+fn colormap_variant_ui(
+    render_ctx: Option<&re_renderer::RenderContext>,
+    ui: &mut egui::Ui,
+    option: &re_types::components::Colormap,
+    map: &mut re_types::components::Colormap,
+) -> egui::Response {
+    let list_item = list_item::ListItem::new().selected(option == map);
+
+    let response = if let Some(render_ctx) = render_ctx {
+        list_item.show_flat(
+            ui,
+            list_item::PropertyContent::new(option.to_string())
+                .min_desired_width(150.0)
+                .value_fn(|ui, _| {
+                    if let Err(err) = colormap_preview_ui(render_ctx, ui, *option) {
+                        re_log::error_once!("Failed to paint colormap preview: {err}");
+                    }
+                }),
+        )
+    } else {
+        list_item.show_flat(ui, list_item::LabelContent::new(option.to_string()))
+    };
+
+    if response.clicked() {
+        *map = *option;
+    }
+
+    response
+}
+
 pub fn colormap_dropdown_button_ui(
     render_ctx: Option<&re_renderer::RenderContext>,
     ui: &mut egui::Ui,
     map: &mut re_types::components::Colormap,
-) {
+) -> egui::InnerResponse<Option<egui::Response>> {
     let selected_text = map.to_string();
     let content_ui = |ui: &mut egui::Ui| {
-        for &option in re_types::components::Colormap::variants() {
-            let list_item = list_item::ListItem::new().selected(&option == map);
+        let mut iter = re_types::components::Colormap::variants().iter();
 
-            let response = if let Some(render_ctx) = render_ctx {
-                list_item.show_flat(
-                    ui,
-                    list_item::PropertyContent::new(option.to_string()).value_fn(|ui, _| {
-                        if let Err(err) = colormap_preview_ui(render_ctx, ui, option) {
-                            re_log::error_once!("Failed to paint colormap preview: {err}");
-                        }
-                    }),
-                )
-            } else {
-                list_item.show_flat(ui, list_item::LabelContent::new(option.to_string()))
-            };
+        let Some(first) = iter.next() else {
+            return ui.label("<no variants>");
+        };
 
-            if response.clicked() {
-                *map = option;
-            }
+        let mut response = colormap_variant_ui(render_ctx, ui, first, map);
+
+        for option in iter {
+            response |= colormap_variant_ui(render_ctx, ui, option, map);
         }
+
+        response
     };
 
     egui::ComboBox::from_id_source("color map select")
         .selected_text(selected_text)
         .show_ui(ui, |ui| {
-            list_item::list_item_scope(ui, "inner_scope", content_ui);
-        });
+            list_item::list_item_scope(ui, "inner_scope", content_ui)
+        })
 }
 
 pub fn colormap_to_re_renderer(colormap: re_types::components::Colormap) -> re_renderer::Colormap {
