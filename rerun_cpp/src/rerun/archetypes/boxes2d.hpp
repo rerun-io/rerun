@@ -53,6 +53,9 @@ namespace rerun::archetypes {
         std::optional<Collection<rerun::components::Radius>> radii;
 
         /// Optional text labels for the boxes.
+        ///
+        /// If there's a single label present, it will be placed at the center of the entity.
+        /// Otherwise, each instance will have its own label.
         std::optional<Collection<rerun::components::Text>> labels;
 
         /// An optional floating point value that specifies the 2D drawing order.
@@ -148,6 +151,9 @@ namespace rerun::archetypes {
         }
 
         /// Optional text labels for the boxes.
+        ///
+        /// If there's a single label present, it will be placed at the center of the entity.
+        /// Otherwise, each instance will have its own label.
         Boxes2D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027

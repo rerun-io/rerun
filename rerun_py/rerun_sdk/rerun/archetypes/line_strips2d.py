@@ -116,6 +116,9 @@ class LineStrips2D(Archetype):
             Optional colors for the line strips.
         labels:
             Optional text labels for the line strips.
+
+            If there's a single label present, it will be placed at the center of the entity.
+            Otherwise, each instance will have its own label.
         draw_order:
             An optional floating point value that specifies the 2D drawing order of each line strip.
 
@@ -185,6 +188,9 @@ class LineStrips2D(Archetype):
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
     # Optional text labels for the line strips.
+    #
+    # If there's a single label present, it will be placed at the center of the entity.
+    # Otherwise, each instance will have its own label.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

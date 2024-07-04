@@ -1,7 +1,5 @@
 use itertools::Itertools as _;
 
-use re_entity_db::{EntityPath, InstancePathHash};
-use re_log_types::Instance;
 use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
@@ -10,8 +8,8 @@ use re_types::{
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -20,27 +18,24 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
-        process_radius_slice, UiLabel, UiLabelTarget,
+        process_radius_slice,
     },
 };
 
 use super::{
-    entity_iterator::clamped, filter_visualizable_2d_entities, SpatialViewVisualizerData,
+    filter_visualizable_2d_entities, process_labels_2d, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
 // ---
 
 pub struct Points2DVisualizer {
-    /// If the number of points in the batch is > max_labels, don't render point labels.
-    pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Points2DVisualizer {
     fn default() -> Self {
         Self {
-            max_labels: 10,
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
@@ -49,33 +44,6 @@ impl Default for Points2DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Points2DVisualizer {
-    fn process_labels<'a>(
-        entity_path: &'a EntityPath,
-        positions: &'a [glam::Vec3],
-        labels: &'a [Text],
-        colors: &'a [egui::Color32],
-        annotation_infos: &'a ResolvedAnnotationInfos,
-    ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = clamped(labels, positions.len());
-        itertools::izip!(annotation_infos.iter(), positions, labels, colors)
-            .enumerate()
-            .filter_map(move |(i, (annotation_info, point, label, color))| {
-                let label = annotation_info.label(Some(label.as_str()));
-                match (point, label) {
-                    (point, Some(label)) => Some(UiLabel {
-                        text: label,
-                        color: *color,
-                        target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
-                        labeled_instance: InstancePathHash::instance(
-                            entity_path,
-                            Instance::from(i as u64),
-                        ),
-                    }),
-                    _ => None,
-                }
-            })
-    }
-
     fn process_data<'a>(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -150,21 +118,35 @@ impl Points2DVisualizer {
                 }
             }
 
-            self.data.add_bounding_box_from_points(
+            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
+            self.data.add_bounding_box(
                 entity_path.hash(),
-                positions.iter().copied(),
+                obj_space_bounding_box,
                 ent_context.world_from_entity,
             );
 
             load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
-            if num_instances <= self.max_labels {
-                self.data.ui_labels.extend(Self::process_labels(
+            if data.labels.len() == 1 || num_instances <= super::MAX_NUM_LABELS_PER_ENTITY {
+                // If there's many points but only a single label, place the single label at the middle of the visualization.
+                let label_positions = if data.labels.len() == 1 && data.positions.len() > 1 {
+                    // TODO(andreas): A smoothed over time (+ discontinuity detection) bounding box would be great.
+                    itertools::Either::Left(std::iter::once(
+                        obj_space_bounding_box.center().truncate(),
+                    ))
+                } else {
+                    itertools::Either::Right(
+                        data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
+                    )
+                };
+
+                self.data.ui_labels.extend(process_labels_2d(
                     entity_path,
-                    &positions,
+                    label_positions,
                     data.labels,
                     &colors,
                     &annotation_infos,
+                    ent_context.world_from_entity,
                 ));
             }
         }

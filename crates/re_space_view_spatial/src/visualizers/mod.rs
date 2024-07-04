@@ -7,7 +7,6 @@ mod boxes2d;
 mod boxes3d;
 mod cameras;
 mod depth_images;
-mod entity_iterator;
 mod images;
 mod lines2d;
 mod lines3d;
@@ -15,23 +14,25 @@ mod meshes;
 mod points2d;
 mod points3d;
 mod segmentation_images;
-mod spatial_view_visualizer;
-mod textured_rect_utils;
 mod transform3d_arrows;
+mod utilities;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
 pub use images::ImageVisualizer;
 pub use segmentation_images::SegmentationImageVisualizer;
-pub use spatial_view_visualizer::SpatialViewVisualizerData;
-pub use textured_rect_utils::tensor_to_textured_rect;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
+pub use utilities::{
+    bounding_box_for_textured_rect, entity_iterator, process_labels_2d, process_labels_3d,
+    tensor_to_textured_rect, SpatialViewVisualizerData, UiLabel, UiLabelTarget,
+    MAX_NUM_LABELS_PER_ENTITY,
+};
 
 // ---
 
 use ahash::HashMap;
 
-use re_entity_db::{EntityPath, InstancePathHash};
+use re_entity_db::EntityPath;
 use re_types::{
     components::Color,
     datatypes::{KeypointId, KeypointPair},
@@ -275,30 +276,6 @@ fn process_annotation_and_keypoint_slices(
 
         (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
     }
-}
-
-#[derive(Clone)]
-pub enum UiLabelTarget {
-    /// Labels a given rect (in scene coordinates)
-    Rect(egui::Rect),
-
-    /// Labels a given point (in scene coordinates)
-    Point2D(egui::Pos2),
-
-    /// A point in space.
-    Position3D(glam::Vec3),
-}
-
-#[derive(Clone)]
-pub struct UiLabel {
-    pub text: String,
-    pub color: egui::Color32,
-
-    /// The shape/position being labeled.
-    pub target: UiLabelTarget,
-
-    /// What is hovered if this label is hovered.
-    pub labeled_instance: InstancePathHash,
 }
 
 pub fn load_keypoint_connections(

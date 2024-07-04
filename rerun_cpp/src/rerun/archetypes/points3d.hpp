@@ -109,6 +109,9 @@ namespace rerun::archetypes {
         std::optional<Collection<rerun::components::Color>> colors;
 
         /// Optional text labels for the points.
+        ///
+        /// If there's a single label present, it will be placed at the center of the entity.
+        /// Otherwise, each instance will have its own label.
         std::optional<Collection<rerun::components::Text>> labels;
 
         /// Optional class Ids for the points.
@@ -154,6 +157,9 @@ namespace rerun::archetypes {
         }
 
         /// Optional text labels for the points.
+        ///
+        /// If there's a single label present, it will be placed at the center of the entity.
+        /// Otherwise, each instance will have its own label.
         Points3D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027

@@ -76,6 +76,9 @@ pub struct DepthImage {
     ///
     /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
     /// and a range of up to ~65 meters (2^16 / 1000).
+    ///
+    /// Note that the only effect on 2D views is the physical depth values shown when hovering the image.
+    /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
     pub meter: Option<crate::components::DepthMeter>,
 
     /// Colormap to use for rendering the depth image.
@@ -88,6 +91,8 @@ pub struct DepthImage {
     /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
     /// if it is at the same depth, leaving no gaps.
     /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+    ///
+    /// TODO(#6744): This applies only to 3D views!
     pub point_fill_ratio: Option<crate::components::FillRatio>,
 
     /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
@@ -304,6 +309,9 @@ impl DepthImage {
     ///
     /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
     /// and a range of up to ~65 meters (2^16 / 1000).
+    ///
+    /// Note that the only effect on 2D views is the physical depth values shown when hovering the image.
+    /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
     #[inline]
     pub fn with_meter(mut self, meter: impl Into<crate::components::DepthMeter>) -> Self {
         self.meter = Some(meter.into());
@@ -324,6 +332,8 @@ impl DepthImage {
     /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
     /// if it is at the same depth, leaving no gaps.
     /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
+    ///
+    /// TODO(#6744): This applies only to 3D views!
     #[inline]
     pub fn with_point_fill_ratio(
         mut self,

@@ -130,6 +130,9 @@ class Boxes3D(Boxes3DExt, Archetype):
     )
     # Optional text labels for the boxes.
     #
+    # If there's a single label present, it will be placed at the center of the entity.
+    # Otherwise, each instance will have its own label.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
