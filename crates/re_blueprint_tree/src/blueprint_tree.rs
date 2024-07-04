@@ -289,6 +289,11 @@ impl BlueprintTree {
                 }
             });
 
+        let response = response.on_hover_text(format!(
+            "{:?} container",
+            container_blueprint.container_kind
+        ));
+
         context_menu_ui_for_item(
             ctx,
             blueprint,
@@ -340,10 +345,12 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
+        let class = &space_view.class(ctx.space_view_class_registry);
         let space_view_name = space_view.display_name_or_default();
+
         let item_content = list_item::LabelContent::new(space_view_name.as_ref())
             .label_style(contents_name_style(&space_view_name))
-            .with_icon(space_view.class(ctx.space_view_class_registry).icon())
+            .with_icon(class.icon())
             .subdued(!space_view_visible)
             .with_buttons(|ui| {
                 let vis_response = visibility_button_ui(ui, container_visible, &mut visible);
@@ -362,7 +369,7 @@ impl BlueprintTree {
         let id = egui::Id::new(CollapseScope::BlueprintTree.space_view(*space_view_id));
 
         let list_item::ShowCollapsingResponse {
-            item_response: mut response,
+            item_response: response,
             body_response,
             ..
         } = ui
@@ -421,7 +428,7 @@ impl BlueprintTree {
                 }
             });
 
-        response = response.on_hover_text("Space view");
+        let response = response.on_hover_text(format!("{} view", class.display_name()));
 
         if response.clicked() {
             blueprint.focus_tab(space_view.id);
