@@ -87,7 +87,7 @@ class DepthImage(DepthImageExt, Archetype):
             For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
             and a range of up to ~65 meters (2^16 / 1000).
 
-            Note that the effect on 2D views is what physical depth values are shown when interacting with the image,
+            Note that the only effect on 2D views is the physical depth values shown when hovering the image.
             In 3D views on the other hand, this affects where the points of the point cloud are placed.
         colormap:
             Colormap to use for rendering the depth image.
@@ -151,7 +151,7 @@ class DepthImage(DepthImageExt, Archetype):
     # For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
     # and a range of up to ~65 meters (2^16 / 1000).
     #
-    # Note that the effect on 2D views is what physical depth values are shown when interacting with the image,
+    # Note that the only effect on 2D views is the physical depth values shown when hovering the image.
     # In 3D views on the other hand, this affects where the points of the point cloud are placed.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

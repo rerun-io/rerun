@@ -31,7 +31,7 @@ class DepthMeter(ComponentMixin):
     For instance, if a depth map uses millimeters and the world uses meters,
     this value would be `1000`.
 
-    Note that the effect on 2D views is what physical depth values are shown when interacting with the image,
+    Note that the only effect on 2D views is the physical depth values shown when hovering the image.
     In 3D views on the other hand, this affects where the points of the point cloud are placed.
     """
 

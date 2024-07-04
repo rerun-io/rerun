@@ -275,7 +275,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <DepthMeter as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the effect on 2D views is what physical depth values are shown when interacting with the image,\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
+                docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
                 placeholder: Some(DepthMeter::default().to_arrow()?),
             },
         ),
