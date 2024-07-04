@@ -134,7 +134,7 @@ impl Item {
                 }
             }
             Self::ComponentPath(_) => "Entity component",
-            Self::SpaceView(_) => "Space view",
+            Self::SpaceView(_) => "View",
             Self::Container(_) => "Container",
             Self::DataResult(_, instance_path) => {
                 if instance_path.instance.is_specific() {
