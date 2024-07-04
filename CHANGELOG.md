@@ -912,7 +912,7 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 
 #### 🧑‍💻 Dev-experience
 - C++ Windows CI [#4110](https://github.com/rerun-io/rerun/pull/4110)
-- Add MacOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
+- Add macOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
 
 
 ## [0.10.0](https://github.com/rerun-io/rerun/compare/0.9.1...0.10.0) - C++ SDK - 2023-10-30

@@ -679,6 +679,7 @@ force_capitalized = [
     "Jupyter",
     "Linux",
     "Mac",
+    "macOS",
     "Numpy",
     "Pixi",
     "Python",
