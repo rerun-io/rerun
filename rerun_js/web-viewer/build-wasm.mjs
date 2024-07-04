@@ -31,11 +31,6 @@ function wasm(mode) {
   }
 }
 
-child_process.execSync(
-  "cargo run -p re_dev_tools -- build-web-viewer --debug --target no-modules-base -o rerun_js/web-viewer",
-  { cwd: __dirname, stdio: "inherit" },
-);
-
 function script() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
 
