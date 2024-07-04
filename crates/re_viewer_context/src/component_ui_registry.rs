@@ -171,21 +171,6 @@ type ComponentUiCallback = Box<
         + Sync,
 >;
 
-/// Callback for editing a component via ui.
-///
-/// Draws a ui showing the current value and allows the user to edit it.
-/// If any edit was made, should return `Some` with the updated value.
-/// If no edit was made, should return `None`.
-type UntypedComponentEditCallback = Box<
-    dyn Fn(
-            &ViewerContext<'_>,
-            &mut egui::Ui,
-            &dyn arrow2::array::Array,
-        ) -> Option<Box<dyn arrow2::array::Array>>
-        + Send
-        + Sync,
->;
-
 enum EditOrView {
     /// Allow the user to view and mutate the value
     Edit,
@@ -223,10 +208,6 @@ pub struct ComponentUiRegistry {
 
     /// Implements both viewing and editing
     component_multiline_edit_or_view: BTreeMap<ComponentName, UntypedComponentEditOrViewCallback>,
-
-    // TODO(#6661):  remove these legacy ones
-    component_singleline_editors: BTreeMap<ComponentName, UntypedComponentEditCallback>,
-    component_multiline_editors: BTreeMap<ComponentName, UntypedComponentEditCallback>,
 }
 
 impl ComponentUiRegistry {
@@ -236,8 +217,6 @@ impl ComponentUiRegistry {
             component_uis: Default::default(),
             component_singleline_edit_or_view: Default::default(),
             component_multiline_edit_or_view: Default::default(),
-            component_singleline_editors: Default::default(),
-            component_multiline_editors: Default::default(),
         }
     }
 
@@ -246,79 +225,6 @@ impl ComponentUiRegistry {
     /// If the component has already a display ui registered, the new callback replaces the old one.
     pub fn add_display_ui(&mut self, name: ComponentName, callback: ComponentUiCallback) {
         self.component_uis.insert(name, callback);
-    }
-
-    /// Registers how to edit a given component in the ui in a single line.
-    ///
-    /// If the component has already a single- or multiline editor registered respectively,
-    /// the new callback replaces the old one.
-    /// Prefer [`ComponentUiRegistry::add_singleline_editor_ui`] whenever possible
-    fn add_untyped_editor_ui(
-        &mut self,
-        name: ComponentName,
-        editor_callback: UntypedComponentEditCallback,
-        multiline: bool,
-    ) {
-        if multiline {
-            &mut self.component_multiline_editors
-        } else {
-            &mut self.component_singleline_editors
-        }
-        .insert(name, editor_callback);
-    }
-
-    fn add_typed_editor_ui<C: re_types::Component>(
-        &mut self,
-        editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
-            + Send
-            + Sync
-            + 'static,
-        multiline: bool,
-    ) {
-        let untyped_callback: UntypedComponentEditCallback =
-            Box::new(move |ui, ui_layout, value| {
-                try_deserialize(value).and_then(|mut deserialized_value| {
-                    editor_callback(ui, ui_layout, &mut deserialized_value)
-                        .changed()
-                        .then(|| {
-                            use re_types::LoggableBatch as _;
-                            deserialized_value.to_arrow().ok_or_log_error_once()
-                        })
-                        .flatten()
-                })
-            });
-
-        self.add_untyped_editor_ui(C::name(), untyped_callback, multiline);
-    }
-
-    /// Registers how to edit a given component in the ui in a single list item line.
-    ///
-    /// If the component already has a singleline editor registered, the new callback replaces the old one.
-    ///
-    /// Typed editors do not handle absence of a value as well as lists of values and will be skipped in these cases.
-    /// (This means that there must always be at least a fallback value available.)
-    ///
-    /// The value is only updated if the editor callback returns a `egui::Response::changed`.
-    /// On the flip side, this means that even if the data has not changed it may be written back to the store.
-    /// This can be relevant for transitioning from a fallback or default value to a custom value even if they are equal.
-    ///
-    /// Design principles for writing editors:
-    /// * This is the value column function for a [`re_ui::list_item::PropertyContent`], behave accordingly!
-    ///     * Unless you introduce hierarchy yourself, use [`re_ui::list_item::ListItem::show_flat`].
-    /// * Don't show a tooltip, this is solved at a higher level.
-    /// * Try not to assume context of the component beyond its inherent semantics
-    ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
-    /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
-    ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_singleline_editor_ui<C: re_types::Component>(
-        &mut self,
-        editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
-            + Send
-            + Sync
-            + 'static,
-    ) {
-        let multiline = false;
-        self.add_typed_editor_ui(editor_callback, multiline);
     }
 
     /// Registers how to edit a given component in the ui in a single list item line.
@@ -425,21 +331,14 @@ impl ComponentUiRegistry {
     pub fn registered_ui_types(&self, name: ComponentName) -> ComponentUiTypes {
         let mut types = ComponentUiTypes::empty();
 
+        if self.component_uis.contains_key(&name) {
+            types |= ComponentUiTypes::DisplayUi;
+        }
         if self.component_singleline_edit_or_view.contains_key(&name) {
             types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::SingleLineEditor;
         }
         if self.component_multiline_edit_or_view.contains_key(&name) {
             types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::MultiLineEditor;
-        }
-
-        if self.component_uis.contains_key(&name) {
-            types |= ComponentUiTypes::DisplayUi;
-        }
-        if self.component_singleline_editors.contains_key(&name) {
-            types |= ComponentUiTypes::SingleLineEditor;
-        }
-        if self.component_multiline_editors.contains_key(&name) {
-            types |= ComponentUiTypes::MultiLineEditor;
         }
 
         types
@@ -545,15 +444,6 @@ impl ComponentUiRegistry {
         if let Some(edit_or_view_ui) = self.component_singleline_edit_or_view.get(&component_name) {
             // Use it in view mode (no mutation).
             (*edit_or_view_ui)(ctx, ui, component_raw, EditOrView::View);
-            return;
-        }
-
-        // If there is none but we have a singleline edit_ui and only a single value, use a disabled edit ui.
-        if let Some(edit_ui) = self.component_singleline_editors.get(&component_name) {
-            ui.scope(|ui| {
-                ui.disable(); // TODO(#6661): remove
-                (*edit_ui)(ctx, ui, component_raw);
-            });
             return;
         }
 
@@ -739,18 +629,6 @@ impl ComponentUiRegistry {
         };
         if let Some(edit_or_view) = edit_or_view.get(&component_name) {
             if let Some(updated) = (*edit_or_view)(ctx, ui, raw_current_value, EditOrView::Edit) {
-                ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
-            }
-            return true;
-        }
-
-        let editors = if multiline {
-            &self.component_multiline_editors
-        } else {
-            &self.component_singleline_editors
-        };
-        if let Some(edit_callback) = editors.get(&component_name) {
-            if let Some(updated) = (*edit_callback)(ctx, ui, raw_current_value) {
                 ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
             }
             return true;
