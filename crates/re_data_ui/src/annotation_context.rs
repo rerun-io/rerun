@@ -6,7 +6,7 @@ use re_types::datatypes::{
     AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
 };
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{auto_color, UiLayout, ViewerContext};
+use re_viewer_context::{auto_color_egui, UiLayout, ViewerContext};
 
 use super::DataUi;
 
@@ -322,7 +322,7 @@ fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
         ui.spacing_mut().item_spacing.x = 8.0;
         let color = info
             .color
-            .map_or_else(|| auto_color(info.id), |color| color.into());
+            .map_or_else(|| auto_color_egui(info.id), |color| color.into());
         color_picker::show_color(ui, color, size);
         if info.color.is_none() {
             ui.weak("(auto)")
@@ -336,7 +336,7 @@ fn small_color_ui(ui: &mut egui::Ui, info: &AnnotationInfo) {
 
     let color = info
         .color
-        .map_or_else(|| auto_color(info.id), |color| color.into());
+        .map_or_else(|| auto_color_egui(info.id), |color| color.into());
 
     let response = color_picker::show_color(ui, color, size);
 

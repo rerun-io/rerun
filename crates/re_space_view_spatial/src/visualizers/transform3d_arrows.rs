@@ -2,8 +2,9 @@ use egui::Color32;
 use re_log_types::{EntityPath, Instance};
 use re_space_view::DataResultQuery;
 use re_types::{
-    archetypes::{Axes3D, Pinhole, Transform3D},
+    archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
+    Loggable,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewStateExt,
@@ -37,7 +38,7 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
 
 impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Axes3D>()
+        VisualizerQueryInfo::from_archetype::<Transform3D>()
     }
 
     fn filter_visualizable_entities(
@@ -84,8 +85,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 world_from_obj,
             );
 
-            let results =
-                data_result.latest_at_with_blueprint_resolved_data::<Axes3D>(ctx, &latest_at_query);
+            let results = data_result
+                .latest_at_with_blueprint_resolved_data::<Transform3D>(ctx, &latest_at_query);
             let axis_length = results.get_mono_with_fallback::<AxisLength>().into();
 
             add_axis_arrows(
@@ -131,7 +132,7 @@ pub fn add_axis_arrows(
 
     // TODO(andreas): It would be nice if could display the ViewCoordinates axis names (left/right/up) as a tooltip on hover.
 
-    let line_radius = re_renderer::Size::new_points(1.0);
+    let line_radius = re_renderer::Size::new_ui_points(1.0);
 
     let mut line_batch = line_builder
         .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))
@@ -213,22 +214,27 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
 
 re_viewer_context::impl_component_fallback_provider!(Transform3DArrowsVisualizer => [AxisLength]);
 
-/// The `Transform3DDetector` doesn't actually visualize anything, but it allows us to detect
-/// when a transform should otherwise be visualized.
+/// The `AxisLengthDetector` doesn't actually visualize anything, but it allows us to detect
+/// when a transform has set the [`AxisLength`] component.
 ///
 /// See the logic in [`crate::SpatialSpaceView3D`]`::choose_default_visualizers`.
 #[derive(Default)]
-pub struct Transform3DDetector();
+pub struct AxisLengthDetector();
 
-impl IdentifiedViewSystem for Transform3DDetector {
+impl IdentifiedViewSystem for AxisLengthDetector {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Transform3DDetector".into()
+        "AxisLengthDetector".into()
     }
 }
 
-impl VisualizerSystem for Transform3DDetector {
+impl VisualizerSystem for AxisLengthDetector {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Transform3D>()
+        let mut query_info = VisualizerQueryInfo::from_archetype::<Transform3D>();
+
+        query_info.required.insert(AxisLength::name());
+        query_info.indicators = Default::default();
+
+        query_info
     }
 
     fn execute(
@@ -259,4 +265,4 @@ impl VisualizerSystem for Transform3DDetector {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Transform3DDetector => []);
+re_viewer_context::impl_component_fallback_provider!(AxisLengthDetector => []);

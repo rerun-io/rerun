@@ -57,6 +57,9 @@ mod web;
 #[cfg(target_arch = "wasm32")]
 mod web_tools;
 
+#[cfg(target_arch = "wasm32")]
+mod history;
+
 // ---------------------------------------------------------------------------
 
 /// Information about this version of the crate.

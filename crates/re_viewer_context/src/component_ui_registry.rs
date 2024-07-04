@@ -364,24 +364,54 @@ impl ComponentUiRegistry {
             return;
         };
 
-        if !instance.is_specific() {
-            ui.label(format!("({instance} values)"));
-        } else if let Some(component_raw) =
-            component.instance_raw(db.resolver(), component_name, instance.get() as _)
-        {
-            self.ui_raw(
-                ctx,
-                ui,
-                ui_layout,
-                query,
-                db,
-                entity_path,
-                component_name,
-                component_raw.as_ref(),
-            );
-        } else {
-            ui.label("(empty)");
+        // Don't use component.raw_instance here since we want to handle the case where there's several
+        // elements differently.
+        // Also, it allows us to slice the array without cloning any elements.
+        let cell = match component.resolved(db.resolver()) {
+            re_query::PromiseResult::Pending => {
+                re_log::error_once!("Couldn't get {component_name}: promise still pending");
+                ui.error_label("pending...");
+                return;
+            }
+            re_query::PromiseResult::Ready(cell) => cell,
+            re_query::PromiseResult::Error(err) => {
+                re_log::error_once!(
+                    "Couldn't get {component_name}: {}",
+                    re_error::format_ref(&*err)
+                );
+                ui.error_label(&re_error::format_ref(&*err));
+                return;
+            }
+        };
+
+        // Component ui can only show a single instance.
+        if cell.num_instances() == 0 || (instance.is_all() && cell.num_instances() > 1) {
+            none_or_many_values_ui(ui, cell.num_instances() as _);
+            return;
         }
+
+        let index = if instance.is_all() {
+            // Per above check, there's a single instance, show it.
+            0
+        } else {
+            instance.get() as usize
+        };
+
+        // Enforce clamp-to-border semantics.
+        // TODO(andreas): Is that always what we want?
+        let index = index.clamp(0, (cell.num_instances() as usize).saturating_sub(1));
+        let component_raw = cell.as_arrow_ref().sliced(index, 1);
+
+        self.ui_raw(
+            ctx,
+            ui,
+            ui_layout,
+            query,
+            db,
+            entity_path,
+            component_name,
+            component_raw.as_ref(),
+        );
     }
 
     /// Show a ui for a single raw component.
@@ -398,6 +428,11 @@ impl ComponentUiRegistry {
         component_raw: &dyn arrow2::array::Array,
     ) {
         re_tracing::profile_function!(component_name.full_name());
+
+        if component_raw.len() != 1 {
+            none_or_many_values_ui(ui, component_raw.len());
+            return;
+        }
 
         // Use the ui callback if there is one.
         if let Some(ui_callback) = self.component_uis.get(&component_name) {
@@ -489,17 +524,35 @@ impl ComponentUiRegistry {
     ) {
         re_tracing::profile_function!(component_name.full_name());
 
-        // TODO(andreas, jleibs): Editors only show & edit the first instance of a component batch.
-        let instance: Instance = 0.into();
+        let create_fallback = || {
+            fallback_provider
+                .fallback_for(ctx, component_name)
+                .map_err(|_err| format!("No fallback value available for {component_name}."))
+        };
 
-        let component_raw = match component_value_or_fallback(
-            ctx,
-            component_query_result,
-            component_name,
-            instance,
-            origin_db.resolver(),
-            fallback_provider,
-        ) {
+        let component_raw_or_error = match component_query_result.resolved(origin_db.resolver()) {
+            re_query::PromiseResult::Pending => {
+                if component_query_result.num_instances() == 0 {
+                    // This can currently also happen when there's no data at all.
+                    create_fallback()
+                } else {
+                    // In the future, we might want to show a loading indicator here,
+                    // but right now this is always an error.
+                    Err(format!("Promise for {component_name} is still pending."))
+                }
+            }
+            re_query::PromiseResult::Ready(cell) => {
+                if !cell.is_empty() {
+                    Ok(cell.to_arrow())
+                } else {
+                    create_fallback()
+                }
+            }
+            re_query::PromiseResult::Error(err) => {
+                Err(format!("Couldn't get {component_name}: {err}"))
+            }
+        };
+        let component_raw = match component_raw_or_error {
             Ok(value) => value,
             Err(error_text) => {
                 re_log::error_once!("{error_text}");
@@ -508,6 +561,28 @@ impl ComponentUiRegistry {
             }
         };
 
+        self.edit_ui_raw(
+            ctx,
+            ui,
+            origin_db,
+            blueprint_write_path,
+            component_name,
+            component_raw.as_ref(),
+            multiline,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn edit_ui_raw(
+        &self,
+        ctx: &QueryContext<'_>,
+        ui: &mut egui::Ui,
+        origin_db: &EntityDb,
+        blueprint_write_path: &EntityPath,
+        component_name: ComponentName,
+        component_raw: &dyn arrow2::array::Array,
+        multiline: bool,
+    ) {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx,
             ui,
@@ -525,7 +600,7 @@ impl ComponentUiRegistry {
                 origin_db,
                 ctx.target_entity_path,
                 component_name,
-                component_raw.as_ref(),
+                component_raw,
             );
         }
     }
@@ -545,6 +620,10 @@ impl ComponentUiRegistry {
     ) -> bool {
         re_tracing::profile_function!(component_name.full_name());
 
+        if raw_current_value.len() != 1 {
+            return false;
+        }
+
         let editors = if multiline {
             &self.component_multiline_editors
         } else {
@@ -563,47 +642,6 @@ impl ComponentUiRegistry {
             false
         }
     }
-}
-
-fn component_value_or_fallback(
-    ctx: &QueryContext<'_>,
-    component_query_result: &LatestAtComponentResults,
-    component_name: ComponentName,
-    instance: Instance,
-    resolver: &re_query::PromiseResolver,
-    fallback_provider: &dyn ComponentFallbackProvider,
-) -> Result<Box<dyn arrow2::array::Array>, String> {
-    match component_query_result.resolved(resolver) {
-        re_query::PromiseResult::Pending => {
-            if component_query_result.num_instances() == 0 {
-                // This can currently also happen when there's no data at all.
-                None
-            } else {
-                // In the future, we might want to show a loading indicator here,
-                // but right now this is always an error.
-                return Err(format!("Promise for {component_name} is still pending."));
-            }
-        }
-        re_query::PromiseResult::Ready(cell) => {
-            let index = instance.get();
-            if cell.num_instances() > index as u32 {
-                Some(cell.as_arrow_ref().sliced(index as usize, 1))
-            } else {
-                None
-            }
-        }
-        re_query::PromiseResult::Error(err) => {
-            return Err(format!("Couldn't get {component_name}: {err}"));
-        }
-    }
-    .map_or_else(
-        || {
-            fallback_provider
-                .fallback_for(ctx, component_name)
-                .map_err(|_err| format!("No fallback value available for {component_name}."))
-        },
-        Ok,
-    )
 }
 
 fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
@@ -631,5 +669,13 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> 
             re_log::error_once!("Failed to deserialize component of type {component_name}: {err}",);
             None
         }
+    }
+}
+
+fn none_or_many_values_ui(ui: &mut egui::Ui, num_instances: usize) {
+    if num_instances == 0 {
+        ui.label("(empty)");
+    } else {
+        ui.label(format!("{} values", re_format::format_uint(num_instances)));
     }
 }

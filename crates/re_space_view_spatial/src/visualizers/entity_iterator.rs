@@ -1,7 +1,6 @@
 use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_renderer::DepthOffset;
+use re_log_types::{TimeInt, Timeline};
 use re_space_view::{
     latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,
 };
@@ -89,14 +88,12 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
-    default_depth_offset: DepthOffset,
     mut fun: F,
 ) -> Result<(), SpaceViewSystemExecutionError>
 where
     A: Archetype,
     F: FnMut(
         &QueryContext<'_>,
-        &EntityPath,
         &SpatialSceneEntityContext<'_>,
         &HybridResults<'_>,
     ) -> Result<(), SpaceViewSystemExecutionError>,
@@ -108,7 +105,9 @@ where
 
     let latest_at = query.latest_at_query();
 
-    for data_result in query.iter_visible_data_results(ctx, System::identifier()) {
+    let system_identifier = System::identifier();
+
+    for data_result in query.iter_visible_data_results(ctx, system_identifier) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
         let world_from_entity =
             if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
@@ -124,12 +123,14 @@ where
         let Some(world_from_entity) = world_from_entity else {
             continue;
         };
+        let depth_offset_key = (system_identifier, data_result.entity_path.hash());
         let entity_context = SpatialSceneEntityContext {
             world_from_entity,
-            depth_offset: *depth_offsets
-                .per_entity
-                .get(&data_result.entity_path.hash())
-                .unwrap_or(&default_depth_offset),
+            depth_offset: depth_offsets
+                .per_entity_and_visualizer
+                .get(&depth_offset_key)
+                .copied()
+                .unwrap_or_default(),
             annotations: annotations.0.find(&data_result.entity_path),
             highlight: query
                 .highlights
@@ -156,12 +157,10 @@ where
         let mut query_ctx = ctx.query_context(data_result, &latest_at);
         query_ctx.archetype_name = Some(A::name());
 
-        fun(
-            &query_ctx,
-            &data_result.entity_path,
-            &entity_context,
-            &results,
-        )?;
+        {
+            re_tracing::profile_scope!(format!("{}", data_result.entity_path));
+            fun(&query_ctx, &entity_context, &results)?;
+        }
     }
 
     Ok(())

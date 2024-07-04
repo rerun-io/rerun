@@ -101,7 +101,7 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
             .add_strip(lorenz_points.into_iter())
             .color(Color32::from_rgb(255, 191, 0))
             .flags(LineStripFlags::FLAG_COLOR_GRADIENT)
-            .radius(Size::new_points(1.0));
+            .radius(Size::new_ui_points(1.0));
 
         // Green Zig-Zag arrow
         batch
@@ -115,7 +115,7 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
                 .into_iter(),
             )
             .color(Color32::GREEN)
-            .radius(Size::new_scene(0.05))
+            .radius(Size::new_scene_units(0.05))
             .flags(
                 LineStripFlags::FLAG_COLOR_GRADIENT
                     | LineStripFlags::FLAG_CAP_END_TRIANGLE
@@ -137,7 +137,7 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
             )
         }))
         .color(Color32::BLUE)
-        .radius(Size::new_scene(0.1))
+        .radius(Size::new_scene_units(0.1))
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
     builder.into_draw_data().unwrap()
@@ -270,7 +270,7 @@ impl Example for Multiview {
             })
             .collect_vec();
         let random_points_radii = (0..point_count)
-            .map(|_| Size::new_scene(rnd.gen_range(0.005..0.05)))
+            .map(|_| Size::new_scene_units(rnd.gen_range(0.005..0.05)))
             .collect_vec();
         let random_points_colors = (0..point_count)
             .map(|_| random_color(&mut rnd))

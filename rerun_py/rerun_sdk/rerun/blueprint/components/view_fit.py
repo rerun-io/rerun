@@ -34,7 +34,7 @@ class ViewFit(Enum):
     """Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."""
 
 
-ViewFitLike = Union[ViewFit, Literal["original"] | Literal["fill"] | Literal["fillkeepaspectratio"]]
+ViewFitLike = Union[ViewFit, Literal["original", "fill", "fillkeepaspectratio"]]
 ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
 
 

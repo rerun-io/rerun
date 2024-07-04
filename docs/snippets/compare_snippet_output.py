@@ -123,6 +123,7 @@ def main() -> None:
     examples = []
     if len(args.example) > 0:
         for example in args.example:
+            example = example.replace("\\", "/")
             parts = example.split("/")
             examples.append(Example("/".join(parts[0:-1]), parts[-1]))
     else:
@@ -149,7 +150,7 @@ def main() -> None:
     if not args.no_cpp_build:
         print(f"Running {len(examples)} C++ examples…")
         for example in examples:
-            if "cpp" not in example.opt_out_entirely():
+            if "cpp" not in example.opt_out_entirely() and "cpp" in active_languages:
                 run_example(example, "cpp", args)
 
     print(f"Running {len(examples)} Rust and Python examples…")

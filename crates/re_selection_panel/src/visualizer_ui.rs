@@ -3,13 +3,12 @@ use itertools::Itertools;
 use re_data_ui::{sorted_component_list_for_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{DataCell, EntityPath};
-use re_query::LatestAtComponentResults;
 use re_space_view::latest_at_with_blueprint_resolved_data;
 use re_types::external::arrow2;
-use re_types_core::components::VisualizerOverrides;
+use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
-    DataResult, SpaceViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
+    DataResult, QueryContext, SpaceViewClassExt as _, UiLayout, ViewContext, ViewSystemIdentifier,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -37,25 +36,43 @@ pub fn visualizer_ui(
         &active_visualizers,
     );
 
-    ui.large_collapsing_header_with_button(
-        "Visualizers",
-        true,
-        |ui| {
+    let button = list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+        menu_add_new_visualizer(
+            ctx,
+            ui,
+            &data_result,
+            &active_visualizers,
+            &available_inactive_visualizers,
+        );
+    })
+    .enabled(!available_inactive_visualizers.is_empty())
+    .hover_text("Add additional visualizers")
+    .disabled_hover_text("No additional visualizers available");
+
+    let markdown = "# Visualizers
+
+This section lists the active visualizers for the selected entity. Visualizers use an entity's \
+components to display it in the current view.
+
+Each visualizer lists the components it uses and their values. The component values may come from \
+a variety of sources and can be overridden in place.
+
+The final component value is determined using the following priority order:
+- **Override**: A value set from the UI and/or the blueprint. It has the highest precedence and is \
+always used if set.
+- **Store**: If any, the value logged to the data store for this entity, e.g. via the SDK's `log` \
+function.
+- **Default**: If set, the default value for this component in the current view, which can be set \
+in the blueprint or in the UI by selecting the view.
+- **Fallback**: A context-sensitive value that is used if no other value is available. It is \
+specific to the visualizer and the current view type.";
+
+    ui.section_collapsing_header("Visualizers")
+        .button(button)
+        .help_markdown(markdown)
+        .show(ui, |ui| {
             visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers);
-        },
-        re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
-            menu_add_new_visualizer(
-                ctx,
-                ui,
-                &data_result,
-                &active_visualizers,
-                &available_inactive_visualizers,
-            );
-        })
-        .enabled(!available_inactive_visualizers.is_empty())
-        .hover_text("Add additional visualizers")
-        .disabled_hover_text("No additional visualizers available"),
-    );
+        });
 }
 
 pub fn visualizer_ui_impl(
@@ -88,7 +105,13 @@ pub fn visualizer_ui_impl(
     };
 
     list_item::list_item_scope(ui, "visualizers", |ui| {
-        ui.spacing_mut().item_spacing.y = 0.0;
+        if active_visualizers.is_empty() {
+            ui.list_item_flat_noninteractive(
+                list_item::LabelContent::new("none")
+                    .weak(true)
+                    .italics(true),
+            );
+        }
 
         for &visualizer_id in active_visualizers {
             let default_open = true;
@@ -209,6 +232,7 @@ fn visualizer_components(
             // Edit ui can only handle a single value.
             let multiline = false;
             if raw_current_value.len() > 1
+                // TODO(andreas): If component_ui_registry's `edit_ui_raw` wouldn't need db & query context (i.e. a query) we could use this directly here.
                 || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
@@ -268,17 +292,14 @@ fn visualizer_components(
 
         let add_children = |ui: &mut egui::Ui| {
             // Override (if available)
-            if let (Some(result_override), Some(raw_override)) =
-                (result_override, raw_override.as_ref())
-            {
+            if let Some(raw_override) = raw_override.as_ref() {
                 editable_blueprint_component_list_item(
-                    ctx,
+                    &query_ctx,
                     ui,
                     "Override",
                     override_path,
                     component,
                     raw_override.as_ref(),
-                    result_override,
                 )
                 .on_hover_text("Override value for this specific entity in the current view");
             }
@@ -302,17 +323,14 @@ fn visualizer_components(
                 .on_hover_text("The value that was logged to the data store");
             }
             // Default (if available)
-            if let (Some(result_default), Some(raw_default)) =
-                (result_default, raw_default.as_ref())
-            {
+            if let Some(raw_default) = raw_default.as_ref() {
                 editable_blueprint_component_list_item(
-                    ctx,
+                    &query_ctx,
                     ui,
                     "Default",
                     ctx.defaults_path,
                     component,
                     raw_default.as_ref(),
-                    result_default,
                 )
                 .on_hover_text("Default value for all component of this type is the current view");
             }
@@ -369,43 +387,31 @@ fn visualizer_components(
 }
 
 fn editable_blueprint_component_list_item(
-    ctx: &ViewContext<'_>,
+    query_ctx: &QueryContext<'_>,
     ui: &mut egui::Ui,
     name: &'static str,
     blueprint_path: &EntityPath,
     component: re_types::ComponentName,
     raw_override: &dyn arrow2::array::Array,
-    result_override: &LatestAtComponentResults,
 ) -> egui::Response {
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
                 let multiline = false;
-                if raw_override.len() > 1
-                    || !ctx.viewer_ctx.component_ui_registry.try_show_edit_ui(
-                        ctx.viewer_ctx,
-                        ui,
-                        raw_override,
-                        blueprint_path,
-                        component,
-                        multiline,
-                    )
-                {
-                    re_data_ui::EntityLatestAtResults {
-                        entity_path: blueprint_path.clone(),
-                        results: result_override,
-                    }
-                    .data_ui(
-                        ctx.viewer_ctx,
-                        ui,
-                        UiLayout::List,
-                        ctx.viewer_ctx.blueprint_query,
-                        ctx.blueprint_db(),
-                    );
-                }
+                query_ctx.viewer_ctx.component_ui_registry.edit_ui_raw(
+                    query_ctx,
+                    ui,
+                    query_ctx.viewer_ctx.blueprint_db(),
+                    blueprint_path,
+                    component,
+                    raw_override,
+                    multiline,
+                );
             })
             .action_button(&re_ui::icons::CLOSE, || {
-                ctx.save_empty_blueprint_component_by_name(blueprint_path, component);
+                query_ctx
+                    .viewer_ctx
+                    .save_empty_blueprint_component_by_name(blueprint_path, component);
             }),
     )
 }

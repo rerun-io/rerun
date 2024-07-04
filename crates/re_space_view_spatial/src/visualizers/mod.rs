@@ -6,6 +6,7 @@ mod assets3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
+mod depth_images;
 mod entity_iterator;
 mod images;
 mod lines2d;
@@ -13,13 +14,18 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
+mod segmentation_images;
 mod spatial_view_visualizer;
+mod textured_rect_utils;
 mod transform3d_arrows;
 
 pub use cameras::CamerasVisualizer;
-pub use images::{ImageVisualizer, ViewerImage};
+pub use depth_images::DepthImageVisualizer;
+pub use images::ImageVisualizer;
+pub use segmentation_images::SegmentationImageVisualizer;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
-pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer, Transform3DDetector};
+pub use textured_rect_utils::tensor_to_textured_rect;
+pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 
 // ---
 
@@ -31,9 +37,10 @@ use re_types::{
     datatypes::{KeypointId, KeypointPair},
 };
 use re_viewer_context::{
-    auto_color, Annotations, ApplicableEntities, DefaultColor, ResolvedAnnotationInfos,
-    SpaceViewClassRegistryError, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    VisualizableEntities, VisualizableFilterContext, VisualizerCollection,
+    auto_color_egui, Annotations, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, ViewSystemIdentifier, VisualizableEntities,
+    VisualizableFilterContext, VisualizerCollection,
 };
 
 use crate::view_2d::VisualizableFilterContext2D;
@@ -57,40 +64,58 @@ pub fn register_2d_spatial_visualizers(
 ) -> Result<(), SpaceViewClassRegistryError> {
     // Note: 2D spatial systems don't include cameras as this
     // visualizer only shows a 2D projection WITHIN a 3D view.
-    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
+    system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
     system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
 }
 
 pub fn register_3d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
-    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
+    system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
     system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DDetector>()?;
     Ok(())
+}
+
+/// List of all visualizers that read [`re_types::components::DrawOrder`].
+pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIdentifier> {
+    [
+        arrows2d::Arrows2DVisualizer::identifier(),
+        boxes2d::Boxes2DVisualizer::identifier(),
+        depth_images::DepthImageVisualizer::identifier(),
+        images::ImageVisualizer::identifier(),
+        lines2d::Lines2DVisualizer::identifier(),
+        points2d::Points2DVisualizer::identifier(),
+        segmentation_images::SegmentationImageVisualizer::identifier(),
+    ]
+    .into_iter()
 }
 
 pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
@@ -108,37 +133,44 @@ pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
 
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
-    entity_path: &'a EntityPath,
+    ctx: &QueryContext<'_>,
+    fallback_provider: &'a dyn re_viewer_context::TypedComponentFallbackProvider<Color>,
     num_instances: usize,
     annotation_infos: &'a ResolvedAnnotationInfos,
     colors: &'a [Color],
 ) -> Vec<egui::Color32> {
     // NOTE: Do not put tracing scopes here, this is called for every entity/timestamp in a frame.
 
-    let default_color = DefaultColor::EntityPath(entity_path);
-
     if colors.is_empty() {
         match annotation_infos {
             ResolvedAnnotationInfos::Same(count, annotation_info) => {
                 re_tracing::profile_scope!("no colors, same annotation");
-                let color = annotation_info.color(None, default_color);
+                let color = annotation_info
+                    .color(None)
+                    .unwrap_or_else(|| fallback_provider.fallback_for(ctx).into());
                 vec![color; *count]
             }
             ResolvedAnnotationInfos::Many(annotation_info) => {
                 re_tracing::profile_scope!("no-colors, many annotations");
+                let fallback = fallback_provider.fallback_for(ctx).into();
                 annotation_info
                     .iter()
-                    .map(|annotation_info| annotation_info.color(None, default_color))
+                    .map(|annotation_info| annotation_info.color(None).unwrap_or(fallback))
                     .collect()
             }
         }
     } else {
         let colors = entity_iterator::clamped(colors, num_instances);
+        let fallback = fallback_provider.fallback_for(ctx).into();
         match annotation_infos {
             ResolvedAnnotationInfos::Same(_count, annotation_info) => {
                 re_tracing::profile_scope!("many-colors, same annotation");
                 colors
-                    .map(|color| annotation_info.color(Some(color.to_array()), default_color))
+                    .map(|color| {
+                        annotation_info
+                            .color(Some(color.to_array()))
+                            .unwrap_or(fallback)
+                    })
                     .collect()
             }
             ResolvedAnnotationInfos::Many(annotation_infos) => {
@@ -146,7 +178,9 @@ pub fn process_color_slice<'a>(
                 colors
                     .zip(annotation_infos.iter())
                     .map(move |(color, annotation_info)| {
-                        annotation_info.color(Some(color.to_array()), default_color)
+                        annotation_info
+                            .color(Some(color.to_array()))
+                            .unwrap_or(fallback)
                     })
                     .collect()
             }
@@ -160,11 +194,12 @@ pub fn process_radius_slice(
     entity_path: &EntityPath,
     num_instances: usize,
     radii: &[re_types::components::Radius],
+    fallback_radius: re_types::components::Radius,
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
 
     if radii.is_empty() {
-        vec![re_renderer::Size::AUTO; num_instances]
+        vec![re_renderer::Size(fallback_radius.0); num_instances]
     } else {
         entity_iterator::clamped(radii, num_instances)
             .map(|radius| process_radius(entity_path, *radius))
@@ -176,18 +211,13 @@ fn process_radius(
     entity_path: &EntityPath,
     radius: re_types::components::Radius,
 ) -> re_renderer::Size {
-    if 0.0 <= radius.0 && radius.0.is_finite() {
-        re_renderer::Size::new_scene(radius.0)
-    } else {
-        if radius.0 < 0.0 {
-            re_log::warn_once!("Found negative radius in entity {entity_path}");
-        } else if radius.0.is_infinite() {
-            re_log::warn_once!("Found infinite radius in entity {entity_path}");
-        } else {
-            re_log::warn_once!("Found NaN radius in entity {entity_path}");
-        }
-        re_renderer::Size::AUTO
+    if radius.0.is_infinite() {
+        re_log::warn_once!("Found infinite radius in entity {entity_path}");
+    } else if radius.0.is_nan() {
+        re_log::warn_once!("Found NaN radius in entity {entity_path}");
     }
+
+    re_renderer::Size(radius.0)
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
@@ -304,6 +334,9 @@ pub fn load_keypoint_connections(
         .world_from_obj(ent_context.world_from_entity)
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
+    // TODO(andreas): Make configurable. Should we pick up the point's radius and make this proportional?
+    let line_radius = re_renderer::Size(re_types::components::Radius::default().0);
+
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let resolved_class_description = ent_context
             .annotations
@@ -314,7 +347,7 @@ pub fn load_keypoint_connections(
         };
 
         let color = class_description.info.color.map_or_else(
-            || auto_color(class_description.info.id),
+            || auto_color_egui(class_description.info.id),
             |color| color.into(),
         );
 
@@ -332,7 +365,7 @@ pub fn load_keypoint_connections(
             };
             line_batch
                 .add_segment(*a, *b)
-                .radius(re_renderer::Size::AUTO)
+                .radius(line_radius)
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.

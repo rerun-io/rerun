@@ -9,9 +9,10 @@ use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
-use re_viewer_context::CommandSender;
+use re_viewer_context::{SystemCommand, SystemCommandSender};
 
-use crate::web_tools::{string_from_js_value, translate_query_into_commands, url_to_receiver};
+use crate::history::install_popstate_listener;
+use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -153,7 +154,7 @@ impl WebHandle {
             return;
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
-        let rx = url_to_receiver(app.egui_ctx.clone(), follow_if_http, url);
+        let rx = url_to_receiver(app.egui_ctx.clone(), follow_if_http, url.to_owned());
         if let Some(rx) = rx.ok_or_log_error() {
             app.add_receiver(rx);
         }
@@ -293,18 +294,22 @@ impl From<PanelState> for re_types::blueprint::components::PanelState {
     }
 }
 
-// Keep in sync with the `AppOptions` typedef in `rerun_js/web-viewer/index.js`
+// Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
 pub struct AppOptions {
-    url: Option<String>,
+    url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
     fullscreen: Option<FullscreenOptions>,
+    enable_history: Option<bool>,
+
+    notebook: Option<bool>,
+    persist: Option<bool>,
 }
 
-// Keep in sync with the `FullscreenOptions` typedef in `rerun_js/web-viewer/index.js`
+// Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
 #[derive(Clone, Deserialize)]
 pub struct FullscreenOptions {
     /// This returns the current fullscreen state, which is a boolean representing on/off.
@@ -333,17 +338,6 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
     }
 }
 
-// Can't deserialize `Option<js_sys::Function>` directly, so newtype it is.
-#[derive(Clone, Deserialize)]
-#[repr(transparent)]
-pub struct Callback(#[serde(with = "serde_wasm_bindgen::preserve")] js_sys::Function);
-
-impl Callback {
-    pub fn call(&self) -> Result<JsValue, JsValue> {
-        self.0.call0(&web_sys::window().unwrap())
-    }
-}
-
 fn create_app(
     cc: &eframe::CreationContext<'_>,
     app_options: AppOptions,
@@ -352,19 +346,21 @@ fn create_app(
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
     };
+    let enable_history = app_options.enable_history.unwrap_or(false);
     let startup_options = crate::StartupOptions {
         memory_limit: re_memory::MemoryLimit {
             // On wasm32 we only have 4GB of memory to play around with.
             max_bytes: Some(2_500_000_000),
         },
         location: Some(cc.integration_info.web_info.location.clone()),
-        persist_state: get_persist_state(&cc.integration_info),
-        is_in_notebook: is_in_notebook(&cc.integration_info),
+        persist_state: app_options.persist.unwrap_or(true),
+        is_in_notebook: app_options.notebook.unwrap_or(false),
         expect_data_soon: None,
         force_wgpu_backend: None,
         hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
         fullscreen_options: app_options.fullscreen.clone(),
         panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
+        enable_history,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -376,51 +372,27 @@ fn create_app(
         cc.storage,
     );
 
-    let query_map = &cc.integration_info.web_info.location.query_map;
-
-    if let Some(manifest_url) = &app_options.manifest_url {
-        app.set_examples_manifest_url(manifest_url.into());
-    } else {
-        for url in query_map.get("manifest_url").into_iter().flatten() {
-            app.set_examples_manifest_url(url.clone());
-        }
+    if enable_history {
+        install_popstate_listener(&mut app).ok_or_log_js_error();
     }
 
-    if let Some(url) = &app_options.url {
+    if let Some(manifest_url) = app_options.manifest_url {
+        app.set_examples_manifest_url(manifest_url);
+    }
+
+    if let Some(urls) = app_options.url {
         let follow_if_http = false;
-        if let Some(receiver) =
-            url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
-        {
-            app.add_receiver(receiver);
+        for url in urls.into_inner() {
+            if let Some(receiver) =
+                url_to_receiver(cc.egui_ctx.clone(), follow_if_http, url).ok_or_log_error()
+            {
+                app.command_sender
+                    .send_system(SystemCommand::AddReceiver(receiver));
+            }
         }
-    } else {
-        translate_query_into_commands(&cc.egui_ctx, &app.command_sender);
     }
-
-    install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone());
 
     Ok(app)
-}
-
-/// Listen for `popstate` event, which comes when the user hits the back/forward buttons.
-///
-/// <https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event>
-fn install_popstate_listener(egui_ctx: egui::Context, command_sender: CommandSender) -> Option<()> {
-    let window = web_sys::window()?;
-    let closure = Closure::wrap(Box::new(move |_: web_sys::Event| {
-        translate_query_into_commands(&egui_ctx, &command_sender);
-    }) as Box<dyn FnMut(_)>);
-    window
-        .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
-        .map_err(|err| {
-            format!(
-                "Failed to add popstate event listener: {}",
-                string_from_js_value(err)
-            )
-        })
-        .ok_or_log_error()?;
-    closure.forget();
-    Some(())
 }
 
 /// Used to set the "email" property in the analytics config,
@@ -434,39 +406,4 @@ pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
     config.save().unwrap();
-}
-
-fn is_in_notebook(info: &eframe::IntegrationInfo) -> bool {
-    get_query_bool(info, "notebook", false)
-}
-
-fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
-    get_query_bool(info, "persist", true)
-}
-
-fn get_query_bool(info: &eframe::IntegrationInfo, key: &str, default: bool) -> bool {
-    let default_int = default as i32;
-
-    if let Some(values) = info.web_info.location.query_map.get(key) {
-        if values.len() == 1 {
-            match values[0].as_str() {
-                "0" => false,
-                "1" => true,
-                other => {
-                    re_log::warn!(
-                            "Unexpected value for '{key}' query: {other:?}. Expected either '0' or '1'. Defaulting to '{default_int}'."
-                        );
-                    default
-                }
-            }
-        } else {
-            re_log::warn!(
-                "Found {} values for '{key}' query. Expected one or none. Defaulting to '{default_int}'.",
-                values.len()
-            );
-            default
-        }
-    } else {
-        default
-    }
 }

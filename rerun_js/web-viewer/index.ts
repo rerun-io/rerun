@@ -1,28 +1,36 @@
-import type { WebHandle } from "./re_viewer.js";
+import type { WebHandle, wasm_bindgen } from "./re_viewer";
 
-interface AppOptions {
-  url?: string;
-  manifest_url?: string;
-  render_backend?: Backend;
-  hide_welcome_screen?: boolean;
-  panel_state_overrides?: Partial<{
-    [K in Panel]: PanelState;
-  }>;
-  fullscreen?: FullscreenOptions;
+let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
+let _wasm_module: WebAssembly.Module | null = null;
+
+/*<INLINE-MARKER>*/
+async function fetch_viewer_js() {
+  return (await import("./re_viewer")).default;
 }
 
-type WebHandleConstructor = {
-  new (app_options?: AppOptions): WebHandle;
-};
+async function fetch_viewer_wasm() {
+  return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
+}
+/*<INLINE-MARKER>*/
 
-let WebHandleConstructor: WebHandleConstructor | null = null;
-
-async function load(): Promise<WebHandleConstructor> {
-  if (WebHandleConstructor) {
-    return WebHandleConstructor;
+async function load(): Promise<typeof wasm_bindgen.WebHandle> {
+  // instantiate wbg globals+module for every invocation of `load`,
+  // but don't load the JS/Wasm source every time
+  if (!get_wasm_bindgen || !_wasm_module) {
+    [get_wasm_bindgen, _wasm_module] = await Promise.all([
+      fetch_viewer_js(),
+      WebAssembly.compileStreaming(fetch_viewer_wasm()),
+    ]);
   }
-  WebHandleConstructor = (await import("./re_viewer.js")).WebHandle;
-  return WebHandleConstructor;
+  let bindgen = get_wasm_bindgen();
+  await bindgen(_wasm_module);
+  return class extends bindgen.WebHandle {
+    free() {
+      super.free();
+      // @ts-expect-error
+      bindgen.deinit();
+    }
+  };
 }
 
 let _minimize_current_fullscreen_viewer: (() => void) | null = null;
@@ -39,14 +47,31 @@ export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
 
-interface WebViewerOptions {
+export interface WebViewerOptions {
   manifest_url?: string;
   render_backend?: Backend;
   hide_welcome_screen?: boolean;
   allow_fullscreen?: boolean;
+  enable_history?: boolean;
 
   width?: string;
   height?: string;
+}
+
+// `AppOptions` and `WebViewerOptions` must be compatible
+// otherwise we need to restructure how we pass options to the viewer
+
+/** @private */
+export interface AppOptions extends WebViewerOptions {
+  url?: string;
+  manifest_url?: string;
+  render_backend?: Backend;
+  hide_welcome_screen?: boolean;
+  panel_state_overrides?: Partial<{
+    [K in Panel]: PanelState;
+  }>;
+  fullscreen?: FullscreenOptions;
+  enable_history?: boolean;
 }
 
 interface FullscreenOptions {
@@ -76,8 +101,14 @@ type EventsWithoutValue = {
 
 type Cancel = () => void;
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class WebViewer {
   #id = randomId();
+  // NOTE: Using the handle requires wrapping all calls to its methods in try/catch.
+  //       On failure, call `this.stop` to prevent a memory leak, then re-throw the error.
   #handle: WebHandle | null = null;
   #canvas: HTMLCanvasElement | null = null;
   #state: "ready" | "starting" | "stopped" = "stopped";
@@ -115,6 +146,11 @@ export class WebViewer {
     this.#canvas.id = this.#id;
     parent.append(this.#canvas);
 
+    // This yield appears to be necessary to ensure that the canvas is attached to the DOM
+    // and visible. Without it we get occasionally get a panic about a failure to find a canvas
+    // element with the given ID.
+    await delay(0);
+
     let WebHandle_class = await load();
     if (this.#state !== "starting") return;
 
@@ -126,12 +162,13 @@ export class WebViewer {
       : undefined;
 
     this.#handle = new WebHandle_class({ ...options, fullscreen });
-    await this.#handle.start(this.#canvas.id);
-    if (this.#state !== "starting") return;
-
-    if (this.#handle.has_panicked()) {
-      throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
+    try {
+      await this.#handle.start(this.#canvas.id);
+    } catch (e) {
+      this.stop();
+      throw e;
     }
+    if (this.#state !== "starting") return;
 
     this.#state = "ready";
     this.#dispatch_event("ready");
@@ -260,11 +297,14 @@ export class WebViewer {
     if (!this.#handle) {
       throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
     }
+
     const urls = Array.isArray(rrd) ? rrd : [rrd];
     for (const url of urls) {
-      this.#handle.add_receiver(url, options.follow_if_http);
-      if (this.#handle.has_panicked()) {
-        throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
+      try {
+        this.#handle.add_receiver(url, options.follow_if_http);
+      } catch (e) {
+        this.stop();
+        throw e;
       }
     }
   }
@@ -280,11 +320,14 @@ export class WebViewer {
     if (!this.#handle) {
       throw new Error(`attempted to close \`${rrd}\` in a stopped viewer`);
     }
+
     const urls = Array.isArray(rrd) ? rrd : [rrd];
     for (const url of urls) {
-      this.#handle.remove_receiver(url);
-      if (this.#handle.has_panicked()) {
-        throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
+      try {
+        this.#handle.remove_receiver(url);
+      } catch (e) {
+        this.stop();
+        throw e;
       }
     }
   }
@@ -303,8 +346,14 @@ export class WebViewer {
     this.#state = "stopped";
 
     this.#canvas?.remove();
-    this.#handle?.destroy();
-    this.#handle?.free();
+
+    try {
+      this.#handle?.destroy();
+      this.#handle?.free();
+    } catch (e) {
+      this.#handle = null;
+      throw e;
+    }
 
     this.#canvas = null;
     this.#handle = null;
@@ -325,25 +374,48 @@ export class WebViewer {
         `attempted to open channel \"${channel_name}\" in a stopped web viewer`,
       );
     }
+
     const id = crypto.randomUUID();
-    this.#handle.open_channel(id, channel_name);
+
+    try {
+      this.#handle.open_channel(id, channel_name);
+    } catch (e) {
+      this.stop();
+      throw e;
+    }
+
     const on_send = (/** @type {Uint8Array} */ data: Uint8Array) => {
       if (!this.#handle) {
         throw new Error(
           `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
         );
       }
-      this.#handle.send_rrd_to_channel(id, data);
+
+      try {
+        this.#handle.send_rrd_to_channel(id, data);
+      } catch (e) {
+        this.stop();
+        throw e;
+      }
     };
+
     const on_close = () => {
       if (!this.#handle) {
         throw new Error(
           `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
         );
       }
-      this.#handle.close_channel(id);
+
+      try {
+        this.#handle.close_channel(id);
+      } catch (e) {
+        this.stop();
+        throw e;
+      }
     };
+
     const get_state = () => this.#state;
+
     return new LogChannel(on_send, on_close, get_state);
   }
 
@@ -359,7 +431,13 @@ export class WebViewer {
         `attempted to set ${panel} panel to ${state} in a stopped web viewer`,
       );
     }
-    this.#handle.override_panel_state(panel, state);
+
+    try {
+      this.#handle.override_panel_state(panel, state);
+    } catch (e) {
+      this.stop();
+      throw e;
+    }
   }
 
   /**
@@ -373,7 +451,13 @@ export class WebViewer {
         `attempted to toggle panel overrides in a stopped web viewer`,
       );
     }
-    this.#handle.toggle_panel_overrides(value as boolean | undefined);
+
+    try {
+      this.#handle.toggle_panel_overrides(value as boolean | undefined);
+    } catch (e) {
+      this.stop();
+      throw e;
+    }
   }
 
   /**

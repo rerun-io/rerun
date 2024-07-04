@@ -46,7 +46,7 @@ class MagnificationFilter(Enum):
     """
 
 
-MagnificationFilterLike = Union[MagnificationFilter, Literal["nearest"] | Literal["linear"]]
+MagnificationFilterLike = Union[MagnificationFilter, Literal["nearest", "linear"]]
 MagnificationFilterArrayLike = Union[MagnificationFilterLike, Sequence[MagnificationFilterLike]]
 
 

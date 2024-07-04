@@ -6,16 +6,17 @@ use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
-    components::{ClassId, Color, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
@@ -77,13 +78,15 @@ impl Points2DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Points2DComponentData<'a>>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.positions.len();
 
@@ -106,9 +109,12 @@ impl Points2DVisualizer {
                 &ent_context.annotations,
             );
 
-            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            // Has not custom fallback for radius, so we use the default.
+            // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
+            let radii =
+                process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             {
                 let point_batch = point_builder
@@ -226,15 +232,12 @@ impl VisualizerSystem for Points2DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let positions = match results.get_dense::<Position2D>(resolver) {
+                let positions = match results.get_required_component_dense::<Position2D>(resolver) {
                     Some(positions) => positions?,
                     _ => return Ok(()),
                 };
@@ -277,10 +280,10 @@ impl VisualizerSystem for Points2DVisualizer {
                 );
 
                 self.process_data(
+                    ctx,
                     &mut point_builder,
                     &mut line_builder,
                     view_query,
-                    entity_path,
                     spatial_ctx,
                     data,
                 )
@@ -306,4 +309,16 @@ impl VisualizerSystem for Points2DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => []);
+impl TypedComponentFallbackProvider<Color> for Points2DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+impl TypedComponentFallbackProvider<DrawOrder> for Points2DVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
+        DrawOrder::DEFAULT_POINTS2D
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Points2DVisualizer => [Color, DrawOrder]);

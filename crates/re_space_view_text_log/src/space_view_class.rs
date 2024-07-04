@@ -268,7 +268,9 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
     if let Some((time_point, _)) = ctx.recording_store().row_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
-        re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);
+        if !entry.time.is_static() {
+            re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);
+        }
         None
     }
 }
@@ -361,39 +363,30 @@ fn table_ui(
             body.heterogeneous_rows(row_heights, |mut row| {
                 let entry = &entries[row.index()];
 
-                // NOTE: `try_from_props` is where we actually fetch data from the underlying
-                // store, which is a costly operation.
-                // Doing this here guarantees that it only happens for visible rows.
-                let Some(time_point) = get_time_point(ctx, entry) else {
-                    row.col(|ui| {
-                        ui.colored_label(
-                            egui::Color32::RED,
-                            "<failed to load TextLog from data store>",
-                        );
-                    });
-                    return;
-                };
-
                 // timeline(s)
+                let time_point = get_time_point(ctx, entry);
                 for timeline in &timelines {
                     row.col(|ui| {
-                        if let Some(row_time) = time_point.get(timeline).copied() {
-                            item_ui::time_button(ctx, ui, timeline, row_time);
+                        let row_time = time_point
+                            .as_ref()
+                            .and_then(|t| t.get(timeline))
+                            .copied()
+                            .unwrap_or(re_log_types::TimeInt::STATIC);
+                        item_ui::time_button(ctx, ui, timeline, row_time);
 
-                            if let Some(global_time) = global_time {
-                                if *timeline == &global_timeline {
-                                    #[allow(clippy::comparison_chain)]
-                                    if global_time < row_time {
-                                        // We've past the global time - it is thus above this row.
-                                        if current_time_y.is_none() {
-                                            current_time_y = Some(ui.max_rect().top());
-                                        }
-                                    } else if global_time == row_time {
-                                        // This row is exactly at the current time.
-                                        // We could draw the current time exactly onto this row, but that would look bad,
-                                        // so let's draw it under instead. It looks better in the "following" mode.
-                                        current_time_y = Some(ui.max_rect().bottom());
+                        if let Some(global_time) = global_time {
+                            if *timeline == &global_timeline {
+                                #[allow(clippy::comparison_chain)]
+                                if global_time < row_time {
+                                    // We've past the global time - it is thus above this row.
+                                    if current_time_y.is_none() {
+                                        current_time_y = Some(ui.max_rect().top());
                                     }
+                                } else if global_time == row_time {
+                                    // This row is exactly at the current time.
+                                    // We could draw the current time exactly onto this row, but that would look bad,
+                                    // so let's draw it under instead. It looks better in the "following" mode.
+                                    current_time_y = Some(ui.max_rect().bottom());
                                 }
                             }
                         }

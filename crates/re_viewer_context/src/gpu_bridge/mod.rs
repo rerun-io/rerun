@@ -182,7 +182,6 @@ pub fn render_image(
         },
         viewport_transformation: re_renderer::RectTransform::IDENTITY,
         pixels_per_point,
-        auto_size_config: Default::default(),
         outline_config: None,
     };
 

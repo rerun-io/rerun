@@ -90,13 +90,6 @@ from .view_coordinates import (
     ViewCoordinatesLike,
     ViewCoordinatesType,
 )
-from .visualizer_overrides import (
-    VisualizerOverrides,
-    VisualizerOverridesArrayLike,
-    VisualizerOverridesBatch,
-    VisualizerOverridesLike,
-    VisualizerOverridesType,
-)
 
 __all__ = [
     "AggregationPolicy",
@@ -277,9 +270,4 @@ __all__ = [
     "ViewCoordinatesBatch",
     "ViewCoordinatesLike",
     "ViewCoordinatesType",
-    "VisualizerOverrides",
-    "VisualizerOverridesArrayLike",
-    "VisualizerOverridesBatch",
-    "VisualizerOverridesLike",
-    "VisualizerOverridesType",
 ]

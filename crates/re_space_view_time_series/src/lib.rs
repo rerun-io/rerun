@@ -7,7 +7,6 @@
 
 mod aggregation;
 mod line_visualizer_system;
-mod overrides;
 mod point_visualizer_system;
 mod space_view_class;
 mod util;
@@ -35,7 +34,6 @@ pub(crate) fn plot_id(space_view_id: re_viewer_context::SpaceViewId) -> egui::Id
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
-    pub label: Option<Utf8>,
     pub color: egui::Color32,
 
     /// Radius of markers, or stroke radius for lines.
@@ -52,15 +50,11 @@ pub struct ScatterAttrs {
 impl PartialEq for PlotPointAttrs {
     fn eq(&self, rhs: &Self) -> bool {
         let Self {
-            label,
             color,
             radius_ui,
             kind,
         } = self;
-        label.eq(&rhs.label)
-            && color.eq(&rhs.color)
-            && radius_ui.total_cmp(&rhs.radius_ui).is_eq()
-            && kind.eq(&rhs.kind)
+        color.eq(&rhs.color) && radius_ui.total_cmp(&rhs.radius_ui).is_eq() && kind.eq(&rhs.kind)
     }
 }
 

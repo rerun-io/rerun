@@ -2,22 +2,27 @@ use std::collections::BTreeMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_space_view::diff_component_filter;
-use re_types::{archetypes::BarChart, components::Color, datatypes::TensorData};
+use re_space_view::{diff_component_filter, DataResultQuery as _};
+use re_types::{
+    archetypes::BarChart,
+    components::{self},
+    datatypes,
+};
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
-    ViewQuery, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartVisualizerSystem {
-    pub charts: BTreeMap<EntityPath, (TensorData, Option<Color>)>,
+    pub charts: BTreeMap<EntityPath, (datatypes::TensorData, components::Color)>,
 }
 
 impl IdentifiedViewSystem for BarChartVisualizerSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "BarChartView".into()
+        "BarChart".into()
     }
 }
 
@@ -25,9 +30,7 @@ struct BarChartVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter {
     fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_vector()
-        })
+        diff_component_filter(event, |tensor: &components::TensorData| tensor.is_vector())
     }
 }
 
@@ -43,37 +46,23 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        re_tracing::profile_function!();
+        let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            // TODO(#5607): what should happen if the promise is still pending?
-            let query = LatestAtQuery::new(query.timeline, query.latest_at);
+        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+            let results = data_result
+                .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
 
-            let tensor = ctx
-                .recording()
-                .latest_at_component::<re_types::components::TensorData>(
-                    &data_result.entity_path,
-                    &query,
-                );
+            let Some(tensor) = results.get_required_mono::<components::TensorData>() else {
+                continue;
+            };
 
-            let color = ctx
-                .recording()
-                .latest_at_component::<re_types::components::Color>(
-                    &data_result.entity_path,
-                    &query,
-                );
-
-            if let Some(tensor) = tensor {
-                if tensor.is_vector() {
-                    self.charts.insert(
-                        data_result.entity_path.clone(),
-                        (tensor.value.0.clone(), color.map(|c| c.value)),
-                    );
-                    // shallow clones
-                }
+            if tensor.is_vector() {
+                let color = results.get_mono_with_fallback();
+                self.charts
+                    .insert(data_result.entity_path.clone(), (tensor.0.clone(), color));
             }
         }
 
@@ -89,4 +78,10 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => []);
+impl TypedComponentFallbackProvider<components::Color> for BarChartVisualizerSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> components::Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(BarChartVisualizerSystem => [components::Color]);

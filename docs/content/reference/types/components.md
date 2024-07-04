@@ -43,7 +43,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
 * [`Position2D`](components/position2d.md): A position in 2D space.
 * [`Position3D`](components/position3d.md): A position in 3D space.
-* [`Radius`](components/radius.md): The radius of something, e.g. a point, in world-space units.
+* [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
@@ -61,5 +61,4 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
-* [`VisualizerOverrides`](components/visualizer_overrides.md): The name of a visualizer.
 

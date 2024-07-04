@@ -28,7 +28,7 @@ pub fn view_components_defaults_section_ui(
     let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
 
     let mut add_button_is_open = false;
-    let mut add_button = re_ui::HeaderMenuButton::new(&re_ui::icons::ADD, |ui| {
+    let mut add_button = re_ui::list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
         add_button_is_open = true;
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         add_popup_ui(
@@ -45,6 +45,12 @@ pub fn view_components_defaults_section_ui(
         add_button = add_button.enabled(false).disabled_hover_text(reason);
     }
 
+    let markdown = "# Component defaults\n
+This section lists default values for components in the scope of the present view. The visualizers \
+corresponding to this view's entities use these defaults when no per-entity store value or \
+override is specified.\n
+Click on the `+` button to add a new default value.";
+
     let body = |ui: &mut egui::Ui| {
         active_default_ui(
             ctx,
@@ -56,7 +62,10 @@ pub fn view_components_defaults_section_ui(
             db,
         );
     };
-    ui.large_collapsing_header_with_button("Component defaults", true, body, add_button);
+    ui.section_collapsing_header("Component defaults")
+        .button(add_button)
+        .help_markdown(markdown)
+        .show(ui, body);
 }
 
 fn active_default_ui(
@@ -83,7 +92,7 @@ fn active_default_ui(
         ui.spacing_mut().item_spacing.y = 0.0;
 
         if sorted_overrides.is_empty() {
-            ui.list_item_flat_noninteractive(LabelContent::new("(none)").weak(true));
+            ui.list_item_flat_noninteractive(LabelContent::new("none").weak(true).italics(true));
         }
 
         for component_name in sorted_overrides {
@@ -95,7 +104,8 @@ fn active_default_ui(
                 .get_by_identifier(*visualizer_identifier)
             else {
                 re_log::warn!(
-                    "Failed to resolve visualizer identifier {visualizer_identifier}, to a visualizer implementation"
+                    "Failed to resolve visualizer identifier {visualizer_identifier}, to a \
+                    visualizer implementation"
                 );
                 continue;
             };

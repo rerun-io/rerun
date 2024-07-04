@@ -210,6 +210,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <VisualizerOverrides as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
+                placeholder: Some(VisualizerOverrides::default().to_arrow()?),
+            },
+        ),
+        (
             <AggregationPolicy as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
@@ -422,7 +429,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Radius as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The radius of something, e.g. a point, in world-space units.",
+                docstring_md: "The radius of something, e.g. a point.\n\nInternally, positive values indicate scene units, whereas negative values\nare interpreted as UI points.\n\nUI points are independent of zooming in Views, but are sensitive to the application UI scaling.\nat 100% UI scaling, UI points are equal to pixels\nThe Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.",
                 placeholder: Some(Radius::default().to_arrow()?),
             },
         ),
@@ -543,13 +550,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean? Is this right-handed or left-handed?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
                 placeholder: Some(ViewCoordinates::default().to_arrow()?),
-            },
-        ),
-        (
-            <VisualizerOverrides as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The name of a visualizer.",
-                placeholder: Some(VisualizerOverrides::default().to_arrow()?),
             },
         ),
     ];

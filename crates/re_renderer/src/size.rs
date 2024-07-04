@@ -1,9 +1,8 @@
-/// A size of something in either world-units, screen-units, or unsized.
+/// A size of something in either scene units or ui points.
 ///
 /// Implementation:
 /// * If positive, this is in scene units.
-/// * If negative, this is in points.
-/// * If NaN, auto-size it.
+/// * If negative, this is in ui points.
 ///
 /// Resolved on-the-fly in shader code. See shader/utils/size.wgsl
 #[repr(C)]
@@ -12,18 +11,18 @@
 pub struct Size(pub f32);
 
 impl Size {
-    /// Automatically sized, based on a view builder setting.
-    pub const AUTO: Self = Self(f32::MAX);
+    /// Zero radius.
+    pub const ZERO: Self = Self(0.0);
 
-    /// Like [`Size::AUTO`], but larger by some small factor (~2).
-    pub const AUTO_LARGE: Self = Self(f32::MIN);
+    /// Radius of length 1 in ui points.
+    pub const ONE_UI_POINT: Self = Self(-1.0);
 
     /// Creates a new size in scene units.
     ///
     /// Values passed must be finite positive.
     #[inline]
-    pub fn new_scene(size: f32) -> Self {
-        debug_assert!((0.0..f32::MAX).contains(&size), "Bad size: {size}");
+    pub fn new_scene_units(size: f32) -> Self {
+        debug_assert!(0.0 <= size, "Bad size: {size}");
         Self(size)
     }
 
@@ -31,27 +30,23 @@ impl Size {
     ///
     /// Values passed must be finite positive.
     #[inline]
-    pub fn new_points(size: f32) -> Self {
-        debug_assert!((0.0..f32::MAX).contains(&size), "Bad size: {size}");
+    pub fn new_ui_points(size: f32) -> Self {
+        debug_assert!(0.0 <= size, "Bad size: {size}");
         Self(-size)
-    }
-
-    /// Returns true if the size is an automatically determined size ([`Self::AUTO`] or [`Self::AUTO_LARGE`]).
-    #[inline]
-    pub fn is_auto(&self) -> bool {
-        self.0 <= f32::MIN || self.0 >= f32::MAX
     }
 
     /// Get the scene-size of this, if stored as a scene size.
     #[inline]
-    pub fn scene(&self) -> Option<f32> {
-        (0.0..f32::MAX).contains(&self.0).then_some(self.0)
+    pub fn scene_units(&self) -> Option<f32> {
+        // Ensure negative zero is treated as a point size.
+        self.0.is_sign_positive().then_some(self.0)
     }
 
     /// Get the point size of this, if stored as a point size.
     #[inline]
-    pub fn points(&self) -> Option<f32> {
-        (self.0 > f32::MIN && self.0 <= 0.0).then_some(-self.0)
+    pub fn ui_points(&self) -> Option<f32> {
+        // Ensure negative zero is treated as a point size.
+        self.0.is_sign_negative().then_some(-self.0)
     }
 }
 
@@ -91,5 +86,37 @@ impl From<Size> for SizeHalf {
     #[inline]
     fn from(size: Size) -> Self {
         Self(half::f16::from_f32(size.0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Size;
+
+    #[test]
+    fn scene_point_distinction() {
+        let size = Size(1.0);
+        assert_eq!(size.scene_units(), Some(1.0));
+        assert_eq!(size.ui_points(), None);
+
+        let size = Size(-1.0);
+        assert_eq!(size.scene_units(), None);
+        assert_eq!(size.ui_points(), Some(1.0));
+
+        let size = Size(f32::INFINITY);
+        assert_eq!(size.scene_units(), Some(f32::INFINITY));
+        assert_eq!(size.ui_points(), None);
+
+        let size = Size(f32::NEG_INFINITY);
+        assert_eq!(size.scene_units(), None);
+        assert_eq!(size.ui_points(), Some(f32::INFINITY));
+
+        let size = Size(0.0);
+        assert_eq!(size.scene_units(), Some(0.0));
+        assert_eq!(size.ui_points(), None);
+
+        let size = Size(-0.0);
+        assert_eq!(size.scene_units(), None);
+        assert_eq!(size.ui_points(), Some(0.0));
     }
 }

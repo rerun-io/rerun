@@ -2,6 +2,8 @@
 //!
 //! TODO(ab): provide some top-level documentation here.
 
+mod button_content;
+mod item_button;
 mod label_content;
 #[allow(clippy::module_inception)]
 mod list_item;
@@ -9,6 +11,8 @@ mod other_contents;
 mod property_content;
 mod scope;
 
+pub use button_content::*;
+pub use item_button::*;
 pub use label_content::*;
 pub use list_item::*;
 pub use other_contents::*;
@@ -75,4 +79,15 @@ pub trait ListItemContent {
     fn desired_width(&self, _ui: &egui::Ui) -> DesiredWidth {
         DesiredWidth::AtLeast(0.0)
     }
+}
+
+/// A button that can be used by a list item.
+///
+/// The button is expected to have a size of [`crate::DesignTokens::small_icon_size`].
+///
+/// How/where the button is displayed is up to the [`crate::list_item::ListItemContent`]
+/// implementation.
+pub trait ItemButton {
+    /// Draw the button.
+    fn ui(self: Box<Self>, ui: &mut egui::Ui) -> egui::Response;
 }

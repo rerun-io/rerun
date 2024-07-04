@@ -30,6 +30,8 @@ re_space_view_spatial.workspace = true
 re_space_view_time_series.workspace = true
 re_space_view.workspace = true
 re_tracing.workspace = true
+# TODO(jleibs): Remove this once VisualizerOverrides is gone
+re_types_blueprint.workspace = true
 re_types_core.workspace = true
 re_types.workspace = true
 re_ui.workspace = true

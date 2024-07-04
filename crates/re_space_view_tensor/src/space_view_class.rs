@@ -633,7 +633,7 @@ fn selectors_ui(
             if ui
                 .add(
                     egui::DragValue::new(selector_value)
-                        .clamp_range(0..=size - 1)
+                        .range(0..=size - 1)
                         .speed(0.5),
                 )
                 .on_hover_text(format!(

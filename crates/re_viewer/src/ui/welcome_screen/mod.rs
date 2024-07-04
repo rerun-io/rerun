@@ -23,6 +23,7 @@ impl WelcomeScreen {
         ui: &mut egui::Ui,
         command_sender: &re_viewer_context::CommandSender,
         welcome_screen_state: &WelcomeScreenState,
+        is_history_enabled: bool,
     ) {
         if welcome_screen_state.opacity <= 0.0 {
             return;
@@ -51,8 +52,12 @@ impl WelcomeScreen {
                     if welcome_screen_state.hide {
                         no_data_ui::no_data_ui(ui);
                     } else {
-                        self.example_page
-                            .ui(ui, command_sender, &welcome_section_ui);
+                        self.example_page.ui(
+                            ui,
+                            command_sender,
+                            &welcome_section_ui,
+                            is_history_enabled,
+                        );
                     }
                 });
             });

@@ -23,7 +23,7 @@
 namespace rerun::archetypes {
     /// **Archetype**: A 3D point cloud with positions and optional colors, radii, labels, etc.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ### Randomly distributed 3D points with varying color and radius
     /// ![image](https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png)
@@ -61,6 +61,41 @@ namespace rerun::archetypes {
     ///     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
     ///
     ///     rec.log("random", rerun::Points3D(points3d).with_colors(colors).with_radii(radii));
+    /// }
+    /// ```
+    ///
+    /// ### Log points with radii given in UI points
+    /// ![image](https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_ui_radius");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     // Two blue points with scene unit radii of 0.1 and 0.3.
+    ///     rec.log(
+    ///         "scene_units",
+    ///         rerun::Points3D({{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})
+    ///             // By default, radii are interpreted as world-space units.
+    ///             .with_radii({0.1f, 0.3f})
+    ///             .with_colors(rerun::Color(0, 0, 255))
+    ///     );
+    ///
+    ///     // Two red points with ui point radii of 40 and 60.
+    ///     // UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    ///     // For 100% ui scaling, UI points are equal to pixels.
+    ///     rec.log(
+    ///         "ui_points",
+    ///         rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}})
+    ///             // rerun::Radius::ui_points produces radii that the viewer interprets as given in ui points.
+    ///             .with_radii({
+    ///                 rerun::Radius::ui_points(40.0f),
+    ///                 rerun::Radius::ui_points(60.0f),
+    ///             })
+    ///             .with_colors(rerun::Color(255, 0, 0))
+    ///     );
     /// }
     /// ```
     struct Points3D {

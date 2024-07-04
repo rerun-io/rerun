@@ -7,20 +7,21 @@ mod color;
 mod datatype_editors;
 mod marker_shape;
 mod material;
+mod radius;
 mod range1d;
 mod response_utils;
 mod visual_bounds2d;
 
 use datatype_editors::{
-    edit_bool, edit_bool_raw, edit_enum, edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw,
-    edit_f32_zero_to_one, edit_singleline_string,
+    edit_bool, edit_bool_raw, edit_enum, edit_f32_min_to_max_float_raw, edit_f32_zero_to_max,
+    edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one, edit_singleline_string,
 };
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, FillRatio, GammaCorrection,
-        ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity, Radius, StrokeWidth,
-        Text,
+        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, DrawOrder, FillRatio,
+        GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity,
+        StrokeWidth, Text,
     },
     Loggable as _,
 };
@@ -35,6 +36,8 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui(color::edit_color_ui);
     registry.add_display_ui(Color::name(), Box::new(color::display_color_ui));
 
+    registry.add_singleline_editor_ui(radius::edit_radius_ui);
+
     registry.add_singleline_editor_ui(marker_shape::edit_marker_shape_ui);
     registry.add_singleline_editor_ui(material::edit_material_ui);
     registry.add_singleline_editor_ui(range1d::edit_range1d);
@@ -44,9 +47,10 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_editor_ui::<GammaCorrection>(edit_f32_zero_to_max);
 
+    registry.add_singleline_editor_ui::<DrawOrder>(edit_f32_min_to_max_float_raw);
+
     registry.add_singleline_editor_ui::<DepthMeter>(edit_f32_zero_to_max_float_raw);
     registry.add_singleline_editor_ui::<MarkerSize>(edit_f32_zero_to_max_float_raw);
-    registry.add_singleline_editor_ui::<Radius>(edit_f32_zero_to_max_float_raw);
     registry.add_singleline_editor_ui::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
 
     registry.add_singleline_editor_ui::<Opacity>(edit_f32_zero_to_one);

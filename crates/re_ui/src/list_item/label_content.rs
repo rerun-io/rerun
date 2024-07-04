@@ -14,7 +14,7 @@ pub struct LabelContent<'a> {
     italics: bool,
 
     label_style: LabelStyle,
-    icon_fn: Option<Box<dyn FnOnce(&egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
+    icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
     always_show_buttons: bool,
 
@@ -115,7 +115,7 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn with_icon_fn(
         mut self,
-        icon_fn: impl FnOnce(&egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+        icon_fn: impl FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
     ) -> Self {
         self.icon_fn = Some(Box::new(icon_fn));
         self
@@ -131,6 +131,8 @@ impl<'a> LabelContent<'a> {
     ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
     ///   used, the item will only allocate the width needed for the text and icons if any.
     /// - A right to left layout is used, so the right-most button must be added first.
+    // TODO(#6191): This should reconciled this with the `ItemButton` abstraction by using something
+    //              like `Vec<Box<dyn ItemButton>>` instead of a generic closure.
     #[inline]
     pub fn with_buttons(
         mut self,
@@ -256,6 +258,7 @@ impl ListItemContent for LabelContent<'_> {
         context.response.widget_info(|| {
             egui::WidgetInfo::selected(
                 egui::WidgetType::SelectableLabel,
+                ui.is_enabled(),
                 context.list_item.selected,
                 galley.text(),
             )

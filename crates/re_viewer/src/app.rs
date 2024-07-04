@@ -80,6 +80,22 @@ pub struct StartupOptions {
 
     /// Default overrides for state of top/side/bottom panels.
     pub panel_state_overrides: PanelStateOverrides,
+
+    /// Whether or not to enable usage of the `History` API on web.
+    ///
+    /// It is disabled by default.
+    ///
+    /// This should only be enabled when it is acceptable for `rerun`
+    /// to push its own entries into browser history.
+    ///
+    /// That only makes sense if it has "taken over" a page, and is
+    /// the only thing on that page. If you are embedding multiple
+    /// viewers onto the same page, then it's better to turn this off.
+    ///
+    /// We use browser history in a limited way to track the currently
+    /// open example recording, see [`crate::history`].
+    #[cfg(target_arch = "wasm32")]
+    pub enable_history: bool,
 }
 
 impl Default for StartupOptions {
@@ -107,6 +123,9 @@ impl Default for StartupOptions {
             fullscreen_options: Default::default(),
 
             panel_state_overrides: Default::default(),
+
+            #[cfg(target_arch = "wasm32")]
+            enable_history: false,
         }
     }
 }
@@ -126,6 +145,9 @@ pub struct App {
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
     screenshotter: crate::screenshotter::Screenshotter,
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) popstate_listener: Option<crate::history::PopstateListener>,
 
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
@@ -271,6 +293,9 @@ impl App {
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx,
             screenshotter,
+
+            #[cfg(target_arch = "wasm32")]
+            popstate_listener: None,
 
             #[cfg(not(target_arch = "wasm32"))]
             profiler: Default::default(),
@@ -945,6 +970,11 @@ impl App {
                     if let Some(store_view) = store_context {
                         let entity_db = store_view.recording;
 
+                        #[cfg(target_arch = "wasm32")]
+                        let is_history_enabled = self.startup_options.enable_history;
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let is_history_enabled = false;
+
                         self.state.show(
                             app_blueprint,
                             ui,
@@ -960,6 +990,7 @@ impl App {
                                 hide: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
+                            is_history_enabled,
                         );
                     }
                     render_ctx.before_submit();
@@ -1462,7 +1493,7 @@ impl eframe::App for App {
         }
 
         #[cfg(target_arch = "wasm32")]
-        {
+        if self.startup_options.enable_history {
             // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
             let back_pressed =
                 egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
@@ -1470,10 +1501,10 @@ impl eframe::App for App {
                 egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
 
             if back_pressed {
-                crate::web_tools::go_back();
+                crate::history::go_back();
             }
             if fwd_pressed {
-                crate::web_tools::go_forward();
+                crate::history::go_forward();
             }
         }
 

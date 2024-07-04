@@ -36,20 +36,21 @@ table DepthImage (
   /// and a range of up to ~65 meters (2^16 / 1000).
   meter: rerun.components.DepthMeter ("attr.rerun.component_optional", nullable, order: 3100);
 
-  /// An optional floating point value that specifies the 2D drawing order.
-  ///
-  /// Objects with higher values are drawn on top of those with lower values.
-  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3200);
-
   /// Colormap to use for rendering the depth image.
   ///
   /// If not set, the depth image will be rendered using the Turbo colormap.
-  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 3300);
+  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Scale the radii of the points in the point cloud generated from this image.
   ///
   /// A fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor
   /// if it is at the same depth, leaving no gaps.
   /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
-  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3400);
+  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3300);
+
+  /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
+  ///
+  /// Objects with higher values are drawn on top of those with lower values.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3400);
+
 }

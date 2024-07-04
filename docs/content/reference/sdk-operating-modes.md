@@ -64,7 +64,7 @@ Streams all logging data into an `.rrd` file on disk, which can then be loaded i
 
 To view the saved file, use `rerun path/to/file.rrd`.
 
-⚠️  [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
+⚠️ [RRD files are not yet stable across different versions!](https://github.com/rerun-io/rerun/issues/6410) ⚠️
 
 #### C++
 Use `RecordingStream::save`.

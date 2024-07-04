@@ -37,13 +37,7 @@ pub struct FrameUniformBuffer {
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
-    pub tan_half_fov: wgpu_buffer_types::Vec2,
-
-    // Size used for all point radii given with Size::AUTO.
-    pub auto_size_points: f32,
-
-    // Size used for all line radii given with Size::AUTO.
-    pub auto_size_lines: f32,
+    pub tan_half_fov: wgpu_buffer_types::Vec2RowPadded,
 
     /// re_renderer defined device tier.
     pub device_tier: wgpu_buffer_types::U32RowPadded,

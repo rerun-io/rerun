@@ -1,6 +1,5 @@
 use itertools::Itertools as _;
-use re_entity_db::EntityPath;
-use re_log_types::{Instance, RowId, TimeInt};
+use re_log_types::{hash::Hash64, Instance, RowId, TimeInt};
 use re_query::range_zip_1x7;
 use re_renderer::renderer::MeshInstance;
 use re_renderer::RenderContext;
@@ -17,7 +16,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialSpaceViewKind,
@@ -39,6 +38,7 @@ impl Default for Mesh3DVisualizer {
 
 struct Mesh3DComponentData<'a> {
     index: (TimeInt, RowId),
+    query_result_hash: Hash64,
 
     vertex_positions: &'a [Position3D],
     vertex_normals: &'a [Vector3D],
@@ -60,10 +60,11 @@ impl Mesh3DVisualizer {
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<MeshInstance>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let primary_row_id = data.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
@@ -79,6 +80,7 @@ impl Mesh3DVisualizer {
             let mesh = ctx.viewer_ctx.cache.entry(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                    query_result_hash: data.query_result_hash,
                     media_type: None,
                 };
 
@@ -176,18 +178,16 @@ impl VisualizerSystem for Mesh3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let vertex_positions = match results.get_dense::<Position3D>(resolver) {
-                    Some(positions) => positions?,
-                    _ => return Ok(()),
-                };
+                let vertex_positions =
+                    match results.get_required_component_dense::<Position3D>(resolver) {
+                        Some(positions) => positions?,
+                        _ => return Ok(()),
+                    };
 
                 let vertex_normals = results.get_or_empty_dense(resolver)?;
                 let vertex_colors = results.get_or_empty_dense(resolver)?;
@@ -196,6 +196,8 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let mesh_materials = results.get_or_empty_dense(resolver)?;
                 let albedo_textures = results.get_or_empty_dense(resolver)?;
                 let class_ids = results.get_or_empty_dense(resolver)?;
+
+                let query_result_hash = results.query_result_hash();
 
                 let data = range_zip_1x7(
                     vertex_positions.range_indexed(),
@@ -221,6 +223,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     )| {
                         Mesh3DComponentData {
                             index,
+                            query_result_hash,
                             vertex_positions,
                             vertex_normals: vertex_normals.unwrap_or_default(),
                             vertex_colors: vertex_colors.unwrap_or_default(),
@@ -233,14 +236,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    ctx,
-                    render_ctx,
-                    &mut instances,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, render_ctx, &mut instances, spatial_ctx, data);
                 Ok(())
             },
         )?;

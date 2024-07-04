@@ -21,9 +21,7 @@ use re_types::{
 };
 use re_types::{components::Colormap, tensor_data::DecodedTensor};
 
-use crate::{
-    gpu_bridge::colormap::colormap_to_re_renderer, Annotations, DefaultColor, TensorStats,
-};
+use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, TensorStats};
 
 use super::{get_or_create_texture, try_get_or_create_texture};
 
@@ -257,7 +255,8 @@ fn class_id_tensor_to_gpu(
                 let color = annotations
                     .resolved_class_description(Some(ClassId::from(id as u16)))
                     .annotation_info()
-                    .color(None, DefaultColor::TransparentBlack);
+                    .color(None)
+                    .unwrap_or(re_renderer::Color32::TRANSPARENT);
                 color.to_array() // premultiplied!
             })
             .collect();

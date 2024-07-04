@@ -9,11 +9,10 @@ use re_types::{
     Archetype as _, Loggable,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewQuery, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::overrides::fallback_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
@@ -68,7 +67,7 @@ impl VisualizerSystem for SeriesLineSystem {
 
 impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
-        fallback_color(ctx.target_entity_path)
+        auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
@@ -78,7 +77,16 @@ impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth]);
+impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
+        ctx.target_entity_path
+            .last()
+            .map(|part| part.ui_string().into())
+            .unwrap_or_default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name]);
 
 impl SeriesLineSystem {
     fn load_scalars(
@@ -160,7 +168,6 @@ impl SeriesLineSystem {
             time: 0,
             value: 0.0,
             attrs: PlotPointAttrs {
-                label: None,
                 color: fallback_color.into(),
                 radius_ui: 0.5 * fallback_stroke_width.0,
                 kind: PlotSeriesKind::Continuous,
@@ -168,7 +175,6 @@ impl SeriesLineSystem {
         };
 
         let mut points;
-        let mut series_name = Default::default();
 
         let time_range = determine_time_range(
             view_query.latest_at,
@@ -199,7 +205,7 @@ impl SeriesLineSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalars) = results.get_dense::<Scalar>(resolver) else {
+            let Some(all_scalars) = results.get_required_component_dense::<Scalar>(resolver) else {
                 return Ok(());
             };
 
@@ -313,21 +319,16 @@ impl SeriesLineSystem {
             }
 
             // Extract the series name
-            // TODO(jleibs): Handle Err values.
-            if let Ok(all_series_name) = results.get_or_empty_dense::<Name>(resolver) {
-                if !matches!(
-                    all_series_name.status(),
-                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                ) {
-                    // TODO(#5607): what should happen if the promise is still pending?
-                }
-
-                series_name = all_series_name
-                    .range_data(all_scalars_entry_range.clone())
-                    .next()
-                    .and_then(|name| name.first())
-                    .map(|name| name.0.clone());
-            }
+            let series_name = results
+                .get_or_empty_dense::<Name>(resolver)
+                .ok()
+                .and_then(|all_series_name| {
+                    all_series_name
+                        .range_data(all_scalars_entry_range.clone())
+                        .next()
+                        .and_then(|name| name.first().cloned())
+                })
+                .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
@@ -348,7 +349,7 @@ impl SeriesLineSystem {
                 points,
                 ctx.recording_store(),
                 view_query,
-                series_name,
+                &series_name,
                 aggregator,
                 all_series,
             );

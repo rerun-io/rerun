@@ -4,8 +4,7 @@ use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_ui::{
-    image_meaning_for_entity, item_ui, show_zoomed_image_region,
-    show_zoomed_image_region_area_outline, DataUi,
+    item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi,
 };
 use re_format::format_f32;
 use re_log_types::Instance;
@@ -25,22 +24,19 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
+use crate::eye::EyeMode;
 use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
-    visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
+    visualizers::{
+        CamerasVisualizer, DepthImageVisualizer, ImageVisualizer, SegmentationImageVisualizer,
+        UiLabel, UiLabelTarget,
+    },
 };
 use crate::{contexts::PrimitiveCounter, scene_bounding_boxes::SceneBoundingBoxes};
-use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
 
 use super::{eye::Eye, ui_3d::View3DState};
-
-/// Default auto point radius in UI points.
-const AUTO_POINT_RADIUS: f32 = 1.5;
-
-/// Default auto line radius in UI points.
-const AUTO_LINE_RADIUS: f32 = 1.5;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -75,9 +71,6 @@ pub struct SpatialSpaceViewState {
 
     pub(super) state_3d: View3DState,
 
-    /// Size of automatically sized objects. None if it wasn't configured.
-    auto_size_config: re_renderer::AutoSizeConfig,
-
     /// Pinhole component logged at the origin if any.
     pub pinhole_at_origin: Option<Pinhole>,
 }
@@ -108,26 +101,12 @@ impl SpatialSpaceViewState {
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        self.num_non_segmentation_images_last_frame = system_output
-            .view_systems
-            .get::<ImageVisualizer>()?
-            .images
-            .iter()
-            .filter(|i| i.meaning != TensorDataMeaning::ClassId)
-            .count();
+        let view_systems = &system_output.view_systems;
+        let num_images = view_systems.get::<ImageVisualizer>()?.images.len();
+        let num_depth_images = view_systems.get::<DepthImageVisualizer>()?.images.len();
+        self.num_non_segmentation_images_last_frame = num_images + num_depth_images;
 
         Ok(())
-    }
-
-    pub fn auto_size_config(&self) -> re_renderer::AutoSizeConfig {
-        let mut config = self.auto_size_config;
-        if config.point_radius.is_auto() {
-            config.point_radius = re_renderer::Size::new_points(AUTO_POINT_RADIUS);
-        }
-        if config.line_radius.is_auto() {
-            config.line_radius = re_renderer::Size::new_points(AUTO_LINE_RADIUS);
-        }
-        config
     }
 
     pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
@@ -142,42 +121,6 @@ impl SpatialSpaceViewState {
                 ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
             }
         });
-        ui.end_row();
-    }
-
-    /// Default sizes of points and lines.
-    pub fn default_sizes_ui(&mut self, ui: &mut egui::Ui) {
-        let auto_size_world =
-            auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
-
-        ui.grid_left_hand_label("Default size");
-
-        egui::Grid::new("default_sizes")
-            .num_columns(2)
-            .show(ui, |ui| {
-                ui.grid_left_hand_label("Point radius")
-                    .on_hover_text("Point radius used whenever not explicitly specified");
-                ui.push_id("points", |ui| {
-                    size_ui(
-                        ui,
-                        2.0,
-                        auto_size_world,
-                        &mut self.auto_size_config.point_radius,
-                    );
-                });
-                ui.end_row();
-
-                ui.grid_left_hand_label("Line radius")
-                    .on_hover_text("Line radius used whenever not explicitly specified");
-                size_ui(
-                    ui,
-                    1.5,
-                    auto_size_world,
-                    &mut self.auto_size_config.line_radius,
-                );
-                ui.end_row();
-            });
-
         ui.end_row();
     }
 
@@ -217,66 +160,6 @@ impl SpatialSpaceViewState {
                 ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
                 eye.set_mode(mode);
             });
-        }
-    }
-}
-
-fn size_ui(
-    ui: &mut egui::Ui,
-    default_size_points: f32,
-    default_size_world: f32,
-    size: &mut re_renderer::Size,
-) {
-    use re_renderer::Size;
-
-    let mut mode = if size.is_auto() {
-        AutoSizeUnit::Auto
-    } else if size.points().is_some() {
-        AutoSizeUnit::UiPoints
-    } else {
-        AutoSizeUnit::World
-    };
-
-    let mode_before = mode;
-    egui::ComboBox::from_id_source("auto_size_mode")
-        .selected_text(mode)
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut mode, AutoSizeUnit::Auto, AutoSizeUnit::Auto)
-                .on_hover_text("Determine automatically");
-            ui.selectable_value(&mut mode, AutoSizeUnit::UiPoints, AutoSizeUnit::UiPoints)
-                .on_hover_text("Manual in UI points");
-            ui.selectable_value(&mut mode, AutoSizeUnit::World, AutoSizeUnit::World)
-                .on_hover_text("Manual in scene units");
-        });
-    if mode != mode_before {
-        *size = match mode {
-            AutoSizeUnit::Auto => Size::AUTO,
-            AutoSizeUnit::UiPoints => Size::new_points(default_size_points),
-            AutoSizeUnit::World => Size::new_scene(default_size_world),
-        };
-    }
-
-    if mode != AutoSizeUnit::Auto {
-        let mut displayed_size = size.0.abs();
-        let (drag_speed, clamp_range) = if mode == AutoSizeUnit::UiPoints {
-            (0.1, 0.1..=250.0)
-        } else {
-            (0.01 * displayed_size, 0.0001..=f32::INFINITY)
-        };
-        if ui
-            .add(
-                egui::DragValue::new(&mut displayed_size)
-                    .speed(drag_speed)
-                    .clamp_range(clamp_range)
-                    .max_decimals(4),
-            )
-            .changed()
-        {
-            *size = match mode {
-                AutoSizeUnit::Auto => unreachable!(),
-                AutoSizeUnit::UiPoints => Size::new_points(displayed_size),
-                AutoSizeUnit::World => Size::new_scene(displayed_size),
-            };
         }
     }
 }
@@ -499,12 +382,18 @@ pub fn picking(
 
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
+    let depth_images = visualizers.get::<DepthImageVisualizer>()?;
+    let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
         render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        &images.images,
+        images
+            .images
+            .iter()
+            .chain(depth_images.images.iter())
+            .chain(segmentation_images.images.iter()),
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
@@ -546,10 +435,8 @@ pub fn picking(
             continue;
         }
 
-        let store = ctx.recording_store();
-
         // Special hover ui for images.
-        let is_depth_cloud = images
+        let is_depth_cloud = depth_images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
 
@@ -563,11 +450,22 @@ pub fn picking(
         }
 
         let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-            let meaning = image_meaning_for_entity(
-                &instance_path.entity_path,
-                &query.latest_at_query(),
-                store,
-            );
+            let meaning = if segmentation_images
+                .images
+                .iter()
+                .any(|i| i.ent_path == instance_path.entity_path)
+            {
+                TensorDataMeaning::ClassId
+            } else if is_depth_cloud
+                || depth_images
+                    .images
+                    .iter()
+                    .any(|i| i.ent_path == instance_path.entity_path)
+            {
+                TensorDataMeaning::Depth
+            } else {
+                TensorDataMeaning::Unknown
+            };
 
             let query_shadowed_defaults = false;
             let results = latest_at_with_blueprint_resolved_data(

@@ -7,13 +7,14 @@ use re_types::{
     components::{ClassId, Color, HalfSizes3D, KeypointId, Position3D, Radius, Rotation3D, Text},
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
+    contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
     visualizers::{UiLabel, UiLabelTarget},
 };
@@ -70,12 +71,14 @@ impl Boxes3DVisualizer {
 
     fn process_data<'a>(
         &mut self,
+        ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Boxes3DComponentData<'a>>,
     ) {
+        let entity_path = ctx.target_entity_path;
+
         for data in data {
             let num_instances = data.half_sizes.len();
             if num_instances == 0 {
@@ -91,9 +94,12 @@ impl Boxes3DVisualizer {
                 &ent_context.annotations,
             );
 
-            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            // Has not custom fallback for radius, so we use the default.
+            // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
+            let radii =
+                process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
             let centers = clamped(data.centers, num_instances);
             self.0.ui_labels.extend(Self::process_labels(
@@ -210,15 +216,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
             ctx,
             view_query,
             context_systems,
-            context_systems.get::<EntityDepthOffsets>()?.points,
-            |ctx, entity_path, spatial_ctx, results| {
-                re_tracing::profile_scope!(format!("{entity_path}"));
-
+            |ctx, spatial_ctx, results| {
                 use re_space_view::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
-                let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
+                let half_sizes = match results.get_required_component_dense::<HalfSizes3D>(resolver)
+                {
                     Some(vectors) => vectors?,
                     _ => return Ok(()),
                 };
@@ -278,13 +282,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     },
                 );
 
-                self.process_data(
-                    &mut line_builder,
-                    view_query,
-                    entity_path,
-                    spatial_ctx,
-                    data,
-                );
+                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
 
                 Ok(())
             },
@@ -306,4 +304,10 @@ impl VisualizerSystem for Boxes3DVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(Boxes3DVisualizer => []);
+impl TypedComponentFallbackProvider<Color> for Boxes3DVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(Boxes3DVisualizer => [Color]);

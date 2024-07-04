@@ -42,7 +42,6 @@ from .archetypes import (
     Arrows2D as Arrows2D,
     Arrows3D as Arrows3D,
     Asset3D as Asset3D,
-    Axes3D as Axes3D,
     BarChart as BarChart,
     Boxes2D as Boxes2D,
     Boxes3D as Boxes3D,
@@ -77,6 +76,7 @@ from .components import (
     MediaType as MediaType,
     OutOfTreeTransform3D as OutOfTreeTransform3D,
     OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
+    Radius as Radius,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
 )
