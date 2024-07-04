@@ -1,10 +1,22 @@
+<!--[metadata]
+title = "Notebook: minimal example"
+tags = ["Notebook", "API example", "3D"]
+thumbnail = "https://static.rerun.io/notebook_cube/e40da7048fb5c0c12ef9931225791c27469d057d/480w.png"
+thumbnail_dimensions = [480, 480]
+-->
+
 ## Overview
 
-Rerun has limited support for direct embedding within a [Jupyter](https://jupyter.org/) notebook.
+Rerun supports directly embedding within a [Jupyter](https://jupyter.org/) notebook.
 Many additional environments beyond Jupyter are supported such as [Google Colab](https://colab.research.google.com/)
 or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 
-In order to show a Rerun Viewer inline within the notebook, you can call:
+You need the separate support package [`rerun-notebook`](https://pypi.org/project/rerun-notebook/) to use this feature. Typically this is installed using:
+```bash
+pip instal "rerun-sdk[notebook]"
+```
+
+In order to show a Rerun Viewer inline within a notebook, you can call:
 
 ```python
 rr.init("rerun_example_notebook")
@@ -30,16 +42,14 @@ rr.notebook_show(recording=rec)
 
 ## Running in Jupyter
 
-The easiest way to get a feel for working with notebooks is to use it:
+The easiest way to get a feel for working with notebooks is to use it.
 
-Install jupyter
-
+First, install the requirements (this includes jupyter, the Rerun SDK, and the notebook support package)
 ```
 pip install -r requirements.txt
 ```
 
-Open the notebook
-
+Then, open the notebook
 ```
 jupyter notebook cube.ipynb
 ```

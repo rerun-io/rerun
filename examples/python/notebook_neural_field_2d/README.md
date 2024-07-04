@@ -7,6 +7,19 @@ thumbnail_dimensions = [480, 480]
 
 https://vimeo.com/976650243?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1416:1244
 
+## Overview
+
+Rerun supports directly embedding within a [Jupyter](https://jupyter.org/) notebook.
+Many additional environments beyond Jupyter are supported such as [Google Colab](https://colab.research.google.com/)
+or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
+
+You need the separate support package [`rerun-notebook`](https://pypi.org/project/rerun-notebook/) to use this feature. Typically this is installed using:
+```bash
+pip instal "rerun-sdk[notebook]"
+```
+
+Check out the [minimal notebook example](https://rerun.io/examples/integrations/notebook?speculative-link) for a quick start.
+
 ## Background
 
 In this notebook we are fitting a simple neural field to a 2D image. The neural field is a simple multilayer perceptron with optional positional input encoding. The image is sampled uniformly and the network is trained to predict the color given the pixel position. To visualize the progress of the training we log the loss and regularly densely query the network to retrieve the image encoded in the network weights.
@@ -18,14 +31,12 @@ Using the notebook we can interactively try different learning rates, losses, an
 
 The easiest way to try out the notebook is to use Jupyter.
 
-Install jupyter
-
+First, install the requirements (this includes Jupyter, the Rerun SDK, and the notebook support package)
 ```
 pip install -r requirements.txt
 ```
 
-Open the notebook
-
+Then, open the notebook
 ```
 jupyter notebook neural_field_2d.ipynb
 ```
