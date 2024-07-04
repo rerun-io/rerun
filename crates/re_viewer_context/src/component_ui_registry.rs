@@ -430,7 +430,7 @@ impl ComponentUiRegistry {
         // If there is none but we have a singleline edit_ui and only a single value, use a disabled edit ui.
         if let Some(edit_ui) = self.component_singleline_editors.get(&component_name) {
             ui.scope(|ui| {
-                ui.disable();
+                ui.disable(); // TODO(#6661): remove
                 (*edit_ui)(ctx, ui, component_raw);
             });
             return;
