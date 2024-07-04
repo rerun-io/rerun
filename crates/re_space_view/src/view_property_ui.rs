@@ -181,27 +181,38 @@ fn menu_more(
 
     let property_differs_from_default = component_results.raw(resolver, component_name)
         != ctx.raw_latest_at_in_default_blueprint(blueprint_path, component_name);
-    ui.add_enabled_ui(property_differs_from_default, |ui| {
-    if ui.button("Reset to default blueprint")
-        .on_hover_text("Resets this property to the value in the default blueprint.\n
-        If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty.")
-        .on_disabled_hover_text("The property is already set to the same value it has in the default blueprint")
-        .clicked() {
-            ctx.reset_blueprint_component_by_name(blueprint_path, component_name);
-            ui.close_menu();
-        }
-    });
 
-    ui.add_enabled_ui(!component_results.is_empty(resolver), |ui| {
-            if ui.button("Reset to empty")
-                .on_hover_text("Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
-This has the same effect as not setting the value in the blueprint at all.")
-                .on_disabled_hover_text("The property is already unset.")
-                .clicked() {
-                ctx.save_empty_blueprint_component_by_name(blueprint_path, component_name);
-                ui.close_menu();
-            }
-        });
+    let response = ui
+        .add_enabled(
+            property_differs_from_default,
+            egui::Button::new("Reset to default blueprint"),
+        )
+        .on_hover_text(
+"Resets this property to the value in the default blueprint.
+If no default blueprint was set or it didn't set any value for this field, this is the same as resetting to empty."
+        )
+        .on_disabled_hover_text(
+            "The property is already set to the same value it has in the default blueprint",
+        );
+    if response.clicked() {
+        ctx.reset_blueprint_component_by_name(blueprint_path, component_name);
+        ui.close_menu();
+    }
+
+    let response = ui
+        .add_enabled(
+            !component_results.is_empty(resolver),
+            egui::Button::new("Reset to empty"),
+        )
+        .on_hover_text(
+"Resets this property to an unset value, meaning that a heuristically determined value will be used instead.\n
+This has the same effect as not setting the value in the blueprint at all."
+        )
+        .on_disabled_hover_text("The property is already unset.");
+    if response.clicked() {
+        ctx.save_empty_blueprint_component_by_name(blueprint_path, component_name);
+        ui.close_menu();
+    }
 
     // TODO(andreas): The next logical thing here is now to save it to the default blueprint!
     // This should be fairly straight forward except that we need to make sure that a default blueprint exists in the first place.
