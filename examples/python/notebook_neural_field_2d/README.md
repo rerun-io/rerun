@@ -9,7 +9,7 @@ https://vimeo.com/976650243?autoplay=1&loop=1&autopause=0&background=1&muted=1&r
 
 ## Overview
 
-Rerun supports directly embedding within a [Jupyter](https://jupyter.org/) notebook.
+Rerun can be used directly within [Jupyter](https://jupyter.org/) notebooks.
 Many additional environments beyond Jupyter are supported such as [Google Colab](https://colab.research.google.com/)
 or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 

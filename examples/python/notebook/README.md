@@ -5,9 +5,17 @@ thumbnail = "https://static.rerun.io/notebook_cube/e40da7048fb5c0c12ef9931225791
 thumbnail_dimensions = [480, 480]
 -->
 
+<picture>
+  <img src="https://static.rerun.io/notebook_cube_header/fabe5fca9bdbce54badfbdcb41c50a984edcf829/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/notebook_cube_header/fabe5fca9bdbce54badfbdcb41c50a984edcf829/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/notebook_cube_header/fabe5fca9bdbce54badfbdcb41c50a984edcf829/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/notebook_cube_header/fabe5fca9bdbce54badfbdcb41c50a984edcf829/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/notebook_cube_header/fabe5fca9bdbce54badfbdcb41c50a984edcf829/1200w.png">
+</picture>
+
 ## Overview
 
-Rerun supports directly embedding within a [Jupyter](https://jupyter.org/) notebook.
+Rerun can be used directly within [Jupyter](https://jupyter.org/) notebooks.
 Many additional environments beyond Jupyter are supported such as [Google Colab](https://colab.research.google.com/)
 or [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks).
 
