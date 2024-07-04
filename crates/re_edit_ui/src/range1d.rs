@@ -13,14 +13,13 @@ pub fn edit_range1d(
         let range = (*max - *min).abs();
         let speed = (range * 0.01).at_least(0.001);
 
-        ui.label("Min:");
         let response_min = ui.add(
             egui::DragValue::new(min)
                 .clamp_to_range(false)
                 .range(f64::NEG_INFINITY..=*max)
                 .speed(speed),
         );
-        ui.label("Max:");
+        ui.label("-");
         let response_max = ui.add(
             egui::DragValue::new(max)
                 .clamp_to_range(false)
@@ -31,9 +30,10 @@ pub fn edit_range1d(
         response_min | response_max
     } else {
         let [min, max] = value.0 .0;
-        ui.label("Min:")
-            | ui.label(re_format::format_f64(min))
-            | ui.label("Max:")
-            | ui.label(re_format::format_f64(max))
+        ui.label(format!(
+            "{} - {}",
+            re_format::format_f64(min),
+            re_format::format_f64(max)
+        ))
     }
 }
