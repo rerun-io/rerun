@@ -32,7 +32,7 @@ rr.notebook_show(recording=rec)
 
 The easiest way to get a feel for working with notebooks is to use it:
 
-Install jupyter
+Install Jupyter
 
 ```
 pip install -r requirements.txt

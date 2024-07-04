@@ -65,7 +65,7 @@ and has appropriate CORS headers set. See: `asset_server.py` for a simple exampl
 
 ## Run from source
 
-Use pixi:
+Use Pixi:
 
 ```sh
 # install rerun-sdk from source with the "notebook" extra

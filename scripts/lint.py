@@ -664,24 +664,29 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 force_capitalized = [
     "2D",
     "3D",
+    "Apache",
     "API",
     "APIs",
-    "Apache",
     "April",
     "Bevy",
     "C",
     "C++",
     "C++17,",  # easier than coding up a special case
+    "CI",
     "Colab",
-    "GUI",
     "Google",
+    "GUI",
+    "GUIs",
     "July",
     "Jupyter",
     "Linux",
     "Mac",
     "macOS",
+    "ML",
     "Numpy",
+    "nuScenes",
     "Pixi",
+    "PDF",
     "Python",
     "Q1",
     "Q2",
@@ -690,9 +695,12 @@ force_capitalized = [
     "Rerun",
     "Rust",
     "SAM",
+    "SDK",
+    "SDKs",
     "UI",
+    "UIs",
+    "UX",
     "Wasm",
-    "nuScenes",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     # "Windows", # Consider "multiple plot windows"
 ]
@@ -706,6 +714,35 @@ allow_capitalized = [
 
 force_capitalized_as_lower = [word.lower() for word in force_capitalized]
 allow_capitalized_as_lower = [word.lower() for word in allow_capitalized]
+
+
+def split_words(input_string: str) -> list[str]:
+    result = []
+    word = ""
+    for char in input_string:
+        if char.isalpha() or char.isdigit() or char in "/_@`.!?+-()":
+            word += char
+        else:
+            if word:
+                result.append(word)
+                word = ""
+            result.append(char)
+    if word:
+        result.append(word)
+    return result
+
+
+def test_split_words():
+    test_cases = [
+        ("hello world", ["hello", " ", "world"]),
+        ("hello foo@rerun.io", ["hello", " ", "foo@rerun.io"]),
+        ("www.rerun.io", ["www.rerun.io"]),
+        ("`rerun`", ["`rerun`"]),
+    ]
+
+    for input, expected in test_cases:
+        actual = split_words(input)
+        assert actual == expected, f"Expected '{input}' to split into {expected}, got {actual}"
 
 
 def fix_header_casing(s: str) -> str:
@@ -760,7 +797,7 @@ def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
 
-    for i, word in enumerate(s.split(" ")):
+    for i, word in enumerate(split_words(s)):
         if word.startswith("`"):
             inline_code_block = True
         if word.endswith("`"):
@@ -769,15 +806,13 @@ def fix_enforced_upper_case(s: str) -> str:
         if word.strip() != "" and not inline_code_block and not word.startswith("`"):
             try:
                 idx = force_capitalized_as_lower.index(word.lower())
-            except ValueError:
-                idx = None
-
-            if idx is not None:
                 word = force_capitalized[idx]
+            except ValueError:
+                pass
 
         new_words.append(word)
 
-    return " ".join(new_words)
+    return "".join(new_words)
 
 
 def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[str]]:
@@ -799,16 +834,19 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
 
     in_code_block = False
     in_frontmatter = False
+    in_metadata = False
     for line_nr, line in enumerate(lines_in):
         line_nr = line_nr + 1
 
         if line.strip().startswith("```"):
             in_code_block = not in_code_block
 
+        if line.startswith("---"):
+            in_frontmatter = not in_frontmatter
         if line.startswith("<!--[metadata]"):
-            in_frontmatter = True
-        if in_frontmatter and line.startswith("-->"):
-            in_frontmatter = False
+            in_metadata = True
+        if in_metadata and line.startswith("-->"):
+            in_metadata = False
 
         if not in_code_block:
             # Check the casing on markdown headers
@@ -830,13 +868,13 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
                     line = f'title = "{new_title}"\n'
 
             # Enforce capitalization on certain words in the main text.
-            else:
+            elif not in_frontmatter:
                 new_line = fix_enforced_upper_case(line)
                 if new_line != line:
                     errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
                     line = new_line
 
-            if in_example_readme and not in_frontmatter:
+            if in_example_readme and not in_metadata:
                 # Check that <h1> is not used in example READMEs
                 if line.startswith("#") and not line.startswith("##"):
                     errors.append(
@@ -1052,6 +1090,7 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
 
 def main() -> None:
     # Make sure we are bug free before we run:
+    test_split_words()
     test_lint_line()
     test_lint_vertical_spacing()
     test_lint_workspace_deps()
@@ -1126,12 +1165,12 @@ def main() -> None:
         "./rerun_js/node_modules",
         # JS files generated during build:
         "./rerun_notebook/src/rerun_notebook/static",
+        "./rerun_js/web-viewer-react/node_modules",
         "./rerun_js/web-viewer/index.js",
         "./rerun_js/web-viewer/inlined.js",
         "./rerun_js/web-viewer/node_modules",
         "./rerun_js/web-viewer/re_viewer_bg.js",  # auto-generated by wasm_bindgen
         "./rerun_js/web-viewer/re_viewer.js",
-        "./rerun_js/web-viewer-react/node_modules",
     )
 
     should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
