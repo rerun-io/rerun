@@ -676,6 +676,7 @@ force_capitalized = [
     "Colab",
     "Google",
     "GUI",
+    "GUIs",
     "July",
     "Jupyter",
     "Linux",
@@ -697,6 +698,7 @@ force_capitalized = [
     "SDK",
     "SDKs",
     "UI",
+    "UIs",
     "UX",
     "Wasm",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
