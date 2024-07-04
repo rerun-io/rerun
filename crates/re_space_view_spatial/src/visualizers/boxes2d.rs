@@ -42,6 +42,11 @@ impl Default for Boxes2DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Boxes2DVisualizer {
+    /// Produces 2d rect ui labels from component data.
+    ///
+    /// Does nothing if there's no positions or no labels passed.
+    /// Assumes that there's at least a single color in `colors`.
+    /// Otherwise, produces one label per center position passed.
     fn process_labels<'a>(
         entity_path: &'a EntityPath,
         half_sizes: &'a [HalfSizes2D],
@@ -50,9 +55,13 @@ impl Boxes2DVisualizer {
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> impl Iterator<Item = UiLabel> + 'a {
+        debug_assert!(
+            labels.is_empty() || !colors.is_empty(),
+            "Cannot add labels without colors"
+        );
+
         let labels = clamped(labels, annotation_infos.len());
-        let colors = clamped(colors, annotation_infos.len()); // Assumes colors is already populated with at least one color.
-        let centers = centers.chain(std::iter::repeat(&Position2D::ZERO));
+        let colors = clamped(colors, annotation_infos.len());
 
         itertools::izip!(annotation_infos.iter(), half_sizes, centers, labels, colors)
             .enumerate()

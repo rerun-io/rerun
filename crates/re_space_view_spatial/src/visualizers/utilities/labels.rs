@@ -33,6 +33,11 @@ pub struct UiLabel {
 /// TODO(#4451): Hiding of labels should be configurable. This can be the heuristic for it.
 pub const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 
+/// Produces 3D ui labels from component data.
+///
+/// Does nothing if there's no positions or no labels passed.
+/// Assumes that there's at least a single color in `colors`.
+/// Otherwise, produces one label per position passed.
 pub fn process_labels_3d<'a>(
     entity_path: &'a EntityPath,
     positions: impl Iterator<Item = glam::Vec3> + 'a,
@@ -41,8 +46,13 @@ pub fn process_labels_3d<'a>(
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
+    debug_assert!(
+        labels.is_empty() || !colors.is_empty(),
+        "Cannot add labels without colors"
+    );
+
     let labels = clamped(labels, annotation_infos.len());
-    let colors = clamped(colors, annotation_infos.len()); // Assumes colors is already populated with at least one color.
+    let colors = clamped(colors, annotation_infos.len());
 
     itertools::izip!(annotation_infos.iter(), positions, labels, colors)
         .enumerate()
@@ -57,6 +67,11 @@ pub fn process_labels_3d<'a>(
         })
 }
 
+/// Produces 2D ui labels from component data.
+///
+/// Does nothing if there's no positions or no labels passed.
+/// Assumes that there's at least a single color in `colors`.
+/// Otherwise, produces one label per position passed.
 pub fn process_labels_2d<'a>(
     entity_path: &'a EntityPath,
     positions: impl Iterator<Item = glam::Vec2> + 'a,
@@ -65,8 +80,13 @@ pub fn process_labels_2d<'a>(
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
+    debug_assert!(
+        labels.is_empty() || !colors.is_empty(),
+        "Cannot add labels without colors"
+    );
+
     let labels = clamped(labels, annotation_infos.len());
-    let colors = clamped(colors, annotation_infos.len()); // Assumes colors is already populated with at least one color.
+    let colors = clamped(colors, annotation_infos.len());
 
     itertools::izip!(annotation_infos.iter(), positions, labels, colors)
         .enumerate()
