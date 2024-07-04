@@ -25,7 +25,7 @@ The Rerun Viewer is where log data is visualized. It is usually run as a native 
 The easiest way to launch the Viewer is directly from the logging API with `rr.init("rerun_example_app", spawn=True)`. However, the standalone Viewer can also be run from the command line, for example to view an `.rrd` file: `rerun mydata.rrd`.
 
 #### Web viewer
-You can try running the Viewer in a browser using `rr.serve()` in python, or using `rerun --web-viewer mydata.rrd`.
+You can try running the Viewer in a browser using `rr.serve()` in Python, or using `rerun --web-viewer mydata.rrd`.
 
 The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/re_web_viewer_server) crate.
 
@@ -41,7 +41,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 ### Apache Arrow
 [Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_data_store`](crates/re_data_store/README.md).
 
-In rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
+In Rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
 
 ### `wgpu`
 The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API. It provides a high-performance abstraction over Vulkan, Metal, D3D12, D3D11, OpenGLES, WebGL and [WebGPU](https://en.wikipedia.org/wiki/WebGPU). This lets us write the same code graphics code for native as for web.

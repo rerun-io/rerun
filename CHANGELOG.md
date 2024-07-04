@@ -113,7 +113,7 @@ As always there's a lot going on under the hood:
 #### 📚 Docs
 - Update Python readme and add `py-wheel` command [#5912](https://github.com/rerun-io/rerun/pull/5912)
 - Update Python API links to getting-started and tutorial [#5923](https://github.com/rerun-io/rerun/pull/5923) (thanks [@Mxbonn](https://github.com/Mxbonn)!)
-- Fix various links in rust, Python and toml files [#5986](https://github.com/rerun-io/rerun/pull/5986)
+- Fix various links in Rust, Python and toml files [#5986](https://github.com/rerun-io/rerun/pull/5986)
 - Improve type index pages, codegen now knows about doc categories [#5978](https://github.com/rerun-io/rerun/pull/5978)
 - Generate doc pages for blueprint views [#6121](https://github.com/rerun-io/rerun/pull/6121)
 - Clarify docs on GH release install & C++ source build, remove redundant rerun_cpp_sdk artifact [#6144](https://github.com/rerun-io/rerun/pull/6144)
@@ -912,7 +912,7 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 
 #### 🧑‍💻 Dev-experience
 - C++ Windows CI [#4110](https://github.com/rerun-io/rerun/pull/4110)
-- Add MacOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
+- Add macOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
 
 
 ## [0.10.0](https://github.com/rerun-io/rerun/compare/0.9.1...0.10.0) - C++ SDK - 2023-10-30
@@ -1887,8 +1887,8 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Fix undo/redo selection shortcut/action changing selection history without changing selection [#1765](https://github.com/rerun-io/rerun/pull/1765)
 - Fix various crashes [#1780](https://github.com/rerun-io/rerun/pull/1780)
 - Fix crash when trying to do picking on depth clouds [d94ca3dd35e73e1984ccb969d0c7abd0d3e0faa9](https://github.com/rerun-io/rerun/commit/d94ca3dd35e73e1984ccb969d0c7abd0d3e0faa9)
-- ci: fix benchmarks [#1799](https://github.com/rerun-io/rerun/pull/1799)
-- ci: fix `cargo deny` [#1806](https://github.com/rerun-io/rerun/pull/1806)
+- CI: fix benchmarks [#1799](https://github.com/rerun-io/rerun/pull/1799)
+- CI: fix `cargo deny` [#1806](https://github.com/rerun-io/rerun/pull/1806)
 - Fix "too many points" crash [#1822](https://github.com/rerun-io/rerun/pull/1822)
 - Allow re-use of `RowId`s if no conflict is possible [#1832](https://github.com/rerun-io/rerun/pull/1832)
 - Reduce memory used by staging belts on Web [#1836](https://github.com/rerun-io/rerun/pull/1836)
@@ -2182,7 +2182,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Lint vertical spacing in Rust code [#1572](https://github.com/rerun-io/rerun/pull/1572)
 - CI: Replace wasm_bindgen_check.sh with actually building the web-viewer [#1604](https://github.com/rerun-io/rerun/pull/1604)
 - Add --all-features to Rust Analyzer flags [#1624](https://github.com/rerun-io/rerun/pull/1624)
-- Run clippy for wasm, with own clippy.toml config file [#1628](https://github.com/rerun-io/rerun/pull/1628)
+- Run clippy for Wasm, with own clippy.toml config file [#1628](https://github.com/rerun-io/rerun/pull/1628)
 - Update tokio v1.24.1 -> v1.26.0 [#1635](https://github.com/rerun-io/rerun/pull/1635)
 - Add a workflow input for running benchmarks manually [#1698](https://github.com/rerun-io/rerun/pull/1698)
 - Add missing } to fix Rust workflow [#1700](https://github.com/rerun-io/rerun/pull/1700)
