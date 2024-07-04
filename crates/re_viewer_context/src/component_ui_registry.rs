@@ -318,6 +318,36 @@ impl ComponentUiRegistry {
         self.add_typed_editor_ui(editor_callback, multiline);
     }
 
+    /// Registers how to edit a given component in the ui in a single list item line.
+    ///
+    /// If the component already has a singleline editor registered, the new callback replaces the old one.
+    ///
+    /// Typed editors do not handle absence of a value as well as lists of values and will be skipped in these cases.
+    /// (This means that there must always be at least a fallback value available.)
+    ///
+    /// The value is only updated if the editor callback returns a `egui::Response::changed`.
+    /// On the flip side, this means that even if the data has not changed it may be written back to the store.
+    /// This can be relevant for transitioning from a fallback or default value to a custom value even if they are equal.
+    ///
+    /// Design principles for writing editors:
+    /// * This is the value column function for a [`re_ui::list_item::PropertyContent`], behave accordingly!
+    ///     * Unless you introduce hierarchy yourself, use [`re_ui::list_item::ListItem::show_flat`].
+    /// * Don't show a tooltip, this is solved at a higher level.
+    /// * Try not to assume context of the component beyond its inherent semantics
+    ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
+    /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
+    ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
+    pub fn add_singleline_edit_or_view<C: re_types::Component>(
+        &mut self,
+        callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
+            + Send
+            + Sync
+            + 'static,
+    ) {
+        let multiline = false;
+        self.add_editor_ui(multiline, callback);
+    }
+
     /// Registers how to edit a given component in the ui with multiple list items.
     ///
     /// If the component already has a singleline editor registered, the new callback replaces the old one.
