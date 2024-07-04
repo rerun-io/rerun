@@ -30,8 +30,11 @@ impl DataUi for datatypes::Rotation3D {
     ) {
         match self {
             Self::Quaternion(q) => {
-                // TODO(andreas): Better formatting for quaternions.
-                ui_layout.data_label(ui, format!("{q:?}"));
+                let [x, y, z, w] = q.xyzw();
+                ui_layout.data_label(
+                    ui,
+                    format!("Quaternion XYZW: [{x:.2} {y:.2} {z:.2} {w:.2}]"),
+                );
             }
             Self::AxisAngle(RotationAxisAngle { axis, angle }) => {
                 match ui_layout {
