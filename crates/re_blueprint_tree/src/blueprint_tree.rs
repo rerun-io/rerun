@@ -289,6 +289,11 @@ impl BlueprintTree {
                 }
             });
 
+        let response = response.on_hover_text(format!(
+            "{:?} container",
+            container_blueprint.container_kind
+        ));
+
         context_menu_ui_for_item(
             ctx,
             blueprint,
