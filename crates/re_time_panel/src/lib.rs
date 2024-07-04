@@ -830,7 +830,7 @@ impl TimePanel {
                             // Conversely, temporal components change over time, and so showing a specific instance here
                             // can be confusing.
                             if is_static {
-                                let query = re_data_store::LatestAtQuery::new(
+                                let query = re_chunk_store::LatestAtQuery::new(
                                     *time_ctrl.timeline(),
                                     TimeInt::MAX,
                                 );
@@ -983,8 +983,8 @@ fn collapsed_time_marker_and_time(
     }
 
     let space_needed_for_current_time = match timeline.typ() {
-        re_data_store::TimeType::Time => 220.0,
-        re_data_store::TimeType::Sequence => 100.0,
+        re_chunk_store::TimeType::Time => 220.0,
+        re_chunk_store::TimeType::Sequence => 100.0,
     };
 
     {

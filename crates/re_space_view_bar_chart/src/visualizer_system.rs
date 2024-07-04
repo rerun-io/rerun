@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use re_data_store::LatestAtQuery;
+use re_chunk_store::ChunkStoreEvent;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_space_view::{diff_component_filter, DataResultQuery as _};
 use re_types::{
@@ -29,8 +30,11 @@ impl IdentifiedViewSystem for BarChartVisualizerSystem {
 struct BarChartVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &components::TensorData| tensor.is_vector())
+    #[inline]
+    fn update_applicability(&mut self, event: &ChunkStoreEvent) -> bool {
+        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
+            tensor.is_vector()
+        })
     }
 }
 

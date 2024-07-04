@@ -1,4 +1,4 @@
-use re_log_types::RowId;
+use re_chunk::RowId;
 use re_types::{
     datatypes::TensorData,
     tensor_data::{DecodedTensor, TensorImageLoadError},

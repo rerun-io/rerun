@@ -5,7 +5,7 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    external::{re_data_store::LatestAtQuery, re_entity_db::EntityDb, re_log_types::EntityPath},
+    external::{re_chunk_store::LatestAtQuery, re_entity_db::EntityDb, re_log_types::EntityPath},
     UiLayout, ViewerContext,
 };
 

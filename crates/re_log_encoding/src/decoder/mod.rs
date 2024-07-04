@@ -237,15 +237,15 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[cfg(all(feature = "decoder", feature = "encoder"))]
 #[test]
 fn test_encode_decode() {
+    use re_chunk::RowId;
     use re_log_types::{
-        ApplicationId, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-        Time,
+        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
 
     let rrd_version = CrateVersion::LOCAL;
 
     let messages = vec![LogMsg::SetStoreInfo(SetStoreInfo {
-        row_id: RowId::new(),
+        row_id: *RowId::new(),
         info: StoreInfo {
             application_id: ApplicationId("test".to_owned()),
             store_id: StoreId::random(StoreKind::Recording),
