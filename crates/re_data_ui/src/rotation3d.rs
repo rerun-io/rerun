@@ -1,6 +1,6 @@
 use re_types::{
     components,
-    datatypes::{self, Angle, RotationAxisAngle},
+    datatypes::{self, RotationAxisAngle},
 };
 use re_viewer_context::{UiLayout, ViewerContext};
 
