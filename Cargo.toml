@@ -83,31 +83,31 @@ re_ws_comms = { path = "crates/re_ws_comms", version = "=0.17.0-alpha.8", defaul
 rerun = { path = "crates/rerun", version = "=0.17.0-alpha.8", default-features = false }
 
 # egui-crates:
-ecolor = "0.27.2"
-eframe = { version = "0.27.2", default-features = false, features = [
+ecolor = "0.28.0"
+eframe = { version = "0.28.0", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.27.2", features = [
+egui = { version = "0.28.0", features = [
   "callstack",
   "log",
   "puffin",
   "rayon",
 ] }
-egui_commonmark = { version = "0.16", default-features = false }
-egui_extras = { version = "0.27.2", features = [
+egui_commonmark = { version = "0.17", default-features = false }
+egui_extras = { version = "0.28.0", features = [
   "http",
   "image",
   "puffin",
   "serde",
 ] }
-egui_plot = "0.27.2"
-egui_tiles = "0.8.0"
-egui-wgpu = "0.27.2"
-emath = "0.27.2"
+egui_plot = "0.28.0"
+egui_tiles = "0.9.0"
+egui-wgpu = "0.28.0"
+emath = "0.28.0"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -483,13 +483,13 @@ missing_errors_doc = "allow"
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }      # egui master 2024-07-02
-eframe = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }      # egui master 2024-07-02
-egui = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }        # egui master 2024-07-02
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" } # egui master 2024-07-02
-egui_plot = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }   # egui master 2024-07-02
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }   # egui master 2024-07-02
-emath = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }       # egui master 2024-07-02
+# ecolor = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }      # egui master 2024-07-02
+# eframe = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }      # egui master 2024-07-02
+# egui = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }        # egui master 2024-07-02
+# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" } # egui master 2024-07-02
+# egui_plot = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }   # egui master 2024-07-02
+# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }   # egui master 2024-07-02
+# emath = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5da83178cf8ba450886436" }       # egui master 2024-07-02
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -500,7 +500,7 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "249b69d534d4c92c1b5d
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f9cbcc10521ee10e5a8927dae20f73689add7223" } # https://github.com/rerun-io/egui_tiles/pull/67 2024-06-25
+# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "f9cbcc10521ee10e5a8927dae20f73689add7223" } # https://github.com/rerun-io/egui_tiles/pull/67 2024-06-25
 # egui_tiles = { path = "../egui_tiles" }
 
-egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
+# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "63d5c8933445b9ea9088c4a50b71f4ede1f3c247" } # https://github.com/lampsitter/egui_commonmark/pull/51
