@@ -49,7 +49,7 @@ Finally, we'll modify view **3)**. The goal is to make it look exactly like the 
 * Double-click any of the arrows to select the arrow batch.
 * Add overrides to the view until you end up with the exact same view as the one on the right of view **3)**.
 * The resulting view should look like this:
-  - ![View final](https://static.rerun.io/check_overrides_2d_view_final/07c309c9ccb51fc3a5d884b0d95ebf9d44e5b95c/480w.png)
+  - ![View final](https://static.rerun.io/check_overrides_2d_view_final/b65b95157891b35d3a333ebcf3286f2dceef228f/480w.png)
 
 ---
 
@@ -121,18 +121,18 @@ def log_boxes() -> None:
                     rrb.Spatial2DView(
                         name="What you should get after adding overrides & defaults to 3)",
                         visual_bounds=visual_bounds,
-                        overrides = {
+                        overrides={
                             "arrows": [
                                 rrb.VisualizerOverrides([
                                     rrb.visualizers.Arrows2D,
                                     rrb.visualizers.Points2D,
                                 ]),
-                                rr.components.Color([255,255,255]),
+                                rr.components.Color([255, 255, 255]),
                                 rr.components.Radius(0.1),
                                 rr.components.Text("Cerberus"),
                                 rr.components.Position2D([0.0, 0.0]),
                             ]
-                        }
+                        },
                     ),
                 ),
                 grid_columns=3,
