@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_format.workspace = true
 re_types = { workspace = true, features = [
   "egui_plot", # Needed to draw marker shapes.
 ] }
