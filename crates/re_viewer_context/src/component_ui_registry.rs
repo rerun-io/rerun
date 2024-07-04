@@ -215,7 +215,7 @@ impl ComponentUiRegistry {
     /// If the component has already a single- or multiline editor registered respectively,
     /// the new callback replaces the old one.
     /// Prefer [`ComponentUiRegistry::add_singleline_editor_ui`] whenever possible
-    pub fn add_untyped_editor_ui(
+    fn add_untyped_editor_ui(
         &mut self,
         name: ComponentName,
         editor_callback: UntypedComponentEditCallback,
