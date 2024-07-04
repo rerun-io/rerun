@@ -60,32 +60,32 @@ impl Boxes2DVisualizer {
             "Cannot add labels without colors"
         );
 
-        let labels = clamped(labels, annotation_infos.len());
+        let labels = annotation_infos
+            .iter()
+            .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
+            .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
         let colors = clamped(colors, annotation_infos.len());
 
-        itertools::izip!(annotation_infos.iter(), half_sizes, centers, labels, colors)
+        itertools::izip!(half_sizes, centers, labels, colors)
             .enumerate()
-            .filter_map(
-                move |(i, (annotation_info, half_size, center, label, color))| {
-                    let label = annotation_info.label(Some(label.as_str()));
-                    label.map(|label| {
-                        let min = half_size.box_min(*center);
-                        let max = half_size.box_max(*center);
-                        UiLabel {
-                            text: label,
-                            color: *color,
-                            target: UiLabelTarget::Rect(egui::Rect::from_min_max(
-                                egui::pos2(min.x, min.y),
-                                egui::pos2(max.x, max.y),
-                            )),
-                            labeled_instance: InstancePathHash::instance(
-                                entity_path,
-                                Instance::from(i as u64),
-                            ),
-                        }
-                    })
-                },
-            )
+            .filter_map(move |(i, (half_size, center, label, color))| {
+                label.map(|label| {
+                    let min = half_size.box_min(*center);
+                    let max = half_size.box_max(*center);
+                    UiLabel {
+                        text: label,
+                        color: *color,
+                        target: UiLabelTarget::Rect(egui::Rect::from_min_max(
+                            egui::pos2(min.x, min.y),
+                            egui::pos2(max.x, max.y),
+                        )),
+                        labeled_instance: InstancePathHash::instance(
+                            entity_path,
+                            Instance::from(i as u64),
+                        ),
+                    }
+                })
+            })
     }
 
     fn process_data<'a>(

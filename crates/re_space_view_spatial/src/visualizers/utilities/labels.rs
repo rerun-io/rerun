@@ -51,13 +51,15 @@ pub fn process_labels_3d<'a>(
         "Cannot add labels without colors"
     );
 
-    let labels = clamped(labels, annotation_infos.len());
+    let labels = annotation_infos
+        .iter()
+        .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
+        .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
     let colors = clamped(colors, annotation_infos.len());
 
-    itertools::izip!(annotation_infos.iter(), positions, labels, colors)
+    itertools::izip!(positions, labels, colors)
         .enumerate()
-        .filter_map(move |(i, (annotation_info, point, label, color))| {
-            let label = annotation_info.label(Some(label.as_str()));
+        .filter_map(move |(i, (point, label, color))| {
             label.map(|label| UiLabel {
                 text: label,
                 color: *color,
@@ -85,13 +87,15 @@ pub fn process_labels_2d<'a>(
         "Cannot add labels without colors"
     );
 
-    let labels = clamped(labels, annotation_infos.len());
+    let labels = annotation_infos
+        .iter()
+        .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
+        .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
     let colors = clamped(colors, annotation_infos.len());
 
-    itertools::izip!(annotation_infos.iter(), positions, labels, colors)
+    itertools::izip!(positions, labels, colors)
         .enumerate()
-        .filter_map(move |(i, (annotation_info, point, label, color))| {
-            let label = annotation_info.label(Some(label.as_str()));
+        .filter_map(move |(i, (point, label, color))| {
             label.map(|label| {
                 let point = world_from_obj.transform_point3(glam::Vec3::new(point.x, point.y, 0.0));
                 UiLabel {
