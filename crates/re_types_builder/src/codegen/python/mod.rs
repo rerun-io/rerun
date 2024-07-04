@@ -871,11 +871,13 @@ fn code_for_enum(
         }
     }
 
-    let variants = obj
-        .fields
-        .iter()
-        .map(|v| format!("Literal[{:?}]", v.pascal_case_name().to_lowercase()))
-        .join(" | ");
+    let variants = format!(
+        "Literal[{}]",
+        obj.fields
+            .iter()
+            .map(|v| format!("{:?}", v.pascal_case_name().to_lowercase()))
+            .join(", ")
+    );
     code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
     code.push_unindented(
         format!(
