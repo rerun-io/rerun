@@ -1,6 +1,8 @@
 use crate::{list_item, DesignTokens, UiExt as _};
 
 /// A collapsible section header, with support for optional help tooltip and button.
+///
+/// It toggles on click.
 #[allow(clippy::type_complexity)]
 pub struct SectionCollapsingHeader<'a> {
     label: egui::WidgetText,
@@ -109,6 +111,15 @@ impl<'a> SectionCollapsingHeader<'a> {
                 add_body(ui);
                 ui.add_space(4.0); // Same here
             });
+
+        if resp.item_response.clicked() {
+            // `show_hierarchical_with_children_unindented` already toggles on double-click,
+            // but we are _only_ a collapsing header, so we should also toggle on normal click:
+            if let Some(mut state) = egui::collapsing_header::CollapsingState::load(ui.ctx(), id) {
+                state.toggle(ui);
+                state.store(ui.ctx());
+            }
+        }
 
         egui::CollapsingResponse {
             header_response: resp.item_response,

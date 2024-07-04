@@ -37,7 +37,7 @@ The visualizations in this example were created with the following Rerun code.
 The input document is logged as [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) object to the `{page_path}/Image` entity.
 
 ```python
-    rr.log(f"{page_path}/Image", rr.Image(coloured_image))
+    rr.log(f"{page_path}/Image", rr.Image(image_rgb))
 ```
 
 ### Label mapping
