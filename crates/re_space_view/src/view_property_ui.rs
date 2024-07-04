@@ -134,7 +134,7 @@ fn view_property_component_ui(
         .component_ui_registry
         .registered_ui_types(component_name);
 
-    let mut list_item_response = if ui_types.contains(ComponentUiTypes::MultiLineEditor) {
+    let list_item_response = if ui_types.contains(ComponentUiTypes::MultiLineEditor) {
         let default_open = false;
         let id = egui::Id::new((blueprint_path.hash(), component_name));
         ui.list_item()
