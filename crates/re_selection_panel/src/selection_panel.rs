@@ -615,15 +615,16 @@ fn space_view_button(
     let item = Item::SpaceView(view.id);
     let is_selected = ctx.selection().contains_item(&item);
     let view_name = view.display_name_or_default();
+    let class = view.class(ctx.space_view_class_registry);
 
     let response = ui
         .selectable_label_with_icon(
-            view.class(ctx.space_view_class_registry).icon(),
+            class.icon(),
             view_name.as_ref(),
             is_selected,
             contents_name_style(&view_name),
         )
-        .on_hover_text("Space view");
+        .on_hover_text(format!("{} view", class.display_name()));
     item_ui::cursor_interact_with_selectable(ctx, response, item)
 }
 
