@@ -661,6 +661,8 @@ fn try_show_zoomed_image_region(
         ui.separator();
 
         ui.vertical(|ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+
             tensor_pixel_value_ui(ui, tensor, annotations, [x as _, y as _], meaning, meter);
 
             // Show a big sample of the color of the middle texel:
