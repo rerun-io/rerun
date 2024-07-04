@@ -42,7 +42,7 @@ impl Default for Boxes2DVisualizer {
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Boxes2DVisualizer {
-    /// Produces 2d rect ui labels from component data.
+    /// Produces 2D rect ui labels from component data.
     ///
     /// Does nothing if there's no positions or no labels passed.
     /// Assumes that there's at least a single color in `colors`.
