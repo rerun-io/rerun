@@ -4,12 +4,14 @@ use arrow2::array::Array as ArrowArray;
 use itertools::Itertools as _;
 use rand::Rng as _;
 
-use re_chunk::{Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt};
-use re_chunk_store::{ChunkStore, GarbageCollectionOptions, GarbageCollectionTarget};
+use re_chunk::{Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt, TimePoint};
+use re_chunk_store::{
+    ChunkStore, ChunkStoreDiffKind, GarbageCollectionOptions, GarbageCollectionTarget,
+};
 use re_log_types::{
-    build_frame_nr,
+    build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoint},
-    EntityPath, TimeType, Timeline,
+    EntityPath, Time, TimeType, Timeline,
 };
 use re_types::testing::build_some_large_structs;
 use re_types_core::Loggable as _;
@@ -77,8 +79,6 @@ fn simple() -> anyhow::Result<()> {
         let (_store_events, stats_diff) = store.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             protect_latest: 0,
-            dont_protect_components: Default::default(),
-            dont_protect_timelines: Default::default(),
             time_budget: std::time::Duration::MAX,
         });
 
@@ -172,8 +172,6 @@ fn simple_static() -> anyhow::Result<()> {
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
         protect_latest: 1,
-        dont_protect_components: Default::default(),
-        dont_protect_timelines: Default::default(),
         time_budget: std::time::Duration::MAX,
     });
 
@@ -263,8 +261,6 @@ fn protected() -> anyhow::Result<()> {
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
         protect_latest: 1,
-        dont_protect_components: Default::default(),
-        dont_protect_timelines: Default::default(),
         time_budget: std::time::Duration::MAX,
     });
 
@@ -321,6 +317,159 @@ fn protected() -> anyhow::Result<()> {
             (MyPoint::name(), Some(row_id3)),
         ],
     );
+
+    Ok(())
+}
+
+// ---
+
+#[test]
+fn manual_drop_entity_path() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    let mut store = ChunkStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        Default::default(),
+    );
+
+    let entity_path1 = EntityPath::from("entity1");
+    let entity_path2 = EntityPath::from("entity1/entity2");
+
+    let row_id1 = RowId::new();
+    let indices1 = MyIndex::from_iter(0..3);
+    let chunk1 = Arc::new(
+        Chunk::builder(entity_path1.clone())
+            .with_component_batches(row_id1, [build_frame_nr(10)], [&indices1 as _])
+            .build()?,
+    );
+
+    let row_id2 = RowId::new();
+    let indices2 = MyIndex::from_iter(0..3);
+    let chunk2 = Arc::new(
+        Chunk::builder(entity_path1.clone())
+            .with_component_batches(row_id2, [build_log_time(Time::now())], [&indices2 as _])
+            .build()?,
+    );
+
+    let row_id3 = RowId::new();
+    let indices3 = MyIndex::from_iter(0..3);
+    let chunk3 = Arc::new(
+        Chunk::builder(entity_path1.clone())
+            .with_component_batches(row_id3, TimePoint::default(), [&indices3 as _])
+            .build()?,
+    );
+
+    let row_id4 = RowId::new();
+    let indices4 = MyIndex::from_iter(0..3);
+    let chunk4 = Arc::new(
+        Chunk::builder(entity_path2.clone())
+            .with_component_batches(
+                row_id4,
+                [build_frame_nr(42), build_log_time(Time::now())],
+                [&indices4 as _],
+            )
+            .build()?,
+    );
+
+    store.insert_chunk(&chunk1)?;
+    store.insert_chunk(&chunk2)?;
+    store.insert_chunk(&chunk3)?;
+    store.insert_chunk(&chunk4)?;
+
+    let assert_latest_value = |store: &ChunkStore,
+                               entity_path: &EntityPath,
+                               query: &LatestAtQuery,
+                               expected_row_id: Option<RowId>| {
+        let row_id = query_latest_array(store, entity_path, MyIndex::name(), query)
+            .map(|(_data_time, row_id, _array)| row_id);
+
+        assert_eq!(expected_row_id, row_id);
+    };
+
+    assert_latest_value(
+        &store,
+        &entity_path1,
+        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        Some(row_id3),
+    );
+    assert_latest_value(
+        &store,
+        &entity_path1,
+        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        Some(row_id3),
+    );
+
+    assert_latest_value(
+        &store,
+        &entity_path2,
+        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        Some(row_id4),
+    );
+    assert_latest_value(
+        &store,
+        &entity_path2,
+        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        Some(row_id4),
+    );
+
+    let events = store.drop_entity_path(&entity_path1);
+    assert_eq!(3, events.len());
+    assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
+    assert_eq!(ChunkStoreDiffKind::Deletion, events[1].kind);
+    assert_eq!(ChunkStoreDiffKind::Deletion, events[2].kind);
+    similar_asserts::assert_eq!(chunk3 /* static comes first */, events[0].chunk);
+    similar_asserts::assert_eq!(chunk1, events[1].chunk);
+    similar_asserts::assert_eq!(chunk2, events[2].chunk);
+
+    assert_latest_value(
+        &store,
+        &entity_path1,
+        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        None,
+    );
+    assert_latest_value(
+        &store,
+        &entity_path1,
+        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        None,
+    );
+
+    assert_latest_value(
+        &store,
+        &entity_path2,
+        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        Some(row_id4),
+    );
+    assert_latest_value(
+        &store,
+        &entity_path2,
+        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        Some(row_id4),
+    );
+
+    let events = store.drop_entity_path(&entity_path1);
+    assert!(events.is_empty());
+
+    let events = store.drop_entity_path(&entity_path2);
+    assert_eq!(1, events.len());
+    assert_eq!(ChunkStoreDiffKind::Deletion, events[0].kind);
+    similar_asserts::assert_eq!(chunk4, events[0].chunk);
+
+    assert_latest_value(
+        &store,
+        &entity_path2,
+        &LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::MAX),
+        None,
+    );
+    assert_latest_value(
+        &store,
+        &entity_path2,
+        &LatestAtQuery::new(Timeline::log_time(), TimeInt::MAX),
+        None,
+    );
+
+    let events = store.drop_entity_path(&entity_path2);
+    assert!(events.is_empty());
 
     Ok(())
 }
