@@ -41,18 +41,18 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view(material::edit_material_ui);
     registry.add_singleline_edit_or_view(range1d::edit_range1d);
 
-    registry.add_singleline_editor_ui::<AxisLength>(edit_f32_zero_to_max);
-    registry.add_singleline_editor_ui::<FillRatio>(edit_f32_zero_to_max);
-    registry.add_singleline_editor_ui::<ImagePlaneDistance>(edit_f32_zero_to_max);
-    registry.add_singleline_editor_ui::<GammaCorrection>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<AxisLength>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
 
-    registry.add_singleline_editor_ui::<DrawOrder>(edit_f32_min_to_max_float_raw);
+    registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float_raw);
 
-    registry.add_singleline_editor_ui::<DepthMeter>(edit_f32_zero_to_max_float_raw);
-    registry.add_singleline_editor_ui::<MarkerSize>(edit_f32_zero_to_max_float_raw);
-    registry.add_singleline_editor_ui::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
 
-    registry.add_singleline_editor_ui::<Opacity>(edit_f32_zero_to_one);
+    registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
 
     registry.add_singleline_edit_or_view::<Visible>(edit_bool_raw);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
