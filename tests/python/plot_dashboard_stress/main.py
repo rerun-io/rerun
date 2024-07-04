@@ -32,6 +32,7 @@ parser.add_argument("--num-plots", type=int, default=1, help="How many different
 parser.add_argument("--num-series-per-plot", type=int, default=1, help="How many series in each single plot?")
 parser.add_argument("--num-points-per-series", type=int, default=100000, help="How many points in each single series?")
 parser.add_argument("--freq", type=float, default=1000, help="Frequency of logging (applies to all series)")
+parser.add_argument("--temporal-batch-size", type=int, default=None, help="Number of rows to include in each log call")
 
 order = [
     "forwards",
@@ -67,17 +68,24 @@ def main() -> None:
     plot_paths = [f"plot_{i}" for i in range(0, args.num_plots)]
     series_paths = [f"series_{i}" for i in range(0, args.num_series_per_plot)]
 
-    num_series = len(plot_paths) * len(series_paths)
-    time_per_tick = 1.0 / args.freq
-    expected_total_freq = args.freq * num_series
-    stop_time = args.num_points_per_series * time_per_tick
+    time_per_sim_step = 1.0 / args.freq
+    stop_time = args.num_points_per_series * time_per_sim_step
 
     if args.order == "forwards":
-        sim_times = np.arange(0, stop_time, time_per_tick)
+        sim_times = np.arange(0, stop_time, time_per_sim_step)
     elif args.order == "backwards":
-        sim_times = np.arange(0, stop_time, time_per_tick)[::-1]
+        sim_times = np.arange(0, stop_time, time_per_sim_step)[::-1]
     else:
         sim_times = np.random.randint(0, args.num_points_per_series)
+
+    num_series = len(plot_paths) * len(series_paths)
+    time_per_tick = time_per_sim_step
+    scalars_per_tick = num_series * args.num_series_per_plot
+    if args.temporal_batch_size is not None:
+        time_per_tick *= args.temporal_batch_size
+        scalars_per_tick *= args.temporal_batch_size
+
+    expected_total_freq = args.freq * num_series
 
     total_start_time = time.time()
     total_num_scalars = 0
@@ -98,19 +106,34 @@ def main() -> None:
         # Just generate random numbers rather than crash
         values = np.random.normal(size=values_shape)
 
-    for time_step, sim_time in enumerate(sim_times):
-        rr.set_time_seconds("sim_time", sim_time)
+    if args.temporal_batch_size is None:
+        ticks = enumerate(sim_times)
+    else:
+        offsets = range(0, len(sim_times), args.temporal_batch_size)
+        ticks = zip(offsets, (sim_times[offset : offset + args.temporal_batch_size] for offset in offsets))
+
+    time_batch = None
+
+    for index, sim_time in ticks:
+        if args.temporal_batch_size is None:
+            rr.set_time_seconds("sim_time", sim_time)
+        else:
+            time_batch = rr.TimeSecondsBatch("sim_time", sim_time)
 
         # Log
-
         for plot_idx, plot_path in enumerate(plot_paths):
             for series_idx, series_path in enumerate(series_paths):
-                value = values[time_step, plot_idx, series_idx]
-                rr.log(f"{plot_path}/{series_path}", rr.Scalar(value))
+                if args.temporal_batch_size is None:
+                    value = values[index, plot_idx, series_idx]
+                    rr.log(f"{plot_path}/{series_path}", rr.Scalar(value))
+                else:
+                    value_index = slice(index, index + args.temporal_batch_size)
+                    value_batch = rr.components.ScalarBatch(values[value_index, plot_idx, series_idx])
+                    rr.log_temporal_batch(f"{plot_path}/{series_path}", times=[time_batch], components=[value_batch])
 
         # Progress report
 
-        total_num_scalars += num_series
+        total_num_scalars += scalars_per_tick
         total_elapsed = time.time() - total_start_time
         if total_elapsed >= 1.0:
             print(

@@ -22,6 +22,7 @@ mod prelude {
     pub use re_types::archetypes::*;
 
     // Also import any component or datatype that has a unique name:
+    pub use re_chunk::ChunkTimeline;
     pub use re_types::components::{
         Color, HalfSizes2D, HalfSizes3D, LineStrip2D, LineStrip3D, Material, MediaType,
         OutOfTreeTransform3D, Position2D, Position3D, Radius, Text, TextLogLevel, TriangleIndices,
