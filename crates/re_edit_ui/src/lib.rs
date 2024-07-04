@@ -12,7 +12,6 @@ mod range1d;
 mod response_utils;
 mod visual_bounds2d;
 
-use crate::response_utils::response_with_changes_of_inner;
 use datatype_editors::{
     edit_bool, edit_bool_raw, edit_f32_min_to_max_float_raw, edit_f32_zero_to_max,
     edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one, edit_multiline_string,
@@ -21,9 +20,8 @@ use datatype_editors::{
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Color, Colormap, DepthMeter, DrawOrder, FillRatio,
-        GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity,
-        StrokeWidth, Text,
+        AggregationPolicy, AxisLength, Colormap, DepthMeter, DrawOrder, FillRatio, GammaCorrection,
+        ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity, StrokeWidth, Text,
     },
 };
 use re_viewer_context::gpu_bridge::colormap_dropdown_button_ui;
