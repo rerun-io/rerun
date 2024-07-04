@@ -54,8 +54,8 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
 
     registry.add_singleline_editor_ui::<Opacity>(edit_f32_zero_to_one);
 
-    registry.add_singleline_editor_ui::<Visible>(edit_bool_raw);
-    registry.add_singleline_editor_ui::<LockRangeDuringZoom>(edit_bool);
+    registry.add_singleline_edit_or_view::<Visible>(edit_bool_raw);
+    registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
 
     registry.add_singleline_editor_ui::<Text>(edit_singleline_string);
     registry.add_display_ui(Text::name(), Box::new(display_text_ui));

@@ -1,24 +1,41 @@
 use re_ui::UiExt as _;
+use re_viewer_context::MaybeMutRef;
 
 /// Generic editor for a boolean value.
 pub fn edit_bool(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    value: &mut impl std::ops::DerefMut<Target = re_types::datatypes::Bool>,
+    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = re_types::datatypes::Bool>>,
 ) -> egui::Response {
-    edit_bool_impl(ui, &mut value.deref_mut().0)
+    let mut value: MaybeMutRef<'_, bool> = match value {
+        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
+    };
+    edit_bool_impl(ui, &mut value)
 }
 
 /// Generic editor for a boolean value that is not wrapped into [`re_types::datatypes::Bool`].
 pub fn edit_bool_raw(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    value: &mut impl std::ops::DerefMut<Target = bool>,
+    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = bool>>,
 ) -> egui::Response {
-    edit_bool_impl(ui, value)
+    let mut value: MaybeMutRef<'_, bool> = match value {
+        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
+    };
+    edit_bool_impl(ui, &mut value)
 }
 
 /// Non monomorphized implementation of [`edit_bool`].
-fn edit_bool_impl(ui: &mut egui::Ui, value: &mut bool) -> egui::Response {
-    ui.scope(move |ui| ui.re_checkbox(value, "")).inner
+fn edit_bool_impl(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, bool>) -> egui::Response {
+    match value {
+        MaybeMutRef::Ref(value) => {
+            // Show a disabled checkbox for immutable values
+            let mut value_copy: bool = **value;
+            ui.add_enabled_ui(false, |ui| ui.re_checkbox(&mut value_copy, ""))
+                .inner
+        }
+        MaybeMutRef::MutRef(value) => ui.re_checkbox(value, ""),
+    }
 }
