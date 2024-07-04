@@ -93,13 +93,13 @@ fn position3d() {
 #[cfg(feature = "mint")]
 fn half_sizes_2d() {
     {
-        let component: components::HalfSizes2D = [1.0, 2.0].into();
+        let component: components::HalfSize2D = [1.0, 2.0].into();
         let mint: mint::Vector2<f32> = component.into();
         assert_eq!(mint, [1.0, 2.0].into());
     }
     {
         let mint: mint::Vector2<f32> = [1.0, 2.0].into();
-        let component: components::HalfSizes2D = mint.into();
+        let component: components::HalfSize2D = mint.into();
         assert_eq!(component.x(), 1.0);
         assert_eq!(component.y(), 2.0);
     }

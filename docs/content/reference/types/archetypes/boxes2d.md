@@ -7,7 +7,7 @@ title: "Boxes2D"
 
 ## Components
 
-**Required**: [`HalfSizes2D`](../components/half_sizes2d.md)
+**Required**: [`HalfSize2D`](../components/half_size2d.md)
 
 **Recommended**: [`Position2D`](../components/position2d.md), [`Color`](../components/color.md)
 

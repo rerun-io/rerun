@@ -1,4 +1,4 @@
-#include "half_sizes2d.hpp"
+#include "half_size2d.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
@@ -9,12 +9,12 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         struct HalfSizes2DExt {
             float xy[2];
-#define HalfSizes2D HalfSizes2DExt
+#define HalfSize2D HalfSizes2DExt
 
             // <CODEGEN_COPY_TO_HEADER>
 
-            /// Construct HalfSizes2D from x/y values.
-            HalfSizes2D(float x, float y) : xy{x, y} {}
+            /// Construct HalfSize2D from x/y values.
+            HalfSize2D(float x, float y) : xy{x, y} {}
 
             float x() const {
                 return xy.x();
