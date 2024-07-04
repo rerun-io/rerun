@@ -63,6 +63,9 @@ pub struct Boxes2D {
     pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional text labels for the boxes.
+    ///
+    /// If there's a single label present, it will be placed at the center of the entity.
+    /// Otherwise, each instance will have its own label.
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order.
@@ -368,6 +371,9 @@ impl Boxes2D {
     }
 
     /// Optional text labels for the boxes.
+    ///
+    /// If there's a single label present, it will be placed at the center of the entity.
+    /// Otherwise, each instance will have its own label.
     #[inline]
     pub fn with_labels(
         mut self,

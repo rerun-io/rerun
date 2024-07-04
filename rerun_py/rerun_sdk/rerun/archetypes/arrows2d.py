@@ -120,6 +120,9 @@ class Arrows2D(Arrows2DExt, Archetype):
     )
     # Optional text labels for the arrows.
     #
+    # If there's a single label present, it will be placed at the center of the entity.
+    # Otherwise, each instance will have its own label.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     draw_order: components.DrawOrderBatch | None = field(

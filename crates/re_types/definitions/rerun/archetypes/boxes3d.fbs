@@ -42,6 +42,9 @@ table Boxes3D (
   radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// Optional text labels for the boxes.
+  ///
+  /// If there's a single label present, it will be placed at the center of the entity.
+  /// Otherwise, each instance will have its own label.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional `ClassId`s for the boxes.

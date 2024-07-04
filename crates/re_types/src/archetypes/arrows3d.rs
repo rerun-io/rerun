@@ -85,6 +85,9 @@ pub struct Arrows3D {
     pub colors: Option<Vec<crate::components::Color>>,
 
     /// Optional text labels for the arrows.
+    ///
+    /// If there's a single label present, it will be placed at the center of the entity.
+    /// Otherwise, each instance will have its own label.
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// Optional class Ids for the points.
@@ -370,6 +373,9 @@ impl Arrows3D {
     }
 
     /// Optional text labels for the arrows.
+    ///
+    /// If there's a single label present, it will be placed at the center of the entity.
+    /// Otherwise, each instance will have its own label.
     #[inline]
     pub fn with_labels(
         mut self,
