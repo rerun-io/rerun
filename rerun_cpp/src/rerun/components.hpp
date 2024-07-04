@@ -16,7 +16,7 @@
 #include "components/fill_ratio.hpp"
 #include "components/gamma_correction.hpp"
 #include "components/half_size2d.hpp"
-#include "components/half_sizes3d.hpp"
+#include "components/half_size3d.hpp"
 #include "components/image_plane_distance.hpp"
 #include "components/keypoint_id.hpp"
 #include "components/line_strip2d.hpp"

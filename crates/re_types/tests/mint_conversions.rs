@@ -109,13 +109,13 @@ fn half_sizes_2d() {
 #[cfg(feature = "mint")]
 fn half_sizes_3d() {
     {
-        let component: components::HalfSizes3D = [1.0, 2.0, 3.0].into();
+        let component: components::HalfSize3D = [1.0, 2.0, 3.0].into();
         let mint: mint::Vector3<f32> = component.into();
         assert_eq!(mint, [1.0, 2.0, 3.0].into());
     }
     {
         let mint: mint::Vector3<f32> = [1.0, 2.0, 3.0].into();
-        let component: components::HalfSizes3D = mint.into();
+        let component: components::HalfSize3D = mint.into();
         assert_eq!(component.x(), 1.0);
         assert_eq!(component.y(), 2.0);
         assert_eq!(component.z(), 3.0);

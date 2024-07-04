@@ -23,7 +23,7 @@ mod prelude {
 
     // Also import any component or datatype that has a unique name:
     pub use re_types::components::{
-        Color, HalfSize2D, HalfSizes3D, LineStrip2D, LineStrip3D, Material, MediaType,
+        Color, HalfSize2D, HalfSize3D, LineStrip2D, LineStrip3D, Material, MediaType,
         OutOfTreeTransform3D, Position2D, Position3D, Radius, Text, TextLogLevel, TriangleIndices,
         Vector2D, Vector3D,
     };

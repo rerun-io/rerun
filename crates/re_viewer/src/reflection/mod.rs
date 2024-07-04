@@ -315,10 +315,10 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <HalfSizes3D as Loggable>::name(),
+            <HalfSize3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
-                placeholder: Some(HalfSizes3D::default().to_arrow()?),
+                placeholder: Some(HalfSize3D::default().to_arrow()?),
             },
         ),
         (

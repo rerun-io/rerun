@@ -6,8 +6,8 @@ use re_types::{archetypes::Boxes3D, components, datatypes, Archetype as _, AsCom
 fn roundtrip() {
     let expected = Boxes3D {
         half_sizes: vec![
-            components::HalfSizes3D::new(1.0, 2.0, 3.0), //
-            components::HalfSizes3D::new(4.0, 5.0, 6.0),
+            components::HalfSize3D::new(1.0, 2.0, 3.0), //
+            components::HalfSize3D::new(4.0, 5.0, 6.0),
         ],
         centers: Some(vec![
             components::Position3D::new(1.0, 2.0, 3.0), //

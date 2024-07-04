@@ -11,7 +11,7 @@ namespace rerun {
         // <CODEGEN_COPY_TO_HEADER>
 
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
-        static Boxes3D from_half_sizes(Collection<components::HalfSizes3D> half_sizes) {
+        static Boxes3D from_half_sizes(Collection<components::HalfSize3D> half_sizes) {
             Boxes3D boxes;
             boxes.half_sizes = std::move(half_sizes);
             return boxes;
@@ -20,7 +20,7 @@ namespace rerun {
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
         static Boxes3D from_centers_and_half_sizes(
             Collection<components::Position3D> centers,
-            Collection<components::HalfSizes3D> half_sizes
+            Collection<components::HalfSize3D> half_sizes
         ) {
             Boxes3D boxes;
             boxes.half_sizes = std::move(half_sizes);
@@ -62,7 +62,7 @@ namespace rerun {
         // </CODEGEN_COPY_TO_HEADER>
 #endif
         Boxes3D Boxes3D::from_sizes(const std::vector<datatypes::Vec3D>& sizes) {
-            std::vector<components::HalfSizes3D> half_sizes;
+            std::vector<components::HalfSize3D> half_sizes;
             half_sizes.reserve(sizes.size());
             for (const auto& size : sizes) {
                 half_sizes.emplace_back(size.x() / 2.0f, size.y() / 2.0f, size.z() / 2.0f);
@@ -77,7 +77,7 @@ namespace rerun {
         ) {
             auto num_components = std::min(mins.size(), sizes.size());
 
-            std::vector<components::HalfSizes3D> half_sizes;
+            std::vector<components::HalfSize3D> half_sizes;
             std::vector<components::Position3D> centers;
             half_sizes.reserve(num_components);
             centers.reserve(num_components);
