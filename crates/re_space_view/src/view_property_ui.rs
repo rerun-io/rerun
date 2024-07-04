@@ -202,7 +202,7 @@ If no default blueprint was set or it didn't set any value for this field, this 
     let response = ui
         .add_enabled(
             !component_results.is_empty(resolver),
-            egui::Button::new("Reset to empty"),
+            egui::Button::new("Unset"),
         )
         .on_hover_text(
 "Resets this property to an unset value, meaning that a heuristically determined value will be used instead.
