@@ -178,7 +178,7 @@ def main() -> None:
             rrb.Vertical(
                 rrb.Spatial3DView(name="3D", origin="world"),
                 rrb.TextDocumentView(name="Description", origin="/description"),
-                row_shares=[0.7, 0.3],
+                row_shares=[7, 3],
             ),
             rrb.Vertical(
                 # Put the origin for both 2D spaces where the pinhole is logged. Doing so allows them to understand how they're connected to the 3D space.
