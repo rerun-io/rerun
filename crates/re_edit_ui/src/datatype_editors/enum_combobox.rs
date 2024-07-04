@@ -1,21 +1,22 @@
 use re_ui::UiExt;
+use re_viewer_context::MaybeMutRef;
 
 use crate::response_utils::response_with_changes_of_inner;
 
-pub fn edit_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Component>(
+pub fn edit_view_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Component>(
     ui: &mut egui::Ui,
-    current_value: &mut EnumT,
+    current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {
     let id_source = EnumT::name().full_name();
-    edit_enum_impl(ui, id_source, current_value)
+    edit_view_enum_impl(ui, id_source, current_value)
 }
 
-fn edit_enum_impl<EnumT: re_types_core::reflection::Enum>(
+fn edit_view_enum_impl<EnumT: re_types_core::reflection::Enum>(
     ui: &mut egui::Ui,
     id_source: &str,
-    current_value: &mut EnumT,
+    current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {
-    if ui.is_enabled() {
+    if let Some(current_value) = current_value.as_mut() {
         let prev_selected_value = *current_value;
 
         let mut combobox_response = egui::ComboBox::from_id_source(id_source)
@@ -43,8 +44,7 @@ fn edit_enum_impl<EnumT: re_types_core::reflection::Enum>(
 
         response_with_changes_of_inner(combobox_response)
     } else {
-        // Don't show the combo box drop down if it's disabled.
-        ui.selectable_label(false, format!("{current_value}"))
+        ui.label(current_value.to_string())
     }
 }
 

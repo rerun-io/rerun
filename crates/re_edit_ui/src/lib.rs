@@ -13,9 +13,9 @@ mod response_utils;
 mod visual_bounds2d;
 
 use datatype_editors::{
-    display_name_ui, display_text_ui, edit_bool, edit_bool_raw, edit_enum,
-    edit_f32_min_to_max_float_raw, edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw,
-    edit_f32_zero_to_one, edit_singleline_string,
+    display_name_ui, display_text_ui, edit_bool, edit_bool_raw, edit_f32_min_to_max_float_raw,
+    edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one,
+    edit_singleline_string, edit_view_enum,
 };
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
@@ -62,13 +62,17 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_editor_ui::<Name>(edit_singleline_string);
     registry.add_display_ui(Name::name(), Box::new(display_name_ui));
 
-    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<BackgroundKind>(ui, value));
-    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Colormap>(ui, value));
-    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<Corner2D>(ui, value));
     registry
-        .add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<MagnificationFilter>(ui, value));
-    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<AggregationPolicy>(ui, value));
-    registry.add_singleline_editor_ui(|_ctx, ui, value| edit_enum::<ViewFit>(ui, value));
+        .add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
+    registry.add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Colormap>(ui, value));
+    registry.add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
+    registry.add_multiline_edit_or_view(|_ctx, ui, value| {
+        edit_view_enum::<MagnificationFilter>(ui, value)
+    });
+    registry.add_multiline_edit_or_view(|_ctx, ui, value| {
+        edit_view_enum::<AggregationPolicy>(ui, value)
+    });
+    registry.add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
