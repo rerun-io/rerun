@@ -7,9 +7,9 @@ namespace rerun {
     namespace components {
 
 #ifdef EDIT_EXTENSION
-        struct HalfSizes2DExt {
+        struct HalfSize2DExt {
             float xy[2];
-#define HalfSize2D HalfSizes2DExt
+#define HalfSize2D HalfSize2DExt
 
             // <CODEGEN_COPY_TO_HEADER>
 

@@ -106,7 +106,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "DrawOrderBatch": TestCase(100.0),
     "FillRatioBatch": TestCase(0.5),
     "GammaCorrectionBatch": TestCase(2.2),
-    "HalfSizes2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
+    "HalfSize2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSize3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
     "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "KeypointIdBatch": TestCase(batch=[5, 6, 7]),

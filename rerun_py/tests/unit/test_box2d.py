@@ -10,7 +10,7 @@ import rerun as rr
 import torch
 from rerun.components import (
     DrawOrderLike,
-    HalfSizes2DBatch,
+    HalfSize2DBatch,
     Position2DBatch,
     RadiusArrayLike,
 )
@@ -79,7 +79,7 @@ def test_boxes2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSizes2DBatch)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize2DBatch)
         assert arch.centers == centers_expected(centers, Position2DBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)
