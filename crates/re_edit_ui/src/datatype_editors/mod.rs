@@ -9,4 +9,4 @@ pub use float_drag::{
     edit_f32_min_to_max_float_raw, edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw,
     edit_f32_zero_to_one,
 };
-pub use singleline_string::edit_singleline_string;
+pub use singleline_string::{display_name_ui, display_text_ui, edit_singleline_string};
