@@ -138,6 +138,12 @@ from .sinks import (
     spawn as spawn,
     stdout as stdout,
 )
+from .temporal_batch import (
+    TimeNanosBatch as TimeNanosBatch,
+    TimeSecondsBatch as TimeSecondsBatch,
+    TimeSequenceBatch as TimeSequenceBatch,
+    log_temporal_batch as log_temporal_batch,
+)
 from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,

@@ -9,7 +9,7 @@ use arrow2::array::{
 };
 
 use itertools::{izip, Itertools};
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{ComponentName, Loggable, LoggableBatch, SerializationError, SizeBytes};
 
 use crate::{ChunkId, RowId};
@@ -372,6 +372,39 @@ impl Chunk {
         Self::new(id, entity_path, is_sorted, row_ids, timelines, components)
     }
 
+    /// Creates a new [`Chunk`].
+    ///
+    /// This will fail if the passed in data is malformed in any way -- see [`Self::sanity_check`]
+    /// for details.
+    ///
+    /// The data is assumed to be sorted in `RowId`-order. Sequential `RowId`s will be generated for each
+    /// row in the chunk.
+    pub fn from_auto_row_ids(
+        id: ChunkId,
+        entity_path: EntityPath,
+        timelines: BTreeMap<Timeline, ChunkTimeline>,
+        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+    ) -> ChunkResult<Self> {
+        let count = components
+            .iter()
+            .next()
+            .map_or(0, |(_, list_array)| list_array.len());
+
+        let row_ids = std::iter::from_fn({
+            let tuid: re_tuid::Tuid = *id;
+            let mut row_id = RowId::from_tuid(tuid.next());
+            move || {
+                let yielded = row_id;
+                row_id = row_id.next();
+                Some(yielded)
+            }
+        })
+        .take(count)
+        .collect_vec();
+
+        Self::from_native_row_ids(id, entity_path, Some(true), &row_ids, timelines, components)
+    }
+
     /// Simple helper for [`Self::new`] for static data.
     ///
     /// For a row-oriented constructor, see [`Self::builder`].
@@ -404,6 +437,13 @@ impl Chunk {
             timelines: Default::default(),
             components: Default::default(),
         }
+    }
+
+    #[inline]
+    pub fn add_timeline(&mut self, chunk_timeline: ChunkTimeline) -> ChunkResult<()> {
+        self.timelines
+            .insert(chunk_timeline.timeline, chunk_timeline);
+        self.sanity_check()
     }
 }
 
@@ -460,6 +500,86 @@ impl ChunkTimeline {
             is_sorted,
             time_range,
         }
+    }
+
+    /// Creates a new [`ChunkTimeline`] of sequence type.
+    pub fn new_sequence(
+        name: impl Into<re_log_types::TimelineName>,
+        times: impl IntoIterator<Item = impl Into<i64>>,
+    ) -> Self {
+        let time_vec = times.into_iter().map(|t| {
+            let t = t.into();
+            TimeInt::try_from(t)
+                .unwrap_or_else(|_| {
+                    re_log::error!(
+                illegal_value = t,
+                new_value = TimeInt::MIN.as_i64(),
+                "ChunkTimeline::new_sequence() called with illegal value - clamped to minimum legal value"
+            );
+                    TimeInt::MIN
+                })
+                .as_i64()
+        }).collect();
+
+        Self::new(
+            None,
+            Timeline::new_sequence(name.into()),
+            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+        )
+    }
+
+    /// Creates a new [`ChunkTimeline`] of sequence type.
+    pub fn new_seconds(
+        name: impl Into<re_log_types::TimelineName>,
+        times: impl IntoIterator<Item = impl Into<f64>>,
+    ) -> Self {
+        let time_vec = times.into_iter().map(|t| {
+            let t = t.into();
+            let time = Time::from_seconds_since_epoch(t);
+            TimeInt::try_from(time)
+                .unwrap_or_else(|_| {
+                    re_log::error!(
+                illegal_value = t,
+                new_value = TimeInt::MIN.as_i64(),
+                "ChunkTimeline::new_seconds() called with illegal value - clamped to minimum legal value"
+            );
+                    TimeInt::MIN
+                })
+                .as_i64()
+        }).collect();
+
+        Self::new(
+            None,
+            Timeline::new_sequence(name.into()),
+            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+        )
+    }
+
+    /// Creates a new [`ChunkTimeline`] of nanoseconds type.
+    pub fn new_nanos(
+        name: impl Into<re_log_types::TimelineName>,
+        times: impl IntoIterator<Item = impl Into<i64>>,
+    ) -> Self {
+        let time_vec = times.into_iter().map(|t| {
+            let t = t.into();
+            let time = Time::from_ns_since_epoch(t);
+            TimeInt::try_from(time)
+                .unwrap_or_else(|_| {
+                    re_log::error!(
+                illegal_value = t,
+                new_value = TimeInt::MIN.as_i64(),
+                "ChunkTimeline::new_nanos() called with illegal value - clamped to minimum legal value"
+            );
+                    TimeInt::MIN
+                })
+                .as_i64()
+        }).collect();
+
+        Self::new(
+            None,
+            Timeline::new_sequence(name.into()),
+            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+        )
     }
 }
 
@@ -638,6 +758,16 @@ impl std::fmt::Display for Chunk {
 }
 
 impl ChunkTimeline {
+    #[inline]
+    pub fn timeline(&self) -> &Timeline {
+        &self.timeline
+    }
+
+    #[inline]
+    pub fn name(&self) -> &str {
+        self.timeline.name()
+    }
+
     #[inline]
     pub fn time_range(&self) -> ResolvedTimeRange {
         self.time_range
