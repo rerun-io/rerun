@@ -246,7 +246,6 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    /// * It is fine to only implement a viewer with this, i.e. not handle the [`MaybeMutRef::MutRef`] case.
     pub fn add_singleline_edit_or_view<C: re_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
@@ -275,7 +274,6 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    /// * It is fine to only implement a viewer with this, i.e. not handle the [`MaybeMutRef::MutRef`] case.
     pub fn add_multiline_edit_or_view<C: re_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
