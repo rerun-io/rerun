@@ -43,7 +43,10 @@ def log_bar_chart() -> None:
 
 
 def log_parabola() -> None:
-    # Name never changes, log it only once.
+    # Time-independent styling can be achieved by logging static components to the data store. Here, by using the
+    # `SeriesLine` archetype, we further hint the viewer to use the line plot visualizer.
+    # Alternatively, you can achieve time-independent styling using overrides, as is everywhere else in this example
+    # (see the `main()` function).
     rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), static=True)
 
     # Log a parabola as a time series
@@ -58,6 +61,7 @@ def log_parabola() -> None:
         elif f_of_t > 10.0:
             color = [0, 255, 0]
 
+        # Note: by using the `rr.SeriesLine` archetype, we hint the viewer to use the line plot visualizer.
         rr.log(
             "curves/parabola",
             rr.Scalar(f_of_t),
@@ -66,10 +70,6 @@ def log_parabola() -> None:
 
 
 def log_trig() -> None:
-    # Styling doesn't change over time, log it once with static=True.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
-
     for t in range(0, int(tau * 2 * 100.0)):
         rr.set_time_sequence("frame_nr", t)
 
@@ -81,9 +81,6 @@ def log_trig() -> None:
 
 
 def log_classification() -> None:
-    # Log components that don't change only once:
-    rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), static=True)
-
     for t in range(0, 1000, 2):
         rr.set_time_sequence("frame_nr", t)
 
@@ -98,7 +95,17 @@ def log_classification() -> None:
         else:
             color = [255, 255, 255]
         marker_size = abs(g_of_t - f_of_t)
-        rr.log("classification/samples", rr.Scalar(g_of_t), rr.SeriesPoint(color=color, marker_size=marker_size))
+
+        # Note: this log call doesn't include any hint as to which visualizer to use. We use a blueprint visualizer
+        # override instead (see `main()`)
+        rr.log(
+            "classification/samples",
+            rr.Scalar(g_of_t),
+            [
+                rr.components.Color(color),
+                rr.components.MarkerSize(marker_size),
+            ],
+        )
 
 
 def main() -> None:
@@ -112,9 +119,27 @@ def main() -> None:
         rrb.Horizontal(
             rrb.Grid(
                 rrb.BarChartView(name="Bar Chart", origin="/bar_chart"),
-                rrb.TimeSeriesView(name="Curves", origin="/curves"),
-                rrb.TimeSeriesView(name="Trig", origin="/trig"),
-                rrb.TimeSeriesView(name="Classification", origin="/classification"),
+                rrb.TimeSeriesView(
+                    name="Curves",
+                    origin="/curves",
+                ),
+                rrb.TimeSeriesView(
+                    name="Trig",
+                    origin="/trig",
+                    overrides={
+                        "/trig/sin": [rr.components.Color([255, 0, 0]), rr.components.Name("sin(0.01t)")],
+                        "/trig/cos": [rr.components.Color([0, 255, 0]), rr.components.Name("cos(0.01t)")],
+                    },
+                ),
+                rrb.TimeSeriesView(
+                    name="Classification",
+                    origin="/classification",
+                    overrides={
+                        "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
+                        # This ensures that the `SeriesPoint` visualizers is used for this entity.
+                        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")],
+                    },
+                ),
             ),
             rrb.TextDocumentView(name="Description", origin="/description"),
             column_shares=[3, 1],
