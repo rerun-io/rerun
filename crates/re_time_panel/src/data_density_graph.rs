@@ -544,9 +544,8 @@ fn show_row_ids_tooltip(
         ui.label(format!("{num_events} events"));
     }
 
-    let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
-
     let ui_layout = UiLayout::Tooltip;
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
 
     let TimePanelItem {
         entity_path,

@@ -1,4 +1,4 @@
-use re_data_store::LatestAtQuery;
+use re_chunk_store::LatestAtQuery;
 use re_space_view::DataResultQuery as _;
 use re_types::{
     archetypes::TextDocument,

@@ -1,7 +1,7 @@
 use re_types::{components::Color, external::arrow2, Loggable};
 use re_ui::UiExt;
 use re_viewer_context::{
-    external::{re_data_store::LatestAtQuery, re_entity_db::EntityDb, re_log_types::EntityPath},
+    external::{re_chunk_store::LatestAtQuery, re_entity_db::EntityDb, re_log_types::EntityPath},
     UiLayout, ViewerContext,
 };
 

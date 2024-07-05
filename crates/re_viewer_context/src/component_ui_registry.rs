@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::LatestAtQuery;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
 use re_log::ResultExt;
 use re_log_types::Instance;
@@ -367,7 +367,7 @@ impl ComponentUiRegistry {
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let cell = match component.resolved(db.resolver()) {
+        let array = match component.resolved(db.resolver()) {
             re_query::PromiseResult::Pending => {
                 re_log::error_once!("Couldn't get {component_name}: promise still pending");
                 ui.error_label("pending...");
@@ -385,8 +385,8 @@ impl ComponentUiRegistry {
         };
 
         // Component ui can only show a single instance.
-        if cell.num_instances() == 0 || (instance.is_all() && cell.num_instances() > 1) {
-            none_or_many_values_ui(ui, cell.num_instances() as _);
+        if array.len() == 0 || (instance.is_all() && array.len() > 1) {
+            none_or_many_values_ui(ui, array.len());
             return;
         }
 
@@ -399,8 +399,8 @@ impl ComponentUiRegistry {
 
         // Enforce clamp-to-border semantics.
         // TODO(andreas): Is that always what we want?
-        let index = index.clamp(0, (cell.num_instances() as usize).saturating_sub(1));
-        let component_raw = cell.as_arrow_ref().sliced(index, 1);
+        let index = index.clamp(0, array.len().saturating_sub(1));
+        let component_raw = array.sliced(index, 1);
 
         self.ui_raw(
             ctx,
@@ -541,9 +541,9 @@ impl ComponentUiRegistry {
                     Err(format!("Promise for {component_name} is still pending."))
                 }
             }
-            re_query::PromiseResult::Ready(cell) => {
-                if !cell.is_empty() {
-                    Ok(cell.to_arrow())
+            re_query::PromiseResult::Ready(array) => {
+                if !array.is_empty() {
+                    Ok(array)
                 } else {
                     create_fallback()
                 }
@@ -632,10 +632,7 @@ impl ComponentUiRegistry {
 
         if let Some(edit_callback) = editors.get(&component_name) {
             if let Some(updated) = (*edit_callback)(ctx, ui, raw_current_value) {
-                ctx.save_blueprint_data_cell(
-                    blueprint_write_path,
-                    re_log_types::DataCell::from_arrow(component_name, updated),
-                );
+                ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
             }
             true
         } else {

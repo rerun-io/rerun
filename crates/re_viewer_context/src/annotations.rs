@@ -3,9 +3,9 @@ use std::{collections::BTreeMap, sync::Arc};
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 
-use re_data_store::LatestAtQuery;
+use re_chunk::RowId;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::RowId;
 use re_query::LatestAtMonoResult;
 use re_types::components::AnnotationContext;
 use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
@@ -132,25 +132,21 @@ pub struct ResolvedAnnotationInfo {
 }
 
 impl ResolvedAnnotationInfo {
-    /// `rgba` should be unmultiplied
-    #[inline]
-    pub fn color(&self, rgba: Option<[u8; 4]>) -> Option<re_renderer::Color32> {
-        if let Some([r, g, b, a]) = rgba {
-            // Use passed color.
-            Some(if a == 255 {
-                // Common-case optimization
-                re_renderer::Color32::from_rgb(r, g, b)
-            } else {
-                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-            })
-        } else if let Some(info) = self.annotation_info.as_ref() {
+    pub fn color(&self) -> Option<egui::Color32> {
+        #![allow(clippy::manual_map)] // for readability
+
+        if let Some(info) = &self.annotation_info {
             // Use annotation context based color.
-            info.color
-                .map(|c| c.into())
-                .or_else(|| Some(auto_color_egui(info.id)))
-        } else {
+            if let Some(color) = info.color {
+                Some(color.into())
+            } else {
+                Some(auto_color_egui(info.id))
+            }
+        } else if let Some(class_id) = self.class_id {
             // Use class id based color (or give up).
-            self.class_id.map(|class_id| auto_color_egui(class_id.0))
+            Some(auto_color_egui(class_id.0))
+        } else {
+            None
         }
     }
 

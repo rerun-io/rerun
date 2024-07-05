@@ -11,7 +11,7 @@ it is typically safe to do so with a zero-copy "borrow".
 This means that in those cases [`rerun::Collection`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1Collection.html) will merely store a pointer and a length to your data.
 
 While collection adapters are primarily used with components, they are also useful for all other usages of
-rerun's collection type. E.g. the backing buffer of [`rerun::TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorBuffer.html)
+Rerun's collection type. E.g. the backing buffer of [`rerun::TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorBuffer.html)
 is also a [`rerun::Collection`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1Collection.html)
 allowing you to ingest large amounts of data without a copy and the convenience custom adapters can provide.
 

@@ -40,7 +40,7 @@ Each Space View refers to an immutable Space View Class, implemented by `SpaceVi
 It defines:
 * which data it can display and how it is displayed
 * how it is interacted with
-* what properties are read from the blueprint store and how they are exposed in the ui
+* what properties are read from the blueprint store and how they are exposed in the UI
 
 ### What space view classes are there?
 Space View differ only in class when they are **fundamentally different** in the way they display data.

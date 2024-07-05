@@ -25,7 +25,7 @@ This page is meant to give an high level overview of ongoing and planned work.
 - A lot more blueprint configurability through code (still Python only)
 
 ### Near term: summer 2024
-- Time-batch api: the ability to insert large chunks of e.g. time series in a single call
+- Time-batch API: the ability to insert large chunks of e.g. time series in a single call
 - Improved ingestion performance for large sets of small data (time series)
 - Query API for reading back data from the SDK
 - Improved support for working directly with Arrow data and the Rerun extension types

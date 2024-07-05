@@ -29,7 +29,7 @@ we will completely change the way the data is presented.
 We start by creating a new virtual environment and installing the Rerun SDK along with the dependencies
 we will use in this example.
 
-On Linux or mac:
+On Linux or Mac:
 
 ```bash
 mkdir stocks_example
