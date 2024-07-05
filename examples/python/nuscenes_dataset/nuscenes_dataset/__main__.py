@@ -274,7 +274,14 @@ def main() -> None:
     ]
     blueprint = rrb.Vertical(
         rrb.Horizontal(
-            rrb.Spatial3DView(name="3D", origin="world"),
+            rrb.Spatial3DView(
+                name="3D",
+                origin="world",
+                # Default for `ImagePlaneDistance` so that the pinhole frustum visualizations don't take up too much space.
+                defaults=[rr.components.ImagePlaneDistance(4.0)],
+                # Transform arrows for the vehicle shouldn't be too long.
+                overrides={"world/ego_vehicle": [rr.components.AxisLength(5.0)]},
+            ),
             rrb.TextDocumentView(origin="description", name="Description"),
             column_shares=[3, 1],
         ),
