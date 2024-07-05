@@ -139,7 +139,6 @@ impl ::re_types_core::Loggable for Color {
     where
         Self: Sized,
     {
-        crate::datatypes::Rgba32::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::Rgba32::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
     }
 }

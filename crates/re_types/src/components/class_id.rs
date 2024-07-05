@@ -141,7 +141,6 @@ impl ::re_types_core::Loggable for ClassId {
     where
         Self: Sized,
     {
-        crate::datatypes::ClassId::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::ClassId::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
     }
 }

@@ -798,9 +798,20 @@ fn quote_trait_impls_from_obj(
                 let from_arrow_body = if forward_serialization {
                     let forwarded_type = quote_field_type_from_typ(&obj.fields[0].typ, true).0;
 
-                    // TODO: Do #forwarded_type::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v)) if PODsible.
-                    quote! {
-                        #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(|v| Self(v)).collect())
+                    if obj
+                        .try_get_attr::<String>(ATTR_RUST_DERIVE)
+                        .map_or(false, |d| d.contains("bytemuck::Pod"))
+                        || obj
+                            .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
+                            .map_or(false, |d| d.contains("bytemuck::Pod"))
+                    {
+                        quote! {
+                            #forwarded_type::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
+                        }
+                    } else {
+                        quote! {
+                            #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(|v| Self(v)).collect())
+                        }
                     }
                 } else {
                     let quoted_deserializer =

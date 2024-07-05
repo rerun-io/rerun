@@ -158,7 +158,6 @@ impl ::re_types_core::Loggable for Range1D {
     where
         Self: Sized,
     {
-        crate::datatypes::Range1D::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::Range1D::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
     }
 }

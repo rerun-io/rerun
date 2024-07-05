@@ -158,7 +158,6 @@ impl ::re_types_core::Loggable for Position2D {
     where
         Self: Sized,
     {
-        crate::datatypes::Vec2D::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::Vec2D::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
     }
 }

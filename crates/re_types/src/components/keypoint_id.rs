@@ -153,7 +153,6 @@ impl ::re_types_core::Loggable for KeypointId {
     where
         Self: Sized,
     {
-        crate::datatypes::KeypointId::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::KeypointId::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
     }
 }
