@@ -39,7 +39,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// 2^63 for large arrays).
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn::arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a;
 
@@ -84,7 +84,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
-    ) -> SerializationResult<Box<dyn::arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a,
     {
@@ -99,7 +99,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::arrow_field`].
     #[inline]
-    fn from_arrow(data: &dyn::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
+    fn from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
         re_tracing::profile_function!();
         Self::from_arrow_opt(data)?
             .into_iter()
@@ -117,7 +117,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// This will _never_ fail if the Arrow array's datatype matches the one returned by
     /// [`Loggable::arrow_field`].
     fn from_arrow_opt(
-        data: &dyn::arrow2::array::Array,
+        data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets
         Err(crate::DeserializationError::NotImplemented {
