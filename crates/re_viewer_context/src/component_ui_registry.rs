@@ -349,7 +349,7 @@ impl ComponentUiRegistry {
     /// Show a UI for a component instance.
     ///
     /// Has a fallback to show an info text if the instance is not specific,
-    /// but in these cases [`LatestAtComponentResults::data_ui`] should be used instead!
+    /// but in these cases `LatestAtComponentResults::data_ui` should be used instead!
     #[allow(clippy::too_many_arguments)]
     pub fn ui(
         &self,
