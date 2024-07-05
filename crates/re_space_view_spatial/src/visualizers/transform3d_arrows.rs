@@ -196,7 +196,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
 
         // If there is a finite bounding box, use the scene size to determine the axis length.
         if let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() {
-            let scene_size = state.bounding_boxes.accumulated.size().length();
+            let scene_size = state.bounding_boxes.smoothed.size().length();
 
             if scene_size.is_finite() && scene_size > 0.0 {
                 return (scene_size * 0.05).into();
