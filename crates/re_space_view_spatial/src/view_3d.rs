@@ -410,6 +410,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
                     "Show accumulated bounding box",
                 )
                 .on_hover_text("Show bounding box accumulated over all rendered frames");
+                ui.re_checkbox(
+                    &mut state.state_3d.show_smoothed_bbox,
+                    "Show smoothed bounding box",
+                )
+                .on_hover_text("Show a smoothed bounding box used for some heuristics");
             });
             ui.end_row();
 
@@ -435,7 +440,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
-        state.update_frame_statistics(&system_output)?;
+        state.update_frame_statistics(ui, &system_output)?;
 
         self.view_3d(ctx, ui, state, query, system_output)
     }

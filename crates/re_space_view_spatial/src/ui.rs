@@ -92,11 +92,12 @@ impl SpatialSpaceViewState {
     /// Updates the state with statistics from the latest system outputs.
     pub fn update_frame_statistics(
         &mut self,
+        ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.bounding_boxes.update(&system_output.view_systems);
+        self.bounding_boxes.update(ui, &system_output.view_systems);
 
         self.scene_num_primitives = system_output
             .context_systems

@@ -65,6 +65,7 @@ pub struct View3DState {
     pub show_axes: bool,
     pub show_bbox: bool,
     pub show_accumulated_bbox: bool,
+    pub show_smoothed_bbox: bool,
 
     eye_interact_fade_in: bool,
     eye_interact_fade_change_time: f64,
@@ -83,6 +84,7 @@ impl Default for View3DState {
             show_axes: false,
             show_bbox: false,
             show_accumulated_bbox: false,
+            show_smoothed_bbox: false,
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
         }
@@ -660,6 +662,16 @@ impl SpatialSpaceView3D {
             line_builder
                 .batch("scene_bbox_accumulated")
                 .add_box_outline(&state.bounding_boxes.accumulated)
+                .map(|lines| {
+                    lines
+                        .radius(box_line_radius)
+                        .color(egui::Color32::from_gray(170))
+                });
+        }
+        if state.state_3d.show_smoothed_bbox {
+            line_builder
+                .batch("scene_bbox_smoothed")
+                .add_box_outline(&state.bounding_boxes.smoothed)
                 .map(|lines| {
                     lines
                         .radius(box_line_radius)
