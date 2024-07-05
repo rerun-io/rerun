@@ -48,6 +48,12 @@ jobs:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
+      - name: Download Notebook Wheelj
+        uses: actions/download-artifact@v4
+        with:
+          name: rerun_notebook_wheel
+          path: wheel
+
       - name: Get version
         id: get-version
         run: |
@@ -59,7 +65,8 @@ jobs:
         # find the dependencies to reinstall them.
         run: |
           pixi run -e wheel-test pip uninstall rerun-sdk
-          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
+          pixi run -e wheel-test pip uninstall rerun-notebook
+          pixi run -e wheel-test pip install rerun-sdk[notebook]==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Install Deps
         run: pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt
