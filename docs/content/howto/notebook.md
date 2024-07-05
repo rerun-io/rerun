@@ -14,20 +14,22 @@ Rerun has been tested with:
 -   [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks)
 -   [Google Colab](https://colab.research.google.com/)
 
-## Basic concept
+To begin, install the `rerun-sdk` package with the `notebook` extra:
+```sh
+pip install rerun-sdk[notebook]
+```
 
-When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
-you send them to a sink such as via `rr.connect()` or `rr.save()`. When using Rerun in a notebook,
-rather than using the other sinks, you have the option to use a helper method: [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
-This method embeds the [web viewer](./embed-rerun-viewer.md) using the IPython `display` mechanism
-in the cell output, and sends the current recording data to it.
-Once the viewer is open, any subsequent `rr.log()` calls will send their data directly to the viewer,
-without any intermediate buffering.
+This installs both [rerun-sdk](https://pypi.org/project/rerun-sdk/) and [rerun-notebook](https://pypi.org/project/rerun-notebook/).
 
 ## The APIs
 
-In order to output the current recording data to a notebook cell, call:
-[`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
+When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
+you send them to a sink such as via `rr.connect()` or `rr.save()`.
+
+When using Rerun in a notebook, rather than using the other sinks, you have the option to use [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show). This method embeds the [web viewer](./embed-rerun-viewer.md) using the IPython `display` mechanism in the cell output, and sends the current recording data to it.
+
+Once the viewer is open, any subsequent `rr.log()` calls will send their data directly to the viewer,
+without any intermediate buffering.
 
 For example:
 
@@ -119,6 +121,33 @@ rrb.Vertical(
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/notebook_blueprint_example/eb0663a9a8a0de8276390667a774acc1bc86148e/1200w.png">
 </picture>
 
+## Streaming data
+
+The notebook integration supports streaming data to the viewer during cell execution.
+
+You can call `rr.notebook_show()` at any point after calling `rr.init()`, and any
+`rr.log()` calls will be sent to the viewer in real-time.
+
+```python
+import math
+from time import sleep
+
+import numpy as np
+import rerun as rr
+from rerun.utilities import build_color_grid
+
+rr.init("rerun_example_notebook")
+rr.notebook_show()
+
+STEPS = 100
+twists = math.pi * np.sin(np.linspace(0, math.tau, STEPS)) / 4
+for t in range(STEPS):
+    sleep(0.05)  # delay to simulate a long-running computation
+    rr.set_time_sequence("step", t)
+    cube = build_color_grid(10, 10, 10, twist=twists[t])
+    rr.log("cube", rr.Points3D(cube.positions, colors=cube.colors, radii=0.5))
+```
+
 ## Some working examples
 
 To experiment with notebooks yourself, there are a few options.
@@ -146,9 +175,9 @@ After running this cell you will need to restart the Runtime for the Rerun packa
 
 ## Limitations
 
-Browsers have limitations on the amount of memory usable by a single tab. If you are working with large datasets,
-you may run into issues where the browser tab crashes. If you encounter this, you can try to use the `save()` API
-to save the data to a file and share it as a standalone asset.
+Browsers have limitations in the amount of memory usable by a single tab. If you are working with large datasets,
+you may run into browser tab crashes due to out-of-memory errors.
+If you encounter the issue, you can try to use the `save()` API to save the data to a file and share it as a standalone asset.
 
 ## Future work
 
