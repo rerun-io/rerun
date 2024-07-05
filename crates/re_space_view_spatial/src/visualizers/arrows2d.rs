@@ -132,7 +132,7 @@ impl Arrows2DVisualizer {
                     itertools::Either::Right(data.vectors.iter().zip(origins).map(
                         |(vector, origin)| {
                             // `0.45` rather than `0.5` to account for cap and such
-                            (glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0)) * 0.45
+                            glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45
                         },
                     ))
                 };
