@@ -139,33 +139,7 @@ impl ::re_types_core::Loggable for Opacity {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = arrow_data
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::Float32;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.Opacity#opacity")?
-                .values()
-                .as_slice();
-            {
-                slice
-                    .iter()
-                    .copied()
-                    .map(|v| crate::datatypes::Float32(v))
-                    .map(|v| Self(v))
-                    .collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::Float32::from_arrow(arrow_data)
+            .map(|v| v.into_iter().map(|v| Self(v)).collect())
     }
 }

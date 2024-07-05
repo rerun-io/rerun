@@ -126,4 +126,35 @@ impl crate::Loggable for UInt64 {
             .with_context("rerun.datatypes.UInt64#value")
             .with_context("rerun.datatypes.UInt64")?)
     }
+
+    #[allow(clippy::wildcard_imports)]
+    #[inline]
+    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use crate::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = arrow_data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(DeserializationError::missing_data());
+            }
+        }
+        Ok({
+            let slice = arrow_data
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .ok_or_else(|| {
+                    let expected = DataType::UInt64;
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
+                })
+                .with_context("rerun.datatypes.UInt64#value")?
+                .values()
+                .as_slice();
+            {
+                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
+            }
+        })
+    }
 }

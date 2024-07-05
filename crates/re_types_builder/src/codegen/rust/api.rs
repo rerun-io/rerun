@@ -790,19 +790,23 @@ fn quote_trait_impls_from_obj(
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
-            let quoted_from_arrow = if optimize_for_buffer_slice {
-                let quoted_deserializer =
-                    quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+            let forward_serialization = obj.is_arrow_transparent()
+                && !obj.fields[0].is_nullable
+                && matches!(obj.fields[0].typ, Type::Object(_));
 
-                quote! {
-                    #[allow(clippy::wildcard_imports)]
-                    #[inline]
-                    fn from_arrow(
-                        arrow_data: &dyn arrow2::array::Array,
-                    ) -> DeserializationResult<Vec<Self>>
-                    where
-                        Self: Sized
-                    {
+            let quoted_from_arrow = if optimize_for_buffer_slice {
+                let from_arrow_body = if forward_serialization {
+                    let forwarded_type = quote_field_type_from_typ(&obj.fields[0].typ, true).0;
+
+                    // TODO: Do #forwarded_type::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v)) if PODsible.
+                    quote! {
+                        #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(|v| Self(v)).collect())
+                    }
+                } else {
+                    let quoted_deserializer =
+                        quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+
+                    quote! {
                         // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
@@ -819,16 +823,25 @@ fn quote_trait_impls_from_obj(
 
                         Ok(#quoted_deserializer)
                     }
+                };
+                quote! {
+                    #[allow(clippy::wildcard_imports)]
+                    #[inline]
+                    fn from_arrow(
+                        arrow_data: &dyn arrow2::array::Array,
+                    ) -> DeserializationResult<Vec<Self>>
+                    where
+                        Self: Sized
+                    {
+                        #from_arrow_body
+                    }
                 }
             } else {
                 quote!()
             };
 
             // Forward deserialization to existing datatype if it's transparent.
-            let quoted_deserializer = if obj.is_arrow_transparent()
-                && !obj.fields[0].is_nullable
-                && matches!(obj.fields[0].typ, Type::Object(_))
-            {
+            let quoted_deserializer = if forward_serialization {
                 let forwarded_type = quote_field_type_from_typ(&obj.fields[0].typ, true).0;
                 quote! {
                     #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())

@@ -141,33 +141,7 @@ impl ::re_types_core::Loggable for ClassId {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = arrow_data
-                .as_any()
-                .downcast_ref::<UInt16Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::UInt16;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.ClassId#id")?
-                .values()
-                .as_slice();
-            {
-                slice
-                    .iter()
-                    .copied()
-                    .map(|v| crate::datatypes::ClassId(v))
-                    .map(|v| Self(v))
-                    .collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::ClassId::from_arrow(arrow_data)
+            .map(|v| v.into_iter().map(|v| Self(v)).collect())
     }
 }

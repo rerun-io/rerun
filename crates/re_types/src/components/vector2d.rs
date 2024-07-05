@@ -158,50 +158,7 @@ impl ::re_types_core::Loggable for Vector2D {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = {
-                let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                            2usize,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
-                    })
-                    .with_context("rerun.components.Vector2D#vector")?;
-                let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 2usize]>(
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.components.Vector2D#vector")?
-                        .values()
-                        .as_slice(),
-                )
-            };
-            {
-                slice
-                    .iter()
-                    .copied()
-                    .map(|v| crate::datatypes::Vec2D(v))
-                    .map(|v| Self(v))
-                    .collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::Vec2D::from_arrow(arrow_data)
+            .map(|v| v.into_iter().map(|v| Self(v)).collect())
     }
 }

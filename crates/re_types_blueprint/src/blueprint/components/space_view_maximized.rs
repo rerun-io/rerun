@@ -158,52 +158,7 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = {
-                let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                            16usize,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
-                    })
-                    .with_context("rerun.blueprint.components.SpaceViewMaximized#space_view_id")?;
-                let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 16usize]>(
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt8;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context(
-                            "rerun.blueprint.components.SpaceViewMaximized#space_view_id",
-                        )?
-                        .values()
-                        .as_slice(),
-                )
-            };
-            {
-                slice
-                    .iter()
-                    .copied()
-                    .map(|bytes| crate::datatypes::Uuid { bytes })
-                    .map(|v| Self(v))
-                    .collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::Uuid::from_arrow(arrow_data)
+            .map(|v| v.into_iter().map(|v| Self(v)).collect())
     }
 }

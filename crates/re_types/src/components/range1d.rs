@@ -158,50 +158,7 @@ impl ::re_types_core::Loggable for Range1D {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = {
-                let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
-                            2usize,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
-                    })
-                    .with_context("rerun.components.Range1D#range")?;
-                let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 2usize]>(
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<Float64Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float64;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.components.Range1D#range")?
-                        .values()
-                        .as_slice(),
-                )
-            };
-            {
-                slice
-                    .iter()
-                    .copied()
-                    .map(|v| crate::datatypes::Range1D(v))
-                    .map(|v| Self(v))
-                    .collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::Range1D::from_arrow(arrow_data)
+            .map(|v| v.into_iter().map(|v| Self(v)).collect())
     }
 }
