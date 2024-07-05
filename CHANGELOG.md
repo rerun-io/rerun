@@ -77,6 +77,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Improve container selection panel UI [#6711](https://github.com/rerun-io/rerun/pull/6711)
 - Fix annotation context labels not showing in views [#6742](https://github.com/rerun-io/rerun/pull/6742)
 - Quiet the 'not a mono-batch' log spam when selecting keypoint with a batch class-id [#6359](https://github.com/rerun-io/rerun/pull/6359)
+- Fix incorrect label placement for 3D arrows with origins [#6779](https://github.com/rerun-io/rerun/pull/6779)
 
 #### 🌁 Viewer Improvements
 - Allow resetting view property components from gui for all generically implemented property ui [#6417](https://github.com/rerun-io/rerun/pull/6417)
@@ -92,6 +93,8 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Add the OCR example [#6560](https://github.com/rerun-io/rerun/pull/6560) (thanks [@andreasnaoum](https://github.com/andreasnaoum)!)
 - Add the Vista example [#6664](https://github.com/rerun-io/rerun/pull/6664) (thanks [@roym899](https://github.com/roym899)!)
 - Add the Stereo Vision SLAM example [#6669](https://github.com/rerun-io/rerun/pull/6669) (thanks [@02alexander](https://github.com/02alexander)!)
+- Update the nuscenes example to use blueprint overrides and defaults [#6783](https://github.com/rerun-io/rerun/pull/6783)
+- Update the plots example to use blueprint overrides [#6781](https://github.com/rerun-io/rerun/pull/6781)
 
 #### 📚 Docs
 - Add links to our docs in component tooltips [#6482](https://github.com/rerun-io/rerun/pull/6482)
@@ -143,7 +146,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Generic view property building, applied to `TimeSeriesView`'s `PlotLegend` [#6400](https://github.com/rerun-io/rerun/pull/6400)
 
 #### 📦 Dependencies
-- Update to egui 0.28.0 [#6752](https://github.com/rerun-io/rerun/pull/6752)
+- Update to egui 0.28.1 [#6752](https://github.com/rerun-io/rerun/pull/6752) ), [#6785](https://github.com/rerun-io/rerun/pull/6785)
 - Update ewebsock to 0.6.0 [#6394](https://github.com/rerun-io/rerun/pull/6394)
 - Update to `wgpu 0.20`, fixing crashes with some linux setups [#6171](https://github.com/rerun-io/rerun/pull/6171)
 
