@@ -66,7 +66,7 @@ Support for this is tracked in [#6612](https://github.com/rerun-io/rerun/issues/
 
 If you wish to start a new recording, you can call `rr.init()` again.
 
-The `notebook_show()` method also takes optional arguments for specifying the width and height of the IFrame. For example:
+The `notebook_show()` method also takes optional arguments for specifying the width and height of the viewer. For example:
 
 ```python
 rr.notebook_show(width=400, height=400)
