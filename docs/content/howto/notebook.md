@@ -60,7 +60,7 @@ rr.notebook_show()
 
 This is similar to calling `rr.connect()` or `rr.serve()` in that it configures the Rerun SDK to send data to a viewer instance.
 
-Note that the call to `rr.notebook_show()` drains the recording recording of its data. This means that any subsequent calls to `rr.notebook_show()`
+Note that the call to `rr.notebook_show()` drains the recording of its data. This means that any subsequent calls to `rr.notebook_show()`
 will not result in the same data being displayed, because it has already been removed from the recording.
 Support for this is tracked in [#6612](https://github.com/rerun-io/rerun/issues/6612).
 
