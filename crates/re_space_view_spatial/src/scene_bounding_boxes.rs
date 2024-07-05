@@ -7,9 +7,6 @@ use crate::visualizers::SpatialViewVisualizerData;
 
 #[derive(Clone)]
 pub struct SceneBoundingBoxes {
-    /// Accumulated bounding box over several frames.
-    pub accumulated: macaw::BoundingBox,
-
     /// Overall bounding box of the scene for the current query.
     pub current: macaw::BoundingBox,
 
@@ -25,7 +22,6 @@ pub struct SceneBoundingBoxes {
 impl Default for SceneBoundingBoxes {
     fn default() -> Self {
         Self {
-            accumulated: macaw::BoundingBox::nothing(),
             current: macaw::BoundingBox::nothing(),
             smoothed: macaw::BoundingBox::nothing(),
             per_entity: IntMap::default(),
@@ -57,12 +53,6 @@ impl SceneBoundingBoxes {
 
         for bbox in self.per_entity.values() {
             self.current = self.current.union(*bbox);
-        }
-
-        if self.accumulated.is_nothing() || !self.accumulated.size().is_finite() {
-            self.accumulated = self.current;
-        } else {
-            self.accumulated = self.accumulated.union(self.current);
         }
 
         // Update smoothed bounding box.

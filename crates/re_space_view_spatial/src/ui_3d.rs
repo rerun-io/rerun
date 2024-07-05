@@ -64,7 +64,6 @@ pub struct View3DState {
     spin: bool,
     pub show_axes: bool,
     pub show_bbox: bool,
-    pub show_accumulated_bbox: bool,
     pub show_smoothed_bbox: bool,
 
     eye_interact_fade_in: bool,
@@ -83,7 +82,6 @@ impl Default for View3DState {
             spin: false,
             show_axes: false,
             show_bbox: false,
-            show_accumulated_bbox: false,
             show_smoothed_bbox: false,
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
@@ -259,7 +257,7 @@ impl View3DState {
             let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
             let orbit_radius = if radius < 0.0001 {
                 // Handle zero-sized bounding boxes:
-                (bounding_boxes.accumulated.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
+                (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
             } else {
                 radius
             };
@@ -658,16 +656,6 @@ impl SpatialSpaceView3D {
                 .add_box_outline(&state.bounding_boxes.current)
                 .map(|lines| lines.radius(box_line_radius).color(egui::Color32::WHITE));
         }
-        if state.state_3d.show_accumulated_bbox {
-            line_builder
-                .batch("scene_bbox_accumulated")
-                .add_box_outline(&state.bounding_boxes.accumulated)
-                .map(|lines| {
-                    lines
-                        .radius(box_line_radius)
-                        .color(egui::Color32::from_gray(170))
-                });
-        }
         if state.state_3d.show_smoothed_bbox {
             line_builder
                 .batch("scene_bbox_smoothed")
@@ -883,7 +871,7 @@ fn show_projections_from_2d_space(
                     add_picking_ray(
                         line_builder,
                         ray,
-                        &state.bounding_boxes.accumulated,
+                        &state.bounding_boxes.current,
                         distance,
                         ray_color,
                     );
@@ -897,7 +885,7 @@ fn show_projections_from_2d_space(
 fn add_picking_ray(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     ray: macaw::Ray3,
-    scene_bbox_accum: &BoundingBox,
+    scene_bbox: &BoundingBox,
     thick_ray_length: f32,
     ray_color: egui::Color32,
 ) {
@@ -905,7 +893,7 @@ fn add_picking_ray(
 
     let origin = ray.point_along(0.0);
     // No harm in making this ray _very_ long. (Infinite messes with things though!)
-    let fallback_ray_end = ray.point_along(scene_bbox_accum.size().length() * 10.0);
+    let fallback_ray_end = ray.point_along(scene_bbox.size().length() * 10.0);
     let main_ray_end = ray.point_along(thick_ray_length);
 
     line_batch

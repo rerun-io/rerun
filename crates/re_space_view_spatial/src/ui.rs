@@ -144,7 +144,6 @@ impl SpatialSpaceViewState {
             )
             .clicked()
         {
-            self.bounding_boxes.accumulated = self.bounding_boxes.current;
             self.bounding_boxes.smoothed = self.bounding_boxes.current;
             self.state_3d
                 .reset_camera(&self.bounding_boxes, scene_view_coordinates);

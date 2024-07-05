@@ -406,11 +406,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 ui.re_checkbox(&mut state.state_3d.show_bbox, "Show bounding box")
                     .on_hover_text("Show the current scene bounding box");
                 ui.re_checkbox(
-                    &mut state.state_3d.show_accumulated_bbox,
-                    "Show accumulated bounding box",
-                )
-                .on_hover_text("Show bounding box accumulated over all rendered frames");
-                ui.re_checkbox(
                     &mut state.state_3d.show_smoothed_bbox,
                     "Show smoothed bounding box",
                 )
