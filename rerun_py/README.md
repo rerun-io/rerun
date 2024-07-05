@@ -17,6 +17,11 @@ The Python module is called `rerun`, while the package published on PyPI is `rer
 
 For other SDK languages see [Installing Rerun](https://www.rerun.io/docs/getting-started/installing-viewer).
 
+We also provide a [Jupyter widget](https://pypi.org/project/rerun-notebook/) for interactive data visualization in Jupyter notebooks:
+```sh
+pip3 install rerun-sdk[notebook]
+```
+
 ## Example
 ```py
 import rerun as rr
