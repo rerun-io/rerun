@@ -140,19 +140,14 @@ export class WebViewer {
     if (this.#state !== "stopped") return;
     this.#state = "starting";
 
+    let WebHandle_class = await load();
+    if (this.#state !== "starting") return;
+
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.width = options.width ?? "640px";
     this.#canvas.style.height = options.height ?? "360px";
     this.#canvas.id = this.#id;
     parent.append(this.#canvas);
-
-    // This yield appears to be necessary to ensure that the canvas is attached to the DOM
-    // and visible. Without it we get occasionally get a panic about a failure to find a canvas
-    // element with the given ID.
-    await delay(0);
-
-    let WebHandle_class = await load();
-    if (this.#state !== "starting") return;
 
     const fullscreen = this.#allow_fullscreen
       ? {
@@ -163,7 +158,7 @@ export class WebViewer {
 
     this.#handle = new WebHandle_class({ ...options, fullscreen });
     try {
-      await this.#handle.start(this.#canvas.id);
+      await this.#handle.start(this.#canvas);
     } catch (e) {
       this.stop();
       throw e;
