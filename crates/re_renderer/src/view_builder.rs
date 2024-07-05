@@ -9,7 +9,7 @@ use crate::{
         ScreenshotProcessor,
     },
     global_bindings::FrameUniformBuffer,
-    queuable_draw_data::QueueableDrawData,
+    queueable_draw_data::QueueableDrawData,
     renderer::{CompositorDrawData, DebugOverlayDrawData},
     transform::RectTransform,
     wgpu_resources::{
