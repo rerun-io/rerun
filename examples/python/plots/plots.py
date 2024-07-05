@@ -43,6 +43,12 @@ def log_bar_chart() -> None:
 
 
 def log_parabola() -> None:
+    # Time-independent styling can be achieved by logging static components to the data store. Here, by using the
+    # `SeriesLine` archetype, we further hint the viewer to use the line plot visualizer.
+    # Alternatively, you can achieve time-independent styling using overrides, as is everywhere else in this example
+    # (see the `main()` function).
+    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), static=True)
+
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
         rr.set_time_sequence("frame_nr", t)
@@ -116,9 +122,6 @@ def main() -> None:
                 rrb.TimeSeriesView(
                     name="Curves",
                     origin="/curves",
-                    overrides={
-                        "/curves/parabola": [rr.components.Name("f(t) = (0.01t - 3)³ + 1")],
-                    },
                 ),
                 rrb.TimeSeriesView(
                     name="Trig",
