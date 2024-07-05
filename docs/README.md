@@ -36,13 +36,14 @@ order: 6
 ```
 
 The available attributes are:
-| name     | type    | required | description                                   |
-| -------- | ------- | -------- | --------------------------------------------- |
-| title    | string  | yes      | navigation item title                         |
-| order    | number  | yes      | used to sort navigation items                 |
-| redirect | string  | no       | redirect to the given url                     |
-| hidden   | boolean | no       | don't show the item in navigation             |
-| expand   | boolean | no       | expand the sub-items in navigation by default |
+| name       | type    | required | description                                         |
+| ---------- | ------- | -------- | --------------------------------------------------- |
+| title      | string  | yes      | navigation item title                               |
+| order      | number  | yes      | used to sort navigation items                       |
+| redirect   | string  | no       | redirect to the given url                           |
+| hidden     | boolean | no       | don't show the item in navigation                   |
+| expand     | boolean | no       | expand the sub-items in navigation by default       |
+| ogImageUrl | string  | no       | url to an image to show as the open-graph thumbnail |
 
 ### Snippets
 
