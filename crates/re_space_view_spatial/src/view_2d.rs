@@ -85,8 +85,18 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .downcast_ref::<SpatialSpaceViewState>()
             .ok()
             .map(|state| {
-                let size = state.bounding_boxes.accumulated.size();
-                size.x / size.y
+                let (width, height) = state.visual_bounds_2d.map_or_else(
+                    || {
+                        let bbox = &state.bounding_boxes.smoothed;
+                        (
+                            (bbox.max.x - bbox.min.x).abs(),
+                            (bbox.max.y - bbox.min.y).abs(),
+                        )
+                    },
+                    |bounds| (bounds.x_range.len() as f32, bounds.y_range.len() as f32),
+                );
+
+                width / height
             })
     }
 

@@ -12,6 +12,7 @@ use re_renderer::OutlineConfig;
 use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
+    blueprint::components::VisualBounds2D,
     components::{Colormap, DepthMeter, TensorData, ViewCoordinates},
     tensor_data::TensorDataMeaning,
     Loggable as _,
@@ -76,6 +77,8 @@ pub struct SpatialSpaceViewState {
 
     /// Pinhole component logged at the origin if any.
     pub pinhole_at_origin: Option<Pinhole>,
+
+    pub visual_bounds_2d: Option<VisualBounds2D>,
 }
 
 impl SpaceViewState for SpatialSpaceViewState {
