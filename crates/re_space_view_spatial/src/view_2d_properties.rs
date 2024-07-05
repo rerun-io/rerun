@@ -54,10 +54,10 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for SpatialSpaceView2D {
             .and_then(pinhole_resolution_rect)
             .unwrap_or_else(|| {
                 // TODO(emilk): if there is a single image in this view, use that as the default bounds
-                let scene_rect_accum = view_state.bounding_boxes.accumulated;
+                let scene_rect_smoothed = view_state.bounding_boxes.smoothed;
                 egui::Rect::from_min_max(
-                    scene_rect_accum.min.truncate().to_array().into(),
-                    scene_rect_accum.max.truncate().to_array().into(),
+                    scene_rect_smoothed.min.truncate().to_array().into(),
+                    scene_rect_smoothed.max.truncate().to_array().into(),
                 )
             });
 
