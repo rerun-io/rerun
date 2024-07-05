@@ -48,7 +48,7 @@ pub struct StartupOptions {
     pub location: Option<eframe::Location>,
 
     /// Take a screenshot of the app and quit.
-    /// We use this to generate screenshots of our exmples.
+    /// We use this to generate screenshots of our examples.
     #[cfg(not(target_arch = "wasm32"))]
     pub screenshot_to_path_then_quit: Option<std::path::PathBuf>,
 

@@ -124,7 +124,7 @@ When persisted, the state will be stored at the following locations:
     save: Option<String>,
 
     /// Take a screenshot of the app and quit.
-    /// We use this to generate screenshots of our exmples.
+    /// We use this to generate screenshots of our examples.
     /// Useful together with `--window-size`.
     #[clap(long)]
     screenshot_to: Option<std::path::PathBuf>,
