@@ -14,18 +14,22 @@ Rerun has been tested with:
 -   [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks)
 -   [Google Colab](https://colab.research.google.com/)
 
-## Basic concept
+To begin, install the `rerun-sdk` package with the `notebook` extra:
+```sh
+pip install rerun-sdk[notebook]
+```
 
-When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
-you send them to a sink such as via `rr.connect()` or `rr.save()`. When using Rerun in a notebook,
-rather than using the other sinks, you have the option to use a helper method: [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
-This method takes any buffered messages and converts them into an HTML snipped including
-the inlined data along with an instance of the Viewer in an iframe.
+This installs both [rerun-sdk](https://pypi.org/project/rerun-sdk/) and [rerun-notebook](https://pypi.org/project/rerun-notebook/).
 
 ## The APIs
 
-In order to output the current recording data to a notebook cell, call:
-[`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
+When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
+you send them to a sink such as via `rr.connect()` or `rr.save()`.
+
+When using Rerun in a notebook, rather than using the other sinks, you have the option to use [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show). This method embeds the [web viewer](./embed-rerun-viewer.md) using the IPython `display` mechanism in the cell output, and sends the current recording data to it.
+
+Once the viewer is open, any subsequent `rr.log()` calls will send their data directly to the viewer,
+without any intermediate buffering.
 
 For example:
 
@@ -54,19 +58,15 @@ rr.notebook_show()
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/notebook_example/e47920b7ca7988aba305d73b2aea2da7b81c93e3/1200w.png">
 </picture>
 
-This is similar to calling `rr.connect()` or `rr.save()` in that it configures the Rerun SDK to use
-this memory buffer as the sink for future logging calls.
+This is similar to calling `rr.connect()` or `rr.serve()` in that it configures the Rerun SDK to send data to a viewer instance.
 
-Note that the output cell is essentially a fixed snapshot of the
-current state of the recording at the time that `notebook_show()` is called. Rerun does not yet
-support live incremental streaming from the Jupyter kernel into the embedded viewer.
+Note that the call to `rr.notebook_show()` drains the recording of its data. This means that any subsequent calls to `rr.notebook_show()`
+will not result in the same data being displayed, because it has already been removed from the recording.
+Support for this is tracked in [#6612](https://github.com/rerun-io/rerun/issues/6612).
 
-Messages will continue to be buffered incrementally, and each call to `notebook_show()` will
-display all messages that have been logged since the last call to `rr.init()`.
+If you wish to start a new recording, you can call `rr.init()` again.
 
-If you wish to clear the current recording, you can call `rr.init()` again.
-
-The `notebook_show()` method also takes optional arguments for specifying the width and height of the IFrame. For example:
+The `notebook_show()` method also takes optional arguments for specifying the width and height of the viewer. For example:
 
 ```python
 rr.notebook_show(width=400, height=400)
@@ -90,7 +90,7 @@ blueprint = rrb.Blueprint(
 rr.notebook_show(blueprint=blueprint)
 ```
 
-Because blueprint types implement `_repr_html_`, you can also just end any cell with a blueprint
+Because blueprint types implement `_ipython_display_`, you can also just end any cell with a blueprint
 object, and it will call `notebook_show()` behind the scenes.
 
 ```python
@@ -121,6 +121,33 @@ rrb.Vertical(
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/notebook_blueprint_example/eb0663a9a8a0de8276390667a774acc1bc86148e/1200w.png">
 </picture>
 
+## Streaming data
+
+The notebook integration supports streaming data to the viewer during cell execution.
+
+You can call `rr.notebook_show()` at any point after calling `rr.init()`, and any
+`rr.log()` calls will be sent to the viewer in real-time.
+
+```python
+import math
+from time import sleep
+
+import numpy as np
+import rerun as rr
+from rerun.utilities import build_color_grid
+
+rr.init("rerun_example_notebook")
+rr.notebook_show()
+
+STEPS = 100
+twists = math.pi * np.sin(np.linspace(0, math.tau, STEPS)) / 4
+for t in range(STEPS):
+    sleep(0.05)  # delay to simulate a long-running computation
+    rr.set_time_sequence("step", t)
+    cube = build_color_grid(10, 10, 10, twist=twists[t])
+    rr.log("cube", rr.Points3D(cube.positions, colors=cube.colors, radii=0.5))
+```
+
 ## Some working examples
 
 To experiment with notebooks yourself, there are a few options.
@@ -146,27 +173,11 @@ We also host a copy of the notebook in [Google Colab](https://colab.research.goo
 Note that if you copy and run the notebook yourself, the first Cell installs Rerun into the Colab environment.
 After running this cell you will need to restart the Runtime for the Rerun package to show up successfully.
 
-## Sharing your notebook
-
-Because the Rerun Viewer in the notebook is just an embedded HTML snippet it also works with
-tools like nbconvert.
-
-You can convert the notebook to HTML using the following command:
-
-```bash
-$ jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb
-```
-
-This will create a new file `cube.html` that can be hosted on any static web server.
-
-[Example cube.html](https://static.rerun.io/93d3f93e0951b2e2fedcf70f71014a3b3a5e8ef6_cube.html)
-
 ## Limitations
 
-Although convenient, the approach of fully inlining an RRD file as an HTML snippet has some drawbacks. In particular,
-it is not suited to large RRD files. The RRD file is embedded as a base64 encoded string which can
-result in a very large HTML file. This can cause problems in some browsers. If you want to share large datasets,
-we recommend using the `save()` API to create a separate file and hosting it as a separate standalone asset.
+Browsers have limitations in the amount of memory usable by a single tab. If you are working with large datasets,
+you may run into browser tab crashes due to out-of-memory errors.
+If you encounter the issue, you can try to use the `save()` API to save the data to a file and share it as a standalone asset.
 
 ## Future work
 
