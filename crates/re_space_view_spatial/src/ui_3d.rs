@@ -118,10 +118,10 @@ impl View3DState {
     ) -> ViewEye {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
-        // with scenes that grow over time.
+        // with scenes that change over time.
         if self.last_eye_interaction.is_none() {
             self.interpolate_to_view_eye(default_eye(
-                &bounding_boxes.accumulated,
+                &bounding_boxes.current,
                 scene_view_coordinates,
             ));
         }
@@ -129,7 +129,7 @@ impl View3DState {
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
         if scene_view_coordinates != self.scene_view_coordinates {
             self.interpolate_to_view_eye(default_eye(
-                &bounding_boxes.accumulated,
+                &bounding_boxes.current,
                 scene_view_coordinates,
             ));
         }
@@ -151,9 +151,9 @@ impl View3DState {
             }
         }
 
-        let view_eye = self.view_eye.get_or_insert_with(|| {
-            default_eye(&bounding_boxes.accumulated, scene_view_coordinates)
-        });
+        let view_eye = self
+            .view_eye
+            .get_or_insert_with(|| default_eye(&bounding_boxes.current, scene_view_coordinates));
 
         if self.spin {
             view_eye.rotate(egui::vec2(
@@ -855,7 +855,7 @@ fn show_projections_from_2d_space(
                         add_picking_ray(
                             line_builder,
                             ray,
-                            &state.bounding_boxes.accumulated,
+                            &state.bounding_boxes.smoothed,
                             thick_ray_length,
                             ray_color,
                         );
