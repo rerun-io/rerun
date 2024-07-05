@@ -4,10 +4,12 @@
 
 ## [0.17.0](https://github.com/rerun-io/rerun/compare/0.16.1...0.17.0) - More Blueprint features and better notebooks - 2024-07-08
 
+Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
+
 ### ✨ Overview & highlights
 
 * 🟦 Blueprint component override & defaults
-  * *Defaults*: Configure default component value for an entire view, used when no value are logged to the data store (using `rr.log()`).
+  * *Defaults*: Configure default component value for an entire view, used when no values are logged to the data store (using `rr.log()`).
   * *Override*: Specify a value to use regardless of the data-store & default values and use specified value instead. Can be set per view per entity.
   * Both are available from UI and (Python) blueprint code.
   * When a view entity is selected, the selection panel now shows all active visualizers, what components they use, and where they come from.
@@ -22,16 +24,7 @@
   * [Paddle OCR](https://rerun.io/examples/video-image/ocr)
   * [Vista driving world model](https://rerun.io/examples/generative-vision/vista)
   * [Stereo Vision SLAM](https://rerun.io/examples/3d-reconstruction/stereo_vision_slam)
-* 🛠️ New/changed components:
-  * [`ImagePlaneDistance`](https://rerun.io/docs/reference/types/components/image_plane_distance): allows to configure the size of the Pinhole frustum visualization
-  * [`AxisLength`](https://rerun.io/docs/reference/types/components/axis_length): allows to configure the axis length of the transform visualization
-  * `DepthImage` and `SegmentationImage`:
-    * [`Opacity`](https://rerun.io/docs/reference/types/components/opacity): used to configure transparency
-      * Note: layered `Image` are no longer made automatically transparent
-    * [`FillRatio`](https://rerun.io/docs/reference/types/components/fill_ratio): for setting the point radius on `DepthImage` in 3D views
-    * [`Colormap`](https://rerun.io/docs/reference/types/components/colormap): for setting `DepthImage` colormap
-    * [`AggregationPolicy`](https://rerun.io/docs/reference/types/components/aggregation_policy): for setting aggregation policy on line plots
-  * [`Radius`](https://rerun.io/docs/reference/types/components/radius) component can now optionally specify radius in UI points
+* 🛠️ Improved the logging API with many new and updated archetypes and components (see [migration guide](http://rerun.io/docs/reference/migration/migration-0-17))
 * 🖼️ New blueprint accessible View properties
   * `TensorView` is now fully configurable from code
   * `BarChartView` has now configurable plot legend placement
@@ -59,6 +52,7 @@
 - Make draw order editable & solve 2D flickering issues, add draw order to arrow2d archetype [#6644](https://github.com/rerun-io/rerun/pull/6644)
 - Remove `Axes3D` archetype and add `axis_length` to `Transform3D` [#6676](https://github.com/rerun-io/rerun/pull/6676)
 - Expose ui point radii to logging & blueprint, remove old default radius settings in favor of blueprint default components [#6678](https://github.com/rerun-io/rerun/pull/6678)
+- Rename `HalfSizes2D/3D` to `HalfSize2D/3D` [#6768](https://github.com/rerun-io/rerun/pull/6768)
 
 #### 🌊 C++ API
 - Add docs on how to install C++ SDK with conda-forge packages [#6381](https://github.com/rerun-io/rerun/pull/6381) (thanks [@traversaro](https://github.com/traversaro)!)
