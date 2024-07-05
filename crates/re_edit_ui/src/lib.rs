@@ -13,9 +13,9 @@ mod response_utils;
 mod visual_bounds2d;
 
 use datatype_editors::{
-    edit_bool, edit_bool_raw, edit_f32_min_to_max_float_raw, edit_f32_zero_to_max,
-    edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one, edit_multiline_string,
-    edit_singleline_string, edit_view_enum,
+    display_name_ui, display_text_ui, edit_bool, edit_bool_raw, edit_f32_min_to_max_float_raw,
+    edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one,
+    edit_multiline_string, edit_singleline_string, edit_view_enum,
 };
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
@@ -23,6 +23,7 @@ use re_types::{
         AggregationPolicy, AxisLength, Colormap, DepthMeter, DrawOrder, FillRatio, GammaCorrection,
         ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity, StrokeWidth, Text,
     },
+    Loggable as _,
 };
 use re_viewer_context::gpu_bridge::colormap_dropdown_button_ui;
 // ----
@@ -56,8 +57,10 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view::<Visible>(edit_bool_raw);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
 
+    registry.add_display_ui(Text::name(), Box::new(display_text_ui));
     registry.add_singleline_edit_or_view::<Text>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Text>(edit_multiline_string);
+    registry.add_display_ui(Name::name(), Box::new(display_name_ui));
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
