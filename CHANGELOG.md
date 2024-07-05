@@ -8,12 +8,12 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 
 ### ✨ Overview & highlights
 
-* 🟦 Blueprint component override & defaults
-  * *Defaults*: Configure default component value for an entire view, used when no values are logged to the data store (using `rr.log()`).
-  * *Override*: Specify a value to use regardless of the data-store & default values and use specified value instead. Can be set per view per entity.
-  * Both are available from UI and (Python) blueprint code.
-  * When a view entity is selected, the selection panel now shows all active visualizers, what components they use, and where they come from.
-  * Everything that was editable per Entity in a View uses component overrides now (e.g. camera plane distance, transform axis lengths etc.)
+* 🟦 Blueprint component override & defaults, and visualizer override for all views
+  * *Component defaults*: Configure default component value for an entire view, used when no values are logged to the data store (using `rr.log()`).
+  * *Component overrides*: Specify a value to use regardless of the data-store & default values and use specified value instead. Can be set per view per entity.
+  * *Visualizer overrides*: Specify a visualizer to use for a given entity in a given view. Previously only available for scalar data in timeseries views, now available for all view kinds.
+  * All three are available from the (fully revamped) UI _and_ the Python blueprint APIs.
+  * Everything that was editable per entity in a view now uses component overrides (e.g. camera plane distance, transform axis lengths, etc.)
   * Tip: Tooltips for each component in the UI include a link to the docs now!
 * 🕸️ Improved notebook & website embedding support
   * Now you can stream data from the notebook cell to the embedded viewer.
