@@ -30,8 +30,8 @@ namespace rerun {
 
     // Also import any component or datatype that has a unique name:
     using components::Color;
-    using components::HalfSizes2D;
-    using components::HalfSizes3D;
+    using components::HalfSize2D;
+    using components::HalfSize3D;
     using components::LineStrip2D;
     using components::LineStrip3D;
     using components::Material;

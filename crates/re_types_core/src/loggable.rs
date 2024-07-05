@@ -221,7 +221,7 @@ impl ComponentName {
             self.full_name().strip_prefix("rerun.components.")
         {
             // This code should be correct as long as this url passes our link checker:
-            // https://rerun.io/docs/reference/types/components/half_sizes2d
+            // https://rerun.io/docs/reference/types/components/line_strip2d
 
             let component_name_snake_case = re_case::to_snake_case(component_name_pascal_case);
             let base_url = "https://rerun.io/docs/reference/types/components";

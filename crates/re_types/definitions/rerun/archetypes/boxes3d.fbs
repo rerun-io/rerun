@@ -23,7 +23,7 @@ table Boxes3D (
   // --- Required ---
 
   /// All half-extents that make up the batch of boxes.
-  half_sizes: [rerun.components.HalfSizes3D] ("attr.rerun.component_required", order: 1000);
+  half_sizes: [rerun.components.HalfSize3D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 

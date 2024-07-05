@@ -1,5 +1,5 @@
 use crate::{
-    components::{HalfSizes2D, Position2D},
+    components::{HalfSize2D, Position2D},
     datatypes::Vec2D,
 };
 
@@ -8,7 +8,7 @@ use super::Boxes2D;
 impl Boxes2D {
     /// Creates new [`Boxes2D`] with [`Self::half_sizes`] centered around the local origin.
     #[inline]
-    pub fn from_half_sizes(half_sizes: impl IntoIterator<Item = impl Into<HalfSizes2D>>) -> Self {
+    pub fn from_half_sizes(half_sizes: impl IntoIterator<Item = impl Into<HalfSize2D>>) -> Self {
         Self::new(half_sizes)
     }
 
@@ -16,7 +16,7 @@ impl Boxes2D {
     #[inline]
     pub fn from_centers_and_half_sizes(
         centers: impl IntoIterator<Item = impl Into<Position2D>>,
-        half_sizes: impl IntoIterator<Item = impl Into<HalfSizes2D>>,
+        half_sizes: impl IntoIterator<Item = impl Into<HalfSize2D>>,
     ) -> Self {
         Self::new(half_sizes).with_centers(centers)
     }
@@ -28,7 +28,7 @@ impl Boxes2D {
     pub fn from_sizes(sizes: impl IntoIterator<Item = impl Into<Vec2D>>) -> Self {
         Self::new(sizes.into_iter().map(|wh| {
             let wh = wh.into();
-            HalfSizes2D::new(wh.x() / 2.0, wh.y() / 2.0)
+            HalfSize2D::new(wh.x() / 2.0, wh.y() / 2.0)
         }))
     }
 

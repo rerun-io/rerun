@@ -1,5 +1,5 @@
 use crate::{
-    components::{HalfSizes3D, Position3D},
+    components::{HalfSize3D, Position3D},
     datatypes::Vec3D,
 };
 
@@ -8,7 +8,7 @@ use super::Boxes3D;
 impl Boxes3D {
     /// Creates new [`Boxes3D`] with [`Self::half_sizes`] centered around the local origin.
     #[inline]
-    pub fn from_half_sizes(half_sizes: impl IntoIterator<Item = impl Into<HalfSizes3D>>) -> Self {
+    pub fn from_half_sizes(half_sizes: impl IntoIterator<Item = impl Into<HalfSize3D>>) -> Self {
         Self::new(half_sizes)
     }
 
@@ -16,7 +16,7 @@ impl Boxes3D {
     #[inline]
     pub fn from_centers_and_half_sizes(
         centers: impl IntoIterator<Item = impl Into<Position3D>>,
-        half_sizes: impl IntoIterator<Item = impl Into<HalfSizes3D>>,
+        half_sizes: impl IntoIterator<Item = impl Into<HalfSize3D>>,
     ) -> Self {
         Self::new(half_sizes).with_centers(centers)
     }
@@ -28,7 +28,7 @@ impl Boxes3D {
     pub fn from_sizes(sizes: impl IntoIterator<Item = impl Into<Vec3D>>) -> Self {
         Self::new(sizes.into_iter().map(|size| {
             let wh = size.into();
-            HalfSizes3D::new(wh.x() / 2.0, wh.y() / 2.0, wh.z() / 2.0)
+            HalfSize3D::new(wh.x() / 2.0, wh.y() / 2.0, wh.z() / 2.0)
         }))
     }
 

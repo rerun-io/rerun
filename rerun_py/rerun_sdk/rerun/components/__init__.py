@@ -39,8 +39,8 @@ from .disconnected_space import (
 from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
-from .half_sizes2d import HalfSizes2D, HalfSizes2DBatch, HalfSizes2DType
-from .half_sizes3d import HalfSizes3D, HalfSizes3DBatch, HalfSizes3DType
+from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
+from .half_size3d import HalfSize3D, HalfSize3DBatch, HalfSize3DType
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch, ImagePlaneDistanceType
 from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
@@ -147,12 +147,12 @@ __all__ = [
     "GammaCorrection",
     "GammaCorrectionBatch",
     "GammaCorrectionType",
-    "HalfSizes2D",
-    "HalfSizes2DBatch",
-    "HalfSizes2DType",
-    "HalfSizes3D",
-    "HalfSizes3DBatch",
-    "HalfSizes3DType",
+    "HalfSize2D",
+    "HalfSize2DBatch",
+    "HalfSize2DType",
+    "HalfSize3D",
+    "HalfSize3DBatch",
+    "HalfSize3DType",
     "ImagePlaneDistance",
     "ImagePlaneDistanceBatch",
     "ImagePlaneDistanceType",

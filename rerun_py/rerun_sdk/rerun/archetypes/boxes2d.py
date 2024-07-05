@@ -64,9 +64,9 @@ class Boxes2D(Boxes2DExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    half_sizes: components.HalfSizes2DBatch = field(
+    half_sizes: components.HalfSize2DBatch = field(
         metadata={"component": "required"},
-        converter=components.HalfSizes2DBatch._required,  # type: ignore[misc]
+        converter=components.HalfSize2DBatch._required,  # type: ignore[misc]
     )
     # All half-extents that make up the batch of boxes.
     #

@@ -1,8 +1,8 @@
 use crate::datatypes::Vec3D;
 
-use super::HalfSizes3D;
+use super::HalfSize3D;
 
-impl HalfSizes3D {
+impl HalfSize3D {
     /// Create a new half-extent from half-width, half-height, half-depth.
     #[inline]
     pub const fn new(half_width: f32, half_height: f32, half_depth: f32) -> Self {
@@ -45,17 +45,17 @@ impl HalfSizes3D {
 }
 
 #[cfg(feature = "glam")]
-impl From<HalfSizes3D> for glam::Vec3 {
+impl From<HalfSize3D> for glam::Vec3 {
     #[inline]
-    fn from(extent: HalfSizes3D) -> Self {
+    fn from(extent: HalfSize3D) -> Self {
         Self::new(extent.x(), extent.y(), extent.z())
     }
 }
 
 #[cfg(feature = "mint")]
-impl From<HalfSizes3D> for mint::Vector3<f32> {
+impl From<HalfSize3D> for mint::Vector3<f32> {
     #[inline]
-    fn from(extent: HalfSizes3D) -> Self {
+    fn from(extent: HalfSize3D) -> Self {
         Self {
             x: extent.x(),
             y: extent.y(),
@@ -64,7 +64,7 @@ impl From<HalfSizes3D> for mint::Vector3<f32> {
     }
 }
 
-impl Default for HalfSizes3D {
+impl Default for HalfSize3D {
     #[inline]
     fn default() -> Self {
         Self(Vec3D::ONE)

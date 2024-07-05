@@ -4,7 +4,7 @@ import itertools
 from typing import Optional, cast
 
 import rerun as rr
-from rerun.components import HalfSizes3DBatch, Position3DBatch, RadiusArrayLike, Rotation3DBatch
+from rerun.components import HalfSize3DBatch, Position3DBatch, RadiusArrayLike, Rotation3DBatch
 from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Rotation3DArrayLike, Utf8ArrayLike
 from rerun.datatypes.vec3d import Vec3DArrayLike
 
@@ -71,7 +71,7 @@ def test_boxes3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSizes3DBatch)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
         assert arch.centers == centers_expected(centers, Position3DBatch)
         assert arch.rotations == expected_rotations(rotations, Rotation3DBatch)
         assert arch.colors == colors_expected(colors)

@@ -8,7 +8,7 @@
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
-#include "../components/half_sizes2d.hpp"
+#include "../components/half_size2d.hpp"
 #include "../components/position2d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
@@ -41,7 +41,7 @@ namespace rerun::archetypes {
     /// ```
     struct Boxes2D {
         /// All half-extents that make up the batch of boxes.
-        Collection<rerun::components::HalfSizes2D> half_sizes;
+        Collection<rerun::components::HalfSize2D> half_sizes;
 
         /// Optional center positions of the boxes.
         std::optional<Collection<rerun::components::Position2D>> centers;
@@ -80,7 +80,7 @@ namespace rerun::archetypes {
         // Extensions to generated type defined in 'boxes2d_ext.cpp'
 
         /// Creates new `Boxes2D` with `half_sizes` centered around the local origin.
-        static Boxes2D from_half_sizes(Collection<components::HalfSizes2D> half_sizes) {
+        static Boxes2D from_half_sizes(Collection<components::HalfSize2D> half_sizes) {
             Boxes2D boxes;
             boxes.half_sizes = std::move(half_sizes);
             return boxes;
@@ -89,7 +89,7 @@ namespace rerun::archetypes {
         /// Creates new `Boxes2D` with `centers` and `half_sizes`.
         static Boxes2D from_centers_and_half_sizes(
             Collection<components::Position2D> centers,
-            Collection<components::HalfSizes2D> half_sizes
+            Collection<components::HalfSize2D> half_sizes
         ) {
             Boxes2D boxes;
             boxes.half_sizes = std::move(half_sizes);
