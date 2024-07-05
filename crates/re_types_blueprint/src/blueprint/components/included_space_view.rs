@@ -88,57 +88,18 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
         )
     }
 
-    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0
-                    .into_iter()
-                    .map(|datum| datum.map(|datum| datum.bytes).unwrap_or_default())
-                    .flatten()
-                    .collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                    data0_bitmap.as_ref().map(|bitmap| {
-                        bitmap
-                            .iter()
-                            .map(|b| std::iter::repeat(b).take(16usize))
-                            .flatten()
-                            .collect::<Vec<_>>()
-                            .into()
-                    });
-                FixedSizeListArray::new(
-                    Self::arrow_datatype(),
-                    PrimitiveArray::new(
-                        DataType::UInt8,
-                        data0_inner_data.into_iter().collect(),
-                        data0_inner_bitmap,
-                    )
-                    .boxed(),
-                    data0_bitmap,
-                )
-                .boxed()
-            }
-        })
+        crate::datatypes::Uuid::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -152,7 +113,6 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
             .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where

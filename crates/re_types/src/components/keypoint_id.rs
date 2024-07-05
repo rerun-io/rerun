@@ -102,38 +102,18 @@ impl ::re_types_core::Loggable for KeypointId {
         DataType::UInt16
     }
 
-    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0
-                    .into_iter()
-                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                    .collect(),
-                data0_bitmap,
-            )
-            .boxed()
-        })
+        crate::datatypes::KeypointId::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -147,7 +127,6 @@ impl ::re_types_core::Loggable for KeypointId {
             .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where

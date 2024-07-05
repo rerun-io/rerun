@@ -88,53 +88,18 @@ impl ::re_types_core::Loggable for MediaType {
         DataType::Utf8
     }
 
-    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            {
-                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    data0
-                        .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
-                )?
-                .into();
-                let inner_data: arrow2::buffer::Buffer<u8> = data0
-                    .into_iter()
-                    .flatten()
-                    .flat_map(|datum| datum.0 .0)
-                    .collect();
-
-                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                unsafe {
-                    Utf8Array::<i32>::new_unchecked(
-                        Self::arrow_datatype(),
-                        offsets,
-                        inner_data,
-                        data0_bitmap,
-                    )
-                }
-                .boxed()
-            }
-        })
+        crate::datatypes::Utf8::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     #[allow(clippy::wildcard_imports)]
