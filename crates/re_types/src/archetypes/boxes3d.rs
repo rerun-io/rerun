@@ -66,7 +66,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Boxes3D {
     /// All half-extents that make up the batch of boxes.
-    pub half_sizes: Vec<crate::components::HalfSizes3D>,
+    pub half_sizes: Vec<crate::components::HalfSize3D>,
 
     /// Optional center positions of the boxes.
     pub centers: Option<Vec<crate::components::Position3D>>,
@@ -106,7 +106,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
 
     #[inline]
     fn is_pod() -> bool {
-        <Vec<crate::components::HalfSizes3D>>::is_pod()
+        <Vec<crate::components::HalfSize3D>>::is_pod()
             && <Option<Vec<crate::components::Position3D>>>::is_pod()
             && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
@@ -117,7 +117,7 @@ impl ::re_types_core::SizeBytes for Boxes3D {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.HalfSizes3D".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.HalfSize3D".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
@@ -141,7 +141,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.HalfSizes3D".into(),
+            "rerun.components.HalfSize3D".into(),
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
             "rerun.components.Color".into(),
@@ -211,10 +211,10 @@ impl ::re_types_core::Archetype for Boxes3D {
             .collect();
         let half_sizes = {
             let array = arrays_by_name
-                .get("rerun.components.HalfSizes3D")
+                .get("rerun.components.HalfSize3D")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Boxes3D#half_sizes")?;
-            <crate::components::HalfSizes3D>::from_arrow_opt(&**array)
+            <crate::components::HalfSize3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Boxes3D#half_sizes")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -341,7 +341,7 @@ impl Boxes3D {
     /// Create a new `Boxes3D`.
     #[inline]
     pub(crate) fn new(
-        half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSizes3D>>,
+        half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSize3D>>,
     ) -> Self {
         Self {
             half_sizes: half_sizes.into_iter().map(Into::into).collect(),

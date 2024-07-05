@@ -7,7 +7,7 @@
 #include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/half_sizes3d.hpp"
+#include "../components/half_size3d.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/rotation3d.hpp"
@@ -60,7 +60,7 @@ namespace rerun::archetypes {
     /// ```
     struct Boxes3D {
         /// All half-extents that make up the batch of boxes.
-        Collection<rerun::components::HalfSizes3D> half_sizes;
+        Collection<rerun::components::HalfSize3D> half_sizes;
 
         /// Optional center positions of the boxes.
         std::optional<Collection<rerun::components::Position3D>> centers;
@@ -95,7 +95,7 @@ namespace rerun::archetypes {
         // Extensions to generated type defined in 'boxes3d_ext.cpp'
 
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
-        static Boxes3D from_half_sizes(Collection<components::HalfSizes3D> half_sizes) {
+        static Boxes3D from_half_sizes(Collection<components::HalfSize3D> half_sizes) {
             Boxes3D boxes;
             boxes.half_sizes = std::move(half_sizes);
             return boxes;
@@ -104,7 +104,7 @@ namespace rerun::archetypes {
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
         static Boxes3D from_centers_and_half_sizes(
             Collection<components::Position3D> centers,
-            Collection<components::HalfSizes3D> half_sizes
+            Collection<components::HalfSize3D> half_sizes
         ) {
             Boxes3D boxes;
             boxes.half_sizes = std::move(half_sizes);

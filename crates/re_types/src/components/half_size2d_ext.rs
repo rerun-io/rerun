@@ -1,8 +1,8 @@
 use crate::datatypes::Vec2D;
 
-use super::HalfSizes2D;
+use super::HalfSize2D;
 
-impl HalfSizes2D {
+impl HalfSize2D {
     /// Create a new half-extent from half-width and half-height.
     #[inline]
     pub const fn new(half_width: f32, half_height: f32) -> Self {
@@ -39,25 +39,25 @@ impl HalfSizes2D {
 }
 
 #[cfg(feature = "glam")]
-impl From<HalfSizes2D> for glam::Vec2 {
+impl From<HalfSize2D> for glam::Vec2 {
     #[inline]
-    fn from(extent: HalfSizes2D) -> Self {
+    fn from(extent: HalfSize2D) -> Self {
         Self::new(extent.x(), extent.y())
     }
 }
 
 #[cfg(feature = "glam")]
-impl From<HalfSizes2D> for glam::Vec3 {
+impl From<HalfSize2D> for glam::Vec3 {
     #[inline]
-    fn from(extent: HalfSizes2D) -> Self {
+    fn from(extent: HalfSize2D) -> Self {
         Self::new(extent.x(), extent.y(), 0.0)
     }
 }
 
 #[cfg(feature = "mint")]
-impl From<HalfSizes2D> for mint::Vector2<f32> {
+impl From<HalfSize2D> for mint::Vector2<f32> {
     #[inline]
-    fn from(extent: HalfSizes2D) -> Self {
+    fn from(extent: HalfSize2D) -> Self {
         Self {
             x: extent.x(),
             y: extent.y(),
@@ -65,7 +65,7 @@ impl From<HalfSizes2D> for mint::Vector2<f32> {
     }
 }
 
-impl Default for HalfSizes2D {
+impl Default for HalfSize2D {
     #[inline]
     fn default() -> Self {
         Self(Vec2D::ONE)

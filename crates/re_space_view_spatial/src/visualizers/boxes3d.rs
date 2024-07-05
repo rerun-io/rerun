@@ -3,7 +3,7 @@ use re_query::range_zip_1x7;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes3D,
-    components::{ClassId, Color, HalfSizes3D, KeypointId, Position3D, Radius, Rotation3D, Text},
+    components::{ClassId, Color, HalfSize3D, KeypointId, Position3D, Radius, Rotation3D, Text},
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -146,7 +146,7 @@ impl Boxes3DVisualizer {
 
 struct Boxes3DComponentData<'a> {
     // Point of views
-    half_sizes: &'a [HalfSizes3D],
+    half_sizes: &'a [HalfSize3D],
 
     // Clamped to edge
     centers: &'a [Position3D],
@@ -200,7 +200,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let half_sizes = match results.get_required_component_dense::<HalfSizes3D>(resolver)
+                let half_sizes = match results.get_required_component_dense::<HalfSize3D>(resolver)
                 {
                     Some(vectors) => vectors?,
                     _ => return Ok(()),

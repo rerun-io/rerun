@@ -7,7 +7,7 @@ title: "Boxes3D"
 
 ## Components
 
-**Required**: [`HalfSizes3D`](../components/half_sizes3d.md)
+**Required**: [`HalfSize3D`](../components/half_size3d.md)
 
 **Recommended**: [`Position3D`](../components/position3d.md), [`Rotation3D`](../components/rotation3d.md), [`Color`](../components/color.md)
 

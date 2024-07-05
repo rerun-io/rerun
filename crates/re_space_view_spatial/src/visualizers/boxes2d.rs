@@ -4,7 +4,7 @@ use re_query::range_zip_1x6;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes2D,
-    components::{ClassId, Color, DrawOrder, HalfSizes2D, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, HalfSize2D, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -49,7 +49,7 @@ impl Boxes2DVisualizer {
     /// Otherwise, produces one label per center position passed.
     fn process_labels<'a>(
         entity_path: &'a EntityPath,
-        half_sizes: &'a [HalfSizes2D],
+        half_sizes: &'a [HalfSize2D],
         centers: impl Iterator<Item = &'a Position2D> + 'a,
         labels: &'a [Text],
         colors: &'a [egui::Color32],
@@ -196,7 +196,7 @@ impl Boxes2DVisualizer {
 
 struct Boxes2DComponentData<'a> {
     // Point of views
-    half_sizes: &'a [HalfSizes2D],
+    half_sizes: &'a [HalfSize2D],
 
     // Clamped to edge
     centers: &'a [Position2D],
@@ -249,7 +249,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let half_sizes = match results.get_required_component_dense::<HalfSizes2D>(resolver)
+                let half_sizes = match results.get_required_component_dense::<HalfSize2D>(resolver)
                 {
                     Some(vectors) => vectors?,
                     _ => return Ok(()),

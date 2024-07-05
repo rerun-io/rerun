@@ -26,8 +26,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
-* [`HalfSizes2D`](components/half_sizes2d.md): Half-size (radius) of a 2D box.
-* [`HalfSizes3D`](components/half_sizes3d.md): Half-size (radius) of a 3D box.
+* [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.
+* [`HalfSize3D`](components/half_size3d.md): Half-size (radius) of a 3D box.
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.

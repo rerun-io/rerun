@@ -99,7 +99,7 @@ fn log_baseline_objects(
                 return None;
             }
 
-            let box_half_size: rerun::HalfSizes3D =
+            let box_half_size: rerun::HalfSize3D =
                 (glam::Vec3::from_slice(&object.scale) * 0.5).into();
             let transform = {
                 let translation = glam::Vec3::from_slice(&object.translation);
