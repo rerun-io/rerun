@@ -437,15 +437,21 @@ impl ComponentUiRegistry {
             return;
         }
 
-        if let Some(edit_or_view_ui) = self.component_singleline_edit_or_view.get(&component_name) {
-            // Use it in view mode (no mutation).
-            (*edit_or_view_ui)(ctx, ui, component_raw, EditOrView::View);
+        // Prefer the versatile UI callback if there is one.
+        if let Some(ui_callback) = self.component_uis.get(&component_name) {
+            (*ui_callback)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
             return;
         }
 
-        // Use the UI callback if there is one.
-        if let Some(ui_callback) = self.component_uis.get(&component_name) {
-            (*ui_callback)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
+        // Fallback to the more specialized UI callbacks.
+        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanelFull {
+            self.component_multiline_edit_or_view.get(&component_name)
+        } else {
+            self.component_singleline_edit_or_view.get(&component_name)
+        };
+        if let Some(edit_or_view_ui) = edit_or_view_ui {
+            // Use it in view mode (no mutation).
+            (*edit_or_view_ui)(ctx, ui, component_raw, EditOrView::View);
             return;
         }
 
