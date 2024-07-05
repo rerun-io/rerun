@@ -186,7 +186,7 @@ Notes:
 
     let collapsing_response = ui
         .section_collapsing_header("Visible time range")
-        .default_open(false)
+        .default_open(true)
         .help_markdown(markdown)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
