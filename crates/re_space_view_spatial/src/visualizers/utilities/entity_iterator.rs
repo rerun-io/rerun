@@ -12,8 +12,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{
-        AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SpatialSceneEntityContext,
-        TransformContext,
+        AnnotationSceneContext, EntityDepthOffsets, SpatialSceneEntityContext, TransformContext,
     },
     SpatialSpaceView3D,
 };
@@ -101,7 +100,6 @@ where
     let transforms = view_ctx.get::<TransformContext>()?;
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let counter = view_ctx.get::<PrimitiveCounter>()?;
 
     let latest_at = query.latest_at_query();
 
@@ -145,14 +143,6 @@ where
             data_result.query_range(),
             data_result,
         );
-
-        // NOTE: We used to compute the number of primitives across the entire scene here, but that
-        // seems a bit excessive now that we have promises, as that would require resolving all
-        // promises across all entities right here right now.
-        // Also the count doesn't seem to be used for much anyhow.
-        //
-        // We'll see how things evolve.
-        _ = counter;
 
         let mut query_ctx = ctx.query_context(data_result, &latest_at);
         query_ctx.archetype_name = Some(A::name());

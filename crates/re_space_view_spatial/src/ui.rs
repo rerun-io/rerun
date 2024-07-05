@@ -28,6 +28,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::eye::EyeMode;
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
@@ -37,7 +38,6 @@ use crate::{
         UiLabel, UiLabelTarget,
     },
 };
-use crate::{contexts::PrimitiveCounter, scene_bounding_boxes::SceneBoundingBoxes};
 
 use super::{eye::Eye, ui_3d::View3DState};
 
@@ -62,9 +62,6 @@ impl From<AutoSizeUnit> for WidgetText {
 #[derive(Clone, Default)]
 pub struct SpatialSpaceViewState {
     pub bounding_boxes: SceneBoundingBoxes,
-
-    /// Estimated number of primitives last frame. Used to inform some heuristics.
-    pub scene_num_primitives: usize,
 
     /// Number of images & depth images processed last frame.
     pub num_non_segmentation_images_last_frame: usize,
@@ -97,12 +94,6 @@ impl SpatialSpaceViewState {
         re_tracing::profile_function!();
 
         self.bounding_boxes.update(&system_output.view_systems);
-
-        self.scene_num_primitives = system_output
-            .context_systems
-            .get::<PrimitiveCounter>()?
-            .num_primitives
-            .load(std::sync::atomic::Ordering::Relaxed);
 
         let view_systems = &system_output.view_systems;
         let num_images = view_systems.get::<ImageVisualizer>()?.images.len();
