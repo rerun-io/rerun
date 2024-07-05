@@ -25,7 +25,7 @@ impl Quaternion {
         Self([x, y, z, w])
     }
 
-    /// The components of the quaternion in  X,Y,Z,W order.
+    /// The components of the quaternion in X,Y,Z,W order.
     #[inline]
     pub fn xyzw(&self) -> [f32; 4] {
         self.0
