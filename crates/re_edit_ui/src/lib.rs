@@ -25,7 +25,7 @@ use re_types::{
     },
     Loggable as _,
 };
-use re_viewer_context::gpu_bridge::colormap_dropdown_button_ui;
+use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 // ----
 
 /// Registers all editors of this crate in the component UI registry.
@@ -65,22 +65,22 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
 
     registry
-        .add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
-    registry.add_multiline_edit_or_view(|ctx, ui, value| {
-        colormap_dropdown_button_ui(ctx.render_ctx, ui, value)
+        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
+    registry.add_singleline_edit_or_view(|ctx, ui, value| {
+        colormap_edit_or_view_ui(ctx.render_ctx, ui, value)
     });
-    registry.add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
     registry
-        .add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
-    registry.add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Colormap>(ui, value));
-    registry.add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
-    registry.add_multiline_edit_or_view(|_ctx, ui, value| {
+        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Colormap>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
         edit_view_enum::<MagnificationFilter>(ui, value)
     });
-    registry.add_multiline_edit_or_view(|_ctx, ui, value| {
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
         edit_view_enum::<AggregationPolicy>(ui, value)
     });
-    registry.add_multiline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);

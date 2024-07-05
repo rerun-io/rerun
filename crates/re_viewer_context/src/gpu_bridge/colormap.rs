@@ -100,7 +100,7 @@ fn colormap_variant_ui(
     response
 }
 
-pub fn colormap_dropdown_button_ui(
+pub fn colormap_edit_or_view_ui(
     render_ctx: Option<&re_renderer::RenderContext>,
     ui: &mut egui::Ui,
     map: &mut MaybeMutRef<'_, re_types::components::Colormap>,
