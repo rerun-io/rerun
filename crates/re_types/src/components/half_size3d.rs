@@ -109,7 +109,7 @@ impl ::re_types_core::Loggable for HalfSize3D {
         Self: Sized,
     {
         crate::datatypes::Vec3D::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -117,7 +117,6 @@ impl ::re_types_core::Loggable for HalfSize3D {
     where
         Self: Sized,
     {
-        crate::datatypes::Vec3D::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::Vec3D::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }

@@ -106,7 +106,7 @@ impl ::re_types_core::Loggable for Resolution {
         Self: Sized,
     {
         crate::datatypes::Vec2D::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -114,7 +114,6 @@ impl ::re_types_core::Loggable for Resolution {
     where
         Self: Sized,
     {
-        crate::datatypes::Vec2D::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::Vec2D::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }

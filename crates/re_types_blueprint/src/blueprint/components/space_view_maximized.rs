@@ -105,7 +105,7 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
         Self: Sized,
     {
         crate::datatypes::Uuid::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -113,7 +113,6 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
     where
         Self: Sized,
     {
-        crate::datatypes::Uuid::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(|v| Self(v)).collect())
+        crate::datatypes::Uuid::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }

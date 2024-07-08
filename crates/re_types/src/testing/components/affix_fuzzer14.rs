@@ -103,6 +103,6 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
         Self: Sized,
     {
         crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }

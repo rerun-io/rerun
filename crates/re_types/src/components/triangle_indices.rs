@@ -105,7 +105,7 @@ impl ::re_types_core::Loggable for TriangleIndices {
         Self: Sized,
     {
         crate::datatypes::UVec3D::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -113,6 +113,6 @@ impl ::re_types_core::Loggable for TriangleIndices {
     where
         Self: Sized,
     {
-        crate::datatypes::UVec3D::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
+        crate::datatypes::UVec3D::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }

@@ -120,7 +120,7 @@ impl ::re_types_core::Loggable for Texcoord2D {
         Self: Sized,
     {
         crate::datatypes::Vec2D::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -128,6 +128,6 @@ impl ::re_types_core::Loggable for Texcoord2D {
     where
         Self: Sized,
     {
-        crate::datatypes::Vec2D::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
+        crate::datatypes::Vec2D::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }

@@ -788,10 +788,11 @@ fn quote_trait_impls_from_obj(
             let optimize_for_buffer_slice =
                 should_optimize_buffer_slice_deserialize(obj, arrow_registry);
 
-            let forwarded_type = (obj.is_arrow_transparent()
+            let is_forwarded_type = obj.is_arrow_transparent()
                 && !obj.fields[0].is_nullable
-                && matches!(obj.fields[0].typ, Type::Object(_)))
-            .then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
+                && matches!(obj.fields[0].typ, Type::Object(_));
+            let forwarded_type =
+                is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
 
             let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
                 quote! {
@@ -814,19 +815,19 @@ fn quote_trait_impls_from_obj(
 
             let quoted_from_arrow = if optimize_for_buffer_slice {
                 let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
-                    if obj
+                    let is_pod = obj
                         .try_get_attr::<String>(ATTR_RUST_DERIVE)
                         .map_or(false, |d| d.contains("bytemuck::Pod"))
                         || obj
                             .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
-                            .map_or(false, |d| d.contains("bytemuck::Pod"))
-                    {
+                            .map_or(false, |d| d.contains("bytemuck::Pod"));
+                    if is_pod {
                         quote! {
-                            #forwarded_type::from_arrow(arrow_data).map(|v| bytemuck::cast_vec(v))
+                            #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)
                         }
                     } else {
                         quote! {
-                            #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(|v| Self(v)).collect())
+                            #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
                         }
                     }
                 } else {
@@ -877,7 +878,7 @@ fn quote_trait_impls_from_obj(
             // Forward deserialization to existing datatype if it's transparent.
             let quoted_deserializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
                 quote! {
-                    #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+                    #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
                 }
             } else {
                 let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);

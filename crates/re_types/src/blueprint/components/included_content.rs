@@ -110,6 +110,6 @@ impl ::re_types_core::Loggable for IncludedContent {
         Self: Sized,
     {
         crate::datatypes::EntityPath::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }
