@@ -6,6 +6,10 @@ Welcome to the release checklist.
 
 _**⚠ Make sure to clean your blueprints if you want to start from a clean slate ⚠**_
 
+```
+rm -rf ~/.local/share/rerun/blueprints/*
+```
+
 ### When releasing
 
 Each check comes in the form a recording that contains:
