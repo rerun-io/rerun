@@ -45,3 +45,4 @@ egui.workspace = true
 image.workspace = true
 itertools.workspace = true
 rfd.workspace = true
+unindent.workspace = true

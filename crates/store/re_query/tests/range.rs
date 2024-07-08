@@ -1017,7 +1017,7 @@ fn concurrent_multitenant_edge_case2() {
 // // ---
 
 fn insert_and_react(store: &mut ChunkStore, caches: &mut Caches, chunk: &Arc<Chunk>) {
-    caches.on_events(&[store.insert_chunk(chunk).unwrap().unwrap()]);
+    caches.on_events(&store.insert_chunk(chunk).unwrap());
 }
 
 fn query_and_compare(

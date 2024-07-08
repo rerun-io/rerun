@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use itertools::Itertools;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
@@ -71,7 +70,11 @@ pub struct EntityDb {
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
-        let data_store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::default());
+        Self::with_store_config(store_id, ChunkStoreConfig::from_env().unwrap_or_default())
+    }
+
+    pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
+        let data_store = ChunkStore::new(store_id.clone(), store_config);
         let query_caches = re_query::Caches::new(&data_store);
 
         Self {
@@ -347,7 +350,7 @@ impl EntityDb {
     }
 
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<(), Error> {
-        let store_event = self.data_store.insert_chunk(chunk)?;
+        let store_events = self.data_store.insert_chunk(chunk)?;
 
         self.register_entity_path(chunk.entity_path());
 
@@ -355,15 +358,15 @@ impl EntityDb {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
 
-        if let Some(store_event) = store_event {
+        {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-            let original_store_events = &[store_event];
-            self.times_per_timeline.on_events(original_store_events);
-            self.query_caches.on_events(original_store_events);
-            self.tree.on_store_additions(original_store_events);
+            self.times_per_timeline.on_events(&store_events);
+            self.query_caches.on_events(&store_events);
+            self.tree.on_store_additions(&store_events);
+            self.tree.on_store_deletions(&store_events);
 
             // We inform the stats last, since it measures e2e latency.
-            self.stats.on_events(original_store_events);
+            self.stats.on_events(&store_events);
         }
 
         Ok(())
@@ -435,8 +438,7 @@ impl EntityDb {
         times_per_timeline.on_events(store_events);
         query_caches.on_events(store_events);
 
-        let store_events = store_events.iter().collect_vec();
-        tree.on_store_deletions(&store_events);
+        tree.on_store_deletions(store_events);
     }
 
     /// Key used for sorting recordings in the UI.
