@@ -38,26 +38,25 @@ jobs:
   # - `build-and-publish-web` is re-entrant for the same reason as `build-and-publish-wheels`,
   #   except that uploads are done to GCS instead of PyPI.
 
-  #  checks:
-  #    name: "Checks"
-  #    runs-on: ubuntu-latest
-  #
-  #    steps:
-  #      - name: Checkout repository
-  #        uses: actions/checkout@v4
-  #
-  #      - name: Setup Python
-  #        uses: actions/setup-python@v5
-  #        with:
-  #          python-version: 3.11
-  #
-  #      # TODO(emilk): We want to forbid `?speculative-link` just _after_ a release…
-  #      # - name: Check links for `?speculative-link`
-  #      #   # NOTE: We allow `?speculative-link` only in alpha releases
-  #      #   run: |
-  #      #     if [ ${{ inputs.release-type }} != "alpha" ]; then
-  #      #       python3 scripts/ci/check_links.py
-  #      #     fi
+  checks:
+    name: "Checks"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Check links for `?speculative-link`
+        # NOTE: We allow `?speculative-link` only in alpha releases
+        run: |
+          if [ ${{ inputs.release-type }} != "alpha" ]; then
+            python3 scripts/ci/check_links.py
+          fi
 
   version:
     name: "Versioning"
