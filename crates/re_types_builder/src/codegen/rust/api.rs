@@ -154,6 +154,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::needless_question_mark)]\n");
     code.push_str("#![allow(clippy::new_without_default)]\n");
     code.push_str("#![allow(clippy::redundant_closure)]\n");
+    code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     if obj.deprecation_notice().is_some() {
         code.push_str("#![allow(deprecated)]\n");

@@ -9,6 +9,7 @@
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::redundant_closure)]
+#![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
