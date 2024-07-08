@@ -60,10 +60,13 @@ jobs:
           pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
-        # This is done in three steps, because `pip` considers local and remote package with the same version interchangeable.
-        # So we need to set `--no-index` to force it to install the local package, but then it can't find any of the wheel's
-        # remote dependencies! The error looks like:
+        # `pip` considers local and remote package with the same version interchangeable.
+        # That means we need to set `--no-index` to force it to install the local package,
+        # but then it can't find any of the wheel's remote dependencies!
+        #
+        # The error would look like:
         #   Could not find a version that satisfies the requirement attrs>=23.1.0 (from rerun-sdk) (from versions: none)
+        #
         # So instead we do this complicated dance:
         # 1. Install `rerun-sdk` and `rerun-notebook` with `--no-deps --no-index`.
         #      It is guaranteed to install the local wheel because of `--no-index`,
@@ -72,8 +75,7 @@ jobs:
         # 2. Install `rerun-sdk[notebook]` from the wheel again.
         #      This will not reinstall `rerun-sdk` or `rerun-notebook`, but it will
         #      properly install all dependencies.
-        # It's a mystery whether or not this installs the dependencies of the
-        # local wheel, or of the pypi-published package...
+        # It's a mystery whether or not this installs the dependencies of the local wheel, or of the pypi-published package...
         run: |
           pixi run -e wheel-test pip install \
               'rerun-sdk==${{ steps.get-version.outputs.wheel_version }}' \
