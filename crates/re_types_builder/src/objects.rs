@@ -98,10 +98,11 @@ impl Objects {
                             }
                         }
                     }
-                } else {
-                    // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
-                    if obj.kind == ObjectKind::Archetype || obj.kind == ObjectKind::View {
-                        reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes & Components.", field.fqname, field.typ));
+                } else if obj.kind != ObjectKind::Datatype {
+                    let is_enum_component = obj.kind == ObjectKind::Component && obj.is_enum(); // Enum components are allowed to have no datatype.
+                    let is_test_component = obj.kind == ObjectKind::Component && obj.is_testing(); // Test components are allowed to have datatypes for the moment. TODO: fix that?
+                    if !is_enum_component && !is_test_component {
+                        reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes.", field.fqname, field.typ));
                     }
                 }
 
