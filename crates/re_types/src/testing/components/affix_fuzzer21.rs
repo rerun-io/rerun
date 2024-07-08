@@ -76,22 +76,9 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
         "rerun.testing.components.AffixFuzzer21".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
-            Field::new("single_half", DataType::Float16, false),
-            Field::new(
-                "many_halves",
-                DataType::List(std::sync::Arc::new(Field::new(
-                    "item",
-                    DataType::Float16,
-                    false,
-                ))),
-                false,
-            ),
-        ]))
+        crate::testing::datatypes::AffixFuzzer21::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

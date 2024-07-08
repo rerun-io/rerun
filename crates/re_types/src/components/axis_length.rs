@@ -78,11 +78,9 @@ impl ::re_types_core::Loggable for AxisLength {
         "rerun.components.AxisLength".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Float32
+        crate::datatypes::Float32::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

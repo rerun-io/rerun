@@ -76,36 +76,9 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
         "rerun.testing.components.AffixFuzzer14".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new("degrees", DataType::Float32, false),
-                Field::new(
-                    "craziness",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                        false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "fixed_size_shenanigans",
-                    DataType::FixedSizeList(
-                        std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                        3usize,
-                    ),
-                    false,
-                ),
-                Field::new("empty_variant", DataType::Null, true),
-            ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
-            UnionMode::Dense,
-        )
+        crate::testing::datatypes::AffixFuzzer3::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

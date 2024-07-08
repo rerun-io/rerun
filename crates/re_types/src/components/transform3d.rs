@@ -80,27 +80,9 @@ impl ::re_types_core::Loggable for Transform3D {
         "rerun.components.Transform3D".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new(
-                    "TranslationAndMat3x3",
-                    <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
-                    false,
-                ),
-                Field::new(
-                    "TranslationRotationScale",
-                    <crate::datatypes::TranslationRotationScale3D>::arrow_datatype(),
-                    false,
-                ),
-            ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-            UnionMode::Dense,
-        )
+        crate::datatypes::Transform3D::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

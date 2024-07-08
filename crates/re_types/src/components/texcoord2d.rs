@@ -93,14 +93,9 @@ impl ::re_types_core::Loggable for Texcoord2D {
         "rerun.components.Texcoord2D".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-            2usize,
-        )
+        crate::datatypes::Vec2D::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

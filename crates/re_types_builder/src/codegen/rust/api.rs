@@ -788,12 +788,29 @@ fn quote_trait_impls_from_obj(
             let optimize_for_buffer_slice =
                 should_optimize_buffer_slice_deserialize(obj, arrow_registry);
 
-            let datatype = ArrowDataTypeTokenizer(&datatype, false);
-
             let forwarded_type = (obj.is_arrow_transparent()
                 && !obj.fields[0].is_nullable
                 && matches!(obj.fields[0].typ, Type::Object(_)))
             .then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
+
+            let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
+                quote! {
+                    #[inline]
+                    fn arrow_datatype() -> arrow2::datatypes::DataType {
+                        #forwarded_type::arrow_datatype()
+                    }
+                }
+            } else {
+                let datatype = ArrowDataTypeTokenizer(&datatype, false);
+                quote! {
+                    #[allow(clippy::wildcard_imports)]
+                    #[inline]
+                    fn arrow_datatype() -> arrow2::datatypes::DataType {
+                        use arrow2::datatypes::*;
+                        #datatype
+                    }
+                }
+            };
 
             let quoted_from_arrow = if optimize_for_buffer_slice {
                 let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
@@ -925,12 +942,7 @@ fn quote_trait_impls_from_obj(
                         #fqname.into()
                     }
 
-                    #[allow(clippy::wildcard_imports)]
-                    #[inline]
-                    fn arrow_datatype() -> arrow2::datatypes::DataType {
-                        use arrow2::datatypes::*;
-                        #datatype
-                    }
+                    #quoted_arrow_datatype
 
                     #quoted_serializer
 

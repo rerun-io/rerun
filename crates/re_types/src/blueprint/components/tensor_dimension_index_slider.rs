@@ -82,15 +82,9 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSlider {
         "rerun.blueprint.components.TensorDimensionIndexSlider".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
-            "dimension",
-            DataType::UInt32,
-            false,
-        )]))
+        crate::blueprint::datatypes::TensorDimensionIndexSlider::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

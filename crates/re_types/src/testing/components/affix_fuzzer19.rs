@@ -76,15 +76,9 @@ impl ::re_types_core::Loggable for AffixFuzzer19 {
         "rerun.testing.components.AffixFuzzer19".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
-            "single_optional_union",
-            <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-            true,
-        )]))
+        crate::testing::datatypes::AffixFuzzer5::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

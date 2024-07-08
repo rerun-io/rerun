@@ -81,11 +81,9 @@ impl ::re_types_core::Loggable for Color {
         "rerun.components.Color".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::UInt32
+        crate::datatypes::Rgba32::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

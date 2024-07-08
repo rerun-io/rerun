@@ -78,14 +78,9 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
         "rerun.blueprint.components.SpaceViewMaximized".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-            16usize,
-        )
+        crate::datatypes::Uuid::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

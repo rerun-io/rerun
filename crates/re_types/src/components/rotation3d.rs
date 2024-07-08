@@ -80,27 +80,9 @@ impl ::re_types_core::Loggable for Rotation3D {
         "rerun.components.Rotation3D".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new(
-                    "Quaternion",
-                    <crate::datatypes::Quaternion>::arrow_datatype(),
-                    false,
-                ),
-                Field::new(
-                    "AxisAngle",
-                    <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
-                    false,
-                ),
-            ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-            UnionMode::Dense,
-        )
+        crate::datatypes::Rotation3D::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

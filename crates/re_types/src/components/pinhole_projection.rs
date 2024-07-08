@@ -87,14 +87,9 @@ impl ::re_types_core::Loggable for PinholeProjection {
         "rerun.components.PinholeProjection".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-            9usize,
-        )
+        crate::datatypes::Mat3x3::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

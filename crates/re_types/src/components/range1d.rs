@@ -78,14 +78,9 @@ impl ::re_types_core::Loggable for Range1D {
         "rerun.components.Range1D".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
-            2usize,
-        )
+        crate::datatypes::Range1D::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

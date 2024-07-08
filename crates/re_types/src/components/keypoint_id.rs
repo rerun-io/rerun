@@ -95,11 +95,9 @@ impl ::re_types_core::Loggable for KeypointId {
         "rerun.components.KeypointId".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::UInt16
+        crate::datatypes::KeypointId::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

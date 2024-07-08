@@ -76,49 +76,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
         "rerun.testing.components.AffixFuzzer1".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
-            Field::new("single_float_optional", DataType::Float32, true),
-            Field::new("single_string_required", DataType::Utf8, false),
-            Field::new("single_string_optional", DataType::Utf8, true),
-            Field::new(
-                "many_floats_optional",
-                DataType::List(std::sync::Arc::new(Field::new(
-                    "item",
-                    DataType::Float32,
-                    false,
-                ))),
-                true,
-            ),
-            Field::new(
-                "many_strings_required",
-                DataType::List(std::sync::Arc::new(Field::new(
-                    "item",
-                    DataType::Utf8,
-                    false,
-                ))),
-                false,
-            ),
-            Field::new(
-                "many_strings_optional",
-                DataType::List(std::sync::Arc::new(Field::new(
-                    "item",
-                    DataType::Utf8,
-                    false,
-                ))),
-                true,
-            ),
-            Field::new("flattened_scalar", DataType::Float32, false),
-            Field::new(
-                "almost_flattened_scalar",
-                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
-                false,
-            ),
-            Field::new("from_parent", DataType::Boolean, true),
-        ]))
+        crate::testing::datatypes::AffixFuzzer1::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

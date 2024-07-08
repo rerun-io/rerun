@@ -78,14 +78,9 @@ impl ::re_types_core::Loggable for TriangleIndices {
         "rerun.components.TriangleIndices".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new("item", DataType::UInt32, false)),
-            3usize,
-        )
+        crate::datatypes::UVec3D::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

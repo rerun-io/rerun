@@ -78,11 +78,9 @@ impl ::re_types_core::Loggable for SpaceViewOrigin {
         "rerun.blueprint.components.SpaceViewOrigin".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Utf8
+        crate::datatypes::EntityPath::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

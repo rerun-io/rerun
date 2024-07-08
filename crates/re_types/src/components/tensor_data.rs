@@ -90,26 +90,9 @@ impl ::re_types_core::Loggable for TensorData {
         "rerun.components.TensorData".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
-            Field::new(
-                "shape",
-                DataType::List(std::sync::Arc::new(Field::new(
-                    "item",
-                    <crate::datatypes::TensorDimension>::arrow_datatype(),
-                    false,
-                ))),
-                false,
-            ),
-            Field::new(
-                "buffer",
-                <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                false,
-            ),
-        ]))
+        crate::datatypes::TensorData::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

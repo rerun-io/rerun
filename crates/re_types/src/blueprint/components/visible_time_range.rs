@@ -80,22 +80,9 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
         "rerun.blueprint.components.VisibleTimeRange".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
-            Field::new(
-                "timeline",
-                <crate::datatypes::Utf8>::arrow_datatype(),
-                false,
-            ),
-            Field::new(
-                "range",
-                <crate::datatypes::TimeRange>::arrow_datatype(),
-                false,
-            ),
-        ]))
+        crate::datatypes::VisibleTimeRange::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(

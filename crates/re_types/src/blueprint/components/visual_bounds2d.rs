@@ -81,22 +81,9 @@ impl ::re_types_core::Loggable for VisualBounds2D {
         "rerun.blueprint.components.VisualBounds2D".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
-            Field::new(
-                "x_range",
-                <crate::datatypes::Range1D>::arrow_datatype(),
-                false,
-            ),
-            Field::new(
-                "y_range",
-                <crate::datatypes::Range1D>::arrow_datatype(),
-                false,
-            ),
-        ]))
+        crate::datatypes::Range2D::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
