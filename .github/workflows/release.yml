@@ -357,6 +357,10 @@ jobs:
 
           cat <<EOF > comment-body.txt
           GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
+
+          Do NOT create a GitHub release yet!
+
+          The release will be automatically un-drafted by the "Sync Release Assets" job, which will run automatically.
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
