@@ -17,7 +17,6 @@ namespace rerun.components;
 /// Valid range is from 0 (excluding) to max float.
 /// Defaults to 1.0 unless otherwise specified.
 struct GammaCorrection (
-  "attr.docs.unreleased",
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",

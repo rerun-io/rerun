@@ -13,9 +13,9 @@ Unless otherwise specified, the default value is 1.
 * opacity: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Opacity`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Opacity.html?speculative-link)
- * 🐍 [Python API docs for `Opacity`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Opacity)
- * 🦀 [Rust API docs for `Opacity`](https://docs.rs/rerun/latest/rerun/components/struct.Opacity.html?speculative-link)
+ * 🌊 [C++ API docs for `Opacity`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Opacity.html)
+ * 🐍 [Python API docs for `Opacity`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Opacity)
+ * 🦀 [Rust API docs for `Opacity`](https://docs.rs/rerun/latest/rerun/components/struct.Opacity.html)
 
 
 ## Used by

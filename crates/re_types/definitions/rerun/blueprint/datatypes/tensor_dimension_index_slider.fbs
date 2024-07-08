@@ -2,7 +2,6 @@ namespace rerun.blueprint.datatypes;
 
 /// Defines a slider for the index of some dimension.
 struct TensorDimensionIndexSlider (
-    "attr.docs.unreleased",
     "attr.python.aliases": "int",
     "attr.python.array_aliases": "npt.ArrayLike",
     "attr.rerun.scope": "blueprint",

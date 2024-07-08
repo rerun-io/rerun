@@ -110,6 +110,11 @@ jobs:
             --channel "release" \
             web_viewer/examples
 
+      - name: Build snippets
+        run: |
+          pixi run -e wheel-test build-examples snippets \
+            web_viewer/examples/snippets
+
       - name: Build examples manifest
         run: |
           pixi run -e wheel-test build-examples manifest \

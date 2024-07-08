@@ -17,8 +17,7 @@ struct Opacity (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.rust.repr": "transparent",
-  "attr.docs.unreleased"
+  "attr.rust.repr": "transparent"
 ) {
   opacity: rerun.datatypes.Float32 (order: 100);
 }

@@ -2,7 +2,6 @@ namespace rerun.blueprint.components;
 
 /// Show a slider for the index of some dimension of a slider.
 struct TensorDimensionIndexSlider (
-    "attr.docs.unreleased",
     "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Hash, PartialEq, Eq, Default",

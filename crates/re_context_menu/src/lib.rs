@@ -159,6 +159,8 @@ fn action_list(
 
 /// Display every action that accepts the provided selection.
 fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::Ui) {
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // TODO(#6801): remove mitigation against too narrow context menus
+
     let mut should_display_separator = false;
     for action_section in action_list(ctx.viewer_context) {
         let mut any_action_displayed = false;

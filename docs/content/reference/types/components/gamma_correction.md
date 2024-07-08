@@ -16,8 +16,8 @@ Defaults to 1.0 unless otherwise specified.
 * gamma: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `GammaCorrection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GammaCorrection.html?speculative-link)
- * 🐍 [Python API docs for `GammaCorrection`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.GammaCorrection)
- * 🦀 [Rust API docs for `GammaCorrection`](https://docs.rs/rerun/latest/rerun/components/struct.GammaCorrection.html?speculative-link)
+ * 🌊 [C++ API docs for `GammaCorrection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GammaCorrection.html)
+ * 🐍 [Python API docs for `GammaCorrection`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GammaCorrection)
+ * 🦀 [Rust API docs for `GammaCorrection`](https://docs.rs/rerun/latest/rerun/components/struct.GammaCorrection.html)
 
 
