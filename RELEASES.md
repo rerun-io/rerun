@@ -85,8 +85,8 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
       - Copy-paste the results into `CHANGELOG.md`.
       - Editorialize the changelog if necessary
       - Make sure the changelog includes instructions for handling any breaking changes
-      - 
-    Remove the speculative link markers.
+
+    Remove the speculative link markers and the `attr.docs.unreleased` attributes in the .fbs files.
 
     Once you're done, commit and push onto the release branch.
 
