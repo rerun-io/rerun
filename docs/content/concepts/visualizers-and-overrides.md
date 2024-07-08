@@ -1,5 +1,5 @@
 ---
-title: Visualizer and Overrides
+title: Visualizers and Overrides
 order: 650
 ---
 

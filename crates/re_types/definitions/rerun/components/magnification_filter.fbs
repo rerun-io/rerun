@@ -3,9 +3,7 @@ include "rerun/attributes.fbs";
 namespace rerun.components;
 
 /// Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
-enum MagnificationFilter: byte (
-    "attr.docs.unreleased"
-) {
+enum MagnificationFilter: byte {
     /// Show the nearest pixel value.
     ///
     /// This will give a blocky appearance when zooming in.

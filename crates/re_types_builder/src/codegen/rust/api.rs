@@ -783,25 +783,53 @@ fn quote_trait_impls_from_obj(
             let optimize_for_buffer_slice =
                 should_optimize_buffer_slice_deserialize(obj, arrow_registry);
 
-            let datatype = ArrowDataTypeTokenizer(&datatype, false);
+            let is_forwarded_type = obj.is_arrow_transparent()
+                && !obj.fields[0].is_nullable
+                && matches!(obj.fields[0].typ, Type::Object(_));
+            let forwarded_type =
+                is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
 
-            let quoted_serializer =
-                quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
-            let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
-
-            let quoted_from_arrow = if optimize_for_buffer_slice {
-                let quoted_deserializer =
-                    quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
-
+            let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
                 quote! {
                     #[inline]
-                    fn from_arrow(
-                        arrow_data: &dyn arrow2::array::Array,
-                    ) -> DeserializationResult<Vec<Self>>
-                    where
-                    Self: Sized
-                    {
+                    fn arrow_datatype() -> arrow2::datatypes::DataType {
+                        #forwarded_type::arrow_datatype()
+                    }
+                }
+            } else {
+                let datatype = ArrowDataTypeTokenizer(&datatype, false);
+                quote! {
+                    #[inline]
+                    fn arrow_datatype() -> arrow2::datatypes::DataType {
                         #![allow(clippy::wildcard_imports)]
+                        use arrow2::datatypes::*;
+                        #datatype
+                    }
+                }
+            };
+
+            let quoted_from_arrow = if optimize_for_buffer_slice {
+                let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
+                    let is_pod = obj
+                        .try_get_attr::<String>(ATTR_RUST_DERIVE)
+                        .map_or(false, |d| d.contains("bytemuck::Pod"))
+                        || obj
+                            .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
+                            .map_or(false, |d| d.contains("bytemuck::Pod"));
+                    if is_pod {
+                        quote! {
+                            #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)
+                        }
+                    } else {
+                        quote! {
+                            #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+                        }
+                    }
+                } else {
+                    let quoted_deserializer =
+                        quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+
+                    quote! {
                         // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
@@ -818,9 +846,85 @@ fn quote_trait_impls_from_obj(
 
                         Ok(#quoted_deserializer)
                     }
+                };
+
+                let allow_wildcard_import = if forwarded_type.is_some() {
+                    quote!()
+                } else {
+                    quote!(#![allow(clippy::wildcard_imports)])
+                };
+
+                quote! {
+                    #[inline]
+                    fn from_arrow(
+                        arrow_data: &dyn arrow2::array::Array,
+                    ) -> DeserializationResult<Vec<Self>>
+                    where
+                        Self: Sized
+                    {
+                        #allow_wildcard_import
+                        #from_arrow_body
+                    }
                 }
             } else {
                 quote!()
+            };
+
+            // Forward deserialization to existing datatype if it's transparent.
+            let quoted_deserializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
+                quote! {
+                    #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+                }
+            } else {
+                let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
+                quote! {
+                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                    // re_tracing::profile_function!();
+
+                    use arrow2::{datatypes::*, array::*, buffer::*};
+                    use ::re_types_core::{Loggable as _, ResultExt as _};
+                    Ok(#quoted_deserializer)
+                }
+            };
+
+            let quoted_serializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
+                quote! {
+                    fn to_arrow_opt<'a>(
+                        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+                    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+                    where
+                        Self: Clone + 'a,
+                    {
+                        #forwarded_type::to_arrow_opt(data.into_iter().map(|datum| {
+                            datum.map(|datum| match datum.into() {
+                                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+                            })
+                        }))
+                    }
+                }
+            } else {
+                let quoted_serializer =
+                    quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
+
+                quote! {
+                    // NOTE: Don't inline this, this gets _huge_.
+                    fn to_arrow_opt<'a>(
+                        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+                    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+                    where
+                        Self: Clone + 'a
+                    {
+                        #![allow(clippy::wildcard_imports)]
+                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                        // re_tracing::profile_function!();
+
+                        use arrow2::{datatypes::*, array::*};
+                        use ::re_types_core::{Loggable as _, ResultExt as _};
+
+                        Ok(#quoted_serializer)
+                    }
+                }
             };
 
             quote! {
@@ -834,45 +938,19 @@ fn quote_trait_impls_from_obj(
                         #fqname.into()
                     }
 
-                    #[inline]
-                    fn arrow_datatype() -> arrow2::datatypes::DataType {
-                        #![allow(clippy::wildcard_imports)]
-                        use arrow2::datatypes::*;
-                        #datatype
-                    }
+                    #quoted_arrow_datatype
 
-                    // NOTE: Don't inline this, this gets _huge_.
-                    fn to_arrow_opt<'a>(
-                        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
-                    where
-                    Self: Clone + 'a
-                    {
-                        #![allow(clippy::wildcard_imports)]
-                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                        // re_tracing::profile_function!();
-
-                        use arrow2::{datatypes::*, array::*};
-                        use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                        Ok(#quoted_serializer)
-                    }
+                    #quoted_serializer
 
                     // NOTE: Don't inline this, this gets _huge_.
                     fn from_arrow_opt(
                         arrow_data: &dyn arrow2::array::Array,
                     ) -> DeserializationResult<Vec<Option<Self>>>
                     where
-                    Self: Sized
+                        Self: Sized
                     {
                         #![allow(clippy::wildcard_imports)]
-                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                        // re_tracing::profile_function!();
-
-                        use arrow2::{datatypes::*, array::*, buffer::*};
-                        use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                        Ok(#quoted_deserializer)
+                        #quoted_deserializer
                     }
 
                     #quoted_from_arrow

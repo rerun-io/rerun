@@ -7,7 +7,7 @@ use crate::{
         arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
         util::{is_tuple_struct_from_obj, quote_comment},
     },
-    ArrowRegistry, Object, ObjectKind, Objects,
+    ArrowRegistry, Object, Objects,
 };
 
 // ---
@@ -1081,9 +1081,10 @@ fn quote_arrow_field_deserializer_buffer_slice(
 /// These optimizations require the outer type to be non-nullable and made up exclusively
 /// of primitive types.
 ///
-/// Nullabillity is kind of weird since it's technically a property of the field
-/// rather than the datatype. However, we know that Components can only be used
-/// by archetypes and as such should never be nullible.
+/// Note that nullabillity is kind of weird since it's technically a property of the field
+/// rather than the datatype.
+/// Components can only be used by archetypes so they should never be nullable, but for datatypes
+/// we might need both.
 ///
 /// This should always be checked before using [`quote_arrow_deserializer_buffer_slice`].
 pub fn should_optimize_buffer_slice_deserialize(
@@ -1091,7 +1092,7 @@ pub fn should_optimize_buffer_slice_deserialize(
     arrow_registry: &ArrowRegistry,
 ) -> bool {
     let is_arrow_transparent = obj.datatype.is_none();
-    if obj.kind == ObjectKind::Component && is_arrow_transparent {
+    if is_arrow_transparent {
         let typ = arrow_registry.get(&obj.fqname);
         let obj_field = &obj.fields[0];
         !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(&typ)

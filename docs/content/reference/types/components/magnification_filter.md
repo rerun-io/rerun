@@ -11,8 +11,8 @@ Filter used when magnifying an image/texture such that a single pixel/texel is d
 * Linear
 
 ## API reference links
- * 🌊 [C++ API docs for `MagnificationFilter`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
- * 🐍 [Python API docs for `MagnificationFilter`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.MagnificationFilter)
- * 🦀 [Rust API docs for `MagnificationFilter`](https://docs.rs/rerun/latest/rerun/components/enum.MagnificationFilter.html?speculative-link)
+ * 🌊 [C++ API docs for `MagnificationFilter`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
+ * 🐍 [Python API docs for `MagnificationFilter`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MagnificationFilter)
+ * 🦀 [Rust API docs for `MagnificationFilter`](https://docs.rs/rerun/latest/rerun/components/enum.MagnificationFilter.html)
 
 

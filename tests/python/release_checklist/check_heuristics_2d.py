@@ -21,7 +21,9 @@ This should go away when you reset.
 The four remaining space-views should be:
  - `image1` with a red square
  - `image2` with a green square
- - `image3` with a green square surrounded by black. Upon hovering it is revealed that it overlays a blue square.
+ - `image3` with a green square, which when hovered shows two popups:
+    - green square
+    - blue square
  - `segmented` with a red square and overlapping green square (rendered yellow)
 """
 

@@ -11,12 +11,12 @@ Selection of a single tensor dimension.
 * invert: `bool`
 
 ## API reference links
- * 🌊 [C++ API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorDimensionSelection.html?speculative-link)
- * 🐍 [Python API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.TensorDimensionSelection)
- * 🦀 [Rust API docs for `TensorDimensionSelection`](https://docs.rs/rerun/latest/rerun/datatypes/struct.TensorDimensionSelection.html?speculative-link)
+ * 🌊 [C++ API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorDimensionSelection.html)
+ * 🐍 [Python API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.TensorDimensionSelection)
+ * 🦀 [Rust API docs for `TensorDimensionSelection`](https://docs.rs/rerun/latest/rerun/datatypes/struct.TensorDimensionSelection.html)
 
 
 ## Used by
 
-* [`TensorHeightDimension`](../components/tensor_height_dimension.md?speculative-link)
-* [`TensorWidthDimension`](../components/tensor_width_dimension.md?speculative-link)
+* [`TensorHeightDimension`](../components/tensor_height_dimension.md)
+* [`TensorWidthDimension`](../components/tensor_width_dimension.md)

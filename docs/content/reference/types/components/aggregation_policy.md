@@ -19,9 +19,9 @@ i.e. a single pixel covers more than one tick worth of data. It can greatly impr
 * MinMaxAverage
 
 ## API reference links
- * 🌊 [C++ API docs for `AggregationPolicy`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
- * 🐍 [Python API docs for `AggregationPolicy`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.AggregationPolicy)
- * 🦀 [Rust API docs for `AggregationPolicy`](https://docs.rs/rerun/latest/rerun/components/enum.AggregationPolicy.html?speculative-link)
+ * 🌊 [C++ API docs for `AggregationPolicy`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
+ * 🐍 [Python API docs for `AggregationPolicy`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.AggregationPolicy)
+ * 🦀 [Rust API docs for `AggregationPolicy`](https://docs.rs/rerun/latest/rerun/components/enum.AggregationPolicy.html)
 
 
 ## Used by

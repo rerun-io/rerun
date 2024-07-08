@@ -77,9 +77,7 @@ impl ::re_types_core::Loggable for Interactive {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Boolean
+        crate::datatypes::Bool::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -88,32 +86,12 @@ impl ::re_types_core::Loggable for Interactive {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            BooleanArray::new(
-                Self::arrow_datatype(),
-                data0
-                    .into_iter()
-                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                    .collect(),
-                data0_bitmap,
-            )
-            .boxed()
-        })
+        crate::datatypes::Bool::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     fn from_arrow_opt(
@@ -123,23 +101,7 @@ impl ::re_types_core::Loggable for Interactive {
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<BooleanArray>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.blueprint.components.Interactive#interactive")?
-            .into_iter()
-            .map(|res_or_opt| res_or_opt.map(crate::datatypes::Bool))
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.Interactive#interactive")
-            .with_context("rerun.blueprint.components.Interactive")?)
+        crate::datatypes::Bool::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }

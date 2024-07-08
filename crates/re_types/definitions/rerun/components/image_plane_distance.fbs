@@ -11,8 +11,7 @@ namespace rerun.components;
   ///
   /// This is only used for visualization purposes, and does not affect the projection itself.
 struct ImagePlaneDistance (
-  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.docs.unreleased"
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd"
 ) {
   image_from_camera: rerun.datatypes.Float32 (order: 100);
 }

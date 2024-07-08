@@ -74,13 +74,7 @@ impl ::re_types_core::Loggable for Material {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
-            "albedo_factor",
-            <crate::datatypes::Rgba32>::arrow_datatype(),
-            true,
-        )]))
+        crate::datatypes::Material::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -89,27 +83,12 @@ impl ::re_types_core::Loggable for Material {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            {
-                _ = data0_bitmap;
-                crate::datatypes::Material::to_arrow_opt(data0)?
-            }
-        })
+        crate::datatypes::Material::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     fn from_arrow_opt(
@@ -119,15 +98,7 @@ impl ::re_types_core::Loggable for Material {
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(crate::datatypes::Material::from_arrow_opt(arrow_data)
-            .with_context("rerun.components.Material#material")?
-            .into_iter()
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.Material#material")
-            .with_context("rerun.components.Material")?)
+        crate::datatypes::Material::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }

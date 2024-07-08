@@ -121,4 +121,35 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
             .with_context("rerun.testing.datatypes.PrimitiveComponent#value")
             .with_context("rerun.testing.datatypes.PrimitiveComponent")?)
     }
+
+    #[inline]
+    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        #![allow(clippy::wildcard_imports)]
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = arrow_data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(DeserializationError::missing_data());
+            }
+        }
+        Ok({
+            let slice = arrow_data
+                .as_any()
+                .downcast_ref::<UInt32Array>()
+                .ok_or_else(|| {
+                    let expected = DataType::UInt32;
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
+                })
+                .with_context("rerun.testing.datatypes.PrimitiveComponent#value")?
+                .values()
+                .as_slice();
+            {
+                slice.iter().copied().map(Self).collect::<Vec<_>>()
+            }
+        })
+    }
 }

@@ -1,6 +1,169 @@
-# Rerun changelog
+6# Rerun changelog
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
+
+## [0.17.0](https://github.com/rerun-io/rerun/compare/0.16.1...0.17.0) - More Blueprint features and better notebooks - 2024-07-08
+
+https://github.com/rerun-io/rerun/assets/49431240/1c75b816-7e3e-4882-9ee6-ba124c00d73c
+
+📖 Release blogpost: https://rerun.io/blog/blueprint-overrides
+
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
+
+
+### ✨ Overview & highlights
+
+* 🟦 Blueprint component override & defaults, and visualizer override for all views
+  * *Component defaults*: Configure default component value for an entire view, used when no values are logged to the data store (using `rr.log()`).
+  * *Component overrides*: Specify a value to use regardless of the data-store & default values and use specified value instead. Can be set per view per entity.
+  * *Visualizer overrides*: Specify a visualizer to use for a given entity in a given view. Previously only available for scalar data in timeseries views, now available for all view kinds.
+  * All three are available from the (fully revamped) UI _and_ the Python blueprint APIs.
+  * Everything that was editable per entity in a view now uses component overrides (e.g. camera plane distance, transform axis lengths, etc.)
+  * Tip: Tooltips for each component in the UI include a link to the docs now!
+* 🕸️ Improved notebook & website embedding support
+  * Now you can stream data from the notebook cell to the embedded viewer.
+  * Much improved support for having multiple viewers on the same web page.
+  * More configuration options have been added to control the visibility of the Menu bar, time controls, etc.
+  * Note: Use `pip install "rerun-sdk[notebook]"` to include the better notebook support. This includes the new [`rerun-notebook`](https://pypi.org/project/rerun-notebook/) package, which is used internally by [`rerun-sdk`].
+* 🧑‍🏫 New Examples
+  * [Paddle OCR](https://rerun.io/examples/video-image/ocr)
+  * [Vista driving world model](https://rerun.io/examples/generative-vision/vista)
+  * [Stereo Vision SLAM](https://rerun.io/examples/3d-reconstruction/stereo_vision_slam)
+  * [Neural field notebook](https://rerun.io/examples/integrations/notebook_neural_field_2d)
+* 🛠️ Improved the logging API with many new and updated archetypes and components (see [migration guide](http://rerun.io/docs/reference/migration/migration-0-17))
+* 🖼️ `TensorView` is now fully configurable from blueprint code
+* 🎛️ Revamped selection panel UI
+* 🚚 Much work is being done under-the-hood to migrate our data-store to "chunks" (aka units of batched data). More on this in the next release!
+  * SDKs are already using chunks to transport data to the viewer, performance characteristics may have changed but should be largely the same for the moment.
+
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Introduce chunks and use them on the client side:
+  - Part 0: improved arrow chunk formatters [#6437](https://github.com/rerun-io/rerun/pull/6437)
+  - Part 1: introduce `Chunk` and its suffle/sort routines [#6438](https://github.com/rerun-io/rerun/pull/6438)
+  - Part 2: introduce `TransportChunk` [#6439](https://github.com/rerun-io/rerun/pull/6439)
+  - Part 3: micro-batching [#6440](https://github.com/rerun-io/rerun/pull/6440)
+  - Part 4: integrations [#6441](https://github.com/rerun-io/rerun/pull/6441)
+- Remove unused scalar scattering component [#6471](https://github.com/rerun-io/rerun/pull/6471)
+- Introduce `ImagePlaneDistance` Component [#6505](https://github.com/rerun-io/rerun/pull/6505)
+- Introduce new archetype for `Axes3D` [#6510](https://github.com/rerun-io/rerun/pull/6510)
+- Expose `Colormap` component for `DepthImage`, depth image colormap now used outside of reprojection [#6549](https://github.com/rerun-io/rerun/pull/6549)
+- `TimeSeriesAggregation` can now be set per `SeriesLine` (and as blueprint default per View) [#6558](https://github.com/rerun-io/rerun/pull/6558)
+- Expose `FillRatio` component to configure `DepthImage` back-projection radius scaling [#6566](https://github.com/rerun-io/rerun/pull/6566)
+- Expose image opacity component [#6635](https://github.com/rerun-io/rerun/pull/6635)
+- Make draw order editable & solve 2D flickering issues, add draw order to arrow2d archetype [#6644](https://github.com/rerun-io/rerun/pull/6644)
+- Remove `Axes3D` archetype and add `axis_length` to `Transform3D` [#6676](https://github.com/rerun-io/rerun/pull/6676)
+- Expose UI point radii to logging & blueprint, remove old default radius settings in favor of blueprint default components [#6678](https://github.com/rerun-io/rerun/pull/6678)
+- Rename `HalfSizes2D/3D` to `HalfSize2D/3D` [#6768](https://github.com/rerun-io/rerun/pull/6768)
+
+#### 🌊 C++ API
+- Add docs on how to install C++ SDK with conda-forge packages [#6381](https://github.com/rerun-io/rerun/pull/6381) (thanks [@traversaro](https://github.com/traversaro)!)
+
+#### 🐍 Python API
+- Make barchart legend settable via blueprint [#6514](https://github.com/rerun-io/rerun/pull/6514)
+- Expose tensor slice selection to blueprint [#6590](https://github.com/rerun-io/rerun/pull/6590)
+- Use literal unions in Python enum codegen [#6408](https://github.com/rerun-io/rerun/pull/6408)
+- Allow hiding top panel via blueprint [#6409](https://github.com/rerun-io/rerun/pull/6409)
+- Improve the visibility of Python public APIs to type checkers [#6462](https://github.com/rerun-io/rerun/pull/6462)
+- Expose `Interactive` component [#6542](https://github.com/rerun-io/rerun/pull/6542)
+- Python components now implement the `ComponentBatchLike` interface [#6543](https://github.com/rerun-io/rerun/pull/6543)
+- Allow streaming to the viewer from the cell where it's created [#6640](https://github.com/rerun-io/rerun/pull/6640)
+- Introduce new Python API for setting overrides [#6650](https://github.com/rerun-io/rerun/pull/6650)
+- Publish `rerun_notebook` in CI [#6641](https://github.com/rerun-io/rerun/pull/6641)
+
+#### 🦀 Rust API
+- All components implement the `Default` trait now in Rust [#6458](https://github.com/rerun-io/rerun/pull/6458)
+- Codegen `DerefMut` & `Deref` for all trivial components [#6470](https://github.com/rerun-io/rerun/pull/6470)
+
+#### 🪳 Bug Fixes
+- Allow removing blueprint entries even when they are invisible [#6503](https://github.com/rerun-io/rerun/pull/6503)
+- Fix wrong depth projection value on picking when depth meter was edited [#6551](https://github.com/rerun-io/rerun/pull/6551)
+- Always enable OpenGL fallback backend, fix `--renderer=gl` only working together with `WGPU_BACKEND` env-var [#6582](https://github.com/rerun-io/rerun/pull/6582)
+- Improve container selection panel UI [#6711](https://github.com/rerun-io/rerun/pull/6711)
+- Fix annotation context labels not showing in views [#6742](https://github.com/rerun-io/rerun/pull/6742)
+- Quiet the 'not a mono-batch' log spam when selecting keypoint with a batch class-id [#6359](https://github.com/rerun-io/rerun/pull/6359)
+- Fix incorrect label placement for 3D arrows with origins [#6779](https://github.com/rerun-io/rerun/pull/6779)
+- Don't pass RRD paths to other data-loaders [#6617](https://github.com/rerun-io/rerun/pull/6617)
+
+#### 🌁 Viewer Improvements
+- Introduce a mechanism for blueprint-provided defaults [#6537](https://github.com/rerun-io/rerun/pull/6537)
+- Allow resetting view property components from GUI for all generically implemented property UI [#6417](https://github.com/rerun-io/rerun/pull/6417)
+- Don't log "SDK client connected" messages until after we have confirmed it's a client [#6456](https://github.com/rerun-io/rerun/pull/6456)
+- Background color settings uses new generic UI now [#6480](https://github.com/rerun-io/rerun/pull/6480)
+- TimeSeries y-range is now tightly synced with plot view & uses new generic UI [#6485](https://github.com/rerun-io/rerun/pull/6485)
+- Remove option to enable/disable depth projection from UI [#6550](https://github.com/rerun-io/rerun/pull/6550)
+- Expose tensor colormap/gamma/filter/scaling to blueprint [#6585](https://github.com/rerun-io/rerun/pull/6585)
+- Handle static text messages in TextLogView gracefully, handle overrides [#6712](https://github.com/rerun-io/rerun/pull/6712)
+- Multiple instances of points/arrows/boxes with single label display label now at the center [#6741](https://github.com/rerun-io/rerun/pull/6741)
+
+#### 🧑‍🏫 Examples
+- Add the OCR example [#6560](https://github.com/rerun-io/rerun/pull/6560) (thanks [@andreasnaoum](https://github.com/andreasnaoum)!)
+- Add the Vista example [#6664](https://github.com/rerun-io/rerun/pull/6664) (thanks [@roym899](https://github.com/roym899)!)
+- Add the Stereo Vision SLAM example [#6669](https://github.com/rerun-io/rerun/pull/6669) (thanks [@02alexander](https://github.com/02alexander)!)
+- Add 2D neural field notebook example [#6775](https://github.com/rerun-io/rerun/pull/6775) (thanks [@roym899](https://github.com/roym899)!)
+- Update the nuScenes example to use blueprint overrides and defaults [#6783](https://github.com/rerun-io/rerun/pull/6783)
+- Update the plots example to use blueprint overrides [#6781](https://github.com/rerun-io/rerun/pull/6781)
+
+#### 📚 Docs
+- Add links to our docs in component tooltips [#6482](https://github.com/rerun-io/rerun/pull/6482)
+- Show the first line of the docs when hovering a component name [#6609](https://github.com/rerun-io/rerun/pull/6609)
+- Improve docs for components [#6621](https://github.com/rerun-io/rerun/pull/6621)
+- Add a "Visualizers and Overrides" concept page [#6679](https://github.com/rerun-io/rerun/pull/6679)
+- Better document limited effect of `DepthMeter` & `FillRatio` in 2D views [#6745](https://github.com/rerun-io/rerun/pull/6745)
+- Update troubleshooting guide with graphics driver updating advice [#6756](https://github.com/rerun-io/rerun/pull/6756)
+- Update Pixi link to their new website [#6688](https://github.com/rerun-io/rerun/pull/6688) (thanks [@esteve](https://github.com/esteve)!)
+- Use "N-dimensional" instead of "rank-N" in docstrings and error messages [#6797](https://github.com/rerun-io/rerun/pull/6797)
+
+#### 🖼 UI Improvements
+- Update the UI for time series view properties using list item [#6390](https://github.com/rerun-io/rerun/pull/6390)
+- Fix welcome screen header jumping during load [#6389](https://github.com/rerun-io/rerun/pull/6389)
+- Add support for exact width to `PropertyContent` [#6325](https://github.com/rerun-io/rerun/pull/6325)
+- Migrate to `list_time2`:
+  - Part 1: ensure background is painted on rounded pixels [#6376](https://github.com/rerun-io/rerun/pull/6376)
+  - Part 2: convert all use of legacy list time to `list_item2` [#6377](https://github.com/rerun-io/rerun/pull/6377)
+  - Part 3: rename `list_item2` to `list_item` [#6378](https://github.com/rerun-io/rerun/pull/6378)
+- Improve the colormap drop down menu [#6401](https://github.com/rerun-io/rerun/pull/6401)
+- Reduce height of top and bottom panels [#6397](https://github.com/rerun-io/rerun/pull/6397)
+- Allow hiding all TimePanel/BlueprintPanel/SelectionPanel [#6407](https://github.com/rerun-io/rerun/pull/6407)
+- Remove the ability to display multiple tensors in a single space view [#6392](https://github.com/rerun-io/rerun/pull/6392)
+- Smooth scrolling in 2D space views [#6422](https://github.com/rerun-io/rerun/pull/6422)
+- Improve welcome screen for small screens [#6421](https://github.com/rerun-io/rerun/pull/6421)
+- Use egui's `UiStack` to implement full span widgets [#6491](https://github.com/rerun-io/rerun/pull/6491)
+- Use `list_item` for the component list in `InstancePath::data_ui` [#6309](https://github.com/rerun-io/rerun/pull/6309)
+- Allow editing visual bounds from UI [#6492](https://github.com/rerun-io/rerun/pull/6492)
+- Allow manually setting full span scopes [#6509](https://github.com/rerun-io/rerun/pull/6509)
+- Make object hover & selection colors brighter and more pronounced [#6596](https://github.com/rerun-io/rerun/pull/6596)
+- Show outline around hovered/selected tiles in viewport [#6597](https://github.com/rerun-io/rerun/pull/6597)
+- Unified visualizer & override UI, enabled on all entities [#6599](https://github.com/rerun-io/rerun/pull/6599)
+- Introduce visualizer blueprint query stack UI [#6605](https://github.com/rerun-io/rerun/pull/6605)
+- Reorganize Selection Panel [#6637](https://github.com/rerun-io/rerun/pull/6637)
+- Rewrite the `ui.large_collapsing_header` into `re_ui::SectionCollapsingHeader` using `re_ui::ListItem` [#6657](https://github.com/rerun-io/rerun/pull/6657)
+- Move entity filter "edit" button to a section header icon [#6662](https://github.com/rerun-io/rerun/pull/6662)
+- Add help to several sections in the Selection Panel [#6668](https://github.com/rerun-io/rerun/pull/6668)
+- Introduce `ButtonContent` and use it in the selection panel [#6720](https://github.com/rerun-io/rerun/pull/6720)
+
+#### 🕸️ Web
+- Allow overriding app blueprint from web [#6419](https://github.com/rerun-io/rerun/pull/6419)
+- Add fullscreen mode to web viewer [#6461](https://github.com/rerun-io/rerun/pull/6461)
+- Fix rerun-web canvas size [#6511](https://github.com/rerun-io/rerun/pull/6511)
+- JS: Make LogChannel public [#6529](https://github.com/rerun-io/rerun/pull/6529)
+- New notebook API [#6573](https://github.com/rerun-io/rerun/pull/6573)
+- Add width/height properties to web viewer [#6636](https://github.com/rerun-io/rerun/pull/6636)
+- Do not read query in embedded web viewer [#6515](https://github.com/rerun-io/rerun/pull/6515)
+
+
+#### 🗣 Refactors
+- Generic view property building, applied to `TimeSeriesView`'s `PlotLegend` [#6400](https://github.com/rerun-io/rerun/pull/6400)
+- Extracted several `re_viewer` parts into standalone crates: `re_viewport_blueprint` [#6405](https://github.com/rerun-io/rerun/pull/6405), `re_context_menu` [#6428](https://github.com/rerun-io/rerun/pull/6423), `re_blueprint_tree`[#6427](https://github.com/rerun-io/rerun/pull/6427), and `re_selection_panel` [#6431](https://github.com/rerun-io/rerun/pull/6431)
+
+#### 📦 Dependencies
+- Update to egui 0.28.1 [#6752](https://github.com/rerun-io/rerun/pull/6752), [#6785](https://github.com/rerun-io/rerun/pull/6785)
+- Update ewebsock to 0.6.0 [#6394](https://github.com/rerun-io/rerun/pull/6394)
+- Update to `wgpu 0.20`, fixing crashes with some Linux setups [#6171](https://github.com/rerun-io/rerun/pull/6171)
+
+
 
 ## [0.16.1](https://github.com/rerun-io/rerun/compare/0.16.0...0.16.1) - Bug fix - 2024-05-29
 - Don't log warnings when unknown clients connect over TCP [#6368](https://github.com/rerun-io/rerun/pull/6368)
@@ -129,10 +292,10 @@ As always there's a lot going on under the hood:
 - `ListItem` 2.0 (part 2): introduce `PropertyContent` for two-column, property-like list items [#6174](https://github.com/rerun-io/rerun/pull/6174)
 - `ListItem` 2.0 (part 3): `PropertyContent` column auto-sizing [#6182](https://github.com/rerun-io/rerun/pull/6182)
 - `ListItem` 2.0 (part 4): only allocate space for property action buttons when needed [#6183](https://github.com/rerun-io/rerun/pull/6183)
-- Add button to equalize the size of the children of a container [#6194](https://github.com/rerun-io/rerun/pull/6194)
-- Use thousands separators when formatting seconds [#6212](https://github.com/rerun-io/rerun/pull/6212)
 - `ListItem` 2.0 (part 5): deploy to the Visualizers and Overrides UIs [#6184](https://github.com/rerun-io/rerun/pull/6184)
 - `ListItem` 2.0 (part 6): split full-span range management to a dedicated module [#6211](https://github.com/rerun-io/rerun/pull/6211)
+- Add button to equalize the size of the children of a container [#6194](https://github.com/rerun-io/rerun/pull/6194)
+- Use thousands separators when formatting seconds [#6212](https://github.com/rerun-io/rerun/pull/6212)
 - Add space view icons to various context menus [#6235](https://github.com/rerun-io/rerun/pull/6235)
 - Migrate all full-span widgets to `re_ui::full_span` [#6248](https://github.com/rerun-io/rerun/pull/6248)
 - Improve error message when using an under-powered GPU [#6252](https://github.com/rerun-io/rerun/pull/6252)
