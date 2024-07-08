@@ -37,7 +37,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct BarChart {
-        /// The values. Should always be a rank-1 tensor.
+        /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
         rerun::components::TensorData values;
 
         /// The color of the bar chart

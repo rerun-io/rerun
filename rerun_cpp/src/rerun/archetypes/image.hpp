@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Image {
-        /// The image data. Should always be a rank-2 or rank-3 tensor.
+        /// The image data. Should always be a 2- or 3-dimensional tensor.
         rerun::components::TensorData data;
 
         /// Opacity of the image, useful for layering several images.
@@ -98,7 +98,7 @@ namespace rerun::archetypes {
         /// New Image from height/width/channel and tensor buffer.
         ///
         /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2 or 3.
+        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2- or 3-dimensional.
         /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
         /// \param buffer
         /// The tensor buffer containing the image data.
@@ -110,14 +110,14 @@ namespace rerun::archetypes {
         /// \param data_
         /// The tensor buffer containing the image data.
         /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2 or 3.
+        /// Calls `Error::handle()` if the tensor is not 2- or 3-dimensional.
         explicit Image(rerun::components::TensorData data_);
 
         /// New image from dimensions and pointer to image data.
         ///
         /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
         /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2 or 3.
+        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2- or 3-dimensional.
         /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
         /// Determines the number of elements expected to be in `data`.
         /// \param data_

@@ -18,7 +18,7 @@ table BarChart (
 ) {
   // --- Required ---
 
-  /// The values. Should always be a rank-1 tensor.
+  /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
   values: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
 
   // --- Optional ---

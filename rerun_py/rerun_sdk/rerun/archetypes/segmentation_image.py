@@ -79,7 +79,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         Parameters
         ----------
         data:
-            The image data. Should always be a rank-2 tensor.
+            The image data. Should always be a 2-dimensional tensor.
         opacity:
             Opacity of the image, useful for layering the segmentation image on top of another image.
 
@@ -116,7 +116,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         metadata={"component": "required"},
         converter=SegmentationImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    # The image data. Should always be a rank-2 tensor.
+    # The image data. Should always be a 2-dimensional tensor.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

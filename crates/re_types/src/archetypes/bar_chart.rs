@@ -52,7 +52,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct BarChart {
-    /// The values. Should always be a rank-1 tensor.
+    /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
     pub values: crate::components::TensorData,
 
     /// The color of the bar chart
