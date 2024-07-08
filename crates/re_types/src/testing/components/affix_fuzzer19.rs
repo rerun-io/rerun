@@ -76,44 +76,23 @@ impl ::re_types_core::Loggable for AffixFuzzer19 {
         "rerun.testing.components.AffixFuzzer19".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
-            "single_optional_union",
-            <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-            true,
-        )]))
+        crate::testing::datatypes::AffixFuzzer5::arrow_datatype()
     }
 
-    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            {
-                _ = data0_bitmap;
-                crate::testing::datatypes::AffixFuzzer5::to_arrow_opt(data0)?
-            }
-        })
+        crate::testing::datatypes::AffixFuzzer5::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -123,17 +102,7 @@ impl ::re_types_core::Loggable for AffixFuzzer19 {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(
-            crate::testing::datatypes::AffixFuzzer5::from_arrow_opt(arrow_data)
-                .with_context("rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady")
-                .with_context("rerun.testing.components.AffixFuzzer19")?,
-        )
+        crate::testing::datatypes::AffixFuzzer5::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }
