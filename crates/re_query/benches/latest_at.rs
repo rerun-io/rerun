@@ -190,7 +190,7 @@ pub fn build_some_strings(len: usize) -> Vec<Text> {
 
     (0..len)
         .map(|_| {
-            let ilen: usize = rng.gen_range(0..10000);
+            let ilen: usize = rng.gen_range(0..100);
             let s: String = rand::thread_rng()
                 .sample_iter(&rand::distributions::Alphanumeric)
                 .take(ilen)
