@@ -97,6 +97,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Add the OCR example [#6560](https://github.com/rerun-io/rerun/pull/6560) (thanks [@andreasnaoum](https://github.com/andreasnaoum)!)
 - Add the Vista example [#6664](https://github.com/rerun-io/rerun/pull/6664) (thanks [@roym899](https://github.com/roym899)!)
 - Add the Stereo Vision SLAM example [#6669](https://github.com/rerun-io/rerun/pull/6669) (thanks [@02alexander](https://github.com/02alexander)!)
+- Add 2D neural field notebook example [#6775](https://github.com/rerun-io/rerun/pull/6775) (thanks [@roym899](https://github.com/roym899)!)
 - Update the nuscenes example to use blueprint overrides and defaults [#6783](https://github.com/rerun-io/rerun/pull/6783)
 - Update the plots example to use blueprint overrides [#6781](https://github.com/rerun-io/rerun/pull/6781)
 
@@ -268,7 +269,6 @@ As always there's a lot going on under the hood:
 - Add DROID dataset example [#6149](https://github.com/rerun-io/rerun/pull/6149) (thanks [@02alexander](https://github.com/02alexander)!)
 - New example and tutorial showing how to create a live scrolling plot [#6314](https://github.com/rerun-io/rerun/pull/6314)
 - Update the example in configure-viewer-through-code.md to use subclasses of `SpaceView` [#6092](https://github.com/rerun-io/rerun/pull/6092) (thanks [@m-decoster](https://github.com/m-decoster)!)
-- Add 2D neural field notebook example [#6775](https://github.com/rerun-io/rerun/pull/6775) (thanks [@roym899](https://github.com/roym899)!)
 
 #### 📚 Docs
 - Update Python readme and add `py-wheel` command [#5912](https://github.com/rerun-io/rerun/pull/5912)
@@ -289,8 +289,6 @@ As always there's a lot going on under the hood:
 - `ListItem` 2.0 (part 4): only allocate space for property action buttons when needed [#6183](https://github.com/rerun-io/rerun/pull/6183)
 - Add button to equalize the size of the children of a container [#6194](https://github.com/rerun-io/rerun/pull/6194)
 - Use thousands separators when formatting seconds [#6212](https://github.com/rerun-io/rerun/pull/6212)
-- `ListItem` 2.0 (part 5): deploy to the Visualizers and Overrides UIs [#6184](https://github.com/rerun-io/rerun/pull/6184)
-- `ListItem` 2.0 (part 6): split full-span range management to a dedicated module [#6211](https://github.com/rerun-io/rerun/pull/6211)
 - Add space view icons to various context menus [#6235](https://github.com/rerun-io/rerun/pull/6235)
 - Migrate all full-span widgets to `re_ui::full_span` [#6248](https://github.com/rerun-io/rerun/pull/6248)
 - Improve error message when using an under-powered GPU [#6252](https://github.com/rerun-io/rerun/pull/6252)
