@@ -168,6 +168,8 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 
 ## [0.16.0](https://github.com/rerun-io/rerun/compare/0.15.1...0.16.0) - First configurable views - 2024-05-16
 
+https://github.com/rerun-io/rerun/assets/3312232/475468bd-e012-4837-b2b4-b47fa9791e2c
+
 ### ✨ Overview & highlights
 
 * 🟦 Customize views in code: We started exposing some view properties in the blueprint!
@@ -550,6 +552,8 @@ This release is identical to 0.14.0 and merely fixes an issue in the build artif
 
 ## [0.14.0](https://github.com/rerun-io/rerun/compare/0.13.0...0.14.0) - "Unlimited" point clouds & lines, quality of life improvements, bugfixes - 2024-02-28
 
+https://github.com/rerun-io/rerun/assets/1220815/beb50081-2dff-4535-b133-4dc4a5a24be0
+
 ### ✨ Overview & highlights
 
 Originally, we planned to do only a bugfix release, but we got an unexpected amount of goodies amassed already.
@@ -629,6 +633,10 @@ We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy 
 
 
 ## [0.13.0](https://github.com/rerun-io/rerun/compare/0.12.1...0.13.0) - Fast time series, improved layout editing & UI overrides - 2024-02-12
+
+<p align="center">
+<img src="https://github.com/rerun-io/rerun/assets/49431240/cbbd6661-9a42-4278-88cb-6effdf4b96c6">
+</p>
 
 ### ✨ Overview & highlights
 
@@ -832,6 +840,10 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 
 ## [0.12.0](https://github.com/rerun-io/rerun/compare/0.11.0...0.12.0) - Data Loaders, Container-editing, Python-3.12 - 2024-01-09
 
+<p align="center">
+    <img src="https://github.com/rerun-io/rerun/assets/1148717/668964f6-bee3-4339-8404-5d655755d6db"
+</p>
+
 ### ✨ Overview & highlights
 - 🌁 The Rerun Viewer now supports a plugin system for creating [arbitrary external data loaders](https://www.rerun.io/docs/reference/data-loaders/overview).
 - 🕸️ More built-in examples are now available in the viewer.
@@ -973,6 +985,8 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 
 
 ## [0.11.0](https://github.com/rerun-io/rerun/compare/0.10.1...0.11.0) - C++ improvements & better Visible History - 2023-11-28
+
+https://github.com/rerun-io/rerun/assets/1220815/9099b81d-626f-4974-87d7-0e974361a9f0
 
 ### ✨ Overview & highlights
 
@@ -2007,6 +2021,8 @@ This Release fixes a few small bugs on top of the v0.5.0 release.
 
 
 ## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore! - 2023-04-20
+
+https://user-images.githubusercontent.com/2910679/233411525-1ceb2790-7f18-400a-ba48-f7e5b3400922.mp4
 
 ### ✨ Overview & highlights
 
