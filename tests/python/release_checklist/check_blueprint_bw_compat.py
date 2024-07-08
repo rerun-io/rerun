@@ -41,7 +41,7 @@ a pleasant experience (i.e., in the worst case, the blueprint is ignored, with a
 #### Step 3: does it look okay?
 
 There are two acceptable outcomes here:
-- The blueprints worked as-is. :+1:
+- The blueprints worked as-is. 👍
 - The blueprints completely or partially failed to load, but a clear warning explaining what's
   going on was shown to the user.
 
