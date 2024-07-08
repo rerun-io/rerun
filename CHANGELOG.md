@@ -109,6 +109,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Better document limited effect of `DepthMeter` & `FillRatio` in 2D views [#6745](https://github.com/rerun-io/rerun/pull/6745)
 - Update troubleshooting guide with graphics driver updating advice [#6756](https://github.com/rerun-io/rerun/pull/6756)
 - Update Pixi link to their new website [#6688](https://github.com/rerun-io/rerun/pull/6688) (thanks [@esteve](https://github.com/esteve)!)
+- Use "N-dimensional" instead of "rank-N" in docstrings and error messages [#6797](https://github.com/rerun-io/rerun/pull/6797)
 
 #### 🖼 UI Improvements
 - Update the UI for time series view properties using list item [#6390](https://github.com/rerun-io/rerun/pull/6390)
