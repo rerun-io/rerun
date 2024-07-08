@@ -40,7 +40,7 @@ fn ui_from_scene(
     view_id: SpaceViewId,
     response: &egui::Response,
     view_class: &SpatialSpaceView2D,
-    view_state: &SpatialSpaceViewState,
+    view_state: &mut SpatialSpaceViewState,
 ) -> RectTransform {
     let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
         ctx.blueprint_db(),
@@ -51,6 +51,7 @@ fn ui_from_scene(
         .component_or_fallback(ctx, view_class, view_state)
         .ok_or_log_error()
         .unwrap_or_default();
+    view_state.visual_bounds_2d = Some(bounds);
     let mut bounds_rect: egui::Rect = bounds.into();
 
     // --------------------------------------------------------------------------

@@ -21,3 +21,11 @@ impl From<Range1D> for emath::Rangef {
         }
     }
 }
+
+impl Range1D {
+    /// Absolute length of the range.
+    #[inline]
+    pub fn abs_len(&self) -> f64 {
+        (self.0[1] - self.0[0]).abs()
+    }
+}

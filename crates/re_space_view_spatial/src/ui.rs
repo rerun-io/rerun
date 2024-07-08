@@ -12,6 +12,7 @@ use re_renderer::OutlineConfig;
 use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
+    blueprint::components::VisualBounds2D,
     components::{Colormap, DepthMeter, TensorData, ViewCoordinates},
     tensor_data::TensorDataMeaning,
     Loggable as _,
@@ -73,6 +74,8 @@ pub struct SpatialSpaceViewState {
 
     /// Pinhole component logged at the origin if any.
     pub pinhole_at_origin: Option<Pinhole>,
+
+    pub visual_bounds_2d: Option<VisualBounds2D>,
 }
 
 impl SpaceViewState for SpatialSpaceViewState {
@@ -89,11 +92,12 @@ impl SpatialSpaceViewState {
     /// Updates the state with statistics from the latest system outputs.
     pub fn update_frame_statistics(
         &mut self,
+        ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.bounding_boxes.update(&system_output.view_systems);
+        self.bounding_boxes.update(ui, &system_output.view_systems);
 
         let view_systems = &system_output.view_systems;
         let num_images = view_systems.get::<ImageVisualizer>()?.images.len();
@@ -131,7 +135,7 @@ impl SpatialSpaceViewState {
             )
             .clicked()
         {
-            self.bounding_boxes.accumulated = self.bounding_boxes.current;
+            self.bounding_boxes.smoothed = self.bounding_boxes.current;
             self.state_3d
                 .reset_camera(&self.bounding_boxes, scene_view_coordinates);
         }

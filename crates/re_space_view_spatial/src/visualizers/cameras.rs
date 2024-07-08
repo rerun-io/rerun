@@ -264,7 +264,7 @@ impl TypedComponentFallbackProvider<ImagePlaneDistance> for CamerasVisualizer {
             return Default::default();
         };
 
-        let scene_size = state.bounding_boxes.accumulated.size().length();
+        let scene_size = state.bounding_boxes.smoothed.size().length();
 
         if scene_size.is_finite() && scene_size > 0.0 {
             // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
