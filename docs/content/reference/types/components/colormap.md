@@ -19,9 +19,9 @@ but currently the Viewer is limited to the types defined here.
 * Viridis
 
 ## API reference links
- * 🌊 [C++ API docs for `Colormap`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
- * 🐍 [Python API docs for `Colormap`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Colormap)
- * 🦀 [Rust API docs for `Colormap`](https://docs.rs/rerun/latest/rerun/components/enum.Colormap.html?speculative-link)
+ * 🌊 [C++ API docs for `Colormap`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
+ * 🐍 [Python API docs for `Colormap`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Colormap)
+ * 🦀 [Rust API docs for `Colormap`](https://docs.rs/rerun/latest/rerun/components/enum.Colormap.html)
 
 
 ## Used by

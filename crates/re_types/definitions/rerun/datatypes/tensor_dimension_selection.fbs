@@ -4,7 +4,6 @@ namespace rerun.datatypes;
 ///
 /// Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
 struct TensorDimensionIndexSelection (
-    "attr.docs.unreleased",
     "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
 ) {
     /// The dimension number to select.
@@ -16,7 +15,6 @@ struct TensorDimensionIndexSelection (
 
 /// Selection of a single tensor dimension.
 struct TensorDimensionSelection (
-    "attr.docs.unreleased",
     "attr.python.aliases": "int",
     "attr.python.array_aliases": "npt.ArrayLike",
     "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
