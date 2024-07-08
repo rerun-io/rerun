@@ -53,7 +53,7 @@ jobs:
 
       - name: Check links for `?speculative-link`
         # This checks that we have no links with `?speculative-link` in its query params.
-        # We use those links to get our link checker to ignore them while our docs are unreleased.
+        # We use those markers to get our link checker to ignore links to unreleased docs.
         #
         # NOTE: For alpha releases, we won't fully publish all our docs,
         #       so we skip the check here, because we won't be able to
