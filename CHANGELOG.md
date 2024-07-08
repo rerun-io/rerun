@@ -26,9 +26,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
   * [Stereo Vision SLAM](https://rerun.io/examples/3d-reconstruction/stereo_vision_slam)
   * [Neural field notebook](https://rerun.io/examples/integrations/notebook_neural_field_2d)
 * 🛠️ Improved the logging API with many new and updated archetypes and components (see [migration guide](http://rerun.io/docs/reference/migration/migration-0-17))
-* 🖼️ New blueprint accessible View properties
-  * `TensorView` is now fully configurable from code
-  * `BarChartView` has now configurable plot legend placement
+* 🖼️ `TensorView` is now fully configurable from blueprint code
 * 🎛️ Revamped selection panel UI
 * 🚚 Much work is being done under-the-hood to migrate our data-store to "chunks" (aka units of batched data). More on this in the next release!
   * SDKs are already using chunks to transport data to the viewer, performance characteristics may have changed but should be largely the same for the moment.
