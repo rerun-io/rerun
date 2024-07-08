@@ -185,7 +185,7 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
 
             if let Some(radius) = props.get(PROP_RADIUS).and_then(f32) {
                 props.remove(PROP_RADIUS);
-                this.radius = Some(Radius(radius));
+                this.radius = Some(Radius(radius.into()));
             }
 
             if let Some(label) = props.get(PROP_LABEL).and_then(string) {
@@ -249,7 +249,9 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
     }
     if radii.iter().any(|opt| opt.is_some()) {
         // If some radii have been specified but not others, default the unspecified ones to 1.0.
-        let radii = radii.into_iter().map(|opt| opt.unwrap_or(Radius(1.0)));
+        let radii = radii
+            .into_iter()
+            .map(|opt| opt.unwrap_or(Radius(1.0.into())));
         arch = arch.with_radii(radii);
     }
     if labels.iter().any(|opt| opt.is_some()) {

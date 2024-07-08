@@ -93,15 +93,21 @@ impl ContainerBlueprint {
             .filter_map(|id| Contents::try_from(&id.0.clone().into()))
             .collect();
 
-        let col_shares = col_shares.unwrap_or_default().iter().map(|v| v.0).collect();
-
-        let row_shares = row_shares.unwrap_or_default().iter().map(|v| v.0).collect();
+        let col_shares = col_shares
+            .unwrap_or_default()
+            .iter()
+            .map(|v| *v.0)
+            .collect();
+        let row_shares = row_shares
+            .unwrap_or_default()
+            .iter()
+            .map(|v| *v.0)
+            .collect();
 
         let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 
-        let visible = visible.map_or(true, |v| v.0);
-
-        let grid_columns = grid_columns.map(|v| v.0);
+        let visible = visible.map_or(true, |v| **v);
+        let grid_columns = grid_columns.map(|v| **v);
 
         Some(Self {
             id,
@@ -312,7 +318,7 @@ impl ContainerBlueprint {
     #[inline]
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
-            let component = Visible(visible);
+            let component = Visible(visible.into());
             ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }
@@ -321,7 +327,7 @@ impl ContainerBlueprint {
     pub fn set_grid_columns(&self, ctx: &ViewerContext<'_>, grid_columns: Option<u32>) {
         if grid_columns != self.grid_columns {
             if let Some(grid_columns) = grid_columns {
-                let component = GridColumns(grid_columns);
+                let component = GridColumns(grid_columns.into());
                 ctx.save_blueprint_component(&self.entity_path(), &component);
             } else {
                 ctx.save_empty_blueprint_component::<GridColumns>(&self.entity_path());

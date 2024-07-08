@@ -173,7 +173,7 @@ impl SpaceViewBlueprint {
             class_identifier,
             &space_env,
         );
-        let visible = visible.map_or(true, |v| v.0);
+        let visible = visible.map_or(true, |v| *v.0);
         let defaults_path = id.as_entity_path().join(&"defaults".into());
 
         Some(Self {
@@ -342,7 +342,7 @@ impl SpaceViewBlueprint {
     #[inline]
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
-            let component = Visible(visible);
+            let component = Visible(visible.into());
             ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }

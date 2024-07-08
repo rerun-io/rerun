@@ -13,9 +13,8 @@ mod response_utils;
 mod visual_bounds2d;
 
 use datatype_editors::{
-    display_name_ui, display_text_ui, edit_bool, edit_bool_raw, edit_f32_min_to_max_float_raw,
-    edit_f32_zero_to_max, edit_f32_zero_to_max_float_raw, edit_f32_zero_to_one,
-    edit_multiline_string, edit_singleline_string, edit_view_enum,
+    display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
+    edit_f32_zero_to_one, edit_multiline_string, edit_singleline_string, edit_view_enum,
 };
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
@@ -42,19 +41,18 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view(range1d::edit_range1d);
 
     registry.add_singleline_edit_or_view::<AxisLength>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
-    registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max);
 
-    registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float_raw);
-
-    registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max_float_raw);
-    registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max_float_raw);
-    registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max_float_raw);
+    registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
 
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
 
-    registry.add_singleline_edit_or_view::<Visible>(edit_bool_raw);
+    registry.add_singleline_edit_or_view::<Visible>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
 
     registry.add_display_ui(Text::name(), Box::new(display_text_ui));

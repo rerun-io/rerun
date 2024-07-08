@@ -1155,7 +1155,7 @@ fn visible_interactive_toggle_ui(
             data_result.save_recursive_override_or_clear_if_redundant(
                 ctx.viewer_ctx,
                 &query_result.tree,
-                &Visible(visible),
+                &Visible(visible.into()),
             );
         }
     }

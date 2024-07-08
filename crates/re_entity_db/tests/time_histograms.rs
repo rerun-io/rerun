@@ -465,7 +465,7 @@ fn time_histograms() -> anyhow::Result<()> {
                     TimePoint::from_iter([
                         (timeline_frame, 1000), //
                     ]),
-                    [&[ClearIsRecursive(true)] as _],
+                    [&[ClearIsRecursive(true.into())] as _],
                 )
                 .build()?
         };

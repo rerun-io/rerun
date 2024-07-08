@@ -317,7 +317,8 @@ impl DataResult {
     // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
-        self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
+        *self
+            .lookup_override::<re_types::blueprint::components::Visible>(ctx)
             .unwrap_or_default()
             .0
     }

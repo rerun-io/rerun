@@ -524,7 +524,7 @@ pub fn picking(
                     let [x, y] = image_info.coordinates;
                     if let Some(raw_value) = image_info.tensor.get(&[y as _, x as _]) {
                         let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / meter.0 as f64;
+                        let depth_in_meters = raw_value / *meter.0 as f64;
                         depth_at_pointer = Some(depth_in_meters as f32);
                     }
                 }
@@ -547,7 +547,7 @@ pub fn picking(
                             image_info.row_id,
                             annotations,
                             image_info.meaning,
-                            image_info.depth_meter.map(|d| d.0),
+                            image_info.depth_meter.map(|d| *d.0),
                             Some(image_info.colormap),
                         );
                     });
