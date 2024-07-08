@@ -104,6 +104,13 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
+from .view_coordinates import (
+    ViewCoordinates,
+    ViewCoordinatesArrayLike,
+    ViewCoordinatesBatch,
+    ViewCoordinatesLike,
+    ViewCoordinatesType,
+)
 from .visible_time_range import (
     VisibleTimeRange,
     VisibleTimeRangeArrayLike,
@@ -323,6 +330,11 @@ __all__ = [
     "Vec4DBatch",
     "Vec4DLike",
     "Vec4DType",
+    "ViewCoordinates",
+    "ViewCoordinatesArrayLike",
+    "ViewCoordinatesBatch",
+    "ViewCoordinatesLike",
+    "ViewCoordinatesType",
     "VisibleTimeRange",
     "VisibleTimeRangeArrayLike",
     "VisibleTimeRangeBatch",

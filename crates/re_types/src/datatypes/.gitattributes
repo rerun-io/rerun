@@ -34,3 +34,4 @@ uvec4d.rs linguist-generated=true
 vec2d.rs linguist-generated=true
 vec3d.rs linguist-generated=true
 vec4d.rs linguist-generated=true
+view_coordinates.rs linguist-generated=true

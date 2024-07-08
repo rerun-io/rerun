@@ -22,15 +22,14 @@ The following constants are used to represent the different directions:
 
 ## Fields
 
-* coordinates: [`ViewCoordinates`](../datatypes/view_coordinates.md)
+* coordinates: 3x `u8`
 
 ## API reference links
- * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ViewCoordinates.html)
- * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ViewCoordinates)
- * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/components/struct.ViewCoordinates.html)
+ * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ViewCoordinates.html)
+ * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ViewCoordinates)
+ * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ViewCoordinates.html)
 
 
 ## Used by
 
-* [`Pinhole`](../archetypes/pinhole.md)
-* [`ViewCoordinates`](../archetypes/view_coordinates.md)
+* [`ViewCoordinates`](../components/view_coordinates.md)

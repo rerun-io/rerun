@@ -63,6 +63,8 @@ mod vec3d;
 mod vec3d_ext;
 mod vec4d;
 mod vec4d_ext;
+mod view_coordinates;
+mod view_coordinates_ext;
 
 pub use self::angle::Angle;
 pub use self::annotation_info::AnnotationInfo;
@@ -96,3 +98,4 @@ pub use self::uvec4d::UVec4D;
 pub use self::vec2d::Vec2D;
 pub use self::vec3d::Vec3D;
 pub use self::vec4d::Vec4D;
+pub use self::view_coordinates::ViewCoordinates;

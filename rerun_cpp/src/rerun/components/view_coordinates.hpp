@@ -3,18 +3,13 @@
 
 #pragma once
 
+#include "../datatypes/view_coordinates.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <array>
 #include <cstdint>
 #include <memory>
-
-namespace arrow {
-    class Array;
-    class DataType;
-    class FixedSizeListBuilder;
-} // namespace arrow
 
 namespace rerun::components {
     /// **Component**: How we interpret the coordinate system of an entity/space.
@@ -35,7 +30,7 @@ namespace rerun::components {
     ///  * Back = 6
     struct ViewCoordinates {
         /// The directions of the [x, y, z] axes.
-        std::array<uint8_t, 3> coordinates;
+        rerun::datatypes::ViewCoordinates coordinates;
 
       public:
         // Extensions to generated type defined in 'view_coordinates_ext.cpp'
@@ -244,18 +239,30 @@ namespace rerun::components {
       public:
         ViewCoordinates() = default;
 
+        ViewCoordinates(rerun::datatypes::ViewCoordinates coordinates_)
+            : coordinates(coordinates_) {}
+
+        ViewCoordinates& operator=(rerun::datatypes::ViewCoordinates coordinates_) {
+            coordinates = coordinates_;
+            return *this;
+        }
+
         ViewCoordinates(std::array<uint8_t, 3> coordinates_) : coordinates(coordinates_) {}
 
         ViewCoordinates& operator=(std::array<uint8_t, 3> coordinates_) {
             coordinates = coordinates_;
             return *this;
         }
+
+        /// Cast to the underlying ViewCoordinates datatype
+        operator rerun::datatypes::ViewCoordinates() const {
+            return coordinates;
+        }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::ViewCoordinates) == sizeof(components::ViewCoordinates));
 
     /// \private
     template <>
@@ -263,17 +270,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.ViewCoordinates";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::ViewCoordinates>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::ViewCoordinates` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::ViewCoordinates* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::ViewCoordinates* elements,
-            size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::ViewCoordinates>::to_arrow(
+                &instances->coordinates,
+                num_instances
+            );
+        }
     };
 } // namespace rerun

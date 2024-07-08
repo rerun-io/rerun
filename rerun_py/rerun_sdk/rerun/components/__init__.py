@@ -71,13 +71,7 @@ from .transform3d import Transform3D, Transform3DBatch, Transform3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
-from .view_coordinates import (
-    ViewCoordinates,
-    ViewCoordinatesArrayLike,
-    ViewCoordinatesBatch,
-    ViewCoordinatesLike,
-    ViewCoordinatesType,
-)
+from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch, ViewCoordinatesType
 
 __all__ = [
     "AggregationPolicy",
@@ -238,8 +232,6 @@ __all__ = [
     "Vector3DBatch",
     "Vector3DType",
     "ViewCoordinates",
-    "ViewCoordinatesArrayLike",
     "ViewCoordinatesBatch",
-    "ViewCoordinatesLike",
     "ViewCoordinatesType",
 ]
