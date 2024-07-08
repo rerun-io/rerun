@@ -15,3 +15,7 @@ A single boolean.
  * 🦀 [Rust API docs for `Bool`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Bool.html)
 
 
+## Used by
+
+* [`ClearIsRecursive`](../components/clear_is_recursive.md)
+* [`DisconnectedSpace`](../components/disconnected_space.md)

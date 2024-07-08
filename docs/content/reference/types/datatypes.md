@@ -15,6 +15,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`ClassId`](datatypes/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`EntityPath`](datatypes/entity_path.md): A path to an entity in the `ChunkStore`.
 * [`Float32`](datatypes/float32.md): A single-precision 32-bit IEEE 754 floating point number.
+* [`Float64`](datatypes/float64.md): A double-precision 64-bit IEEE 754 floating point number.
 * [`KeypointId`](datatypes/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two `Keypoints`.
 * [`Mat3x3`](datatypes/mat3x3.md): A 3x3 Matrix.

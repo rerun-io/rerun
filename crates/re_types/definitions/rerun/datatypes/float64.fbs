@@ -1,0 +1,18 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.datatypes;
+
+/// A double-precision 64-bit IEEE 754 floating point number.
+struct Float64 (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "float",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.override_crate": "re_types_core",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  value: double (order: 100);
+}

@@ -68,7 +68,7 @@ class SeriesLine(Archetype):
         self: Any,
         *,
         color: datatypes.Rgba32Like | None = None,
-        width: components.StrokeWidthLike | None = None,
+        width: datatypes.Float32Like | None = None,
         name: datatypes.Utf8Like | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
     ):

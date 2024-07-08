@@ -9,7 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -60,7 +60,7 @@ class Scalar(Archetype):
 
     """
 
-    def __init__(self: Any, scalar: components.ScalarLike):
+    def __init__(self: Any, scalar: datatypes.Float64Like):
         """
         Create a new instance of the Scalar archetype.
 

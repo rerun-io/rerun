@@ -71,7 +71,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         data: datatypes.TensorDataLike,
         *,
         opacity: datatypes.Float32Like | None = None,
-        draw_order: components.DrawOrderLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
     ):
         """
         Create a new instance of the SegmentationImage archetype.

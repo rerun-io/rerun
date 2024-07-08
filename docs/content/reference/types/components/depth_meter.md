@@ -14,7 +14,7 @@ In 3D views on the other hand, this affects where the points of the point cloud 
 
 ## Fields
 
-* value: `f32`
+* value: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `DepthMeter`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DepthMeter.html)

@@ -30,7 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Draw order for entities with the same draw order is generally undefined.
 #[derive(Clone, Debug, Copy)]
 #[repr(transparent)]
-pub struct DrawOrder(pub f32);
+pub struct DrawOrder(pub crate::datatypes::Float32);
 
 impl ::re_types_core::SizeBytes for DrawOrder {
     #[inline]
@@ -40,36 +40,35 @@ impl ::re_types_core::SizeBytes for DrawOrder {
 
     #[inline]
     fn is_pod() -> bool {
-        <f32>::is_pod()
+        <crate::datatypes::Float32>::is_pod()
     }
 }
 
-impl From<f32> for DrawOrder {
-    #[inline]
-    fn from(value: f32) -> Self {
-        Self(value)
+impl<T: Into<crate::datatypes::Float32>> From<T> for DrawOrder {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<DrawOrder> for f32 {
+impl std::borrow::Borrow<crate::datatypes::Float32> for DrawOrder {
     #[inline]
-    fn from(value: DrawOrder) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::Float32 {
+        &self.0
     }
 }
 
 impl std::ops::Deref for DrawOrder {
-    type Target = f32;
+    type Target = crate::datatypes::Float32;
 
     #[inline]
-    fn deref(&self) -> &f32 {
+    fn deref(&self) -> &crate::datatypes::Float32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for DrawOrder {
     #[inline]
-    fn deref_mut(&mut self) -> &mut f32 {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
         &mut self.0
     }
 }
@@ -84,42 +83,23 @@ impl ::re_types_core::Loggable for DrawOrder {
         "rerun.components.DrawOrder".into()
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use arrow2::datatypes::*;
-        DataType::Float32
+        crate::datatypes::Float32::arrow_datatype()
     }
 
-    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
-            )
-            .boxed()
-        })
+        crate::datatypes::Float32::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -129,54 +109,15 @@ impl ::re_types_core::Loggable for DrawOrder {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.components.DrawOrder#value")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.DrawOrder#value")
-            .with_context("rerun.components.DrawOrder")?)
+        crate::datatypes::Float32::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
-    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = arrow_data
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::Float32;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.DrawOrder#value")?
-                .values()
-                .as_slice();
-            {
-                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::Float32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }

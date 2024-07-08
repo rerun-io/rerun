@@ -19,5 +19,5 @@ struct AutoSpaceViews (
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  auto_space_views: bool (order: 100);
+  auto_space_views: rerun.datatypes.Bool (order: 100);
 }

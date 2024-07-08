@@ -3,21 +3,11 @@
 
 #pragma once
 
+#include "../datatypes/float32.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class Array;
-    class DataType;
-    class FloatType;
-    using FloatBuilder = NumericBuilder<FloatType>;
-} // namespace arrow
 
 namespace rerun::components {
     /// **Component**: The radius of something, e.g. a point.
@@ -29,7 +19,7 @@ namespace rerun::components {
     /// at 100% UI scaling, UI points are equal to pixels
     /// The Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
     struct Radius {
-        float value;
+        rerun::datatypes::Float32 value;
 
       public:
         // Extensions to generated type defined in 'radius_ext.cpp'
@@ -51,18 +41,29 @@ namespace rerun::components {
       public:
         Radius() = default;
 
+        Radius(rerun::datatypes::Float32 value_) : value(value_) {}
+
+        Radius& operator=(rerun::datatypes::Float32 value_) {
+            value = value_;
+            return *this;
+        }
+
         Radius(float value_) : value(value_) {}
 
         Radius& operator=(float value_) {
             value = value_;
             return *this;
         }
+
+        /// Cast to the underlying Float32 datatype
+        operator rerun::datatypes::Float32() const {
+            return value;
+        }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Float32) == sizeof(components::Radius));
 
     /// \private
     template <>
@@ -70,16 +71,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Radius";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Float32>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::Radius` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Radius* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const components::Radius* elements, size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Float32>::to_arrow(&instances->value, num_instances);
+        }
     };
 } // namespace rerun

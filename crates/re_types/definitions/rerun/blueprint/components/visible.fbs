@@ -18,5 +18,5 @@ struct Visible (
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {
-    visible: bool (order: 100);
+    visible: rerun.datatypes.Bool (order: 100);
 }

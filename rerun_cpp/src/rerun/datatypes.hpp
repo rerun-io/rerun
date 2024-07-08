@@ -10,6 +10,7 @@
 #include "datatypes/class_id.hpp"
 #include "datatypes/entity_path.hpp"
 #include "datatypes/float32.hpp"
+#include "datatypes/float64.hpp"
 #include "datatypes/keypoint_id.hpp"
 #include "datatypes/keypoint_pair.hpp"
 #include "datatypes/mat3x3.hpp"

@@ -28,8 +28,8 @@ class ViewportBlueprint(Archetype):
         *,
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
-        auto_layout: blueprint_components.AutoLayoutLike | None = None,
-        auto_space_views: blueprint_components.AutoSpaceViewsLike | None = None,
+        auto_layout: datatypes.BoolLike | None = None,
+        auto_space_views: datatypes.BoolLike | None = None,
         past_viewer_recommendations: datatypes.UInt64ArrayLike | None = None,
     ):
         """

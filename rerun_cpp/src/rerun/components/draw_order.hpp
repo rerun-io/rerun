@@ -3,21 +3,11 @@
 
 #pragma once
 
+#include "../datatypes/float32.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class Array;
-    class DataType;
-    class FloatType;
-    using FloatBuilder = NumericBuilder<FloatType>;
-} // namespace arrow
 
 namespace rerun::components {
     /// **Component**: Draw order of 2D elements. Higher values are drawn on top of lower values.
@@ -27,10 +17,17 @@ namespace rerun::components {
     ///
     /// Draw order for entities with the same draw order is generally undefined.
     struct DrawOrder {
-        float value;
+        rerun::datatypes::Float32 value;
 
       public:
         DrawOrder() = default;
+
+        DrawOrder(rerun::datatypes::Float32 value_) : value(value_) {}
+
+        DrawOrder& operator=(rerun::datatypes::Float32 value_) {
+            value = value_;
+            return *this;
+        }
 
         DrawOrder(float value_) : value(value_) {}
 
@@ -38,12 +35,16 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+
+        /// Cast to the underlying Float32 datatype
+        operator rerun::datatypes::Float32() const {
+            return value;
+        }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Float32) == sizeof(components::DrawOrder));
 
     /// \private
     template <>
@@ -51,16 +52,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.DrawOrder";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Float32>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::DrawOrder` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::DrawOrder* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const components::DrawOrder* elements, size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Float32>::to_arrow(&instances->value, num_instances);
+        }
     };
 } // namespace rerun

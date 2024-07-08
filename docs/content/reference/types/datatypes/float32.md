@@ -18,7 +18,12 @@ A single-precision 32-bit IEEE 754 floating point number.
 ## Used by
 
 * [`AxisLength`](../components/axis_length.md)
+* [`DepthMeter`](../components/depth_meter.md)
+* [`DrawOrder`](../components/draw_order.md)
 * [`FillRatio`](../components/fill_ratio.md)
 * [`GammaCorrection`](../components/gamma_correction.md)
 * [`ImagePlaneDistance`](../components/image_plane_distance.md)
+* [`MarkerSize`](../components/marker_size.md)
 * [`Opacity`](../components/opacity.md)
+* [`Radius`](../components/radius.md)
+* [`StrokeWidth`](../components/stroke_width.md)

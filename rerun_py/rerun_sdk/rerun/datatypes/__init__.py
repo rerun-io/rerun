@@ -28,6 +28,7 @@ from .class_description_map_elem import (
 from .class_id import ClassId, ClassIdArrayLike, ClassIdBatch, ClassIdLike, ClassIdType
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
+from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
 from .mat3x3 import Mat3x3, Mat3x3ArrayLike, Mat3x3Batch, Mat3x3Like, Mat3x3Type
@@ -152,6 +153,11 @@ __all__ = [
     "Float32Batch",
     "Float32Like",
     "Float32Type",
+    "Float64",
+    "Float64ArrayLike",
+    "Float64Batch",
+    "Float64Like",
+    "Float64Type",
     "KeypointId",
     "KeypointIdArrayLike",
     "KeypointIdBatch",

@@ -18,5 +18,5 @@ table ColumnShare (
     "attr.rust.derive": "Default"
 ) {
     /// The layout shares of a column in the container.
-    share: float (order: 100);
+    share: rerun.datatypes.Float32 (order: 100);
 }

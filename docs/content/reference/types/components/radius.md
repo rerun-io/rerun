@@ -14,7 +14,7 @@ The Viewer's UI scaling defaults to the OS scaling which typically is 100% for f
 
 ## Fields
 
-* value: `f32`
+* value: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Radius`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Radius.html)
