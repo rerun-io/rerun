@@ -24,6 +24,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
   * [Paddle OCR](https://rerun.io/examples/video-image/ocr)
   * [Vista driving world model](https://rerun.io/examples/generative-vision/vista)
   * [Stereo Vision SLAM](https://rerun.io/examples/3d-reconstruction/stereo_vision_slam)
+  * [Neural field notebook](https://rerun.io/examples/integrations/notebook_neural_field_2d)
 * 🛠️ Improved the logging API with many new and updated archetypes and components (see [migration guide](http://rerun.io/docs/reference/migration/migration-0-17))
 * 🖼️ New blueprint accessible View properties
   * `TensorView` is now fully configurable from code
