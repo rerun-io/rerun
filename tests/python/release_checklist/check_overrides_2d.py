@@ -7,7 +7,7 @@ from uuid import uuid4
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # 2D views: Overrides, logged values, defaults, fallbacks
 
 This checks that component and visualizer overrides behave as expected for 2D views.

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Hover, Select, Deselect, and Reset
 
 This checks whether different UIs behave correctly with hover and selection.

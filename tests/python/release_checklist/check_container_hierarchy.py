@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Container Hierarchy
 
 This checks that the container hierarchy behaves as expected.

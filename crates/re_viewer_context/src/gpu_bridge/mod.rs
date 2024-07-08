@@ -4,7 +4,7 @@ mod colormap;
 mod re_renderer_callback;
 mod tensor_to_gpu;
 
-pub use colormap::{colormap_dropdown_button_ui, colormap_to_re_renderer};
+pub use colormap::{colormap_edit_or_view_ui, colormap_to_re_renderer};
 pub use re_renderer_callback::new_renderer_callback;
 pub use tensor_to_gpu::{tensor_to_gpu, texture_height_width_channels};
 
