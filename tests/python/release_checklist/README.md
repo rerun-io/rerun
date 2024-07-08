@@ -7,7 +7,7 @@ Welcome to the release checklist.
 _**⚠ Make sure to clean your blueprints if you want to start from a clean slate ⚠**_
 
 ```
-rm -rf ~/.local/share/rerun/blueprints/*
+pixi run rerun reset
 ```
 
 ### When releasing
