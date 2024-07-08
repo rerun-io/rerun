@@ -81,12 +81,7 @@ pub fn visualizer_ui_impl(
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
 ) {
-    let Some(override_path) = data_result.individual_override_path() else {
-        if cfg!(debug_assertions) {
-            re_log::error!("No override path for entity: {}", data_result.entity_path);
-        }
-        return;
-    };
+    let override_path = data_result.individual_override_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE);
@@ -220,13 +215,7 @@ fn visualizer_components(
             (None, None, None) => (ValueSource::FallbackOrPlaceholder, raw_fallback.as_ref()),
         };
 
-        let Some(override_path) = data_result.individual_override_path() else {
-            // This shouldn't the `DataResult` is valid.
-            if cfg!(debug_assertions) {
-                re_log::error!("No override path for entity: {}", data_result.entity_path);
-            }
-            return;
-        };
+        let override_path = data_result.individual_override_path();
 
         let value_fn = |ui: &mut egui::Ui, _style| {
             // Edit ui can only handle a single value.
@@ -490,14 +479,7 @@ fn menu_add_new_visualizer(
     active_visualizers: &[ViewSystemIdentifier],
     inactive_visualizers: &[ViewSystemIdentifier],
 ) {
-    // If we don't have an override_path we can't set up an initial override
-    // this shouldn't happen if the `DataResult` is valid.
-    let Some(override_path) = data_result.individual_override_path() else {
-        if cfg!(debug_assertions) {
-            re_log::error!("No override path for entity: {}", data_result.entity_path);
-        }
-        return;
-    };
+    let override_path = data_result.individual_override_path();
 
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 

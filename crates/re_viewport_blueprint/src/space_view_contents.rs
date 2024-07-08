@@ -238,8 +238,16 @@ impl SpaceViewContents {
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let executor =
-            QueryExpressionEvaluator::new(self, visualizable_entities_for_visualizer_systems);
+        let executor = QueryExpressionEvaluator {
+            visualizable_entities_for_visualizer_systems,
+            entity_path_filter: self.entity_path_filter.clone(),
+            recursive_override_base_path: self
+                .blueprint_entity_path
+                .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into()),
+            individual_override_base_path: self
+                .blueprint_entity_path
+                .join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into()),
+        };
 
         let mut num_matching_entities = 0;
         let mut num_visualized_entities = 0;
@@ -269,21 +277,11 @@ impl SpaceViewContents {
 struct QueryExpressionEvaluator<'a> {
     visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
     entity_path_filter: EntityPathFilter,
+    recursive_override_base_path: EntityPath,
+    individual_override_base_path: EntityPath,
 }
 
 impl<'a> QueryExpressionEvaluator<'a> {
-    fn new(
-        blueprint: &'a SpaceViewContents,
-        visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-    ) -> Self {
-        re_tracing::profile_function!();
-
-        Self {
-            visualizable_entities_for_visualizer_systems,
-            entity_path_filter: blueprint.entity_path_filter.clone(),
-        }
-    }
-
     fn add_entity_tree_to_data_results_recursive(
         &self,
         tree: &EntityTree,
@@ -344,7 +342,12 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path: entity_path.clone(),
                     visualizers,
                     tree_prefix_only: !matches_filter,
-                    property_overrides: None,
+                    property_overrides: PropertyOverrides {
+                        resolved_component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
+                        recursive_path: self.recursive_override_base_path.join(entity_path),
+                        individual_path: self.individual_override_base_path.join(entity_path),
+                        query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
+                    },
                 },
                 children,
             }))
@@ -448,7 +451,11 @@ impl DataQueryPropertyResolver<'_> {
 
                 // Then, gather individual overrides - these may override the recursive ones again,
                 // but recursive overrides are still inherited to children.
-                let mut resolved_component_overrides = (*recursive_property_overrides).clone();
+                let resolved_component_overrides = &mut node
+                    .data_result
+                    .property_overrides
+                    .resolved_component_overrides;
+                *resolved_component_overrides = (*recursive_property_overrides).clone();
                 if let Some(individual_override_subtree) =
                     blueprint.tree().subtree(&individual_override_path)
                 {
@@ -487,17 +494,10 @@ impl DataQueryPropertyResolver<'_> {
                         .iter()
                         .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
                 });
-                let query_range = time_range.map_or_else(
+                node.data_result.property_overrides.query_range = time_range.map_or_else(
                     || default_query_range.clone(),
                     |time_range| QueryRange::TimeRange(time_range.0.range.clone()),
                 );
-
-                node.data_result.property_overrides = Some(PropertyOverrides {
-                    resolved_component_overrides,
-                    recursive_override_path,
-                    individual_override_path,
-                    query_range,
-                });
 
                 (node.children.clone(), recursive_property_overrides)
             })
