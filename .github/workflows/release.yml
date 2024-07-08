@@ -52,10 +52,15 @@ jobs:
           python-version: 3.11
 
       - name: Check links for `?speculative-link`
-        # NOTE: We allow `?speculative-link` only in alpha releases
+        # This checks that we have no links with `?speculative-link` in its query params.
+        # We use those links to get our link checker to ignore them while our docs are unreleased.
+        #
+        # NOTE: For alpha releases, we won't fully publish all our docs,
+        #       so we skip the check here, because we won't be able to
+        #       remove the markers yet.
         run: |
           if [ ${{ inputs.release-type }} != "alpha" ]; then
-            python3 scripts/ci/check_links.py
+            python3 scripts/ci/check_speculative_links.py
           fi
 
   version:
