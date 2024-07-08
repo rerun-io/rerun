@@ -46,7 +46,7 @@ void run_image_tests() {
         }
     }
 
-    GIVEN("tensor data with too high rank") {
+    GIVEN("tensor data with too high dimensionality") {
         rerun::datatypes::TensorData data(
             {
                 {
@@ -75,7 +75,7 @@ void run_image_tests() {
         }
     }
 
-    GIVEN("tensor data with too low rank") {
+    GIVEN("tensor data with too low dimensionality") {
         rerun::datatypes::TensorData data(
             {
                 rerun::datatypes::TensorDimension(1, "dr robotnik"),

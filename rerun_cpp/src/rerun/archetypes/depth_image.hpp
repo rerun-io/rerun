@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct DepthImage {
-        /// The depth-image data. Should always be a rank-2 tensor.
+        /// The depth-image data. Should always be a 2-dimensional tensor.
         rerun::components::TensorData data;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
@@ -117,7 +117,7 @@ namespace rerun::archetypes {
         /// New depth image from height/width and tensor buffer.
         ///
         /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
+        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// \param buffer
         /// The tensor buffer containing the depth image data.
@@ -129,14 +129,14 @@ namespace rerun::archetypes {
         /// \param data_
         /// The tensor buffer containing the depth image data.
         /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2.
+        /// Calls `Error::handle()` if the tensor is not 2-dimensional
         explicit DepthImage(components::TensorData data_);
 
         /// New depth image from dimensions and pointer to depth image data.
         ///
         /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
         /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
+        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
         /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
         /// Determines the number of elements expected to be in `data`.
         /// \param data_

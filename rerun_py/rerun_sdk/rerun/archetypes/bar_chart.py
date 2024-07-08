@@ -54,7 +54,7 @@ class BarChart(BarChartExt, Archetype):
         Parameters
         ----------
         values:
-            The values. Should always be a rank-1 tensor.
+            The values. Should always be a 1-dimensional tensor (i.e. a vector).
         color:
             The color of the bar chart
 
@@ -84,7 +84,7 @@ class BarChart(BarChartExt, Archetype):
         metadata={"component": "required"},
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
-    # The values. Should always be a rank-1 tensor.
+    # The values. Should always be a 1-dimensional tensor (i.e. a vector).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

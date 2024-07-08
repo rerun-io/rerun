@@ -74,7 +74,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct SegmentationImage {
-    /// The image data. Should always be a rank-2 tensor.
+    /// The image data. Should always be a 2-dimensional tensor.
     pub data: crate::components::TensorData,
 
     /// Opacity of the image, useful for layering the segmentation image on top of another image.
