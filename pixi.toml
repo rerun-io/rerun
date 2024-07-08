@@ -313,8 +313,10 @@ py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only
 # platforms (including linux-aarch64), or added conditionally.
 #
 # Hints:
-# - To check a given package, go to the package on https://prefix.dev/channels/conda-forge/. It should support Windows,
-#   x86_64 and aarch64 macOS architectures, and x86_64 and aarch64 Linux architectures.
+# - To check a given package, go to the package on https://prefix.dev/channels/conda-forge/. It should support:
+#   - linux-64 and linux-aarch64
+#   - osx-64 and osx-arm64
+#   - win-64
 # - Some pure Python packages may wrongly be tagged as platform-specific. In this case, use `[pypi-dependencies]`
 #   instead (e.g. `nox`).
 # - If a package is only used for a very specific CI job on a specific target, include it under that target (e.g.
@@ -327,6 +329,7 @@ clang-tools = "16.0.6"            # clang-format
 cmake = "3.27.6"
 colorama = ">=0.4.6,<0.5"
 doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
+fd-find = ">=10.1.0"              # Used by `cpp-fmt` to find C++ files
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
