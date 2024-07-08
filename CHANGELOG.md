@@ -52,7 +52,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Expose image opacity component [#6635](https://github.com/rerun-io/rerun/pull/6635)
 - Make draw order editable & solve 2D flickering issues, add draw order to arrow2d archetype [#6644](https://github.com/rerun-io/rerun/pull/6644)
 - Remove `Axes3D` archetype and add `axis_length` to `Transform3D` [#6676](https://github.com/rerun-io/rerun/pull/6676)
-- Expose ui point radii to logging & blueprint, remove old default radius settings in favor of blueprint default components [#6678](https://github.com/rerun-io/rerun/pull/6678)
+- Expose UI point radii to logging & blueprint, remove old default radius settings in favor of blueprint default components [#6678](https://github.com/rerun-io/rerun/pull/6678)
 - Rename `HalfSizes2D/3D` to `HalfSize2D/3D` [#6768](https://github.com/rerun-io/rerun/pull/6768)
 
 #### 🌊 C++ API
@@ -61,13 +61,13 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 #### 🐍 Python API
 - Make barchart legend settable via blueprint [#6514](https://github.com/rerun-io/rerun/pull/6514)
 - Expose tensor slice selection to blueprint [#6590](https://github.com/rerun-io/rerun/pull/6590)
-- Use literal unions in python enum codegen [#6408](https://github.com/rerun-io/rerun/pull/6408)
+- Use literal unions in Python enum codegen [#6408](https://github.com/rerun-io/rerun/pull/6408)
 - Allow hiding top panel via blueprint [#6409](https://github.com/rerun-io/rerun/pull/6409)
 - Improve the visibility of Python public APIs to type checkers [#6462](https://github.com/rerun-io/rerun/pull/6462)
 - Expose `Interactive` component [#6542](https://github.com/rerun-io/rerun/pull/6542)
 - Python components now implement the `ComponentBatchLike` interface [#6543](https://github.com/rerun-io/rerun/pull/6543)
 - Allow streaming to the viewer from the cell where it's created [#6640](https://github.com/rerun-io/rerun/pull/6640)
-- Introduce new python API for setting overrides [#6650](https://github.com/rerun-io/rerun/pull/6650)
+- Introduce new Python API for setting overrides [#6650](https://github.com/rerun-io/rerun/pull/6650)
 - Publish `rerun_notebook` in CI [#6641](https://github.com/rerun-io/rerun/pull/6641)
 
 #### 🦀 Rust API
@@ -86,11 +86,11 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 
 #### 🌁 Viewer Improvements
 - Introduce a mechanism for blueprint-provided defaults [#6537](https://github.com/rerun-io/rerun/pull/6537)
-- Allow resetting view property components from gui for all generically implemented property ui [#6417](https://github.com/rerun-io/rerun/pull/6417)
+- Allow resetting view property components from GUI for all generically implemented property UI [#6417](https://github.com/rerun-io/rerun/pull/6417)
 - Don't log "SDK client connected" messages until after we have confirmed it's a client [#6456](https://github.com/rerun-io/rerun/pull/6456)
-- Background color settings uses new generic ui now [#6480](https://github.com/rerun-io/rerun/pull/6480)
-- TimeSeries y-range is now tightly synced with plot view & uses new generic ui [#6485](https://github.com/rerun-io/rerun/pull/6485)
-- Remove option to enable/disable depth projection from ui [#6550](https://github.com/rerun-io/rerun/pull/6550)
+- Background color settings uses new generic UI now [#6480](https://github.com/rerun-io/rerun/pull/6480)
+- TimeSeries y-range is now tightly synced with plot view & uses new generic UI [#6485](https://github.com/rerun-io/rerun/pull/6485)
+- Remove option to enable/disable depth projection from UI [#6550](https://github.com/rerun-io/rerun/pull/6550)
 - Expose tensor colormap/gamma/filter/scaling to blueprint [#6585](https://github.com/rerun-io/rerun/pull/6585)
 - Handle static text messages in TextLogView gracefully, handle overrides [#6712](https://github.com/rerun-io/rerun/pull/6712)
 - Multiple instances of points/arrows/boxes with single label display label now at the center [#6741](https://github.com/rerun-io/rerun/pull/6741)
@@ -100,7 +100,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Add the Vista example [#6664](https://github.com/rerun-io/rerun/pull/6664) (thanks [@roym899](https://github.com/roym899)!)
 - Add the Stereo Vision SLAM example [#6669](https://github.com/rerun-io/rerun/pull/6669) (thanks [@02alexander](https://github.com/02alexander)!)
 - Add 2D neural field notebook example [#6775](https://github.com/rerun-io/rerun/pull/6775) (thanks [@roym899](https://github.com/roym899)!)
-- Update the nuscenes example to use blueprint overrides and defaults [#6783](https://github.com/rerun-io/rerun/pull/6783)
+- Update the nuScenes example to use blueprint overrides and defaults [#6783](https://github.com/rerun-io/rerun/pull/6783)
 - Update the plots example to use blueprint overrides [#6781](https://github.com/rerun-io/rerun/pull/6781)
 
 #### 📚 Docs
@@ -129,12 +129,12 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Improve welcome screen for small screens [#6421](https://github.com/rerun-io/rerun/pull/6421)
 - Use egui's `UiStack` to implement full span widgets [#6491](https://github.com/rerun-io/rerun/pull/6491)
 - Use `list_item` for the component list in `InstancePath::data_ui` [#6309](https://github.com/rerun-io/rerun/pull/6309)
-- Allow editing visual bounds from ui [#6492](https://github.com/rerun-io/rerun/pull/6492)
+- Allow editing visual bounds from UI [#6492](https://github.com/rerun-io/rerun/pull/6492)
 - Allow manually setting full span scopes [#6509](https://github.com/rerun-io/rerun/pull/6509)
 - Make object hover & selection colors brighter and more pronounced [#6596](https://github.com/rerun-io/rerun/pull/6596)
 - Show outline around hovered/selected tiles in viewport [#6597](https://github.com/rerun-io/rerun/pull/6597)
-- Unified visualizer & override ui, enabled on all entities [#6599](https://github.com/rerun-io/rerun/pull/6599)
-- Introduce visualizer blueprint query stack ui [#6605](https://github.com/rerun-io/rerun/pull/6605)
+- Unified visualizer & override UI, enabled on all entities [#6599](https://github.com/rerun-io/rerun/pull/6599)
+- Introduce visualizer blueprint query stack UI [#6605](https://github.com/rerun-io/rerun/pull/6605)
 - Reorganize Selection Panel [#6637](https://github.com/rerun-io/rerun/pull/6637)
 - Rewrite the `ui.large_collapsing_header` into `re_ui::SectionCollapsingHeader` using `re_ui::ListItem` [#6657](https://github.com/rerun-io/rerun/pull/6657)
 - Move entity filter "edit" button to a section header icon [#6662](https://github.com/rerun-io/rerun/pull/6662)
@@ -158,7 +158,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 #### 📦 Dependencies
 - Update to egui 0.28.1 [#6752](https://github.com/rerun-io/rerun/pull/6752), [#6785](https://github.com/rerun-io/rerun/pull/6785)
 - Update ewebsock to 0.6.0 [#6394](https://github.com/rerun-io/rerun/pull/6394)
-- Update to `wgpu 0.20`, fixing crashes with some linux setups [#6171](https://github.com/rerun-io/rerun/pull/6171)
+- Update to `wgpu 0.20`, fixing crashes with some Linux setups [#6171](https://github.com/rerun-io/rerun/pull/6171)
 
 
 

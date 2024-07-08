@@ -402,7 +402,7 @@ Running the script again this final chart is a significant improvement over the 
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_grid/b9c41481818f9028d75df6076c62653989a02c66/1200w.png">
 </picture>
 
-### Visualizers and Overrides
+### Visualizers and overrides
 
 <!-- TODO(ab): the linked section's content is already pretty rich, but, ideally, this section should also include code examples -->
 
