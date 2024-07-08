@@ -287,6 +287,8 @@ As always there's a lot going on under the hood:
 - `ListItem` 2.0 (part 2): introduce `PropertyContent` for two-column, property-like list items [#6174](https://github.com/rerun-io/rerun/pull/6174)
 - `ListItem` 2.0 (part 3): `PropertyContent` column auto-sizing [#6182](https://github.com/rerun-io/rerun/pull/6182)
 - `ListItem` 2.0 (part 4): only allocate space for property action buttons when needed [#6183](https://github.com/rerun-io/rerun/pull/6183)
+- `ListItem` 2.0 (part 5): deploy to the Visualizers and Overrides UIs [#6184](https://github.com/rerun-io/rerun/pull/6184)
+- `ListItem` 2.0 (part 6): split full-span range management to a dedicated module [#6211](https://github.com/rerun-io/rerun/pull/6211)
 - Add button to equalize the size of the children of a container [#6194](https://github.com/rerun-io/rerun/pull/6194)
 - Use thousands separators when formatting seconds [#6212](https://github.com/rerun-io/rerun/pull/6212)
 - Add space view icons to various context menus [#6235](https://github.com/rerun-io/rerun/pull/6235)
