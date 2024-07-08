@@ -106,7 +106,6 @@ impl ::re_types_core::Loggable for TextLogLevel {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         crate::datatypes::Utf8::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }

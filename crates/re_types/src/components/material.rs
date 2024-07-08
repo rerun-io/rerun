@@ -97,7 +97,6 @@ impl ::re_types_core::Loggable for Material {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         crate::datatypes::Material::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }

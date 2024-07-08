@@ -833,6 +833,7 @@ fn quote_trait_impls_from_obj(
                         // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
+                        #![allow(clippy::wildcard_imports)]
                         use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
@@ -848,12 +849,6 @@ fn quote_trait_impls_from_obj(
                     }
                 };
 
-                let allow_wildcard_import = if forwarded_type.is_some() {
-                    quote!()
-                } else {
-                    quote!(#![allow(clippy::wildcard_imports)])
-                };
-
                 quote! {
                     #[inline]
                     fn from_arrow(
@@ -862,7 +857,6 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized
                     {
-                        #allow_wildcard_import
                         #from_arrow_body
                     }
                 }
@@ -881,6 +875,7 @@ fn quote_trait_impls_from_obj(
                     // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                     // re_tracing::profile_function!();
 
+                    #![allow(clippy::wildcard_imports)]
                     use arrow2::{datatypes::*, array::*, buffer::*};
                     use ::re_types_core::{Loggable as _, ResultExt as _};
                     Ok(#quoted_deserializer)
@@ -915,10 +910,10 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Clone + 'a
                     {
-                        #![allow(clippy::wildcard_imports)]
                         // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
+                        #![allow(clippy::wildcard_imports)]
                         use arrow2::{datatypes::*, array::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
@@ -949,7 +944,6 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized
                     {
-                        #![allow(clippy::wildcard_imports)]
                         #quoted_deserializer
                     }
 

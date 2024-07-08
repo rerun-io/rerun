@@ -100,7 +100,6 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         crate::datatypes::VisibleTimeRange::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }

@@ -96,7 +96,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
         crate::testing::datatypes::AffixFuzzer1::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
