@@ -13,6 +13,9 @@ on:
       - opened
       - synchronize
 
+permissions:
+  contents: "read"
+
 jobs:
   checks:
     name: "Checks"

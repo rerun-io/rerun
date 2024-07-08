@@ -38,6 +38,7 @@ defaults:
 permissions:
   contents: "read"
   id-token: "write"
+
 jobs:
   py-test-docs:
     name: Test Python Docs
