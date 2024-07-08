@@ -69,17 +69,23 @@ impl SceneBoundingBoxes {
             let smoothing_factor =
                 egui::emath::exponential_smooth_factor(reach_this_factor, in_this_many_seconds, dt);
 
-            self.smoothed = macaw::BoundingBox::from_center_size(
-                self.smoothed
-                    .center()
-                    .lerp(self.current.center(), smoothing_factor),
-                self.smoothed
-                    .size()
-                    .lerp(self.current.size(), smoothing_factor),
-            );
+            let current_center = self.current.center();
+            let current_size = self.current.size();
 
-            if self.smoothed.min.distance_squared(self.current.min) > 0.001
-                || self.smoothed.max.distance_squared(self.current.max) > 0.001
+            let new_smoothed_center = self
+                .smoothed
+                .center()
+                .lerp(current_center, smoothing_factor);
+            let new_smoothed_size = self.smoothed.size().lerp(current_size, smoothing_factor);
+
+            self.smoothed =
+                macaw::BoundingBox::from_center_size(new_smoothed_center, new_smoothed_size);
+
+            let current_diagonal_length = current_size.length();
+            let sameness_threshold = current_diagonal_length * (0.1 / 100.0); // 0.1% of the diagonal.
+            if new_smoothed_center.distance(current_center) > sameness_threshold
+                || (new_smoothed_size.length() - current_diagonal_length) / current_diagonal_length
+                    > sameness_threshold
             {
                 ui.ctx().request_repaint();
             }
