@@ -13,6 +13,8 @@ on:
         required: true
         type: string
 
+permissions: write-all
+
 jobs:
   checks:
     name: Checks

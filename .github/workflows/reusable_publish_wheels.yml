@@ -24,6 +24,10 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   get-commit-sha:
     name: Get Commit Sha

@@ -23,16 +23,14 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "write"
+  id-token: "write"
+
 jobs:
   sync-assets:
     name: Upload assets from build.rerun.io
-
-    permissions:
-      contents: "write"
-      id-token: "write"
-
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

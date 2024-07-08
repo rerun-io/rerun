@@ -20,9 +20,8 @@ defaults:
   run:
     shell: bash
 
-permissions: # wants to push commits and create a PR
-  contents: write
-  id-token: write
+# wants to push commits and create a PR
+permissions: write-all
 
 jobs:
   # Re-entrancy:

@@ -13,6 +13,9 @@ on:
       - labeled
       - unlabeled
 
+# No permissions needed here
+# permissions:
+
 jobs:
   label:
     runs-on: ubuntu-latest

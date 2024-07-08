@@ -19,19 +19,16 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   run-notebook:
     name: Run notebook
-
-    permissions:
-      contents: "read"
-      id-token: "write"
-
     runs-on: ubuntu-latest
-
     container:
       image: rerunio/ci_docker:0.14.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -75,7 +72,7 @@ jobs:
         # 2. Install `rerun-sdk[notebook]` from the wheel again.
         #      This will not reinstall `rerun-sdk` or `rerun-notebook`, but it will
         #      properly install all dependencies.
-        # It's a mystery whether or not this installs the dependencies of the local wheel, or of the pypi-published package...
+        # It's a mystery whether or not this installs the dependencies of the local wheel, or of the pypi-published package…
         run: |
           pixi run -e wheel-test pip install \
               'rerun-sdk==${{ steps.get-version.outputs.wheel_version }}' \
