@@ -387,13 +387,13 @@ impl LineDrawData {
         let max_num_texels = max_texture_dimension_2d as usize * max_texture_dimension_2d as usize;
         let max_num_vertices = max_num_texels - NUM_SENTINEL_VERTICES;
 
-        let position_data_texture = vertices_buffer.finish(
+        let position_texture = vertices_buffer.finish(
             wgpu::TextureFormat::Rgba32Float,
-            "LineDrawData::position_data_texture",
+            "LineDrawData::position_texture",
         )?;
-        let line_strip_texture = strips_buffer.finish(
+        let strip_data_texture = strips_buffer.finish(
             wgpu::TextureFormat::Rg32Uint,
-            "LineDrawData::line_strip_texture",
+            "LineDrawData::strip_data_texture",
         )?;
         let picking_instance_id_texture = picking_instance_ids_buffer.finish(
             wgpu::TextureFormat::Rg32Uint,
@@ -421,8 +421,8 @@ impl LineDrawData {
             &BindGroupDesc {
                 label: "LineDrawData::bind_group_all_lines".into(),
                 entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                    BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    BindGroupEntry::DefaultTextureView(position_texture.handle),
+                    BindGroupEntry::DefaultTextureView(strip_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
                     draw_data_uniform_buffer_bindings[0].clone(),
                 ],
@@ -435,8 +435,8 @@ impl LineDrawData {
             &BindGroupDesc {
                 label: "LineDrawData::bind_group_all_lines_outline_mask".into(),
                 entries: smallvec![
-                    BindGroupEntry::DefaultTextureView(position_data_texture.handle),
-                    BindGroupEntry::DefaultTextureView(line_strip_texture.handle),
+                    BindGroupEntry::DefaultTextureView(position_texture.handle),
+                    BindGroupEntry::DefaultTextureView(strip_data_texture.handle),
                     BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
                     draw_data_uniform_buffer_bindings[1].clone(),
                 ],

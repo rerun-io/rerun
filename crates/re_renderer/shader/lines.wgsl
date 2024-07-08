@@ -8,9 +8,9 @@
 #import <./utils/depth_offset.wgsl>
 
 @group(1) @binding(0)
-var line_strip_texture: texture_2d<f32>;
+var position_texture: texture_2d<f32>;
 @group(1) @binding(1)
-var position_data_texture: texture_2d<u32>;
+var strip_data_texture: texture_2d<u32>;
 @group(1) @binding(2)
 var picking_instance_id_texture: texture_2d<u32>;
 
@@ -86,9 +86,9 @@ struct LineStripData {
 
 // Read and unpack line strip data at a given location
 fn read_strip_data(idx: u32) -> LineStripData {
-    let position_data_texture_size = textureDimensions(position_data_texture);
-    let raw_data = textureLoad(position_data_texture,
-         vec2u(idx % position_data_texture_size.x, idx / position_data_texture_size.x), 0);
+    let strip_data_texture_size = textureDimensions(strip_data_texture);
+    let raw_data = textureLoad(strip_data_texture,
+         vec2u(idx % strip_data_texture_size.x, idx / strip_data_texture_size.x), 0);
 
     let picking_instance_id_texture_size = textureDimensions(picking_instance_id_texture);
     let picking_instance_id = textureLoad(picking_instance_id_texture,
@@ -112,9 +112,9 @@ struct PositionData {
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: u32) -> PositionData {
-    let texture_size = textureDimensions(line_strip_texture);
+    let texture_size = textureDimensions(position_texture);
     let coord = vec2u(idx % texture_size.x, idx / texture_size.x);
-    var raw_data = textureLoad(line_strip_texture, coord, 0);
+    var raw_data = textureLoad(position_texture, coord, 0);
 
     var data: PositionData;
     let pos_4d = batch.world_from_obj * vec4f(raw_data.xyz, 1.0);

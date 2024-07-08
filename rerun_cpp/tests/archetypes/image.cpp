@@ -7,7 +7,7 @@ using namespace rerun::archetypes;
 #define TEST_TAG "[image][archetypes]"
 
 SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
-    GIVEN("tensor data with correct rank 2 shape") {
+    GIVEN("tensor data with correct 2-dimensional shape") {
         rerun::datatypes::TensorData data({3, 7}, std::vector<uint8_t>(3 * 7, 0));
         THEN("no error occurs on image construction") {
             auto image = check_logged_error([&] { return Image(std::move(data)); });
@@ -22,7 +22,7 @@ SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
             }
         }
     }
-    GIVEN("tensor data with correct rank 3 shape") {
+    GIVEN("tensor data with correct 3-dimensional shape") {
         rerun::datatypes::TensorData data({3, 7, 3}, std::vector<uint8_t>(3 * 7 * 3, 0));
         THEN("no error occurs on image construction") {
             auto image = check_logged_error([&] { return Image(std::move(data)); });
@@ -38,7 +38,7 @@ SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
             }
         }
     }
-    GIVEN("tensor data with incorrect rank 3 shape") {
+    GIVEN("tensor data with incorrect 3-dimensional shape") {
         rerun::datatypes::TensorData data({3, 7, 2}, std::vector<uint8_t>(3 * 7 * 2, 0));
         THEN("a warning occurs on image construction") {
             auto image = check_logged_error(
@@ -72,7 +72,7 @@ SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
         }
     }
 
-    GIVEN("tensor data with too high rank") {
+    GIVEN("tensor data with too high dimensionality") {
         rerun::datatypes::TensorData data(
             {
                 {
@@ -103,7 +103,7 @@ SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
         }
     }
 
-    GIVEN("tensor data with too low rank") {
+    GIVEN("tensor data with too low dimensionality") {
         rerun::datatypes::TensorData data(
             {
                 rerun::datatypes::TensorDimension(1, "dr robotnik"),

@@ -70,7 +70,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Image {
-    /// The image data. Should always be a rank-2 or rank-3 tensor.
+    /// The image data. Should always be a 2- or 3-dimensional tensor.
     pub data: crate::components::TensorData,
 
     /// Opacity of the image, useful for layering several images.

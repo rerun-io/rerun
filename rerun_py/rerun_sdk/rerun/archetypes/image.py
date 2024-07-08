@@ -82,7 +82,7 @@ class Image(ImageExt, Archetype):
         Parameters
         ----------
         data:
-            The image data. Should always be a rank-2 or rank-3 tensor.
+            The image data. Should always be a 2- or 3-dimensional tensor.
         opacity:
             Opacity of the image, useful for layering several images.
 
@@ -119,7 +119,7 @@ class Image(ImageExt, Archetype):
         metadata={"component": "required"},
         converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    # The image data. Should always be a rank-2 or rank-3 tensor.
+    # The image data. Should always be a 2- or 3-dimensional tensor.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
