@@ -48,7 +48,7 @@ jobs:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
-      - name: Download Notebook Wheelj
+      - name: Download Notebook Wheel
         uses: actions/download-artifact@v4
         with:
           name: rerun_notebook_wheel
