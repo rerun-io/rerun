@@ -109,6 +109,8 @@ examples = [
   "ros_node",
   "ros2_bridge",
   "ros_bridge",
+  "notebook",
+  "notebook_neural_field_2d",
   "urdf_loader",
   "vrs",
   "revy",
@@ -127,6 +129,7 @@ Showcase basic usage and specific features of Rerun.
 """
 examples = [
   # display order, most interesting first
+  "notebook",
   "clock",
   "dna",
   "log_file",
@@ -150,7 +153,6 @@ examples = [
   "external_data_loader",
   "incremental_logging",
   "minimal_serve",
-  "notebook",
   "shared_recording",
   "spawn_viewer",
   "stdio",
