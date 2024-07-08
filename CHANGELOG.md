@@ -58,9 +58,12 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Add docs on how to install C++ SDK with conda-forge packages [#6381](https://github.com/rerun-io/rerun/pull/6381) (thanks [@traversaro](https://github.com/traversaro)!)
 
 #### 🐍 Python API
+- Make barchart legend settable via blueprint [#6514](https://github.com/rerun-io/rerun/pull/6514)
+- Expose tensor slice selection to blueprint [#6590](https://github.com/rerun-io/rerun/pull/6590)
 - Use literal unions in python enum codegen [#6408](https://github.com/rerun-io/rerun/pull/6408)
 - Allow hiding top panel via blueprint [#6409](https://github.com/rerun-io/rerun/pull/6409)
 - Improve the visibility of Python public APIs to type checkers [#6462](https://github.com/rerun-io/rerun/pull/6462)
+- Expose `Interactive` component [#6542](https://github.com/rerun-io/rerun/pull/6542)
 - Python components now implement the `ComponentBatchLike` interface [#6543](https://github.com/rerun-io/rerun/pull/6543)
 - Allow streaming to the viewer from the cell where it's created [#6640](https://github.com/rerun-io/rerun/pull/6640)
 - Introduce new python API for setting overrides [#6650](https://github.com/rerun-io/rerun/pull/6650)
@@ -78,8 +81,10 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Fix annotation context labels not showing in views [#6742](https://github.com/rerun-io/rerun/pull/6742)
 - Quiet the 'not a mono-batch' log spam when selecting keypoint with a batch class-id [#6359](https://github.com/rerun-io/rerun/pull/6359)
 - Fix incorrect label placement for 3D arrows with origins [#6779](https://github.com/rerun-io/rerun/pull/6779)
+- Don't pass RRD paths to other data-loaders [#6617](https://github.com/rerun-io/rerun/pull/6617)
 
 #### 🌁 Viewer Improvements
+- Introduce a mechanism for blueprint-provided defaults [#6537](https://github.com/rerun-io/rerun/pull/6537)
 - Allow resetting view property components from gui for all generically implemented property ui [#6417](https://github.com/rerun-io/rerun/pull/6417)
 - Don't log "SDK client connected" messages until after we have confirmed it's a client [#6456](https://github.com/rerun-io/rerun/pull/6456)
 - Background color settings uses new generic ui now [#6480](https://github.com/rerun-io/rerun/pull/6480)
@@ -103,6 +108,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Add a "Visualizers and Overrides" concept page [#6679](https://github.com/rerun-io/rerun/pull/6679)
 - Better document limited effect of `DepthMeter` & `FillRatio` in 2D views [#6745](https://github.com/rerun-io/rerun/pull/6745)
 - Update troubleshooting guide with graphics driver updating advice [#6756](https://github.com/rerun-io/rerun/pull/6756)
+- Update Pixi link to their new website [#6688](https://github.com/rerun-io/rerun/pull/6688) (thanks [@esteve](https://github.com/esteve)!)
 
 #### 🖼 UI Improvements
 - Update the UI for time series view properties using list item [#6390](https://github.com/rerun-io/rerun/pull/6390)
@@ -144,20 +150,13 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 
 #### 🗣 Refactors
 - Generic view property building, applied to `TimeSeriesView`'s `PlotLegend` [#6400](https://github.com/rerun-io/rerun/pull/6400)
+- Extracted several `re_viewer` parts into standalone crates: `re_viewport_blueprint` [#6405](https://github.com/rerun-io/rerun/pull/6405), `re_context_menu` [#6428](https://github.com/rerun-io/rerun/pull/6423), `re_blueprint_tree`[#6427](https://github.com/rerun-io/rerun/pull/6427), and `re_selection_panel` [#6431](https://github.com/rerun-io/rerun/pull/6431)
 
 #### 📦 Dependencies
 - Update to egui 0.28.1 [#6752](https://github.com/rerun-io/rerun/pull/6752) ), [#6785](https://github.com/rerun-io/rerun/pull/6785)
 - Update ewebsock to 0.6.0 [#6394](https://github.com/rerun-io/rerun/pull/6394)
 - Update to `wgpu 0.20`, fixing crashes with some linux setups [#6171](https://github.com/rerun-io/rerun/pull/6171)
 
-#### 🤷‍ Other
-- Make barchart legend settable via blueprint [#6514](https://github.com/rerun-io/rerun/pull/6514)
-- Introduce a mechanism for blueprint-provided defaults [#6537](https://github.com/rerun-io/rerun/pull/6537)
-- Expose `Interactive` component [#6542](https://github.com/rerun-io/rerun/pull/6542)
-- Expose tensor slice selection to blueprint [#6590](https://github.com/rerun-io/rerun/pull/6590)
-- Don't pass RRD paths to other data-loaders [#6617](https://github.com/rerun-io/rerun/pull/6617)
-- Update Pixi link to their new website [#6688](https://github.com/rerun-io/rerun/pull/6688) (thanks [@esteve](https://github.com/esteve)!)
-- Bump versions to 0.17.0-rc.1 [232a5becc75d709503bf4cb2c5ac3b280f191205](https://github.com/rerun-io/rerun/commit/232a5becc75d709503bf4cb2c5ac3b280f191205)
 
 
 ## [0.16.1](https://github.com/rerun-io/rerun/compare/0.16.0...0.16.1) - Bug fix - 2024-05-29
