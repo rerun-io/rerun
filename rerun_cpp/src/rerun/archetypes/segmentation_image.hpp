@@ -98,7 +98,7 @@ namespace rerun::archetypes {
         /// New segmentation image from height/width and tensor buffer.
         ///
         /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
+        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// \param buffer
         /// The tensor buffer containing the segmentation image data.
@@ -112,14 +112,14 @@ namespace rerun::archetypes {
         /// \param data_
         /// The tensor buffer containing the segmentation image data.
         /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2.
+        /// Calls `Error::handle()` if the tensor is not 2-dimensional
         explicit SegmentationImage(components::TensorData data_);
 
         /// New segmentation image from dimensions and pointer to segmentation image data.
         ///
         /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
         /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
+        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
         /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
         /// Determines the number of elements expected to be in `data`.
         /// \param data_
