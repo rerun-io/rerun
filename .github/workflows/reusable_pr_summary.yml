@@ -18,17 +18,15 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+  pull-requests: "write"
+
 jobs:
   pr-summary:
     name: Create HTML summary for PR
-
-    permissions:
-      contents: "read"
-      id-token: "write"
-      pull-requests: "write"
-
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

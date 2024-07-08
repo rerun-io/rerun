@@ -1,18 +1,36 @@
 use std::collections::BTreeSet;
 use std::{collections::BTreeMap, sync::Arc};
 
+use arrow2::array::Array as ArrowArray;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use parking_lot::RwLock;
 
-use re_data_store::{DataStore, LatestAtQuery, TimeInt};
+use re_chunk::RowId;
+use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
-use re_types_core::ComponentName;
-use re_types_core::SizeBytes;
+use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _, SizeBytes};
 
-use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults, Promise};
+use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults};
 
 // ---
+
+/// Compute the ordering of two data indices, making sure to deal with `STATIC` data appropriately.
+//
+// TODO(cmc): Maybe at some point we'll want to introduce a dedicated `DataIndex` type with
+// proper ordering operators etc.
+// It's harder than it sounds though -- depending on the context, you don't necessarily want index
+// ordering to behave the same way.
+fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Ordering {
+    match (lhs, rhs) {
+        ((TimeInt::STATIC, lhs_row_id), (TimeInt::STATIC, rhs_row_id)) => {
+            lhs_row_id.cmp(&rhs_row_id)
+        }
+        ((_, _), (TimeInt::STATIC, _)) => std::cmp::Ordering::Less,
+        ((TimeInt::STATIC, _), (_, _)) => std::cmp::Ordering::Greater,
+        _ => lhs.cmp(&rhs),
+    }
+}
 
 impl Caches {
     /// Queries for the given `component_names` using latest-at semantics.
@@ -22,7 +40,7 @@ impl Caches {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn latest_at(
         &self,
-        store: &DataStore,
+        store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
@@ -30,6 +48,73 @@ impl Caches {
         re_tracing::profile_function!(entity_path.to_string());
 
         let mut results = LatestAtResults::default();
+
+        // Query-time clears
+        // -----------------
+        //
+        // We need to find, at query time, whether there exist a `Clear` component that should
+        // shadow part or all of the results that we are about to return.
+        //
+        // This is a two-step process.
+        //
+        // First, we need to find all `Clear` components that could potentially affect the returned
+        // results, i.e. any `Clear` component on the entity itself, or any recursive `Clear`
+        // component on any of its recursive parents.
+        //
+        // Then, we need to compare the index of each component result with the index of the most
+        // recent relevant `Clear` component that was found: if there exists a `Clear` component with
+        // both a _data time_ lesser or equal to the _query time_ and an index greater or equal
+        // than the indexed of the returned data, then we know for sure that the `Clear` shadows
+        // the data.
+        let mut max_clear_index = (TimeInt::MIN, RowId::ZERO);
+        {
+            re_tracing::profile_scope!("clears");
+
+            let mut clear_entity_path = entity_path.clone();
+            loop {
+                let key = CacheKey::new(
+                    clear_entity_path.clone(),
+                    query.timeline(),
+                    ClearIsRecursive::name(),
+                );
+
+                let cache = Arc::clone(
+                    self.latest_at_per_cache_key
+                        .write()
+                        .entry(key.clone())
+                        .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
+                );
+
+                let mut cache = cache.write();
+                cache.handle_pending_invalidation();
+                if let Some(cached) =
+                    cache.latest_at(store, query, &clear_entity_path, ClearIsRecursive::name())
+                {
+                    // When checking the entity itself, any kind of `Clear` component
+                    // (i.e. recursive or not) will do.
+                    //
+                    // For (recursive) parents, we need to deserialize the data to make sure the
+                    // recursive flag is set.
+                    #[allow(clippy::collapsible_if)] // readability
+                    if clear_entity_path == *entity_path
+                        || cached.mono::<ClearIsRecursive>(&crate::PromiseResolver {})
+                            == Some(ClearIsRecursive(true))
+                    {
+                        if compare_indices(*cached.index(), max_clear_index)
+                            == std::cmp::Ordering::Greater
+                        {
+                            max_clear_index = *cached.index();
+                        }
+                    }
+                }
+
+                let Some(parent_entity_path) = clear_entity_path.parent() else {
+                    break;
+                };
+
+                clear_entity_path = parent_entity_path;
+            }
+        }
 
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
@@ -50,7 +135,15 @@ impl Caches {
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
             if let Some(cached) = cache.latest_at(store, query, entity_path, component_name) {
-                results.add(component_name, cached);
+                // 1. A `Clear` component doesn't shadow its own self.
+                // 2. If a `Clear` component was found with an index greater than or equal to the
+                //    component data, then we know for sure that it should shadow it.
+                if component_name == ClearIsRecursive::name()
+                    || compare_indices(*cached.index(), max_clear_index)
+                        == std::cmp::Ordering::Greater
+                {
+                    results.add(component_name, cached);
+                }
             }
         }
 
@@ -194,11 +287,34 @@ impl SizeBytes for LatestAtCache {
     }
 }
 
+/// Implements the complete end-to-end latest-at logic:
+/// * Find all applicable `Chunk`s
+/// * Apply a latest-at filter to all of them
+/// * Keep the one row with the most recent `RowId`
+pub fn latest_at(
+    store: &ChunkStore,
+    query: &LatestAtQuery,
+    entity_path: &EntityPath,
+    component_name: ComponentName,
+) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
+    store
+        .latest_at_relevant_chunks(query, entity_path, component_name)
+        .into_iter()
+        .flat_map(|chunk| {
+            chunk
+                .latest_at(query, component_name)
+                .iter_rows(&query.timeline(), &component_name)
+                .collect_vec()
+        })
+        .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
+        .and_then(|(data_time, row_id, array)| array.map(|array| (data_time, row_id, array)))
+}
+
 impl LatestAtCache {
     /// Queries cached latest-at data for a single component.
     pub fn latest_at(
         &mut self,
-        store: &DataStore,
+        store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -221,19 +337,22 @@ impl LatestAtCache {
             std::collections::btree_map::Entry::Vacant(entry) => entry,
         };
 
-        let result = store.latest_at(query, entity_path, component_name, &[component_name]);
+        if let Some((data_time, row_id, array)) =
+            latest_at(store, query, entity_path, component_name)
+        {
+            let result_data_time = data_time;
+            let result_row_id = row_id;
+            let result_component_batch = array;
 
-        // NOTE: cannot `result.and_then(...)` or borrowck gets lost.
-        if let Some((data_time, row_id, mut cells)) = result {
             // Fast path: we've run the query and realized that we already have the data for the resulting
             // _data_ time, so let's use that to avoid join & deserialization costs.
-            if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
+            if let Some(data_time_bucket_at_data_time) = per_data_time.get(&result_data_time) {
                 query_time_bucket_at_query_time.insert(Arc::clone(data_time_bucket_at_data_time));
 
                 // We now know for a fact that a query at that data time would yield the same
                 // results: copy the bucket accordingly so that the next cache hit for that query
                 // time ends up taking the fastest path.
-                let query_time_bucket_at_data_time = per_query_time.entry(data_time);
+                let query_time_bucket_at_data_time = per_query_time.entry(result_data_time);
                 query_time_bucket_at_data_time
                     .and_modify(|v| *v = Arc::clone(data_time_bucket_at_data_time))
                     .or_insert(Arc::clone(data_time_bucket_at_data_time));
@@ -241,17 +360,9 @@ impl LatestAtCache {
                 return Some(Arc::clone(data_time_bucket_at_data_time));
             }
 
-            // Soundness:
-            // * `cells[0]` is guaranteed to exist since we passed in `&[component_name]`
-            // * `cells[0]` is guaranteed to be non-null, otherwise this whole result would be null
-            let Some(cell) = cells[0].take() else {
-                debug_assert!(cells[0].is_some(), "unreachable: `cells[0]` is missing");
-                return None;
-            };
-
             let bucket = Arc::new(LatestAtComponentResults {
-                index: (data_time, row_id),
-                promise: Some(Promise::new(cell)),
+                index: (result_data_time, result_row_id),
+                value: Some((component_name, result_component_batch)),
                 cached_dense: Default::default(),
             });
 
@@ -260,7 +371,7 @@ impl LatestAtCache {
                 let query_time_bucket_at_query_time =
                     query_time_bucket_at_query_time.insert(Arc::clone(&bucket));
 
-                let data_time_bucket_at_data_time = per_data_time.entry(data_time);
+                let data_time_bucket_at_data_time = per_data_time.entry(result_data_time);
                 data_time_bucket_at_data_time
                     .and_modify(|v| *v = Arc::clone(query_time_bucket_at_query_time))
                     .or_insert(Arc::clone(query_time_bucket_at_query_time));

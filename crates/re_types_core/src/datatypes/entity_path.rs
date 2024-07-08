@@ -22,7 +22,7 @@ use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: A path to an entity in the `DataStore`.
+/// **Datatype**: A path to an entity in the `ChunkStore`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
 pub struct EntityPath(pub crate::ArrowString);

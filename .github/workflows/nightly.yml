@@ -11,6 +11,11 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "write"
+  id-token: "write"
+  deployments: "write"
+
 jobs:
   checks:
     name: Checks

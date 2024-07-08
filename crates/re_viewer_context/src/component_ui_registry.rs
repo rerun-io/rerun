@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::LatestAtQuery;
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
 use re_log::ResultExt;
 use re_log_types::Instance;
@@ -10,7 +10,7 @@ use re_types::{
 };
 use re_ui::UiExt as _;
 
-use crate::{ComponentFallbackProvider, QueryContext, ViewerContext};
+use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,8 +100,11 @@ impl UiLayout {
     ///
     /// Import: for data only, labels should use [`UiLayout::data_label`] instead.
     // TODO(#6315): must be merged with `Self::label` and have an improved API
-    pub fn data_label(self, ui: &mut egui::Ui, string: impl AsRef<str>) {
-        let string = string.as_ref();
+    pub fn data_label(self, ui: &mut egui::Ui, string: impl AsRef<str>) -> egui::Response {
+        self.data_label_impl(ui, string.as_ref())
+    }
+
+    fn data_label_impl(self, ui: &mut egui::Ui, string: &str) -> egui::Response {
         let font_id = egui::TextStyle::Monospace.resolve(ui.style());
         let color = ui.visuals().text_color();
         let wrap_width = ui.available_width();
@@ -131,11 +134,11 @@ impl UiLayout {
         let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
         if needs_scroll_area {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.label(galley);
-            });
+            egui::ScrollArea::vertical()
+                .show(ui, |ui| ui.label(galley))
+                .inner
         } else {
-            ui.label(galley);
+            ui.label(galley)
         }
     }
 }
@@ -168,16 +171,25 @@ type ComponentUiCallback = Box<
         + Sync,
 >;
 
-/// Callback for editing a component via ui.
+enum EditOrView {
+    /// Allow the user to view and mutate the value
+    Edit,
+
+    /// No mutation allowed
+    View,
+}
+
+/// Callback for viewing, and maybe editing, a component via UI.
 ///
-/// Draws a ui showing the current value and allows the user to edit it.
+/// Draws a UI showing the current value and allows the user to edit it.
 /// If any edit was made, should return `Some` with the updated value.
 /// If no edit was made, should return `None`.
-type UntypedComponentEditCallback = Box<
+type UntypedComponentEditOrViewCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
             &dyn arrow2::array::Array,
+            EditOrView,
         ) -> Option<Box<dyn arrow2::array::Array>>
         + Send
         + Sync,
@@ -188,9 +200,14 @@ pub struct ComponentUiRegistry {
     /// Ui method to use if there was no specific one registered for a component.
     fallback_ui: ComponentUiCallback,
 
+    /// Pure viewers
     component_uis: BTreeMap<ComponentName, ComponentUiCallback>,
-    component_singleline_editors: BTreeMap<ComponentName, UntypedComponentEditCallback>,
-    component_multiline_editors: BTreeMap<ComponentName, UntypedComponentEditCallback>,
+
+    /// Implements viewing and probably editing
+    component_singleline_edit_or_view: BTreeMap<ComponentName, UntypedComponentEditOrViewCallback>,
+
+    /// Implements viewing and probably editing
+    component_multiline_edit_or_view: BTreeMap<ComponentName, UntypedComponentEditOrViewCallback>,
 }
 
 impl ComponentUiRegistry {
@@ -198,75 +215,19 @@ impl ComponentUiRegistry {
         Self {
             fallback_ui,
             component_uis: Default::default(),
-            component_singleline_editors: Default::default(),
-            component_multiline_editors: Default::default(),
+            component_singleline_edit_or_view: Default::default(),
+            component_multiline_edit_or_view: Default::default(),
         }
     }
 
-    /// Registers how to show a given component in the ui.
+    /// Registers how to show a given component in the UI.
     ///
-    /// If the component has already a display ui registered, the new callback replaces the old one.
+    /// If the component has already a display UI registered, the new callback replaces the old one.
     pub fn add_display_ui(&mut self, name: ComponentName, callback: ComponentUiCallback) {
         self.component_uis.insert(name, callback);
     }
 
-    /// Registers how to edit a given component in the ui in a single line.
-    ///
-    /// If the component has already a single- or multiline editor registered respectively,
-    /// the new callback replaces the old one.
-    /// Prefer [`ComponentUiRegistry::add_singleline_editor_ui`] whenever possible
-    pub fn add_untyped_editor_ui(
-        &mut self,
-        name: ComponentName,
-        editor_callback: UntypedComponentEditCallback,
-        multiline: bool,
-    ) {
-        if multiline {
-            &mut self.component_multiline_editors
-        } else {
-            &mut self.component_singleline_editors
-        }
-        .insert(name, editor_callback);
-    }
-
-    /// Registers how to edit a given component in the ui.
-    ///
-    /// If the component has already a multi line editor registered, the new callback replaces the old one.
-    /// Prefer [`ComponentUiRegistry::add_multiline_editor_ui`] whenever possible
-    pub fn add_untyped_multiline_editor_ui(
-        &mut self,
-        name: ComponentName,
-        editor_callback: UntypedComponentEditCallback,
-    ) {
-        self.component_multiline_editors
-            .insert(name, editor_callback);
-    }
-
-    fn add_typed_editor_ui<C: re_types::Component>(
-        &mut self,
-        editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
-            + Send
-            + Sync
-            + 'static,
-        multiline: bool,
-    ) {
-        let untyped_callback: UntypedComponentEditCallback =
-            Box::new(move |ui, ui_layout, value| {
-                try_deserialize(value).and_then(|mut deserialized_value| {
-                    editor_callback(ui, ui_layout, &mut deserialized_value)
-                        .changed()
-                        .then(|| {
-                            use re_types::LoggableBatch;
-                            deserialized_value.to_arrow().ok_or_log_error_once()
-                        })
-                        .flatten()
-                })
-            });
-
-        self.add_untyped_editor_ui(C::name(), untyped_callback, multiline);
-    }
-
-    /// Registers how to edit a given component in the ui in a single list item line.
+    /// Registers how to view, and maybe edit, a given component in the UI in a single list item line.
     ///
     /// If the component already has a singleline editor registered, the new callback replaces the old one.
     ///
@@ -285,18 +246,18 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_singleline_editor_ui<C: re_types::Component>(
+    pub fn add_singleline_edit_or_view<C: re_types::Component>(
         &mut self,
-        editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
+        callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
             + Send
             + Sync
             + 'static,
     ) {
         let multiline = false;
-        self.add_typed_editor_ui(editor_callback, multiline);
+        self.add_editor_ui(multiline, callback);
     }
 
-    /// Registers how to edit a given component in the ui with multiple list items.
+    /// Registers how to view, and maybe edit, a given component in the UI with multiple list items.
     ///
     /// If the component already has a singleline editor registered, the new callback replaces the old one.
     ///
@@ -313,37 +274,77 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_multiline_editor_ui<C: re_types::Component>(
+    pub fn add_multiline_edit_or_view<C: re_types::Component>(
         &mut self,
-        editor_callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut C) -> egui::Response
+        callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
             + Send
             + Sync
             + 'static,
     ) {
         let multiline = true;
-        self.add_typed_editor_ui(editor_callback, multiline);
+        self.add_editor_ui(multiline, callback);
     }
 
-    /// Queries which ui types are registered for a component.
+    fn add_editor_ui<C: re_types::Component>(
+        &mut self,
+        multiline: bool,
+        callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
+            + Send
+            + Sync
+            + 'static,
+    ) {
+        let untyped_callback: UntypedComponentEditOrViewCallback =
+            Box::new(move |ui, ui_layout, value, edit_or_view| {
+                try_deserialize(value).and_then(|mut deserialized_value| match edit_or_view {
+                    EditOrView::View => {
+                        callback(ui, ui_layout, &mut MaybeMutRef::Ref(&deserialized_value));
+                        None
+                    }
+                    EditOrView::Edit => {
+                        let response = callback(
+                            ui,
+                            ui_layout,
+                            &mut MaybeMutRef::MutRef(&mut deserialized_value),
+                        );
+
+                        if response.changed() {
+                            use re_types::LoggableBatch as _;
+                            deserialized_value.to_arrow().ok_or_log_error_once()
+                        } else {
+                            None
+                        }
+                    }
+                })
+            });
+
+        if multiline {
+            &mut self.component_multiline_edit_or_view
+        } else {
+            &mut self.component_singleline_edit_or_view
+        }
+        .insert(C::name(), untyped_callback);
+    }
+
+    /// Queries which UI types are registered for a component.
     ///
-    /// Note that there's always a fallback display ui.
+    /// Note that there's always a fallback display UI.
     pub fn registered_ui_types(&self, name: ComponentName) -> ComponentUiTypes {
         let mut types = ComponentUiTypes::empty();
 
         if self.component_uis.contains_key(&name) {
             types |= ComponentUiTypes::DisplayUi;
         }
-        if self.component_singleline_editors.contains_key(&name) {
-            types |= ComponentUiTypes::SingleLineEditor;
+        if self.component_singleline_edit_or_view.contains_key(&name) {
+            types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::SingleLineEditor;
         }
-        if self.component_multiline_editors.contains_key(&name) {
-            types |= ComponentUiTypes::MultiLineEditor;
+        if self.component_multiline_edit_or_view.contains_key(&name) {
+            types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::MultiLineEditor;
         }
 
         types
     }
 
-    /// Show a ui for a component instance.
+    /// Show a UI for a component instance.
     ///
     /// Has a fallback to show an info text if the instance is not specific,
     /// but in these cases `LatestAtComponentResults::data_ui` should be used instead!
@@ -367,10 +368,10 @@ impl ComponentUiRegistry {
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let cell = match component.resolved(db.resolver()) {
+        let array = match component.resolved(db.resolver()) {
             re_query::PromiseResult::Pending => {
                 re_log::error_once!("Couldn't get {component_name}: promise still pending");
-                ui.error_label("pending...");
+                ui.error_label("pending…");
                 return;
             }
             re_query::PromiseResult::Ready(cell) => cell,
@@ -384,9 +385,9 @@ impl ComponentUiRegistry {
             }
         };
 
-        // Component ui can only show a single instance.
-        if cell.num_instances() == 0 || (instance.is_all() && cell.num_instances() > 1) {
-            none_or_many_values_ui(ui, cell.num_instances() as _);
+        // Component UI can only show a single instance.
+        if array.len() == 0 || (instance.is_all() && array.len() > 1) {
+            none_or_many_values_ui(ui, array.len());
             return;
         }
 
@@ -399,8 +400,8 @@ impl ComponentUiRegistry {
 
         // Enforce clamp-to-border semantics.
         // TODO(andreas): Is that always what we want?
-        let index = index.clamp(0, (cell.num_instances() as usize).saturating_sub(1));
-        let component_raw = cell.as_arrow_ref().sliced(index, 1);
+        let index = index.clamp(0, array.len().saturating_sub(1));
+        let component_raw = array.sliced(index, 1);
 
         self.ui_raw(
             ctx,
@@ -414,7 +415,7 @@ impl ComponentUiRegistry {
         );
     }
 
-    /// Show a ui for a single raw component.
+    /// Show a UI for a single raw component.
     #[allow(clippy::too_many_arguments)]
     pub fn ui_raw(
         &self,
@@ -434,18 +435,21 @@ impl ComponentUiRegistry {
             return;
         }
 
-        // Use the ui callback if there is one.
+        // Prefer the versatile UI callback if there is one.
         if let Some(ui_callback) = self.component_uis.get(&component_name) {
             (*ui_callback)(ctx, ui, ui_layout, query, db, entity_path, component_raw);
             return;
         }
 
-        // If there is none but we have a singleline edit_ui and only a single value, use a disabled edit ui.
-        if let Some(edit_ui) = self.component_singleline_editors.get(&component_name) {
-            ui.scope(|ui| {
-                ui.disable();
-                (*edit_ui)(ctx, ui, component_raw);
-            });
+        // Fallback to the more specialized UI callbacks.
+        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanelFull {
+            self.component_multiline_edit_or_view.get(&component_name)
+        } else {
+            self.component_singleline_edit_or_view.get(&component_name)
+        };
+        if let Some(edit_or_view_ui) = edit_or_view_ui {
+            // Use it in view mode (no mutation).
+            (*edit_or_view_ui)(ctx, ui, component_raw, EditOrView::View);
             return;
         }
 
@@ -541,9 +545,9 @@ impl ComponentUiRegistry {
                     Err(format!("Promise for {component_name} is still pending."))
                 }
             }
-            re_query::PromiseResult::Ready(cell) => {
-                if !cell.is_empty() {
-                    Ok(cell.to_arrow())
+            re_query::PromiseResult::Ready(array) => {
+                if !array.is_empty() {
+                    Ok(array)
                 } else {
                     create_fallback()
                 }
@@ -605,7 +609,7 @@ impl ComponentUiRegistry {
         }
     }
 
-    /// Tries to show a ui for editing a component.
+    /// Tries to show a UI for editing a component.
     ///
     /// Returns `true` if the passed component is a single value and has a registered
     /// editor for multiline or singleline editing respectively.
@@ -624,23 +628,19 @@ impl ComponentUiRegistry {
             return false;
         }
 
-        let editors = if multiline {
-            &self.component_multiline_editors
+        let edit_or_view = if multiline {
+            &self.component_multiline_edit_or_view
         } else {
-            &self.component_singleline_editors
+            &self.component_singleline_edit_or_view
         };
-
-        if let Some(edit_callback) = editors.get(&component_name) {
-            if let Some(updated) = (*edit_callback)(ctx, ui, raw_current_value) {
-                ctx.save_blueprint_data_cell(
-                    blueprint_write_path,
-                    re_log_types::DataCell::from_arrow(component_name, updated),
-                );
+        if let Some(edit_or_view) = edit_or_view.get(&component_name) {
+            if let Some(updated) = (*edit_or_view)(ctx, ui, raw_current_value, EditOrView::Edit) {
+                ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
             }
-            true
-        } else {
-            false
+            return true;
         }
+
+        false
     }
 }
 
@@ -660,7 +660,7 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> 
                 Some(v)
             } else {
                 re_log::warn_once!(
-                    "Editor ui for {component_name} needs a start value to operate on."
+                    "Editor UI for {component_name} needs a start value to operate on."
                 );
                 None
             }

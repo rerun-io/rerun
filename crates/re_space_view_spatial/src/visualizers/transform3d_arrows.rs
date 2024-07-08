@@ -61,7 +61,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
 
         let transforms = context_systems.get::<TransformContext>()?;
 
-        let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
+        let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
         // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -196,7 +196,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
 
         // If there is a finite bounding box, use the scene size to determine the axis length.
         if let Ok(state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() {
-            let scene_size = state.bounding_boxes.accumulated.size().length();
+            let scene_size = state.bounding_boxes.smoothed.size().length();
 
             if scene_size.is_finite() && scene_size > 0.0 {
                 return (scene_size * 0.05).into();

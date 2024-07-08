@@ -12,6 +12,7 @@ use re_renderer::OutlineConfig;
 use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
+    blueprint::components::VisualBounds2D,
     components::{Colormap, DepthMeter, TensorData, ViewCoordinates},
     tensor_data::TensorDataMeaning,
     Loggable as _,
@@ -28,6 +29,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::SpaceViewBlueprint;
 
 use crate::eye::EyeMode;
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
@@ -37,7 +39,6 @@ use crate::{
         UiLabel, UiLabelTarget,
     },
 };
-use crate::{contexts::PrimitiveCounter, scene_bounding_boxes::SceneBoundingBoxes};
 
 use super::{eye::Eye, ui_3d::View3DState};
 
@@ -63,9 +64,6 @@ impl From<AutoSizeUnit> for WidgetText {
 pub struct SpatialSpaceViewState {
     pub bounding_boxes: SceneBoundingBoxes,
 
-    /// Estimated number of primitives last frame. Used to inform some heuristics.
-    pub scene_num_primitives: usize,
-
     /// Number of images & depth images processed last frame.
     pub num_non_segmentation_images_last_frame: usize,
 
@@ -76,6 +74,8 @@ pub struct SpatialSpaceViewState {
 
     /// Pinhole component logged at the origin if any.
     pub pinhole_at_origin: Option<Pinhole>,
+
+    pub visual_bounds_2d: Option<VisualBounds2D>,
 }
 
 impl SpaceViewState for SpatialSpaceViewState {
@@ -92,17 +92,12 @@ impl SpatialSpaceViewState {
     /// Updates the state with statistics from the latest system outputs.
     pub fn update_frame_statistics(
         &mut self,
+        ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.bounding_boxes.update(&system_output.view_systems);
-
-        self.scene_num_primitives = system_output
-            .context_systems
-            .get::<PrimitiveCounter>()?
-            .num_primitives
-            .load(std::sync::atomic::Ordering::Relaxed);
+        self.bounding_boxes.update(ui, &system_output.view_systems);
 
         let view_systems = &system_output.view_systems;
         let num_images = view_systems.get::<ImageVisualizer>()?.images.len();
@@ -140,7 +135,7 @@ impl SpatialSpaceViewState {
             )
             .clicked()
         {
-            self.bounding_boxes.accumulated = self.bounding_boxes.current;
+            self.bounding_boxes.smoothed = self.bounding_boxes.current;
             self.state_3d
                 .reset_camera(&self.bounding_boxes, scene_view_coordinates);
         }
@@ -444,7 +439,7 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
 
         struct PickedImageInfo {
-            row_id: re_log_types::RowId,
+            row_id: re_chunk_store::RowId,
             tensor: TensorData,
             meaning: TensorDataMeaning,
             coordinates: [u32; 2],
@@ -634,7 +629,7 @@ fn image_hover_ui(
     ui_clip_rect: egui::Rect,
     coords: [u32; 2],
     space_from_ui: egui::emath::RectTransform,
-    tensor_data_row_id: re_log_types::RowId,
+    tensor_data_row_id: re_chunk_store::RowId,
     annotations: &AnnotationSceneContext,
     meaning: TensorDataMeaning,
     meter: Option<f32>,

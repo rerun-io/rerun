@@ -6,7 +6,7 @@ order: 170
 
 ## New integrated visualizer and component override UI
 
-The visualizer and component override UI of the timeseries views has been unified and overhauled. It is also now used for all view kinds (it was previously only available for timeseries views). 
+The visualizer and component override UI of the timeseries views has been unified and overhauled. It is also now used for all view kinds (it was previously only available for timeseries views).
 
 In 0.16.1 and earlier:
 

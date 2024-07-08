@@ -12,6 +12,8 @@ on:
       - opened
       - synchronize
 
+permissions: write-all
+
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
   checks:

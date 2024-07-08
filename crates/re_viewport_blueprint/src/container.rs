@@ -1,10 +1,10 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
 
-use re_data_store::LatestAtQuery;
+use re_chunk::{Chunk, LatestAtQuery, RowId};
 use re_entity_db::EntityDb;
 use re_log::ResultExt;
-use re_log_types::{DataRow, EntityPath, RowId};
+use re_log_types::EntityPath;
 use re_types::components::Name;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
@@ -171,18 +171,15 @@ impl ContainerBlueprint {
             ctx.save_empty_blueprint_component::<GridColumns>(&id.as_entity_path());
         }
 
-        let mut deltas = vec![];
-
-        if let Some(row) =
-            DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
-                .warn_on_err_once("Failed to create container blueprint.")
+        if let Some(chunk) = Chunk::builder(id.as_entity_path())
+            .with_archetype(RowId::new(), timepoint.clone(), &arch)
+            .build()
+            .warn_on_err_once("Failed to create container blueprint.")
         {
-            deltas.push(row);
-
             ctx.command_sender
                 .send_system(SystemCommand::UpdateBlueprint(
                     ctx.store_context.blueprint.store_id().clone(),
-                    deltas,
+                    vec![chunk],
                 ));
         }
     }

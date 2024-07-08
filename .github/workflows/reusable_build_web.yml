@@ -41,15 +41,14 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   rs-build-web-viewer:
     name: Build web viewer
-    permissions:
-      contents: "read"
-      id-token: "write"
-
     runs-on: ubuntu-latest-16-cores
-
     steps:
       - uses: actions/checkout@v4
         with:

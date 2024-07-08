@@ -1,14 +1,15 @@
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
-use re_data_store::GarbageCollectionOptions;
+use re_chunk::{Chunk, ChunkId, RowId};
+use re_chunk_store::GarbageCollectionOptions;
 use re_entity_db::EntityDb;
 use re_int_histogram::RangeI64;
 use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
-    DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
+    EntityPath, StoreId, TimeInt, TimePoint, Timeline,
 };
 use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable};
 
@@ -30,18 +31,19 @@ fn time_histograms() -> anyhow::Result<()> {
 
     // Single top-level entity, explicitly logged `MyIndex`s.
     {
-        let row = DataRow::from_component_batches(
-            RowId::new(),
-            TimePoint::from_iter([
-                (timeline_frame, 42),      //
-                (timeline_other, 666),     //
-                (timeline_yet_another, 1), //
-            ]),
-            entity_parent.clone(),
-            [&MyIndex::from_iter(0..10) as _],
-        )?;
+        let chunk = Chunk::builder(entity_parent.clone())
+            .with_component_batches(
+                RowId::new(),
+                TimePoint::from_iter([
+                    (timeline_frame, 42),      //
+                    (timeline_other, 666),     //
+                    (timeline_yet_another, 1), //
+                ]),
+                [&MyIndex::from_iter(0..10) as _],
+            )
+            .build()?;
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         // times per timeline
         assert_times_per_timeline(
@@ -80,24 +82,26 @@ fn time_histograms() -> anyhow::Result<()> {
 
     // Grand-child, multiple components, auto-generated `MyIndex`s.
     {
-        let row = {
+        let chunk = {
             let num_instances = 3;
             let points: Vec<_> = (0..num_instances)
                 .map(|i| MyPoint::new(0.0, i as f32))
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
-            DataRow::from_component_batches(
-                RowId::new(),
-                TimePoint::from_iter([
-                    (timeline_frame, 42),      //
-                    (timeline_yet_another, 1), //
-                ]),
-                entity_grandchild.clone(),
-                [&points as _, &colors as _],
-            )?
+            Chunk::builder(entity_grandchild.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::from_iter([
+                        (timeline_frame, 42),      //
+                        (timeline_yet_another, 1), //
+                    ]),
+                    [&points as _, &colors as _],
+                )
+                .build()?
         };
+        let chunk = Arc::new(chunk);
 
-        db.add_data_row(row.clone())?;
+        db.add_chunk(&chunk)?;
 
         assert_times_per_timeline(
             &db,
@@ -181,7 +185,7 @@ fn time_histograms() -> anyhow::Result<()> {
             ] as [(_, Option<&[_]>); 2],
         );
 
-        db.add_data_row(row)?; // same row a second time!
+        db.add_chunk(&Arc::new(chunk.clone_as(ChunkId::new(), RowId::new())))?; // same chunk a second time!
 
         // times per timeline
         assert_times_per_timeline(
@@ -234,21 +238,22 @@ fn time_histograms() -> anyhow::Result<()> {
 
     // Grand-child, timeless additions.
     {
-        let row = {
+        let chunk = {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
-            DataRow::from_component_batches(
-                RowId::new(),
-                TimePoint::default(),
-                "entity".into(),
-                [
-                    &MyIndex::from_iter(0..num_instances as _) as _,
-                    &colors as _,
-                ],
-            )?
+            Chunk::builder("entity".into())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::default(),
+                    [
+                        &MyIndex::from_iter(0..num_instances as _) as _,
+                        &colors as _,
+                    ],
+                )
+                .build()?
         };
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         // times per timeline
         assert_times_per_timeline(
@@ -321,29 +326,30 @@ fn time_histograms() -> anyhow::Result<()> {
 
     // Completely unrelated entity.
     {
-        let row = {
+        let chunk = {
             let num_instances = 3;
             let points: Vec<_> = (0..num_instances)
                 .map(|i| MyPoint::new(0.0, i as f32))
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
-            DataRow::from_component_batches(
-                RowId::new(),
-                TimePoint::from_iter([
-                    (timeline_frame, 1234),       //
-                    (timeline_other, 1235),       //
-                    (timeline_yet_another, 1236), //
-                ]),
-                entity_unrelated.clone(),
-                [
-                    &MyIndex::from_iter(0..num_instances) as _,
-                    &points as _,
-                    &colors as _,
-                ],
-            )?
+            Chunk::builder(entity_unrelated.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::from_iter([
+                        (timeline_frame, 1234),       //
+                        (timeline_other, 1235),       //
+                        (timeline_yet_another, 1236), //
+                    ]),
+                    [
+                        &MyIndex::from_iter(0..num_instances) as _,
+                        &points as _,
+                        &colors as _,
+                    ],
+                )
+                .build()?
         };
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         assert_times_per_timeline(
             &db,
@@ -452,18 +458,19 @@ fn time_histograms() -> anyhow::Result<()> {
 
     // Immediate clear.
     {
-        let row = {
-            DataRow::from_component_batches(
-                RowId::new(),
-                TimePoint::from_iter([
-                    (timeline_frame, 1000), //
-                ]),
-                entity_parent.clone(),
-                [&[ClearIsRecursive(true)] as _],
-            )?
+        let chunk = {
+            Chunk::builder(entity_parent.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::from_iter([
+                        (timeline_frame, 1000), //
+                    ]),
+                    [&[ClearIsRecursive(true)] as _],
+                )
+                .build()?
         };
 
-        db.add_data_row(row)?;
+        db.add_chunk(&Arc::new(chunk))?;
 
         assert_times_per_timeline(
             &db,
@@ -484,9 +491,7 @@ fn time_histograms() -> anyhow::Result<()> {
                     &timeline_frame,
                     Some(&[
                         (RangeI64::new(42, 42), 5),
-                        // We're clearing the parent's `MyIndex` as well as the grandchild's
-                        // `MyPoint`, `MyColor` and `MyIndex`. That's four.
-                        (RangeI64::new(1000, 1000), 4),
+                        (RangeI64::new(1000, 1000), 1),
                         (RangeI64::new(1234, 1234), 3),
                     ]),
                 ),
@@ -507,10 +512,7 @@ fn time_histograms() -> anyhow::Result<()> {
             &entity_parent,
             MyIndex::name(),
             [
-                (
-                    &timeline_frame,
-                    Some(&[(RangeI64::new(42, 42), 1), (RangeI64::new(1000, 1000), 1)]),
-                ),
+                (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
                 (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 1)])),
             ] as [(_, Option<&[_]>); 3],
@@ -533,17 +535,12 @@ fn time_histograms() -> anyhow::Result<()> {
             MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
-        // NOTE: even though the component was logged twice at the same timestamp, the clear will
-        // only inject once!
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
             MyPoint::name(),
             [
-                (
-                    &timeline_frame,
-                    Some(&[(RangeI64::new(42, 42), 2), (RangeI64::new(1000, 1000), 1)]),
-                ),
+                (&timeline_frame, Some(&[(RangeI64::new(42, 42), 2)])),
                 (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 2)])),
             ] as [(_, Option<&[_]>); 2],
         );
@@ -552,10 +549,7 @@ fn time_histograms() -> anyhow::Result<()> {
             &entity_grandchild,
             MyColor::name(),
             [
-                (
-                    &timeline_frame,
-                    Some(&[(RangeI64::new(42, 42), 2), (RangeI64::new(1000, 1000), 1)]),
-                ),
+                (&timeline_frame, Some(&[(RangeI64::new(42, 42), 2)])),
                 (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 2)])),
             ] as [(_, Option<&[_]>); 2],
         );

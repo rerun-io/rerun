@@ -85,8 +85,23 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .downcast_ref::<SpatialSpaceViewState>()
             .ok()
             .map(|state| {
-                let size = state.bounding_boxes.accumulated.size();
-                size.x / size.y
+                let (width, height) = state.visual_bounds_2d.map_or_else(
+                    || {
+                        let bbox = &state.bounding_boxes.smoothed;
+                        (
+                            (bbox.max.x - bbox.min.x).abs(),
+                            (bbox.max.y - bbox.min.y).abs(),
+                        )
+                    },
+                    |bounds| {
+                        (
+                            bounds.x_range.abs_len() as f32,
+                            bounds.y_range.abs_len() as f32,
+                        )
+                    },
+                );
+
+                width / height
             })
     }
 
@@ -248,7 +263,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
-        state.update_frame_statistics(&system_output)?;
+        state.update_frame_statistics(ui, &system_output)?;
 
         self.view_2d(ctx, ui, state, query, system_output)
     }

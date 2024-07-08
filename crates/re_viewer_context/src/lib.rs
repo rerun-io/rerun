@@ -13,6 +13,7 @@ mod component_fallbacks;
 mod component_ui_registry;
 mod contents;
 mod item;
+mod maybe_mut_ref;
 mod query_context;
 mod query_range;
 mod selection_history;
@@ -49,6 +50,7 @@ pub use component_fallbacks::{
 pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
 pub use item::Item;
+pub use maybe_mut_ref::MaybeMutRef;
 pub use query_context::{
     DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
 };
@@ -87,7 +89,7 @@ pub use clipboard::Clipboard;
 
 pub mod external {
     pub use nohash_hasher;
-    pub use {re_data_store, re_entity_db, re_log_types, re_query, re_ui};
+    pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
 }
 
 // ---------------------------------------------------------------------------

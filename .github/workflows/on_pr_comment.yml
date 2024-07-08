@@ -14,11 +14,20 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+  issues: "write"
+
 jobs:
   parse-command:
     if: |
       contains(github.event.comment.html_url, '/pull/') &&
-      contains(github.event.comment.body, '@rerun-bot')
+      contains(github.event.comment.body, '@rerun-bot') &&
+      contains(
+        fromJSON('["COLLABORATOR","MEMBER","OWNER"]'),
+        github.event.comment.author_association
+      )
     runs-on: ubuntu-latest
     outputs:
       command: ${{ steps.parse.outputs.command }}

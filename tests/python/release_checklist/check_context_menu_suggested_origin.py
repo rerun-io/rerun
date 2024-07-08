@@ -9,7 +9,7 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Context Menu - Test the origin selection heuristics
 
 Repeat these steps for each of the following entities and space view class:

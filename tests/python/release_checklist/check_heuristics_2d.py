@@ -7,7 +7,7 @@ from uuid import uuid4
 import numpy as np
 import rerun as rr
 
-README = """
+README = """\
 # 2D Heuristics
 
 This checks whether the heuristics do the right thing with images.
