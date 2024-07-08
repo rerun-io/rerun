@@ -19,7 +19,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
   * Tip: Tooltips for each component in the UI include a link to the docs now!
 * 🕸️ Improved notebook & website embedding support
   * Now you can stream data from the notebook cell to the embedded viewer.
-  * Much improved support for having multiple viewers on the same web page.  
+  * Much improved support for having multiple viewers on the same web page.
   * More configuration options have been added to control the visibility of the Menu bar, time controls, etc.
   * Note: Use `pip install "rerun-sdk[notebook]"` to include the better notebook support. This includes the new [`rerun-notebook`](https://pypi.org/project/rerun-notebook/) package, which is used internally by [`rerun-sdk`].
 * 🧑‍🏫 New Examples
@@ -117,7 +117,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Update the UI for time series view properties using list item [#6390](https://github.com/rerun-io/rerun/pull/6390)
 - Fix welcome screen header jumping during load [#6389](https://github.com/rerun-io/rerun/pull/6389)
 - Add support for exact width to `PropertyContent` [#6325](https://github.com/rerun-io/rerun/pull/6325)
-- Migrate to `list_time2`: 
+- Migrate to `list_time2`:
   - Part 1: ensure background is painted on rounded pixels [#6376](https://github.com/rerun-io/rerun/pull/6376)
   - Part 2: convert all use of legacy list time to `list_item2` [#6377](https://github.com/rerun-io/rerun/pull/6377)
   - Part 3: rename `list_item2` to `list_item` [#6378](https://github.com/rerun-io/rerun/pull/6378)
@@ -156,7 +156,7 @@ Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
 - Extracted several `re_viewer` parts into standalone crates: `re_viewport_blueprint` [#6405](https://github.com/rerun-io/rerun/pull/6405), `re_context_menu` [#6428](https://github.com/rerun-io/rerun/pull/6423), `re_blueprint_tree`[#6427](https://github.com/rerun-io/rerun/pull/6427), and `re_selection_panel` [#6431](https://github.com/rerun-io/rerun/pull/6431)
 
 #### 📦 Dependencies
-- Update to egui 0.28.1 [#6752](https://github.com/rerun-io/rerun/pull/6752) ), [#6785](https://github.com/rerun-io/rerun/pull/6785)
+- Update to egui 0.28.1 [#6752](https://github.com/rerun-io/rerun/pull/6752), [#6785](https://github.com/rerun-io/rerun/pull/6785)
 - Update ewebsock to 0.6.0 [#6394](https://github.com/rerun-io/rerun/pull/6394)
 - Update to `wgpu 0.20`, fixing crashes with some linux setups [#6171](https://github.com/rerun-io/rerun/pull/6171)
 
