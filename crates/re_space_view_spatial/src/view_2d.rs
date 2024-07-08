@@ -93,7 +93,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
                             (bbox.max.y - bbox.min.y).abs(),
                         )
                     },
-                    |bounds| (bounds.x_range.len() as f32, bounds.y_range.len() as f32),
+                    |bounds| {
+                        (
+                            bounds.x_range.abs_len() as f32,
+                            bounds.y_range.abs_len() as f32,
+                        )
+                    },
                 );
 
                 width / height
