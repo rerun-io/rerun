@@ -531,7 +531,7 @@ fn quote_arrow_field_deserializer(
                         // NOTE: It is absolutely crucial we explicitly handle the
                         // boundchecks manually first, otherwise rustc completely chokes
                         // when slicing the data (as in: a 100x perf drop)!
-                        if end as usize > #data_src_buf.len() {
+                        if end > #data_src_buf.len() {
                             // error context is appended below during final collection
                             return Err(DeserializationError::offset_slice_oob(
                                 (start, end), #data_src_buf.len(),
@@ -597,7 +597,7 @@ fn quote_arrow_field_deserializer(
                     };
 
                     arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, #data_src.validity())
-                        .map(|elem| elem.map(|(start, end)| {
+                        .map(|elem| elem.map(|(start, end): (usize, usize)| {
                                 // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
                                 // We're manually generating our own offsets in this case, thus length
@@ -607,7 +607,7 @@ fn quote_arrow_field_deserializer(
                                 // NOTE: It is absolutely crucial we explicitly handle the
                                 // boundchecks manually first, otherwise rustc completely chokes
                                 // when slicing the data (as in: a 100x perf drop)!
-                                if end as usize > #data_src_inner.len() {
+                                if end > #data_src_inner.len() {
                                     // error context is appended below during final collection
                                     return Err(DeserializationError::offset_slice_oob(
                                         (start, end), #data_src_inner.len(),
@@ -615,7 +615,7 @@ fn quote_arrow_field_deserializer(
                                 }
                                 // Safety: all checked above.
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
+                                let data = unsafe { #data_src_inner.get_unchecked(start..end) };
 
                                 // NOTE: The call to `Option::unwrap_or_default` is very important here.
                                 //
@@ -692,13 +692,13 @@ fn quote_arrow_field_deserializer(
                 InnerRepr::BufferT => {
                     quote! {
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
+                        let data = unsafe { #data_src_inner.clone().sliced_unchecked(start,  end - start) };
                         let data = ::re_types_core::ArrowBuffer::from(data);
                     }
                 }
                 InnerRepr::NativeIterable => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };
+                    let data = unsafe { #data_src_inner.get_unchecked(start..end) };
 
                     // NOTE: The call to `Option::unwrap_or_default` is very important here.
                     //
@@ -760,7 +760,7 @@ fn quote_arrow_field_deserializer(
                             // NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when slicing the data (as in: a 100x perf drop)!
-                            if end as usize > #data_src_inner.len() {
+                            if end  > #data_src_inner.len() {
                                 // error context is appended below during final collection
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end), #data_src_inner.len(),
@@ -849,13 +849,14 @@ enum IteratorKind {
 /// If `extra_wrapper` is specified, this will also wrap the resulting data in `$extra_wrapper(data)`.
 ///
 /// Have a look around in this file for examples of use.
-#[allow(clippy::collapsible_else_if)]
 fn quote_iterator_transparency(
     objects: &Objects,
     datatype: &DataType,
     iter_kind: IteratorKind,
     extra_wrapper: Option<TokenStream>,
 ) -> TokenStream {
+    #![allow(clippy::collapsible_else_if)]
+
     let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
         Some(&objects[fqname])
     } else {
@@ -881,7 +882,7 @@ fn quote_iterator_transparency(
             if let Some(extra_wrapper) = extra_wrapper {
                 quote!(|v| #quoted_inner_obj_type(#extra_wrapper(v)))
             } else {
-                quote!(|v| #quoted_inner_obj_type(v))
+                quote!(#quoted_inner_obj_type)
             }
         } else {
             if let Some(extra_wrapper) = extra_wrapper {
@@ -975,7 +976,7 @@ pub fn quote_arrow_deserializer_buffer_slice(
         let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
 
         let quoted_remapping = if is_tuple_struct {
-            quote!(.map(|v| Self(v)))
+            quote!(.map(Self))
         } else {
             quote!(.map(|#data_dst| Self { #data_dst }))
         };
