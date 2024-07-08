@@ -162,7 +162,7 @@ def lint_line(
         ):
             return "Use … instead of ..."
 
-    if not "http" in line:
+    if "http" not in line:
         if re.search(r"\b2d\b", line):
             return "we prefer '2D' over '2d'"
         if re.search(r"\b3d\b", line):
