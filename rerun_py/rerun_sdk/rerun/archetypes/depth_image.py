@@ -80,7 +80,7 @@ class DepthImage(DepthImageExt, Archetype):
         Parameters
         ----------
         data:
-            The depth-image data. Should always be a rank-2 tensor.
+            The depth-image data. Should always be a 2-dimensional tensor.
         meter:
             An optional floating point value that specifies how long a meter is in the native depth units.
 
@@ -137,7 +137,7 @@ class DepthImage(DepthImageExt, Archetype):
         metadata={"component": "required"},
         converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    # The depth-image data. Should always be a rank-2 tensor.
+    # The depth-image data. Should always be a 2-dimensional tensor.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

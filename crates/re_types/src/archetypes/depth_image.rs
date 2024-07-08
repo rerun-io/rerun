@@ -69,7 +69,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct DepthImage {
-    /// The depth-image data. Should always be a rank-2 tensor.
+    /// The depth-image data. Should always be a 2-dimensional tensor.
     pub data: crate::components::TensorData,
 
     /// An optional floating point value that specifies how long a meter is in the native depth units.

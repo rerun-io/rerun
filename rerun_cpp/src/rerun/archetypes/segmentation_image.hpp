@@ -72,7 +72,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct SegmentationImage {
-        /// The image data. Should always be a rank-2 tensor.
+        /// The image data. Should always be a 2-dimensional tensor.
         rerun::components::TensorData data;
 
         /// Opacity of the image, useful for layering the segmentation image on top of another image.

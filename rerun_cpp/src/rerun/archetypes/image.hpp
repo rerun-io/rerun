@@ -73,7 +73,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Image {
-        /// The image data. Should always be a rank-2 or rank-3 tensor.
+        /// The image data. Should always be a 2- or 3-dimensional tensor.
         rerun::components::TensorData data;
 
         /// Opacity of the image, useful for layering several images.
