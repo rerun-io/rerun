@@ -6,7 +6,10 @@
 
 https://github.com/rerun-io/rerun/assets/49431240/1c75b816-7e3e-4882-9ee6-ba124c00d73c
 
-Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
+📖 Release blogpost: https://rerun.io/blog/blueprint-overrides
+
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
+
 
 ### ✨ Overview & highlights
 
