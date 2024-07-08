@@ -3,6 +3,8 @@
 
 #include "../collection_adapter_builtins.hpp"
 
+#include <sstream>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
@@ -48,11 +50,9 @@ namespace rerun::archetypes {
     Image::Image(rerun::components::TensorData data_) : data(std::move(data_)) {
         auto& shape = data.data.shape;
         if (shape.size() != 2 && shape.size() != 3) {
-            Error(
-                ErrorCode::InvalidTensorDimension,
-                "Image shape is expected to be either rank 2 or 3."
-            )
-                .handle();
+            std::stringstream ss;
+            ss << "Expected 2- or 3-dimensional tensor, got " << shape.size() << " dimensions.";
+            Error(ErrorCode::InvalidTensorDimension, ss.str()).handle();
             return;
         }
         if (shape.size() == 3 && shape[2].size != 1 && shape[2].size != 3 && shape[2].size != 4) {

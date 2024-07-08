@@ -3,6 +3,8 @@
 
 #include "../collection_adapter_builtins.hpp"
 
+#include <sstream>
+
 namespace rerun::archetypes {
 
 #ifdef EDIT_EXTENSION
@@ -45,7 +47,9 @@ namespace rerun::archetypes {
     DepthImage::DepthImage(components::TensorData data_) : data(std::move(data_)) {
         auto& shape = data.data.shape;
         if (shape.size() != 2) {
-            Error(ErrorCode::InvalidTensorDimension, "Shape must be rank 2.").handle();
+            std::stringstream ss;
+            ss << "Expected 2-dimensional tensor, got " << shape.size() << " dimensions.";
+            Error(ErrorCode::InvalidTensorDimension, ss.str()).handle();
             return;
         }
 
