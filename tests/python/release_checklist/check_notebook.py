@@ -23,7 +23,7 @@ def run(args: Namespace) -> None:
         args,
         f"{os.path.basename(__file__)}",
         recording_id=uuid4(),
-        default_blueprint=rrb.Grid(rrb.Spatial2DView(origin="/"), rrb.TextDocumentView(origin="readme")),
+        default_blueprint=rrb.Grid(rrb.TextDocumentView(origin="readme")),
     )
 
     log_readme()
