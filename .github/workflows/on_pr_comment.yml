@@ -8,7 +8,7 @@ name: "PR Comment"
 
 on:
   issue_comment:
-    types: [created, edited]
+    types: [created]
 
 defaults:
   run:
