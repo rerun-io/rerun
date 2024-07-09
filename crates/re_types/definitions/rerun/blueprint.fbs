@@ -1,4 +1,5 @@
 include "./blueprint/datatypes/tensor_dimension_index_slider.fbs";
+include "./blueprint/datatypes/utf8_list.fbs";
 
 include "./blueprint/components/active_tab.fbs";
 include "./blueprint/components/auto_layout.fbs";

@@ -5,30 +5,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
-
-import pyarrow as pa
-from attrs import define, field
-
 from ..._baseclasses import (
-    BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
+from ...blueprint import datatypes as blueprint_datatypes
 from .visualizer_overrides_ext import VisualizerOverridesExt
 
-__all__ = [
-    "VisualizerOverrides",
-    "VisualizerOverridesArrayLike",
-    "VisualizerOverridesBatch",
-    "VisualizerOverridesLike",
-    "VisualizerOverridesType",
-]
+__all__ = ["VisualizerOverrides", "VisualizerOverridesBatch", "VisualizerOverridesType"]
 
 
-@define(init=False)
-class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
+class VisualizerOverrides(VisualizerOverridesExt, blueprint_datatypes.Utf8List, ComponentMixin):
     """
     **Component**: Override the visualizers for an entity.
 
@@ -43,98 +30,18 @@ class VisualizerOverrides(VisualizerOverridesExt, ComponentMixin):
     """
 
     _BATCH_TYPE = None
+    # You can define your own __init__ function as a member of VisualizerOverridesExt in visualizer_overrides_ext.py
 
-    def __init__(self: Any, visualizers: VisualizerOverridesLike):
-        """
-        Create a new instance of the VisualizerOverrides component.
-
-        Parameters
-        ----------
-        visualizers:
-            Names of the visualizers that should be active.
-
-            The built-in visualizers are:
-            - BarChart
-            - Arrows2D
-            - Arrows3D
-            - Asset3D
-            - Boxes2D
-            - Boxes3D
-            - Cameras
-            - DepthImage
-            - Image
-            - Lines2D
-            - Lines3D
-            - Mesh3D
-            - Points2D
-            - Points3D
-            - Transform3DArrows
-            - Tensor
-            - TextDocument
-            - TextLog
-            - SegmentationImage
-            - SeriesLine
-            - SeriesPoint
-
-        """
-
-        # You can define your own __init__ function as a member of VisualizerOverridesExt in visualizer_overrides_ext.py
-        self.__attrs_init__(visualizers=visualizers)
-
-    visualizers: list[str] = field(
-        converter=VisualizerOverridesExt.visualizers__field_converter_override,  # type: ignore[misc]
-    )
-    # Names of the visualizers that should be active.
-    #
-    # The built-in visualizers are:
-    # - BarChart
-    # - Arrows2D
-    # - Arrows3D
-    # - Asset3D
-    # - Boxes2D
-    # - Boxes3D
-    # - Cameras
-    # - DepthImage
-    # - Image
-    # - Lines2D
-    # - Lines3D
-    # - Mesh3D
-    # - Points2D
-    # - Points3D
-    # - Transform3DArrows
-    # - Tensor
-    # - TextDocument
-    # - TextLog
-    # - SegmentationImage
-    # - SeriesLine
-    # - SeriesPoint
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
+    # Note: there are no fields here because VisualizerOverrides delegates to datatypes.Utf8List
+    pass
 
 
-if TYPE_CHECKING:
-    VisualizerOverridesLike = Union[VisualizerOverrides, str, list[str]]
-else:
-    VisualizerOverridesLike = Any
-
-VisualizerOverridesArrayLike = Union[VisualizerOverrides, Sequence[VisualizerOverridesLike], str]
-
-
-class VisualizerOverridesType(BaseExtensionType):
+class VisualizerOverridesType(blueprint_datatypes.Utf8ListType):
     _TYPE_NAME: str = "rerun.blueprint.components.VisualizerOverrides"
 
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})), self._TYPE_NAME
-        )
 
-
-class VisualizerOverridesBatch(BaseBatch[VisualizerOverridesArrayLike], ComponentBatchMixin):
+class VisualizerOverridesBatch(blueprint_datatypes.Utf8ListBatch, ComponentBatchMixin):
     _ARROW_TYPE = VisualizerOverridesType()
-
-    @staticmethod
-    def _native_to_pa_array(data: VisualizerOverridesArrayLike, data_type: pa.DataType) -> pa.Array:
-        return VisualizerOverridesExt.native_to_pa_array_override(data, data_type)
 
 
 # This is patched in late to avoid circular dependencies.

@@ -47,13 +47,7 @@ from .viewer_recommendation_hash import (
 from .visible import Visible, VisibleBatch, VisibleType
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
 from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch, VisualBounds2DType
-from .visualizer_overrides import (
-    VisualizerOverrides,
-    VisualizerOverridesArrayLike,
-    VisualizerOverridesBatch,
-    VisualizerOverridesLike,
-    VisualizerOverridesType,
-)
+from .visualizer_overrides import VisualizerOverrides, VisualizerOverridesBatch, VisualizerOverridesType
 
 __all__ = [
     "ActiveTab",
@@ -142,8 +136,6 @@ __all__ = [
     "VisualBounds2DBatch",
     "VisualBounds2DType",
     "VisualizerOverrides",
-    "VisualizerOverridesArrayLike",
     "VisualizerOverridesBatch",
-    "VisualizerOverridesLike",
     "VisualizerOverridesType",
 ]

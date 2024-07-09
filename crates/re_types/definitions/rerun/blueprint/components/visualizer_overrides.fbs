@@ -51,5 +51,5 @@ table VisualizerOverrides (
     /// - SegmentationImage
     /// - SeriesLine
     /// - SeriesPoint
-    visualizers: [string] (order: 100);
+    visualizers: rerun.blueprint.datatypes.Utf8List (order: 100);
 }
