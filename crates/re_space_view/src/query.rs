@@ -130,46 +130,45 @@ fn query_overrides<'a>(
     // First see if any components have overrides.
     let mut overrides = LatestAtResults::default();
 
-    if let Some(prop_overrides) = &data_result.property_overrides {
-        // TODO(jleibs): partitioning overrides by path
-        for component_name in component_names {
-            if let Some(override_value) = prop_overrides
-                .resolved_component_overrides
-                .get(component_name)
-            {
-                let component_override_result = match override_value.store_kind {
-                    re_log_types::StoreKind::Recording => {
-                        // TODO(jleibs): This probably is not right, but this code path is not used
-                        // currently. This may want to use range_query instead depending on how
-                        // component override data-references are resolved.
-                        ctx.store_context.blueprint.query_caches().latest_at(
-                            ctx.store_context.blueprint.store(),
-                            &ctx.current_query(),
-                            &override_value.path,
-                            [*component_name],
-                        )
-                    }
-                    re_log_types::StoreKind::Blueprint => {
-                        ctx.store_context.blueprint.query_caches().latest_at(
-                            ctx.store_context.blueprint.store(),
-                            ctx.blueprint_query,
-                            &override_value.path,
-                            [*component_name],
-                        )
-                    }
-                };
-
-                // If we successfully find a non-empty override, add it to our results.
-
-                // TODO(jleibs): it seems like value could still be null/empty if the override
-                // has been cleared. It seems like something is preventing that from happening
-                // but I don't fully understand what.
-                //
-                // This is extra tricky since the promise hasn't been resolved yet so we can't
-                // actually look at the data.
-                if let Some(value) = component_override_result.components.get(component_name) {
-                    overrides.add(*component_name, value.clone());
+    // TODO(jleibs): partitioning overrides by path
+    for component_name in component_names {
+        if let Some(override_value) = data_result
+            .property_overrides
+            .resolved_component_overrides
+            .get(component_name)
+        {
+            let component_override_result = match override_value.store_kind {
+                re_log_types::StoreKind::Recording => {
+                    // TODO(jleibs): This probably is not right, but this code path is not used
+                    // currently. This may want to use range_query instead depending on how
+                    // component override data-references are resolved.
+                    ctx.store_context.blueprint.query_caches().latest_at(
+                        ctx.store_context.blueprint.store(),
+                        &ctx.current_query(),
+                        &override_value.path,
+                        [*component_name],
+                    )
                 }
+                re_log_types::StoreKind::Blueprint => {
+                    ctx.store_context.blueprint.query_caches().latest_at(
+                        ctx.store_context.blueprint.store(),
+                        ctx.blueprint_query,
+                        &override_value.path,
+                        [*component_name],
+                    )
+                }
+            };
+
+            // If we successfully find a non-empty override, add it to our results.
+
+            // TODO(jleibs): it seems like value could still be null/empty if the override
+            // has been cleared. It seems like something is preventing that from happening
+            // but I don't fully understand what.
+            //
+            // This is extra tricky since the promise hasn't been resolved yet so we can't
+            // actually look at the data.
+            if let Some(value) = component_override_result.components.get(component_name) {
+                overrides.add(*component_name, value.clone());
             }
         }
     }
