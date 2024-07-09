@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/rerun" }
+rerun = { path = "../../../crates/top/rerun" }
 
 anyhow = "1.0"
 argh = "0.1"
