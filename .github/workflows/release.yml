@@ -62,6 +62,7 @@ jobs:
             python3 scripts/ci/check_speculative_links.py
           fi
 
+  # NOTE: When updating this job, also remember to update `post-release-version-bump`.
   version:
     name: "Versioning"
     runs-on: ubuntu-latest
@@ -368,8 +369,11 @@ jobs:
 
           gh pr comment $pr_number --body-file comment-body.txt
 
+  # Bump versions to next minor+alpha after the release has finished,
+  # so that the release PR can be merged.
   post-release-version-bump:
     name: "Post-Release Version Bump"
+    # We don't need to bump versions for `rc` releases, because we don't merge those.
     if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
     needs:
       [
@@ -398,20 +402,38 @@ jobs:
         with:
           pixi-version: v0.23.0
 
-      - name: Commit new version
+      - name: git config
         run: |
-          # checkout + pull changes
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
           git checkout ${{ github.ref_name }}
           git pull --rebase
 
-          # bump version and commit it
+      - name: Update crate versions
+        id: crates
+        run: |
           pixi run python scripts/ci/crates.py version --bump auto
-          pixi run toml-fmt
           version="$(pixi run python scripts/ci/crates.py get-version)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-          git commit -am "Bump versions to $version"
+      - name: Update rerun_notebook package version
+        run: |
+          pixi run python scripts/ci/update_rerun_notebook_version.py "${{ steps.crates.outputs.version }}"
+
+      - name: Update JS package versions
+        run: |
+          pixi run node rerun_js/scripts/version.mjs "${{ steps.crates.outputs.version }}"
+
+      - name: Update rerun_c version
+        # Configuring CMake is enough to change the version on rerun.h!
+        run: |
+          cmake -B build -S .
+
+      - run: pixi run toml-fmt
+
+      - name: Commit new version
+        run: |
+          git commit -am "Bump versions to ${{ steps.crates.outputs.version }}"
           git push
 
   comment-artifact-links:
