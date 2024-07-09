@@ -12,8 +12,8 @@ from rerun import bindings
 
 from .recording_stream import RecordingStream, get_data_recording
 
-DEFAULT_WIDTH = 950
-DEFAULT_HEIGHT = 712
+DEFAULT_WIDTH = 640
+DEFAULT_HEIGHT = 480
 
 
 class Viewer:
