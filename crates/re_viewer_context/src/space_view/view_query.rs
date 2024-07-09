@@ -46,11 +46,11 @@ pub struct PropertyOverrides {
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply recursively.
-    pub recursive_override_path: EntityPath,
+    pub recursive_path: EntityPath,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply to the individual entity only.
-    pub individual_override_path: EntityPath,
+    pub individual_path: EntityPath,
 
     /// What range is queried on the chunk store.
     pub query_range: QueryRange,
@@ -79,7 +79,7 @@ pub struct DataResult {
     pub tree_prefix_only: bool,
 
     /// The accumulated property overrides for this `DataResult`.
-    pub property_overrides: Option<PropertyOverrides>,
+    pub property_overrides: PropertyOverrides,
 }
 
 impl DataResult {
@@ -87,17 +87,13 @@ impl DataResult {
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
     #[inline]
-    pub fn recursive_override_path(&self) -> Option<&EntityPath> {
-        self.property_overrides
-            .as_ref()
-            .map(|p| &p.recursive_override_path)
+    pub fn recursive_override_path(&self) -> &EntityPath {
+        &self.property_overrides.recursive_path
     }
 
     #[inline]
-    pub fn individual_override_path(&self) -> Option<&EntityPath> {
-        self.property_overrides
-            .as_ref()
-            .map(|p| &p.individual_override_path)
+    pub fn individual_override_path(&self) -> &EntityPath {
+        &self.property_overrides.individual_path
     }
 
     /// Saves a recursive override OR clears both (!) individual & recursive overrides if the override is due to a parent recursive override or a default value.
@@ -110,20 +106,6 @@ impl DataResult {
         desired_override: &C,
     ) {
         re_tracing::profile_function!();
-
-        // TODO(jleibs): Make it impossible for this to happen with different type structure
-        // This should never happen unless we're doing something with a partially processed
-        // query.
-        let (Some(recursive_override_path), Some(individual_override_path)) = (
-            self.recursive_override_path(),
-            self.individual_override_path(),
-        ) else {
-            re_log::warn!(
-                "Tried to save override for {:?} but it has no override path",
-                self.entity_path
-            );
-            return;
-        };
 
         if let Some(current_resolved_override) = self.lookup_override::<C>(ctx) {
             // Do nothing if the resolved override is already the same as the new override.
@@ -147,95 +129,18 @@ impl DataResult {
                 || (parent_recursive_override.is_none() && desired_override == &C::default())
             {
                 // TODO(andreas): It might be that only either of these two are necessary, in that case we shouldn't clear both.
-                ctx.save_empty_blueprint_component::<C>(recursive_override_path);
-                ctx.save_empty_blueprint_component::<C>(individual_override_path);
+                ctx.save_empty_blueprint_component::<C>(&self.property_overrides.recursive_path);
+                ctx.save_empty_blueprint_component::<C>(&self.property_overrides.individual_path);
             } else {
-                ctx.save_blueprint_component(recursive_override_path, desired_override);
+                ctx.save_blueprint_component(
+                    &self.property_overrides.recursive_path,
+                    desired_override,
+                );
             }
         } else {
             // No override at all so far, simply set it.
-            ctx.save_blueprint_component(recursive_override_path, desired_override);
+            ctx.save_blueprint_component(&self.property_overrides.recursive_path, desired_override);
         }
-    }
-
-    /// Saves a recursive override, does not take into current or default values.
-    ///
-    /// Ignores individual overrides and current value.
-    pub fn save_recursive_override<C: re_types::Component + Eq>(
-        &self,
-        ctx: &ViewerContext<'_>,
-        desired_override: &C,
-    ) {
-        re_tracing::profile_function!();
-
-        // TODO(jleibs): Make it impossible for this to happen with different type structure
-        // This should never happen unless we're doing something with a partially processed
-        // query.
-        let Some(recursive_override_path) = self.recursive_override_path() else {
-            re_log::warn!(
-                "Tried to save override for {:?} but it has no override path",
-                self.entity_path
-            );
-            return;
-        };
-
-        ctx.save_blueprint_component(recursive_override_path, desired_override);
-    }
-
-    /// Saves a recursive override, does not take into current or default values.
-    ///
-    /// Ignores individual overrides and current value.
-    pub fn save_individual_override<C: re_types::Component>(
-        &self,
-        ctx: &ViewerContext<'_>,
-        desired_override: &C,
-    ) {
-        re_tracing::profile_function!();
-
-        // TODO(jleibs): Make it impossible for this to happen with different type structure
-        // This should never happen unless we're doing something with a partially processed
-        // query.
-        let Some(override_path) = self.individual_override_path() else {
-            re_log::warn!(
-                "Tried to save override for {:?} but it has no override path",
-                self.entity_path
-            );
-            return;
-        };
-
-        ctx.save_blueprint_component(override_path, desired_override);
-    }
-
-    /// Clears the recursive override for a given component
-    pub fn clear_recursive_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
-        // TODO(jleibs): Make it impossible for this to happen with different type structure
-        // This should never happen unless we're doing something with a partially processed
-        // query.
-        let Some(recursive_override_path) = self.recursive_override_path() else {
-            re_log::warn!(
-                "Tried to save override for {:?} but it has no override path",
-                self.entity_path
-            );
-            return;
-        };
-
-        ctx.save_empty_blueprint_component::<C>(recursive_override_path);
-    }
-
-    /// Clears the recursive override for a given component
-    pub fn clear_individual_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
-        // TODO(jleibs): Make it impossible for this to happen with different type structure
-        // This should never happen unless we're doing something with a partially processed
-        // query.
-        let Some(individual_override_path) = self.individual_override_path() else {
-            re_log::warn!(
-                "Tried to save override for {:?} but it has no override path",
-                self.entity_path
-            );
-            return;
-        };
-
-        ctx.save_empty_blueprint_component::<C>(individual_override_path);
     }
 
     fn lookup_override<C: 'static + re_types::Component>(
@@ -243,8 +148,8 @@ impl DataResult {
         ctx: &ViewerContext<'_>,
     ) -> Option<C> {
         self.property_overrides
-            .as_ref()
-            .and_then(|p| p.resolved_component_overrides.get(&C::name()))
+            .resolved_component_overrides
+            .get(&C::name())
             .and_then(|OverridePath { store_kind, path }| match store_kind {
                 // TODO(#5607): what should happen if the promise is still pending?
                 StoreKind::Blueprint => ctx
@@ -272,8 +177,8 @@ impl DataResult {
         // If we don't have a resolved override, clearly nothing overrode this.
         let active_override = self
             .property_overrides
-            .as_ref()
-            .and_then(|p| p.resolved_component_overrides.get(&component_name))?;
+            .resolved_component_overrides
+            .get(&component_name)?;
 
         // Walk up the tree to find the highest ancestor which has a matching override.
         // This must be the ancestor we inherited the override from. Note that `active_override`
@@ -282,11 +187,11 @@ impl DataResult {
         while let Some(parent_path) = override_source.parent() {
             if result_tree
                 .lookup_result_by_path(&parent_path)
-                .and_then(|data_result| data_result.property_overrides.as_ref())
-                .map_or(true, |property_overrides| {
+                .map_or(true, |data_result| {
                     // TODO(andreas): Assumes all overrides are recursive which is not true,
                     //                This should access `recursive_component_overrides` instead.
-                    property_overrides
+                    data_result
+                        .property_overrides
                         .resolved_component_overrides
                         .get(&component_name)
                         != Some(active_override)
@@ -337,10 +242,7 @@ impl DataResult {
 
     /// Returns the query range for this data result.
     pub fn query_range(&self) -> &QueryRange {
-        const DEFAULT_RANGE: QueryRange = QueryRange::LatestAt;
-        self.property_overrides
-            .as_ref()
-            .map_or(&DEFAULT_RANGE, |p| &p.query_range)
+        &self.property_overrides.query_range
     }
 }
 

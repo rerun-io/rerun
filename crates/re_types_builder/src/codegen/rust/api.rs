@@ -146,20 +146,16 @@ fn generate_object_file(
         code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
     }
 
-    code.push_str("#![allow(trivial_numeric_casts)]\n");
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
     code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
-    code.push_str("#![allow(clippy::iter_on_single_items)]\n");
     code.push_str("#![allow(clippy::map_flatten)]\n");
-    code.push_str("#![allow(clippy::match_wildcard_for_single_variants)]\n");
     code.push_str("#![allow(clippy::needless_question_mark)]\n");
     code.push_str("#![allow(clippy::new_without_default)]\n");
     code.push_str("#![allow(clippy::redundant_closure)]\n");
-    code.push_str("#![allow(clippy::too_many_arguments)]\n");
+    code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
     code.push_str("#![allow(clippy::too_many_lines)]\n");
-    code.push_str("#![allow(clippy::unnecessary_cast)]\n");
     if obj.deprecation_notice().is_some() {
         code.push_str("#![allow(deprecated)]\n");
     }
@@ -429,9 +425,9 @@ fn quote_union(
 
         quote! {
             impl ::re_types_core::SizeBytes for #name {
-                #[allow(clippy::match_same_arms)]
                 #[inline]
                 fn heap_size_bytes(&self) -> u64 {
+                    #![allow(clippy::match_same_arms)]
                     match self {
                         #(#quoted_matches),*
                     }
@@ -804,9 +800,9 @@ fn quote_trait_impls_from_obj(
             } else {
                 let datatype = ArrowDataTypeTokenizer(&datatype, false);
                 quote! {
-                    #[allow(clippy::wildcard_imports)]
                     #[inline]
                     fn arrow_datatype() -> arrow2::datatypes::DataType {
+                        #![allow(clippy::wildcard_imports)]
                         use arrow2::datatypes::*;
                         #datatype
                     }
@@ -838,6 +834,7 @@ fn quote_trait_impls_from_obj(
                         // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
+                        #![allow(clippy::wildcard_imports)]
                         use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
@@ -853,14 +850,7 @@ fn quote_trait_impls_from_obj(
                     }
                 };
 
-                let allow_wildcard_import = if forwarded_type.is_some() {
-                    quote!()
-                } else {
-                    quote!(#[allow(clippy::wildcard_imports)])
-                };
-
                 quote! {
-                    #allow_wildcard_import
                     #[inline]
                     fn from_arrow(
                         arrow_data: &dyn arrow2::array::Array,
@@ -886,6 +876,7 @@ fn quote_trait_impls_from_obj(
                     // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                     // re_tracing::profile_function!();
 
+                    #![allow(clippy::wildcard_imports)]
                     use arrow2::{datatypes::*, array::*, buffer::*};
                     use ::re_types_core::{Loggable as _, ResultExt as _};
                     Ok(#quoted_deserializer)
@@ -914,7 +905,6 @@ fn quote_trait_impls_from_obj(
 
                 quote! {
                     // NOTE: Don't inline this, this gets _huge_.
-                    #[allow(clippy::wildcard_imports)]
                     fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
                     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
@@ -924,6 +914,7 @@ fn quote_trait_impls_from_obj(
                         // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
+                        #![allow(clippy::wildcard_imports)]
                         use arrow2::{datatypes::*, array::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
@@ -948,7 +939,6 @@ fn quote_trait_impls_from_obj(
                     #quoted_serializer
 
                     // NOTE: Don't inline this, this gets _huge_.
-                    #[allow(clippy::wildcard_imports)]
                     fn from_arrow_opt(
                         arrow_data: &dyn arrow2::array::Array,
                     ) -> DeserializationResult<Vec<Option<Self>>>

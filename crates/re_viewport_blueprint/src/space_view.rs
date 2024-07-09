@@ -760,20 +760,19 @@ mod tests {
                 HashMap::default();
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
-                if let Some(property_overrides) = &result.property_overrides {
-                    if !property_overrides.resolved_component_overrides.is_empty() {
-                        visited.insert(
-                            result.entity_path.clone(),
-                            property_overrides
-                                .resolved_component_overrides
-                                .iter()
-                                .map(|(component_name, OverridePath { store_kind, path })| {
-                                    assert_eq!(store_kind, &StoreKind::Blueprint);
-                                    (*component_name, path.clone())
-                                })
-                                .collect(),
-                        );
-                    }
+                let resolved_component_overrides =
+                    &result.property_overrides.resolved_component_overrides;
+                if !resolved_component_overrides.is_empty() {
+                    visited.insert(
+                        result.entity_path.clone(),
+                        resolved_component_overrides
+                            .iter()
+                            .map(|(component_name, OverridePath { store_kind, path })| {
+                                assert_eq!(*store_kind, StoreKind::Blueprint);
+                                (*component_name, path.clone())
+                            })
+                            .collect(),
+                    );
                 }
                 true
             });

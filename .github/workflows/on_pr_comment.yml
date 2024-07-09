@@ -8,7 +8,7 @@ name: "PR Comment"
 
 on:
   issue_comment:
-    types: [created, edited]
+    types: [created]
 
 defaults:
   run:
@@ -17,7 +17,7 @@ defaults:
 permissions:
   contents: "read"
   id-token: "write"
-  issues: "write"
+  pull-requests: "write"
 
 jobs:
   parse-command:

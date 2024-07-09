@@ -66,15 +66,8 @@ pub fn visible_time_range_ui_for_data_result(
     ui: &mut Ui,
     data_result: &re_viewer_context::DataResult,
 ) {
-    let Some(override_path) = data_result.recursive_override_path() else {
-        re_log::error_once!("No override computed yet for entity");
-        return;
-    };
-    let Some(overrides) = data_result.property_overrides.as_ref() else {
-        re_log::error_once!("No override computed yet for entity");
-        return;
-    };
-    let query_range = overrides.query_range.clone();
+    let override_path = data_result.recursive_override_path();
+    let query_range = data_result.property_overrides.query_range.clone();
 
     let is_space_view = false;
     visible_time_range_ui(ctx, ui, query_range, override_path, is_space_view);
