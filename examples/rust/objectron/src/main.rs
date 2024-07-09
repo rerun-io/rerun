@@ -105,7 +105,7 @@ fn log_baseline_objects(
                 let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                rerun::TranslationAndMat3x3::new(translation, rotation)
+                rerun::Transform3D::from_translation_mat3x3(translation, rotation)
             };
             let label = object.category.as_str();
 
@@ -121,7 +121,7 @@ fn log_baseline_objects(
                 .with_labels([label])
                 .with_colors([rerun::Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log_static(path, &rerun::Transform3D::new(transform))?;
+        rec.log_static(path, &transform)?;
     }
 
     Ok(())

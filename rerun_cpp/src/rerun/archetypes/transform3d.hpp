@@ -7,6 +7,8 @@
 #include "../compiler_utils.hpp"
 #include "../components/axis_length.hpp"
 #include "../components/transform3d.hpp"
+#include "../components/transform_mat3x3.hpp"
+#include "../components/translation3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../rerun_sdk_export.hpp"
@@ -19,6 +21,14 @@
 
 namespace rerun::archetypes {
     /// **Archetype**: A 3D transform.
+    ///
+    /// All components are applied in the order they are listed here.
+    /// E.g. if both a 4x4 matrix with a translation and a translation vector are present,
+    /// the matrix is applied first, then the translation vector on top.
+    ///
+    /// Each transform component can be listed multiple times, but transform tree propagation is only possible
+    /// if there's only one instance for each transform component.
+    /// TODO(#6831): write more about the exact interaction with the to be written `OutOfTreeTransform` component.
     ///
     /// ## Examples
     ///
@@ -140,6 +150,12 @@ namespace rerun::archetypes {
     struct Transform3D {
         /// The transform
         rerun::components::Transform3D transform;
+
+        /// 3x3 transformation matrices.
+        std::optional<Collection<rerun::components::TransformMat3x3>> mat3x3;
+
+        /// Translation vectors.
+        std::optional<Collection<rerun::components::Translation3D>> translation;
 
         /// Visual length of the 3 axes.
         ///
@@ -336,6 +352,20 @@ namespace rerun::archetypes {
 
         explicit Transform3D(rerun::components::Transform3D _transform)
             : transform(std::move(_transform)) {}
+
+        /// 3x3 transformation matrices.
+        Transform3D with_mat3x3(Collection<rerun::components::TransformMat3x3> _mat3x3) && {
+            mat3x3 = std::move(_mat3x3);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Translation vectors.
+        Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
+            translation = std::move(_translation);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Visual length of the 3 axes.
         ///

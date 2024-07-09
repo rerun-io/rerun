@@ -27,3 +27,6 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
  * 🦀 [Rust API docs for `TransformMat3x3`](https://docs.rs/rerun/latest/rerun/components/struct.TransformMat3x3.html)
 
 
+## Used by
+
+* [`Transform3D`](../archetypes/transform3d.md)

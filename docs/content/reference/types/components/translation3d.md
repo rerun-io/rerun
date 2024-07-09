@@ -15,3 +15,6 @@ A translation vector in 3D space.
  * 🦀 [Rust API docs for `Translation3D`](https://docs.rs/rerun/latest/rerun/components/struct.Translation3D.html)
 
 
+## Used by
+
+* [`Transform3D`](../archetypes/transform3d.md)
