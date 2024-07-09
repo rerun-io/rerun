@@ -37,6 +37,13 @@ namespace rerun::datatypes {
         std::array<uint8_t, 3> coordinates;
 
       public:
+        // Extensions to generated type defined in 'view_coordinates_ext.cpp'
+
+        /// Construct Vec3D from x/y/z values.
+        explicit constexpr ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
+            : coordinates{axis0, axis1, axis2} {}
+
+      public:
         ViewCoordinates() = default;
 
         ViewCoordinates(std::array<uint8_t, 3> coordinates_) : coordinates(coordinates_) {}
