@@ -188,6 +188,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/utils/sphere_depth.wgsl");
+        let content = include_str!("../shader/utils/sphere_depth.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/utils/sphere_quad.wgsl");
         let content = include_str!("../shader/utils/sphere_quad.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
