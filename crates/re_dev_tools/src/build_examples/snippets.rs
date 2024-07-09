@@ -91,7 +91,7 @@ fn collect_snippets_recursively(
         let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
 
         let config_key = path.strip_prefix(snippet_root_path)?.with_extension("");
-        let config_key = config_key.to_str().unwrap().replace("\\", "/");
+        let config_key = config_key.to_str().unwrap().replace('\\', "/");
 
         let is_opted_out = config
             .opt_out
