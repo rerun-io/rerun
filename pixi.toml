@@ -349,6 +349,7 @@ tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
+opencv = ">4.6"                   # For `compare_snippet_output.py` (needed by both C++ and Python)
 
 [feature.base.pypi-dependencies]
 cryptography = "==38.0.4"        # For `upload_image.py`
@@ -360,7 +361,6 @@ pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `s
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
-opencv-python = ">4.6"           # For `compare_snippet_output.py`
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*"       # for `wasm-opt`
