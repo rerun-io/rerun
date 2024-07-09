@@ -87,7 +87,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.25.0
 
       - name: Update crate versions
         id: versioning
@@ -400,7 +400,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.25.0
 
       - name: git config
         run: |
