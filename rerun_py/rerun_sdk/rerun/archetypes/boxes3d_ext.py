@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy as np
 
-from .. import components, datatypes
+from .. import datatypes
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 
@@ -20,7 +20,7 @@ class Boxes3DExt:
         centers: datatypes.Vec3DArrayLike | None = None,
         rotations: datatypes.Rotation3DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-        radii: components.RadiusArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:

@@ -69,7 +69,7 @@ class Spatial3DView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: blueprint_components.VisibleLike | None = None,
+        visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         background: blueprint_archetypes.Background

@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from .. import components, datatypes
+from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 
@@ -44,10 +44,10 @@ class Boxes2DExt:
         centers: datatypes.Vec2DArrayLike | None = None,
         array: npt.ArrayLike | None = None,
         array_format: Box2DFormat | None = None,
-        radii: components.RadiusArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
-        draw_order: components.DrawOrderLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ) -> None:
         """

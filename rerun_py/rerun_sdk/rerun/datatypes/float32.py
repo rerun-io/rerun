@@ -49,8 +49,7 @@ else:
     Float32Like = Any
 
 Float32ArrayLike = Union[
-    Float32,
-    Sequence[Float32Like],
+    Float32, Sequence[Float32Like], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
 ]
 
 

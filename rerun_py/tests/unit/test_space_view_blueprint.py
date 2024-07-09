@@ -6,8 +6,9 @@ from typing import Optional, cast
 from rerun.blueprint.archetypes.space_view_blueprint import SpaceViewBlueprint
 from rerun.blueprint.components.space_view_class import SpaceViewClass, SpaceViewClassBatch
 from rerun.blueprint.components.space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch
-from rerun.blueprint.components.visible import Visible, VisibleBatch, VisibleLike
+from rerun.blueprint.components.visible import Visible, VisibleBatch
 from rerun.components.name import Name, NameBatch
+from rerun.datatypes.bool import BoolLike
 from rerun.datatypes.entity_path import EntityPathLike
 from rerun.datatypes.utf8 import Utf8Like
 
@@ -34,7 +35,7 @@ def test_space_view_blueprint() -> None:
         class_identifier = cast(Utf8Like, class_identifier)
         display_name = cast(Optional[Utf8Like], display_name)
         space_origin = cast(Optional[EntityPathLike], space_origin)
-        visible = cast(Optional[VisibleLike], visible)
+        visible = cast(Optional[BoolLike], visible)
 
         print(
             "rr.SpaceViewBlueprint(\n",

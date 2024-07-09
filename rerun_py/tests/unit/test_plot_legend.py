@@ -6,6 +6,7 @@ from typing import Optional, cast
 import rerun as rr
 import rerun.blueprint as rrb
 from rerun.blueprint import components as blueprint_components
+from rerun.datatypes.bool import BoolLike
 
 from .common_arrays import none_empty_or_value
 
@@ -30,7 +31,7 @@ def test_scalar_axis() -> None:
 
     for corner, visible in all_arrays:
         corner = cast(Optional[blueprint_components.Corner2DLike], corner)
-        visible = cast(Optional[blueprint_components.VisibleLike], visible)
+        visible = cast(Optional[BoolLike], visible)
 
         print(
             f"rr.PlotLegend(\n"

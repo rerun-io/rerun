@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import rerun.blueprint.components as rrbc
+from rerun.blueprint.datatypes.utf8list import Utf8ListArrayLike
 
 from .common_arrays import none_empty_or_value
 
@@ -13,7 +14,7 @@ def visualizer_overrides_expected(obj: Any) -> rrbc.VisualizerOverridesBatch:
     return rrbc.VisualizerOverridesBatch(expected)
 
 
-VISUALIZER_OVERRIDES_INPUT: list[rrbc.VisualizerOverridesArrayLike | None] = [
+VISUALIZER_OVERRIDES_INPUT: list[Utf8ListArrayLike | None] = [
     None,
     [],
     "boxes3d",

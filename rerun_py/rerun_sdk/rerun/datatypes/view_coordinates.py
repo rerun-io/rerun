@@ -19,6 +19,7 @@ from .._baseclasses import (
 from .._converters import (
     to_np_uint8,
 )
+from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = [
     "ViewCoordinates",
@@ -30,7 +31,7 @@ __all__ = [
 
 
 @define(init=False)
-class ViewCoordinates:
+class ViewCoordinates(ViewCoordinatesExt):
     """
     **Datatype**: How we interpret the coordinate system of an entity/space.
 
@@ -96,6 +97,4 @@ class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of ViewCoordinates not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in view_coordinates_ext.py
+        return ViewCoordinatesExt.native_to_pa_array_override(data, data_type)

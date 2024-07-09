@@ -40,7 +40,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     origin: EntityPathLike = "/",
     contents: SpaceViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
-    visible: blueprint_components.VisibleLike | None = None,
+    visible: datatypes.BoolLike | None = None,
     defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
     overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     "#

@@ -7,14 +7,14 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from . import RadiusArrayLike
+    from . import RadiusBatch
 
 
 class RadiusExt:
     """Extension for [Radius][rerun.components.Radius]."""
 
     @staticmethod
-    def ui_points(radii: numbers.Number | npt.ArrayLike) -> RadiusArrayLike:
+    def ui_points(radii: numbers.Number | npt.ArrayLike) -> RadiusBatch:
         """
         Create a radius or list of radii in UI points.
 
@@ -26,4 +26,4 @@ class RadiusExt:
         Internally, ui radii are stored as negative values.
         Therefore, all this method does is to ensure that all returned values are negative.
         """
-        return -np.abs(np.array(radii, dtype=np.float32))
+        return RadiusBatch(-np.abs(np.array(radii, dtype=np.float32)))

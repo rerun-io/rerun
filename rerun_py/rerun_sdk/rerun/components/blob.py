@@ -10,12 +10,11 @@ from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
-from .blob_ext import BlobExt
 
 __all__ = ["Blob", "BlobBatch", "BlobType"]
 
 
-class Blob(BlobExt, datatypes.Blob, ComponentMixin):
+class Blob(datatypes.Blob, ComponentMixin):
     """**Component**: A binary blob of data."""
 
     _BATCH_TYPE = None

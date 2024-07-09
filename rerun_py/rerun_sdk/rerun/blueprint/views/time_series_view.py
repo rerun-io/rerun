@@ -88,7 +88,7 @@ class TimeSeriesView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: blueprint_components.VisibleLike | None = None,
+        visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         axis_y: blueprint_archetypes.ScalarAxis | None = None,

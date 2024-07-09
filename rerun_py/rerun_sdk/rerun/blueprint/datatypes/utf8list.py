@@ -14,12 +14,13 @@ from ..._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .utf8list_ext import Utf8ListExt
 
 __all__ = ["Utf8List", "Utf8ListArrayLike", "Utf8ListBatch", "Utf8ListLike", "Utf8ListType"]
 
 
 @define(init=False)
-class Utf8List:
+class Utf8List(Utf8ListExt):
     """**Datatype**: A list of strings of text, encoded as UTF-8."""
 
     def __init__(self: Any, value: Utf8ListLike):
@@ -56,6 +57,4 @@ class Utf8ListBatch(BaseBatch[Utf8ListArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ListArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of Utf8List not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in utf8list_ext.py
+        return Utf8ListExt.native_to_pa_array_override(data, data_type)
