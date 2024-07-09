@@ -27,6 +27,7 @@ namespace rerun::components {
     /// down, and the Z axis points forward.
     ///
     /// The following constants are used to represent the different directions:
+    ///  * Unused = 0
     ///  * Up = 1
     ///  * Down = 2
     ///  * Right = 3
@@ -41,6 +42,7 @@ namespace rerun::components {
         // Extensions to generated type defined in 'view_coordinates_ext.cpp'
 
         enum ViewDir : uint8_t {
+            Unused = 0,
             Up = 1,
             Down = 2,
             Right = 3,
@@ -202,6 +204,30 @@ namespace rerun::components {
 
         /// X=Back, Y=Right, Z=Down
         RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates BRD;
+
+        /// X=Up, Y=Left, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates UL;
+
+        /// X=Left, Y=Up, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates LU;
+
+        /// X=Up, Y=Right, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates UR;
+
+        /// X=Right, Y=Up, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates RU;
+
+        /// X=Down, Y=Left, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates DL;
+
+        /// X=Left, Y=Down, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates LD;
+
+        /// X=Down, Y=Right, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates DR;
+
+        /// X=Right, Y=Down, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates RD;
 
         /// X=Up, Y=Right, Z=Forward
         RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates RIGHT_HAND_X_UP;

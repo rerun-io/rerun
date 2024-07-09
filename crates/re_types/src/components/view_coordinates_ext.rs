@@ -39,12 +39,14 @@ impl ViewCoordinates {
     pub fn sanity_check(&self) -> Result<(), String> {
         let mut dims = [false; 3];
         for dir in self.0 {
-            let dim = match ViewDir::try_from(dir)? {
-                ViewDir::Up | ViewDir::Down => 0,
-                ViewDir::Right | ViewDir::Left => 1,
-                ViewDir::Forward | ViewDir::Back => 2,
-            };
-            dims[dim] = true;
+            if let Some(dim) = match ViewDir::try_from(dir)? {
+                ViewDir::Up | ViewDir::Down => Some(0),
+                ViewDir::Right | ViewDir::Left => Some(1),
+                ViewDir::Forward | ViewDir::Back => Some(2),
+                ViewDir::Unused => None,
+            } {
+                dims[dim] = true;
+            }
         }
         if dims == [true; 3] {
             Ok(())
@@ -139,7 +141,7 @@ impl ViewCoordinates {
                 Some(ViewDir::Forward) => [0.0, 0.0, 1.0],
                 // TODO(jleibs): Is there a better value to return here?
                 // this means the ViewCoordinates aren't valid.
-                None => [0.0, 0.0, 0.0],
+                _ => [0.0, 0.0, 0.0],
             }
         }
 
@@ -175,7 +177,7 @@ impl ViewCoordinates {
                 Some(ViewDir::Forward) => [0.0, 0.0, -1.0],
                 // TODO(jleibs): Is there a better value to return here?
                 // this means the ViewCoordinates aren't valid.
-                None => [0.0, 0.0, 0.0],
+                _ => [0.0, 0.0, 0.0],
             }
         }
 
@@ -327,6 +329,14 @@ impl ViewCoordinates {
     define_coordinates!("X=Right, Y=Back, Z=Down", RBD => (Right, Back, Down));
     define_coordinates!("X=Back, Y=Down, Z=Right", BDR => (Back, Down, Right));
     define_coordinates!("X=Back, Y=Right, Z=Down", BRD => (Back, Right, Down));
+    define_coordinates!("X=Up, Y=Left, Z=Unused", UL => (Up, Left, Unused));
+    define_coordinates!("X=Left, Y=Up, Z=Unused", LU => (Left, Up, Unused));
+    define_coordinates!("X=Up, Y=Right, Z=Unused", UR => (Up, Right, Unused));
+    define_coordinates!("X=Right, Y=Up, Z=Unused", RU => (Right, Up, Unused));
+    define_coordinates!("X=Down, Y=Left, Z=Unused", DL => (Down, Left, Unused));
+    define_coordinates!("X=Left, Y=Down, Z=Unused", LD => (Left, Down, Unused));
+    define_coordinates!("X=Down, Y=Right, Z=Unused", DR => (Down, Right, Unused));
+    define_coordinates!("X=Right, Y=Down, Z=Unused", RD => (Right, Down, Unused));
     define_coordinates!("X=Up, Y=Right, Z=Forward", RIGHT_HAND_X_UP => (Up, Right, Forward));
     define_coordinates!("X=Down, Y=Right, Z=Back", RIGHT_HAND_X_DOWN => (Down, Right, Back));
     define_coordinates!("X=Right, Y=Up, Z=Back", RIGHT_HAND_Y_UP => (Right, Up, Back));

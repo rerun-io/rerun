@@ -62,6 +62,14 @@ impl ViewCoordinates {
     define_coordinates!("X=Right, Y=Back, Z=Down", RBD => (Right, Back, Down));
     define_coordinates!("X=Back, Y=Down, Z=Right", BDR => (Back, Down, Right));
     define_coordinates!("X=Back, Y=Right, Z=Down", BRD => (Back, Right, Down));
+    define_coordinates!("X=Up, Y=Left, Z=Unused", UL => (Up, Left, Unused));
+    define_coordinates!("X=Left, Y=Up, Z=Unused", LU => (Left, Up, Unused));
+    define_coordinates!("X=Up, Y=Right, Z=Unused", UR => (Up, Right, Unused));
+    define_coordinates!("X=Right, Y=Up, Z=Unused", RU => (Right, Up, Unused));
+    define_coordinates!("X=Down, Y=Left, Z=Unused", DL => (Down, Left, Unused));
+    define_coordinates!("X=Left, Y=Down, Z=Unused", LD => (Left, Down, Unused));
+    define_coordinates!("X=Down, Y=Right, Z=Unused", DR => (Down, Right, Unused));
+    define_coordinates!("X=Right, Y=Down, Z=Unused", RD => (Right, Down, Unused));
     define_coordinates!("X=Up, Y=Right, Z=Forward", RIGHT_HAND_X_UP => (Up, Right, Forward));
     define_coordinates!("X=Down, Y=Right, Z=Back", RIGHT_HAND_X_DOWN => (Down, Right, Back));
     define_coordinates!("X=Right, Y=Up, Z=Back", RIGHT_HAND_Y_UP => (Right, Up, Back));

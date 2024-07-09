@@ -16,6 +16,7 @@ class ViewCoordinatesExt:
     """Extension for [ViewCoordinates][rerun.components.ViewCoordinates]."""
 
     class ViewDir(IntEnum):
+        Unused = 0
         Up = 1
         Down = 2
         Right = 3
@@ -221,6 +222,30 @@ class ViewCoordinatesExt:
     BRD: ViewCoordinates = None  # type: ignore[assignment]
     """X=Back, Y=Right, Z=Down"""
 
+    UL: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Up, Y=Left, Z=Unused"""
+
+    LU: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Left, Y=Up, Z=Unused"""
+
+    UR: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Up, Y=Right, Z=Unused"""
+
+    RU: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Right, Y=Up, Z=Unused"""
+
+    DL: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Down, Y=Left, Z=Unused"""
+
+    LD: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Left, Y=Down, Z=Unused"""
+
+    DR: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Down, Y=Right, Z=Unused"""
+
+    RD: ViewCoordinates = None  # type: ignore[assignment]
+    """X=Right, Y=Down, Z=Unused"""
+
     RIGHT_HAND_X_UP: ViewCoordinates = None  # type: ignore[assignment]
     """X=Up, Y=Right, Z=Forward"""
 
@@ -311,6 +336,14 @@ class ViewCoordinatesExt:
         cls.RBD = cls([cls.ViewDir.Right, cls.ViewDir.Back, cls.ViewDir.Down])
         cls.BDR = cls([cls.ViewDir.Back, cls.ViewDir.Down, cls.ViewDir.Right])
         cls.BRD = cls([cls.ViewDir.Back, cls.ViewDir.Right, cls.ViewDir.Down])
+        cls.UL = cls([cls.ViewDir.Up, cls.ViewDir.Left, cls.ViewDir.Unused])
+        cls.LU = cls([cls.ViewDir.Left, cls.ViewDir.Up, cls.ViewDir.Unused])
+        cls.UR = cls([cls.ViewDir.Up, cls.ViewDir.Right, cls.ViewDir.Unused])
+        cls.RU = cls([cls.ViewDir.Right, cls.ViewDir.Up, cls.ViewDir.Unused])
+        cls.DL = cls([cls.ViewDir.Down, cls.ViewDir.Left, cls.ViewDir.Unused])
+        cls.LD = cls([cls.ViewDir.Left, cls.ViewDir.Down, cls.ViewDir.Unused])
+        cls.DR = cls([cls.ViewDir.Down, cls.ViewDir.Right, cls.ViewDir.Unused])
+        cls.RD = cls([cls.ViewDir.Right, cls.ViewDir.Down, cls.ViewDir.Unused])
         cls.RIGHT_HAND_X_UP = cls([cls.ViewDir.Up, cls.ViewDir.Right, cls.ViewDir.Forward])
         cls.RIGHT_HAND_X_DOWN = cls([cls.ViewDir.Down, cls.ViewDir.Right, cls.ViewDir.Back])
         cls.RIGHT_HAND_Y_UP = cls([cls.ViewDir.Right, cls.ViewDir.Up, cls.ViewDir.Back])
