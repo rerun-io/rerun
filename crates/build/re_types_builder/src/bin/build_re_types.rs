@@ -77,7 +77,7 @@ fn main() {
 
     assert!(
         workspace_dir.join("CODE_OF_CONDUCT.md").exists(),
-        "ailed to find workspace root"
+        "failed to find workspace root"
     );
 
     let re_types_source_hash_path = workspace_dir.join(RE_TYPES_SOURCE_HASH_PATH);
