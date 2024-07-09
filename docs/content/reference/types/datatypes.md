@@ -9,6 +9,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 
 * [`Angle`](datatypes/angle.md): Angle in either radians or degrees.
 * [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
+* [`Blob`](datatypes/blob.md): A binary blob of data.
 * [`Bool`](datatypes/bool.md): A single boolean.
 * [`ClassDescription`](datatypes/class_description.md): The description of a semantic Class.
 * [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md): A helper type for mapping class IDs to class descriptions.

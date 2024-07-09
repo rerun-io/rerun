@@ -17,7 +17,7 @@ from .annotation_context import (
     AnnotationContextType,
 )
 from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
-from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
+from .blob import Blob, BlobBatch, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch, ClearIsRecursiveType
 from .color import Color, ColorBatch, ColorType
@@ -88,9 +88,7 @@ __all__ = [
     "AxisLengthBatch",
     "AxisLengthType",
     "Blob",
-    "BlobArrayLike",
     "BlobBatch",
-    "BlobLike",
     "BlobType",
     "ClassId",
     "ClassIdBatch",

@@ -10,6 +10,7 @@ from .annotation_info import (
     AnnotationInfoLike,
     AnnotationInfoType,
 )
+from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
 from .bool import Bool, BoolArrayLike, BoolBatch, BoolLike, BoolType
 from .class_description import (
     ClassDescription,
@@ -130,6 +131,11 @@ __all__ = [
     "AnnotationInfoBatch",
     "AnnotationInfoLike",
     "AnnotationInfoType",
+    "Blob",
+    "BlobArrayLike",
+    "BlobBatch",
+    "BlobLike",
+    "BlobType",
     "Bool",
     "BoolArrayLike",
     "BoolBatch",

@@ -5,7 +5,7 @@ include "rust/attributes.fbs";
 include "rerun/datatypes.fbs";
 include "rerun/attributes.fbs";
 
-namespace rerun.components;
+namespace rerun.datatypes;
 
 // ---
 
@@ -14,8 +14,9 @@ table Blob (
   "attr.arrow.transparent",
   "attr.python.aliases": "bytes, npt.NDArray[np.uint8]",
   "attr.python.array_aliases": "bytes, npt.NDArray[np.uint8]",
-  "attr.rust.derive": "Default, PartialEq, Eq",
-  "attr.rust.repr": "transparent"
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
 ) {
-  data: rerun.datatypes.Blob (order: 100);
+  data: [ubyte] (order: 100);
 }
