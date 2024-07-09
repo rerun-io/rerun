@@ -8,7 +8,10 @@ publish = false
 
 
 [dependencies]
-rerun = { path = "../../../crates/rerun", features = ["web_viewer", "clap"] }
+rerun = { path = "../../../crates/top/rerun", features = [
+  "web_viewer",
+  "clap",
+] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
@@ -17,6 +20,6 @@ prost = "0.12"
 
 
 [build-dependencies]
-re_build_tools = { path = "../../../crates/re_build_tools" }
+re_build_tools = { path = "../../../crates/build/re_build_tools" }
 prost-build = "0.12"
 protoc-prebuilt = "0.2"

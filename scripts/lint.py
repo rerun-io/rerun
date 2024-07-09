@@ -603,7 +603,7 @@ def test_lint_workspace_deps() -> None:
         publish = false
 
         [dependencies]
-        rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
+        rerun = { path = "../../../crates/top/rerun", features = ["web_viewer"] }
 
         anyhow = "1.0"
         clap = { version = "4.0", features = ["derive"] }

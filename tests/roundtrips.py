@@ -3,7 +3,7 @@
 """
 Run our end-to-end cross-language roundtrip tests for all SDKs.
 
-The list of archetypes is read directly from `crates/re_types/definitions/rerun/archetypes`.
+The list of archetypes is read directly from `crates/store/re_types/definitions/rerun/archetypes`.
 If you create a new archetype definition without end-to-end tests, this will fail.
 """
 
@@ -21,8 +21,8 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../scripts/")
 from roundtrip_utils import cmake_build, cmake_configure, cpp_build_dir, roundtrip_env, run, run_comparison  # noqa
 
 ARCHETYPES_PATHS = [
-    "crates/re_types/definitions/rerun/archetypes",
-    "crates/re_types/definitions/rerun/blueprint/archetypes",
+    "crates/store/re_types/definitions/rerun/archetypes",
+    "crates/store/re_types/definitions/rerun/blueprint/archetypes",
 ]
 
 opt_out = {}
