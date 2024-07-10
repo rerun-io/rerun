@@ -778,7 +778,7 @@ impl ViewportBlueprint {
         let old_value = self.auto_layout.swap(value, Ordering::SeqCst);
 
         if old_value != value {
-            let component = AutoLayout(value.into());
+            let component = AutoLayout::from(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }
@@ -793,7 +793,7 @@ impl ViewportBlueprint {
         let old_value = self.auto_space_views.swap(value, Ordering::SeqCst);
 
         if old_value != value {
-            let component = AutoSpaceViews(value.into());
+            let component = AutoSpaceViews::from(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }

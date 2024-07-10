@@ -26,7 +26,7 @@ fn depth_image_roundtrip() {
             buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
         }
         .into(),
-        meter: Some(DepthMeter(1000.0.into())),
+        meter: Some(DepthMeter::from(1000.0)),
         draw_order: None,
         colormap: None,
         point_fill_ratio: None,

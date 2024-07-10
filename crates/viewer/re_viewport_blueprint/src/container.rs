@@ -318,7 +318,7 @@ impl ContainerBlueprint {
     #[inline]
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
-            let component = Visible(visible.into());
+            let component = Visible::from(visible);
             ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }

@@ -25,8 +25,8 @@ fn roundtrip() {
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]),
         radii: Some(vec![
-            components::Radius(42.0.into()), //
-            components::Radius(43.0.into()),
+            components::Radius::from(42.0), //
+            components::Radius::from(43.0),
         ]),
         labels: Some(vec![
             "hello".into(),  //

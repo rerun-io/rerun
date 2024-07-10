@@ -75,7 +75,7 @@ impl TypedComponentFallbackProvider<Color> for SeriesPointSystem {
 
 impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
-        MarkerSize(DEFAULT_MARKER_SIZE.into())
+        MarkerSize::from(DEFAULT_MARKER_SIZE)
     }
 }
 

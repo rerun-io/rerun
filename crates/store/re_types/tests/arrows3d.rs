@@ -19,8 +19,8 @@ fn roundtrip() {
             Position3D(Vec3D([40.0, 50.0, 60.0])), //
         ]),
         radii: Some(vec![
-            Radius(1.0.into()), //
-            Radius(10.0.into()),
+            Radius::from(1.0), //
+            Radius::from(10.0),
         ]),
         colors: Some(vec![
             Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
