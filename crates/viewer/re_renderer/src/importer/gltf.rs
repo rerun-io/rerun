@@ -282,7 +282,7 @@ fn import_mesh(
             label: primitive.material().name().into(),
             index_range: index_offset..triangle_indices.len() as u32 * 3,
             albedo,
-            albedo_multiplier: albedo_factor,
+            albedo_factor,
         });
     }
     if vertex_positions.is_empty() || triangle_indices.is_empty() {

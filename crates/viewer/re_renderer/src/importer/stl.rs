@@ -37,7 +37,7 @@ pub fn load_stl_from_buffer(
         label: "default material".into(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
-        albedo_multiplier: crate::Rgba::WHITE,
+        albedo_factor: crate::Rgba::WHITE,
     };
 
     let mesh = mesh::Mesh {

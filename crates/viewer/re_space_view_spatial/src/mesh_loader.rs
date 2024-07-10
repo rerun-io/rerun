@@ -172,7 +172,7 @@ impl LoadedMesh {
                 label: name.clone().into(),
                 index_range: 0..num_indices as _,
                 albedo,
-                albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.0.into()),
+                albedo_factor: albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.0.into()),
             }],
         };
 
