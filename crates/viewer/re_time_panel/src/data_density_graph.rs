@@ -3,6 +3,7 @@
 //! The data density is the number of data points per unit of time.
 //! We collect this into a histogram, blur it, and then paint it.
 
+use std::collections::HashSet;
 use std::ops::RangeInclusive;
 
 use egui::emath::Rangef;
@@ -388,12 +389,6 @@ pub fn data_density_graph_ui2(
 
     let mut density_graph = DensityGraph::new(row_rect.x_range());
 
-    let visible_time_range = time_ranges_ui
-        .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
-
-    let timeline = *time_ctrl.timeline();
-    let query = RangeQuery::new(timeline, visible_time_range);
-
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = ResolvedTimeRange::EMPTY;
 
@@ -468,13 +463,18 @@ pub fn data_density_graph_ui2(
         }
     };
 
-    /* let mut num_chunks = 0; */
+    // Collect all relevant chunks in the visible time range.
+    // We do this as a separate step so that we can also deduplicate chunks.
+    let visible_time_range = time_ranges_ui
+        .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
+    let timeline = *time_ctrl.timeline();
+    let query = RangeQuery::new(timeline, visible_time_range);
+    let mut chunk_ranges: Vec<(ResolvedTimeRange, usize)> = vec![];
+
     if let Some(component_name) = item.component_name {
         let chunks = db
             .store()
             .range_relevant_chunks(&query, &item.entity_path, component_name);
-
-        /* num_chunks += chunks.len(); */
 
         for chunk in chunks {
             let Some(events) = chunk.num_events_for_component(component_name) else {
@@ -485,25 +485,42 @@ pub fn data_density_graph_ui2(
                 continue;
             };
 
-            add_data_point(chunk_timeline.time_range(), events);
+            chunk_ranges.push((chunk_timeline.time_range(), events));
         }
-    } else if let Some(components) = db.store().all_components(&timeline, &item.entity_path) {
-        for component_name in components {
-            let chunks =
-                db.store()
-                    .range_relevant_chunks(&query, &item.entity_path, component_name);
-
-            /* num_chunks += chunks.len(); */
-
-            for chunk in chunks {
-                let events = chunk.num_events_cumulative();
-                let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                    continue;
+    } else {
+        // deduplicate chunks using a set of chunk ids:
+        let mut seen = HashSet::new();
+        if let Some(subtree) = db.tree().subtree(&item.entity_path) {
+            subtree.visit_children_recursively(&mut |entity_path, _| {
+                let Some(components) = db.store().all_components(&timeline, entity_path) else {
+                    return;
                 };
 
-                add_data_point(chunk_timeline.time_range(), events);
-            }
+                for component_name in components {
+                    let chunks =
+                        db.store()
+                            .range_relevant_chunks(&query, entity_path, component_name);
+
+                    for chunk in chunks {
+                        let events = chunk.num_events_cumulative();
+                        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                            continue;
+                        };
+
+                        if seen.contains(&chunk.id()) {
+                            continue;
+                        }
+                        seen.insert(chunk.id());
+
+                        chunk_ranges.push((chunk_timeline.time_range(), events));
+                    }
+                }
+            });
         }
+    }
+
+    for (time_range, num_events) in chunk_ranges {
+        add_data_point(time_range, num_events);
     }
 
     /* if ui.rect_contains_pointer(row_rect) {
