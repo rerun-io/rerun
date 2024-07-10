@@ -25,6 +25,10 @@ impl Docs {
 
         for (tag, comment) in &lines {
             assert!(is_known_tag(tag), "Unknown tag: '\\{tag} {comment}'");
+
+            if tag == "" {
+                find_and_recommend_doclinks(comment);
+            }
         }
 
         Self { lines }
@@ -136,6 +140,28 @@ fn parse_line(line: &str) -> (String, String) {
             "Comments should start with a single space; found {line:?}"
         );
         (String::new(), String::new())
+    }
+}
+
+/// Look for things that look like doclinks to other types, but aren't in brackets.
+fn find_and_recommend_doclinks(full_comment: &str) {
+    let mut comment = full_comment;
+    while let Some(start) = comment.find('`') {
+        comment = &comment[start + 1..];
+        if let Some(end) = comment.find('`') {
+            let content = &comment[..end];
+
+            let looks_like_type_name = content.len() > 5
+                && content.chars().all(|c| c.is_ascii_alphanumeric())
+                && content.chars().next().unwrap().is_ascii_uppercase();
+
+            if looks_like_type_name {
+                re_log::warn!("`{content}` can be written as a doclink, e.g. [archetypes.{content}] in comment: /// {full_comment}");
+            }
+            comment = &comment[end + 1..];
+        } else {
+            return;
+        }
     }
 }
 
