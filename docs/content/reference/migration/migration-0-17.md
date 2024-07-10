@@ -4,6 +4,12 @@ order: 170
 ---
 
 
+## ⚠️ Breaking changes
+* `HalfSizes2D` has been renamed to [`HalfSize2D`](https://rerun.io/docs/reference/types/components/half_size2d)
+* `HalfSizes3D` has been renamed to [`HalfSize3D`](https://rerun.io/docs/reference/types/components/half_size3d)
+* `.rrd` files from older versions won't load in Rerun 0.17
+
+
 ## New integrated visualizer and component override UI
 
 The visualizer and component override UI of the timeseries views has been unified and overhauled. It is also now used for all view kinds (it was previously only available for timeseries views).
