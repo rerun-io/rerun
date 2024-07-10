@@ -6,7 +6,7 @@ use re_datafusion::create_datafusion_context;
 async fn main() -> Result<()> {
     let ctx = create_datafusion_context()?;
 
-    let df = ctx.sql("SELECT * FROM my_table").await?;
+    let df = ctx.sql("SELECT * FROM custom_table").await?;
 
     df.show().await?;
     Ok(())

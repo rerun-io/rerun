@@ -33,6 +33,7 @@ datafusion.workspace = true
 document-features.workspace = true
 tokio.workspace = true
 arrow = "52.1.0"
+async-trait = "0.1.81"
 
 [dev-dependencies]
 re_types.workspace = true
