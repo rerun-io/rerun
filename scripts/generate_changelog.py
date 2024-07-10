@@ -261,6 +261,22 @@ def main() -> None:
 
     print()
 
+    print("TODO: add link to release video")
+    print()
+    print("📖 Release blogpost: TODO: add link")
+    print()
+    print("🧳 Migration guide: TODO: add link")
+    print()
+    print("### ✨ Overview & highlights")
+    print("TODO: fill in")
+    print()
+    print("### ⚠️ Breaking changes")
+    print("TODO: fill in")
+    print("🧳 Migration guide: TODO: add link (yes, again)")
+    print()
+    print("### 🔎 Details")
+    print()
+
     # Most interesting first:
     print_section("🪵 Log API", log_api)
     print_section("🌊 C++ API", cpp)
