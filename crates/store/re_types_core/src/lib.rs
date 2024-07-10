@@ -21,7 +21,7 @@
 // ---
 
 /// Number of decimals shown for all float display methods.
-pub const DISPLAY_PRECISION: usize = 3;
+pub const DEFAULT_DISPLAY_DECIMALS: usize = 3;
 
 /// Describes the interface for interpreting an object as a bundle of [`Component`]s.
 ///

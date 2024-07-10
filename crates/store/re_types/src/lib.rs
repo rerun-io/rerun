@@ -176,7 +176,7 @@
 // ---
 
 /// Number of decimals shown for all float display methods.
-pub use re_types_core::DISPLAY_PRECISION;
+pub use re_types_core::DEFAULT_DISPLAY_DECIMALS;
 
 /// Archetype are the high-level things you can log, like [`Image`][archetypes::Image], [`Points3D`][archetypes::Points3D], etc.
 ///
