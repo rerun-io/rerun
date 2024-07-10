@@ -4,9 +4,8 @@ import itertools
 
 import numpy as np
 import rerun as rr
-from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch, ViewCoordinatesLike
-from rerun.datatypes.mat3x3 import Mat3x3Like
-from rerun.datatypes.vec2d import Vec2DLike
+from rerun.components import PinholeProjectionBatch, ResolutionBatch, ViewCoordinatesBatch
+from rerun.datatypes import Mat3x3Like, Vec2DLike, ViewCoordinatesLike
 
 
 def test_pinhole() -> None:

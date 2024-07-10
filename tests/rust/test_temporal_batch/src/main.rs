@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Convert to rerun time / scalars
     let timeline_values = ChunkTimeline::new_sequence("step", timeline_values);
-    let scalar_data = scalar_data.into_iter().map(Scalar).collect::<Vec<_>>();
+    let scalar_data: Vec<Scalar> = scalar_data.into_iter().map(Into::into).collect();
 
     rec.log_temporal_batch("scalar", [timeline_values], [&scalar_data as _])?;
 

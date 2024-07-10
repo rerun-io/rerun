@@ -648,7 +648,7 @@ impl SpatialSpaceView3D {
         }
 
         // TODO(andreas): Make configurable. Could pick up default radius for this view?
-        let box_line_radius = Size(re_types::components::Radius::default().0);
+        let box_line_radius = Size(*re_types::components::Radius::default().0);
 
         if state.state_3d.show_bbox {
             line_builder

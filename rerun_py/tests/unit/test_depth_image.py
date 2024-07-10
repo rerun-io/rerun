@@ -7,7 +7,7 @@ import pytest
 import rerun as rr
 import torch
 from rerun.components import DepthMeter
-from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
+from rerun.datatypes import Float32Like, TensorBuffer, TensorData, TensorDataLike, TensorDimension
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20))
@@ -26,7 +26,7 @@ IMAGE_INPUTS: list[TensorDataLike] = [
     RANDOM_IMAGE_SOURCE,
 ]
 
-METER_INPUTS: list[rr.components.DepthMeterLike] = [1000, DepthMeter(1000)]
+METER_INPUTS: list[Float32Like] = [1000, DepthMeter(1000)]
 
 
 def depth_image_expected() -> Any:

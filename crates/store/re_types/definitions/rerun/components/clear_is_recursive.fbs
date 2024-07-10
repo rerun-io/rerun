@@ -19,5 +19,5 @@ struct ClearIsRecursive (
   "attr.rust.tuple_struct"
 ) {
   /// If true, also clears all recursive children entities.
-  recursive: bool (order: 100);
+  recursive: rerun.datatypes.Bool (order: 100);
 }

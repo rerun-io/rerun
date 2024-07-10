@@ -15,6 +15,7 @@ struct Bool (
     "attr.arrow.transparent",
     "attr.python.aliases": "bool",
     "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.override_crate": "re_types_core",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {

@@ -18,26 +18,14 @@ from .annotation_context import (
     AnnotationContextType,
 )
 from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
-from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
+from .blob import Blob, BlobBatch, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
-from .clear_is_recursive import (
-    ClearIsRecursive,
-    ClearIsRecursiveArrayLike,
-    ClearIsRecursiveBatch,
-    ClearIsRecursiveLike,
-    ClearIsRecursiveType,
-)
+from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch, ClearIsRecursiveType
 from .color import Color, ColorBatch, ColorType
 from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, ColormapType
-from .depth_meter import DepthMeter, DepthMeterArrayLike, DepthMeterBatch, DepthMeterLike, DepthMeterType
-from .disconnected_space import (
-    DisconnectedSpace,
-    DisconnectedSpaceArrayLike,
-    DisconnectedSpaceBatch,
-    DisconnectedSpaceLike,
-    DisconnectedSpaceType,
-)
-from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
+from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
+from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
+from .draw_order import DrawOrder, DrawOrderBatch, DrawOrderType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
@@ -54,7 +42,7 @@ from .magnification_filter import (
     MagnificationFilterType,
 )
 from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike, MarkerShapeType
-from .marker_size import MarkerSize, MarkerSizeArrayLike, MarkerSizeBatch, MarkerSizeLike, MarkerSizeType
+from .marker_size import MarkerSize, MarkerSizeBatch, MarkerSizeType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .name import Name, NameBatch, NameType
 from .opacity import Opacity, OpacityBatch, OpacityType
@@ -62,12 +50,12 @@ from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DB
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
-from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
+from .radius import Radius, RadiusBatch, RadiusType
 from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
-from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
-from .stroke_width import StrokeWidth, StrokeWidthArrayLike, StrokeWidthBatch, StrokeWidthLike, StrokeWidthType
+from .scalar import Scalar, ScalarBatch, ScalarType
+from .stroke_width import StrokeWidth, StrokeWidthBatch, StrokeWidthType
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
 from .tensor_dimension_index_selection import (
     TensorDimensionIndexSelection,
@@ -83,13 +71,7 @@ from .transform3d import Transform3D, Transform3DBatch, Transform3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
-from .view_coordinates import (
-    ViewCoordinates,
-    ViewCoordinatesArrayLike,
-    ViewCoordinatesBatch,
-    ViewCoordinatesLike,
-    ViewCoordinatesType,
-)
+from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch, ViewCoordinatesType
 
 __all__ = [
     "AggregationPolicy",
@@ -109,17 +91,13 @@ __all__ = [
     "AxisLengthBatch",
     "AxisLengthType",
     "Blob",
-    "BlobArrayLike",
     "BlobBatch",
-    "BlobLike",
     "BlobType",
     "ClassId",
     "ClassIdBatch",
     "ClassIdType",
     "ClearIsRecursive",
-    "ClearIsRecursiveArrayLike",
     "ClearIsRecursiveBatch",
-    "ClearIsRecursiveLike",
     "ClearIsRecursiveType",
     "Color",
     "ColorBatch",
@@ -130,19 +108,13 @@ __all__ = [
     "ColormapLike",
     "ColormapType",
     "DepthMeter",
-    "DepthMeterArrayLike",
     "DepthMeterBatch",
-    "DepthMeterLike",
     "DepthMeterType",
     "DisconnectedSpace",
-    "DisconnectedSpaceArrayLike",
     "DisconnectedSpaceBatch",
-    "DisconnectedSpaceLike",
     "DisconnectedSpaceType",
     "DrawOrder",
-    "DrawOrderArrayLike",
     "DrawOrderBatch",
-    "DrawOrderLike",
     "DrawOrderType",
     "FillRatio",
     "FillRatioBatch",
@@ -183,9 +155,7 @@ __all__ = [
     "MarkerShapeLike",
     "MarkerShapeType",
     "MarkerSize",
-    "MarkerSizeArrayLike",
     "MarkerSizeBatch",
-    "MarkerSizeLike",
     "MarkerSizeType",
     "MediaType",
     "MediaTypeBatch",
@@ -209,9 +179,7 @@ __all__ = [
     "Position3DBatch",
     "Position3DType",
     "Radius",
-    "RadiusArrayLike",
     "RadiusBatch",
-    "RadiusLike",
     "RadiusType",
     "Range1D",
     "Range1DBatch",
@@ -223,14 +191,10 @@ __all__ = [
     "Rotation3DBatch",
     "Rotation3DType",
     "Scalar",
-    "ScalarArrayLike",
     "ScalarBatch",
-    "ScalarLike",
     "ScalarType",
     "StrokeWidth",
-    "StrokeWidthArrayLike",
     "StrokeWidthBatch",
-    "StrokeWidthLike",
     "StrokeWidthType",
     "TensorData",
     "TensorDataBatch",
@@ -266,8 +230,6 @@ __all__ = [
     "Vector3DBatch",
     "Vector3DType",
     "ViewCoordinates",
-    "ViewCoordinatesArrayLike",
     "ViewCoordinatesBatch",
-    "ViewCoordinatesLike",
     "ViewCoordinatesType",
 ]

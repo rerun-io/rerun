@@ -8,6 +8,7 @@ from typing import Union
 __all__ = ["BarChartView"]
 
 
+from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import archetypes as blueprint_archetypes, components as blueprint_components
@@ -53,7 +54,7 @@ class BarChartView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: blueprint_components.VisibleLike | None = None,
+        visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,

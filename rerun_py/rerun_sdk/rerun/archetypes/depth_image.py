@@ -69,10 +69,10 @@ class DepthImage(DepthImageExt, Archetype):
         self: Any,
         data: datatypes.TensorDataLike,
         *,
-        meter: components.DepthMeterLike | None = None,
+        meter: datatypes.Float32Like | None = None,
         colormap: components.ColormapLike | None = None,
         point_fill_ratio: datatypes.Float32Like | None = None,
-        draw_order: components.DrawOrderLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
     ):
         """
         Create a new instance of the DepthImage archetype.

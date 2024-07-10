@@ -129,7 +129,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
             (
                 Text(i.to_string().into()),
                 Position3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
-                Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
+                Radius::from(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
                 Color::from_rgb(rng.gen(), rng.gen(), rng.gen()),
             )
         }))

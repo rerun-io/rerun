@@ -15,8 +15,8 @@ fn roundtrip() {
             LineStrip2D::from_iter([[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]]), //
         ],
         radii: Some(vec![
-            Radius(42.0), //
-            Radius(43.0),
+            Radius::from(42.0), //
+            Radius::from(43.0),
         ]),
         colors: Some(vec![
             Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
@@ -26,7 +26,7 @@ fn roundtrip() {
             "hello".into(),  //
             "friend".into(), //
         ]),
-        draw_order: Some(DrawOrder(300.0)),
+        draw_order: Some(DrawOrder(300.0.into())),
         class_ids: Some(vec![
             ClassId::from(126), //
             ClassId::from(127), //

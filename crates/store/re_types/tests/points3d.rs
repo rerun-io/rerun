@@ -10,8 +10,8 @@ fn roundtrip() {
             components::Position3D::new(4.0, 5.0, 6.0),
         ],
         radii: Some(vec![
-            components::Radius(42.0), //
-            components::Radius(43.0),
+            components::Radius::from(42.0), //
+            components::Radius::from(43.0),
         ]),
         colors: Some(vec![
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //

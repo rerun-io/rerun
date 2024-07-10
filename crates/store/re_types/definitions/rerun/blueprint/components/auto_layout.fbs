@@ -19,5 +19,5 @@ struct AutoLayout (
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  auto_layout: bool (order: 100);
+  auto_layout: rerun.datatypes.Bool (order: 100);
 }

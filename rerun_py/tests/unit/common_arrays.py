@@ -11,16 +11,15 @@ from rerun.components import (
     ColorBatch,
     DrawOrder,
     DrawOrderBatch,
-    DrawOrderLike,
     KeypointId,
     KeypointIdBatch,
     Radius,
-    RadiusArrayLike,
     RadiusBatch,
     TextBatch,
 )
 from rerun.datatypes import (
     Angle,
+    Float32ArrayLike,
     Quaternion,
     Rgba32ArrayLike,
     Rotation3D,
@@ -258,18 +257,18 @@ def expected_rotations(rotations: Rotation3DArrayLike, type_: Any) -> Any:
         return type_._optional([Quaternion(xyzw=[1, 2, 3, 4])] * 3 + [RotationAxisAngle([1, 2, 3], 4)])
 
 
-radii_arrays: list[RadiusArrayLike | None] = [
+radii_arrays: list[Float32ArrayLike | None] = [
     None,
     [],
     np.array([]),
-    # RadiusArrayLike: Sequence[RadiusLike]: float
+    # Float32ArrayLike: Sequence[RadiusLike]: float
     [1, 10],
-    # RadiusArrayLike: Sequence[RadiusLike]: Radius
+    # Float32ArrayLike: Sequence[RadiusLike]: Radius
     [
         Radius(1),
         Radius(10),
     ],
-    # RadiusArrayLike: npt.NDArray[np.float32]
+    # Float32ArrayLike: npt.NDArray[np.float32]
     np.array([1, 10], dtype=np.float32),
 ]
 
@@ -410,11 +409,11 @@ def labels_expected(obj: Any) -> Any:
     return TextBatch._optional(expected)
 
 
-draw_orders: list[DrawOrderLike | None] = [
+draw_orders: list[Float32ArrayLike | None] = [
     None,
-    # DrawOrderLike: float
-    300,
-    # DrawOrderLike: DrawOrder
+    # Float32ArrayLike: float
+    300.0,
+    # Float32ArrayLike: DrawOrder
     DrawOrder(300),
 ]
 

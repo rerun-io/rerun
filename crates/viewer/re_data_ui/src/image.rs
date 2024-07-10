@@ -119,7 +119,7 @@ pub fn tensor_ui(
         (
             ctx.recording()
                 .latest_at_component::<DepthMeter>(entity_path, query)
-                .map(|meter| meter.value.0),
+                .map(|meter| *meter.value.0),
             ctx.recording()
                 .latest_at_component::<Colormap>(entity_path, query)
                 .map(|colormap| colormap.value),

@@ -8,3 +8,5 @@ pub mod components {
     pub use self::_components::*;
     pub use re_types::blueprint::components::*;
 }
+
+pub mod datatypes;

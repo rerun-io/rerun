@@ -29,7 +29,7 @@ class SpaceViewBlueprint(Archetype):
         *,
         display_name: datatypes.Utf8Like | None = None,
         space_origin: datatypes.EntityPathLike | None = None,
-        visible: blueprint_components.VisibleLike | None = None,
+        visible: datatypes.BoolLike | None = None,
     ):
         """
         Create a new instance of the SpaceViewBlueprint archetype.

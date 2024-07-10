@@ -175,10 +175,10 @@
 
 // ---
 
-/// Number of decimals shown for all vector display methods.
-pub const DISPLAY_PRECISION: usize = 3;
+/// Number of decimals shown for all float display methods.
+pub use re_types_core::DEFAULT_DISPLAY_DECIMALS;
 
-/// Acrchetype are the high-level things you can log, like [`Image`][archetypes::Image], [`Points3D`][archetypes::Points3D], etc.
+/// Archetype are the high-level things you can log, like [`Image`][archetypes::Image], [`Points3D`][archetypes::Points3D], etc.
 ///
 /// All archetypes implement the [`Archetype`] trait.
 ///

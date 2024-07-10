@@ -73,7 +73,7 @@ impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
 
 impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
-        StrokeWidth(DEFAULT_STROKE_WIDTH)
+        StrokeWidth(DEFAULT_STROKE_WIDTH.into())
     }
 }
 
@@ -169,7 +169,7 @@ impl SeriesLineSystem {
             value: 0.0,
             attrs: PlotPointAttrs {
                 color: fallback_color.into(),
-                radius_ui: 0.5 * fallback_stroke_width.0,
+                radius_ui: 0.5 * *fallback_stroke_width.0,
                 kind: PlotSeriesKind::Continuous,
             },
         };
@@ -252,7 +252,7 @@ impl SeriesLineSystem {
                 } else if scalars.is_empty() {
                     points[i].attrs.kind = PlotSeriesKind::Clear;
                 } else {
-                    points[i].value = scalars.first().map_or(0.0, |s| s.0);
+                    points[i].value = scalars.first().map_or(0.0, |s| *s.0);
                 }
             }
 
@@ -311,7 +311,7 @@ impl SeriesLineSystem {
 
                 for (i, (_index, _scalars, stroke_widths)) in all_frames {
                     if let Some(stroke_width) =
-                        stroke_widths.and_then(|stroke_widths| stroke_widths.first().map(|r| r.0))
+                        stroke_widths.and_then(|stroke_widths| stroke_widths.first().map(|r| *r.0))
                     {
                         points[i].attrs.radius_ui = 0.5 * stroke_width;
                     }

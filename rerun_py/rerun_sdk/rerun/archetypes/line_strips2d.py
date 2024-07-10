@@ -97,10 +97,10 @@ class LineStrips2D(Archetype):
         self: Any,
         strips: components.LineStrip2DArrayLike,
         *,
-        radii: components.RadiusArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
-        draw_order: components.DrawOrderLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ):
         """

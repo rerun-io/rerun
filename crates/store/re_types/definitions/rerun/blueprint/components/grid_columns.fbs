@@ -16,5 +16,5 @@ table GridColumns (
     "attr.rust.override_crate": "re_types_blueprint"
 ) {
     /// The number of columns.
-    columns: uint (order: 100);
+    columns: rerun.datatypes.UInt32 (order: 100);
 }

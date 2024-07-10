@@ -9,7 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
-from .. import components
+from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
 )
@@ -60,7 +60,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     """
 
-    def __init__(self: Any, xyz: components.ViewCoordinatesLike):
+    def __init__(self: Any, xyz: datatypes.ViewCoordinatesLike):
         """
         Create a new instance of the ViewCoordinates archetype.
 

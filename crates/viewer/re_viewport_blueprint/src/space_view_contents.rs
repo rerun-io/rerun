@@ -406,7 +406,7 @@ impl DataQueryPropertyResolver<'_> {
                         .map(|c| c.value)
                     {
                         node.data_result.visualizers =
-                            viz_override.0.iter().map(|v| v.as_str().into()).collect();
+                            viz_override.0.iter().map(Into::into).collect();
                     } else {
                         // Otherwise ask the `SpaceViewClass` to choose.
                         node.data_result.visualizers = self

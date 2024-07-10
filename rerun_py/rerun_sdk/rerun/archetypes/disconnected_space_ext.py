@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from ..components import DisconnectedSpaceLike
+    from ..datatypes import BoolLike
 
 
 class DisconnectedSpaceExt:
@@ -11,7 +11,7 @@ class DisconnectedSpaceExt:
 
     def __init__(
         self: Any,
-        is_disconnected: DisconnectedSpaceLike = True,
+        is_disconnected: BoolLike = True,
     ):
         """
         Disconnect an entity from its parent.
