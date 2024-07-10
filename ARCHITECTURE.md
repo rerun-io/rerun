@@ -39,7 +39,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 
 ## Technologies we use
 ### Apache Arrow
-[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_chunk_store`](crates/re_chunk_store/README.md).
+[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_chunk_store`](crates/store/re_chunk_store/README.md).
 
 In Rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
 
@@ -48,7 +48,7 @@ The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API.
 
 On web builds, we use WebGPU when available on the Web, but automatically fall back to a WebGL based emulation layer (with a more limited feature set).
 
-We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/re_renderer/README.md).
+We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/viewer/re_renderer/README.md).
 
 ### `egui`
 The GUI in the Rerun Viewer is using [`egui`](https://www.egui.rs/), a cross-platform, [immediate mode GUI](https://github.com/emilk/egui#why-immediate-mode).
@@ -204,16 +204,16 @@ Update instructions:
 |--------------------|--------------------------------------------------------------------------------------|
 | re_analytics       | Rerun's analytics SDK                                                                |
 | re_case            | Case conversions, the way Rerun likes them                                           |
-| re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_crash_handler   | Detect panics and signals, logging them and optionally sending them to analytics.    |
 | re_error           | Helpers for handling errors.                                                         |
 | re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
-| re_tuid            | 128-bit Time-based Unique Identifier                                                 |
+| re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
+| re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_memory          | Run-time memory tracking and profiling.                                              |
+| re_smart_channel   | A channel that keeps track of latency and queue length.                              |
 | re_string_interner | Yet another string interning library                                                 |
 | re_tracing         | Helpers for tracing/spans/flamegraphs and such.                                      |
-| re_crash_handler   | Detect panics and signals, logging them and optionally sending them to analytics.    |
-| re_smart_channel   | A channel that keeps track of latency and queue length.                              |
-| re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
-| re_memory          | Run-time memory tracking and profiling.                                              |
+| re_tuid            | 128-bit Time-based Unique Identifier                                                 |
 
 
 

@@ -173,7 +173,7 @@ if(NOT WIN32)
 endif()
 
 # ------------------------------------------------------------------------------
-add_subdirectory(crates/rerun_c) # The Rerun C SDK library, must be included before the C++ SDK.
+add_subdirectory(crates/top/rerun_c) # The Rerun C SDK library, must be included before the C++ SDK.
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library.
 add_subdirectory(examples/cpp)
 add_subdirectory(tests/cpp)
