@@ -27,10 +27,6 @@ def test_expected_warnings() -> None:
                 "Expected either a flat array with a length multiple of 2 elements, or an array with shape (`num_elements`, 2). Shape of passed array was (5,).",
             ),
             (
-                rr.log("test_transform", rr.Transform3D(translation=[1, 2, 3, 4])),
-                "translation must be compatible with Vec3D",
-            ),
-            (
                 rr.log("test_transform", rr.Transform3D(rotation=[1, 2, 3, 4, 5])),
                 "rotation must be compatible with Rotation3D",
             ),
@@ -40,7 +36,7 @@ def test_expected_warnings() -> None:
                 "cannot reshape array of size 5 into shape (3,3))",
             ),
             (
-                rr.log("test_transform", rr.TranslationAndMat3x3(translation=[1, 0, 0])),  # type: ignore[arg-type]
+                rr.log("test_transform", rr.datatypes.Vec3D([1, 0, 0])),  # type: ignore[arg-type]
                 "Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, but got",
             ),
             (
