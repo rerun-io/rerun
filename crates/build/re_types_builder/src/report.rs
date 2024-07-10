@@ -76,12 +76,12 @@ impl Report {
         let mut errored = false;
 
         while let Ok(warn) = self.warnings.try_recv() {
-            re_log::warn!("{warn}");
+            eprintln!("Warning: {warn}");
         }
 
         while let Ok(err) = self.errors.try_recv() {
             errored = true;
-            re_log::error!("{err}");
+            eprintln!("Error: {err}");
         }
 
         if errored {
