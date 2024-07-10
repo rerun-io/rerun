@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The contents of a `SpaceView`.
 ///
-/// The contents are found by combining a collection of [`components::QueryExpression`][crate::components::QueryExpression]s.
+/// The contents are found by combining a collection of `QueryExpression`s.
 ///
 /// ```diff
 /// + /world/**           # add everything…
@@ -58,7 +58,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
 #[derive(Clone, Debug, Default)]
 pub struct SpaceViewContents {
-    /// The [`components::QueryExpression`][crate::components::QueryExpression] that populates the contents for the `SpaceView`.
+    /// The `QueryExpression` that populates the contents for the `SpaceView`.
     ///
     /// They determine which entities are part of the spaceview.
     pub query: Vec<crate::blueprint::components::QueryExpression>,

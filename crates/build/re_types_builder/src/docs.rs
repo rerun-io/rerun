@@ -155,6 +155,9 @@ fn find_and_recommend_doclinks(full_comment: &str) {
                 && content.chars().all(|c| c.is_ascii_alphanumeric())
                 && content.chars().next().unwrap().is_ascii_uppercase()
 
+                // TODO(emilk): support references to things outside the default `rerun.scope`.
+                && !matches!(content, "SpaceViewContents" | "VisibleTimeRanges" | "QueryExpression")
+
                 // In some blueprint code we refer to stuff in Rerun.
                 && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "SpaceViewId" | "SpaceView")
 

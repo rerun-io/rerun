@@ -24,7 +24,7 @@ class SpaceViewContents(Archetype):
     """
     **Archetype**: The contents of a `SpaceView`.
 
-    The contents are found by combining a collection of [`components.QueryExpression`][rerun.components.QueryExpression]s.
+    The contents are found by combining a collection of `QueryExpression`s.
 
     ```diff
     + /world/**           # add everything…
@@ -69,7 +69,7 @@ class SpaceViewContents(Archetype):
         Parameters
         ----------
         query:
-            The [`components.QueryExpression`][rerun.components.QueryExpression] that populates the contents for the `SpaceView`.
+            The `QueryExpression` that populates the contents for the `SpaceView`.
 
             They determine which entities are part of the spaceview.
 
@@ -98,7 +98,7 @@ class SpaceViewContents(Archetype):
         metadata={"component": "required"},
         converter=blueprint_components.QueryExpressionBatch._required,  # type: ignore[misc]
     )
-    # The [`components.QueryExpression`][rerun.components.QueryExpression] that populates the contents for the `SpaceView`.
+    # The `QueryExpression` that populates the contents for the `SpaceView`.
     #
     # They determine which entities are part of the spaceview.
     #

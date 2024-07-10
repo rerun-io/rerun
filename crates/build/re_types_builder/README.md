@@ -20,3 +20,5 @@ They are to be written on the form `[archetypes.Image]`.
 Only links to types are currently supported.
 
 Link checking is not done by the codegen, but the output is checked implicityly by `cargo doc`, `lychee` etc.
+
+We only support doclinks to the default `rerun.scope`.

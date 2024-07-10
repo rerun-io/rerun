@@ -18,7 +18,7 @@ class VisibleTimeRange(datatypes.VisibleTimeRange, ComponentMixin):
     """
     **Component**: The range of values on a given timeline that will be included in a view's query.
 
-    Refer to [`archetypes.VisibleTimeRanges`][rerun.archetypes.VisibleTimeRanges] for more information.
+    Refer to `VisibleTimeRanges` archetype for more information.
     """
 
     _BATCH_TYPE = None
