@@ -261,6 +261,23 @@ def main() -> None:
 
     print()
 
+    # NOTE: we inentionally add TODO:s with names below, which the CI will not be happy about. Hence the # NOLINT suffixes
+    print("TODO: add link to release video")  # NOLINT
+    print()
+    print("📖 Release blogpost: TODO: add link")  # NOLINT
+    print()
+    print("🧳 Migration guide: TODO: add link")  # NOLINT
+    print()
+    print("### ✨ Overview & highlights")
+    print("TODO: fill in")  # NOLINT
+    print()
+    print("### ⚠️ Breaking changes")
+    print("TODO: fill in")  # NOLINT
+    print("🧳 Migration guide: TODO: add link (yes, again)")  # NOLINT
+    print()
+    print("### 🔎 Details")
+    print()
+
     # Most interesting first:
     print_section("🪵 Log API", log_api)
     print_section("🌊 C++ API", cpp)

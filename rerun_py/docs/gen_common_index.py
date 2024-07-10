@@ -2,7 +2,7 @@
 """
 Generate an index table and rendered pages for the common APIs.
 
-NOTE: When changing anything in this file, also consider how it affects `crates/re_dev_tools/src/build_search_index/ingest/python.rs`.
+NOTE: When changing anything in this file, also consider how it affects `crates/build/re_dev_tools/src/build_search_index/ingest/python.rs`.
 
 The top-level index file should look like
 ```

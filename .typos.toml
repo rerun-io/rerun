@@ -5,8 +5,8 @@
 [files]
 extend-exclude = [
   ".typos.toml",
-  "crates/re_ui/data/design_tokens.json",
-  "crates/re_ui/src/design_tokens.rs",
+  "crates/viewer/re_ui/data/design_tokens.json",
+  "crates/viewer/re_ui/src/design_tokens.rs",
   "examples/assets",
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
 ]

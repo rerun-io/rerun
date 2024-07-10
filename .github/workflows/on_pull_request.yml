@@ -138,7 +138,7 @@ jobs:
               - "**/*.rs"
               - "**/*.toml"
               - "**/yarn.lock"
-              - "crates/re_ui/data/**"
+              - "crates/viewer/re_ui/data/**"
 
   rust-checks:
     name: "Rust Checks"
