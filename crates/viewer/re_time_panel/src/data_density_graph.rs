@@ -393,7 +393,6 @@ pub fn data_density_graph_ui2(
 
     let timeline = *time_ctrl.timeline();
     let query = RangeQuery::new(timeline, visible_time_range);
-    let store = db.store();
 
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = ResolvedTimeRange::EMPTY;
@@ -488,7 +487,7 @@ pub fn data_density_graph_ui2(
 
             add_data_point(chunk_timeline.time_range(), events);
         }
-    } else if let Some(components) = store.all_components(&timeline, &item.entity_path) {
+    } else if let Some(components) = db.store().all_components(&timeline, &item.entity_path) {
         for component_name in components {
             let chunks =
                 db.store()
@@ -497,7 +496,7 @@ pub fn data_density_graph_ui2(
             /* num_chunks += chunks.len(); */
 
             for chunk in chunks {
-                let events = chunk.num_events();
+                let events = chunk.num_events_cumulative();
                 let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
                     continue;
                 };
