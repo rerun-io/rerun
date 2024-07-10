@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A 3D transform.
+/// **Archetype**: A transform between two 3D spaces, i.e. a pose.
 ///
 /// ## Example
 ///

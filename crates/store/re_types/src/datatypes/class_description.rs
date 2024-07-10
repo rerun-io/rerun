@@ -20,24 +20,24 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The description of a semantic Class.
 ///
-/// If an entity is annotated with a corresponding `ClassId`, Rerun will use
-/// the attached `AnnotationInfo` to derive labels and colors.
+/// If an entity is annotated with a corresponding [`components::ClassId`][crate::components::ClassId], Rerun will use
+/// the attached [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo] to derive labels and colors.
 ///
 /// Keypoints within an annotation class can similarly be annotated with a
-/// `KeypointId` in which case we should defer to the label and color for the
-/// `AnnotationInfo` specifically associated with the Keypoint.
+/// [`components::KeypointId`][crate::components::KeypointId] in which case we should defer to the label and color for the
+/// [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo] specifically associated with the Keypoint.
 ///
 /// Keypoints within the class can also be decorated with skeletal edges.
-/// Keypoint-connections are pairs of `KeypointId`s. If an edge is
+/// Keypoint-connections are pairs of [`components::KeypointId`][crate::components::KeypointId]s. If an edge is
 /// defined, and both keypoints exist within the instance of the class, then the
 /// keypoints should be connected with an edge. The edge should be labeled and
-/// colored as described by the class's `AnnotationInfo`.
+/// colored as described by the class's [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ClassDescription {
-    /// The `AnnotationInfo` for the class.
+    /// The [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo] for the class.
     pub info: crate::datatypes::AnnotationInfo,
 
-    /// The `AnnotationInfo` for all of the keypoints.
+    /// The [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo] for all of the keypoints.
     pub keypoint_annotations: Vec<crate::datatypes::AnnotationInfo>,
 
     /// The connections between keypoints.

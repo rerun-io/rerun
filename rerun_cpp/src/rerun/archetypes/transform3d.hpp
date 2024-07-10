@@ -18,7 +18,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A 3D transform.
+    /// **Archetype**: A transform between two 3D spaces, i.e. a pose.
     ///
     /// ## Example
     ///

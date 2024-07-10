@@ -19,7 +19,7 @@ __all__ = ["Boxes2D"]
 @define(str=False, repr=False, init=False)
 class Boxes2D(Boxes2DExt, Archetype):
     """
-    **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
+    **Archetype**: 2D boxes with half-extents and optional center, rotations, colors etc.
 
     Example
     -------
@@ -129,9 +129,9 @@ class Boxes2D(Boxes2DExt, Archetype):
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    # Optional `ClassId`s for the boxes.
+    # Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
     #
-    # The class ID provides colors and labels if not specified explicitly.
+    # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

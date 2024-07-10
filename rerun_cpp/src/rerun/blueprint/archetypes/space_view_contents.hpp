@@ -16,7 +16,7 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: The contents of a `SpaceView`.
     ///
-    /// The contents are found by combining a collection of `QueryExpression`s.
+    /// The contents are found by combining a collection of `components::QueryExpression`s.
     ///
     /// ```diff
     /// + /world/**           # add everything…
@@ -53,7 +53,7 @@ namespace rerun::blueprint::archetypes {
     /// The last rule matching `/world` is `- /world`, so it is excluded.
     /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
     struct SpaceViewContents {
-        /// The `QueryExpression` that populates the contents for the `SpaceView`.
+        /// The `components::QueryExpression` that populates the contents for the `SpaceView`.
         ///
         /// They determine which entities are part of the spaceview.
         Collection<rerun::blueprint::components::QueryExpression> query;

@@ -24,11 +24,11 @@ class Image(ImageExt, Archetype):
     """
     **Archetype**: A monochrome or color image.
 
-    The order of dimensions in the underlying `TensorData` follows the typical
+    The order of dimensions in the underlying [`components.TensorData`][rerun.components.TensorData] follows the typical
     row-major, interleaved-pixel image format. Additionally, Rerun orders the
-    `TensorDimension`s within the shape description from outer-most to inner-most.
+    [`datatypes.TensorDimension`][rerun.datatypes.TensorDimension]s within the shape description from outer-most to inner-most.
 
-    As such, the shape of the `TensorData` must be mappable to:
+    As such, the shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to:
     - A `HxW` tensor, treated as a grayscale image.
     - A `HxWx3` tensor, treated as an RGB image.
     - A `HxWx4` tensor, treated as an RGBA image.

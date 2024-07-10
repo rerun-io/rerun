@@ -16,12 +16,12 @@ __all__ = ["QueryExpression", "QueryExpressionBatch", "QueryExpressionType"]
 
 class QueryExpression(datatypes.Utf8, ComponentMixin):
     """
-    **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
+    **Component**: An individual query expression used to filter a set of [`datatypes.EntityPath`][rerun.datatypes.EntityPath]s.
 
     Each expression is either an inclusion or an exclusion expression.
     Inclusions start with an optional `+` and exclusions must start with a `-`.
 
-    Multiple expressions are combined together as part of `SpaceViewContents`.
+    Multiple expressions are combined together as part of [`archetypes.SpaceViewContents`][rerun.archetypes.SpaceViewContents].
 
     The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
     (`/world/**` matches both `/world` and `/world/car/driver`).

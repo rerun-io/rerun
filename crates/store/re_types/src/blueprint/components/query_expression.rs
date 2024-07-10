@@ -18,12 +18,12 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
+/// **Component**: An individual query expression used to filter a set of [`datatypes::EntityPath`][crate::datatypes::EntityPath]s.
 ///
 /// Each expression is either an inclusion or an exclusion expression.
 /// Inclusions start with an optional `+` and exclusions must start with a `-`.
 ///
-/// Multiple expressions are combined together as part of `SpaceViewContents`.
+/// Multiple expressions are combined together as part of [`archetypes::SpaceViewContents`][crate::archetypes::SpaceViewContents].
 ///
 /// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
 /// (`/world/**` matches both `/world` and `/world/car/driver`).
