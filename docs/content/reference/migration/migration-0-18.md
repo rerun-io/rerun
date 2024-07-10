@@ -58,7 +58,28 @@ TODO(andreas): ... and Asset3D specifically
 
 #### C++
 
-TODO(andreas): more!
+Most of the previous constructors of `rerun::Transform3D` archetype are still present. However,
+most of them expect now concrete components which oftentimes makes automatic type conversion fail.
+
+It's recommended to use the new explicit factory methods instead. For example:
+
+Before:
+```cpp
+rec.log("myentity", rerun::Transform3D({1.0f, 2.0f, 3.0f}));
+```
+
+After:
+```cpp
+rec.log("myentity", rerun::Transform3D::from_translation({1.0f, 2.0f, 3.0f}));
+```
+
+Since all aspects of the transform archetypes are now granular, they can be chained with `with_` functions:
+```cpp
+rerun::Transform3D().with_mat3x3(matrix).with_translation(translation)
+```
+Note that the order of the method calls does _not_ affect the order in which transformation is applied!
+
+
 TODO(andreas): Talk about OutOfTreeTransform
 TODO(andreas): ... and Asset3D specifically
 
@@ -101,6 +122,12 @@ impl From<GltfTransform> for rerun::Transform3D {
 }
 ```
 TODO(andreas): Quaternion in above snippet is likely to change as well.
+
+Since all aspects of the transform archetypes are now granular, they can be chained with `with_` functions:
+```rust
+rerun::Transform3D::default().with_mat3x3(matrix).with_translation(translation)
+```
+Note that the order of the method calls does _not_ affect the order in which transformation is applied!
 
 TODO(andreas): Talk about OutOfTreeTransform
 TODO(andreas): ... and Asset3D specifically

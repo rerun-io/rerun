@@ -77,7 +77,7 @@ impl Transform3D {
         }
     }
 
-    /// From a translation applied after a scale
+    /// From a translation applied after a scale.
     #[inline]
     pub fn from_translation_scale(
         translation: impl Into<Translation3D>,
