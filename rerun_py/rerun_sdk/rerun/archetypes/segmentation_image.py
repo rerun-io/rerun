@@ -24,7 +24,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     """
     **Archetype**: An image made up of integer [`components.ClassId`][rerun.components.ClassId]s.
 
-    The shape of the [`component.TensorData`][rerun.component.TensorData] must be mappable to an `HxW` tensor.
+    The shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to an `HxW` tensor.
     Each pixel corresponds to a [`components.ClassId`][rerun.components.ClassId] that will be mapped to a color based on annotation context.
 
     In the case of floating point images, the label will be looked up based on rounding to the nearest

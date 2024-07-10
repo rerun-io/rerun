@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An image made up of integer [`components::ClassId`][crate::components::ClassId]s.
 ///
-/// The shape of the [`component::TensorData`][crate::component::TensorData] must be mappable to an `HxW` tensor.
+/// The shape of the [`components::TensorData`][crate::components::TensorData] must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a [`components::ClassId`][crate::components::ClassId] that will be mapped to a color based on annotation context.
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest

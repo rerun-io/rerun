@@ -5,7 +5,7 @@ title: "SegmentationImage"
 
 An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.
 
-The shape of the [`component.TensorData`](https://rerun.io/docs/reference/types/component/tensor_data) must be mappable to an `HxW` tensor.
+The shape of the [`components.TensorData`](https://rerun.io/docs/reference/types/components/tensor_data) must be mappable to an `HxW` tensor.
 Each pixel corresponds to a [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) that will be mapped to a color based on annotation context.
 
 In the case of floating point images, the label will be looked up based on rounding to the nearest
