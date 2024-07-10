@@ -45,11 +45,18 @@ for (const pkg_path of root_package_json.workspaces) {
     }
   }
 
-  // update link to example rrd file in README
-  readme = readme.replace(
-    /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
-    `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
-  );
+  // we use `+dev` as a marker for "this version is unreleased",
+  // which also means this link won't pass the link checker, so
+  // skip the RRD link version bump here in that case.
+  // this will be bumped only at the start of the release process,
+  // when the `+dev` is removed. at that point the new version will
+  // be uploaded, so the links will work, and this is safe to bump.
+  if (!version.includes("+dev")) {
+    readme = readme.replace(
+      /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
+      `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
+    );
+  }
 
   fs.writeFileSync(package_json_path, JSON.stringify(package_json, null, 2));
   fs.writeFileSync(readme_path, readme);
