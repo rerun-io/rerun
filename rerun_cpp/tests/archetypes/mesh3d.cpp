@@ -26,7 +26,7 @@ SCENARIO(
         from_manual.vertex_normals = {{4.0, 5.0, 6.0}, {40.0, 50.0, 60.0}};
         from_manual.vertex_colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};
         from_manual.triangle_indices = {{1, 2, 3}, {4, 5, 6}};
-        from_manual.albedo_factor = {0xEE, 0x11, 0x22, 0x33};
+        from_manual.albedo_factor = {{0xEE, 0x11, 0x22, 0x33}};
         from_manual.class_ids = {126, 127};
 
         test_compare_archetype_serialization(from_manual, from_builder);
