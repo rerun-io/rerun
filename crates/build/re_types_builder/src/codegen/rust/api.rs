@@ -18,6 +18,7 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components, quote_doc_line},
         },
+        Target,
     },
     format_path,
     objects::ObjectClass,
@@ -534,8 +535,14 @@ fn quote_enum(
     });
     let docstring_md_match_arms = fields.iter().map(|field| {
         let quoted_name = format_ident!("{}", field.pascal_case_name());
-        let docstring_md =
-            doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs).join("\n");
+        let docstring_md = doc_as_lines(
+            reporter,
+            &field.virtpath,
+            &field.fqname,
+            &field.docs,
+            Target::Rust,
+        )
+        .join("\n");
         if docstring_md.is_empty() {
             reporter.error(
                 &field.virtpath,
@@ -624,7 +631,13 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
 }
 
 fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
-    let lines = doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs);
+    let lines = doc_as_lines(
+        reporter,
+        &field.virtpath,
+        &field.fqname,
+        &field.docs,
+        Target::Rust,
+    );
 
     let require_field_docs = false;
     if require_field_docs && lines.is_empty() && !field.is_testing() {
@@ -635,7 +648,13 @@ fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
 }
 
 fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
-    let mut lines = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs);
+    let mut lines = doc_as_lines(
+        reporter,
+        &obj.virtpath,
+        &obj.fqname,
+        &obj.docs,
+        Target::Rust,
+    );
 
     // Prefix first line with `**Datatype**: ` etc:
     if let Some(first) = lines.first_mut() {

@@ -310,8 +310,14 @@ fn unescape_string_into(input: &str, output: &mut String) {
 
 // ----------------------------------------------------------------------------
 
-pub fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
-    let mut lines = docs.lines_for(Target::Rust);
+pub fn doc_as_lines(
+    reporter: &Reporter,
+    virtpath: &str,
+    fqname: &str,
+    docs: &Docs,
+    target: Target,
+) -> Vec<String> {
+    let mut lines = docs.lines_for(target);
 
     let examples = if !fqname.starts_with("rerun.blueprint.views") {
         collect_snippets_for_api_docs(docs, "rs", true)

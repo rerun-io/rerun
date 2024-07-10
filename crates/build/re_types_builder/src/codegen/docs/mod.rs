@@ -207,7 +207,10 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
                 object.name,
                 object.kind.plural_snake_case(),
                 object.snake_case_name(),
-                object.docs.first_line(Target::WebDocs).unwrap_or_default(),
+                object
+                    .docs
+                    .first_line(Target::WebDocsMarkdown)
+                    .unwrap_or_default(),
             );
         }
         putln!(page);
@@ -224,7 +227,7 @@ fn object_page(
 ) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
-    let top_level_docs = object.docs.lines_for(Target::WebDocs);
+    let top_level_docs = object.docs.lines_for(Target::WebDocsMarkdown);
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");
@@ -656,7 +659,7 @@ fn write_view_property(
 ) {
     putln!(o, "### `{}`", field.name);
 
-    let top_level_docs = field.docs.lines_for(Target::WebDocs);
+    let top_level_docs = field.docs.lines_for(Target::WebDocsMarkdown);
 
     if top_level_docs.is_empty() {
         reporter.error(&field.virtpath, &field.fqname, "Undocumented view property");
@@ -677,7 +680,10 @@ fn write_view_property(
         fields.push(format!(
             "* `{}`: {}",
             field.name,
-            field.docs.first_line(Target::WebDocs).unwrap_or_default()
+            field
+                .docs
+                .first_line(Target::WebDocsMarkdown)
+                .unwrap_or_default()
         ));
     }
 

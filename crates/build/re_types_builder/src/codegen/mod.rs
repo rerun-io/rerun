@@ -8,7 +8,10 @@ pub enum Target {
     Rust,
 
     /// Markdown files shown at <https://rerun.io/docs/reference/types>.
-    WebDocs,
+    ///
+    /// This target is also used for the markdown strings in the reflection API,
+    /// for use with the in-viewer markdown renderer.
+    WebDocsMarkdown,
 }
 
 /// Implements the codegen pass.

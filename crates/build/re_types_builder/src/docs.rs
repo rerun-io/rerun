@@ -73,7 +73,7 @@ impl Docs {
             Target::Cpp => "cpp",
             Target::Python => "py",
             Target::Rust => "rs",
-            Target::WebDocs => "md",
+            Target::WebDocsMarkdown => "md",
         };
         assert!(
             is_known_tag(target_tag),
@@ -290,7 +290,7 @@ mod doclink_translation {
                 format!("[`{kind}::{type_name}`][crate::{kind}::{type_name}]")
             }
             Target::Python => format!("[`{kind}.{type_name}`][rerun.{kind}.{type_name}]"),
-            Target::WebDocs => {
+            Target::WebDocsMarkdown => {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 let type_name_snake_case = re_case::to_snake_case(type_name);
                 format!("[`{kind}.{type_name}`](https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case})")
@@ -378,7 +378,7 @@ mod doclink_translation {
             assert_eq!(
                 translate_doc_line(
                     input,
-                    Target::WebDocs
+                    Target::WebDocsMarkdown
                 ),
                 "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
             );
