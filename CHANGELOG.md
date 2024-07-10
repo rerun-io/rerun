@@ -38,6 +38,14 @@ https://github.com/rerun-io/rerun/assets/49431240/1c75b816-7e3e-4882-9ee6-ba124c
   * SDKs are already using chunks to transport data to the viewer, performance characteristics may have changed but should be largely the same for the moment.
 
 
+### ⚠️ Breaking changes
+* `HalfSizes2D` has been renamed to [`HalfSize2D`](https://rerun.io/docs/reference/types/components/half_size2d)
+* `HalfSizes3D` has been renamed to [`HalfSize3D`](https://rerun.io/docs/reference/types/components/half_size3d)
+* `.rrd` files from older versions won't load in Rerun 0.17
+
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-17
+
+
 ### 🔎 Details
 
 #### 🪵 Log API
