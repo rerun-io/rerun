@@ -16,10 +16,20 @@ use datafusion::physical_plan::{
 use datafusion::prelude::*;
 
 use async_trait::async_trait;
+use re_chunk_store::ChunkStore;
 
 /// A custom datasource, used to represent a datastore with a single index
-#[derive(Clone, Default)]
-pub struct CustomDataSource {}
+#[derive(Clone)]
+pub struct CustomDataSource {
+    // TODO(jleibs): Sort out lifetime here so we don't need to take ownership.
+    store: ChunkStore,
+}
+
+impl CustomDataSource {
+    pub fn new(store: ChunkStore) -> Self {
+        Self { store }
+    }
+}
 
 impl Debug for CustomDataSource {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

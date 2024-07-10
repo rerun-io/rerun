@@ -27,7 +27,9 @@ re_chunk = { workspace = true, features = ["serde"] }
 re_chunk_store.workspace = true
 re_format.workspace = true
 re_log.workspace = true
+re_log_types.workspace = true
 
+anyhow.workspace = true
 ahash.workspace = true
 datafusion.workspace = true
 document-features.workspace = true
