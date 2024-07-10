@@ -8,7 +8,7 @@ pub enum Target {
     Rust,
 
     /// Markdown files shown at <https://rerun.io/docs/reference/types>.
-    Docs,
+    WebDocs,
 }
 
 /// Implements the codegen pass.

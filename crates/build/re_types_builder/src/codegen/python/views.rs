@@ -2,6 +2,7 @@ use crate::{
     codegen::{
         common::StringExt as _,
         python::{quote_doc_lines, quote_obj_docs},
+        Target,
     },
     Object, Objects, Reporter, ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER,
 };
@@ -127,7 +128,7 @@ do not yet support `$origin` relative paths or glob expressions.
 This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].".to_owned(),)
     ];
     for field in &obj.fields {
-        let doc_content = field.docs.lines_including_tag("py");
+        let doc_content = field.docs.lines_for(Target::Python);
         if doc_content.is_empty() {
             reporter.error(
                 &field.virtpath,

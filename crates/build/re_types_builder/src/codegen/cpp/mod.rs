@@ -24,7 +24,7 @@ use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
-use super::common::ExampleInfo;
+use super::{common::ExampleInfo, Target};
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
 
@@ -2276,7 +2276,7 @@ fn quote_field_docs(field: &ObjectField) -> TokenStream {
 }
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = docs.lines_including_tag("cpp");
+    let mut lines = docs.lines_for(Target::Cpp);
 
     let required = true;
     let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();

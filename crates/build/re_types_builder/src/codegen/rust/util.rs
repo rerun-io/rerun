@@ -5,7 +5,10 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::{
-    codegen::common::{collect_snippets_for_api_docs, ExampleInfo},
+    codegen::{
+        common::{collect_snippets_for_api_docs, ExampleInfo},
+        Target,
+    },
     Docs, Object, ObjectKind, Reporter, ATTR_RUST_TUPLE_STRUCT,
 };
 
@@ -308,7 +311,7 @@ fn unescape_string_into(input: &str, output: &mut String) {
 // ----------------------------------------------------------------------------
 
 pub fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
-    let mut lines = docs.lines_including_tag("rs");
+    let mut lines = docs.lines_for(Target::Rust);
 
     let examples = if !fqname.starts_with("rerun.blueprint.views") {
         collect_snippets_for_api_docs(docs, "rs", true)

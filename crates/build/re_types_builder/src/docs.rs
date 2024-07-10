@@ -31,13 +31,13 @@ impl Docs {
     }
 
     /// Get the first line of the documentation untagged.
-    pub fn first_line(&self) -> Option<String> {
+    pub fn first_line(&self, target: Target) -> Option<String> {
         let (tag, line) = self.lines.first()?;
         assert!(
             tag.is_empty(),
             "Expected no tag on first line of docstring. Found: /// \\{tag} {line}"
         );
-        Some(line.to_owned())
+        Some(translate_doc_line(line, target))
     }
 
     /// Get all doc lines that start with the given tag.
@@ -59,13 +59,29 @@ impl Docs {
             .collect()
     }
 
-    /// Get all doc lines that are untagged, or match the given tag.
+    /// Get all doc lines that are untagged, or has a tag matching the given target.
     ///
-    /// For instance, pass `"py"` to get all lines that are untagged or starts with `"\py"`.
-    pub fn lines_including_tag(&self, tag: &str) -> Vec<String> {
-        assert!(is_known_tag(tag), "Unknown tag: '{tag}'");
-        remove_extra_newlines(self.lines.iter().filter_map(|(t, line)| {
-            if t.is_empty() || t == tag {
+    /// For instance, pass [`Target::Python`] to get all lines that are untagged or starts with `"\py"`.
+    ///
+    /// The tagged lines (`\py`) are left as is, but untagged lines will have Rerun doclinks translated to the target language.
+    pub(super) fn lines_for(&self, target: Target) -> Vec<String> {
+        let target_tag = match target {
+            Target::Cpp => "cpp",
+            Target::Python => "py",
+            Target::Rust => "rs",
+            Target::WebDocs => "md",
+        };
+        assert!(
+            is_known_tag(target_tag),
+            "Unknown target tag: '{target_tag}'"
+        );
+
+        remove_extra_newlines(self.lines.iter().filter_map(|(tag, line)| {
+            if tag.is_empty() {
+                Some(translate_doc_line(line, target))
+            } else if tag == target_tag {
+                // We don't expect doclinks in tagged lines, because tagged lines are usually
+                // language-specific, and thus should have the correct format already.
                 Some(line.to_owned())
             } else {
                 None
@@ -122,6 +138,8 @@ fn parse_line(line: &str) -> (String, String) {
         (String::new(), String::new())
     }
 }
+
+use doclink_translation::translate_doc_line;
 
 /// We support doclinks in our docstrings.
 ///
@@ -189,14 +207,27 @@ mod doclink_translation {
     }
 
     fn translate_doclink_or_die(doclink_tokens: &[&str], target: Target) -> String {
-        translate_doclink(doclink_tokens, target).unwrap_or_else(|err| {
+        try_translate_doclink(doclink_tokens, target).unwrap_or_else(|err| {
             let original_doclink: String = doclink_tokens.join("");
-            panic!("Failed to parse the doclink '{original_doclink}': {err}");
+
+            // The worlds simplest heuristic, but at least it doesn't warn about things like [x, y, z, w].
+            let looks_like_rerun_doclink =
+                !original_doclink.contains(' ') && original_doclink.len() > 6;
+
+            if looks_like_rerun_doclink {
+                re_log::warn_once!(
+                    "Looks like a Rerun doclink, but failes to parse: {original_doclink} - {err}"
+                );
+            }
+
+            original_doclink
         })
     }
 
-    fn translate_doclink(doclink_tokens: &[&str], target: Target) -> Result<String, &'static str> {
-        let original_doclink: String = doclink_tokens.join("");
+    fn try_translate_doclink(
+        doclink_tokens: &[&str],
+        target: Target,
+    ) -> Result<String, &'static str> {
         let mut tokens = doclink_tokens.iter();
         if tokens.next() != Some(&"[") {
             return Err("Missing opening bracket");
@@ -220,7 +251,7 @@ mod doclink_translation {
                 format!("[`{kind}::{name}`][crate::{kind}::{name}]")
             }
             Target::Python => format!("[`{kind}.{name}`][rerun.{kind}.{name}]"),
-            Target::Docs => {
+            Target::WebDocs => {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 let mame_snake_case = re_case::to_snake_case(name);
                 format!(
@@ -230,7 +261,7 @@ mod doclink_translation {
         })
     }
 
-    fn tokenize(mut input: &str) -> Vec<&str> {
+    fn tokenize(input: &str) -> Vec<&str> {
         tokenize_with(input, &['[', ']', '`', '.'])
     }
 
@@ -310,15 +341,13 @@ mod doclink_translation {
             assert_eq!(
                 translate_doc_line(
                     input,
-                    Target::Docs
+                    Target::WebDocs
                 ),
                 "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
             );
         }
     }
 }
-
-use doclink_translation::*;
 
 #[cfg(test)]
 mod tests {
@@ -328,7 +357,7 @@ mod tests {
     fn test_docs() {
         let docs = Docs::from_lines(
             [
-                r" The first line.",
+                r" Doclink to [views.Spatial2DView].",
                 r" ",
                 r" The second line.",
                 r" ",
@@ -346,9 +375,9 @@ mod tests {
         assert_eq!(docs.only_lines_tagged("cpp"), vec!["Only for C++.",]);
 
         assert_eq!(
-            docs.lines_including_tag("py"),
+            docs.lines_for(Target::Python),
             vec![
-                "The first line.",
+                "Doclink to [`views.Spatial2DView`][rerun.views.Spatial2DView].",
                 "",
                 "The second line.",
                 "",
@@ -359,9 +388,9 @@ mod tests {
         );
 
         assert_eq!(
-            docs.lines_including_tag("cpp"),
+            docs.lines_for(Target::Cpp),
             vec![
-                "The first line.",
+                "Doclink to [`rerun::views::Spatial2DView`].",
                 "",
                 "The second line.",
                 "",
@@ -371,6 +400,9 @@ mod tests {
             ]
         );
 
-        assert_eq!(docs.first_line(), Some("The first line.".to_owned()));
+        assert_eq!(
+            docs.first_line(Target::Rust),
+            Some("Doclink to [`views::Spatial2DView`][crate::views::Spatial2DView].".to_owned())
+        );
     }
 }
