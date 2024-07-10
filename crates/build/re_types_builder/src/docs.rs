@@ -227,7 +227,7 @@ mod doclink_translation {
                     continue;
                 }
 
-                out_tokens.push(translate_doclink_or_die(&doclink_tokens, target));
+                out_tokens.push(translate_doclink(&doclink_tokens, target));
                 continue;
             }
 
@@ -238,7 +238,7 @@ mod doclink_translation {
         out_tokens.into_iter().collect()
     }
 
-    fn translate_doclink_or_die(doclink_tokens: &[&str], target: Target) -> String {
+    fn translate_doclink(doclink_tokens: &[&str], target: Target) -> String {
         try_translate_doclink(doclink_tokens, target).unwrap_or_else(|err| {
             let original_doclink: String = doclink_tokens.join("");
 
