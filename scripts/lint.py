@@ -858,7 +858,6 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         and filepath.endswith("README.md")
         and not filepath.endswith("/examples/python/README.md")
     )
-    in_changelog = filepath.endswith("CHANGELOG.md")
     in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
 
     if in_code_of_conduct:
@@ -882,7 +881,7 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
 
         if not in_code_block:
             # Check the casing on markdown headers
-            if not in_changelog and (m := re.match(r"(\#+ )(.*)", line)):
+            if m := re.match(r"(\#+ )(.*)", line):
                 new_header = fix_header_casing(m.group(2))
                 if new_header != m.group(2):
                     errors.append(
