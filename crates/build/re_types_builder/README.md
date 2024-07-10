@@ -16,3 +16,7 @@ You can generate the code with `just codegen`.
 ### Doclinks
 The `.fbs` files can contain docstring (`///`) which in turn can contain doclinks.
 They are to be written on the form `[archetypes.Image]`.
+
+Only links to types are currently supported.
+
+Link checking is not done by the codegen, but the output is checked implicityly by `cargo doc`, `lychee` etc.

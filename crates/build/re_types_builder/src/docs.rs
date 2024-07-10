@@ -279,6 +279,10 @@ mod doclink_translation {
             return Err("Trailing tokens");
         }
 
+        // NOTE: we don't do any validation that the target exists.
+        // Instead we rely on the documentation tools for the different targets,
+        // e.g. `cargo doc` and our url link checker.
+
         Ok(match target {
             Target::Cpp => format!("`{kind}::{name}`"),
             Target::Rust => {
