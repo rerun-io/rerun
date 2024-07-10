@@ -127,7 +127,7 @@ do not yet support `$origin` relative paths or glob expressions.
 This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].".to_owned(),)
     ];
     for field in &obj.fields {
-        let doc_content = field.docs.doc_lines_for_untagged_and("py");
+        let doc_content = field.docs.lines_including_tag("py");
         if doc_content.is_empty() {
             reporter.error(
                 &field.virtpath,

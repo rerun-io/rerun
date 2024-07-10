@@ -1,3 +1,5 @@
+//! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
+
 use std::{collections::BTreeMap, fmt::Write};
 
 use camino::Utf8PathBuf;
@@ -222,13 +224,13 @@ fn object_page(
 ) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
-    let top_level_docs = object.docs.untagged();
+    let top_level_docs = object.docs.lines_including_tag("md");
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");
     }
 
-    let examples = &object.docs.doc_lines_tagged("example");
+    let examples = &object.docs.only_lines_tagged("example");
     let examples = examples
         .iter()
         .map(|line| ExampleInfo::parse(line))
@@ -654,7 +656,7 @@ fn write_view_property(
 ) {
     putln!(o, "### `{}`", field.name);
 
-    let top_level_docs = field.docs.untagged();
+    let top_level_docs = field.docs.lines_including_tag("md");
 
     if top_level_docs.is_empty() {
         reporter.error(&field.virtpath, &field.fqname, "Undocumented view property");

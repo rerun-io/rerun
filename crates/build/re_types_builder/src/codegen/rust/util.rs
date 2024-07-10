@@ -308,7 +308,7 @@ fn unescape_string_into(input: &str, output: &mut String) {
 // ----------------------------------------------------------------------------
 
 pub fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
-    let mut lines = docs.doc_lines_for_untagged_and("rs");
+    let mut lines = docs.lines_including_tag("rs");
 
     let examples = if !fqname.starts_with("rerun.blueprint.views") {
         collect_snippets_for_api_docs(docs, "rs", true)
