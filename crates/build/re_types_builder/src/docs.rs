@@ -26,7 +26,7 @@ impl Docs {
         for (tag, comment) in &lines {
             assert!(is_known_tag(tag), "Unknown tag: '\\{tag} {comment}'");
 
-            if tag == "" {
+            if tag.is_empty() {
                 find_and_recommend_doclinks(comment);
             }
         }
