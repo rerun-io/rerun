@@ -4,13 +4,13 @@ import itertools
 from typing import Any, Optional, cast
 
 import rerun as rr
-from rerun.components import MaterialBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
+from rerun.components import AlbedoFactorBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
 from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.datatypes import (
     ClassIdArrayLike,
-    Material,
-    MaterialLike,
+    Rgba32,
     Rgba32ArrayLike,
+    Rgba32Like,
     UVec3DArrayLike,
     Vec2DArrayLike,
     Vec3DArrayLike,
@@ -30,16 +30,16 @@ from .common_arrays import (
     vec3ds_expected,
 )
 
-mesh_materials: list[MaterialLike | None] = [
+albedo_factors: list[Rgba32Like | None] = [
     None,
-    Material(albedo_factor=0xAA0000CC),
+    Rgba32(0xAA0000CC),
 ]
 
 
-def mesh_material_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, Material(albedo_factor=0xAA0000CC))
+def albedo_factor_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, Rgba32(0xAA0000CC))
 
-    return MaterialBatch._optional(expected)
+    return AlbedoFactorBatch._optional(expected)
 
 
 def test_mesh3d() -> None:
@@ -55,7 +55,7 @@ def test_mesh3d() -> None:
         vertex_colors_arrays,
         vertex_texcoord_arrays,
         triangle_indices_arrays,
-        mesh_materials,
+        albedo_factors,
         class_ids_arrays,
     )
 
@@ -65,7 +65,7 @@ def test_mesh3d() -> None:
         vertex_colors,
         vertex_texcoords,
         triangle_indices,
-        mesh_material,
+        albedo_factor,
         class_ids,
     ) in all_arrays:
         vertex_positions = vertex_positions if vertex_positions is not None else vertex_positions_arrays[-1]
@@ -76,7 +76,7 @@ def test_mesh3d() -> None:
         vertex_colors = cast(Optional[Rgba32ArrayLike], vertex_colors)
         vertex_texcoords = cast(Optional[Vec2DArrayLike], vertex_texcoords)
         triangle_indices = cast(Optional[UVec3DArrayLike], triangle_indices)
-        mesh_material = cast(Optional[MaterialLike], mesh_material)
+        albedo_factor = cast(Optional[Rgba32Like], albedo_factor)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
 
         print(
@@ -86,7 +86,7 @@ def test_mesh3d() -> None:
             f"    vertex_colors={vertex_colors}\n"
             f"    vertex_texcoords={vertex_texcoords}\n"
             f"    triangle_indices={triangle_indices}\n"
-            f"    mesh_material={mesh_material}\n"
+            f"    albedo_factor={albedo_factor}\n"
             f"    class_ids={class_ids}\n"
             f")"
         )
@@ -96,7 +96,7 @@ def test_mesh3d() -> None:
             vertex_colors=vertex_colors,
             vertex_texcoords=vertex_texcoords,
             triangle_indices=triangle_indices,
-            mesh_material=mesh_material,
+            albedo_factor=albedo_factor,
             class_ids=class_ids,
         )
         print(f"A: {arch}\n")
@@ -106,28 +106,8 @@ def test_mesh3d() -> None:
         assert arch.vertex_colors == colors_expected(vertex_colors)
         assert arch.vertex_texcoords == vec2ds_expected(vertex_texcoords, Texcoord2DBatch)
         assert arch.triangle_indices == uvec3ds_expected(triangle_indices, TriangleIndicesBatch)
-        assert arch.mesh_material == mesh_material_expected(mesh_material)
+        assert arch.albedo_factor == albedo_factor_expected(albedo_factor)
         assert arch.class_ids == class_ids_expected(class_ids)
-
-
-def test_nullable_albedo_factor() -> None:
-    # NOTE: We're just making sure that this doesn't crash… trust me, it used to.
-    assert (
-        len(
-            MaterialBatch([
-                Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
-            ])
-        )
-        == 1
-    )
-    assert (
-        len(
-            MaterialBatch([
-                Material(),
-            ])
-        )
-        == 1
-    )
 
 
 if __name__ == "__main__":

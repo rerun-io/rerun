@@ -7,7 +7,7 @@ use re_renderer::RenderContext;
 use re_types::{
     archetypes::Mesh3D,
     components::{
-        ClassId, Color, Material, Position3D, TensorData, Texcoord2D, TriangleIndices, Vector3D,
+        AlbedoFactor, ClassId, Color, Position3D, TensorData, Texcoord2D, TriangleIndices, Vector3D,
     },
 };
 use re_viewer_context::{
@@ -47,7 +47,7 @@ struct Mesh3DComponentData<'a> {
     vertex_texcoords: &'a [Texcoord2D],
 
     triangle_indices: Option<&'a [TriangleIndices]>,
-    mesh_material: Option<&'a Material>,
+    albedo_factor: Option<&'a AlbedoFactor>,
     albedo_texture: Option<&'a TensorData>,
 
     class_ids: &'a [ClassId],
@@ -106,7 +106,7 @@ impl Mesh3DVisualizer {
                             vertex_colors: (!vertex_colors.is_empty()).then_some(vertex_colors),
                             vertex_texcoords: (!vertex_texcoords.is_empty())
                                 .then_some(vertex_texcoords),
-                            mesh_material: data.mesh_material.cloned(),
+                            albedo_factor: data.albedo_factor.copied(),
                             albedo_texture: data.albedo_texture.cloned(),
                             class_ids: (!data.class_ids.is_empty())
                                 .then(|| data.class_ids.to_owned()),
@@ -194,7 +194,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let vertex_colors = results.get_or_empty_dense(resolver)?;
                 let vertex_texcoords = results.get_or_empty_dense(resolver)?;
                 let triangle_indices = results.get_or_empty_dense(resolver)?;
-                let mesh_materials = results.get_or_empty_dense(resolver)?;
+                let albedo_factors = results.get_or_empty_dense(resolver)?;
                 let albedo_textures = results.get_or_empty_dense(resolver)?;
                 let class_ids = results.get_or_empty_dense(resolver)?;
 
@@ -206,7 +206,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     vertex_colors.range_indexed(),
                     vertex_texcoords.range_indexed(),
                     triangle_indices.range_indexed(),
-                    mesh_materials.range_indexed(),
+                    albedo_factors.range_indexed(),
                     albedo_textures.range_indexed(),
                     class_ids.range_indexed(),
                 )
@@ -218,7 +218,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                         vertex_colors,
                         vertex_texcoords,
                         triangle_indices,
-                        mesh_material,
+                        albedo_factor,
                         albedo_texture,
                         class_ids,
                     )| {
@@ -230,7 +230,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                             vertex_colors: vertex_colors.unwrap_or_default(),
                             vertex_texcoords: vertex_texcoords.unwrap_or_default(),
                             triangle_indices,
-                            mesh_material: mesh_material.and_then(|v| v.first()),
+                            albedo_factor: albedo_factor.and_then(|v| v.first()),
                             albedo_texture: albedo_texture.and_then(|v| v.first()),
                             class_ids: class_ids.unwrap_or_default(),
                         }

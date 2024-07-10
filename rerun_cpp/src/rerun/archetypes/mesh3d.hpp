@@ -5,9 +5,9 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/material.hpp"
 #include "../components/position3d.hpp"
 #include "../components/tensor_data.hpp"
 #include "../components/texcoord2d.hpp"
@@ -77,8 +77,8 @@ namespace rerun::archetypes {
         /// An optional uv texture coordinate for each vertex.
         std::optional<Collection<rerun::components::Texcoord2D>> vertex_texcoords;
 
-        /// Optional material properties for the mesh as a whole.
-        std::optional<rerun::components::Material> mesh_material;
+        /// A color multiplier applied to the whole mesh.
+        std::optional<rerun::components::AlbedoFactor> albedo_factor;
 
         /// Optional albedo texture.
         ///
@@ -136,9 +136,9 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional material properties for the mesh as a whole.
-        Mesh3D with_mesh_material(rerun::components::Material _mesh_material) && {
-            mesh_material = std::move(_mesh_material);
+        /// A color multiplier applied to the whole mesh.
+        Mesh3D with_albedo_factor(rerun::components::AlbedoFactor _albedo_factor) && {
+            albedo_factor = std::move(_albedo_factor);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -68,8 +68,8 @@ pub struct Mesh3D {
     /// An optional uv texture coordinate for each vertex.
     pub vertex_texcoords: Option<Vec<crate::components::Texcoord2D>>,
 
-    /// Optional material properties for the mesh as a whole.
-    pub mesh_material: Option<crate::components::Material>,
+    /// A color multiplier applied to the whole mesh.
+    pub albedo_factor: Option<crate::components::AlbedoFactor>,
 
     /// Optional albedo texture.
     ///
@@ -92,7 +92,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             + self.vertex_normals.heap_size_bytes()
             + self.vertex_colors.heap_size_bytes()
             + self.vertex_texcoords.heap_size_bytes()
-            + self.mesh_material.heap_size_bytes()
+            + self.albedo_factor.heap_size_bytes()
             + self.albedo_texture.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
     }
@@ -104,7 +104,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             && <Option<Vec<crate::components::Vector3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
-            && <Option<crate::components::Material>>::is_pod()
+            && <Option<crate::components::AlbedoFactor>>::is_pod()
             && <Option<crate::components::TensorData>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
@@ -127,7 +127,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         [
             "rerun.components.Color".into(),
             "rerun.components.Texcoord2D".into(),
-            "rerun.components.Material".into(),
+            "rerun.components.AlbedoFactor".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.ClassId".into(),
         ]
@@ -142,7 +142,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Mesh3DIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.Texcoord2D".into(),
-            "rerun.components.Material".into(),
+            "rerun.components.AlbedoFactor".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.ClassId".into(),
         ]
@@ -267,9 +267,10 @@ impl ::re_types_core::Archetype for Mesh3D {
             } else {
                 None
             };
-        let mesh_material = if let Some(array) = arrays_by_name.get("rerun.components.Material") {
-            <crate::components::Material>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Mesh3D#mesh_material")?
+        let albedo_factor = if let Some(array) = arrays_by_name.get("rerun.components.AlbedoFactor")
+        {
+            <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Mesh3D#albedo_factor")?
                 .into_iter()
                 .next()
                 .flatten()
@@ -304,7 +305,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             vertex_normals,
             vertex_colors,
             vertex_texcoords,
-            mesh_material,
+            albedo_factor,
             albedo_texture,
             class_ids,
         })
@@ -330,7 +331,7 @@ impl ::re_types_core::AsComponents for Mesh3D {
             self.vertex_texcoords
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.mesh_material
+            self.albedo_factor
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.albedo_texture
@@ -358,7 +359,7 @@ impl Mesh3D {
             vertex_normals: None,
             vertex_colors: None,
             vertex_texcoords: None,
-            mesh_material: None,
+            albedo_factor: None,
             albedo_texture: None,
             class_ids: None,
         }
@@ -404,13 +405,13 @@ impl Mesh3D {
         self
     }
 
-    /// Optional material properties for the mesh as a whole.
+    /// A color multiplier applied to the whole mesh.
     #[inline]
-    pub fn with_mesh_material(
+    pub fn with_albedo_factor(
         mut self,
-        mesh_material: impl Into<crate::components::Material>,
+        albedo_factor: impl Into<crate::components::AlbedoFactor>,
     ) -> Self {
-        self.mesh_material = Some(mesh_material.into());
+        self.albedo_factor = Some(albedo_factor.into());
         self
     }
 

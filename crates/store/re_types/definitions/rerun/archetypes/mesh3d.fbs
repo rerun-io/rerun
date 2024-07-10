@@ -42,8 +42,8 @@ table Mesh3D (
   /// An optional uv texture coordinate for each vertex.
   vertex_texcoords: [rerun.components.Texcoord2D] ("attr.rerun.component_optional", nullable, order: 3200);
 
-  /// Optional material properties for the mesh as a whole.
-  mesh_material: rerun.components.Material ("attr.rerun.component_optional", nullable, order: 3300);
+  /// A color multiplier applied to the whole mesh.
+  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3300);
 
   /// Optional albedo texture.
   ///

@@ -6,7 +6,6 @@
 mod color;
 mod datatype_editors;
 mod marker_shape;
-mod material;
 mod radius;
 mod range1d;
 mod response_utils;
@@ -19,8 +18,9 @@ use datatype_editors::{
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
-        AggregationPolicy, AxisLength, Colormap, DepthMeter, DrawOrder, FillRatio, GammaCorrection,
-        ImagePlaneDistance, MagnificationFilter, MarkerSize, Name, Opacity, StrokeWidth, Text,
+        AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
+        FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
+        Opacity, StrokeWidth, Text,
     },
     Loggable as _,
 };
@@ -32,12 +32,12 @@ use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 /// ⚠️ This is supposed to be the only export of this crate.
 /// This crate is meant to be a leaf crate in the viewer ecosystem and should only be used by the `re_viewer` crate itself.
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
-    registry.add_singleline_edit_or_view(color::edit_color_ui);
+    registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
 
     registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);
-    registry.add_singleline_edit_or_view(material::edit_material_ui);
+    registry.add_singleline_edit_or_view::<AlbedoFactor>(color::edit_rgba32);
     registry.add_singleline_edit_or_view(range1d::edit_range1d);
 
     registry.add_singleline_edit_or_view::<AxisLength>(edit_f32_zero_to_max);

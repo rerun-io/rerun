@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A color multiplier, usually applied to a whole entity, e.g. a mesh.
+table AlbedoFactor (
+  "attr.docs.unreleased",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  albedo_factor: rerun.datatypes.Rgba32 (order: 100);
+}
+

@@ -11,7 +11,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 **Recommended**: [`TriangleIndices`](../components/triangle_indices.md), [`Vector3D`](../components/vector3d.md)
 
-**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`Material`](../components/material.md), [`TensorData`](../components/tensor_data.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`AlbedoFactor`](../components/albedo_factor.md), [`TensorData`](../components/tensor_data.md), [`ClassId`](../components/class_id.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

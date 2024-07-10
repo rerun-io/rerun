@@ -102,7 +102,7 @@ pub fn load_obj_from_buffer(
                     label: "default material".into(),
                     index_range: 0..mesh.indices.len() as u32,
                     albedo: texture.clone(),
-                    albedo_multiplier: crate::Rgba::WHITE,
+                    albedo_factor: crate::Rgba::WHITE,
                 }],
             };
 

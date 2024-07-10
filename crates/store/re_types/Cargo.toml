@@ -22,7 +22,7 @@ features = ["all"]
 
 
 [features]
-default = []
+default = ["ecolor"]
 
 ## All features except `testing`.
 all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde"]

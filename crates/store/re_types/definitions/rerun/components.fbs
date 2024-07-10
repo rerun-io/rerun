@@ -1,4 +1,5 @@
 include "./components/aggregation_policy.fbs";
+include "./components/albedo_factor.fbs";
 include "./components/annotation_context.fbs";
 include "./components/axis_length.fbs";
 include "./components/blob.fbs";
@@ -20,7 +21,6 @@ include "./components/line_strip3d.fbs";
 include "./components/magnification_filter.fbs";
 include "./components/marker_shape.fbs";
 include "./components/marker_size.fbs";
-include "./components/material.fbs";
 include "./components/media_type.fbs";
 include "./components/name.fbs";
 include "./components/opacity.fbs";
