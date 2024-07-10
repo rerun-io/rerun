@@ -97,8 +97,7 @@ impl From<[[f32; 3]; 3]> for Mat3x3 {
 impl From<Mat3x3> for glam::Mat3 {
     #[inline]
     fn from(v: Mat3x3) -> Self {
-        let [x, y, z]: [Vec3D; 3] = v.into();
-        Self::from_cols(x.into(), y.into(), z.into())
+        Self::from_cols_slice(&v.0)
     }
 }
 
