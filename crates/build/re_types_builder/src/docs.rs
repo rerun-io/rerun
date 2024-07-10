@@ -153,7 +153,13 @@ fn find_and_recommend_doclinks(full_comment: &str) {
 
             let looks_like_type_name = content.len() > 5
                 && content.chars().all(|c| c.is_ascii_alphanumeric())
-                && content.chars().next().unwrap().is_ascii_uppercase();
+                && content.chars().next().unwrap().is_ascii_uppercase()
+
+                // In some blueprint code we refer to stuff in Rerun.
+                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "SpaceViewId" | "SpaceView")
+
+                // TODO(emilk): allow doclinks to enum variants.
+                && !matches!(content, "Horizontal" | "Vertical" | "SolidColor");
 
             if looks_like_type_name {
                 re_log::warn!("`{content}` can be written as a doclink, e.g. [archetypes.{content}] in comment: /// {full_comment}");
@@ -258,7 +264,10 @@ mod doclink_translation {
         if tokens.next() != Some(&"[") {
             return Err("Missing opening bracket");
         }
-        let kind = tokens.next().ok_or("Missing kind")?;
+        let kind = *tokens.next().ok_or("Missing kind")?;
+        if kind == "`" {
+            return Err("Do not use backticks inside doclinks");
+        }
         if tokens.next() != Some(&".") {
             return Err("Missing dot");
         }
