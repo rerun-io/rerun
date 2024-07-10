@@ -733,6 +733,29 @@ def split_words(input_string: str) -> list[str]:
     return result
 
 
+def is_emoji(s: str) -> bool:
+    """Returns true if the string contains an emoji."""
+    # Written by Copilot
+    return any(
+        0x1F600 <= ord(c) <= 0x1F64F  # Emoticons
+        or 0x1F300 <= ord(c) <= 0x1F5FF  # Miscellaneous Symbols and Pictographs
+        or 0x1F680 <= ord(c) <= 0x1F6FF  # Transport and Map Symbols
+        or 0x2600 <= ord(c) <= 0x26FF  # Miscellaneous Symbols
+        or 0x2700 <= ord(c) <= 0x27BF  # Dingbats
+        or 0xFE00 <= ord(c) <= 0xFE0F  # Variation Selectors
+        or 0x1F900 <= ord(c) <= 0x1F9FF  # Supplemental Symbols and Pictographs
+        or 0x1FA70 <= ord(c) <= 0x1FAFF  # Symbols and Pictographs Extended-A
+        for c in s
+    )
+
+
+def test_is_emoji():
+    assert not is_emoji("A")
+    assert not is_emoji("Ö")
+    assert is_emoji("😀")
+    assert is_emoji("⚠️")
+
+
 def test_split_words():
     test_cases = [
         ("hello world", ["hello", " ", "world"]),
@@ -753,11 +776,16 @@ def fix_header_casing(s: str) -> str:
     new_words: list[str] = []
     last_punctuation = None
     inline_code_block = False
+    is_first_word = True
 
     words = s.strip().split(" ")
 
     for i, word in enumerate(words):
         if word == "":
+            continue
+
+        if is_emoji(word):
+            new_words.append(word)
             continue
 
         if word.startswith("`"):
@@ -783,13 +811,13 @@ def fix_header_casing(s: str) -> str:
                 pass  # acroym, PascalCase, code, …
             elif word.lower() in allow_capitalized_as_lower:
                 pass
-            elif i == 0:
-                # First word:
+            elif is_first_word:
                 word = word.capitalize()
             else:
                 word = word.lower()
 
         new_words.append((word + last_punctuation) if last_punctuation else word)
+        is_first_word = False
 
     return " ".join(new_words)
 
@@ -1095,6 +1123,7 @@ def main() -> None:
     test_lint_line()
     test_lint_vertical_spacing()
     test_lint_workspace_deps()
+    test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
