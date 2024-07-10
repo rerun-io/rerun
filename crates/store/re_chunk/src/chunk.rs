@@ -236,6 +236,7 @@ impl Chunk {
             })
             .sum()
     }
+
     /// The number of events in this chunk for the specified component.
     ///
     /// I.e. how many _component batches_ ("cells") were logged in total for this component?
