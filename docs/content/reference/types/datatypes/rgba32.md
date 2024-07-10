@@ -20,6 +20,6 @@ byte is `R` and the least significant byte is `A`.
 
 ## Used by
 
-* [`AlbedoFactor`](../components/albedo_factor.md)
+* [`AlbedoFactor`](../components/albedo_factor.md?speculative-link)
 * [`AnnotationInfo`](../datatypes/annotation_info.md)
 * [`Color`](../components/color.md)
