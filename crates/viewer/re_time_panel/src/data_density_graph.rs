@@ -412,25 +412,6 @@ pub fn data_density_graph_ui2(
                 let center_x = (max_x + min_x) / 2.0;
                 let distance_sq = pos2(center_x, center_y).distance_sq(pointer_pos);
 
-                /*
-                let is_hovered = distance_sq < interact_radius_sq;
-                let color = if is_hovered {
-                    egui::Color32::LIGHT_YELLOW
-                } else {
-                    egui::Color32::YELLOW
-                };
-                ui.ctx().debug_painter().debug_rect(
-                    egui::Rect::from_center_size(
-                        egui::pos2(center_x, center_y),
-                        egui::vec2(4.0, 4.0),
-                    ),
-                    color,
-                    "",
-                );
-
-                is_hovered
-                */
-
                 distance_sq < interact_radius_sq
             } else {
                 // Are we within time range rect?
@@ -438,20 +419,6 @@ pub fn data_density_graph_ui2(
                     min: egui::pos2(min_x, row_rect.min.y),
                     max: egui::pos2(max_x, row_rect.max.y),
                 };
-
-                /*
-                let is_hovered = time_range_rect.contains(pointer_pos);
-                let color = if is_hovered {
-                    egui::Color32::LIGHT_YELLOW
-                } else {
-                    egui::Color32::YELLOW
-                };
-                ui.ctx()
-                    .debug_painter()
-                    .debug_rect(time_range_rect, color, "");
-
-                is_hovered
-                */
 
                 time_range_rect.contains(pointer_pos)
             };
@@ -488,7 +455,6 @@ pub fn data_density_graph_ui2(
             chunk_ranges.push((chunk_timeline.time_range(), events));
         }
     } else {
-        // deduplicate chunks using a set of chunk ids:
         let mut seen = HashSet::new();
         if let Some(subtree) = db.tree().subtree(&item.entity_path) {
             subtree.visit_children_recursively(&mut |entity_path, _| {
@@ -522,18 +488,6 @@ pub fn data_density_graph_ui2(
     for (time_range, num_events) in chunk_ranges {
         add_data_point(time_range, num_events);
     }
-
-    /* if ui.rect_contains_pointer(row_rect) {
-        ui.ctx().debug_painter().debug_text(
-            row_rect.left_top(),
-            egui::Align2::LEFT_TOP,
-            egui::Color32::GREEN,
-            format!(
-                "{} {:?} num_chunks={num_chunks}",
-                item.entity_path, item.component_name
-            ),
-        );
-    } */
 
     let hovered_time_range = ResolvedTimeRange::EMPTY;
     let hovered_x_range = (time_ranges_ui
