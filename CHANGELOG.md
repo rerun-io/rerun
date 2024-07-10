@@ -2,6 +2,9 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+# ⚠️ Breaking changes
+* `mesh_material: Material` has been renamed to `albedo_factro: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
+
 
 ## [0.17.0](https://github.com/rerun-io/rerun/compare/0.16.1...0.17.0) - More Blueprint features and better notebooks - 2024-07-08
 
