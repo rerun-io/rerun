@@ -271,7 +271,7 @@ mod doclink_translation {
         }
 
         Ok(match target {
-            Target::Cpp => format!("[`rerun::{kind}::{name}`]"),
+            Target::Cpp => format!("`{kind}::{name}`"),
             Target::Rust => {
                 // https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html
                 format!("[`{kind}::{name}`][crate::{kind}::{name}]")
@@ -345,7 +345,7 @@ mod doclink_translation {
                     input,
                     Target::Cpp
                 ),
-                "A vector `[1, 2, 3]` and a doclink [`rerun::views::Spatial2DView`] and a [url](www.rerun.io)."
+                "A vector `[1, 2, 3]` and a doclink `views::Spatial2DView` and a [url](www.rerun.io)."
             );
 
             assert_eq!(
@@ -416,7 +416,7 @@ mod tests {
         assert_eq!(
             docs.lines_for(Target::Cpp),
             vec![
-                "Doclink to [`rerun::views::Spatial2DView`].",
+                "Doclink to `views::Spatial2DView`.",
                 "",
                 "The second line.",
                 "",
