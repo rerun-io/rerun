@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The class identifier of view, e.g. "2D", "TextLog", ….
+/// **Component**: The class identifier of view, e.g. `"2D"`, `"TextLog"`, ….
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct SpaceViewClass(pub crate::datatypes::Utf8);

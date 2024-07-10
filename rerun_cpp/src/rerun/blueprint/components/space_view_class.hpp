@@ -12,7 +12,7 @@
 #include <utility>
 
 namespace rerun::blueprint::components {
-    /// **Component**: The class identifier of view, e.g. "2D", "TextLog", ….
+    /// **Component**: The class identifier of view, e.g. `"2D"`, `"TextLog"`, ….
     struct SpaceViewClass {
         rerun::datatypes::Utf8 value;
 

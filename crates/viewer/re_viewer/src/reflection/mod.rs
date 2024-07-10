@@ -149,7 +149,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The class identifier of view, e.g. \"2D\", \"TextLog\", ….",
+                docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
                 placeholder: Some(SpaceViewClass::default().to_arrow()?),
             },
         ),
