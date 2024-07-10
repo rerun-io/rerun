@@ -167,12 +167,12 @@ jobs:
       # 😭
       # - name: Build and run C++ tests with clang++
       #   run: |
-      #     pixi run cpp-clean
-      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-build-all
-      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-test
+      #     pixi run -e cpp cpp-clean
+      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run -e cpp cpp-build-all
+      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run -e cpp cpp-test
 
       - name: Build and run C++ tests with g++
         run: |
-          pixi run cpp-clean
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-build-all
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-test
+          pixi run -e cpp cpp-clean
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run -e cpp cpp-build-all
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run -e cpp cpp-test

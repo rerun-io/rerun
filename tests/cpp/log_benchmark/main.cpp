@@ -15,16 +15,16 @@
 //
 // Run all benchmarks using:
 // ```
-// pixi run cpp-log-benchmark
+// pixi run -e cpp cpp-log-benchmark
 // ```
 // Or, run a single benchmark using:
 // ```
-// pixi run cpp-log-benchmark points3d_large_batch
+// pixi run -e cpp cpp-log-benchmark points3d_large_batch
 // ```
 //
 // For better whole-executable timing capture you can also first build the executable and then run:
 // ```
-// pixi run cpp-build-log-benchmark
+// pixi run -e cpp cpp-build-log-benchmark
 // ./build/release/tests/cpp/log_benchmark/log_benchmark
 // ```
 //
