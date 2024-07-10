@@ -206,7 +206,7 @@ jobs:
           pixi-version: v0.25.0
 
       - name: Doxygen C++ docs
-        run: pixi run cpp-docs
+        run: pixi run -e cpp cpp-docs
 
       - name: Set up git author
         run: |
