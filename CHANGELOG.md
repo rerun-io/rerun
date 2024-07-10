@@ -2,6 +2,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+
 ## [0.17.0](https://github.com/rerun-io/rerun/compare/0.16.1...0.17.0) - More Blueprint features and better notebooks - 2024-07-08
 
 https://github.com/rerun-io/rerun/assets/49431240/1c75b816-7e3e-4882-9ee6-ba124c00d73c
@@ -2126,7 +2127,6 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Smooth out scroll wheel input for camera zooming [#1920](https://github.com/rerun-io/rerun/pull/1920)
 
 #### 🤷 Other Viewer improvements
-#### 🤷 Other Viewer improvements
 - Change `EntityPathHash` to be 64 bit [#1723](https://github.com/rerun-io/rerun/pull/1723)
 - Central `GpuReadback` handling for re_viewer, experimental space view screenshots [#1717](https://github.com/rerun-io/rerun/pull/1717)
 - Readback depth from GPU picking [#1752](https://github.com/rerun-io/rerun/pull/1752)
@@ -2300,7 +2300,6 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Turn on depth cloud backprojection by default [#1710](https://github.com/rerun-io/rerun/pull/1710)
 - Add radius boost for depth clouds on outline [#1713](https://github.com/rerun-io/rerun/pull/1713)
 
-#### 🤷 Other Viewer improvements
 #### 🤷 Other Viewer improvements
 - Fix web feature name in error messages [#1521](https://github.com/rerun-io/rerun/pull/1521)
 - Use outlines for mesh selections instead of highlight colors [#1540](https://github.com/rerun-io/rerun/pull/1540)
