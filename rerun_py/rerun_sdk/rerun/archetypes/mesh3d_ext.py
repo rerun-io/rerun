@@ -18,7 +18,7 @@ class Mesh3DExt:
         vertex_colors: datatypes.Rgba32ArrayLike | None = None,
         vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
         albedo_texture: datatypes.TensorDataLike | None = None,
-        mesh_material: datatypes.MaterialLike | None = None,
+        albedo_factor: datatypes.Rgba32Like | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
     ):
         """
@@ -39,8 +39,8 @@ class Mesh3DExt:
             If specified, this must have as many elements as `vertex_positions`.
         vertex_colors:
             An optional color for each vertex.
-        mesh_material:
-            Optional material properties for the mesh as a whole.
+        albedo_factor:
+            Optional color multiplier for the whole mesh
         albedo_texture:
             Optional albedo texture. Used with `vertex_texcoords` on `Mesh3D`.
             Currently supports only sRGB(A) textures, ignoring alpha.
@@ -58,7 +58,7 @@ class Mesh3DExt:
                 vertex_colors=vertex_colors,
                 vertex_texcoords=vertex_texcoords,
                 albedo_texture=albedo_texture,
-                mesh_material=mesh_material,
+                albedo_factor=albedo_factor,
                 class_ids=class_ids,
             )
             return

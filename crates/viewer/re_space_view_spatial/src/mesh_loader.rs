@@ -100,7 +100,7 @@ impl LoadedMesh {
             vertex_colors,
             vertex_texcoords,
             triangle_indices,
-            mesh_material,
+            albedo_factor,
             class_ids: _,
             albedo_texture,
         } = mesh3d;
@@ -147,8 +147,6 @@ impl LoadedMesh {
             vec![glam::Vec2::ZERO; num_positions]
         };
 
-        let albedo_factor = mesh_material.as_ref().and_then(|mat| mat.albedo_factor);
-
         let bbox = {
             re_tracing::profile_scope!("bbox");
             macaw::BoundingBox::from_points(vertex_positions.iter().copied())
@@ -174,7 +172,7 @@ impl LoadedMesh {
                 label: name.clone().into(),
                 index_range: 0..num_indices as _,
                 albedo,
-                albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.into()),
+                albedo_multiplier: albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.0.into()),
             }],
         };
 

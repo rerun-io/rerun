@@ -41,8 +41,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.mesh_material.has_value()) {
-            auto result = DataCell::from_loggable(archetype.mesh_material.value());
+        if (archetype.albedo_factor.has_value()) {
+            auto result = DataCell::from_loggable(archetype.albedo_factor.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "components/aggregation_policy.hpp"
+#include "components/albedo_factor.hpp"
 #include "components/annotation_context.hpp"
 #include "components/axis_length.hpp"
 #include "components/blob.hpp"
@@ -24,7 +25,6 @@
 #include "components/magnification_filter.hpp"
 #include "components/marker_shape.hpp"
 #include "components/marker_size.hpp"
-#include "components/material.hpp"
 #include "components/media_type.hpp"
 #include "components/name.hpp"
 #include "components/opacity.hpp"

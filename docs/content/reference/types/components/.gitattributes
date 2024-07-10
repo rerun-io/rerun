@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 aggregation_policy.md linguist-generated=true
+albedo_factor.md linguist-generated=true
 annotation_context.md linguist-generated=true
 axis_length.md linguist-generated=true
 blob.md linguist-generated=true
@@ -23,7 +24,6 @@ line_strip3d.md linguist-generated=true
 magnification_filter.md linguist-generated=true
 marker_shape.md linguist-generated=true
 marker_size.md linguist-generated=true
-material.md linguist-generated=true
 media_type.md linguist-generated=true
 name.md linguist-generated=true
 opacity.md linguist-generated=true

@@ -29,12 +29,12 @@ namespace rerun {
     using namespace archetypes;
 
     // Also import any component or datatype that has a unique name:
+    using components::AlbedoFactor;
     using components::Color;
     using components::HalfSize2D;
     using components::HalfSize3D;
     using components::LineStrip2D;
     using components::LineStrip3D;
-    using components::Material;
     using components::MediaType;
     using components::OutOfTreeTransform3D;
     using components::Position2D;

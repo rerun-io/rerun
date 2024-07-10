@@ -9,6 +9,7 @@ from .aggregation_policy import (
     AggregationPolicyLike,
     AggregationPolicyType,
 )
+from .albedo_factor import AlbedoFactor, AlbedoFactorBatch, AlbedoFactorType
 from .annotation_context import (
     AnnotationContext,
     AnnotationContextArrayLike,
@@ -54,7 +55,6 @@ from .magnification_filter import (
 )
 from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike, MarkerShapeType
 from .marker_size import MarkerSize, MarkerSizeArrayLike, MarkerSizeBatch, MarkerSizeLike, MarkerSizeType
-from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .name import Name, NameBatch, NameType
 from .opacity import Opacity, OpacityBatch, OpacityType
@@ -97,6 +97,9 @@ __all__ = [
     "AggregationPolicyBatch",
     "AggregationPolicyLike",
     "AggregationPolicyType",
+    "AlbedoFactor",
+    "AlbedoFactorBatch",
+    "AlbedoFactorType",
     "AnnotationContext",
     "AnnotationContextArrayLike",
     "AnnotationContextBatch",
@@ -184,9 +187,6 @@ __all__ = [
     "MarkerSizeBatch",
     "MarkerSizeLike",
     "MarkerSizeType",
-    "Material",
-    "MaterialBatch",
-    "MaterialType",
     "MediaType",
     "MediaTypeBatch",
     "MediaTypeType",
