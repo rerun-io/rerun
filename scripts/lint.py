@@ -793,8 +793,6 @@ def fix_header_casing(s: str) -> str:
 
         if word.startswith("`"):
             inline_code_block = True
-        if word.endswith("`"):
-            inline_code_block = False
 
         if last_punctuation:
             word = word.capitalize()
@@ -818,6 +816,9 @@ def fix_header_casing(s: str) -> str:
                 word = word.capitalize()
             else:
                 word = word.lower()
+
+        if word.endswith("`"):
+            inline_code_block = False
 
         new_words.append((word + last_punctuation) if last_punctuation else word)
         is_first_word = False

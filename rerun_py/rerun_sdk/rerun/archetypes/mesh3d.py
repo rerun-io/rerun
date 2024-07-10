@@ -63,7 +63,7 @@ class Mesh3D(Mesh3DExt, Archetype):
             vertex_normals=None,  # type: ignore[arg-type]
             vertex_colors=None,  # type: ignore[arg-type]
             vertex_texcoords=None,  # type: ignore[arg-type]
-            mesh_material=None,  # type: ignore[arg-type]
+            albedo_factor=None,  # type: ignore[arg-type]
             albedo_texture=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
         )
@@ -121,12 +121,12 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    mesh_material: components.MaterialBatch | None = field(
+    albedo_factor: components.AlbedoFactorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MaterialBatch._optional,  # type: ignore[misc]
+        converter=components.AlbedoFactorBatch._optional,  # type: ignore[misc]
     )
-    # Optional material properties for the mesh as a whole.
+    # A color multiplier applied to the whole mesh.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -76,6 +76,7 @@ class TestCase:
 
 ALL_COMPONENTS: dict[str, TestCase] = {
     "AggregationPolicyBatch": TestCase(rr.components.AggregationPolicy.Average),
+    "AlbedoFactor": TestCase(rr.components.AlbedoFactor((255, 255, 0, 255))),
     "AnnotationContextBatch": TestCase([
         rr.datatypes.ClassDescriptionMapElem(
             class_id=1,
@@ -119,7 +120,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
         batch=[rr.components.MarkerShape.Plus, rr.components.MarkerShape.Cross, rr.components.MarkerShape.Circle]
     ),
     "MarkerSizeBatch": TestCase(batch=[5.0, 1.0, 2.0]),
-    "MaterialBatch": TestCase(rr.datatypes.Material((255, 255, 0, 255))),
     "MediaTypeBatch": TestCase("application/jpg"),
     "NameBatch": TestCase(batch=["Hello World", "Foo Bar", "Baz Qux"]),
     "OutOfTreeTransform3DBatch": TestCase(

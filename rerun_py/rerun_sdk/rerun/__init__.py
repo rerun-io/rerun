@@ -72,7 +72,7 @@ from .blueprint.api import (
     BlueprintLike as BlueprintLike,
 )
 from .components import (
-    Material as Material,
+    AlbedoFactor as AlbedoFactor,
     MediaType as MediaType,
     OutOfTreeTransform3D as OutOfTreeTransform3D,
     OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,

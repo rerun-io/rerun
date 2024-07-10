@@ -164,7 +164,7 @@ pub struct Material {
     pub albedo: GpuTexture2D,
 
     /// Factor applied to the decoded albedo color.
-    pub albedo_multiplier: Rgba,
+    pub albedo_factor: Rgba,
 }
 
 #[derive(Clone)]
@@ -202,7 +202,7 @@ pub(crate) mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct MaterialUniformBuffer {
-        pub albedo_multiplier: wgpu_buffer_types::Vec4,
+        pub albedo_factor: wgpu_buffer_types::Vec4,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 }
@@ -298,7 +298,7 @@ impl GpuMesh {
                 data.materials
                     .iter()
                     .map(|material| gpu_data::MaterialUniformBuffer {
-                        albedo_multiplier: material.albedo_multiplier.into(),
+                        albedo_factor: material.albedo_factor.into(),
                         end_padding: Default::default(),
                     }),
             );

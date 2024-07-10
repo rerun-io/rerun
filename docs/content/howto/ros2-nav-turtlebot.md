@@ -457,7 +457,7 @@ if node_data:
                 vertex_positions=mesh.vertices,
                 triangle_indices=mesh.faces,
                 vertex_normals=mesh.vertex_normals,
-                mesh_material=rr.Material(albedo_factor=albedo_factor),
+                albedo_factor=albedo_factor,
             ),
             timeless=timeless,
         )

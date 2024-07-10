@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::Mesh3D,
     components::{ClassId, Position3D, Texcoord2D, TriangleIndices, Vector3D},
-    datatypes::{
-        Material, Rgba32, TensorBuffer, TensorData, TensorDimension, UVec3D, Vec2D, Vec3D,
-    },
+    datatypes::{Rgba32, TensorBuffer, TensorData, TensorDimension, UVec3D, Vec2D, Vec3D},
     Archetype as _, AsComponents as _,
 };
 
@@ -47,12 +45,7 @@ fn roundtrip() {
             Texcoord2D(Vec2D([0.0, 1.0])), //
             Texcoord2D(Vec2D([2.0, 3.0])), //
         ]),
-        mesh_material: Some(
-            Material {
-                albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33)),
-            }
-            .into(),
-        ),
+        albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33).into()),
         albedo_texture: Some(tensor_data.clone()),
         class_ids: Some(vec![
             ClassId::from(126), //
@@ -65,7 +58,7 @@ fn roundtrip() {
         .with_vertex_normals([[4.0, 5.0, 6.0], [40.0, 50.0, 60.0]])
         .with_vertex_colors([0xAA0000CC, 0x00BB00DD])
         .with_vertex_texcoords([[0.0, 1.0], [2.0, 3.0]])
-        .with_mesh_material(Material::from_albedo_factor(0xEE112233))
+        .with_albedo_factor(0xEE112233)
         .with_class_ids([126, 127])
         .with_albedo_texture(tensor_data);
     similar_asserts::assert_eq!(expected, arch);

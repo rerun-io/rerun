@@ -224,6 +224,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AlbedoFactor as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A color multiplier, usually applied to a whole entity, e.g. a mesh.",
+                placeholder: Some(AlbedoFactor::default().to_arrow()?),
+            },
+        ),
+        (
             <AnnotationContext as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The `AnnotationContext` provides additional information on how to display entities.\n\nEntities can use `ClassId`s and `KeypointId`s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\n`AnnotationContext`. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.",
@@ -368,13 +375,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Radius of a marker of a point in e.g. a 2D plot, measured in UI points.",
                 placeholder: Some(MarkerSize::default().to_arrow()?),
-            },
-        ),
-        (
-            <Material as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Material properties of a mesh, e.g. its color multiplier.",
-                placeholder: Some(Material::default().to_arrow()?),
             },
         ),
         (
