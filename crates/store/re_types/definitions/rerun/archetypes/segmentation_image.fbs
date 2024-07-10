@@ -6,10 +6,10 @@ include "rerun/components.fbs";
 namespace rerun.archetypes;
 
 
-/// An image made up of integer class-ids.
+/// An image made up of integer [components.ClassId]s.
 ///
 /// The shape of the [component.TensorData] must be mappable to an `HxW` tensor.
-/// Each pixel corresponds to a class-id that will be mapped to a color based on annotation context.
+/// Each pixel corresponds to a [components.ClassId] that will be mapped to a color based on annotation context.
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest
 /// integer value.
