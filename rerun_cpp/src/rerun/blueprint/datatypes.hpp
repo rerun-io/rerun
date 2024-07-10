@@ -3,3 +3,4 @@
 #pragma once
 
 #include "blueprint/datatypes/tensor_dimension_index_slider.hpp"
+#include "blueprint/datatypes/utf8list.hpp"

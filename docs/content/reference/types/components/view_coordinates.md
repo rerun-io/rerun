@@ -22,7 +22,7 @@ The following constants are used to represent the different directions:
 
 ## Fields
 
-* coordinates: 3x `u8`
+* coordinates: [`ViewCoordinates`](../datatypes/view_coordinates.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ViewCoordinates.html)

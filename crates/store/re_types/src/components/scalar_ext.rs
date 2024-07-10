@@ -1,3 +1,5 @@
+use re_types_core::datatypes::Float64;
+
 use super::Scalar;
 
 impl std::fmt::Display for Scalar {
@@ -9,6 +11,6 @@ impl std::fmt::Display for Scalar {
 impl Default for Scalar {
     #[inline]
     fn default() -> Self {
-        Self(0.0)
+        Self(Float64(0.0))
     }
 }

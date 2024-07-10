@@ -546,7 +546,7 @@ impl BlueprintTree {
                             .save_recursive_override_or_clear_if_redundant(
                                 ctx,
                                 &query_result.tree,
-                                &Visible(visible_after),
+                                &Visible::from(visible_after),
                             );
                     }
                 }

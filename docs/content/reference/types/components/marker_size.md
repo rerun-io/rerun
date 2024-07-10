@@ -7,7 +7,7 @@ Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 
 ## Fields
 
-* value: `f32`
+* value: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `MarkerSize`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MarkerSize.html)

@@ -39,8 +39,9 @@ struct ViewCoordinates (
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
-  "attr.rust.repr": "transparent"
+  "attr.rust.repr": "transparent",
+  "attr.cpp.no_field_ctors"
 ) {
   /// The directions of the [x, y, z] axes.
-  coordinates: [ubyte: 3] (order: 100);
+  coordinates: rerun.datatypes.ViewCoordinates (order: 100);
 }

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib
 from typing import TYPE_CHECKING, Any
 
-from .. import components, datatypes
+from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class Asset3DExt:
         self: Any,
         *,
         path: str | pathlib.Path | None = None,
-        contents: components.BlobLike | None = None,
+        contents: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
         transform: datatypes.Transform3DLike | None = None,
     ):

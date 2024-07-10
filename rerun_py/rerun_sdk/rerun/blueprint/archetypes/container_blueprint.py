@@ -29,11 +29,11 @@ class ContainerBlueprint(Archetype):
         *,
         display_name: datatypes.Utf8Like | None = None,
         contents: datatypes.EntityPathArrayLike | None = None,
-        col_shares: blueprint_components.ColumnShareArrayLike | None = None,
-        row_shares: blueprint_components.RowShareArrayLike | None = None,
+        col_shares: datatypes.Float32ArrayLike | None = None,
+        row_shares: datatypes.Float32ArrayLike | None = None,
         active_tab: datatypes.EntityPathLike | None = None,
-        visible: blueprint_components.VisibleLike | None = None,
-        grid_columns: blueprint_components.GridColumnsLike | None = None,
+        visible: datatypes.BoolLike | None = None,
+        grid_columns: datatypes.UInt32Like | None = None,
     ):
         """
         Create a new instance of the ContainerBlueprint archetype.

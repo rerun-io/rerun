@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import components, datatypes
+from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 
@@ -13,10 +13,10 @@ class Points2DExt:
         self: Any,
         positions: datatypes.Vec2DArrayLike,
         *,
-        radii: components.RadiusArrayLike | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
-        draw_order: components.DrawOrderLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
     ):

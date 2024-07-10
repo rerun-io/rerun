@@ -2,6 +2,7 @@
 
 // ----------------------------------------------------------------------------
 
+use crate::datatypes;
 use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3, ViewDir};
 
 use super::ViewCoordinates;
@@ -9,7 +10,7 @@ use super::ViewCoordinates;
 impl ViewCoordinates {
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
     pub const fn new(x: ViewDir, y: ViewDir, z: ViewDir) -> Self {
-        Self([x as u8, y as u8, z as u8])
+        Self(datatypes::ViewCoordinates([x as u8, y as u8, z as u8]))
     }
 
     /// Chooses a coordinate system based on just an up-axis.
@@ -38,7 +39,7 @@ impl ViewCoordinates {
     /// Returns an error if this does not span all three dimensions.
     pub fn sanity_check(&self) -> Result<(), String> {
         let mut dims = [false; 3];
-        for dir in self.0 {
+        for dir in *self.0 {
             let dim = match ViewDir::try_from(dir)? {
                 ViewDir::Up | ViewDir::Down => 0,
                 ViewDir::Right | ViewDir::Left => 1,
@@ -59,7 +60,7 @@ impl ViewCoordinates {
     /// The up-axis.
     #[inline]
     pub fn up(&self) -> Option<SignedAxis3> {
-        for (dim, &dir) in self.0.iter().enumerate() {
+        for (dim, &dir) in self.iter().enumerate() {
             if dir == ViewDir::Up as u8 {
                 return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
             } else if dir == ViewDir::Down as u8 {
@@ -72,7 +73,7 @@ impl ViewCoordinates {
     /// The right-axis.
     #[inline]
     pub fn right(&self) -> Option<SignedAxis3> {
-        for (dim, &dir) in self.0.iter().enumerate() {
+        for (dim, &dir) in self.iter().enumerate() {
             if dir == ViewDir::Right as u8 {
                 return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
             } else if dir == ViewDir::Left as u8 {
@@ -85,7 +86,7 @@ impl ViewCoordinates {
     /// The forward-axis.
     #[inline]
     pub fn forward(&self) -> Option<SignedAxis3> {
-        for (dim, &dir) in self.0.iter().enumerate() {
+        for (dim, &dir) in self.iter().enumerate() {
             if dir == ViewDir::Forward as u8 {
                 return Some(SignedAxis3::new(Sign::Positive, Axis3::from_dim(dim)));
             } else if dir == ViewDir::Back as u8 {
@@ -97,7 +98,7 @@ impl ViewCoordinates {
 
     /// Describe using three letters, e.g. `RDF` for X=Right, Y=Down, Z=Forward.
     pub fn describe_short(&self) -> String {
-        let [x, y, z] = self.0;
+        let [x, y, z] = *self.0;
         let x = ViewDir::try_from(x).map(|x| x.short()).unwrap_or("?");
         let y = ViewDir::try_from(y).map(|y| y.short()).unwrap_or("?");
         let z = ViewDir::try_from(z).map(|z| z.short()).unwrap_or("?");
@@ -106,7 +107,7 @@ impl ViewCoordinates {
 
     /// A long description of the coordinate system, explicitly writing out all directions.
     pub fn describe(&self) -> String {
-        let [x, y, z] = self.0;
+        let [x, y, z] = *self.0;
         let x_short = ViewDir::try_from(x).map(|x| x.short()).unwrap_or("?");
         let y_short = ViewDir::try_from(y).map(|y| y.short()).unwrap_or("?");
         let z_short = ViewDir::try_from(z).map(|z| z.short()).unwrap_or("?");
@@ -272,7 +273,11 @@ impl Default for ViewCoordinates {
 macro_rules! define_coordinates {
     ($docstring:literal, $name:ident => ($x:ident, $y:ident, $z:ident) ) => {
         #[doc = $docstring]
-        pub const $name: Self = Self([ViewDir::$x as u8, ViewDir::$y as u8, ViewDir::$z as u8]);
+        pub const $name: Self = Self(datatypes::ViewCoordinates([
+            ViewDir::$x as u8,
+            ViewDir::$y as u8,
+            ViewDir::$z as u8,
+        ]));
     };
 }
 

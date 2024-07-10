@@ -88,7 +88,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
-        marker_size: components.MarkerSizeLike | None = None,
+        marker_size: datatypes.Float32Like | None = None,
     ):
         """
         Create a new instance of the SeriesPoint archetype.

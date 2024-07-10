@@ -7,7 +7,7 @@ A high-level overview of writing and previewing the Rerun C++ documentation.
 ### Serving the docs locally
 Build the docs using:
 ```
-pixi run cpp-docs
+pixi run -e cpp cpp-docs
 ```
 They then can be locally viewed at `rerun_cpp/docs/html/index.html`
 

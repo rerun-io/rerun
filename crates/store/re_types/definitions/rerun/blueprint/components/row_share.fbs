@@ -17,5 +17,5 @@ table RowShare (
     "attr.rust.derive": "Default"
 ) {
     /// The layout share of a row in the container.
-    share: float (order: 100);
+    share: rerun.datatypes.Float32 (order: 100);
 }

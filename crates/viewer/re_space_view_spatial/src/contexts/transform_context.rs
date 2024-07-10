@@ -392,7 +392,7 @@ fn transform_at(
     let is_disconnect_space = || {
         entity_db
             .latest_at_component::<DisconnectedSpace>(entity_path, query)
-            .map_or(false, |res| res.value.0)
+            .map_or(false, |res| **res.value)
     };
 
     // If there is any other transform, we ignore `DisconnectedSpace`.

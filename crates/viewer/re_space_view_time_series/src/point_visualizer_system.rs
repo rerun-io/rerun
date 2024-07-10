@@ -75,7 +75,7 @@ impl TypedComponentFallbackProvider<Color> for SeriesPointSystem {
 
 impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
-        MarkerSize(DEFAULT_MARKER_SIZE)
+        MarkerSize::from(DEFAULT_MARKER_SIZE)
     }
 }
 
@@ -127,7 +127,7 @@ impl SeriesPointSystem {
                 value: 0.0,
                 attrs: PlotPointAttrs {
                     color: fallback_color.into(),
-                    radius_ui: fallback_size.into(),
+                    radius_ui: **fallback_size,
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
                         marker: fallback_shape,
                     }),
@@ -214,7 +214,7 @@ impl SeriesPointSystem {
                     } else if scalars.is_empty() {
                         points[i].attrs.kind = PlotSeriesKind::Clear;
                     } else {
-                        points[i].value = scalars.first().map_or(0.0, |s| s.0);
+                        points[i].value = scalars.first().map_or(0.0, |s| *s.0);
                     }
                 }
 
@@ -280,7 +280,7 @@ impl SeriesPointSystem {
                         if let Some(marker_size) =
                             marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
                         {
-                            points[i].attrs.radius_ui = marker_size.0;
+                            points[i].attrs.radius_ui = *marker_size.0;
                         }
                     }
                 }

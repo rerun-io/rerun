@@ -38,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct ViewCoordinates(
     /// The directions of the [x, y, z] axes.
-    pub [u8; 3usize],
+    pub crate::datatypes::ViewCoordinates,
 );
 
 impl ::re_types_core::SizeBytes for ViewCoordinates {
@@ -49,36 +49,35 @@ impl ::re_types_core::SizeBytes for ViewCoordinates {
 
     #[inline]
     fn is_pod() -> bool {
-        <[u8; 3usize]>::is_pod()
+        <crate::datatypes::ViewCoordinates>::is_pod()
     }
 }
 
-impl From<[u8; 3usize]> for ViewCoordinates {
-    #[inline]
-    fn from(coordinates: [u8; 3usize]) -> Self {
-        Self(coordinates)
+impl<T: Into<crate::datatypes::ViewCoordinates>> From<T> for ViewCoordinates {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<ViewCoordinates> for [u8; 3usize] {
+impl std::borrow::Borrow<crate::datatypes::ViewCoordinates> for ViewCoordinates {
     #[inline]
-    fn from(value: ViewCoordinates) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::ViewCoordinates {
+        &self.0
     }
 }
 
 impl std::ops::Deref for ViewCoordinates {
-    type Target = [u8; 3usize];
+    type Target = crate::datatypes::ViewCoordinates;
 
     #[inline]
-    fn deref(&self) -> &[u8; 3usize] {
+    fn deref(&self) -> &crate::datatypes::ViewCoordinates {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ViewCoordinates {
     #[inline]
-    fn deref_mut(&mut self) -> &mut [u8; 3usize] {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::ViewCoordinates {
         &mut self.0
     }
 }
@@ -95,12 +94,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-            3usize,
-        )
+        crate::datatypes::ViewCoordinates::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -109,55 +103,12 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0
-                    .into_iter()
-                    .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.into_iter()),
-                        None => itertools::Either::Right(
-                            std::iter::repeat(Default::default()).take(3usize),
-                        ),
-                    })
-                    .collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                    data0_bitmap.as_ref().map(|bitmap| {
-                        bitmap
-                            .iter()
-                            .map(|b| std::iter::repeat(b).take(3usize))
-                            .flatten()
-                            .collect::<Vec<_>>()
-                            .into()
-                    });
-                FixedSizeListArray::new(
-                    Self::arrow_datatype(),
-                    PrimitiveArray::new(
-                        DataType::UInt8,
-                        data0_inner_data.into_iter().collect(),
-                        data0_inner_bitmap,
-                    )
-                    .boxed(),
-                    data0_bitmap,
-                )
-                .boxed()
-            }
-        })
+        crate::datatypes::ViewCoordinates::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     fn from_arrow_opt(
@@ -166,73 +117,8 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.ViewCoordinates#coordinates")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let offsets = (0..)
-                    .step_by(3usize)
-                    .zip((3usize..).step_by(3usize).take(arrow_data.len()));
-                let arrow_data_inner = {
-                    let arrow_data_inner = &**arrow_data.values();
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt8;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.components.ViewCoordinates#coordinates")?
-                        .into_iter()
-                        .map(|opt| opt.copied())
-                        .collect::<Vec<_>>()
-                };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets,
-                    arrow_data.validity(),
-                )
-                .map(|elem| {
-                    elem.map(|(start, end): (usize, usize)| {
-                        debug_assert!(end - start == 3usize);
-                        if end > arrow_data_inner.len() {
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end),
-                                arrow_data_inner.len(),
-                            ));
-                        }
-
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe { arrow_data_inner.get_unchecked(start..end) };
-                        let data = data.iter().cloned().map(Option::unwrap_or_default);
-
-                        // NOTE: Unwrapping cannot fail: the length must be correct.
-                        #[allow(clippy::unwrap_used)]
-                        Ok(array_init::from_iter(data).unwrap())
-                    })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.components.ViewCoordinates#coordinates")
-        .with_context("rerun.components.ViewCoordinates")?)
+        crate::datatypes::ViewCoordinates::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -240,46 +126,6 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = {
-                let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                    .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                            3usize,
-                        );
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
-                    })
-                    .with_context("rerun.components.ViewCoordinates#coordinates")?;
-                let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 3usize]>(
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt8;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.components.ViewCoordinates#coordinates")?
-                        .values()
-                        .as_slice(),
-                )
-            };
-            {
-                slice.iter().copied().map(Self).collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::ViewCoordinates::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }

@@ -10,6 +10,7 @@ from .annotation_info import (
     AnnotationInfoLike,
     AnnotationInfoType,
 )
+from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
 from .bool import Bool, BoolArrayLike, BoolBatch, BoolLike, BoolType
 from .class_description import (
     ClassDescription,
@@ -28,6 +29,7 @@ from .class_description_map_elem import (
 from .class_id import ClassId, ClassIdArrayLike, ClassIdBatch, ClassIdLike, ClassIdType
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
+from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
 from .mat3x3 import Mat3x3, Mat3x3ArrayLike, Mat3x3Batch, Mat3x3Like, Mat3x3Type
@@ -103,6 +105,13 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
+from .view_coordinates import (
+    ViewCoordinates,
+    ViewCoordinatesArrayLike,
+    ViewCoordinatesBatch,
+    ViewCoordinatesLike,
+    ViewCoordinatesType,
+)
 from .visible_time_range import (
     VisibleTimeRange,
     VisibleTimeRangeArrayLike,
@@ -122,6 +131,11 @@ __all__ = [
     "AnnotationInfoBatch",
     "AnnotationInfoLike",
     "AnnotationInfoType",
+    "Blob",
+    "BlobArrayLike",
+    "BlobBatch",
+    "BlobLike",
+    "BlobType",
     "Bool",
     "BoolArrayLike",
     "BoolBatch",
@@ -152,6 +166,11 @@ __all__ = [
     "Float32Batch",
     "Float32Like",
     "Float32Type",
+    "Float64",
+    "Float64ArrayLike",
+    "Float64Batch",
+    "Float64Like",
+    "Float64Type",
     "KeypointId",
     "KeypointIdArrayLike",
     "KeypointIdBatch",
@@ -317,6 +336,11 @@ __all__ = [
     "Vec4DBatch",
     "Vec4DLike",
     "Vec4DType",
+    "ViewCoordinates",
+    "ViewCoordinatesArrayLike",
+    "ViewCoordinatesBatch",
+    "ViewCoordinatesLike",
+    "ViewCoordinatesType",
     "VisibleTimeRange",
     "VisibleTimeRangeArrayLike",
     "VisibleTimeRangeBatch",

@@ -21,4 +21,4 @@ class DisconnectedSpaceExt:
             Set to `False` to disable the effects of this component, (re-)connecting the entity to its parent again.
 
         """
-        self.__attrs_init__(is_disconnected=is_disconnected)
+        self.__attrs_init__(is_disconnected)

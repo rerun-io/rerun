@@ -3,14 +3,8 @@
 from __future__ import annotations
 
 from .active_tab import ActiveTab, ActiveTabBatch, ActiveTabType
-from .auto_layout import AutoLayout, AutoLayoutArrayLike, AutoLayoutBatch, AutoLayoutLike, AutoLayoutType
-from .auto_space_views import (
-    AutoSpaceViews,
-    AutoSpaceViewsArrayLike,
-    AutoSpaceViewsBatch,
-    AutoSpaceViewsLike,
-    AutoSpaceViewsType,
-)
+from .auto_layout import AutoLayout, AutoLayoutBatch, AutoLayoutType
+from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch, AutoSpaceViewsType
 from .background_kind import (
     BackgroundKind,
     BackgroundKindArrayLike,
@@ -18,7 +12,7 @@ from .background_kind import (
     BackgroundKindLike,
     BackgroundKindType,
 )
-from .column_share import ColumnShare, ColumnShareArrayLike, ColumnShareBatch, ColumnShareLike, ColumnShareType
+from .column_share import ColumnShare, ColumnShareBatch, ColumnShareType
 from .container_kind import (
     ContainerKind,
     ContainerKindArrayLike,
@@ -27,7 +21,7 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
+from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .interactive import Interactive, InteractiveBatch, InteractiveType
@@ -35,7 +29,7 @@ from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatc
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
-from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
+from .row_share import RowShare, RowShareBatch, RowShareType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
@@ -50,30 +44,20 @@ from .viewer_recommendation_hash import (
     ViewerRecommendationHashBatch,
     ViewerRecommendationHashType,
 )
-from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
+from .visible import Visible, VisibleBatch, VisibleType
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
 from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch, VisualBounds2DType
-from .visualizer_overrides import (
-    VisualizerOverrides,
-    VisualizerOverridesArrayLike,
-    VisualizerOverridesBatch,
-    VisualizerOverridesLike,
-    VisualizerOverridesType,
-)
+from .visualizer_overrides import VisualizerOverrides, VisualizerOverridesBatch, VisualizerOverridesType
 
 __all__ = [
     "ActiveTab",
     "ActiveTabBatch",
     "ActiveTabType",
     "AutoLayout",
-    "AutoLayoutArrayLike",
     "AutoLayoutBatch",
-    "AutoLayoutLike",
     "AutoLayoutType",
     "AutoSpaceViews",
-    "AutoSpaceViewsArrayLike",
     "AutoSpaceViewsBatch",
-    "AutoSpaceViewsLike",
     "AutoSpaceViewsType",
     "BackgroundKind",
     "BackgroundKindArrayLike",
@@ -81,9 +65,7 @@ __all__ = [
     "BackgroundKindLike",
     "BackgroundKindType",
     "ColumnShare",
-    "ColumnShareArrayLike",
     "ColumnShareBatch",
-    "ColumnShareLike",
     "ColumnShareType",
     "ContainerKind",
     "ContainerKindArrayLike",
@@ -96,9 +78,7 @@ __all__ = [
     "Corner2DLike",
     "Corner2DType",
     "GridColumns",
-    "GridColumnsArrayLike",
     "GridColumnsBatch",
-    "GridColumnsLike",
     "GridColumnsType",
     "IncludedContent",
     "IncludedContentBatch",
@@ -124,9 +104,7 @@ __all__ = [
     "RootContainerBatch",
     "RootContainerType",
     "RowShare",
-    "RowShareArrayLike",
     "RowShareBatch",
-    "RowShareLike",
     "RowShareType",
     "SpaceViewClass",
     "SpaceViewClassBatch",
@@ -149,9 +127,7 @@ __all__ = [
     "ViewerRecommendationHashBatch",
     "ViewerRecommendationHashType",
     "Visible",
-    "VisibleArrayLike",
     "VisibleBatch",
-    "VisibleLike",
     "VisibleTimeRange",
     "VisibleTimeRangeBatch",
     "VisibleTimeRangeType",
@@ -160,8 +136,6 @@ __all__ = [
     "VisualBounds2DBatch",
     "VisualBounds2DType",
     "VisualizerOverrides",
-    "VisualizerOverridesArrayLike",
     "VisualizerOverridesBatch",
-    "VisualizerOverridesLike",
     "VisualizerOverridesType",
 ]

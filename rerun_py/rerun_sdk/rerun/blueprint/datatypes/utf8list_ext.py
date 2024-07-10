@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, Sequence
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import VisualizerOverridesArrayLike
+    from . import Utf8ListArrayLike
 
 
-class VisualizerOverridesExt:
-    """Extension for [VisualizerOverrides][rerun.blueprint.components.VisualizerOverrides]."""
+class Utf8ListExt:
+    """Extension for [Utf8List][rerun.blueprint.datatypes.Utf8List]."""
 
     @staticmethod
     def visualizers__field_converter_override(value: str | list[str]) -> list[str]:
@@ -18,19 +18,20 @@ class VisualizerOverridesExt:
         return value
 
     @staticmethod
-    def native_to_pa_array_override(data: VisualizerOverridesArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import VisualizerOverrides
+    def native_to_pa_array_override(data: Utf8ListArrayLike, data_type: pa.DataType) -> pa.Array:
+        from ..datatypes import Utf8List
 
-        if isinstance(data, VisualizerOverrides):
-            array = [data.visualizers]
-        elif isinstance(data, str):
+        if isinstance(data, Utf8List):
+            data = data.value
+
+        if isinstance(data, str):
             array = [[data]]
         elif isinstance(data, Sequence):
             data = list(data)
             if len(data) == 0:
                 array = []
-            elif isinstance(data[0], VisualizerOverrides):
-                array = [datum.visualizers for datum in data]  # type: ignore[union-attr]
+            elif isinstance(data[0], Utf8List):
+                array = [datum.value for datum in data]  # type: ignore[union-attr]
             else:
                 array = [[str(datum) for datum in data]]
         else:

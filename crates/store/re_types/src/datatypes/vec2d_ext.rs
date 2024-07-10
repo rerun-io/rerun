@@ -101,12 +101,7 @@ impl From<mint::Vector2<f32>> for Vec2D {
 
 impl std::fmt::Display for Vec2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "[{:.prec$}, {:.prec$}]",
-            self.x(),
-            self.y(),
-            prec = crate::DISPLAY_PRECISION,
-        )
+        let prec = f.precision().unwrap_or(crate::DEFAULT_DISPLAY_DECIMALS);
+        write!(f, "[{:.prec$}, {:.prec$}]", self.x(), self.y(),)
     }
 }

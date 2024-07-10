@@ -91,13 +91,12 @@ fn collect_snippets_recursively(
         let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
 
         let config_key = path.strip_prefix(snippet_root_path)?.with_extension("");
-
-        let config_key = config_key.to_str().unwrap();
+        let config_key = config_key.to_str().unwrap().replace('\\', "/");
 
         let is_opted_out = config
             .opt_out
             .run
-            .get(config_key)
+            .get(&config_key)
             .is_some_and(|languages| languages.iter().any(|v| v == "py"));
         if is_opted_out {
             println!(
@@ -130,7 +129,7 @@ fn collect_snippets_recursively(
         println!("Adding {}", path.display());
         let extra_args: Vec<String> = config
             .extra_args
-            .get(config_key)
+            .get(&config_key)
             .cloned()
             .unwrap_or_default()
             .into_iter()

@@ -87,7 +87,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.25.0
 
       - name: Codegen check
         run: pixi run codegen --force --check
@@ -104,7 +104,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.25.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -143,7 +143,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.25.0
 
       - name: Run linter
         run: |
@@ -179,7 +179,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.25.0
 
       - name: prettier --check
         run: pixi run misc-fmt-check

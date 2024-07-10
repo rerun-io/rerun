@@ -1,20 +1,16 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
-
-if TYPE_CHECKING:
-    from . import RadiusArrayLike
 
 
 class RadiusExt:
     """Extension for [Radius][rerun.components.Radius]."""
 
     @staticmethod
-    def ui_points(radii: numbers.Number | npt.ArrayLike) -> RadiusArrayLike:
+    def ui_points(radii: numbers.Number | npt.ArrayLike) -> npt.ArrayLike:
         """
         Create a radius or list of radii in UI points.
 

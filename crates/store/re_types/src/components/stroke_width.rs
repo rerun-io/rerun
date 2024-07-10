@@ -21,7 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The width of a stroke specified in UI points.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
-pub struct StrokeWidth(pub f32);
+pub struct StrokeWidth(pub crate::datatypes::Float32);
 
 impl ::re_types_core::SizeBytes for StrokeWidth {
     #[inline]
@@ -31,36 +31,35 @@ impl ::re_types_core::SizeBytes for StrokeWidth {
 
     #[inline]
     fn is_pod() -> bool {
-        <f32>::is_pod()
+        <crate::datatypes::Float32>::is_pod()
     }
 }
 
-impl From<f32> for StrokeWidth {
-    #[inline]
-    fn from(width: f32) -> Self {
-        Self(width)
+impl<T: Into<crate::datatypes::Float32>> From<T> for StrokeWidth {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<StrokeWidth> for f32 {
+impl std::borrow::Borrow<crate::datatypes::Float32> for StrokeWidth {
     #[inline]
-    fn from(value: StrokeWidth) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::Float32 {
+        &self.0
     }
 }
 
 impl std::ops::Deref for StrokeWidth {
-    type Target = f32;
+    type Target = crate::datatypes::Float32;
 
     #[inline]
-    fn deref(&self) -> &f32 {
+    fn deref(&self) -> &crate::datatypes::Float32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for StrokeWidth {
     #[inline]
-    fn deref_mut(&mut self) -> &mut f32 {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
         &mut self.0
     }
 }
@@ -77,9 +76,7 @@ impl ::re_types_core::Loggable for StrokeWidth {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Float32
+        crate::datatypes::Float32::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -88,29 +85,12 @@ impl ::re_types_core::Loggable for StrokeWidth {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
-            )
-            .boxed()
-        })
+        crate::datatypes::Float32::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     fn from_arrow_opt(
@@ -119,25 +99,8 @@ impl ::re_types_core::Loggable for StrokeWidth {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<Float32Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.components.StrokeWidth#width")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.StrokeWidth#width")
-            .with_context("rerun.components.StrokeWidth")?)
+        crate::datatypes::Float32::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -145,29 +108,6 @@ impl ::re_types_core::Loggable for StrokeWidth {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = arrow_data
-                .as_any()
-                .downcast_ref::<Float32Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::Float32;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.StrokeWidth#width")?
-                .values()
-                .as_slice();
-            {
-                slice.iter().copied().map(Self).collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::Float32::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }

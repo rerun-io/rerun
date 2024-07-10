@@ -184,7 +184,7 @@ pub fn process_radius_slice(
     re_tracing::profile_function!();
 
     if radii.is_empty() {
-        vec![re_renderer::Size(fallback_radius.0); num_instances]
+        vec![re_renderer::Size(*fallback_radius.0); num_instances]
     } else {
         entity_iterator::clamped(radii, num_instances)
             .map(|radius| process_radius(entity_path, *radius))
@@ -202,7 +202,7 @@ fn process_radius(
         re_log::warn_once!("Found NaN radius in entity {entity_path}");
     }
 
-    re_renderer::Size(radius.0)
+    re_renderer::Size(*radius.0)
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
@@ -296,7 +296,7 @@ pub fn load_keypoint_connections(
         .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
     // TODO(andreas): Make configurable. Should we pick up the point's radius and make this proportional?
-    let line_radius = re_renderer::Size(re_types::components::Radius::default().0);
+    let line_radius = re_renderer::Size(*re_types::components::Radius::default().0);
 
     for ((class_id, _time), keypoints_in_class) in keypoints {
         let resolved_class_description = ent_context

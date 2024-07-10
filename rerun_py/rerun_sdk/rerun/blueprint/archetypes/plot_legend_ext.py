@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from rerun.datatypes.bool import BoolLike
+
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
@@ -13,7 +15,7 @@ class PlotLegendExt:
         self: Any,
         corner: blueprint_components.Corner2DLike | None = None,
         *,
-        visible: blueprint_components.VisibleLike | None = None,
+        visible: BoolLike | None = None,
     ):
         """
         Create a new instance of the PlotLegend archetype.

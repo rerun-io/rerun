@@ -8,9 +8,9 @@ from typing import Union
 __all__ = ["TextDocumentView"]
 
 
+from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from .. import components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -92,7 +92,7 @@ class TextDocumentView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: blueprint_components.VisibleLike | None = None,
+        visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     ) -> None:
