@@ -23,5 +23,5 @@ struct Radius (
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
-  value: float (order: 100);
+  value: rerun.datatypes.Float32 (order: 100);
 }

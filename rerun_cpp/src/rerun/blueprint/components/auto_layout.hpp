@@ -3,37 +3,43 @@
 
 #pragma once
 
+#include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class Array;
-    class BooleanBuilder;
-    class DataType;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
     /// **Component**: Whether the viewport layout is determined automatically.
     struct AutoLayout {
-        bool auto_layout;
+        rerun::datatypes::Bool auto_layout;
 
       public:
         AutoLayout() = default;
 
-        AutoLayout(bool auto_layout_) : auto_layout(auto_layout_) {}
+        AutoLayout(rerun::datatypes::Bool auto_layout_) : auto_layout(auto_layout_) {}
 
-        AutoLayout& operator=(bool auto_layout_) {
+        AutoLayout& operator=(rerun::datatypes::Bool auto_layout_) {
             auto_layout = auto_layout_;
             return *this;
+        }
+
+        AutoLayout(bool value_) : auto_layout(value_) {}
+
+        AutoLayout& operator=(bool value_) {
+            auto_layout = value_;
+            return *this;
+        }
+
+        /// Cast to the underlying Bool datatype
+        operator rerun::datatypes::Bool() const {
+            return auto_layout;
         }
     };
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Bool) == sizeof(blueprint::components::AutoLayout));
 
     /// \private
     template <>
@@ -41,17 +47,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.AutoLayout";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Bool>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::AutoLayout` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::AutoLayout* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const blueprint::components::AutoLayout* elements,
-            size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Bool>::to_arrow(
+                &instances->auto_layout,
+                num_instances
+            );
+        }
     };
 } // namespace rerun

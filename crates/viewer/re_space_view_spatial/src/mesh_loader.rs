@@ -79,9 +79,9 @@ impl LoadedMesh {
             transform: _,
         } = asset3d;
 
-        let media_type = MediaType::or_guess_from_data(media_type.clone(), blob.0.as_slice())
+        let media_type = MediaType::or_guess_from_data(media_type.clone(), blob.as_slice())
             .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
-        let slf = Self::load_asset3d_parts(name, &media_type, blob.0.as_slice(), render_ctx)?;
+        let slf = Self::load_asset3d_parts(name, &media_type, blob.as_slice(), render_ctx)?;
 
         Ok(slf)
     }

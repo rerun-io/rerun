@@ -15,11 +15,11 @@ def next_offset(acc: int, arr: Sized) -> int:
 
 
 class BlobExt:
-    """Extension for [Blob][rerun.components.Blob]."""
+    """Extension for [Blob][rerun.datatypes.Blob]."""
 
     @staticmethod
     def native_to_pa_array_override(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Blob, BlobBatch
+        from ..datatypes import Blob, BlobBatch
 
         # someone or something is building things manually, let them!
         if isinstance(data, BlobBatch):

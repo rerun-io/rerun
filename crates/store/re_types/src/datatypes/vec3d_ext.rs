@@ -113,13 +113,13 @@ impl From<mint::Vector3<f32>> for Vec3D {
 
 impl std::fmt::Display for Vec3D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let prec = f.precision().unwrap_or(crate::DEFAULT_DISPLAY_DECIMALS);
         write!(
             f,
             "[{:.prec$}, {:.prec$}, {:.prec$}]",
             self.x(),
             self.y(),
             self.z(),
-            prec = crate::DISPLAY_PRECISION,
         )
     }
 }

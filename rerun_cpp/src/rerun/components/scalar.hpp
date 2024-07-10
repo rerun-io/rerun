@@ -3,31 +3,28 @@
 
 #pragma once
 
+#include "../datatypes/float64.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class Array;
-    class DataType;
-    class DoubleType;
-    using DoubleBuilder = NumericBuilder<DoubleType>;
-} // namespace arrow
 
 namespace rerun::components {
     /// **Component**: A scalar value, encoded as a 64-bit floating point.
     ///
     /// Used for time series plots.
     struct Scalar {
-        double value;
+        rerun::datatypes::Float64 value;
 
       public:
         Scalar() = default;
+
+        Scalar(rerun::datatypes::Float64 value_) : value(value_) {}
+
+        Scalar& operator=(rerun::datatypes::Float64 value_) {
+            value = value_;
+            return *this;
+        }
 
         Scalar(double value_) : value(value_) {}
 
@@ -35,12 +32,16 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+
+        /// Cast to the underlying Float64 datatype
+        operator rerun::datatypes::Float64() const {
+            return value;
+        }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Float64) == sizeof(components::Scalar));
 
     /// \private
     template <>
@@ -48,16 +49,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Scalar";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Float64>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::Scalar` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Scalar* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DoubleBuilder* builder, const components::Scalar* elements, size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Float64>::to_arrow(&instances->value, num_instances);
+        }
     };
 } // namespace rerun

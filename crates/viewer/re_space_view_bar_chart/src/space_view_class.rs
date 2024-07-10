@@ -156,7 +156,7 @@ impl SpaceViewClass for BarChartSpaceView {
                 .clamp_grid(true)
                 .allow_zoom([true, zoom_both_axis]);
 
-            if *legend_visible {
+            if *legend_visible.0 {
                 plot = plot.legend(Legend::default().position(legend_corner.into()));
             }
 

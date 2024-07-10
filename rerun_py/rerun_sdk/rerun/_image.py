@@ -9,8 +9,8 @@ from PIL import Image as PILImage
 
 from ._log import AsComponents, ComponentBatchLike
 from .archetypes import Image
-from .components import DrawOrderLike, TensorData
-from .datatypes import TensorBuffer, TensorDimension
+from .components import TensorData
+from .datatypes import Float32Like, TensorBuffer, TensorDimension
 
 
 class ImageFormat:
@@ -135,7 +135,7 @@ class ImageEncoded(AsComponents):
         path: str | pathlib.Path | None = None,
         contents: bytes | IO[bytes] | None = None,
         format: ImageFormat | None = None,
-        draw_order: DrawOrderLike | None = None,
+        draw_order: Float32Like | None = None,
     ) -> None:
         """
         Create a new image with a given format.

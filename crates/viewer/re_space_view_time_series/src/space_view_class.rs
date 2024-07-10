@@ -374,7 +374,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             });
 
-        if *legend_visible {
+        if *legend_visible.0 {
             plot = plot.legend(Legend::default().position(legend_corner.into()));
         }
 

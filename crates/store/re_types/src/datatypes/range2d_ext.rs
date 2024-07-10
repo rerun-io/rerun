@@ -27,14 +27,11 @@ impl From<Range2D> for emath::Rect {
 
 impl std::fmt::Display for Range2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let prec = f.precision().unwrap_or(crate::DEFAULT_DISPLAY_DECIMALS);
         write!(
             f,
             "[{:.prec$}, {:.prec$}]×[{:.prec$}, {:.prec$}]",
-            self.x_range.0[0],
-            self.x_range.0[1],
-            self.y_range.0[0],
-            self.y_range.0[1],
-            prec = crate::DISPLAY_PRECISION,
+            self.x_range.0[0], self.x_range.0[1], self.y_range.0[0], self.y_range.0[1],
         )
     }
 }

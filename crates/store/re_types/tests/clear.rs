@@ -1,17 +1,15 @@
 use std::collections::HashMap;
 
-use re_types::{
-    archetypes::Clear, components::ClearIsRecursive, Archetype as _, AsComponents as _,
-};
+use re_types::{archetypes::Clear, Archetype as _, AsComponents as _};
 
 #[test]
 fn roundtrip() {
     let all_expected = [
         Clear {
-            is_recursive: ClearIsRecursive(true),
+            is_recursive: true.into(),
         }, //
         Clear {
-            is_recursive: ClearIsRecursive(false),
+            is_recursive: false.into(),
         },
     ];
 

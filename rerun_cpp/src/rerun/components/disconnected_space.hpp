@@ -3,16 +3,11 @@
 
 #pragma once
 
+#include "../datatypes/bool.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-
-namespace arrow {
-    class Array;
-    class BooleanBuilder;
-    class DataType;
-} // namespace arrow
 
 namespace rerun::components {
     /// **Component**: Spatially disconnect this entity from its parent.
@@ -26,23 +21,35 @@ namespace rerun::components {
         ///
         /// Set to true to disconnect the entity from its parent.
         /// Set to false to disable the effects of this component, (re-)connecting the entity to its parent again.
-        bool is_disconnected;
+        rerun::datatypes::Bool is_disconnected;
 
       public:
         DisconnectedSpace() = default;
 
-        DisconnectedSpace(bool is_disconnected_) : is_disconnected(is_disconnected_) {}
+        DisconnectedSpace(rerun::datatypes::Bool is_disconnected_)
+            : is_disconnected(is_disconnected_) {}
 
-        DisconnectedSpace& operator=(bool is_disconnected_) {
+        DisconnectedSpace& operator=(rerun::datatypes::Bool is_disconnected_) {
             is_disconnected = is_disconnected_;
             return *this;
+        }
+
+        DisconnectedSpace(bool value_) : is_disconnected(value_) {}
+
+        DisconnectedSpace& operator=(bool value_) {
+            is_disconnected = value_;
+            return *this;
+        }
+
+        /// Cast to the underlying Bool datatype
+        operator rerun::datatypes::Bool() const {
+            return is_disconnected;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Bool) == sizeof(components::DisconnectedSpace));
 
     /// \private
     template <>
@@ -50,17 +57,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.DisconnectedSpace";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Bool>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::DisconnectedSpace` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::DisconnectedSpace* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const components::DisconnectedSpace* elements,
-            size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Bool>::to_arrow(
+                &instances->is_disconnected,
+                num_instances
+            );
+        }
     };
 } // namespace rerun

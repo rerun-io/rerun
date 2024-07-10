@@ -19,7 +19,7 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 64bit unsigned integer.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UInt64(pub u64);
 
 impl crate::SizeBytes for UInt64 {

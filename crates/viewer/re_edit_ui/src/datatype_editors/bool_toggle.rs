@@ -14,19 +14,6 @@ pub fn edit_bool(
     edit_bool_impl(ui, &mut value)
 }
 
-/// Generic editor for a boolean value that is not wrapped into [`re_types::datatypes::Bool`].
-pub fn edit_bool_raw(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = bool>>,
-) -> egui::Response {
-    let mut value: MaybeMutRef<'_, bool> = match value {
-        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
-        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
-    };
-    edit_bool_impl(ui, &mut value)
-}
-
 /// Non monomorphized implementation of [`edit_bool`].
 fn edit_bool_impl(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, bool>) -> egui::Response {
     match value {

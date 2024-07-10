@@ -99,6 +99,7 @@ impl From<glam::UVec4> for UVec4D {
 
 impl std::fmt::Display for UVec4D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let prec = f.precision().unwrap_or(crate::DEFAULT_DISPLAY_DECIMALS);
         write!(
             f,
             "[{:.prec$}, {:.prec$}, {:.prec$}, {:.prec$}]",
@@ -106,7 +107,6 @@ impl std::fmt::Display for UVec4D {
             self.y(),
             self.z(),
             self.w(),
-            prec = crate::DISPLAY_PRECISION,
         )
     }
 }

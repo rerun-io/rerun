@@ -15,8 +15,8 @@ fn roundtrip() {
             LineStrip3D::from_iter([[0., 3., 1.], [1., 4., 2.], [2.,  2., 3.], [3., 4., 4.], [4., 2., 5.], [5., 4., 6.], [6., 3., 7.]]),
         ],
         radii: Some(vec![
-            Radius(42.0), //
-            Radius(43.0),
+            Radius::from(42.0), //
+            Radius::from(43.0),
         ]),
         colors: Some(vec![
             Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //

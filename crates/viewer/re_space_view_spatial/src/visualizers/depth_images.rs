@@ -227,7 +227,7 @@ impl DepthImageVisualizer {
             Some(colormap),
         )?;
 
-        let world_depth_from_texture_depth = 1.0 / depth_meter.0;
+        let world_depth_from_texture_depth = 1.0 / *depth_meter.0;
 
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor of the diameter of a pixel projected at that distance.

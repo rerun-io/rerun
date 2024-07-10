@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use re_types::{archetypes::DisconnectedSpace, components, Archetype as _, AsComponents as _};
+use re_types::{archetypes::DisconnectedSpace, Archetype as _, AsComponents as _};
 
 #[test]
 fn roundtrip() {
     let all_expected = [
         DisconnectedSpace {
-            disconnected_space: components::DisconnectedSpace(true),
+            disconnected_space: true.into(),
         }, //
         DisconnectedSpace {
-            disconnected_space: components::DisconnectedSpace(false),
+            disconnected_space: false.into(),
         },
     ];
 

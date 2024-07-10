@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GridColumns(
     /// The number of columns.
-    pub u32,
+    pub crate::datatypes::UInt32,
 );
 
 impl ::re_types_core::SizeBytes for GridColumns {
@@ -33,36 +33,35 @@ impl ::re_types_core::SizeBytes for GridColumns {
 
     #[inline]
     fn is_pod() -> bool {
-        <u32>::is_pod()
+        <crate::datatypes::UInt32>::is_pod()
     }
 }
 
-impl From<u32> for GridColumns {
-    #[inline]
-    fn from(columns: u32) -> Self {
-        Self(columns)
+impl<T: Into<crate::datatypes::UInt32>> From<T> for GridColumns {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<GridColumns> for u32 {
+impl std::borrow::Borrow<crate::datatypes::UInt32> for GridColumns {
     #[inline]
-    fn from(value: GridColumns) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::UInt32 {
+        &self.0
     }
 }
 
 impl std::ops::Deref for GridColumns {
-    type Target = u32;
+    type Target = crate::datatypes::UInt32;
 
     #[inline]
-    fn deref(&self) -> &u32 {
+    fn deref(&self) -> &crate::datatypes::UInt32 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for GridColumns {
     #[inline]
-    fn deref_mut(&mut self) -> &mut u32 {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt32 {
         &mut self.0
     }
 }
@@ -79,9 +78,7 @@ impl ::re_types_core::Loggable for GridColumns {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::UInt32
+        crate::datatypes::UInt32::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -90,29 +87,12 @@ impl ::re_types_core::Loggable for GridColumns {
     where
         Self: Clone + 'a,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| datum.into_owned().0);
-                    (datum.is_some(), datum)
-                })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
-            )
-            .boxed()
-        })
+        crate::datatypes::UInt32::to_arrow_opt(data.into_iter().map(|datum| {
+            datum.map(|datum| match datum.into() {
+                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
+                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
+            })
+        }))
     }
 
     fn from_arrow_opt(
@@ -121,25 +101,8 @@ impl ::re_types_core::Loggable for GridColumns {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt32Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.blueprint.components.GridColumns#columns")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.GridColumns#columns")
-            .with_context("rerun.blueprint.components.GridColumns")?)
+        crate::datatypes::UInt32::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
@@ -147,29 +110,6 @@ impl ::re_types_core::Loggable for GridColumns {
     where
         Self: Sized,
     {
-        #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
-        Ok({
-            let slice = arrow_data
-                .as_any()
-                .downcast_ref::<UInt32Array>()
-                .ok_or_else(|| {
-                    let expected = DataType::UInt32;
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.blueprint.components.GridColumns#columns")?
-                .values()
-                .as_slice();
-            {
-                slice.iter().copied().map(Self).collect::<Vec<_>>()
-            }
-        })
+        crate::datatypes::UInt32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }

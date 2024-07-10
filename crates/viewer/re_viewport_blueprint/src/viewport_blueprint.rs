@@ -138,9 +138,9 @@ impl ViewportBlueprint {
             .store_info()
             .map_or(false, |ri| ri.is_app_default_blueprint());
         let auto_layout =
-            AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| auto.0));
+            AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| *auto.0));
         let auto_space_views =
-            AtomicBool::new(auto_space_views.map_or(is_app_default_blueprint, |auto| auto.0));
+            AtomicBool::new(auto_space_views.map_or(is_app_default_blueprint, |auto| *auto.0));
 
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
@@ -778,7 +778,7 @@ impl ViewportBlueprint {
         let old_value = self.auto_layout.swap(value, Ordering::SeqCst);
 
         if old_value != value {
-            let component = AutoLayout(value);
+            let component = AutoLayout::from(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }
@@ -793,7 +793,7 @@ impl ViewportBlueprint {
         let old_value = self.auto_space_views.swap(value, Ordering::SeqCst);
 
         if old_value != value {
-            let component = AutoSpaceViews(value);
+            let component = AutoSpaceViews::from(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }
