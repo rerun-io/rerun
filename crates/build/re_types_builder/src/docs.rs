@@ -248,7 +248,7 @@ mod doclink_translation {
 
             if looks_like_rerun_doclink {
                 re_log::warn_once!(
-                    "Looks like a Rerun doclink, but failes to parse: {original_doclink} - {err}"
+                    "Looks like a Rerun doclink, but fails to parse: {original_doclink} - {err}"
                 );
             }
 
