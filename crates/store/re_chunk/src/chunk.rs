@@ -218,6 +218,16 @@ impl Chunk {
             .collect()
     }
 
+    #[inline]
+    pub fn num_events(&self) -> usize {
+        self.components.values().map(|array| array.len()).sum()
+    }
+
+    #[inline]
+    pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<usize> {
+        self.components.get(&component_name).map(|v| v.len())
+    }
+
     /// Computes the `RowId` range covered by each individual component column on each timeline.
     ///
     /// This is different from the `RowId` range covered by the [`Chunk`] as a whole because component

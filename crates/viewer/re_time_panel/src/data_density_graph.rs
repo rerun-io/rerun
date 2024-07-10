@@ -8,6 +8,7 @@ use std::ops::RangeInclusive;
 use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
+use re_chunk_store::RangeQuery;
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
@@ -365,6 +366,206 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 }
 
 // ----------------------------------------------------------------------------
+
+#[allow(clippy::too_many_arguments)]
+pub fn data_density_graph_ui2(
+    data_density_graph_painter: &mut DataDensityGraphPainter,
+    ctx: &ViewerContext<'_>,
+    time_ctrl: &mut TimeControl,
+    db: &re_entity_db::EntityDb,
+    time_area_response: &egui::Response,
+    time_area_painter: &egui::Painter,
+    ui: &egui::Ui,
+    time_ranges_ui: &TimeRangesUi,
+    row_rect: Rect,
+    item: &TimePanelItem,
+) {
+    re_tracing::profile_function!();
+
+    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+    let interact_radius_sq = ui.style().interaction.resize_grab_radius_side.powi(2);
+    let center_y = row_rect.center().y;
+
+    let mut density_graph = DensityGraph::new(row_rect.x_range());
+
+    let visible_time_range = time_ranges_ui
+        .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
+
+    let timeline = *time_ctrl.timeline();
+    let query = RangeQuery::new(timeline, visible_time_range);
+    let store = db.store();
+
+    let mut num_hovered_messages = 0;
+    let mut hovered_time_range = ResolvedTimeRange::EMPTY;
+
+    let mut add_data_point = |time_range: ResolvedTimeRange, count: usize| {
+        if count == 0 {
+            return;
+        }
+
+        let (Some(min_x), Some(max_x)) = (
+            time_ranges_ui.x_from_time_f32(time_range.min().into()),
+            time_ranges_ui.x_from_time_f32(time_range.max().into()),
+        ) else {
+            return;
+        };
+
+        density_graph.add_range((min_x, max_x), count as _);
+
+        if let Some(pointer_pos) = pointer_pos {
+            let is_hovered = if (max_x - min_x).abs() < 1.0 {
+                // Are we close enough to center?
+                let center_x = (max_x + min_x) / 2.0;
+                let distance_sq = pos2(center_x, center_y).distance_sq(pointer_pos);
+
+                /*
+                let is_hovered = distance_sq < interact_radius_sq;
+                let color = if is_hovered {
+                    egui::Color32::LIGHT_YELLOW
+                } else {
+                    egui::Color32::YELLOW
+                };
+                ui.ctx().debug_painter().debug_rect(
+                    egui::Rect::from_center_size(
+                        egui::pos2(center_x, center_y),
+                        egui::vec2(4.0, 4.0),
+                    ),
+                    color,
+                    "",
+                );
+
+                is_hovered
+                */
+
+                distance_sq < interact_radius_sq
+            } else {
+                // Are we within time range rect?
+                let time_range_rect = Rect {
+                    min: egui::pos2(min_x, row_rect.min.y),
+                    max: egui::pos2(max_x, row_rect.max.y),
+                };
+
+                /*
+                let is_hovered = time_range_rect.contains(pointer_pos);
+                let color = if is_hovered {
+                    egui::Color32::LIGHT_YELLOW
+                } else {
+                    egui::Color32::YELLOW
+                };
+                ui.ctx()
+                    .debug_painter()
+                    .debug_rect(time_range_rect, color, "");
+
+                is_hovered
+                */
+
+                time_range_rect.contains(pointer_pos)
+            };
+
+            if is_hovered {
+                hovered_time_range = hovered_time_range.union(time_range);
+                num_hovered_messages += count;
+            }
+        }
+    };
+
+    /* let mut num_chunks = 0; */
+    if let Some(component_name) = item.component_name {
+        let chunks = db
+            .store()
+            .range_relevant_chunks(&query, &item.entity_path, component_name);
+
+        /* num_chunks += chunks.len(); */
+
+        for chunk in chunks {
+            let Some(events) = chunk.num_events_for_component(component_name) else {
+                continue;
+            };
+
+            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                continue;
+            };
+
+            add_data_point(chunk_timeline.time_range(), events);
+        }
+    } else if let Some(components) = store.all_components(&timeline, &item.entity_path) {
+        for component_name in components {
+            let chunks =
+                db.store()
+                    .range_relevant_chunks(&query, &item.entity_path, component_name);
+
+            /* num_chunks += chunks.len(); */
+
+            for chunk in chunks {
+                let events = chunk.num_events();
+                let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                    continue;
+                };
+
+                add_data_point(chunk_timeline.time_range(), events);
+            }
+        }
+    }
+
+    /* if ui.rect_contains_pointer(row_rect) {
+        ui.ctx().debug_painter().debug_text(
+            row_rect.left_top(),
+            egui::Align2::LEFT_TOP,
+            egui::Color32::GREEN,
+            format!(
+                "{} {:?} num_chunks={num_chunks}",
+                item.entity_path, item.component_name
+            ),
+        );
+    } */
+
+    let hovered_time_range = ResolvedTimeRange::EMPTY;
+    let hovered_x_range = (time_ranges_ui
+        .x_from_time_f32(hovered_time_range.min().into())
+        .unwrap_or(f32::MAX)
+        - MARGIN_X)
+        ..=(time_ranges_ui
+            .x_from_time_f32(hovered_time_range.max().into())
+            .unwrap_or(f32::MIN)
+            + MARGIN_X);
+
+    density_graph.buckets = smooth(&density_graph.buckets);
+
+    density_graph.paint(
+        data_density_graph_painter,
+        row_rect.y_range(),
+        time_area_painter,
+        graph_color(ctx, &item.to_item(), ui),
+        hovered_x_range,
+    );
+
+    if num_hovered_messages > 0 {
+        ctx.selection_state().set_hovered(item.to_item());
+
+        if time_area_response.clicked_by(egui::PointerButton::Primary) {
+            ctx.selection_state().set_selection(item.to_item());
+            time_ctrl.set_time(hovered_time_range.min());
+            time_ctrl.pause();
+        } else if ui.ctx().dragged_id().is_none() {
+            egui::show_tooltip_at_pointer(
+                ui.ctx(),
+                ui.layer_id(),
+                egui::Id::new("data_tooltip"),
+                |ui| {
+                    show_row_ids_tooltip(
+                        ctx,
+                        ui,
+                        time_ctrl,
+                        db,
+                        item,
+                        hovered_time_range,
+                        num_hovered_messages,
+                    );
+                },
+            );
+        }
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(

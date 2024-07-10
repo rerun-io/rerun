@@ -371,6 +371,12 @@ fn experimental_feature_ui(
         "Plots: query clamping",
     )
     .on_hover_text("Toggle query clamping for the plot visualizers.");
+
+    ui.re_checkbox(
+        &mut app_options.experimental_new_data_density_graph,
+        "New data density graph",
+    )
+    .on_hover_text("Toggle new data density graph");
 }
 
 #[cfg(debug_assertions)]

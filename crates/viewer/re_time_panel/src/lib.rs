@@ -36,7 +36,7 @@ use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct TimePanelItem {
     pub entity_path: EntityPath,
     pub component_name: Option<ComponentName>,
@@ -700,19 +700,34 @@ impl TimePanel {
                     .get(time_ctrl.timeline())
                     .unwrap_or(&empty);
 
-                data_density_graph::data_density_graph_ui(
-                    &mut self.data_density_graph_painter,
-                    ctx,
-                    time_ctrl,
-                    db,
-                    time_area_response,
-                    time_area_painter,
-                    ui,
-                    num_messages_at_time,
-                    row_rect,
-                    &self.time_ranges_ui,
-                    &item,
-                );
+                if ctx.app_options.experimental_new_data_density_graph {
+                    data_density_graph::data_density_graph_ui2(
+                        &mut self.data_density_graph_painter,
+                        ctx,
+                        time_ctrl,
+                        db,
+                        time_area_response,
+                        time_area_painter,
+                        ui,
+                        &self.time_ranges_ui,
+                        row_rect,
+                        &item,
+                    );
+                } else {
+                    data_density_graph::data_density_graph_ui(
+                        &mut self.data_density_graph_painter,
+                        ctx,
+                        time_ctrl,
+                        db,
+                        time_area_response,
+                        time_area_painter,
+                        ui,
+                        num_messages_at_time,
+                        row_rect,
+                        &self.time_ranges_ui,
+                        &item,
+                    );
+                }
             }
         }
     }
@@ -863,19 +878,34 @@ impl TimePanel {
                         TimePanelSource::Blueprint => ctx.store_context.blueprint,
                     };
 
-                    data_density_graph::data_density_graph_ui(
-                        &mut self.data_density_graph_painter,
-                        ctx,
-                        time_ctrl,
-                        db,
-                        time_area_response,
-                        time_area_painter,
-                        ui,
-                        messages_over_time,
-                        row_rect,
-                        &self.time_ranges_ui,
-                        &item,
-                    );
+                    if ctx.app_options.experimental_new_data_density_graph {
+                        data_density_graph::data_density_graph_ui2(
+                            &mut self.data_density_graph_painter,
+                            ctx,
+                            time_ctrl,
+                            db,
+                            time_area_response,
+                            time_area_painter,
+                            ui,
+                            &self.time_ranges_ui,
+                            row_rect,
+                            &item,
+                        );
+                    } else {
+                        data_density_graph::data_density_graph_ui(
+                            &mut self.data_density_graph_painter,
+                            ctx,
+                            time_ctrl,
+                            db,
+                            time_area_response,
+                            time_area_painter,
+                            ui,
+                            messages_over_time,
+                            row_rect,
+                            &self.time_ranges_ui,
+                            &item,
+                        );
+                    }
                 }
             }
         }
