@@ -1,3 +1,5 @@
+use crate::codegen::Target;
+
 /// A high-level representation of the contetns of a flatbuffer docstring.
 #[derive(Debug, Clone)]
 pub struct Docs {
@@ -121,9 +123,206 @@ fn parse_line(line: &str) -> (String, String) {
     }
 }
 
+/// We support doclinks in our docstrings.
+///
+/// They need to follow this format:
+/// ```fbs
+/// /// See also [archetype.Image].
+/// table Tensor { … }
+/// ```
+///
+/// This module is all about translating these doclinks to the different [`Target`]s.
+///
+/// The code is not very efficient, but it is simple and works.
+mod doclink_translation {
+    use super::Target;
+
+    /// Convert Rerun-style doclinks to the target language.
+    ///
+    /// For example, "[archetype.Image]" becomes "[`archetype::Image`]" in Rust.
+    pub fn translate_doc_line(input: &str, target: Target) -> String {
+        let mut out_tokens: Vec<String> = vec![];
+        let mut within_backticks = false;
+
+        let mut tokens = tokenize(input).into_iter().peekable();
+        while let Some(token) = tokens.next() {
+            if token == "`" {
+                within_backticks = !within_backticks;
+                out_tokens.push(token.to_owned());
+                continue;
+            }
+
+            if within_backticks {
+                out_tokens.push(token.to_owned());
+                continue;
+            }
+
+            if token == "[" {
+                // Potential start of a Rerun doclink
+                let mut doclink_tokens = vec![token];
+                for token in &mut tokens {
+                    doclink_tokens.push(token);
+                    if token == "]" {
+                        break;
+                    }
+                }
+
+                if tokens
+                    .peek()
+                    .map_or(false, |next_token| next_token.starts_with('('))
+                {
+                    // We are at the `)[` boundary of a markdown link, e.g. "[Rerun](https://rerun.io)",
+                    // so this is not a rerun doclink after all.
+                    out_tokens.extend(doclink_tokens.iter().map(|&s| s.to_owned()));
+                    continue;
+                }
+
+                out_tokens.push(translate_doclink_or_die(&doclink_tokens, target));
+                continue;
+            }
+
+            // Normal boring token
+            out_tokens.push(token.to_owned());
+        }
+
+        out_tokens.into_iter().collect()
+    }
+
+    fn translate_doclink_or_die(doclink_tokens: &[&str], target: Target) -> String {
+        translate_doclink(doclink_tokens, target).unwrap_or_else(|err| {
+            let original_doclink: String = doclink_tokens.join("");
+            panic!("Failed to parse the doclink '{original_doclink}': {err}");
+        })
+    }
+
+    fn translate_doclink(doclink_tokens: &[&str], target: Target) -> Result<String, &'static str> {
+        let original_doclink: String = doclink_tokens.join("");
+        let mut tokens = doclink_tokens.iter();
+        if tokens.next() != Some(&"[") {
+            return Err("Missing opening bracket");
+        }
+        let kind = tokens.next().ok_or("Missing kind")?;
+        if tokens.next() != Some(&".") {
+            return Err("Missing dot");
+        }
+        let name = tokens.next().ok_or("Missing name")?;
+        if tokens.next() != Some(&"]") {
+            return Err("Missing closing bracket");
+        }
+        if tokens.next().is_some() {
+            return Err("Trailing tokens");
+        }
+
+        Ok(match target {
+            Target::Cpp => format!("[`rerun::{kind}::{name}`]"),
+            Target::Rust => {
+                // https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html
+                format!("[`{kind}::{name}`][crate::{kind}::{name}]")
+            }
+            Target::Python => format!("[`{kind}.{name}`][rerun.{kind}.{name}]"),
+            Target::Docs => {
+                // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
+                let mame_snake_case = re_case::to_snake_case(name);
+                format!(
+                "[`{kind}.{name}`](https://rerun.io/docs/reference/types/{kind}/{mame_snake_case})"
+            )
+            }
+        })
+    }
+
+    fn tokenize(mut input: &str) -> Vec<&str> {
+        tokenize_with(input, &['[', ']', '`', '.'])
+    }
+
+    fn tokenize_with<'input>(mut input: &'input str, special_chars: &[char]) -> Vec<&'input str> {
+        let mut tokens = vec![];
+        while !input.is_empty() {
+            if let Some(index) = input.find(|c| special_chars.contains(&c)) {
+                if 0 < index {
+                    tokens.push(&input[..index]);
+                }
+                tokens.push(&input[index..index + 1]);
+                input = &input[index + 1..];
+            } else {
+                tokens.push(input);
+                break;
+            }
+        }
+        tokens
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_tokenize() {
+            assert_eq!(tokenize("This is a comment"), vec!["This is a comment"]);
+            assert_eq!(
+                tokenize("A vector `[1, 2, 3]` and a doclink [archetype.Image]."),
+                vec![
+                    "A vector ",
+                    "`",
+                    "[",
+                    "1, 2, 3",
+                    "]",
+                    "`",
+                    " and a doclink ",
+                    "[",
+                    "archetype",
+                    ".",
+                    "Image",
+                    "]",
+                    "."
+                ]
+            );
+        }
+
+        #[test]
+        fn test_translate_doclinks() {
+            let input =
+                "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView] and a [url](www.rerun.io).";
+
+            assert_eq!(
+                translate_doc_line(
+                    input,
+                    Target::Cpp
+                ),
+                "A vector `[1, 2, 3]` and a doclink [`rerun::views::Spatial2DView`] and a [url](www.rerun.io)."
+            );
+
+            assert_eq!(
+                translate_doc_line(
+                    input,
+                    Target::Python
+                ),
+                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`][rerun.views.Spatial2DView] and a [url](www.rerun.io)."
+            );
+
+            assert_eq!(
+                translate_doc_line(
+                    input,
+                    Target::Rust
+                ),
+                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView`][crate::views::Spatial2DView] and a [url](www.rerun.io)."
+            );
+
+            assert_eq!(
+                translate_doc_line(
+                    input,
+                    Target::Docs
+                ),
+                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
+            );
+        }
+    }
+}
+
+use doclink_translation::*;
+
 #[cfg(test)]
 mod tests {
-    use crate::Docs;
+    use super::*;
 
     #[test]
     fn test_docs() {
