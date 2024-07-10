@@ -191,8 +191,6 @@ mod doclink_translation {
     use super::Target;
 
     /// Convert Rerun-style doclinks to the target language.
-    ///
-    /// For example, "[archetype.Image]" becomes "[`archetype::Image`]" in Rust.
     pub fn translate_doc_line(input: &str, target: Target) -> String {
         let mut out_tokens: Vec<String> = vec![];
         let mut within_backticks = false;
