@@ -6,14 +6,14 @@ members = [
   "crates/top/*",
   "crates/utils/*",
   "crates/viewer/*",
-  # "docs/snippets",
-  # "examples/rust/*",
-  # "rerun_py",
-  # "run_wasm",
-  # "tests/rust/log_benchmark",
-  # "tests/rust/plot_dashboard_stress",
-  # "tests/rust/roundtrips/*",
-  # "tests/rust/test_*",
+  "docs/snippets",
+  "examples/rust/*",
+  "rerun_py",
+  "run_wasm",
+  "tests/rust/log_benchmark",
+  "tests/rust/plot_dashboard_stress",
+  "tests/rust/roundtrips/*",
+  "tests/rust/test_*",
 ]
 exclude = ["examples/rust/revy"]
 
