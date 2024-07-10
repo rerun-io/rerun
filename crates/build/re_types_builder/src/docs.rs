@@ -271,7 +271,7 @@ mod doclink_translation {
         if tokens.next() != Some(&".") {
             return Err("Missing dot");
         }
-        let name = tokens.next().ok_or("Missing name")?;
+        let type_name = tokens.next().ok_or("Missing type name")?;
         if tokens.next() != Some(&"]") {
             return Err("Missing closing bracket");
         }
@@ -284,18 +284,16 @@ mod doclink_translation {
         // e.g. `cargo doc` and our url link checker.
 
         Ok(match target {
-            Target::Cpp => format!("`{kind}::{name}`"),
+            Target::Cpp => format!("`{kind}::{type_name}`"),
             Target::Rust => {
                 // https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html
-                format!("[`{kind}::{name}`][crate::{kind}::{name}]")
+                format!("[`{kind}::{type_name}`][crate::{kind}::{type_name}]")
             }
-            Target::Python => format!("[`{kind}.{name}`][rerun.{kind}.{name}]"),
+            Target::Python => format!("[`{kind}.{type_name}`][rerun.{kind}.{type_name}]"),
             Target::WebDocs => {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
-                let mame_snake_case = re_case::to_snake_case(name);
-                format!(
-                "[`{kind}.{name}`](https://rerun.io/docs/reference/types/{kind}/{mame_snake_case})"
-            )
+                let type_name_snake_case = re_case::to_snake_case(type_name);
+                format!("[`{kind}.{type_name}`](https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case})")
             }
         })
     }
