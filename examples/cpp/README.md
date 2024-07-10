@@ -5,7 +5,7 @@ using the accompanying [`C++ Quick Start`](https://www.rerun.io/docs/getting-sta
 ## Build all examples
 The CMake target `examples` is a convenient alias for building all CMake examples in one go.
 
-You can use `pixi run cpp-build-examples` to invoke it within the repository's Pixi environment.
+You can use `pixi run -e cpp cpp-build-examples` to invoke it within the repository's Pixi environment.
 After that, you can run individual examples from `./build/examples/cpp/` (e.g. `./build/examples/cpp/dna/example_dna`).
 
 ## Contributions welcome

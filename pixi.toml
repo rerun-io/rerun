@@ -33,8 +33,8 @@ libc = "2.31"
 
 [environments]
 default = ["base", "wheel-build"]
-cpp = ["cpp", "base"]
-wheel-test = ["wheel-test", "base"]
+cpp = ["base", "cpp"]
+wheel-test = ["base", "cpp", "wheel-test"]
 
 # Example environments
 
