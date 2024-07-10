@@ -4,13 +4,13 @@ import itertools
 from typing import Any, Optional, cast
 
 import rerun as rr
-from rerun.components import MaterialBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
+from rerun.components import AlbedoFactorBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
 from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.datatypes import (
-    Rgba32,
-    Rgba32Like,
     ClassIdArrayLike,
+    Rgba32,
     Rgba32ArrayLike,
+    Rgba32Like,
     UVec3DArrayLike,
     Vec2DArrayLike,
     Vec3DArrayLike,
@@ -39,7 +39,7 @@ albedo_factors: list[Rgba32Like | None] = [
 def albedo_factor_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, Rgba32(0xAA0000CC))
 
-    return MaterialBatch._optional(expected)
+    return AlbedoFactorBatch._optional(expected)
 
 
 def test_mesh3d() -> None:
