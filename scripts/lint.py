@@ -773,6 +773,9 @@ def fix_header_casing(s: str) -> str:
     def is_acronym_or_pascal_case(s: str) -> bool:
         return sum(1 for c in s if c.isupper()) > 1
 
+    if s.startswith("["):
+        return s  # We don't handle links in headers, yet
+
     new_words: list[str] = []
     last_punctuation = None
     inline_code_block = False
