@@ -124,7 +124,7 @@ pub const SPACE_VIEW_HISTOGRAM: Icon = Icon::new(
     include_bytes!("../data/icons/spaceview_histogram.png"),
 );
 pub const SPACE_VIEW_LOG: Icon = Icon::new(
-    "spaceview_text",
+    "spaceview_log",
     include_bytes!("../data/icons/spaceview_log.png"),
 );
 pub const SPACE_VIEW_TENSOR: Icon = Icon::new(
