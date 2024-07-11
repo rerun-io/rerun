@@ -36,6 +36,7 @@ namespace rerun.components;
 /// \py )
 /// \py ```
 struct TransformMat3x3 (
+  "attr.docs.unreleased",
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
