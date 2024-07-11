@@ -29,7 +29,7 @@ impl BoundingBox {
 
     /// A [`BoundingBox`] that contains no points.
     ///
-    /// This is useful as the seed for bounding bounding boxes.
+    /// This is useful as the seed for bounding boxes.
     #[inline]
     pub fn nothing() -> Self {
         Self {
@@ -205,6 +205,7 @@ impl BoundingBox {
     }
 
     #[must_use]
+    #[inline]
     pub fn union(mut self, other: Self) -> Self {
         self.min = self.min.min(other.min);
         self.max = self.max.max(other.max);
@@ -214,6 +215,7 @@ impl BoundingBox {
     /// Returns the smallest volume that is covered by both `self` and `other`,
     /// or [`Self::nothing`] if the boxes are disjoint.
     #[must_use]
+    #[inline]
     pub fn intersection(mut self, other: Self) -> Self {
         let intersection = Self {
             min: self.min.max(other.min),

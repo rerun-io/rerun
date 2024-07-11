@@ -25,11 +25,13 @@ impl Plane3 {
         normal: Vec3::Z,
         d: 0.0,
     };
+
     /// The Y^Z plane with normal = +X
     pub const YZ: Self = Self {
         normal: Vec3::X,
         d: 0.0,
     };
+
     /// The Z^X plane with normal = +Y
     pub const ZX: Self = Self {
         normal: Vec3::Y,

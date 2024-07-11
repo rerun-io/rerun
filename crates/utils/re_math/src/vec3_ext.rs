@@ -105,7 +105,7 @@ impl Vec3Ext for Vec3 {
 
 /// Coordinate system extension to [`Vec3`]
 ///
-/// This crate is opinionated  with what coordinate system it uses and this adds
+/// This crate is opinionated with what coordinate system it uses and this adds
 /// additional functions to access the coordinate system axis
 ///
 /// The exact coordinate system we use is right-handed with +X = right, +Y = up, -Z = forward, +Z = back

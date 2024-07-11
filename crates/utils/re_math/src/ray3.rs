@@ -10,6 +10,7 @@ use glam::Vec3;
 pub struct Ray3 {
     /// Start of the ray
     pub origin: Vec3,
+
     /// Direction of the ray, normalized
     pub dir: Vec3,
 }
