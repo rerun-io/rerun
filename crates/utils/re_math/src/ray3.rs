@@ -24,7 +24,7 @@ impl Ray3 {
 
     /// `dir` should be normalized
     #[inline]
-    pub fn from_origin_dir(origin: Vec3, dir: Vec3) -> Self {
+    pub const fn from_origin_dir(origin: Vec3, dir: Vec3) -> Self {
         Self { origin, dir }
     }
 

@@ -41,7 +41,7 @@ impl Plane3 {
     /// From the plane normal and a distance `d` so that for all points on the plane:
     /// `normal.dot(point) + d = 0`.
     #[inline]
-    pub fn from_normal_dist(normal: Vec3, d: f32) -> Self {
+    pub const fn from_normal_dist(normal: Vec3, d: f32) -> Self {
         Self { normal, d }
     }
 

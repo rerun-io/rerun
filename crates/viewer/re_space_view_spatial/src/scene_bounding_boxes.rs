@@ -22,8 +22,8 @@ pub struct SceneBoundingBoxes {
 impl Default for SceneBoundingBoxes {
     fn default() -> Self {
         Self {
-            current: re_math::BoundingBox::nothing(),
-            smoothed: re_math::BoundingBox::nothing(),
+            current: re_math::BoundingBox::NOTHING,
+            smoothed: re_math::BoundingBox::NOTHING,
             per_entity: IntMap::default(),
         }
     }
@@ -34,7 +34,7 @@ impl SceneBoundingBoxes {
         re_tracing::profile_function!();
 
         let previous = self.current;
-        self.current = re_math::BoundingBox::nothing();
+        self.current = re_math::BoundingBox::NOTHING;
         self.per_entity.clear();
 
         for visualizer in visualizers.iter() {

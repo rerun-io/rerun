@@ -33,26 +33,20 @@ impl BoundingBox {
     /// A [`BoundingBox`] that contains no points.
     ///
     /// This is useful as the seed for bounding boxes.
-    #[inline]
-    pub fn nothing() -> Self {
-        Self {
-            min: Vec3::splat(core::f32::INFINITY),
-            max: Vec3::splat(core::f32::NEG_INFINITY),
-        }
-    }
+    pub const NOTHING: Self = Self {
+        min: Vec3::INFINITY,
+        max: Vec3::NEG_INFINITY,
+    };
 
     /// A [`BoundingBox`] that contains every point.
-    #[inline]
-    pub fn everything() -> Self {
-        Self {
-            min: Vec3::splat(core::f32::NEG_INFINITY),
-            max: Vec3::splat(core::f32::INFINITY),
-        }
-    }
+    pub const EVERYTHING: Self = Self {
+        min: Vec3::NEG_INFINITY,
+        max: Vec3::INFINITY,
+    };
 
     /// Create a bounding box from a minimum and maximum position.
     #[inline]
-    pub fn from_min_max(min: Vec3, max: Vec3) -> Self {
+    pub const fn from_min_max(min: Vec3, max: Vec3) -> Self {
         Self { min, max }
     }
 
@@ -71,7 +65,7 @@ impl BoundingBox {
 
     /// Create a bounding box from an iterator of points that the bounding box will cover.
     pub fn from_points(points: impl Iterator<Item = Vec3>) -> Self {
-        let mut bb = Self::nothing();
+        let mut bb = Self::NOTHING;
         for p in points {
             bb.extend(p);
         }
@@ -225,7 +219,7 @@ impl BoundingBox {
             max: self.max.min(other.max),
         };
         if intersection.is_nothing() {
-            Self::nothing()
+            Self::NOTHING
         } else {
             intersection
         }
@@ -264,7 +258,7 @@ impl BoundingBox {
     #[must_use]
     pub fn rotated_around_origin(&self, q: &Quat) -> Self {
         if self.is_nothing() {
-            Self::nothing()
+            Self::NOTHING
         } else {
             // This can be optimized
             Self::from_points(self.corners().iter().map(|&c| q.mul_vec3(c)))
@@ -278,7 +272,7 @@ impl BoundingBox {
     #[must_use]
     pub fn transform_iso(&self, m: &IsoTransform) -> Self {
         if self.is_nothing() {
-            Self::nothing()
+            Self::NOTHING
         } else {
             Self::from_points(self.corners().iter().map(|&c| m.transform_point3(c)))
         }
@@ -291,7 +285,7 @@ impl BoundingBox {
     #[must_use]
     pub fn transform_affine3(&self, m: &Affine3A) -> Self {
         if self.is_nothing() {
-            Self::nothing()
+            Self::NOTHING
         } else {
             Self::from_points(self.corners().iter().map(|&c| m.transform_point3(c)))
         }
@@ -304,7 +298,7 @@ impl BoundingBox {
     #[must_use]
     pub fn transform_conformal3(&self, m: &Conformal3) -> Self {
         if self.is_nothing() {
-            Self::nothing()
+            Self::NOTHING
         } else {
             Self::from_points(self.corners().iter().map(|&c| m.transform_point3(c)))
         }
