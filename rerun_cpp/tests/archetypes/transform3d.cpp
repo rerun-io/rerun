@@ -27,24 +27,28 @@ SCENARIO(
     const auto rotation = rrd::Quaternion::from_xyzw(1.0f, 2.0f, 3.0f, 4.0f);
 
     Transform3D manual;
+    // List out everything so that GCC doesn't get nervous around uninitialized values.
+    rrd::TranslationRotationScale3D manual_translation_rotation_scale;
+    manual_translation_rotation_scale.translation = std::nullopt;
+    manual_translation_rotation_scale.rotation = std::nullopt;
+    manual_translation_rotation_scale.scale = std::nullopt;
+    manual_translation_rotation_scale.from_parent = from_parent;
+    manual.transform =
+        rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
+    manual.mat3x3 = std::nullopt;
+    manual.translation = std::nullopt;
 
     GIVEN("Transform3D from translation from_parent==" << from_parent) {
         auto utility =
             Transform3D::from_translation({1.0f, 2.0f, 3.0f}).with_from_parent(from_parent);
 
         manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        manual.transform.repr =
-            rrd::Transform3D::translation_rotation_scale(rrd::TranslationRotationScale3D(from_parent
-            ));
 
         test_compare_archetype_serialization(manual, utility);
     }
 
     GIVEN("Transform3D from 3x3 matrix and from_parent==" << from_parent) {
         manual.translation = std::nullopt;
-        manual.transform.repr =
-            rrd::Transform3D::translation_rotation_scale(rrd::TranslationRotationScale3D(from_parent
-            ));
 
         AND_GIVEN("matrix as initializer list") {
             auto utility = Transform3D::from_mat3x3(MATRIX_ILIST).with_from_parent(from_parent);
@@ -67,9 +71,7 @@ SCENARIO(
         )
                            .with_from_parent(from_parent);
 
-        rrd::TranslationRotationScale3D manual_translation_rotation_scale;
         manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
-        manual_translation_rotation_scale.from_parent = from_parent;
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
@@ -78,9 +80,6 @@ SCENARIO(
 
     GIVEN("Transform3D from translation & 3x3 matrix and from_parent==" << from_parent) {
         manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        manual.transform.repr =
-            rrd::Transform3D::translation_rotation_scale(rrd::TranslationRotationScale3D(from_parent
-            ));
 
         AND_GIVEN("matrix as initializer list") {
             auto utility = Transform3D::from_translation_mat3x3({1.0f, 2.0f, 3.0f}, MATRIX_ILIST)
@@ -106,9 +105,7 @@ SCENARIO(
                            .with_from_parent(from_parent);
 
         manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        rrd::TranslationRotationScale3D manual_translation_rotation_scale;
         manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
-        manual_translation_rotation_scale.from_parent = from_parent;
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
@@ -124,10 +121,8 @@ SCENARIO(
                            .with_from_parent(from_parent);
 
         manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        rrd::TranslationRotationScale3D manual_translation_rotation_scale;
         manual_translation_rotation_scale.rotation = rotation;
         manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
-        manual_translation_rotation_scale.from_parent = from_parent;
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
@@ -139,10 +134,8 @@ SCENARIO(
             Transform3D::from_rotation_scale(rotation, rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f}))
                 .with_from_parent(from_parent);
 
-        rrd::TranslationRotationScale3D manual_translation_rotation_scale;
         manual_translation_rotation_scale.rotation = rotation;
         manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
-        manual_translation_rotation_scale.from_parent = from_parent;
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
