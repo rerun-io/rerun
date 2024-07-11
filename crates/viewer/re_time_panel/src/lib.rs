@@ -700,7 +700,7 @@ impl TimePanel {
                     .get(time_ctrl.timeline())
                     .unwrap_or(&empty);
 
-                if ctx.app_options.experimental_new_data_density_graph {
+                if ctx.app_options.experimental_chunk_based_data_density_graph {
                     data_density_graph::data_density_graph_ui2(
                         &mut self.data_density_graph_painter,
                         ctx,
@@ -878,7 +878,7 @@ impl TimePanel {
                         TimePanelSource::Blueprint => ctx.store_context.blueprint,
                     };
 
-                    if ctx.app_options.experimental_new_data_density_graph {
+                    if ctx.app_options.experimental_chunk_based_data_density_graph {
                         data_density_graph::data_density_graph_ui2(
                             &mut self.data_density_graph_painter,
                             ctx,

@@ -85,6 +85,8 @@ pub enum UICommand {
     RestartWithWebGl,
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGpu,
+
+    ToggleChunkBasedDataDensityGraph,
 }
 
 impl UICommand {
@@ -246,7 +248,12 @@ impl UICommand {
             Self::RestartWithWebGpu => (
                 "Restart with WebGPU",
                 "Reloads the webpage and force WebGPU for rendering. All data will be lost."
-            )
+            ),
+
+            Self::ToggleChunkBasedDataDensityGraph => (
+                "Toggle chunk-based data density graph",
+                "Toggle between the old and new data density graph",
+            ),
         }
     }
 
@@ -346,6 +353,8 @@ impl UICommand {
 
             #[cfg(target_arch = "wasm32 ")]
             Self::ViewportMode(_) => None,
+
+            Self::ToggleChunkBasedDataDensityGraph => Some(ctrl_shift(Key::D)),
         }
     }
 
