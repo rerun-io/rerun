@@ -65,6 +65,10 @@ def cmake_configure(release: bool, env: dict[str, str]) -> None:
         build_type = "Release"
     # TODO(andreas): We should pixi for the prepare so we can ensure we have build tooling ready
     configure_args = [
+        "pixi",
+        "run",
+        "-e",
+        "cpp",
         "cmake",
         "-B",
         cpp_build_dir,
@@ -84,6 +88,10 @@ def cmake_build(target: str, release: bool) -> None:
         config = "Release"
 
     build_process_args = [
+        "pixi",
+        "run",
+        "-e",
+        "cpp",
         "cmake",
         "--build",
         cpp_build_dir,

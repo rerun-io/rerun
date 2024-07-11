@@ -8,7 +8,7 @@ import argparse
 from math import pi
 
 import rerun as rr
-from rerun.datatypes import RotationAxisAngle, TranslationAndMat3x3, TranslationRotationScale3D
+from rerun.datatypes import RotationAxisAngle
 
 
 def main() -> None:
@@ -18,47 +18,36 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_transform3d")
 
-    rr.log("translation_and_mat3x3/identity", rr.Transform3D(TranslationAndMat3x3()))
-
     rr.log(
-        "translation_and_mat3x3/translation",
-        rr.Transform3D(TranslationAndMat3x3(translation=[1, 2, 3], from_parent=True)),
+        "transform/translation",
+        rr.Transform3D(translation=[1, 2, 3], from_parent=True),
     )
 
     rr.log(
-        "translation_and_mat3x3/rotation",
-        rr.Transform3D(TranslationAndMat3x3(mat3x3=[1, 2, 3, 4, 5, 6, 7, 8, 9])),
+        "transform/rotation",
+        rr.Transform3D(mat3x3=[1, 2, 3, 4, 5, 6, 7, 8, 9]),
     )
 
     rr.log(
-        "translation_rotation_scale/identity",
-        rr.Transform3D(TranslationRotationScale3D()),
+        "transform/translation_scale",
+        rr.Transform3D(translation=[1, 2, 3], scale=42, from_parent=True),
     )
 
     rr.log(
-        "translation_rotation_scale/translation_scale",
-        rr.Transform3D(TranslationRotationScale3D(translation=[1, 2, 3], scale=42, from_parent=True)),
-    )
-
-    rr.log(
-        "translation_rotation_scale/rigid",
+        "transform/rigid",
         rr.Transform3D(
-            TranslationRotationScale3D(
-                translation=[1, 2, 3],
-                rotation=RotationAxisAngle([0.2, 0.2, 0.8], pi),
-            )
+            translation=[1, 2, 3],
+            rotation=RotationAxisAngle([0.2, 0.2, 0.8], pi),
         ),
     )
 
     rr.log(
-        "translation_rotation_scale/affine",
+        "transform/affine",
         rr.Transform3D(
-            TranslationRotationScale3D(
-                translation=[1, 2, 3],
-                rotation=RotationAxisAngle([0.2, 0.2, 0.8], pi),
-                scale=42,
-                from_parent=True,
-            )
+            translation=[1, 2, 3],
+            rotation=RotationAxisAngle([0.2, 0.2, 0.8], pi),
+            scale=42,
+            from_parent=True,
         ),
     )
 

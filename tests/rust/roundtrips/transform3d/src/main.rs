@@ -17,32 +17,22 @@ struct Args {
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     rec.log(
-        "translation_and_mat3x3/identity",
-        &Transform3D::IDENTITY, //
-    )?;
-
-    rec.log(
-        "translation_and_mat3x3/translation",
+        "transform/translation",
         &Transform3D::from_translation([1.0, 2.0, 3.0]).from_parent(),
     )?;
 
     rec.log(
-        "translation_and_mat3x3/rotation",
+        "transform/rotation",
         &Transform3D::from_mat3x3([[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]]),
     )?;
 
     rec.log(
-        "translation_rotation_scale/identity",
-        &Transform3D::IDENTITY,
-    )?;
-
-    rec.log(
-        "translation_rotation_scale/translation_scale",
+        "transform/translation_scale",
         &Transform3D::from_translation_scale([1.0, 2.0, 3.0], Scale3D::Uniform(42.0)).from_parent(),
     )?;
 
     rec.log(
-        "translation_rotation_scale/rigid",
+        "transform/rigid",
         &Transform3D::from_translation_rotation(
             [1.0, 2.0, 3.0],
             RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
@@ -50,7 +40,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     )?;
 
     rec.log(
-        "translation_rotation_scale/affine",
+        "transform/affine",
         &Transform3D::from_translation_rotation_scale(
             [1.0, 2.0, 3.0],
             RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
