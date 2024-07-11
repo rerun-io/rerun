@@ -26,6 +26,7 @@ re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
+re_math = { workspace = true, features = ["serde"] }
 re_query.workspace = true
 re_renderer = { workspace = true, features = [
   "import-gltf",
@@ -46,7 +47,6 @@ bytemuck.workspace = true
 egui = { workspace = true, features = ["serde"] }
 glam.workspace = true
 itertools.workspace = true
-macaw = { workspace = true, features = ["with_serde"] }
 nohash-hasher.workspace = true
 once_cell.workspace = true
 serde.workspace = true

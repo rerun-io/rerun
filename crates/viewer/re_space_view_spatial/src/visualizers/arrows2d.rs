@@ -78,7 +78,7 @@ impl Arrows2DVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
+            let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
 
             let origins =
                 clamped(data.origins, num_instances).chain(std::iter::repeat(&Position2D::ZERO));
