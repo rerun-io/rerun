@@ -53,7 +53,7 @@ TODO(andreas): code example
 
 
 TODO(andreas): Talk about OutOfTreeTransform
-TODO(andreas): ... and Asset3D specifically
+TODO(andreas): … and Asset3D specifically
 
 
 #### C++
@@ -81,7 +81,7 @@ Note that the order of the method calls does _not_ affect the order in which tra
 
 
 TODO(andreas): Talk about OutOfTreeTransform
-TODO(andreas): ... and Asset3D specifically
+TODO(andreas): … and Asset3D specifically
 
 #### Rust
 `rerun::archetypes::Transform3D` no longer has a `new`, use other factory methods instead, e.g. `from_translation_rotation_scale` or `from_mat3x3`
@@ -130,4 +130,4 @@ rerun::Transform3D::default().with_mat3x3(matrix).with_translation(translation)
 Note that the order of the method calls does _not_ affect the order in which transformation is applied!
 
 TODO(andreas): Talk about OutOfTreeTransform
-TODO(andreas): ... and Asset3D specifically
+TODO(andreas): … and Asset3D specifically

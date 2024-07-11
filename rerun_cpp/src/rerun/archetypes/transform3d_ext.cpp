@@ -38,7 +38,7 @@ namespace rerun {
         ///
         /// \param translation \çopydoc Transform3D::translation
         /// \param matrix \copydoc Transform3D::mat3x3
-        /// \param from_parent \copydoc datatypes::TranslationAndMat3x3::from_parent
+        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
             const components::Translation3D& _translation,
             const components::TransformMat3x3& _mat3x3, bool from_parent = false
@@ -88,7 +88,7 @@ namespace rerun {
         /// From 3x3 matrix only.
         ///
         /// \param matrix \copydoc Transform3D::mat3x3
-        /// \param from_parent \copydoc datatypes::TranslationAndMat3x3::from_parent
+        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(const components::TransformMat3x3& _mat3x3, bool from_parent = false)
             : transform(datatypes::TranslationRotationScale3D(from_parent)),
               mat3x3(Collection<components::TransformMat3x3>::take_ownership(_mat3x3)) {}
@@ -288,12 +288,6 @@ namespace rerun {
             auto translation_rotation_scale = transform.repr.get_translation_rotation_scale();
             if (translation_rotation_scale != nullptr) {
                 auto cpy = *translation_rotation_scale;
-                cpy.from_parent = from_parent;
-                transform = cpy;
-            }
-            auto translation_and_mat3x3 = transform.repr.get_translation_and_mat3x3();
-            if (translation_and_mat3x3 != nullptr) {
-                auto cpy = *translation_and_mat3x3;
                 cpy.from_parent = from_parent;
                 transform = cpy;
             }

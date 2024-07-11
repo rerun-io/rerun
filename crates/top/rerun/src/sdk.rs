@@ -4,8 +4,7 @@ pub use re_sdk::*;
 /// Transform helpers, for use with [`components::Transform3D`].
 pub mod transform {
     pub use re_types::datatypes::{
-        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, TranslationAndMat3x3,
-        TranslationRotationScale3D,
+        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, TranslationRotationScale3D,
     };
 }
 
@@ -31,7 +30,7 @@ mod prelude {
     pub use re_types::datatypes::{
         Angle, AnnotationInfo, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32,
         Rotation3D, RotationAxisAngle, Scale3D, TensorBuffer, TensorData, TensorDimension,
-        TranslationAndMat3x3, TranslationRotationScale3D, Vec2D, Vec3D, Vec4D,
+        TranslationRotationScale3D, Vec2D, Vec3D, Vec4D,
     };
 }
 pub use prelude::*;

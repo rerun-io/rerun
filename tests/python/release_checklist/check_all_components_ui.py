@@ -127,7 +127,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             rr.datatypes.TranslationRotationScale3D(
                 translation=(1, 2, 3), rotation=rr.datatypes.Quaternion(xyzw=[0, 0, 0, 1]), scale=(1, 1, 1)
             ),
-            rr.datatypes.TranslationAndMat3x3(translation=(1, 2, 3), mat3x3=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
         ]
     ),
     "OpacityBatch": TestCase(0.5),
@@ -171,7 +170,6 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             rr.datatypes.TranslationRotationScale3D(
                 translation=(1, 2, 3), rotation=rr.datatypes.Quaternion(xyzw=[0, 0, 0, 1]), scale=(1, 1, 1)
             ),
-            rr.datatypes.TranslationAndMat3x3(translation=(1, 2, 3), mat3x3=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
         ]
     ),
     "TriangleIndicesBatch": TestCase(batch=[(0, 1, 2), (3, 4, 5), (6, 7, 8)]),

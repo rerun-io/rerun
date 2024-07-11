@@ -31,7 +31,6 @@ time_int.md linguist-generated=true
 time_range.md linguist-generated=true
 time_range_boundary.md linguist-generated=true
 transform3d.md linguist-generated=true
-translation_and_mat3x3.md linguist-generated=true
 translation_rotation_scale3d.md linguist-generated=true
 uint32.md linguist-generated=true
 uint64.md linguist-generated=true

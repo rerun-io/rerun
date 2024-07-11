@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../result.hpp"
-#include "translation_and_mat3x3.hpp"
 #include "translation_rotation_scale3d.hpp"
 
 #include <cstdint>
@@ -25,15 +24,11 @@ namespace rerun::datatypes {
         enum class Transform3DTag : uint8_t {
             /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
             None = 0,
-            TranslationAndMat3x3,
             TranslationRotationScale,
         };
 
         /// \private
         union Transform3DData {
-            /// Translation plus a 3x3 matrix for scale, rotation, skew, etc.
-            rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
-
             /// Translation, rotation and scale, decomposed.
             rerun::datatypes::TranslationRotationScale3D translation_rotation_scale;
 
@@ -86,26 +81,10 @@ namespace rerun::datatypes {
             this->_data.swap(other._data);
         }
 
-        /// Translation plus a 3x3 matrix for scale, rotation, skew, etc.
-        Transform3D(rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3) : Transform3D() {
-            *this = Transform3D::translation_and_mat3x3(std::move(translation_and_mat3x3));
-        }
-
         /// Translation, rotation and scale, decomposed.
         Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale)
             : Transform3D() {
             *this = Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
-        }
-
-        /// Translation plus a 3x3 matrix for scale, rotation, skew, etc.
-        static Transform3D translation_and_mat3x3(
-            rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3
-        ) {
-            Transform3D self;
-            self._tag = detail::Transform3DTag::TranslationAndMat3x3;
-            new (&self._data.translation_and_mat3x3)
-                rerun::datatypes::TranslationAndMat3x3(std::move(translation_and_mat3x3));
-            return self;
         }
 
         /// Translation, rotation and scale, decomposed.
@@ -117,15 +96,6 @@ namespace rerun::datatypes {
             new (&self._data.translation_rotation_scale)
                 rerun::datatypes::TranslationRotationScale3D(std::move(translation_rotation_scale));
             return self;
-        }
-
-        /// Return a pointer to translation_and_mat3x3 if the union is in that state, otherwise `nullptr`.
-        const rerun::datatypes::TranslationAndMat3x3* get_translation_and_mat3x3() const {
-            if (_tag == detail::Transform3DTag::TranslationAndMat3x3) {
-                return &_data.translation_and_mat3x3;
-            } else {
-                return nullptr;
-            }
         }
 
         /// Return a pointer to translation_rotation_scale if the union is in that state, otherwise `nullptr`.
