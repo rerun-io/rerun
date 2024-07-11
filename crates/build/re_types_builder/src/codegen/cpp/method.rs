@@ -77,16 +77,16 @@ impl From<&str> for MethodDocumentation {
     }
 }
 
-impl quote::ToTokens for MethodDocumentation {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl MethodDocumentation {
+    fn quoted(&self) -> TokenStream {
         match self {
-            Self::None => {}
-            Self::String(s) => {
-                tokens.extend(quote_doc_comment(s));
+            Self::None => {
+                quote!()
             }
+            Self::String(s) => quote_doc_comment(s),
             Self::Docs(docs) => {
                 let lines = lines_from_docs(docs);
-                tokens.extend(quote_doc_lines(&lines));
+                quote_doc_lines(&lines)
             }
         }
     }
@@ -120,6 +120,7 @@ impl Method {
             inline: is_inline,
         } = self;
 
+        let docs = docs.quoted();
         let declaration = declaration.to_hpp_tokens();
         if *is_inline {
             quote! {
