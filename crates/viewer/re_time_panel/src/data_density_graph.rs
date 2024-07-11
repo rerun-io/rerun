@@ -524,11 +524,6 @@ pub fn data_density_graph_ui2(
     }
 }
 
-// if sorted:
-// - binary search, show hovered things
-// - if its small enough, full scan
-// - otherwise, hover full chunk
-
 fn visit_chunk_sub_range(
     chunk: &Chunk,
     component_name: Option<ComponentName>,
