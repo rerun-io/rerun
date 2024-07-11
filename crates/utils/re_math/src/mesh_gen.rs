@@ -36,6 +36,8 @@ impl MeshGen {
     }
 
     pub fn push_cube(&mut self, half_size: Vec3, transform: IsoTransform) -> Range<usize> {
+        #![allow(clippy::disallowed_methods)] // Use of normalize fine as long as the input is not degenerate.
+
         let s = half_size;
 
         let index_offset = self.positions.len() as u32;
