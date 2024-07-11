@@ -262,11 +262,15 @@ enum Command {
     /// Compacts the contents of an .rrd or .rbl file and writes the result to a new file.
     ///
     /// Use the usual environment variables to control the compaction thresholds:
-    /// * `RERUN_CHUNK_MAX_ROWS`
-    /// * `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`
-    /// * `RERUN_CHUNK_MAX_BYTES`
+    /// `RERUN_CHUNK_MAX_ROWS`,
+    /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
+    /// `RERUN_CHUNK_MAX_BYTES`.
+    ///
+    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
     Compact {
+        #[arg(short = 'i', long = "input", value_name = "src.rrd")]
         path_to_input_rrd: String,
+        #[arg(short = 'o', long = "output", value_name = "dst.rrd")]
         path_to_output_rrd: String,
     },
 
