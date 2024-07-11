@@ -98,6 +98,99 @@ pub fn sparse_list_array_to_dense_list_array(
     )
 }
 
+/// Pads a `ListArray` by pushing null values to its back.
+pub fn pad_list_array_back(
+    list_array: &ArrowListArray<i32>,
+    target_len: usize,
+) -> ArrowListArray<i32> {
+    let missing_len = target_len.saturating_sub(list_array.len());
+    if missing_len == 0 {
+        return list_array.clone();
+    }
+
+    let datatype = list_array.data_type().clone();
+
+    let offsets = {
+        #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
+        ArrowOffsets::try_from_lengths(
+            list_array
+                .iter()
+                .map(|array| array.map_or(0, |array| array.len()))
+                .chain(std::iter::repeat(0).take(missing_len)),
+        )
+        .unwrap()
+    };
+
+    let values = list_array.values().clone();
+
+    let validity = {
+        if let Some(validity) = list_array.validity() {
+            #[allow(clippy::from_iter_instead_of_collect)]
+            ArrowBitmap::from_iter(
+                validity
+                    .iter()
+                    .chain(std::iter::repeat(false).take(missing_len)),
+            )
+        } else {
+            #[allow(clippy::from_iter_instead_of_collect)]
+            ArrowBitmap::from_iter(
+                std::iter::repeat(true)
+                    .take(list_array.len())
+                    .chain(std::iter::repeat(false).take(missing_len)),
+            )
+        }
+    };
+
+    ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
+}
+
+/// Pads a `ListArray` by pushing null values to its front.
+pub fn pad_list_array_front(
+    list_array: &ArrowListArray<i32>,
+    target_len: usize,
+) -> ArrowListArray<i32> {
+    let missing_len = target_len.saturating_sub(list_array.len());
+    if missing_len == 0 {
+        return list_array.clone();
+    }
+
+    let datatype = list_array.data_type().clone();
+
+    let offsets = {
+        #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
+        ArrowOffsets::try_from_lengths(
+            std::iter::repeat(0).take(missing_len).chain(
+                list_array
+                    .iter()
+                    .map(|array| array.map_or(0, |array| array.len())),
+            ),
+        )
+        .unwrap()
+    };
+
+    let values = list_array.values().clone();
+
+    let validity = {
+        if let Some(validity) = list_array.validity() {
+            #[allow(clippy::from_iter_instead_of_collect)]
+            ArrowBitmap::from_iter(
+                std::iter::repeat(false)
+                    .take(missing_len)
+                    .chain(validity.iter()),
+            )
+        } else {
+            #[allow(clippy::from_iter_instead_of_collect)]
+            ArrowBitmap::from_iter(
+                std::iter::repeat(false)
+                    .take(missing_len)
+                    .chain(std::iter::repeat(true).take(list_array.len())),
+            )
+        }
+    };
+
+    ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
+}
+
 /// Applies a filter kernel to the given `array`.
 ///
 /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
