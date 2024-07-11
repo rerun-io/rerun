@@ -283,6 +283,8 @@ mod doclink_translation {
             return Err("Trailing tokens");
         }
 
+        // TODO(emilk): support links to fields and enum variants
+
         let mut is_unreleased = false;
         {
             // Find the target object:
