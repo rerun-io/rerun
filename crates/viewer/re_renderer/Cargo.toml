@@ -50,6 +50,7 @@ serde = ["dep:serde"]
 [dependencies]
 re_error.workspace = true
 re_log.workspace = true
+re_math.workspace = true
 re_tracing.workspace = true
 
 ahash.workspace = true
@@ -64,7 +65,6 @@ enumset.workspace = true
 glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
 itertools = { workspace = true }
-macaw.workspace = true
 never.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true

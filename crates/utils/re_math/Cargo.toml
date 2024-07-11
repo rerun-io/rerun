@@ -20,7 +20,7 @@ all-features = true
 
 
 [features]
-default = ["serde"]
+default = []
 
 serde = ["dep:serde"]
 

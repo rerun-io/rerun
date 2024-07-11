@@ -73,7 +73,7 @@ pub struct PickingContext {
     pub pointer_in_space2d: glam::Vec2,
 
     /// The picking ray used. Given in the coordinates of the space the picking is performed in.
-    pub ray_in_world: macaw::Ray3,
+    pub ray_in_world: re_math::Ray3,
 }
 
 impl PickingContext {
@@ -257,7 +257,7 @@ fn picking_textured_rects<'a>(
             continue; // extent_u and extent_v are parallel. Shouldn't happen.
         };
 
-        let rect_plane = macaw::Plane3::from_normal_point(normal, rect.top_left_corner_position);
+        let rect_plane = re_math::Plane3::from_normal_point(normal, rect.top_left_corner_position);
 
         // TODO(andreas): Interaction radius is currently ignored for rects.
         let (intersect, t) =

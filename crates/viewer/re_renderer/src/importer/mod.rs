@@ -7,7 +7,7 @@ pub mod gltf;
 #[cfg(feature = "import-stl")]
 pub mod stl;
 
-use macaw::Vec3Ext as _;
+use re_math::Vec3Ext as _;
 
 use crate::renderer::MeshInstance;
 
@@ -21,8 +21,8 @@ pub fn to_uniform_scale(scale: glam::Vec3) -> f32 {
     }
 }
 
-pub fn calculate_bounding_box(instances: &[MeshInstance]) -> macaw::BoundingBox {
-    macaw::BoundingBox::from_points(
+pub fn calculate_bounding_box(instances: &[MeshInstance]) -> re_math::BoundingBox {
+    re_math::BoundingBox::from_points(
         instances
             .iter()
             .filter_map(|mesh_instance| {

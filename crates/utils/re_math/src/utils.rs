@@ -16,7 +16,7 @@ where
 /// # Example
 ///
 /// ```
-/// # use macaw::remap;
+/// # use re_math::remap;
 /// let ocean_height = remap(0.2, -1.0..=1.0, 2.0..=3.1);
 /// ```
 ///
@@ -34,7 +34,7 @@ pub fn remap(x: f32, from: RangeInclusive<f32>, to: RangeInclusive<f32>) -> f32 
 /// # Example
 ///
 /// ```
-/// # use macaw::remap_clamp;
+/// # use re_math::remap_clamp;
 /// let ocean_height = remap_clamp(0.2, -1.0..=1.0, 2.0..=3.1);
 /// ```
 ///

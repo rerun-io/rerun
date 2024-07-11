@@ -2959,17 +2959,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "macaw"
-version = "0.18.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e4daa18df16fd196b955e4bb16574641f39141fb3ea81b493a84b9439d17e6"
-dependencies = [
- "glam",
- "num-traits",
- "serde",
-]
-
-[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4717,7 +4706,6 @@ dependencies = [
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
- "macaw",
  "never",
  "notify",
  "ordered-float",
@@ -4728,6 +4716,7 @@ dependencies = [
  "re_build_tools",
  "re_error",
  "re_log",
+ "re_math",
  "re_tracing",
  "serde",
  "slotmap",
@@ -4755,10 +4744,10 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.13.0",
- "macaw",
  "pollster",
  "rand",
  "re_log",
+ "re_math",
  "re_renderer",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4928,7 +4917,6 @@ dependencies = [
  "egui",
  "glam",
  "itertools 0.13.0",
- "macaw",
  "mimalloc",
  "nohash-hasher",
  "once_cell",
@@ -4939,6 +4927,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_space_view",
@@ -5308,7 +5297,6 @@ dependencies = [
  "indexmap 2.1.0",
  "itertools 0.13.0",
  "linked-hash-map",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "once_cell",
@@ -5321,6 +5309,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_smart_channel",
