@@ -8,6 +8,8 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_transform3d_hierarchy");
     rec.spawn().exit_on_failure();
 
+    // TODO(#5521): log two space views as in the python example
+
     rec.set_time_seconds("sim_time", 0.0);
 
     // Planetary motion is typically in the XY plane.
@@ -76,6 +78,4 @@ int main() {
             )
         );
     }
-
-    // TODO(#5521): log two space views as in the python example
 }

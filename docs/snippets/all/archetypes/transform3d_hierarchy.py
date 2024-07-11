@@ -6,6 +6,11 @@ import rerun.blueprint as rrb
 
 rr.init("rerun_example_transform3d_hierarchy", spawn=True)
 
+# One space with the sun in the center, and another one with the planet.
+rr.send_blueprint(
+    rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**"))
+)
+
 rr.set_time_seconds("sim_time", 0)
 
 # Planetary motion is typically in the XY plane.
@@ -46,8 +51,3 @@ for i in range(0, 6 * 120):
             from_parent=True,
         ),
     )
-
-# One space with the sun in the center, and another one with the planet.
-rr.send_blueprint(
-    rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**"))
-)
