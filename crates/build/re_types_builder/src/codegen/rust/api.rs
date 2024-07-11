@@ -268,7 +268,7 @@ fn quote_struct(
 
     let quoted_fields = fields
         .iter()
-        .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field));
+        .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field).quoted());
 
     let quoted_deprecation_notice = if let Some(deprecation_notice) = obj.deprecation_notice() {
         quote!(#[deprecated(note = #deprecation_notice)])
@@ -608,8 +608,8 @@ fn quote_enum(
 
 struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
 
-impl quote::ToTokens for ObjectFieldTokenizer<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl ObjectFieldTokenizer<'_> {
+    fn quoted(&self) -> TokenStream {
         let Self(reporter, obj, obj_field) = self;
         let quoted_docs = quote_field_docs(reporter, obj_field);
         let name = format_ident!("{}", &obj_field.name);
@@ -626,7 +626,6 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
                 pub #name: #quoted_type
             }
         }
-        .to_tokens(tokens);
     }
 }
 
