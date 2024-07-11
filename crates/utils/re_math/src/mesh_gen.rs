@@ -1,6 +1,8 @@
-use crate::IsoTransform;
-use crate::Vec3;
 use std::ops::Range;
+
+use glam::Vec3;
+
+use crate::IsoTransform;
 
 /// Raw mesh generator. Only generates positions, normals and an index buffer.
 ///

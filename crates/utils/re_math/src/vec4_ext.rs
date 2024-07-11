@@ -1,11 +1,6 @@
-use super::prelude::*;
-use super::uvec4;
-use super::vec4;
-use super::UVec4;
-use super::Vec4;
+use glam::{uvec4, vec4, UVec4, Vec4};
 
-#[cfg(target_arch = "spirv")]
-use num_traits::Float;
+use super::prelude::*;
 
 /// Extensions to [`Vec4`]
 ///

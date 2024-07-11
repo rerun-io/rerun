@@ -1,5 +1,4 @@
-use crate::Quat;
-use crate::Vec3;
+use glam::{Quat, Vec3};
 
 /// Extensions to [`Quat`]
 pub trait QuatExt: Sized {

@@ -1,8 +1,4 @@
-use glam::Affine3A;
-use glam::Mat4;
-use glam::Quat;
-use glam::Vec3;
-use glam::Vec3A;
+use glam::{Affine3A, Mat4, Quat, Vec3, Vec3A};
 
 /// An isometric transform represented by translation * rotation.
 ///
@@ -87,7 +83,6 @@ impl IsoTransform {
     /// # Panics
     ///
     /// Will panic if the determinant of `t` is zero and the `assert` feature is enabled.
-    #[cfg(not(target_arch = "spirv"))] // TODO: large Options in rust-gpu
     #[inline]
     pub fn from_mat4(t: &Mat4) -> Option<Self> {
         let (scale3, rotation, translation) = t.to_scale_rotation_translation();
@@ -104,7 +99,6 @@ impl IsoTransform {
     /// For a view coordinate system with `+X=right`, `+Y=up` and `+Z=back`.
     ///
     /// Will return [`None`] if any argument is zero, non-finite, or if forward and up are colinear.
-    #[cfg(not(target_arch = "spirv"))] // TODO: large Options in rust-gpu
     #[inline]
     pub fn look_at_rh(eye: Vec3, target: Vec3, up: Vec3) -> Option<Self> {
         use crate::QuatExt;
@@ -267,7 +261,7 @@ impl core::ops::Mul<IsoTransform> for Mat4 {
     }
 }
 
-impl From<IsoTransform> for crate::Affine3A {
+impl From<IsoTransform> for Affine3A {
     #[inline]
     fn from(iso: IsoTransform) -> Self {
         Self::from_rotation_translation(iso.rotation(), iso.translation())

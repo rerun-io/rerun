@@ -1,4 +1,4 @@
-use crate::Vec3;
+use glam::{Vec3, Vec4};
 
 /// A 3-dimensional plane primitive.
 ///
@@ -10,11 +10,11 @@ use crate::Vec3;
 ///
 /// A point `point` is on the plane when `plane.normal.dot(point) + plane.d = 0`.
 #[derive(Copy, Clone, PartialEq)]
-#[cfg_attr(not(target_arch = "spirv"), derive(Debug))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Plane3 {
     /// Normal vector
     pub normal: Vec3,
+
     /// Distance
     pub d: f32,
 }
@@ -98,7 +98,7 @@ impl Plane3 {
 
     /// The distance to a point `[x, y, z, 1]` is the dot product of the point and this.
     #[inline]
-    pub fn as_vec4(&self) -> crate::Vec4 {
+    pub fn as_vec4(&self) -> Vec4 {
         self.normal.extend(self.d)
     }
 }

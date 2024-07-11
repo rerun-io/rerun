@@ -1,9 +1,6 @@
-use super::prelude::*;
-use super::vec3;
-use super::Vec3;
+use glam::{vec3, Vec3};
 
-#[cfg(target_arch = "spirv")]
-use num_traits::Float;
+use super::prelude::*;
 
 /// Extensions to [`Vec3`]
 ///

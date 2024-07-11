@@ -312,8 +312,8 @@ mod test {
 
     #[test]
     fn test_bounding_box() {
-        use crate::Affine3A;
-        use crate::Quat;
+        use glam::{Affine3A, Quat};
+
         let bb = BoundingBox::from_min_max(Vec3::ZERO, Vec3::ZERO);
         assert!(bb.contains(Vec3::ZERO));
         assert!(bb.is_something());

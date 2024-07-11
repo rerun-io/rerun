@@ -1,4 +1,4 @@
-use crate::Vec3;
+use glam::Vec3;
 
 /// A ray in 3-dimensional space: a line through space with a starting point and a direction.
 ///
@@ -182,7 +182,6 @@ impl core::ops::Mul<Ray3> for glam::Mat4 {
     }
 }
 
-#[cfg(not(target_arch = "spirv"))]
 impl std::fmt::Debug for Ray3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Ray3")

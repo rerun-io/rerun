@@ -1,8 +1,6 @@
-use glam::Affine3A;
-use glam::Mat4;
-use glam::Vec3A;
+use glam::{Affine3A, Mat4, Quat, Vec3, Vec3A, Vec4, Vec4Swizzles};
 
-use crate::{IsoTransform, Quat, Vec3, Vec3Ext, Vec4, Vec4Swizzles};
+use crate::{IsoTransform, Vec3Ext};
 
 /// Represents a transform with translation + rotation + uniform scale.
 ///
@@ -98,7 +96,7 @@ impl Conformal3 {
     /// Will attempt to create a `Conformal3` from an `Affine3A`. Assumes no shearing and uniform scaling.
     /// If the affine transform contains shearing or non-uniform scaling it will be lost.
     #[inline]
-    pub fn from_affine3a_lossy(transform: &crate::Affine3A) -> Self {
+    pub fn from_affine3a_lossy(transform: &Affine3A) -> Self {
         let (scale, rotation, translation) = transform.to_scale_rotation_translation();
         Self {
             translation_and_scale: translation.extend(scale.mean()),
@@ -217,7 +215,6 @@ impl Conformal3 {
     /// For a view coordinate system with `+X=right`, `+Y=up` and `+Z=back`.
     ///
     /// Will return [`None`] if any argument is zero, non-finite, or if forward and up are colinear.
-    #[cfg(not(target_arch = "spirv"))] // TODO: large Options in rust-gpu
     #[inline]
     pub fn look_at_rh(eye: Vec3, target: Vec3, up: Vec3) -> Option<Self> {
         IsoTransform::look_at_rh(eye, target, up).map(Self::from_iso_transform)
@@ -295,7 +292,7 @@ impl From<Conformal3> for Mat4 {
     }
 }
 
-impl From<Conformal3> for crate::Affine3A {
+impl From<Conformal3> for Affine3A {
     #[inline]
     fn from(c: Conformal3) -> Self {
         c.to_affine3a()
