@@ -440,9 +440,7 @@ pub fn data_density_graph_ui2(
 
                     let mut hovered_events = 0;
                     visit_chunk_sub_range(
-                        db,
                         &chunk,
-                        &item.entity_path,
                         item.component_name,
                         timeline,
                         pointer_time_range,
@@ -527,9 +525,7 @@ pub fn data_density_graph_ui2(
 }
 
 fn visit_chunk_sub_range(
-    db: &re_entity_db::EntityDb,
     chunk: &Chunk,
-    entity_path: &EntityPath,
     component_name: Option<ComponentName>,
     timeline: Timeline,
     time_range: ResolvedTimeRange,
@@ -546,11 +542,7 @@ fn visit_chunk_sub_range(
         };
         visitor(Arc::clone(&chunk), chunk_timeline, num_events);
     } else {
-        let Some(components) = db.store().all_components(&timeline, entity_path) else {
-            return;
-        };
-
-        for component_name in components {
+        for component_name in chunk.component_names() {
             let chunk = Arc::new(chunk.range(&query, component_name));
             let Some(num_events) = chunk.num_events_for_component(component_name) else {
                 continue;
