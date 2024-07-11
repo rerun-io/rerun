@@ -156,3 +156,22 @@ def test_transform3d() -> None:
         )
         # TODO(#6831): from parent!
         # assert arch.from_parent == rr.components.Bool._optional(none_empty_or_value(from_parent, False))
+
+
+def test_transform_mat3x3_snippets():
+    np.testing.assert_array_equal(
+        rr.components.TransformMat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
+        np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        rr.components.TransformMat3x3(columns=[1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
+    )
+    np.testing.assert_array_equal(
+        rr.components.TransformMat3x3(columns=[[1, 2, 3], [4, 5, 6], [7, 8, 9]]).flat_columns,
+        np.array([1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=np.float32),
+    )

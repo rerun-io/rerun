@@ -42,4 +42,3 @@ struct TransformMat3x3 (
   matrix: rerun.datatypes.Mat3x3 (order: 100);
 }
 
-// TODO: test above snippets!
