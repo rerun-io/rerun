@@ -37,26 +37,30 @@ libc = "2.31"
 ################################################################################
 
 [environments]
-# The default environment is meant to serve a common development workflow for
-# devs working on Rust and Python bindings. It balances keeping the environment
-# a manageable size with maximizing the tasks that don't need custom environments.
+# The default environment is meant to serve as the basis for common development and
+# CI tasks. If you are only working in rust, this is the only environment you need.
 #
-# Note that the cpp feature cannot be included in the default environment because
-# it breaks compillation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
-default = ["base", "wheel-build", "python-dev"]
+# For practical reasons, this environment includes the utilities necessary to build
+# the python wheel. However, it does not come with the rerun python bindings installed.
+#
+# To run code that uses python or cpp bindings, you will generally need to use one of
+# the more specialized environments: `py` or `cpp`.
+# - The python-dev feature is not included in the default environment because it can
+#   lead to unexpected (lengthy) Rerun build during environment creation.
+# - The cpp feature cannot be included in the default environment because
+#   it breaks compillation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
+default = ["base", "wheel-build"]
 
-# The py-test ernvironment is for running the python unit tests. These are not part
-# of the default environment because they require `pytorch`, which is an annoying large
-# dependency to install for those not working on python code.
-py-test = ["base", "wheel-build", "python-dev", "python-test"]
+# The py environment is for running any code with a dependency on the python `rerun-sdk`.
+py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
 
-# The cpp environment is for working on the cpp bindings.
+# The cpp environment is for building any code that depends on the C++ `rerun-sdk`.
 cpp = ["base", "cpp"]
 
 # The wheel-test environment is for testing the python package when built from a wheel.
 # This environment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
-wheel-test = ["base", "cpp", "wheel-test"]
+wheel-test = ["base", "cpp", "wheel-test-tasks", "py-test-deps"]
 
 # Example environments
 
@@ -231,6 +235,7 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = 
   "js-install",
 ] }
 
+[feature.wheel-build.tasks]
 # Build and install a development version of the rerun-sdk Python package.
 #
 # This only needs to be called when you have made changes that would impact the rust bindings of
@@ -241,9 +246,16 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = 
 #   configured to not install outside venv (which is a good practice). PIP_REQUIRE_VIRTUALENV=0 disables this check.
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
-py-build = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
+py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
+
+[feature.python-tasks.tasks]
+
+py-build = "pixi run -e py py-build-common"
+
+# Helper alias to run the python interpreter in the context of the python environment
+rrpy = "python"
 
 py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends_on = [
   "py-build",
@@ -258,25 +270,20 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
   "js-build-base",
 ] }
 
-
-[feature.python-test.tasks]
-
-py-build-test = "pixi run -e py-test py-build"
-
 # Run the Python tests.
 # Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
-  "py-build-test",
+  "py-build",
 ] }
 
-[feature.wheel-test.tasks]
+[feature.wheel-test-tasks.tasks]
 # In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
 # However, since `rerun` is already its own task, we can't just `pixi run rerun`. This task lets us work
 # around that and executes `rerun` from the system shell within the context of the pixi environment.
 rerun-from-path = "rerun"
 
 [feature.examples-tasks.tasks]
-py-build-examples = "pixi run -e examples py-build"
+py-build-examples = "pixi run -e examples py-build-common"
 
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
@@ -336,15 +343,6 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 ################################################################################
 # DEPENDENCIES
 ################################################################################
-
-[feature.wheel-test.dependencies]
-binaryen = "117.*" # for `wasm-opt`
-
-[feature.wheel-test.pypi-dependencies]
-# Torch is needed to run the rerun unit tests.
-# This dependency is here to get torch into the pixi cache because it's large and installing it
-# during the wheel-test task itself is otherwise painful.
-torch = "==2.2.2" # This must match the torch version in any package we install during `wheel-test`
 
 
 [feature.base.dependencies]
@@ -443,7 +441,7 @@ scripts = ["pixi/maturin_config.bat"]
 rerun-sdk = { path = "rerun_py", editable = true }
 rerun-notebook = { path = "rerun_notebook", editable = true }
 
-[feature.python-test.pypi-dependencies]
+[feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
 # during the wheel-test task itself is otherwise painful.
