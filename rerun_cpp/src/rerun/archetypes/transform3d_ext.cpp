@@ -298,7 +298,5 @@ namespace rerun {
         // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-        const Transform3D Transform3D::IDENTITY = Transform3D();
-
     } // namespace archetypes
 } // namespace rerun

@@ -10,7 +10,7 @@ pub fn edit_or_view_vec3d(
 ) -> egui::Response {
     let mut value: MaybeMutRef<'_, datatypes::Vec3D> = match value {
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
-        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value.deref_mut()),
+        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
     };
     edit_or_view_vec3d_impl(ui, &mut value)
 }

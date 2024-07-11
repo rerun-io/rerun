@@ -102,7 +102,7 @@ fn roundtrip() {
     ];
 
     let all_arch = [
-        Transform3D::IDENTITY, //
+        Transform3D::default(),
         Transform3D::from_translation_scale([1.0, 2.0, 3.0], Scale3D::Uniform(42.0)).from_parent(), //
         Transform3D::from_translation_rotation(
             [1.0, 2.0, 3.0],

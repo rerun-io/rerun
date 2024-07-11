@@ -6,15 +6,6 @@ use crate::{
 use super::Transform3D;
 
 impl Transform3D {
-    /// Identity transform, i.e. parent & child are in the same space.
-    /// TODO: remove, wrong concept here now.
-    pub const IDENTITY: Self = Self {
-        transform: crate::components::Transform3D::IDENTITY,
-        mat3x3: None,
-        translation: None,
-        axis_length: None,
-    };
-
     /// From a translation.
     #[inline]
     pub fn from_translation(translation: impl Into<Translation3D>) -> Self {
