@@ -59,7 +59,7 @@ impl Conformal3 {
 
     /// Returns this transform decomposed into scale, rotation, translation
     #[inline]
-    pub fn to_scale_rotation_translation(&self) -> (f32, Quat, Vec3) {
+    pub fn to_scale_rotation_translation(self) -> (f32, Quat, Vec3) {
         (self.scale(), self.rotation(), self.translation())
     }
 
@@ -108,7 +108,7 @@ impl Conformal3 {
 
     /// Returns this transform as an `Affine3A`
     #[inline]
-    pub fn to_affine3a(&self) -> Affine3A {
+    pub fn to_affine3a(self) -> Affine3A {
         Affine3A::from_scale_rotation_translation(
             Vec3::splat(self.scale()),
             self.rotation(),
@@ -354,6 +354,8 @@ mod test {
 
     #[test]
     fn test_inverse() {
+        #![allow(clippy::disallowed_methods)] // normalize
+
         use crate::Conformal3;
 
         let transform = Conformal3::from_scale_rotation_translation(

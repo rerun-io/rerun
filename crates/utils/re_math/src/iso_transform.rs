@@ -355,6 +355,8 @@ mod test {
 
     #[test]
     fn transform() {
+        #![allow(clippy::disallowed_methods)] // normalize
+
         let t = [
             IsoTransform {
                 translation: Vec3A::new(0.0, 0.0, 0.0),
