@@ -115,7 +115,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Build rerun_c & rerun_cpp…")
         start_time = time.time()
-        run(["pixi", "run", "cpp-build-snippets"])
+        run(["pixi", "run", "-e", "cpp", "cpp-build-snippets"])
         elapsed = time.time() - start_time
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
