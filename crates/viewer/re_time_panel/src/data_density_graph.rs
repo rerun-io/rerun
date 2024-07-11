@@ -5,14 +5,20 @@
 
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
+use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
+use re_chunk_store::external::re_chunk::ChunkTimeline;
+use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
+use re_log_types::EntityPath;
+use re_log_types::Timeline;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
+use re_types::ComponentName;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::TimePanelItem;
@@ -386,13 +392,14 @@ pub fn data_density_graph_ui2(
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
     let interact_radius_sq = ui.style().interaction.resize_grab_radius_side.powi(2);
     let center_y = row_rect.center().y;
+    let timeline = *time_ctrl.timeline();
 
     let mut density_graph = DensityGraph::new(row_rect.x_range());
 
     let mut num_hovered_messages = 0;
     let mut hovered_time_range = ResolvedTimeRange::EMPTY;
 
-    let mut add_data_point = |time_range: ResolvedTimeRange, count: usize| {
+    let mut add_data_point = |chunk: Arc<Chunk>, time_range: ResolvedTimeRange, count: usize| {
         if count == 0 {
             return;
         }
@@ -424,8 +431,28 @@ pub fn data_density_graph_ui2(
             };
 
             if is_hovered {
-                hovered_time_range = hovered_time_range.union(time_range);
-                num_hovered_messages += count;
+                if let (Some(min_time), Some(max_time)) = (
+                    time_ranges_ui.time_from_x_f32(pointer_pos.x - interact_radius_sq),
+                    time_ranges_ui.time_from_x_f32(pointer_pos.x + interact_radius_sq),
+                ) {
+                    let pointer_time_range =
+                        ResolvedTimeRange::new(min_time.floor(), max_time.ceil());
+
+                    let mut hovered_events = 0;
+                    visit_chunk_sub_range(
+                        db,
+                        &chunk,
+                        &item.entity_path,
+                        item.component_name,
+                        timeline,
+                        pointer_time_range,
+                        |_, _, num_events| {
+                            hovered_events += num_events;
+                        },
+                    );
+                    num_hovered_messages = hovered_events;
+                    hovered_time_range = hovered_time_range.union(pointer_time_range);
+                }
             }
         }
     };
@@ -434,59 +461,21 @@ pub fn data_density_graph_ui2(
     // We do this as a separate step so that we can also deduplicate chunks.
     let visible_time_range = time_ranges_ui
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
-    let timeline = *time_ctrl.timeline();
-    let query = RangeQuery::new(timeline, visible_time_range);
-    let mut chunk_ranges: Vec<(ResolvedTimeRange, usize)> = vec![];
+    let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
 
-    if let Some(component_name) = item.component_name {
-        let chunks = db
-            .store()
-            .range_relevant_chunks(&query, &item.entity_path, component_name);
+    visit_relevant_chunks(
+        db,
+        &item.entity_path,
+        item.component_name,
+        timeline,
+        visible_time_range,
+        |chunk, chunk_timeline, num_events| {
+            chunk_ranges.push((chunk, chunk_timeline.time_range(), num_events));
+        },
+    );
 
-        for chunk in chunks {
-            let Some(events) = chunk.num_events_for_component(component_name) else {
-                continue;
-            };
-
-            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                continue;
-            };
-
-            chunk_ranges.push((chunk_timeline.time_range(), events));
-        }
-    } else {
-        let mut seen = HashSet::new();
-        if let Some(subtree) = db.tree().subtree(&item.entity_path) {
-            subtree.visit_children_recursively(&mut |entity_path, _| {
-                let Some(components) = db.store().all_components(&timeline, entity_path) else {
-                    return;
-                };
-
-                for component_name in components {
-                    let chunks =
-                        db.store()
-                            .range_relevant_chunks(&query, entity_path, component_name);
-
-                    for chunk in chunks {
-                        let events = chunk.num_events_cumulative();
-                        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                            continue;
-                        };
-
-                        if seen.contains(&chunk.id()) {
-                            continue;
-                        }
-                        seen.insert(chunk.id());
-
-                        chunk_ranges.push((chunk_timeline.time_range(), events));
-                    }
-                }
-            });
-        }
-    }
-
-    for (time_range, num_events) in chunk_ranges {
-        add_data_point(time_range, num_events);
+    for (chunk, time_range, num_events) in chunk_ranges {
+        add_data_point(chunk, time_range, num_events);
     }
 
     let hovered_time_range = ResolvedTimeRange::EMPTY;
@@ -533,6 +522,104 @@ pub fn data_density_graph_ui2(
                     );
                 },
             );
+        }
+    }
+}
+
+fn visit_chunk_sub_range(
+    db: &re_entity_db::EntityDb,
+    chunk: &Chunk,
+    entity_path: &EntityPath,
+    component_name: Option<ComponentName>,
+    timeline: Timeline,
+    time_range: ResolvedTimeRange,
+    mut visitor: impl FnMut(Arc<Chunk>, &ChunkTimeline, usize),
+) {
+    let query = RangeQuery::new(timeline, time_range);
+    if let Some(component_name) = component_name {
+        let chunk = Arc::new(chunk.range(&query, component_name));
+        let Some(num_events) = chunk.num_events_for_component(component_name) else {
+            return;
+        };
+        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+            return;
+        };
+        visitor(Arc::clone(&chunk), chunk_timeline, num_events);
+    } else {
+        let Some(components) = db.store().all_components(&timeline, entity_path) else {
+            return;
+        };
+
+        for component_name in components {
+            let chunk = Arc::new(chunk.range(&query, component_name));
+            let Some(num_events) = chunk.num_events_for_component(component_name) else {
+                continue;
+            };
+            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                continue;
+            };
+            visitor(Arc::clone(&chunk), chunk_timeline, num_events);
+        }
+    }
+}
+
+fn visit_relevant_chunks(
+    db: &re_entity_db::EntityDb,
+    entity_path: &EntityPath,
+    component_name: Option<ComponentName>,
+    timeline: Timeline,
+    time_range: ResolvedTimeRange,
+    mut visitor: impl FnMut(Arc<Chunk>, &ChunkTimeline, usize),
+) {
+    let query = RangeQuery::new(timeline, time_range);
+
+    if let Some(component_name) = component_name {
+        let chunks = db
+            .store()
+            .range_relevant_chunks(&query, entity_path, component_name);
+
+        for chunk in chunks {
+            let Some(num_events) = chunk.num_events_for_component(component_name) else {
+                continue;
+            };
+
+            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                continue;
+            };
+
+            visitor(Arc::clone(&chunk), chunk_timeline, num_events);
+        }
+    } else {
+        let mut seen = HashSet::new();
+        if let Some(subtree) = db.tree().subtree(entity_path) {
+            subtree.visit_children_recursively(&mut |entity_path, _| {
+                let Some(components) = db.store().all_components(&timeline, entity_path) else {
+                    return;
+                };
+
+                for component_name in components {
+                    let chunks =
+                        db.store()
+                            .range_relevant_chunks(&query, entity_path, component_name);
+
+                    for chunk in chunks {
+                        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                            continue;
+                        };
+
+                        if seen.contains(&chunk.id()) {
+                            continue;
+                        }
+                        seen.insert(chunk.id());
+
+                        visitor(
+                            Arc::clone(&chunk),
+                            chunk_timeline,
+                            chunk.num_events_cumulative(),
+                        );
+                    }
+                }
+            });
         }
     }
 }
