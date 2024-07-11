@@ -5,6 +5,7 @@
 [files]
 extend-exclude = [
   ".typos.toml",
+  "crates/utils/re_math/src/ray3.rs",            # Has a bunch of two-letter words
   "crates/viewer/re_ui/data/design_tokens.json",
   "crates/viewer/re_ui/src/design_tokens.rs",
   "examples/assets",

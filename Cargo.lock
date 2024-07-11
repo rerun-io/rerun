@@ -4636,6 +4636,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_math"
+version = "0.18.0-alpha.1+dev"
+dependencies = [
+ "glam",
+ "serde",
+]
+
+[[package]]
 name = "re_memory"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
