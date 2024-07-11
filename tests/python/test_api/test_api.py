@@ -245,84 +245,6 @@ def run_log_cleared() -> None:
     rr.log("null_test/rect/1", rr.Boxes2D(array=[10, 5, 4, 4], array_format=rr.Box2DFormat.XYWH))
 
 
-def transforms_rigid_3d() -> None:
-    rr.set_time_seconds("sim_time", 0)
-
-    sun_to_planet_distance = 6.0
-    planet_to_moon_distance = 3.0
-    rotation_speed_planet = 2.0
-    rotation_speed_moon = 5.0
-
-    # Planetary motion is typically in the XY plane.
-    rr.log("transforms3d", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-    rr.log("transforms3d/sun", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-    rr.log("transforms3d/sun/planet", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-    rr.log("transforms3d/sun/planet/moon", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-
-    # All are in the center of their own space:
-    rr.log("transforms3d/sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]))
-    rr.log("transforms3d/sun/planet", rr.Points3D([0.0, 0.0, 0.0], radii=0.4, colors=[40, 80, 200]))
-    rr.log("transforms3d/sun/planet/moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 180, 180]))
-
-    # "dust" around the "planet" (and inside, don't care)
-    # distribution is quadratically higher in the middle
-    radii = np.random.rand(200) * planet_to_moon_distance * 0.5
-    angles = np.random.rand(200) * math.tau
-    height = np.power(np.random.rand(200), 0.2) * 0.5 - 0.5
-    rr.log(
-        "transforms3d/sun/planet/dust",
-        rr.Points3D(
-            np.array([np.sin(angles) * radii, np.cos(angles) * radii, height]).transpose(),
-            colors=[80, 80, 80],
-            radii=0.025,
-        ),
-    )
-
-    # paths where the planet & moon move
-    angles = np.arange(0.0, 1.01, 0.01) * math.tau
-    circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0]).transpose()
-    rr.log(
-        "transforms3d/sun/planet_path",
-        rr.LineStrips3D(
-            circle * sun_to_planet_distance,
-        ),
-    )
-    rr.log(
-        "transforms3d/sun/planet/moon_path",
-        rr.LineStrips3D(
-            circle * planet_to_moon_distance,
-        ),
-    )
-
-    # movement via transforms
-    for i in range(0, 6 * 120):
-        time = i / 120.0
-        rr.set_time_seconds("sim_time", time)
-
-        rr.log(
-            "transforms3d/sun/planet",
-            rr.Transform3D(
-                translation=[
-                    math.sin(time * rotation_speed_planet) * sun_to_planet_distance,
-                    math.cos(time * rotation_speed_planet) * sun_to_planet_distance,
-                    0.0,
-                ],
-                rotation=rr.RotationAxisAngle(axis=(1, 0, 0), degrees=20),
-            ),
-        )
-        rr.log(
-            "transforms3d/sun/planet/moon",
-            rr.Transform3D(
-                translation=[
-                    math.cos(time * rotation_speed_moon) * planet_to_moon_distance,
-                    math.sin(time * rotation_speed_moon) * planet_to_moon_distance,
-                    0.0,
-                ],
-                from_parent=True,
-            ),
-        )
-
-
 def run_bounding_box() -> None:
     rr.set_time_seconds("sim_time", 0)
     rr.log(
@@ -441,7 +363,6 @@ def main() -> None:
         "small_image": small_image,
         "text": run_text_logs,
         "transforms": transforms,
-        "transforms_rigid_3d": transforms_rigid_3d,
     }
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

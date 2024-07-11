@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 ///
-/// See also [`Mesh3D`][crate::archetypes::Mesh3D].
+/// See also [`archetypes::Mesh3D`][crate::archetypes::Mesh3D].
 ///
 /// ## Example
 ///

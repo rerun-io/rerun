@@ -12,7 +12,7 @@
 #include <utility>
 
 namespace rerun::components {
-    /// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
+    /// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.
     ///
     /// The complete reference of officially registered media types is maintained by the IANA and can be
     /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.

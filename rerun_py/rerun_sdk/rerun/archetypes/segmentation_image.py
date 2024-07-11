@@ -22,10 +22,10 @@ __all__ = ["SegmentationImage"]
 @define(str=False, repr=False, init=False)
 class SegmentationImage(SegmentationImageExt, Archetype):
     """
-    **Archetype**: An image made up of integer class-ids.
+    **Archetype**: An image made up of integer [`components.ClassId`][rerun.components.ClassId]s.
 
-    The shape of the `TensorData` must be mappable to an `HxW` tensor.
-    Each pixel corresponds to a class-id that will be mapped to a color based on annotation context.
+    The shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to an `HxW` tensor.
+    Each pixel corresponds to a [`components.ClassId`][rerun.components.ClassId] that will be mapped to a color based on annotation context.
 
     In the case of floating point images, the label will be looked up based on rounding to the nearest
     integer value.
@@ -33,7 +33,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     Leading and trailing unit-dimensions are ignored, so that
     `1x640x480x1` is treated as a `640x480` image.
 
-    See also [`AnnotationContext`][rerun.archetypes.AnnotationContext] to associate each class with a color and a label.
+    See also [`archetypes.AnnotationContext`][rerun.archetypes.AnnotationContext] to associate each class with a color and a label.
 
     Example
     -------

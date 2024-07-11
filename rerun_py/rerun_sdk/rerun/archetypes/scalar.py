@@ -21,17 +21,15 @@ __all__ = ["Scalar"]
 @define(str=False, repr=False, init=False)
 class Scalar(Archetype):
     """
-    **Archetype**: Log a double-precision scalar.
+    **Archetype**: A double-precision scalar, e.g. for use for time-series plots.
 
     The current timeline value will be used for the time/X-axis, hence scalars
     cannot be static.
 
     When used to produce a plot, this archetype is used to provide the data that
-    is referenced by the `SeriesLine` or `SeriesPoint` archetypes. You can do
+    is referenced by [`archetypes.SeriesLine`][rerun.archetypes.SeriesLine] or [`archetypes.SeriesPoint`][rerun.archetypes.SeriesPoint]. You can do
     this by logging both archetypes to the same path, or alternatively configuring
     the plot-specific archetypes through the blueprint.
-
-    See also  [`SeriesPoint`][rerun.archetypes.SeriesPoint], [`SeriesLine`][rerun.archetypes.SeriesLine].
 
     Example
     -------

@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A depth image.
 ///
-/// The shape of the `TensorData` must be mappable to an `HxW` tensor.
+/// The shape of the [`components::TensorData`][crate::components::TensorData] must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by `meter`.
 ///
 /// ## Example

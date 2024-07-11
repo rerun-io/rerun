@@ -15,7 +15,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 
 * [`AggregationPolicy`](components/aggregation_policy.md): Policy for aggregation of multiple scalar plot values.
 * [`AlbedoFactor`](components/albedo_factor.md): A color multiplier, usually applied to a whole entity, e.g. a mesh.
-* [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
+* [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
@@ -36,7 +36,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`MagnificationFilter`](components/magnification_filter.md): Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
 * [`MarkerShape`](components/marker_shape.md): The visual appearance of a point in e.g. a 2D plot.
 * [`MarkerSize`](components/marker_size.md): Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
-* [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
+* [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 * [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md): An out-of-tree affine transform between two 3D spaces, represented in a given direction.

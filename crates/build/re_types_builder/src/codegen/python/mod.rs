@@ -23,7 +23,7 @@ use crate::{
 
 use self::views::code_for_view;
 
-use super::common::ExampleInfo;
+use super::{common::ExampleInfo, Target};
 
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";
@@ -636,7 +636,7 @@ fn code_for_struct(
     };
     code.push_unindented(format!("class {name}{superclass_decl}:"), 1);
 
-    code.push_indented(1, quote_obj_docs(obj), 0);
+    code.push_indented(1, quote_obj_docs(objects, obj), 0);
 
     if *kind == ObjectKind::Component {
         code.push_indented(1, "_BATCH_TYPE = None", 1);
@@ -749,7 +749,7 @@ fn code_for_struct(
 
             // Generating docs for all the fields creates A LOT of visual noise in the API docs.
             let show_fields_in_docs = false;
-            let doc_lines = lines_from_docs(&field.docs);
+            let doc_lines = lines_from_docs(objects, &field.docs);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
                     code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -838,7 +838,7 @@ fn code_for_enum(
     }
 
     code.push_str(&format!("class {name}(Enum):\n"));
-    code.push_indented(1, quote_obj_docs(obj), 0);
+    code.push_indented(1, quote_obj_docs(objects, obj), 0);
 
     for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
@@ -852,7 +852,7 @@ fn code_for_enum(
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
-        let doc_lines = lines_from_docs(&variant.docs);
+        let doc_lines = lines_from_docs(objects, &variant.docs);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
                 code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -965,7 +965,7 @@ fn code_for_union(
         0,
     );
 
-    code.push_indented(1, quote_obj_docs(obj), 0);
+    code.push_indented(1, quote_obj_docs(objects, obj), 0);
 
     if ext_class.has_init {
         code.push_indented(
@@ -1045,7 +1045,7 @@ fn code_for_union(
             1,
         );
 
-        code.push_indented(1, quote_union_kind_from_fields(fields), 0);
+        code.push_indented(1, quote_union_kind_from_fields(objects, fields), 0);
     }
 
     code.push_unindented(quote_union_aliases_from_object(obj, field_types.iter()), 1);
@@ -1143,8 +1143,8 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
 }
 
 /// Ends with double newlines, unless empty.
-fn quote_obj_docs(obj: &Object) -> String {
-    let mut lines = lines_from_docs(&obj.docs);
+fn quote_obj_docs(objects: &Objects, obj: &Object) -> String {
+    let mut lines = lines_from_docs(objects, &obj.docs);
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -1154,8 +1154,8 @@ fn quote_obj_docs(obj: &Object) -> String {
     quote_doc_lines(lines)
 }
 
-fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = docs.doc_lines_for_untagged_and("py");
+fn lines_from_docs(objects: &Objects, docs: &Docs) -> Vec<String> {
+    let mut lines = docs.lines_for(objects, Target::Python);
 
     let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
@@ -1206,7 +1206,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     let mut lines = vec!["Must be one of:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = field.docs.doc_lines_for_untagged_and("py");
+        let mut content = field.docs.lines_for(objects, Target::Python);
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
@@ -1244,11 +1244,11 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
 
-fn quote_union_kind_from_fields(fields: &Vec<ObjectField>) -> String {
+fn quote_union_kind_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String {
     let mut lines = vec!["Possible values:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = field.docs.doc_lines_for_untagged_and("py");
+        let mut content = field.docs.lines_for(objects, Target::Python);
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
@@ -2338,7 +2338,7 @@ fn quote_init_method(
         obj.fields
             .iter()
             .filter_map(|field| {
-                let doc_content = field.docs.doc_lines_for_untagged_and("py");
+                let doc_content = field.docs.lines_for(objects, Target::Python);
                 if doc_content.is_empty() {
                     if !field.is_testing() && obj.fields.len() > 1 {
                         reporter.error(

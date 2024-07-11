@@ -11,7 +11,7 @@ Views are the panels shown in the viewer's viewport and the primary means of ins
 * [`Spatial2DView`](views/spatial2d_view.md): For viewing spatial 2D data.
 * [`Spatial3DView`](views/spatial3d_view.md): For viewing spatial 3D data.
 * [`TensorView`](views/tensor_view.md): A view on a tensor of any dimensionality.
-* [`TextDocumentView`](views/text_document_view.md): A view of a single text document, for use with the `TextDocument` archetype.
-* [`TextLogView`](views/text_log_view.md): A view of a text log, for use with the `TextLog` archetype.
-* [`TimeSeriesView`](views/time_series_view.md): A time series view for scalars over time, for use with the `Scalars` archetype.
+* [`TextDocumentView`](views/text_document_view.md): A view of a single text document, for use with [`archetypes.TextDocument`](https://rerun.io/docs/reference/types/archetypes/text_document).
+* [`TextLogView`](views/text_log_view.md): A view of a text log, for use with [`archetypes.TextLog`](https://rerun.io/docs/reference/types/archetypes/text_log).
+* [`TimeSeriesView`](views/time_series_view.md): A time series view for scalars over time, for use with [`archetypes.Scalar`](https://rerun.io/docs/reference/types/archetypes/scalar).
 

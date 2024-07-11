@@ -1,16 +1,16 @@
+//! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
+
 use std::{collections::BTreeMap, fmt::Write};
 
 use camino::Utf8PathBuf;
 use itertools::Itertools;
 
 use crate::{
-    codegen::{autogen_warning, common::ExampleInfo},
+    codegen::{autogen_warning, common::ExampleInfo, Target},
     objects::FieldKind,
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
     ATTR_DOCS_VIEW_TYPES,
 };
-
-type ObjectMap = BTreeMap<String, Object>;
 
 macro_rules! putln {
     ($o:ident) => ( writeln!($o).ok() );
@@ -53,8 +53,8 @@ impl CodeGenerator for DocsCodeGenerator {
 
         let (mut archetypes, mut components, mut datatypes, mut views) =
             (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-        let object_map = &objects.objects;
-        for object in object_map.values() {
+
+        for object in objects.values() {
             // skip test-only archetypes
             if object.is_testing() {
                 continue;
@@ -72,7 +72,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::View => views.push(object),
             }
 
-            let page = object_page(reporter, object, object_map, &views_per_archetype);
+            let page = object_page(reporter, objects, object, &views_per_archetype);
             let path = self.docs_dir.join(format!(
                 "{}/{}.md",
                 object.kind.plural_snake_case(),
@@ -81,7 +81,7 @@ impl CodeGenerator for DocsCodeGenerator {
             files_to_write.insert(path, page);
         }
 
-        for (kind, order, prelude, objects) in [
+        for (kind, order, prelude, kind_objects) in [
             (
                 ObjectKind::Archetype,
                 1,
@@ -119,7 +119,7 @@ on [Entities and Components](../../concepts/entity-component.md).",
                 &views,
             ),
         ] {
-            let page = index_page(kind, order, prelude, objects);
+            let page = index_page(objects, kind, order, prelude, kind_objects);
             let path = self
                 .docs_dir
                 .join(format!("{}.md", kind.plural_snake_case()));
@@ -155,7 +155,13 @@ fn collect_view_types_per_archetype(objects: &Objects) -> ViewsPerArchetype {
     view_types_per_object
 }
 
-fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) -> String {
+fn index_page(
+    all_objects: &Objects,
+    kind: ObjectKind,
+    order: u64,
+    prelude: &str,
+    objects: &[&Object],
+) -> String {
     let mut page = String::new();
 
     write_frontmatter(&mut page, kind.plural_name(), Some(order));
@@ -205,7 +211,10 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
                 object.name,
                 object.kind.plural_snake_case(),
                 object.snake_case_name(),
-                object.docs.first_line().unwrap_or_default(),
+                object
+                    .docs
+                    .first_line(all_objects, Target::WebDocsMarkdown)
+                    .unwrap_or_default(),
             );
         }
         putln!(page);
@@ -216,19 +225,19 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 
 fn object_page(
     reporter: &Reporter,
+    objects: &Objects,
     object: &Object,
-    object_map: &ObjectMap,
     views_per_archetype: &ViewsPerArchetype,
 ) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
-    let top_level_docs = object.docs.untagged();
+    let top_level_docs = object.docs.lines_for(objects, Target::WebDocsMarkdown);
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");
     }
 
-    let examples = &object.docs.doc_lines_tagged("example");
+    let examples = &object.docs.only_lines_tagged("example");
     let examples = examples
         .iter()
         .map(|line| ExampleInfo::parse(line))
@@ -261,13 +270,13 @@ fn object_page(
 
     match object.kind {
         ObjectKind::Datatype | ObjectKind::Component => {
-            write_fields(&mut page, object, object_map);
+            write_fields(objects, &mut page, object);
         }
         ObjectKind::Archetype => {
-            write_archetype_fields(&mut page, object, object_map, views_per_archetype);
+            write_archetype_fields(objects, &mut page, object, views_per_archetype);
         }
         ObjectKind::View => {
-            write_view_properties(reporter, &mut page, object, object_map);
+            write_view_properties(reporter, objects, &mut page, object);
         }
     }
 
@@ -281,7 +290,7 @@ fn object_page(
     match object.kind {
         ObjectKind::Datatype | ObjectKind::Component => {
             putln!(page);
-            write_used_by(&mut page, reporter, object, object_map);
+            write_used_by(&mut page, reporter, objects, object);
         }
         ObjectKind::Archetype => {
             if examples.is_empty() {
@@ -298,13 +307,7 @@ fn object_page(
         }
         ObjectKind::View => {
             putln!(page);
-            write_visualized_archetypes(
-                reporter,
-                &mut page,
-                object,
-                object_map,
-                views_per_archetype,
-            );
+            write_visualized_archetypes(reporter, objects, &mut page, object, views_per_archetype);
         }
     }
 
@@ -388,12 +391,12 @@ fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
     putln!(o, "<!-- {} -->", autogen_warning!());
 }
 
-fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
+fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
     if object.fields.is_empty() {
         return;
     }
 
-    fn type_info(object_map: &ObjectMap, ty: &Type) -> String {
+    fn type_info(objects: &Objects, ty: &Type) -> String {
         fn atomic(name: &str) -> String {
             format!("`{name}`")
         }
@@ -418,17 +421,17 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
             Type::Array { elem_type, length } => {
                 format!(
                     "{length}x {}",
-                    type_info(object_map, &Type::from(elem_type.clone()))
+                    type_info(objects, &Type::from(elem_type.clone()))
                 )
             }
             Type::Vector { elem_type } => {
                 format!(
                     "list of {}",
-                    type_info(object_map, &Type::from(elem_type.clone()))
+                    type_info(objects, &Type::from(elem_type.clone()))
                 )
             }
             Type::Object(fqname) => {
-                let ty = object_map.get(fqname).unwrap();
+                let ty = objects.get(fqname).unwrap();
                 format!(
                     "[`{}`](../{}/{}.md)",
                     ty.name,
@@ -447,7 +450,7 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
             fields.push(format!(
                 "* {}: {}",
                 field.name,
-                type_info(object_map, &field.typ)
+                type_info(objects, &field.typ)
             ));
         }
     }
@@ -465,9 +468,9 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
     }
 }
 
-fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_map: &ObjectMap) {
+fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object: &Object) {
     let mut used_by = Vec::new();
-    for ty in object_map.values() {
+    for ty in objects.values() {
         // Since blueprints are being skipped there used-by links should also be skipped
         if ty.scope() == Some("blueprint".to_owned()) {
             continue;
@@ -511,9 +514,9 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
 }
 
 fn write_archetype_fields(
+    objects: &Objects,
     page: &mut String,
     object: &Object,
-    object_map: &ObjectMap,
     view_per_archetype: &ViewsPerArchetype,
 ) {
     if object.fields.is_empty() {
@@ -526,7 +529,7 @@ fn write_archetype_fields(
         let Some(fqname) = field.typ.fqname() else {
             continue;
         };
-        let Some(ty) = object_map.get(fqname) else {
+        let Some(ty) = objects.get(fqname) else {
             continue;
         };
         let target = match field.kind() {
@@ -583,9 +586,9 @@ fn write_archetype_fields(
 
 fn write_visualized_archetypes(
     reporter: &Reporter,
+    objects: &Objects,
     page: &mut String,
     view: &Object,
-    object_map: &ObjectMap,
     views_per_archetype: &ViewsPerArchetype,
 ) {
     let mut archetype_fqnames = Vec::new();
@@ -612,7 +615,7 @@ fn write_visualized_archetypes(
     putln!(page, "## Visualized archetypes");
     putln!(page);
     for (fqname, explanation) in archetype_fqnames {
-        let object = &object_map[&fqname];
+        let object = &objects[&fqname];
         page.push_str(&format!(
             "* [`{}`](../{}/{}.md)",
             object.name,
@@ -627,12 +630,7 @@ fn write_visualized_archetypes(
     putln!(page);
 }
 
-fn write_view_properties(
-    reporter: &Reporter,
-    page: &mut String,
-    view: &Object,
-    object_map: &ObjectMap,
-) {
+fn write_view_properties(reporter: &Reporter, objects: &Objects, page: &mut String, view: &Object) {
     if view.fields.is_empty() {
         return;
     }
@@ -642,19 +640,19 @@ fn write_view_properties(
 
     // Each field in a view should be a property
     for field in &view.fields {
-        write_view_property(reporter, page, field, object_map);
+        write_view_property(reporter, objects, page, field);
     }
 }
 
 fn write_view_property(
     reporter: &Reporter,
+    objects: &Objects,
     o: &mut String,
     field: &ObjectField,
-    object_map: &ObjectMap,
 ) {
     putln!(o, "### `{}`", field.name);
 
-    let top_level_docs = field.docs.untagged();
+    let top_level_docs = field.docs.lines_for(objects, Target::WebDocsMarkdown);
 
     if top_level_docs.is_empty() {
         reporter.error(&field.virtpath, &field.fqname, "Undocumented view property");
@@ -668,14 +666,17 @@ fn write_view_property(
     let Some(field_fqname) = field.typ.fqname() else {
         return;
     };
-    let object = &object_map[field_fqname];
+    let object = &objects[field_fqname];
 
     let mut fields = Vec::new();
     for field in &object.fields {
         fields.push(format!(
             "* `{}`: {}",
             field.name,
-            field.docs.first_line().unwrap_or_default()
+            field
+                .docs
+                .first_line(objects, Target::WebDocsMarkdown)
+                .unwrap_or_default()
         ));
     }
 
