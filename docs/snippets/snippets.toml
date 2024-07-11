@@ -135,7 +135,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/transform3d_hierarchy" = [ # Uses a lot of trignometry which is suprisingly easy to get the same on Rust & C++, but not on Python/Numpy
+"archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
   "py",
 ]
 
