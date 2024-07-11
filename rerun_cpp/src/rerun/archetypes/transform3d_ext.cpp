@@ -176,7 +176,7 @@ namespace rerun {
         ///
         /// \param translation \copydoc Transform3D::translation
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
-        static Transform3D from_translation_rotation_scale(
+        static Transform3D from_translation_rotation(
             const components::Translation3D& translation, const datatypes::Rotation3D& rotation
         ) {
             return Transform3D(translation, rotation, false);
