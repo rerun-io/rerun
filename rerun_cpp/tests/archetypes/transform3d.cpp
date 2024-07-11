@@ -9,6 +9,10 @@ using namespace rerun::archetypes;
 
 #define TEST_TAG "[transform3d][archetypes]"
 
+// Something about the setup of `Transform3D manual` sets gcc off. Can't see any issue with it.
+// This warning known to be notoriously unreliable, so let's ignore it here.
+RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH
+
 SCENARIO(
     "The various utilities of Transform3D archetype produce the same data as manually constructed "
     "instances",
@@ -37,6 +41,7 @@ SCENARIO(
         rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
     manual.mat3x3 = std::nullopt;
     manual.translation = std::nullopt;
+    manual.axis_length = std::nullopt;
 
     GIVEN("Transform3D from translation from_parent==" << from_parent) {
         auto utility =
@@ -142,3 +147,5 @@ SCENARIO(
         test_compare_archetype_serialization(manual, utility);
     }
 }
+
+RR_DISABLE_MAYBE_UNINITIALIZED_POP
