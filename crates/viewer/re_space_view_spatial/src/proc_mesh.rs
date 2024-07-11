@@ -35,7 +35,7 @@ pub struct WireframeMesh {
 
 // ----------------------------------------------------------------------------
 
-/// Cache for the computation of wireframe meshes from [`SynthMeshKey`]s.
+/// Cache for the computation of wireframe meshes from [`ProcMeshKey`]s.
 /// These meshes may then be rendered as instances of the cached
 /// mesh.
 #[derive(Default)]
