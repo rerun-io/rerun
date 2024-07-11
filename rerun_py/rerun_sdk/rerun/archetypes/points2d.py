@@ -177,7 +177,7 @@ class Points2D(Points2DExt, Archetype):
     )
     # Optional class Ids for the points.
     #
-    # The class ID provides colors and labels if not specified explicitly.
+    # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -188,7 +188,7 @@ class Points2D(Points2DExt, Archetype):
     )
     # Optional keypoint IDs for the points, identifying them within a class.
     #
-    # If keypoint IDs are passed in but no class IDs were specified, the class ID will
+    # If keypoint IDs are passed in but no [`components.ClassId`][rerun.components.ClassId]s were specified, the [`components.ClassId`][rerun.components.ClassId] will
     # default to 0.
     # This is useful to identify points within a single classification (which is identified
     # with `class_id`).

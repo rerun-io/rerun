@@ -23,9 +23,7 @@ namespace rerun::archetypes {
     ///
     /// This archetype only provides styling information and should be logged as static
     /// when possible. The underlying data needs to be logged to the same entity-path using
-    /// the `Scalar` archetype.
-    ///
-    /// See `rerun::archetypes::Scalar`
+    /// `archetypes::Scalar`.
     ///
     /// ## Example
     ///

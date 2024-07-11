@@ -19,7 +19,7 @@ __all__ = ["Boxes3D"]
 @define(str=False, repr=False, init=False)
 class Boxes3D(Boxes3DExt, Archetype):
     """
-    **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
+    **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 
     Example
     -------
@@ -140,9 +140,9 @@ class Boxes3D(Boxes3DExt, Archetype):
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    # Optional `ClassId`s for the boxes.
+    # Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
     #
-    # The class ID provides colors and labels if not specified explicitly.
+    # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

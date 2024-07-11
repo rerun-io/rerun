@@ -88,7 +88,7 @@ pub struct Arrows3D {
 
     /// Optional class Ids for the points.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
@@ -383,7 +383,7 @@ impl Arrows3D {
 
     /// Optional class Ids for the points.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

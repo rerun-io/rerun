@@ -5,6 +5,8 @@ title: "Asset3D"
 
 A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
+See also [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d).
+
 ## Components
 
 **Required**: [`Blob`](../components/blob.md)

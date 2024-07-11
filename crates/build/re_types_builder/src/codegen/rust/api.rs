@@ -18,6 +18,7 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, iter_archetype_components, quote_doc_line},
         },
+        Target,
     },
     format_path,
     objects::ObjectClass,
@@ -249,7 +250,7 @@ fn quote_struct(
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_obj_docs(reporter, obj);
+    let quoted_doc = quote_obj_docs(reporter, objects, obj);
 
     let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
     let quoted_derive_clone_debug = if derive_only {
@@ -267,7 +268,7 @@ fn quote_struct(
 
     let quoted_fields = fields
         .iter()
-        .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field));
+        .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field).quoted(objects));
 
     let quoted_deprecation_notice = if let Some(deprecation_notice) = obj.deprecation_notice() {
         quote!(#[deprecated(note = #deprecation_notice)])
@@ -286,7 +287,7 @@ fn quote_struct(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
-    let quoted_builder = quote_builder_from_obj(reporter, obj);
+    let quoted_builder = quote_builder_from_obj(reporter, objects, obj);
 
     let quoted_heap_size_bytes = {
         let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
@@ -359,7 +360,7 @@ fn quote_union(
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_obj_docs(reporter, obj);
+    let quoted_doc = quote_obj_docs(reporter, objects, obj);
     let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
     let quoted_derive_clone_debug = if derive_only {
         quote!()
@@ -377,7 +378,7 @@ fn quote_union(
     let quoted_fields = fields.iter().map(|obj_field| {
         let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
 
-        let quoted_doc = quote_field_docs(reporter, obj_field);
+        let quoted_doc = quote_field_docs(reporter, objects, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj_field);
 
         if obj_field.typ == Type::Unit {
@@ -472,7 +473,7 @@ fn quote_enum(
 
     let name = format_ident!("{name}");
 
-    let quoted_doc = quote_obj_docs(reporter, obj);
+    let quoted_doc = quote_obj_docs(reporter, objects, obj);
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let mut derives = vec!["Clone", "Copy", "Debug", "Hash", "PartialEq", "Eq"];
@@ -502,7 +503,7 @@ fn quote_enum(
     let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
         let name = format_ident!("{}", field.pascal_case_name());
 
-        let quoted_doc = quote_field_docs(reporter, field);
+        let quoted_doc = quote_field_docs(reporter, objects, field);
 
         // We assign the arrow type index to the enum fields to make encoding simpler and faster:
         let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
@@ -534,8 +535,15 @@ fn quote_enum(
     });
     let docstring_md_match_arms = fields.iter().map(|field| {
         let quoted_name = format_ident!("{}", field.pascal_case_name());
-        let docstring_md =
-            doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs).join("\n");
+        let docstring_md = doc_as_lines(
+            reporter,
+            objects,
+            &field.virtpath,
+            &field.fqname,
+            &field.docs,
+            Target::Rust,
+        )
+        .join("\n");
         if docstring_md.is_empty() {
             reporter.error(
                 &field.virtpath,
@@ -601,10 +609,10 @@ fn quote_enum(
 
 struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
 
-impl quote::ToTokens for ObjectFieldTokenizer<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl ObjectFieldTokenizer<'_> {
+    fn quoted(&self, objects: &Objects) -> TokenStream {
         let Self(reporter, obj, obj_field) = self;
-        let quoted_docs = quote_field_docs(reporter, obj_field);
+        let quoted_docs = quote_field_docs(reporter, objects, obj_field);
         let name = format_ident!("{}", &obj_field.name);
         let quoted_type = quote_field_type_from_object_field(obj_field);
 
@@ -619,12 +627,18 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
                 pub #name: #quoted_type
             }
         }
-        .to_tokens(tokens);
     }
 }
 
-fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
-    let lines = doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs);
+fn quote_field_docs(reporter: &Reporter, objects: &Objects, field: &ObjectField) -> TokenStream {
+    let lines = doc_as_lines(
+        reporter,
+        objects,
+        &field.virtpath,
+        &field.fqname,
+        &field.docs,
+        Target::Rust,
+    );
 
     let require_field_docs = false;
     if require_field_docs && lines.is_empty() && !field.is_testing() {
@@ -634,8 +648,15 @@ fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
     quote_doc_lines(&lines)
 }
 
-fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
-    let mut lines = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs);
+fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> TokenStream {
+    let mut lines = doc_as_lines(
+        reporter,
+        objects,
+        &obj.virtpath,
+        &obj.fqname,
+        &obj.docs,
+        Target::Rust,
+    );
 
     // Prefix first line with `**Datatype**: ` etc:
     if let Some(first) = lines.first_mut() {
@@ -1366,7 +1387,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
 }
 
 /// Only makes sense for archetypes.
-fn quote_builder_from_obj(reporter: &Reporter, obj: &Object) -> TokenStream {
+fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) -> TokenStream {
     if obj.kind != ObjectKind::Archetype {
         return TokenStream::new();
     }
@@ -1437,7 +1458,7 @@ fn quote_builder_from_obj(reporter: &Reporter, obj: &Object) -> TokenStream {
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
         let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
-        let docstring = quote_field_docs(reporter, field);
+        let docstring = quote_field_docs(reporter, objects, field);
 
         if unwrapped {
             // This was originally a vec/array!

@@ -9,8 +9,7 @@ namespace rerun.archetypes;
 
 /// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///
-/// \py See also [`Asset3D`][rerun.archetypes.Asset3D].
-/// \rs See also [`Asset3D`][crate::archetypes::Asset3D].
+/// See also [archetypes.Asset3D].
 ///
 /// \example archetypes/mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1200w.png"
 /// \example archetypes/mesh3d_partial_updates !api title="3D mesh with partial updates" image="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1200w.png"
@@ -47,13 +46,14 @@ table Mesh3D (
 
   /// Optional albedo texture.
   ///
-  /// Used with `vertex_texcoords` on `Mesh3D`.
+  /// Used with the [components.Texcoord2D] of the mesh.
+  ///
   /// Currently supports only sRGB(A) textures, ignoring alpha.
   /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
   albedo_texture: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3400);
 
   /// Optional class Ids for the vertices.
   ///
-  /// The class ID provides colors and labels if not specified explicitly.
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3500);
 }

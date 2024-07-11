@@ -5,6 +5,8 @@ title: "Mesh3D"
 
 A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
+See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
+
 ## Components
 
 **Required**: [`Position3D`](../components/position3d.md)

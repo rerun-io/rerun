@@ -24,7 +24,7 @@ use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
-use super::common::ExampleInfo;
+use super::{common::ExampleInfo, Target};
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
 
@@ -405,9 +405,12 @@ impl QuotedObject {
                     hpp_includes,
                     hpp_type_extensions,
                 )),
-                ObjectKind::Archetype => {
-                    Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
-                }
+                ObjectKind::Archetype => Ok(Self::from_archetype(
+                    objects,
+                    obj,
+                    hpp_includes,
+                    hpp_type_extensions,
+                )),
                 ObjectKind::View => {
                     // TODO(#5521): Implement view codegen for Rust.
                     unimplemented!();
@@ -424,12 +427,13 @@ impl QuotedObject {
     }
 
     fn from_archetype(
+        objects: &Objects,
         obj: &Object,
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> Self {
         let type_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(obj);
+        let quoted_docs = quote_obj_docs(objects, obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
@@ -440,7 +444,7 @@ impl QuotedObject {
             .fields
             .iter()
             .map(|obj_field| {
-                let docstring = quote_field_docs(obj_field);
+                let docstring = quote_field_docs(objects, obj_field);
                 let field_name = format_ident!("{}", obj_field.name);
                 let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
                 let field_type = if obj_field.is_nullable {
@@ -531,11 +535,11 @@ impl QuotedObject {
         };
 
         let serialize_method = archetype_serialize(&type_ident, obj, &mut hpp_includes);
-        let serialize_hpp = serialize_method.to_hpp_tokens();
+        let serialize_hpp = serialize_method.to_hpp_tokens(objects);
         let serialize_cpp =
             serialize_method.to_cpp_tokens(&quote!(AsComponents<#quoted_namespace::#type_ident>));
 
-        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
         let methods_cpp = methods
             .iter()
             .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
@@ -645,7 +649,7 @@ impl QuotedObject {
         };
 
         let type_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(obj);
+        let quoted_docs = quote_obj_docs(objects, obj);
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
@@ -656,6 +660,7 @@ impl QuotedObject {
             .iter()
             .map(|obj_field| {
                 let declaration = quote_variable_with_docstring(
+                    objects,
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", obj_field.name),
@@ -702,7 +707,7 @@ impl QuotedObject {
             }
         }
 
-        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
             obj,
@@ -796,7 +801,7 @@ impl QuotedObject {
 
         let pascal_case_name = &obj.name;
         let pascal_case_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(obj);
+        let quoted_docs = quote_obj_docs(objects, obj);
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let tag_typename = format_ident!("{pascal_case_name}Tag");
@@ -834,6 +839,7 @@ impl QuotedObject {
             .filter(|obj_field| obj_field.typ != Type::Unit)
             .map(|obj_field| {
                 let declaration = quote_variable_with_docstring(
+                    objects,
                     &mut hpp_includes,
                     obj_field,
                     &format_ident!("{}", obj_field.snake_case_name()),
@@ -1070,7 +1076,7 @@ impl QuotedObject {
             &mut hpp_declarations,
         );
 
-        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
         let hpp = quote! {
             #hpp_includes
 
@@ -1197,7 +1203,7 @@ impl QuotedObject {
         };
 
         let type_ident = obj.ident();
-        let quoted_docs = quote_obj_docs(obj);
+        let quoted_docs = quote_obj_docs(objects, obj);
         let deprecation_notice = quote_deprecation_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
@@ -1208,7 +1214,7 @@ impl QuotedObject {
             .iter()
             .enumerate()
             .map(|(i, obj_field)| {
-                let docstring = quote_field_docs(obj_field);
+                let docstring = quote_field_docs(objects, obj_field);
                 let field_name = format_ident!("{}", obj_field.name);
 
                 // We assign the arrow type index to the enum fields to make encoding simpler and faster:
@@ -2143,13 +2149,14 @@ fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectFie
 }
 
 fn quote_variable_with_docstring(
+    objects: &Objects,
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,
 ) -> TokenStream {
     let quoted = quote_variable(includes, obj_field, name);
 
-    let docstring = quote_field_docs(obj_field);
+    let docstring = quote_field_docs(objects, obj_field);
 
     let quoted = quote! {
         #docstring
@@ -2259,8 +2266,8 @@ fn quote_fqname_as_type_path(includes: &mut Includes, fqname: &str) -> TokenStre
     quote!(#expr)
 }
 
-fn quote_obj_docs(obj: &Object) -> TokenStream {
-    let mut lines = lines_from_docs(&obj.docs);
+fn quote_obj_docs(objects: &Objects, obj: &Object) -> TokenStream {
+    let mut lines = lines_from_docs(objects, &obj.docs);
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -2270,13 +2277,13 @@ fn quote_obj_docs(obj: &Object) -> TokenStream {
     quote_doc_lines(&lines)
 }
 
-fn quote_field_docs(field: &ObjectField) -> TokenStream {
-    let lines = lines_from_docs(&field.docs);
+fn quote_field_docs(objects: &Objects, field: &ObjectField) -> TokenStream {
+    let lines = lines_from_docs(objects, &field.docs);
     quote_doc_lines(&lines)
 }
 
-fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = docs.doc_lines_for_untagged_and("cpp");
+fn lines_from_docs(objects: &Objects, docs: &Docs) -> Vec<String> {
+    let mut lines = docs.lines_for(objects, Target::Cpp);
 
     let required = true;
     let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();
@@ -2502,7 +2509,7 @@ fn quote_loggable_hpp_and_cpp(
         }
     };
 
-    let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+    let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
     let hide_from_docs_comment = quote_hide_from_docs();
 

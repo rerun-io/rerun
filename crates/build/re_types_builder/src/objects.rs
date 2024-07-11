@@ -20,7 +20,7 @@ const BUILTIN_UNIT_TYPE_FQNAME: &str = "rerun.builtins.UnitType";
 
 /// The result of the semantic pass: an intermediate representation of all available object
 /// types; including structs, enums and unions.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Objects {
     /// Maps fully-qualified type names to their resolved object definitions.
     pub objects: BTreeMap<String, Object>,
@@ -175,6 +175,14 @@ impl Objects {
 }
 
 impl Objects {
+    pub fn get(&self, fqname: &str) -> Option<&Object> {
+        self.objects.get(fqname)
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = &Object> {
+        self.objects.values()
+    }
+
     /// Returns all available objects of the given kind.
     pub fn objects_of_kind(&self, kind: ObjectKind) -> impl Iterator<Item = &Object> {
         self.objects.values().filter(move |obj| obj.kind == kind)

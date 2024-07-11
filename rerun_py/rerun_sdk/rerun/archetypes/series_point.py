@@ -25,9 +25,7 @@ class SeriesPoint(Archetype):
 
     This archetype only provides styling information and should be logged as static
     when possible. The underlying data needs to be logged to the same entity-path using
-    the `Scalar` archetype.
-
-    See [`Scalar`][rerun.archetypes.Scalar]
+    [`archetypes.Scalar`][rerun.archetypes.Scalar].
 
     Example
     -------

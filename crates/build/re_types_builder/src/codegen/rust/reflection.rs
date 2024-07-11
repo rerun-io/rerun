@@ -5,7 +5,8 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
-    codegen::autogen_warning, ObjectKind, Objects, Reporter, ATTR_RUST_GENERATE_FIELD_INFO,
+    codegen::{autogen_warning, Target},
+    ObjectKind, Objects, Reporter, ATTR_RUST_GENERATE_FIELD_INFO,
 };
 
 use super::util::{append_tokens, doc_as_lines};
@@ -100,7 +101,15 @@ fn generate_component_reflection(
             quote!( ComponentName::new(#fqname) )
         };
 
-        let docstring_md = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs).join("\n");
+        let docstring_md = doc_as_lines(
+            reporter,
+            objects,
+            &obj.virtpath,
+            &obj.fqname,
+            &obj.docs,
+            Target::WebDocsMarkdown,
+        )
+        .join("\n");
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
@@ -139,8 +148,15 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 panic!("archetype field must be an object/union or an array/vector of such")
             };
             let display_name = re_case::to_human_case(&field.name);
-            let docstring_md =
-                doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs).join("\n");
+            let docstring_md = doc_as_lines(
+                reporter,
+                objects,
+                &field.virtpath,
+                &field.fqname,
+                &field.docs,
+                Target::WebDocsMarkdown,
+            )
+            .join("\n");
 
             quote! {
                 ArchetypeFieldReflection {
@@ -154,7 +170,15 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         let fqname = &obj.fqname;
         let quoted_name = quote!( ArchetypeName::new(#fqname) );
         let display_name = re_case::to_human_case(&obj.name);
-        let docstring_md = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs).join("\n");
+        let docstring_md = doc_as_lines(
+            reporter,
+            objects,
+            &obj.virtpath,
+            &obj.fqname,
+            &obj.docs,
+            Target::WebDocsMarkdown,
+        )
+        .join("\n");
         let quoted_archetype_reflection = quote! {
             ArchetypeReflection {
                 display_name: #display_name,

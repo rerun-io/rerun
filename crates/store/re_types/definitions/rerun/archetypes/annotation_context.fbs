@@ -6,16 +6,15 @@ include "rerun/components.fbs";
 namespace rerun.archetypes;
 
 
-/// The `AnnotationContext` provides additional information on how to display entities.
+/// The annotation context provides additional information on how to display entities.
 ///
-/// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
+/// Entities can use [components.ClassId]s and [components.KeypointId]s to provide annotations, and
 /// the labels and colors will be looked up in the appropriate
-/// `AnnotationContext`. We use the *first* annotation context we find in the
+/// annotation context. We use the *first* annotation context we find in the
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// \py See also [`ClassDescription`][rerun.datatypes.ClassDescription].
-/// \rs See also [`ClassDescription`][crate::datatypes::ClassDescription].
+/// See also [datatypes.ClassDescription].
 ///
 /// \example archetypes/annotation_context_rects !api title="Rectangles" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
 /// \example archetypes/annotation_context_segmentation title="Segmentation" image="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/1200w.png"
