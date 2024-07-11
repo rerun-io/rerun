@@ -115,6 +115,24 @@ impl TimeInt {
             None => f64::MIN,
         }
     }
+
+    /// Always returns [`Self::STATIC`] for [`Self::STATIC`].
+    #[inline]
+    pub fn inc(&self) -> Self {
+        match self.0 {
+            Some(t) => Self::new_temporal(t.get().saturating_add(1)),
+            None => *self,
+        }
+    }
+
+    /// Always returns [`Self::STATIC`] for [`Self::STATIC`].
+    #[inline]
+    pub fn dec(&self) -> Self {
+        match self.0 {
+            Some(t) => Self::new_temporal(t.get().saturating_sub(1)),
+            None => *self,
+        }
+    }
 }
 
 impl TryFrom<i64> for TimeInt {

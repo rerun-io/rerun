@@ -6,7 +6,8 @@ use rand::Rng as _;
 
 use re_chunk::{Chunk, ChunkId, ComponentName, LatestAtQuery, RowId, TimeInt, TimePoint};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreDiffKind, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStore, ChunkStoreConfig, ChunkStoreDiffKind, GarbageCollectionOptions,
+    GarbageCollectionTarget,
 };
 use re_log_types::{
     build_frame_nr, build_log_time,
@@ -51,7 +52,11 @@ fn simple() -> anyhow::Result<()> {
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        Default::default(),
+        ChunkStoreConfig {
+            chunk_max_bytes: 0,
+            chunk_max_rows: 0,
+            ..ChunkStoreConfig::DEFAULT
+        },
     );
 
     for _ in 0..2 {
@@ -211,7 +216,11 @@ fn protected() -> anyhow::Result<()> {
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        Default::default(),
+        ChunkStoreConfig {
+            chunk_max_bytes: 0,
+            chunk_max_rows: 0,
+            ..ChunkStoreConfig::DEFAULT
+        },
     );
 
     let entity_path = EntityPath::from("this/that");
