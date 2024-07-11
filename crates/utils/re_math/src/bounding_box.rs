@@ -2,8 +2,11 @@ use glam::{Affine3A, Quat, Vec3};
 
 use crate::{Conformal3, IsoTransform};
 
-/// A 3-dimensional axis-aligned bounding box
-#[derive(Clone, Copy, Default, PartialEq)]
+/// A 3-dimensional axis-aligned bounding box.
+///
+/// This intentionally does NOT implement `Default` because it is ambigious what a good default should be
+/// (nothing? everything? zero?)
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BoundingBox {
     /// Bounding box minimum (inclusive).
