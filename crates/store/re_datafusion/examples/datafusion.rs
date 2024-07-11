@@ -6,6 +6,7 @@ use re_chunk::{
 };
 use re_chunk_store::ChunkStore;
 use re_datafusion::create_datafusion_context;
+use re_log_types::example_components::MyLabel;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -14,8 +15,12 @@ async fn main() -> anyhow::Result<()> {
     let timeline_frame = Timeline::new_sequence("frame");
     let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
 
-    let point1 = MyPoint::new(1.0, 1.0);
-    let point2 = MyPoint::new(2.0, 2.0);
+    let point1 = MyPoint::new(1.0, 2.0);
+    let point2 = MyPoint::new(3.0, 4.0);
+    let point3 = MyPoint::new(5.0, 6.0);
+    let label1 = MyLabel("point1".to_owned());
+    let label2 = MyLabel("point2".to_owned());
+    let label3 = MyLabel("point3".to_owned());
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -23,12 +28,19 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(RowId::new(), timepoint.clone(), &[point1])
+        .with_component_batches(
+            RowId::new(),
+            timepoint.clone(),
+            [&[point1, point2] as _, &[label1, label2] as _],
+        )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
-
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(RowId::new(), timepoint.clone(), &[point2])
+        .with_component_batches(
+            RowId::new(),
+            timepoint.clone(),
+            [&[point3] as _, &[label3] as _],
+        )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 

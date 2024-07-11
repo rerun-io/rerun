@@ -2,21 +2,25 @@ use std::any::Any;
 use std::fmt::{self, Debug, Formatter};
 use std::sync::Arc;
 
-use datafusion::arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+use arrow2::array::{Arrow2Arrow as _, ListArray};
+use datafusion::arrow::array::{ArrayRef, GenericListArray};
+use datafusion::arrow::datatypes::{Field, Schema, SchemaRef};
 use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::datasource::{TableProvider, TableType};
 use datafusion::error::Result;
 use datafusion::execution::context::{SessionState, TaskContext};
-use datafusion::physical_expr::EquivalenceProperties;
+use datafusion::physical_expr::PhysicalSortExpr;
 use datafusion::physical_plan::memory::MemoryStream;
 use datafusion::physical_plan::{
-    project_schema, DisplayAs, DisplayFormatType, ExecutionMode, ExecutionPlan, Partitioning,
-    PlanProperties, SendableRecordBatchStream,
+    project_schema, DisplayAs, DisplayFormatType, ExecutionPlan, SendableRecordBatchStream,
 };
 use datafusion::prelude::*;
 
 use async_trait::async_trait;
 use re_chunk_store::ChunkStore;
+use re_types::Archetype as _;
+
+//use crate::conversions::convert_datatype_arrow2_to_arrow;
 
 /// A custom datasource, used to represent a datastore with a single index
 #[derive(Clone)]
@@ -58,11 +62,23 @@ impl TableProvider for CustomDataSource {
     }
 
     fn schema(&self) -> SchemaRef {
-        Arc::new(Schema::new(vec![
-            Field::new("id", DataType::Int32, false),
-            Field::new("name", DataType::Utf8, false),
-            Field::new("value", DataType::Float64, false),
-        ]))
+        // TODO(jleibs): This should come from the chunk store directly
+        let components = re_log_types::example_components::MyPoints::all_components();
+
+        let fields: Vec<Field> = components
+            .iter()
+            .filter_map(|c| {
+                self.store.lookup_datatype(c).map(|dt| {
+                    Field::new(
+                        c.as_str(),
+                        ListArray::<i32>::default_datatype(dt.clone()).into(),
+                        true,
+                    )
+                })
+            })
+            .collect();
+
+        Arc::new(Schema::new(fields))
     }
 
     fn table_type(&self) -> TableType {
@@ -85,7 +101,6 @@ impl TableProvider for CustomDataSource {
 struct CustomExec {
     _db: CustomDataSource,
     projected_schema: SchemaRef,
-    cache: PlanProperties,
 }
 
 impl CustomExec {
@@ -95,22 +110,10 @@ impl CustomExec {
         db: CustomDataSource,
     ) -> Result<Self> {
         let projected_schema = project_schema(schema, projections)?;
-        let cache = Self::compute_properties(projected_schema.clone());
         Ok(Self {
             _db: db,
             projected_schema,
-            cache,
         })
-    }
-
-    /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
-    fn compute_properties(schema: SchemaRef) -> PlanProperties {
-        let eq_properties = EquivalenceProperties::new(schema);
-        PlanProperties::new(
-            eq_properties,
-            Partitioning::UnknownPartitioning(1),
-            ExecutionMode::Bounded,
-        )
     }
 }
 
@@ -121,19 +124,23 @@ impl DisplayAs for CustomExec {
 }
 
 impl ExecutionPlan for CustomExec {
-    fn name(&self) -> &'static str {
-        "CustomExec"
-    }
-
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
-        &self.cache
+    fn schema(&self) -> SchemaRef {
+        self.projected_schema.clone()
     }
 
-    fn children(&self) -> Vec<&Arc<dyn ExecutionPlan>> {
+    fn output_partitioning(&self) -> datafusion::physical_plan::Partitioning {
+        datafusion::physical_plan::Partitioning::UnknownPartitioning(1)
+    }
+
+    fn output_ordering(&self) -> Option<&[PhysicalSortExpr]> {
+        None
+    }
+
+    fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
     }
 
@@ -149,19 +156,32 @@ impl ExecutionPlan for CustomExec {
         _partition: usize,
         _context: Arc<TaskContext>,
     ) -> Result<SendableRecordBatchStream> {
-        use arrow::array::{Float64Array, Int32Array, StringArray};
+        let batches: datafusion::arrow::error::Result<Vec<RecordBatch>> = self
+            ._db
+            .store
+            .iter_chunks()
+            .map(|chunk| {
+                let components = re_log_types::example_components::MyPoints::all_components();
 
-        let batch = RecordBatch::try_new(
-            self.projected_schema.clone(),
-            vec![
-                Arc::new(Int32Array::from(vec![1, 2, 3])),
-                Arc::new(StringArray::from(vec!["A", "B", "C"])),
-                Arc::new(Float64Array::from(vec![10.0, 20.0, 30.0])),
-            ],
-        )?;
+                RecordBatch::try_new(
+                    self.projected_schema.clone(),
+                    components
+                        .iter()
+                        .filter_map(|c| {
+                            chunk.components().get(c).map(|c| {
+                                let data = c.to_data();
+                                let converted = GenericListArray::<i32>::from(data);
+
+                                Arc::new(converted) as ArrayRef
+                            })
+                        })
+                        .collect(),
+                )
+            })
+            .collect();
 
         Ok(Box::pin(MemoryStream::try_new(
-            vec![batch],
+            batches?,
             self.schema(),
             None,
         )?))
