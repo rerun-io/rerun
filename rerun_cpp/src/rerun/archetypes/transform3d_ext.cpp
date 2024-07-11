@@ -18,7 +18,7 @@ namespace rerun {
 
         /// Creates a new 3D transform from translation and matrix provided as 3 columns.
         ///
-        /// \param translation \çopydoc Transform3D::translation
+        /// \param _translation \çopydoc Transform3D::translation
         /// \param columns Column vectors of 3x3 matrix.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         ///
@@ -36,8 +36,8 @@ namespace rerun {
 
         /// Creates a new 3D transform from translation/matrix.
         ///
-        /// \param translation \çopydoc Transform3D::translation
-        /// \param matrix \copydoc Transform3D::mat3x3
+        /// \param _translation \çopydoc Transform3D::translation
+        /// \param _mat3x3 \copydoc Transform3D::mat3x3
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
             const components::Translation3D& _translation,
@@ -50,7 +50,7 @@ namespace rerun {
         /// From a translation applied after a 3x3 matrix.
         ///
         /// \param translation \çopydoc Transform3D::translation
-        /// \param matrix \copydoc Transform3D::mat3x3
+        /// \param mat3x3 \copydoc Transform3D::mat3x3
         static Transform3D from_translation_mat3x3(
             const components::Translation3D& translation, const components::TransformMat3x3& mat3x3
         ) {
@@ -72,7 +72,7 @@ namespace rerun {
 
         /// From translation only.
         ///
-        /// \param translation \çopydoc Transform3D::translation
+        /// \param _translation \çopydoc Transform3D::translation
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(const components::Translation3D& _translation, bool from_parent = false)
             : transform(datatypes::TranslationRotationScale3D(from_parent)),
@@ -87,7 +87,7 @@ namespace rerun {
 
         /// From 3x3 matrix only.
         ///
-        /// \param matrix \copydoc Transform3D::mat3x3
+        /// \param _mat3x3 \copydoc Transform3D::mat3x3
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(const components::TransformMat3x3& _mat3x3, bool from_parent = false)
             : transform(datatypes::TranslationRotationScale3D(from_parent)),
@@ -95,7 +95,7 @@ namespace rerun {
 
         /// From 3x3 matrix only.
         ///
-        /// \param matrix \copydoc Transform3D::mat3x3
+        /// \param mat3x3 \copydoc Transform3D::mat3x3
         static Transform3D from_mat3x3(const components::TransformMat3x3& mat3x3) {
             return Transform3D(mat3x3, false);
         }
@@ -113,14 +113,13 @@ namespace rerun {
         /// From 3x3 matrix provided as 3 columns only.
         ///
         /// \param columns Column vectors of 3x3 matrix.
-        /// \param matrix \copydoc Transform3D::mat3x3
         static Transform3D from_mat3x3(const datatypes::Vec3D (&columns)[3]) {
             return Transform3D::from_mat3x3(components::TransformMat3x3(columns));
         }
 
         /// Creates a new 3D transform from translation/rotation/scale.
         ///
-        /// \param translation \copydoc Transform3D::translation
+        /// \param _translation \copydoc Transform3D::translation
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
         /// \param scale \copydoc datatypes::TranslationRotationScale3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
@@ -133,7 +132,7 @@ namespace rerun {
 
         /// Creates a new 3D transform from translation/rotation/uniform-scale.
         ///
-        /// \param translation \copydoc Transform3D::translation
+        /// \param _translation \copydoc Transform3D::translation
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
@@ -162,7 +161,7 @@ namespace rerun {
 
         /// Creates a new rigid transform (translation & rotation only).
         ///
-        /// \param translation \copydoc Transform3D::translation
+        /// \param _translation \copydoc Transform3D::translation
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
@@ -184,7 +183,7 @@ namespace rerun {
 
         /// From translation & scale only.
         ///
-        /// \param translation \copydoc Transform3D::translation
+        /// \param _translation \copydoc Transform3D::translation
         /// \param scale datatypes::TranslationRotationScale3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
@@ -206,7 +205,7 @@ namespace rerun {
 
         /// From translation & uniform scale only.
         ///
-        /// \param translation \copydoc Transform3D::translation
+        /// \param _translation \copydoc Transform3D::translation
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         ///
@@ -278,7 +277,6 @@ namespace rerun {
         /// From scale only.
         ///
         /// \param scale datatypes::TranslationRotationScale3D::scale
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         static Transform3D from_scale(const datatypes::Scale3D& scale) {
             return Transform3D(scale, false);
         }
