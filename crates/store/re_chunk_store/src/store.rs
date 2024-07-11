@@ -218,6 +218,10 @@ pub type ChunkIdPerComponent = BTreeMap<ComponentName, ChunkId>;
 
 pub type ChunkIdPerComponentPerEntity = BTreeMap<EntityPath, ChunkIdPerComponent>;
 
+pub type ChunkIdSetPerTimePerTimeline = BTreeMap<Timeline, ChunkIdSetPerTime>;
+
+pub type ChunkIdSetPerTimePerTimelinePerEntity = BTreeMap<EntityPath, ChunkIdSetPerTimePerTimeline>;
+
 // ---
 
 /// Incremented on each edit.
@@ -260,10 +264,20 @@ pub struct ChunkStore {
     /// duplicated [`RowId`]s.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, Vec<ChunkId>>,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines.
+    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentName`].
     ///
-    /// See also [`Self::static_chunk_ids_per_entity`].
-    pub(crate) temporal_chunk_ids_per_entity: ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
+    /// See also:
+    /// * [`Self::temporal_chunk_ids_per_entity`].
+    /// * [`Self::static_chunk_ids_per_entity`].
+    pub(crate) temporal_chunk_ids_per_entity_per_component:
+        ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
+
+    /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
+    ///
+    /// See also:
+    /// * [`Self::temporal_chunk_ids_per_entity_per_component`].
+    /// * [`Self::static_chunk_ids_per_entity`].
+    pub(crate) temporal_chunk_ids_per_entity: ChunkIdSetPerTimePerTimelinePerEntity,
 
     /// Accumulated size statitistics for all temporal [`Chunk`]s currently present in the store.
     ///
@@ -305,6 +319,9 @@ impl Clone for ChunkStore {
             type_registry: self.type_registry.clone(),
             chunks_per_chunk_id: self.chunks_per_chunk_id.clone(),
             chunk_ids_per_min_row_id: self.chunk_ids_per_min_row_id.clone(),
+            temporal_chunk_ids_per_entity_per_component: self
+                .temporal_chunk_ids_per_entity_per_component
+                .clone(),
             temporal_chunk_ids_per_entity: self.temporal_chunk_ids_per_entity.clone(),
             temporal_chunks_stats: self.temporal_chunks_stats,
             static_chunk_ids_per_entity: self.static_chunk_ids_per_entity.clone(),
@@ -325,6 +342,7 @@ impl std::fmt::Display for ChunkStore {
             type_registry: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id: chunk_id_per_min_row_id,
+            temporal_chunk_ids_per_entity_per_component: _,
             temporal_chunk_ids_per_entity: _,
             temporal_chunks_stats,
             static_chunk_ids_per_entity: _,
@@ -374,6 +392,7 @@ impl ChunkStore {
             type_registry: Default::default(),
             chunk_ids_per_min_row_id: Default::default(),
             chunks_per_chunk_id: Default::default(),
+            temporal_chunk_ids_per_entity_per_component: Default::default(),
             temporal_chunk_ids_per_entity: Default::default(),
             temporal_chunks_stats: Default::default(),
             static_chunk_ids_per_entity: Default::default(),

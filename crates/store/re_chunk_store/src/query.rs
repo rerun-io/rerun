@@ -39,7 +39,7 @@ impl ChunkStore {
             });
 
         let temporal_components: Option<ComponentNameSet> = self
-            .temporal_chunk_ids_per_entity
+            .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
@@ -85,7 +85,7 @@ impl ChunkStore {
         entity_path: &EntityPath,
     ) -> Option<TimeInt> {
         let temporal_chunk_ids_per_timeline =
-            self.temporal_chunk_ids_per_entity.get(entity_path)?;
+            self.temporal_chunk_ids_per_entity_per_component.get(entity_path)?;
         let temporal_chunk_ids_per_component = temporal_chunk_ids_per_timeline.get(timeline)?;
 
         let mut time_min = TimeInt::MAX;
@@ -140,7 +140,7 @@ impl ChunkStore {
         }
 
         if let Some(temporal_chunk_ids) = self
-            .temporal_chunk_ids_per_entity
+            .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.get(&query.timeline())
@@ -226,7 +226,7 @@ impl ChunkStore {
             return vec![Arc::clone(static_chunk)];
         }
 
-        self.temporal_chunk_ids_per_entity
+        self.temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.get(&query.timeline())
