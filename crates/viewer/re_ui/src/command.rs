@@ -275,6 +275,10 @@ impl UICommand {
             KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), key)
         }
 
+        fn cmd_shift(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), key)
+        }
+
         match self {
             Self::SaveRecording => Some(cmd(Key::S)),
             Self::SaveRecordingSelection => Some(cmd_alt(Key::S)),
@@ -354,7 +358,7 @@ impl UICommand {
             #[cfg(target_arch = "wasm32 ")]
             Self::ViewportMode(_) => None,
 
-            Self::ToggleChunkBasedDataDensityGraph => Some(ctrl_shift(Key::D)),
+            Self::ToggleChunkBasedDataDensityGraph => Some(cmd_shift(Key::D)),
         }
     }
 
