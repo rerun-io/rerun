@@ -58,9 +58,9 @@ py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
 cpp = ["base", "cpp"]
 
 # The wheel-test environment is for testing the python package when built from a wheel.
-# This environment is specifically used for validation of the wheel artifact in CI.
+# Thistenvironment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
-wheel-test = ["base", "cpp", "wheel-test-tasks", "py-test-deps"]
+wheel-test = ["base", "cpp", "wheel-test", "py-test-deps"]
 
 # Example environments
 
@@ -276,7 +276,7 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
 
-[feature.wheel-test-tasks.tasks]
+[feature.wheel-test.tasks]
 # In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
 # However, since `rerun` is already its own task, we can't just `pixi run rerun`. This task lets us work
 # around that and executes `rerun` from the system shell within the context of the pixi environment.
@@ -447,6 +447,8 @@ rerun-notebook = { path = "rerun_notebook", editable = true }
 # during the wheel-test task itself is otherwise painful.
 torch = "==2.2.2" # This must match the torch version in any package we install during `wheel-test`
 
+[feature.wheel-test.dependencies]
+pip = ">=23"
 
 # PYTHON PYPI ENVIRONMENT
 [feature.python-pypi]
