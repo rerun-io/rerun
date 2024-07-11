@@ -103,6 +103,7 @@ fn generate_component_reflection(
 
         let docstring_md = doc_as_lines(
             reporter,
+            objects,
             &obj.virtpath,
             &obj.fqname,
             &obj.docs,
@@ -149,6 +150,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             let display_name = re_case::to_human_case(&field.name);
             let docstring_md = doc_as_lines(
                 reporter,
+                objects,
                 &field.virtpath,
                 &field.fqname,
                 &field.docs,
@@ -170,6 +172,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         let display_name = re_case::to_human_case(&obj.name);
         let docstring_md = doc_as_lines(
             reporter,
+            objects,
             &obj.virtpath,
             &obj.fqname,
             &obj.docs,

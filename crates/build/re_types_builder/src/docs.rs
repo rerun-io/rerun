@@ -1,4 +1,4 @@
-use crate::codegen::Target;
+use crate::{codegen::Target, Objects};
 
 /// A high-level representation of the contetns of a flatbuffer docstring.
 #[derive(Debug, Clone)]
@@ -35,13 +35,13 @@ impl Docs {
     }
 
     /// Get the first line of the documentation untagged.
-    pub fn first_line(&self, target: Target) -> Option<String> {
+    pub fn first_line(&self, objects: &Objects, target: Target) -> Option<String> {
         let (tag, line) = self.lines.first()?;
         assert!(
             tag.is_empty(),
             "Expected no tag on first line of docstring. Found: /// \\{tag} {line}"
         );
-        Some(translate_doc_line(line, target))
+        Some(translate_doc_line(objects, line, target))
     }
 
     /// Get all doc lines that start with the given tag.
@@ -68,7 +68,7 @@ impl Docs {
     /// For instance, pass [`Target::Python`] to get all lines that are untagged or starts with `"\py"`.
     ///
     /// The tagged lines (`\py`) are left as is, but untagged lines will have Rerun doclinks translated to the target language.
-    pub(super) fn lines_for(&self, target: Target) -> Vec<String> {
+    pub(super) fn lines_for(&self, objects: &Objects, target: Target) -> Vec<String> {
         let target_tag = match target {
             Target::Cpp => "cpp",
             Target::Python => "py",
@@ -82,7 +82,7 @@ impl Docs {
 
         remove_extra_newlines(self.lines.iter().filter_map(|(tag, line)| {
             if tag.is_empty() {
-                Some(translate_doc_line(line, target))
+                Some(translate_doc_line(objects, line, target))
             } else if tag == target_tag {
                 // We don't expect doclinks in tagged lines, because tagged lines are usually
                 // language-specific, and thus should have the correct format already.
@@ -188,10 +188,12 @@ use doclink_translation::translate_doc_line;
 ///
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
+    use crate::Objects;
+
     use super::Target;
 
     /// Convert Rerun-style doclinks to the target language.
-    pub fn translate_doc_line(input: &str, target: Target) -> String {
+    pub fn translate_doc_line(objects: &Objects, input: &str, target: Target) -> String {
         let mut out_tokens: Vec<String> = vec![];
         let mut within_backticks = false;
 
@@ -228,7 +230,7 @@ mod doclink_translation {
                     continue;
                 }
 
-                out_tokens.push(translate_doclink(&doclink_tokens, target));
+                out_tokens.push(translate_doclink(objects, &doclink_tokens, target));
                 continue;
             }
 
@@ -239,8 +241,8 @@ mod doclink_translation {
         out_tokens.into_iter().collect()
     }
 
-    fn translate_doclink(doclink_tokens: &[&str], target: Target) -> String {
-        try_translate_doclink(doclink_tokens, target).unwrap_or_else(|err| {
+    fn translate_doclink(objects: &Objects, doclink_tokens: &[&str], target: Target) -> String {
+        try_translate_doclink(objects, doclink_tokens, target).unwrap_or_else(|err| {
             let original_doclink: String = doclink_tokens.join("");
 
             // The worlds simplest heuristic, but at least it doesn't warn about things like [x, y, z, w].
@@ -258,6 +260,7 @@ mod doclink_translation {
     }
 
     fn try_translate_doclink(
+        objects: &Objects,
         doclink_tokens: &[&str],
         target: Target,
     ) -> Result<String, &'static str> {
@@ -272,7 +275,7 @@ mod doclink_translation {
         if tokens.next() != Some(&".") {
             return Err("Missing dot");
         }
-        let type_name = tokens.next().ok_or("Missing type name")?;
+        let type_name = *tokens.next().ok_or("Missing type name")?;
         if tokens.next() != Some(&"]") {
             return Err("Missing closing bracket");
         }
@@ -280,9 +283,26 @@ mod doclink_translation {
             return Err("Trailing tokens");
         }
 
-        // NOTE: we don't do any validation that the target exists.
-        // Instead we rely on the documentation tools for the different targets,
-        // e.g. `cargo doc` and our url link checker.
+        // Find the target object:
+        let mut candidates = vec![];
+        for obj in objects.values() {
+            if obj.kind.plural_snake_case() == kind && obj.name == type_name {
+                candidates.push(obj);
+            }
+        }
+        if candidates.is_empty() {
+            // NOTE: we don't error if the target doesn't exists.
+            // Instead we rely on the documentation tools for the different targets,
+            // e.g. `cargo doc` and our url link checker.
+            // Maybe we could change that though to catch errors earlier.
+            re_log::warn_once!("No object found for doclink: [{kind}.{type_name}]");
+        } else if candidates.len() > 2 {
+            use itertools::Itertools as _;
+            re_log::warn_once!(
+                "Multiple objects found for doclink: [{kind}.{type_name}]: {}",
+                candidates.iter().map(|obj| &obj.fqname).format(", ")
+            );
+        }
 
         Ok(match target {
             Target::Cpp => format!("`{kind}::{type_name}`"),
@@ -293,6 +313,7 @@ mod doclink_translation {
             Target::Python => format!("[`{kind}.{type_name}`][rerun.{kind}.{type_name}]"),
             Target::WebDocsMarkdown => {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
+                // TODO(emilk): relative links would be nicer for the local markdown files
                 let type_name_snake_case = re_case::to_snake_case(type_name);
                 format!("[`{kind}.{type_name}`](https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case})")
             }
@@ -349,11 +370,14 @@ mod doclink_translation {
 
         #[test]
         fn test_translate_doclinks() {
+            let objects = Objects::default();
+
             let input =
                 "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView] and a [url](www.rerun.io).";
 
             assert_eq!(
                 translate_doc_line(
+                    &objects,
                     input,
                     Target::Cpp
                 ),
@@ -362,6 +386,7 @@ mod doclink_translation {
 
             assert_eq!(
                 translate_doc_line(
+                    &objects,
                     input,
                     Target::Python
                 ),
@@ -370,6 +395,7 @@ mod doclink_translation {
 
             assert_eq!(
                 translate_doc_line(
+                    &objects,
                     input,
                     Target::Rust
                 ),
@@ -378,6 +404,7 @@ mod doclink_translation {
 
             assert_eq!(
                 translate_doc_line(
+                    &objects,
                     input,
                     Target::WebDocsMarkdown
                 ),
@@ -389,10 +416,13 @@ mod doclink_translation {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
     fn test_docs() {
+        let objects = Objects::default();
+
         let docs = Docs::from_lines(
             [
                 r" Doclink to [views.Spatial2DView].",
@@ -413,7 +443,7 @@ mod tests {
         assert_eq!(docs.only_lines_tagged("cpp"), vec!["Only for C++.",]);
 
         assert_eq!(
-            docs.lines_for(Target::Python),
+            docs.lines_for(&objects, Target::Python),
             vec![
                 "Doclink to [`views.Spatial2DView`][rerun.views.Spatial2DView].",
                 "",
@@ -426,7 +456,7 @@ mod tests {
         );
 
         assert_eq!(
-            docs.lines_for(Target::Cpp),
+            docs.lines_for(&objects, Target::Cpp),
             vec![
                 "Doclink to `views::Spatial2DView`.",
                 "",
@@ -439,7 +469,7 @@ mod tests {
         );
 
         assert_eq!(
-            docs.first_line(Target::Rust),
+            docs.first_line(&objects, Target::Rust),
             Some("Doclink to [`views::Spatial2DView`][crate::views::Spatial2DView].".to_owned())
         );
     }

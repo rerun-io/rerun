@@ -28,7 +28,7 @@ from ..api import SpaceView, SpaceViewContentsLike
     code.push('\n');
 
     code.push_indented(0, format!("class {}(SpaceView):", obj.name), 1);
-    code.push_indented(1, quote_obj_docs(obj), 1);
+    code.push_indented(1, quote_obj_docs(objects, obj), 1);
 
     code.push_indented(1, init_method(reporter, objects, obj), 1);
 
@@ -128,7 +128,7 @@ do not yet support `$origin` relative paths or glob expressions.
 This will be addressed in: [https://github.com/rerun-io/rerun/issues/6673][].".to_owned(),)
     ];
     for field in &obj.fields {
-        let doc_content = field.docs.lines_for(Target::Python);
+        let doc_content = field.docs.lines_for(objects, Target::Python);
         if doc_content.is_empty() {
             reporter.error(
                 &field.virtpath,
