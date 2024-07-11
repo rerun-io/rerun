@@ -16,8 +16,7 @@ from rerun.datatypes import (
     Vec3D,
 )
 
-from rerun_py.tests.unit.common_arrays import none_empty_or_value
-
+from .common_arrays import none_empty_or_value
 from .test_matnxn import MAT_3X3_INPUT
 from .test_vecnd import VEC_3D_INPUT, assert_correct_vec3d
 
