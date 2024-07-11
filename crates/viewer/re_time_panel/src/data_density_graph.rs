@@ -390,6 +390,7 @@ pub fn data_density_graph_ui2(
     re_tracing::profile_function!();
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+    let interact_radius = ui.style().interaction.resize_grab_radius_side;
     let interact_radius_sq = ui.style().interaction.resize_grab_radius_side.powi(2);
     let center_y = row_rect.center().y;
     let timeline = *time_ctrl.timeline();
@@ -432,8 +433,8 @@ pub fn data_density_graph_ui2(
 
             if is_hovered {
                 if let (Some(min_time), Some(max_time)) = (
-                    time_ranges_ui.time_from_x_f32(pointer_pos.x - interact_radius_sq),
-                    time_ranges_ui.time_from_x_f32(pointer_pos.x + interact_radius_sq),
+                    time_ranges_ui.time_from_x_f32(pointer_pos.x - interact_radius),
+                    time_ranges_ui.time_from_x_f32(pointer_pos.x + interact_radius),
                 ) {
                     let pointer_time_range =
                         ResolvedTimeRange::new(min_time.floor(), max_time.ceil());
@@ -476,7 +477,6 @@ pub fn data_density_graph_ui2(
         add_data_point(chunk, time_range, num_events);
     }
 
-    let hovered_time_range = ResolvedTimeRange::EMPTY;
     let hovered_x_range = (time_ranges_ui
         .x_from_time_f32(hovered_time_range.min().into())
         .unwrap_or(f32::MAX)
@@ -493,7 +493,7 @@ pub fn data_density_graph_ui2(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
-        hovered_x_range,
+        hovered_x_range.clone(),
     );
 
     if num_hovered_messages > 0 {
@@ -523,6 +523,11 @@ pub fn data_density_graph_ui2(
         }
     }
 }
+
+// if sorted:
+// - binary search, show hovered things
+// - if its small enough, full scan
+// - otherwise, hover full chunk
 
 fn visit_chunk_sub_range(
     chunk: &Chunk,
