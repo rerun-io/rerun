@@ -78,6 +78,16 @@ where
     }
 }
 
+impl<Idx> std::ops::IndexMut<Idx> for Vec4D
+where
+    Idx: std::slice::SliceIndex<[f32]>,
+{
+    #[inline]
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
 #[cfg(feature = "glam")]
 impl From<Vec4D> for glam::Vec4 {
     #[inline]

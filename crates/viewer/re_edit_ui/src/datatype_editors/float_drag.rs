@@ -31,7 +31,7 @@ pub fn edit_f32_min_to_max_float(
 }
 
 /// Non monomorphized implementation for f32 float editing.
-fn edit_f32_float_raw_impl(
+pub fn edit_f32_float_raw_impl(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, f32>,
     range: RangeInclusive<f32>,
