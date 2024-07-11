@@ -210,7 +210,7 @@ impl BoundingBox {
     }
 
     /// Returns the smallest volume that is covered by both `self` and `other`,
-    /// or [`Self::nothing`] if the boxes are disjoint.
+    /// or [`Self::NOTHING`] if the boxes are disjoint.
     #[must_use]
     #[inline]
     pub fn intersection(mut self, other: Self) -> Self {
