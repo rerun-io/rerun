@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/ea88def8bf549cd0d3abbe85ae787cf1a4db03bc/1200w.png">
+  <img src="https://static.rerun.io/crates/69d030d86438d0b4bcece181142990285b4d34bd/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/69d030d86438d0b4bcece181142990285b4d34bd/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/69d030d86438d0b4bcece181142990285b4d34bd/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/69d030d86438d0b4bcece181142990285b4d34bd/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/69d030d86438d0b4bcece181142990285b4d34bd/1200w.png">
 </picture>
 
 
@@ -209,6 +209,7 @@ Update instructions:
 | re_format          | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram   | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log             | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_math            | 3D math library built on top of `glam`.                                              |
 | re_memory          | Run-time memory tracking and profiling.                                              |
 | re_smart_channel   | A channel that keeps track of latency and queue length.                              |
 | re_string_interner | Yet another string interning library                                                 |
