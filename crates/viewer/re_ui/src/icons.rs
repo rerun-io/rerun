@@ -28,148 +28,85 @@ impl Icon {
     }
 }
 
-pub const RERUN_MENU: Icon =
-    Icon::new("rerun_menu", include_bytes!("../data/icons/rerun_menu.png"));
+/// Macro to create an [`Icon`], using the file path as the id.
+///
+/// This avoids specifying the id manually, which is error-prone (duplicate IDs lead to silent
+/// display bugs).
+macro_rules! icon_from_path {
+    ($path:literal) => {
+        Icon::new($path, include_bytes!($path))
+    };
+}
 
-pub const RERUN_IO_TEXT: Icon = Icon::new("rerun_io", include_bytes!("../data/icons/rerun_io.png"));
+pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.png");
 
-pub const PLAY: Icon = Icon::new("play", include_bytes!("../data/icons/play.png"));
-pub const FOLLOW: Icon = Icon::new("follow", include_bytes!("../data/icons/follow.png"));
-pub const PAUSE: Icon = Icon::new("pause", include_bytes!("../data/icons/pause.png"));
-pub const ARROW_LEFT: Icon =
-    Icon::new("arrow_left", include_bytes!("../data/icons/arrow_left.png"));
-pub const ARROW_RIGHT: Icon = Icon::new(
-    "arrow_right",
-    include_bytes!("../data/icons/arrow_right.png"),
-);
-pub const ARROW_DOWN: Icon =
-    Icon::new("arrow_down", include_bytes!("../data/icons/arrow_down.png"));
-pub const LOOP: Icon = Icon::new("loop", include_bytes!("../data/icons/loop.png"));
+pub const RERUN_IO_TEXT: Icon = icon_from_path!("../data/icons/rerun_io.png");
 
-pub const RIGHT_PANEL_TOGGLE: Icon = Icon::new(
-    "right_panel_toggle",
-    include_bytes!("../data/icons/right_panel_toggle.png"),
-);
-pub const BOTTOM_PANEL_TOGGLE: Icon = Icon::new(
-    "bottom_panel_toggle",
-    include_bytes!("../data/icons/bottom_panel_toggle.png"),
-);
-pub const LEFT_PANEL_TOGGLE: Icon = Icon::new(
-    "left_panel_toggle",
-    include_bytes!("../data/icons/left_panel_toggle.png"),
-);
+pub const PLAY: Icon = icon_from_path!("../data/icons/play.png");
+pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.png");
+pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.png");
+pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.png");
+pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.png");
+pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.png");
+pub const LOOP: Icon = icon_from_path!("../data/icons/loop.png");
 
-pub const MINIMIZE: Icon = Icon::new("minimize", include_bytes!("../data/icons/minimize.png"));
-pub const MAXIMIZE: Icon = Icon::new("maximize", include_bytes!("../data/icons/maximize.png"));
+pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_toggle.png");
+pub const BOTTOM_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/bottom_panel_toggle.png");
+pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_toggle.png");
 
-pub const VISIBLE: Icon = Icon::new("visible", include_bytes!("../data/icons/visible.png"));
-pub const INVISIBLE: Icon = Icon::new("invisible", include_bytes!("../data/icons/invisible.png"));
+pub const MINIMIZE: Icon = icon_from_path!("../data/icons/minimize.png");
+pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.png");
 
-pub const ADD: Icon = Icon::new("add", include_bytes!("../data/icons/add.png"));
+pub const VISIBLE: Icon = icon_from_path!("../data/icons/visible.png");
+pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.png");
 
-pub const REMOVE: Icon = Icon::new("remove", include_bytes!("../data/icons/remove.png"));
+pub const ADD: Icon = icon_from_path!("../data/icons/add.png");
 
-pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.png"));
+pub const REMOVE: Icon = icon_from_path!("../data/icons/remove.png");
 
-pub const EDIT: Icon = Icon::new("edit", include_bytes!("../data/icons/edit.png"));
-pub const MORE: Icon = Icon::new("more", include_bytes!("../data/icons/more.png"));
+pub const RESET: Icon = icon_from_path!("../data/icons/reset.png");
 
-pub const CLOSE: Icon = Icon::new("close", include_bytes!("../data/icons/close.png"));
+pub const EDIT: Icon = icon_from_path!("../data/icons/edit.png");
+pub const MORE: Icon = icon_from_path!("../data/icons/more.png");
 
-/// Used for HTTP URLs that leads out of the app.
+pub const CLOSE: Icon = icon_from_path!("../data/icons/close.png");
+
+/// Used for HTTP URLs that lead out of the app.
 ///
 /// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
 /// but don't add `.on_hover_text(url)`.
-pub const EXTERNAL_LINK: Icon = Icon::new(
-    "external_link",
-    include_bytes!("../data/icons/external_link.png"),
-);
-pub const DISCORD: Icon = Icon::new("discord", include_bytes!("../data/icons/discord.png"));
+pub const EXTERNAL_LINK: Icon = icon_from_path!("../data/icons/external_link.png");
+pub const DISCORD: Icon = icon_from_path!("../data/icons/discord.png");
 
-pub const CONTAINER_HORIZONTAL: Icon = Icon::new(
-    "container_horizontal",
-    include_bytes!("../data/icons/container_horizontal.png"),
-);
-pub const CONTAINER_GRID: Icon = Icon::new(
-    "container_grid",
-    include_bytes!("../data/icons/container_grid.png"),
-);
-pub const CONTAINER_TABS: Icon = Icon::new(
-    "container_tabs",
-    include_bytes!("../data/icons/container_tabs.png"),
-);
-pub const CONTAINER_VERTICAL: Icon = Icon::new(
-    "container_vertical",
-    include_bytes!("../data/icons/container_vertical.png"),
-);
+pub const CONTAINER_HORIZONTAL: Icon = icon_from_path!("../data/icons/container_horizontal.png");
+pub const CONTAINER_GRID: Icon = icon_from_path!("../data/icons/container_grid.png");
+pub const CONTAINER_TABS: Icon = icon_from_path!("../data/icons/container_tabs.png");
+pub const CONTAINER_VERTICAL: Icon = icon_from_path!("../data/icons/container_vertical.png");
 
-pub const SPACE_VIEW_2D: Icon = Icon::new(
-    "spaceview_2d",
-    include_bytes!("../data/icons/spaceview_2d.png"),
-);
-pub const SPACE_VIEW_3D: Icon = Icon::new(
-    "spaceview_3d",
-    include_bytes!("../data/icons/spaceview_3d.png"),
-);
-pub const SPACE_VIEW_DATAFRAME: Icon = Icon::new(
-    "spaceview_dataframe",
-    include_bytes!("../data/icons/spaceview_dataframe.png"),
-);
-pub const SPACE_VIEW_GENERIC: Icon = Icon::new(
-    "spaceview_unknown",
-    include_bytes!("../data/icons/spaceview_generic.png"),
-);
-pub const SPACE_VIEW_HISTOGRAM: Icon = Icon::new(
-    "spaceview_histogram",
-    include_bytes!("../data/icons/spaceview_histogram.png"),
-);
-pub const SPACE_VIEW_LOG: Icon = Icon::new(
-    "spaceview_text",
-    include_bytes!("../data/icons/spaceview_log.png"),
-);
-pub const SPACE_VIEW_TENSOR: Icon = Icon::new(
-    "spaceview_tensor",
-    include_bytes!("../data/icons/spaceview_tensor.png"),
-);
-pub const SPACE_VIEW_TEXT: Icon = Icon::new(
-    "spaceview_text",
-    include_bytes!("../data/icons/spaceview_text.png"),
-);
-pub const SPACE_VIEW_TIMESERIES: Icon = Icon::new(
-    "spaceview_chart",
-    include_bytes!("../data/icons/spaceview_timeseries.png"),
-);
-pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
-    "spaceview_unknown",
-    include_bytes!("../data/icons/spaceview_unknown.png"),
-);
+pub const SPACE_VIEW_2D: Icon = icon_from_path!("../data/icons/spaceview_2d.png");
+pub const SPACE_VIEW_3D: Icon = icon_from_path!("../data/icons/spaceview_3d.png");
+pub const SPACE_VIEW_DATAFRAME: Icon = icon_from_path!("../data/icons/spaceview_dataframe.png");
+pub const SPACE_VIEW_GENERIC: Icon = icon_from_path!("../data/icons/spaceview_generic.png");
+pub const SPACE_VIEW_HISTOGRAM: Icon = icon_from_path!("../data/icons/spaceview_histogram.png");
+pub const SPACE_VIEW_LOG: Icon = icon_from_path!("../data/icons/spaceview_log.png");
+pub const SPACE_VIEW_TENSOR: Icon = icon_from_path!("../data/icons/spaceview_tensor.png");
+pub const SPACE_VIEW_TEXT: Icon = icon_from_path!("../data/icons/spaceview_text.png");
+pub const SPACE_VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/spaceview_timeseries.png");
+pub const SPACE_VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/spaceview_unknown.png");
 
-pub const GROUP: Icon = Icon::new("group", include_bytes!("../data/icons/group.png"));
-pub const ENTITY: Icon = Icon::new("entity", include_bytes!("../data/icons/entity.png"));
-pub const ENTITY_EMPTY: Icon = Icon::new(
-    "entity_empty",
-    include_bytes!("../data/icons/entity_empty.png"),
-);
+pub const GROUP: Icon = icon_from_path!("../data/icons/group.png");
+pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.png");
+pub const ENTITY_EMPTY: Icon = icon_from_path!("../data/icons/entity_empty.png");
 
 /// Link within the viewer
-pub const INTERNAL_LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
+pub const INTERNAL_LINK: Icon = icon_from_path!("../data/icons/link.png");
 
-pub const COMPONENT_TEMPORAL: Icon =
-    Icon::new("component", include_bytes!("../data/icons/component.png"));
-pub const COMPONENT_STATIC: Icon = Icon::new(
-    "component_static",
-    include_bytes!("../data/icons/component_static.png"),
-);
+pub const COMPONENT_TEMPORAL: Icon = icon_from_path!("../data/icons/component.png");
+pub const COMPONENT_STATIC: Icon = icon_from_path!("../data/icons/component_static.png");
 
-pub const APPLICATION: Icon = Icon::new(
-    "application",
-    include_bytes!("../data/icons/application.png"),
-);
-pub const DATA_SOURCE: Icon = Icon::new(
-    "data_source",
-    include_bytes!("../data/icons/data_source.png"),
-);
-pub const RECORDING: Icon = Icon::new("recording", include_bytes!("../data/icons/recording.png"));
-pub const BLUEPRINT: Icon = Icon::new("blueprint", include_bytes!("../data/icons/blueprint.png"));
+pub const APPLICATION: Icon = icon_from_path!("../data/icons/application.png");
+pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.png");
+pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
+pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
 
-pub const GITHUB: Icon = Icon::new("github", include_bytes!("../data/icons/github.png"));
+pub const GITHUB: Icon = icon_from_path!("../data/icons/github.png");
