@@ -20,6 +20,8 @@
         "cargo",
         "clippy",
         "--message-format=json",
+        // We shouldn't need this, except we do based on my empirical testing.
+        "--target-dir=target_ra",
     ],
     "rust-analyzer.cargo.buildScripts.invocationLocation": "workspace",
     "rust-analyzer.cargo.buildScripts.invocationStrategy": "per_workspace",
@@ -28,6 +30,8 @@
         "check",
         "--quiet",
         "--message-format=json",
+        // We shouldn't need this, except we do based on my empirical testing.
+        "--target-dir=target_ra",
     ],
     // Our build scripts are generating code.
     // Having Rust Analyzer do this while doing other builds can lead to catastrophic failures.
