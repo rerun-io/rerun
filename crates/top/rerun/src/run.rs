@@ -316,9 +316,26 @@ enum RrdCommands {
     ///
     /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
     Compact {
-        #[arg(short = 'i', long = "input", value_name = "src.rrd")]
+        #[arg(short = 'i', long = "input", value_name = "src.(rrd|rbl)")]
         path_to_input_rrd: String,
-        #[arg(short = 'o', long = "output", value_name = "dst.rrd")]
+
+        #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
+        path_to_output_rrd: String,
+    },
+
+    /// Merges the contents of multiple .rrd and/or .rbl files, and writes the result to a new file.
+    ///
+    /// Example: rerun merge -i input1.rrd -i input2.rbl -input3.rrd -o output.rrd`
+    Merge {
+        #[arg(
+            short = 'i',
+            long = "input",
+            value_name = "src.(rrd|rbl)",
+            required = true
+        )]
+        path_to_input_rrds: Vec<String>,
+
+        #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
         path_to_output_rrd: String,
     },
 }
@@ -474,6 +491,16 @@ fn run_rrd_commands(cmd: &RrdCommands) -> anyhow::Result<()> {
             let path_to_input_rrd = PathBuf::from(path_to_input_rrd);
             let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
             run_compact(&path_to_input_rrd, &path_to_output_rrd)
+        }
+
+        RrdCommands::Merge {
+            path_to_input_rrds,
+            path_to_output_rrd,
+        } => {
+            // path_to_input_rrds.into_iter()_
+            // let path_to_input_rrd = PathBuf::from(path_to_input_rrd);
+            // let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
+            // run_compact(&path_to_input_rrd, &path_to_output_rrd)
         }
     }
 }
