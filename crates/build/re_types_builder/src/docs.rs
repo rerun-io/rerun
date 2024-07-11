@@ -283,25 +283,30 @@ mod doclink_translation {
             return Err("Trailing tokens");
         }
 
-        // Find the target object:
-        let mut candidates = vec![];
-        for obj in objects.values() {
-            if obj.kind.plural_snake_case() == kind && obj.name == type_name {
-                candidates.push(obj);
+        let mut is_unreleased = false;
+        {
+            // Find the target object:
+            let mut candidates = vec![];
+            for obj in objects.values() {
+                if obj.kind.plural_snake_case() == kind && obj.name == type_name {
+                    candidates.push(obj);
+                }
             }
-        }
-        if candidates.is_empty() {
-            // NOTE: we don't error if the target doesn't exists.
-            // Instead we rely on the documentation tools for the different targets,
-            // e.g. `cargo doc` and our url link checker.
-            // Maybe we could change that though to catch errors earlier.
-            re_log::warn_once!("No object found for doclink: [{kind}.{type_name}]");
-        } else if candidates.len() > 2 {
-            use itertools::Itertools as _;
-            re_log::warn_once!(
-                "Multiple objects found for doclink: [{kind}.{type_name}]: {}",
-                candidates.iter().map(|obj| &obj.fqname).format(", ")
-            );
+            if candidates.is_empty() {
+                // NOTE: we don't error if the target doesn't exists.
+                // Instead we rely on the documentation tools for the different targets,
+                // e.g. `cargo doc` and our url link checker.
+                // Maybe we could change that though to catch errors earlier.
+                re_log::warn_once!("No object found for doclink: [{kind}.{type_name}]");
+            } else if candidates.len() > 2 {
+                use itertools::Itertools as _;
+                re_log::warn_once!(
+                    "Multiple objects found for doclink: [{kind}.{type_name}]: {}",
+                    candidates.iter().map(|obj| &obj.fqname).format(", ")
+                );
+            } else if let Some(object) = candidates.first() {
+                is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+            }
         }
 
         Ok(match target {
@@ -315,7 +320,12 @@ mod doclink_translation {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 // TODO(emilk): relative links would be nicer for the local markdown files
                 let type_name_snake_case = re_case::to_snake_case(type_name);
-                format!("[`{kind}.{type_name}`](https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case})")
+                let query = if is_unreleased {
+                    "?speculative-link" // or our link checker will complain
+                } else {
+                    ""
+                };
+                format!("[`{kind}.{type_name}`](https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case}{query})")
             }
         })
     }
