@@ -101,7 +101,7 @@ impl ChunkStoreConfig {
     };
 
     /// Environment variable to configure [`Self::enable_changelog`].
-    pub const ENV_ENABLE_CHANGELOG: &'static str = "RERUN_ENABLE_CHANGELOG";
+    pub const ENV_STORE_ENABLE_CHANGELOG: &'static str = "RERUN_STORE_ENABLE_CHANGELOG";
 
     /// Environment variable to configure [`Self::chunk_max_bytes`].
     pub const ENV_CHUNK_MAX_BYTES: &'static str = "RERUN_CHUNK_MAX_BYTES";
@@ -126,14 +126,14 @@ impl ChunkStoreConfig {
     /// Returns a copy of `self`, overriding existing fields with values from the environment if
     /// they are present.
     ///
-    /// See [`Self::ENV_ENABLE_CHANGELOG`], [`Self::ENV_CHUNK_MAX_BYTES`], [`Self::ENV_CHUNK_MAX_ROWS`]
+    /// See [`Self::ENV_STORE_ENABLE_CHANGELOG`], [`Self::ENV_CHUNK_MAX_BYTES`], [`Self::ENV_CHUNK_MAX_ROWS`]
     /// and [`Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED`].
     pub fn apply_env(&self) -> ChunkStoreResult<Self> {
         let mut new = self.clone();
 
-        if let Ok(s) = std::env::var(Self::ENV_ENABLE_CHANGELOG) {
+        if let Ok(s) = std::env::var(Self::ENV_STORE_ENABLE_CHANGELOG) {
             new.enable_changelog = s.parse().map_err(|err| ChunkStoreError::ParseConfig {
-                name: Self::ENV_ENABLE_CHANGELOG,
+                name: Self::ENV_STORE_ENABLE_CHANGELOG,
                 value: s.clone(),
                 err: Box::new(err),
             })?;
@@ -171,7 +171,7 @@ impl ChunkStoreConfig {
 #[test]
 fn chunk_store_config() {
     // Detect breaking changes in our environment variables.
-    std::env::set_var("RERUN_ENABLE_CHANGELOG", "false");
+    std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
     std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42");
     std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666");
     std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999");
