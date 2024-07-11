@@ -68,6 +68,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy").spawn()?;
 ///
+///     // TODO(#5521): log two space views as in the python example
+///
 ///     rec.set_time_seconds("sim_time", 0.0);
 ///
 ///     // Planetary motion is typically in the XY plane.
@@ -140,8 +142,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             .from_parent(),
 ///         )?;
 ///     }
-///
-///     // TODO(#5521): log two space views as in the python example
 ///
 ///     Ok(())
 /// }
