@@ -44,6 +44,8 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerCollection,
 };
 
+use utilities::entity_iterator::clamped;
+
 use crate::view_2d::VisualizableFilterContext2D;
 use crate::view_3d::VisualizableFilterContext3D;
 
@@ -142,7 +144,20 @@ pub fn process_color_slice<'a>(
 ) -> Vec<egui::Color32> {
     // NOTE: Do not put tracing scopes here, this is called for every entity/timestamp in a frame.
 
-    if colors.is_empty() {
+    if let Some(last_color) = colors.last() {
+        // If we have colors we can ignore the annotation infos/contexts.
+
+        if colors.len() == num_instances {
+            // Common happy path
+            colors.iter().map(to_egui_color).collect()
+        } else if colors.len() == 1 {
+            // Common happy path
+            vec![to_egui_color(last_color); num_instances]
+        } else {
+            let colors = clamped(colors, num_instances);
+            colors.map(to_egui_color).collect()
+        }
+    } else {
         match annotation_infos {
             ResolvedAnnotationInfos::Same(count, annotation_info) => {
                 re_tracing::profile_scope!("no colors, same annotation");
@@ -160,17 +175,13 @@ pub fn process_color_slice<'a>(
                     .collect()
             }
         }
-    } else {
-        // If we have colors we can ignore the annotation infos/contexts:
-        re_tracing::profile_scope!("many-colors");
-        let colors = entity_iterator::clamped(colors, num_instances);
-        colors
-            .map(|color| {
-                let [r, g, b, a] = color.to_array();
-                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-            })
-            .collect()
     }
+}
+
+#[inline]
+fn to_egui_color(color: &Color) -> egui::Color32 {
+    let [r, g, b, a] = color.to_array();
+    egui::Color32::from_rgba_unmultiplied(r, g, b, a)
 }
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
