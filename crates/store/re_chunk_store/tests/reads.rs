@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow2::array::Array as ArrowArray;
 
 use itertools::Itertools;
-use re_chunk::{Chunk, RowId, TimePoint};
+use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
 };
@@ -71,7 +71,7 @@ fn all_components() -> anyhow::Result<()> {
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        ChunkStoreConfig::default(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
     let components_a = &[
@@ -130,7 +130,7 @@ fn latest_at() -> anyhow::Result<()> {
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        ChunkStoreConfig::default(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
     let entity_path = EntityPath::from("this/that");
@@ -140,6 +140,7 @@ fn latest_at() -> anyhow::Result<()> {
     let frame2 = TimeInt::new_temporal(2);
     let frame3 = TimeInt::new_temporal(3);
     let frame4 = TimeInt::new_temporal(4);
+    let frame5 = TimeInt::new_temporal(5);
 
     let row_id1 = RowId::new();
     let (indices1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
@@ -180,11 +181,17 @@ fn latest_at() -> anyhow::Result<()> {
         .with_component_batches(row_id5, TimePoint::default(), [&colors5 as _])
         .build()?;
 
-    store.insert_chunk(&Arc::new(chunk1))?;
-    store.insert_chunk(&Arc::new(chunk2))?;
-    store.insert_chunk(&Arc::new(chunk3))?;
-    store.insert_chunk(&Arc::new(chunk4))?;
-    store.insert_chunk(&Arc::new(chunk5))?;
+    let chunk1 = Arc::new(chunk1);
+    let chunk2 = Arc::new(chunk2);
+    let chunk3 = Arc::new(chunk3);
+    let chunk4 = Arc::new(chunk4);
+    let chunk5 = Arc::new(chunk5);
+
+    store.insert_chunk(&chunk1)?;
+    store.insert_chunk(&chunk2)?;
+    store.insert_chunk(&chunk3)?;
+    store.insert_chunk(&chunk4)?;
+    store.insert_chunk(&chunk5)?;
 
     let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, Option<RowId>)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -243,6 +250,35 @@ fn latest_at() -> anyhow::Result<()> {
         ],
     );
 
+    // Component-less APIs
+    {
+        let assert_latest_chunk =
+            |store: &ChunkStore, frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
+                let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+
+                let mut chunk_ids = store
+                    .latest_at_relevant_chunks_for_all_components(
+                        &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+                        &entity_path,
+                    )
+                    .into_iter()
+                    .map(|chunk| chunk.id())
+                    .collect_vec();
+                chunk_ids.sort();
+
+                expected_chunk_ids.sort();
+
+                similar_asserts::assert_eq!(expected_chunk_ids, chunk_ids);
+            };
+
+        assert_latest_chunk(&store, frame0, vec![]);
+        assert_latest_chunk(&store, frame1, vec![chunk1.id()]);
+        assert_latest_chunk(&store, frame2, vec![chunk2.id()]);
+        assert_latest_chunk(&store, frame3, vec![chunk3.id()]);
+        assert_latest_chunk(&store, frame4, vec![chunk4.id()]);
+        assert_latest_chunk(&store, frame5, vec![chunk4.id()]);
+    }
+
     Ok(())
 }
 
@@ -252,14 +288,16 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        ChunkStoreConfig::default(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
     let entity_path = EntityPath::from("this/that");
 
+    let frame0 = TimeInt::new_temporal(0);
     let frame1 = TimeInt::new_temporal(1);
     let frame2 = TimeInt::new_temporal(2);
     let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
     // This chunk has a time range of `(1, 3)`, but the actual data for `MyIndex` actually only
     // starts at `3`.
@@ -267,7 +305,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
     let row_id1_1 = RowId::new();
     let row_id1_2 = RowId::new();
     let row_id1_3 = RowId::new();
-    let chunk = Chunk::builder(entity_path.clone())
+    let chunk1 = Chunk::builder(entity_path.clone())
         .with_sparse_component_batches(
             row_id1_1,
             [build_frame_nr(frame1)],
@@ -293,14 +331,16 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             ],
         )
         .build()?;
-    eprintln!("chunk 1:\n{chunk}");
-    store.insert_chunk(&Arc::new(chunk))?;
+
+    let chunk1 = Arc::new(chunk1);
+    eprintln!("chunk 1:\n{chunk1}");
+    store.insert_chunk(&chunk1)?;
 
     // This chunk on the other hand has a time range of `(2, 3)`, and the data for `MyIndex`
     // actually does start at `2`.
 
     let row_id2_1 = RowId::new();
-    let chunk = Chunk::builder(entity_path.clone())
+    let chunk2 = Chunk::builder(entity_path.clone())
         .with_sparse_component_batches(
             row_id2_1,
             [build_frame_nr(frame2)],
@@ -310,8 +350,10 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             ],
         )
         .build()?;
-    eprintln!("chunk 2:\n{chunk}");
-    store.insert_chunk(&Arc::new(chunk))?;
+
+    let chunk2 = Arc::new(chunk2);
+    eprintln!("chunk 2:\n{chunk2}");
+    store.insert_chunk(&chunk2)?;
 
     // We expect the data for `MyIndex` to come from `row_id_1_3`, since it is the most recent
     // piece of data.
@@ -328,6 +370,37 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
 
     assert_eq!(row_id1_3, row_id.unwrap());
 
+    // Component-less APIs
+    {
+        let assert_latest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
+            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+
+            eprintln!("--- {frame_nr:?} ---");
+            let mut chunk_ids = store
+                .latest_at_relevant_chunks_for_all_components(
+                    &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+                    &entity_path,
+                )
+                .into_iter()
+                .map(|chunk| {
+                    eprintln!("{chunk}");
+                    chunk.id()
+                })
+                .collect_vec();
+            chunk_ids.sort();
+
+            expected_chunk_ids.sort();
+
+            similar_asserts::assert_eq!(expected_chunk_ids, chunk_ids);
+        };
+
+        assert_latest_chunk(frame0, vec![]);
+        assert_latest_chunk(frame1, vec![chunk1.id()]);
+        assert_latest_chunk(frame2, vec![chunk1.id(), chunk2.id()]); // overlap
+        assert_latest_chunk(frame3, vec![chunk1.id(), chunk2.id()]); // overlap
+        assert_latest_chunk(frame4, vec![chunk1.id(), chunk2.id()]); // overlap
+    }
+
     Ok(())
 }
 
@@ -337,11 +410,12 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        ChunkStoreConfig::default(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
     let entity_path = EntityPath::from("this/that");
 
+    let frame0 = TimeInt::new_temporal(0);
     let frame1 = TimeInt::new_temporal(1);
     let frame2 = TimeInt::new_temporal(2);
     let frame3 = TimeInt::new_temporal(3);
@@ -349,6 +423,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
     let frame5 = TimeInt::new_temporal(5);
     let frame6 = TimeInt::new_temporal(6);
     let frame7 = TimeInt::new_temporal(7);
+    let frame8 = TimeInt::new_temporal(8);
 
     let points1 = MyPoint::from_iter(0..1);
     let points2 = MyPoint::from_iter(1..2);
@@ -362,7 +437,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
     let row_id1_3 = RowId::new();
     let row_id1_5 = RowId::new();
     let row_id1_7 = RowId::new();
-    let chunk = Chunk::builder(entity_path.clone())
+    let chunk1 = Chunk::builder(entity_path.clone())
         .with_sparse_component_batches(
             row_id1_1,
             [build_frame_nr(frame1)],
@@ -384,12 +459,14 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
             [(MyPoint::name(), Some(&points7 as _))],
         )
         .build()?;
-    store.insert_chunk(&Arc::new(chunk))?;
+
+    let chunk1 = Arc::new(chunk1);
+    store.insert_chunk(&chunk1)?;
 
     let row_id2_2 = RowId::new();
     let row_id2_3 = RowId::new();
     let row_id2_4 = RowId::new();
-    let chunk = Chunk::builder(entity_path.clone())
+    let chunk2 = Chunk::builder(entity_path.clone())
         .with_sparse_component_batches(
             row_id2_2,
             [build_frame_nr(frame2)],
@@ -406,12 +483,14 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
             [(MyPoint::name(), Some(&points4 as _))],
         )
         .build()?;
-    store.insert_chunk(&Arc::new(chunk))?;
+
+    let chunk2 = Arc::new(chunk2);
+    store.insert_chunk(&chunk2)?;
 
     let row_id3_2 = RowId::new();
     let row_id3_4 = RowId::new();
     let row_id3_6 = RowId::new();
-    let chunk = Chunk::builder(entity_path.clone())
+    let chunk3 = Chunk::builder(entity_path.clone())
         .with_sparse_component_batches(
             row_id3_2,
             [build_frame_nr(frame2)],
@@ -428,7 +507,9 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
             [(MyPoint::name(), Some(&points6 as _))],
         )
         .build()?;
-    store.insert_chunk(&Arc::new(chunk))?;
+
+    let chunk3 = Arc::new(chunk3);
+    store.insert_chunk(&chunk3)?;
 
     eprintln!("{store}");
 
@@ -449,6 +530,41 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         assert_eq!(expected_row_id, row_id.unwrap());
     }
 
+    // Component-less APIs
+    {
+        let assert_latest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
+            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+
+            eprintln!("--- {frame_nr:?} ---");
+            let mut chunk_ids = store
+                .latest_at_relevant_chunks_for_all_components(
+                    &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+                    &entity_path,
+                )
+                .into_iter()
+                .map(|chunk| {
+                    eprintln!("{chunk}");
+                    chunk.id()
+                })
+                .collect_vec();
+            chunk_ids.sort();
+
+            expected_chunk_ids.sort();
+
+            similar_asserts::assert_eq!(expected_chunk_ids, chunk_ids);
+        };
+
+        assert_latest_chunk(frame0, vec![]);
+        assert_latest_chunk(frame1, vec![chunk1.id()]);
+        assert_latest_chunk(frame2, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_latest_chunk(frame3, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_latest_chunk(frame4, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_latest_chunk(frame5, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_latest_chunk(frame6, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_latest_chunk(frame7, vec![chunk1.id(), chunk2.id(), chunk3.id()]); // overlap
+        assert_latest_chunk(frame8, vec![chunk1.id(), chunk2.id(), chunk3.id()]);
+    }
+
     Ok(())
 }
 
@@ -460,7 +576,7 @@ fn range() -> anyhow::Result<()> {
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        ChunkStoreConfig::default(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
     let entity_path = EntityPath::from("this/that");
