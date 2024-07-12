@@ -1,5 +1,5 @@
 use egui::{emath::RectTransform, pos2, vec2, Align2, Color32, Pos2, Rect, Shape, Vec2};
-use macaw::IsoTransform;
+use re_math::IsoTransform;
 
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
@@ -371,7 +371,7 @@ fn setup_target_config(
     let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean (lack of anamorphic support)
 
     // Position the camera looking straight at the principal point:
-    let view_from_world = macaw::IsoTransform::look_at_rh(
+    let view_from_world = re_math::IsoTransform::look_at_rh(
         pinhole.principal_point().extend(-focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,

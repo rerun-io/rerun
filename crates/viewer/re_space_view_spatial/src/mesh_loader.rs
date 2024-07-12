@@ -15,7 +15,7 @@ pub struct LoadedMesh {
     // Can't do that right now because it's too hard to pass the render context through.
     pub mesh_instances: Vec<re_renderer::renderer::MeshInstance>,
 
-    bbox: macaw::BoundingBox,
+    bbox: re_math::BoundingBox,
 }
 
 impl LoadedMesh {
@@ -149,7 +149,7 @@ impl LoadedMesh {
 
         let bbox = {
             re_tracing::profile_scope!("bbox");
-            macaw::BoundingBox::from_points(vertex_positions.iter().copied())
+            re_math::BoundingBox::from_points(vertex_positions.iter().copied())
         };
 
         let albedo = if let Some(albedo_texture) = &albedo_texture {
@@ -197,7 +197,7 @@ impl LoadedMesh {
         &self.name
     }
 
-    pub fn bbox(&self) -> macaw::BoundingBox {
+    pub fn bbox(&self) -> re_math::BoundingBox {
         self.bbox
     }
 }

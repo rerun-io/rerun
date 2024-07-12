@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
-use macaw::BoundingBox;
+use re_math::BoundingBox;
 
 use re_data_ui::{
     item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi,

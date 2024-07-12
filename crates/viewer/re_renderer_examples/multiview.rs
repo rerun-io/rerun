@@ -8,8 +8,8 @@ use std::f32::consts::TAU;
 use framework::Example;
 use glam::Vec3;
 use itertools::Itertools;
-use macaw::IsoTransform;
 use rand::Rng;
+use re_math::IsoTransform;
 
 use re_renderer::{
     renderer::{
