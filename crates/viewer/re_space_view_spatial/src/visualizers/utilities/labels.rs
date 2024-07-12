@@ -1,8 +1,10 @@
+use itertools::izip;
+
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_viewer_context::ResolvedAnnotationInfos;
 
-use super::entity_iterator::clamped;
+use crate::visualizers::entity_iterator::clamped_or;
 
 #[derive(Clone)]
 pub enum UiLabelTarget {
@@ -36,7 +38,6 @@ pub const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 /// Produces 3D ui labels from component data.
 ///
 /// Does nothing if there's no positions or no labels passed.
-/// Assumes that there's at least a single color in `colors`.
 /// Otherwise, produces one label per position passed.
 pub fn process_labels_3d<'a>(
     entity_path: &'a EntityPath,
@@ -46,16 +47,13 @@ pub fn process_labels_3d<'a>(
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
-    debug_assert!(
-        labels.is_empty() || !colors.is_empty(),
-        "Cannot add labels without colors"
-    );
+    let labels = izip!(
+        annotation_infos.iter(),
+        labels.iter().map(Some).chain(std::iter::repeat(None))
+    )
+    .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
 
-    let labels = annotation_infos
-        .iter()
-        .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
-        .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
-    let colors = clamped(colors, annotation_infos.len());
+    let colors = clamped_or(colors, &egui::Color32::WHITE);
 
     itertools::izip!(positions, labels, colors)
         .enumerate()
@@ -72,7 +70,6 @@ pub fn process_labels_3d<'a>(
 /// Produces 2D ui labels from component data.
 ///
 /// Does nothing if there's no positions or no labels passed.
-/// Assumes that there's at least a single color in `colors`.
 /// Otherwise, produces one label per position passed.
 pub fn process_labels_2d<'a>(
     entity_path: &'a EntityPath,
@@ -82,16 +79,13 @@ pub fn process_labels_2d<'a>(
     annotation_infos: &'a ResolvedAnnotationInfos,
     world_from_obj: glam::Affine3A,
 ) -> impl Iterator<Item = UiLabel> + 'a {
-    debug_assert!(
-        labels.is_empty() || !colors.is_empty(),
-        "Cannot add labels without colors"
-    );
+    let labels = izip!(
+        annotation_infos.iter(),
+        labels.iter().map(Some).chain(std::iter::repeat(None))
+    )
+    .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
 
-    let labels = annotation_infos
-        .iter()
-        .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
-        .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
-    let colors = clamped(colors, annotation_infos.len());
+    let colors = clamped_or(colors, &egui::Color32::WHITE);
 
     itertools::izip!(positions, labels, colors)
         .enumerate()
