@@ -117,7 +117,11 @@ fn log(
 
             tick += 1;
         }
-        rec.record_chunk_raw(chunk.build()?);
+        let mut chunk = chunk.build()?;
+        if !sorted {
+            chunk.shuffle_random(0xab12_cd34_ef56_0178);
+        }
+        rec.record_chunk_raw(chunk);
 
         // add space between chunks
         tick += 100;
