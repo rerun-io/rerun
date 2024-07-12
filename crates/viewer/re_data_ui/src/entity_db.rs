@@ -141,8 +141,8 @@ impl crate::DataUi for EntityDb {
 
                         This compaction process is an ephemeral, in-memory optimization of the Rerun viewer.\
                         It will not modify the recording itself: use the `Save` command of the viewer, or the \
-                        `rerun compact` CLI tool if you wish to persist the compacted results, which will make \
-                        future runs cheaper.
+                        `rerun rrd compact` CLI tool if you wish to persist the compacted results, which will \
+                        make future runs cheaper.
                         ",
                         re_format::format_uint(chunk_max_rows),
                         re_format::format_uint(chunk_max_rows_if_unsorted),

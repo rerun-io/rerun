@@ -243,36 +243,8 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
-    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
-    /// match.
-    ///
-    /// This ignores the `log_time` timeline.
-    Compare {
-        path_to_rrd1: String,
-        path_to_rrd2: String,
-
-        /// If specified, dumps both .rrd files as tables.
-        #[clap(long, default_value_t = false)]
-        full_dump: bool,
-    },
-
-    /// Print the contents of an .rrd or .rbl file.
-    Print(PrintCommand),
-
-    /// Compacts the contents of an .rrd or .rbl file and writes the result to a new file.
-    ///
-    /// Use the usual environment variables to control the compaction thresholds:
-    /// `RERUN_CHUNK_MAX_ROWS`,
-    /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
-    /// `RERUN_CHUNK_MAX_BYTES`.
-    ///
-    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
-    Compact {
-        #[arg(short = 'i', long = "input", value_name = "src.rrd")]
-        path_to_input_rrd: String,
-        #[arg(short = 'o', long = "output", value_name = "dst.rrd")]
-        path_to_output_rrd: String,
-    },
+    #[command(subcommand)]
+    Rrd(RrdCommands),
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -315,6 +287,40 @@ enum AnalyticsCommands {
 
     /// Prints the current configuration.
     Config,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+enum RrdCommands {
+    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
+    /// match.
+    ///
+    /// This ignores the `log_time` timeline.
+    Compare {
+        path_to_rrd1: String,
+        path_to_rrd2: String,
+
+        /// If specified, dumps both .rrd files as tables.
+        #[clap(long, default_value_t = false)]
+        full_dump: bool,
+    },
+
+    /// Print the contents of an .rrd or .rbl file.
+    Print(PrintCommand),
+
+    /// Compacts the contents of an .rrd or .rbl file and writes the result to a new file.
+    ///
+    /// Use the usual environment variables to control the compaction thresholds:
+    /// `RERUN_CHUNK_MAX_ROWS`,
+    /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
+    /// `RERUN_CHUNK_MAX_BYTES`.
+    ///
+    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
+    Compact {
+        #[arg(short = 'i', long = "input", value_name = "src.rrd")]
+        path_to_input_rrd: String,
+        #[arg(short = 'o', long = "output", value_name = "dst.rrd")]
+        path_to_output_rrd: String,
+    },
 }
 
 /// Where are we calling [`run`] from?
@@ -387,28 +393,9 @@ where
     let res = if let Some(command) = &args.command {
         match command {
             #[cfg(feature = "analytics")]
-            Command::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
+            Command::Analytics(analytics) => run_analytics_commands(analytics).map_err(Into::into),
 
-            Command::Compare {
-                path_to_rrd1,
-                path_to_rrd2,
-                full_dump,
-            } => {
-                let path_to_rrd1 = PathBuf::from(path_to_rrd1);
-                let path_to_rrd2 = PathBuf::from(path_to_rrd2);
-                run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
-            }
-
-            Command::Print(print_command) => print_command.run(),
-
-            Command::Compact {
-                path_to_input_rrd,
-                path_to_output_rrd,
-            } => {
-                let path_to_input_rrd = PathBuf::from(path_to_input_rrd);
-                let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
-                run_compact(&path_to_input_rrd, &path_to_output_rrd)
-            }
+            Command::Rrd(rrd) => run_rrd_commands(rrd),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -463,6 +450,31 @@ fn initialize_thread_pool(threads_args: i32) {
 
     if let Err(err) = builder.build_global() {
         re_log::warn!("Failed to initialize rayon thread pool: {err}");
+    }
+}
+
+fn run_rrd_commands(cmd: &RrdCommands) -> anyhow::Result<()> {
+    match cmd {
+        RrdCommands::Compare {
+            path_to_rrd1,
+            path_to_rrd2,
+            full_dump,
+        } => {
+            let path_to_rrd1 = PathBuf::from(path_to_rrd1);
+            let path_to_rrd2 = PathBuf::from(path_to_rrd2);
+            run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
+        }
+
+        RrdCommands::Print(print_command) => print_command.run(),
+
+        RrdCommands::Compact {
+            path_to_input_rrd,
+            path_to_output_rrd,
+        } => {
+            let path_to_input_rrd = PathBuf::from(path_to_input_rrd);
+            let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
+            run_compact(&path_to_input_rrd, &path_to_output_rrd)
+        }
     }
 }
 
@@ -722,7 +734,7 @@ impl PrintCommand {
 }
 
 #[cfg(feature = "analytics")]
-fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
+fn run_analytics_commands(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
     match cmd {
         #[allow(clippy::unit_arg)]
         AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
