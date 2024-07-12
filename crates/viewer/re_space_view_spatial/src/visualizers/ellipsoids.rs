@@ -134,16 +134,15 @@ impl EllipsoidsVisualizer {
             for (i, (half_size, &center, rotation, radius, color)) in
                 itertools::izip!(data.half_sizes, centers, rotations, radii, colors).enumerate()
             {
-                let half_size_vec = glam::Vec3::from(*half_size);
                 let transform = glam::Affine3A::from_scale_rotation_translation(
                     glam::Vec3::from(*half_size),
                     rotation.0.into(),
                     center.into(),
                 );
 
-                // TODO(kpreid): subdivisions should be affected by on-screen size, not world size,
-                // and also be configurable.
-                let subdivisions = ((half_size_vec.length() * 2.5).round() as usize).clamp(1, 20);
+                // TODO(kpreid): subdivisions should be configurable, and possibly dynamic based on
+                // either world size or screen size (depending on application).
+                let subdivisions = 4;
 
                 let Some(sphere_mesh) = ctx.viewer_ctx.cache.entry(|c: &mut WireframeCache| {
                     c.entry(ProcMeshKey::Sphere { subdivisions }, render_ctx)
