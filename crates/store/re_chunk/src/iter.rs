@@ -275,7 +275,7 @@ mod tests {
             let expected =
                 expected.and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
             eprintln!("{component_name} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, &component_name));
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
         }
 
         chunk.sort_if_unsorted();
@@ -285,7 +285,7 @@ mod tests {
             let expected =
                 expected.and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
             eprintln!("{component_name} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, &component_name));
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
         }
 
         Ok(())
