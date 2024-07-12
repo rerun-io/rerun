@@ -3,7 +3,6 @@
 mod command;
 mod command_palette;
 mod design_tokens;
-mod layout_job_builder;
 mod syntax_highlighting;
 
 mod context_ext;
@@ -24,7 +23,6 @@ pub use self::{
     context_ext::ContextExt,
     design_tokens::DesignTokens,
     icons::Icon,
-    layout_job_builder::LayoutJobBuilder,
     markdown_utils::*,
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
