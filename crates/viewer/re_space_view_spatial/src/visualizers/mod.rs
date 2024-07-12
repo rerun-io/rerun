@@ -194,12 +194,24 @@ pub fn process_radius_slice(
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
 
-    if radii.is_empty() {
-        vec![re_renderer::Size(*fallback_radius.0); num_instances]
+    if let Some(last_radius) = radii.last() {
+        if radii.len() == num_instances {
+            // Common happy path
+            radii
+                .iter()
+                .map(|radius| process_radius(entity_path, *radius))
+                .collect()
+        } else if radii.len() == 1 {
+            // Common happy path
+            let last_radius = process_radius(entity_path, *last_radius);
+            vec![last_radius; num_instances]
+        } else {
+            clamped(radii, num_instances)
+                .map(|radius| process_radius(entity_path, *radius))
+                .collect()
+        }
     } else {
-        entity_iterator::clamped(radii, num_instances)
-            .map(|radius| process_radius(entity_path, *radius))
-            .collect()
+        vec![re_renderer::Size(*fallback_radius.0); num_instances]
     }
 }
 
@@ -241,7 +253,7 @@ fn process_annotation_and_keypoint_slices(
         );
     };
 
-    let class_ids = entity_iterator::clamped(class_ids, num_instances);
+    let class_ids = clamped(class_ids, num_instances);
 
     if keypoint_ids.is_empty() {
         let annotation_info = class_ids
@@ -256,7 +268,7 @@ fn process_annotation_and_keypoint_slices(
             Default::default(),
         )
     } else {
-        let keypoint_ids = entity_iterator::clamped(keypoint_ids, num_instances);
+        let keypoint_ids = clamped(keypoint_ids, num_instances);
         let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
             .map(|(position, keypoint_id, &class_id)| {
                 let class_description = annotations.resolved_class_description(Some(class_id));
