@@ -61,7 +61,7 @@ def test_binary_stream() -> None:
                 f.write(data)
 
         subprocess.run(
-            ["rerun", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"],
+            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"],
             check=True,
         )
 

@@ -8,7 +8,7 @@ use crate::view_kind::SpatialSpaceViewKind;
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
 pub struct SpatialViewVisualizerData {
     pub ui_labels: Vec<UiLabel>,
-    pub bounding_boxes: Vec<(EntityPathHash, macaw::BoundingBox)>,
+    pub bounding_boxes: Vec<(EntityPathHash, re_math::BoundingBox)>,
     pub preferred_view_kind: Option<SpatialSpaceViewKind>,
 }
 
@@ -24,7 +24,7 @@ impl SpatialViewVisualizerData {
     pub fn add_bounding_box(
         &mut self,
         entity: EntityPathHash,
-        bbox: macaw::BoundingBox,
+        bbox: re_math::BoundingBox,
         world_from_obj: glam::Affine3A,
     ) {
         self.bounding_boxes
@@ -40,7 +40,7 @@ impl SpatialViewVisualizerData {
         re_tracing::profile_function!();
         self.add_bounding_box(
             entity,
-            macaw::BoundingBox::from_points(points),
+            re_math::BoundingBox::from_points(points),
             world_from_obj,
         );
     }

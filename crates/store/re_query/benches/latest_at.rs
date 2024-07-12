@@ -254,7 +254,7 @@ fn insert_chunks<'a>(msgs: impl Iterator<Item = &'a Arc<Chunk>>) -> (Caches, Chu
     let mut caches = Caches::new(&store);
 
     msgs.for_each(|chunk| {
-        caches.on_events(&[store.insert_chunk(chunk).unwrap().unwrap()]);
+        caches.on_events(&store.insert_chunk(chunk).unwrap());
     });
 
     (caches, store)

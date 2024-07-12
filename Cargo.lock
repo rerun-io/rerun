@@ -2287,19 +2287,13 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.22.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f597d56c1bd55a811a1be189459e8fad2bbc272616375602443bdfb37fa774"
+checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
 dependencies = [
  "bytemuck",
  "serde",
 ]
-
-[[package]]
-name = "glam"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
 
 [[package]]
 name = "glob"
@@ -2516,7 +2510,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c64d70ed6295005e2bc5a6f624300cfd6d49908da76b3654c4cbdb1d4222705"
 dependencies = [
  "constgebra",
- "glam 0.28.0",
+ "glam",
 ]
 
 [[package]]
@@ -2966,7 +2960,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam 0.22.0",
+ "glam",
  "re_tracing",
  "rerun",
 ]
@@ -2987,17 +2981,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ea9b256699eda7b0387ffbc776dd625e28bde3918446381781245b7a50349d8"
 dependencies = [
  "twox-hash",
-]
-
-[[package]]
-name = "macaw"
-version = "0.18.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e4daa18df16fd196b955e4bb16574641f39141fb3ea81b493a84b9439d17e6"
-dependencies = [
- "glam 0.22.0",
- "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -3124,7 +3107,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam 0.22.0",
+ "glam",
  "rerun",
 ]
 
@@ -3574,7 +3557,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam 0.22.0",
+ "glam",
  "prost",
  "prost-build",
  "protoc-prebuilt",
@@ -4476,6 +4459,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "rfd",
+ "unindent",
 ]
 
 [[package]]
@@ -4667,6 +4651,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_math"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "999db5029a2879efeddb538f2e486aabf33adf7a0b3708c6df5c1cae13b3af49"
+dependencies = [
+ "glam",
+ "serde",
+]
+
+[[package]]
 name = "re_memory"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
@@ -4736,11 +4730,10 @@ dependencies = [
  "ecolor",
  "enumset",
  "getrandom",
- "glam 0.22.0",
+ "glam",
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
- "macaw",
  "never",
  "notify",
  "ordered-float",
@@ -4751,6 +4744,7 @@ dependencies = [
  "re_build_tools",
  "re_error",
  "re_log",
+ "re_math",
  "re_tracing",
  "serde",
  "slotmap",
@@ -4775,13 +4769,13 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "console_error_panic_hook",
- "glam 0.22.0",
+ "glam",
  "image",
  "itertools 0.13.0",
- "macaw",
  "pollster",
  "rand",
  "re_log",
+ "re_math",
  "re_renderer",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4949,10 +4943,9 @@ dependencies = [
  "bytemuck",
  "criterion",
  "egui",
- "glam 0.22.0",
+ "glam",
  "hexasphere",
  "itertools 0.13.0",
- "macaw",
  "mimalloc",
  "nohash-hasher",
  "once_cell",
@@ -4963,6 +4956,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_space_view",
@@ -5126,7 +5120,7 @@ dependencies = [
  "ecolor",
  "egui_plot",
  "emath",
- "glam 0.22.0",
+ "glam",
  "half 2.3.1",
  "image",
  "infer",
@@ -5327,12 +5321,11 @@ dependencies = [
  "egui-wgpu",
  "egui_extras",
  "egui_tiles",
- "glam 0.22.0",
+ "glam",
  "half 2.3.1",
  "indexmap 2.1.0",
  "itertools 0.13.0",
  "linked-hash-map",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "once_cell",
@@ -5345,6 +5338,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_smart_channel",
@@ -5368,7 +5362,7 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "glam 0.22.0",
+ "glam",
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
@@ -6482,7 +6476,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam 0.22.0",
+ "glam",
  "itertools 0.13.0",
  "ndarray",
  "ndarray-rand",

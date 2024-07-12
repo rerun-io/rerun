@@ -23,6 +23,16 @@ impl Chunk {
         self.is_sorted
     }
 
+    /// Is the chunk ascendingly sorted by time, for all of its timelines?
+    ///
+    /// This is O(1) (cached).
+    #[inline]
+    pub fn is_time_sorted(&self) -> bool {
+        self.timelines
+            .values()
+            .all(|time_chunk| time_chunk.is_sorted())
+    }
+
     /// Like [`Self::is_sorted`], but actually checks the entire dataset rather than relying on the
     /// cached value.
     ///

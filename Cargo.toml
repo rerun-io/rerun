@@ -100,6 +100,10 @@ re_viewport = { path = "crates/viewer/re_viewport", version = "=0.18.0-alpha.1",
 re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version = "=0.18.0-alpha.1", default-features = false }
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.18.0-alpha.1", default-features = false }
 
+# Rerun crates in other repos:
+ewebsock = "0.6.0"
+re_math = "0.20.0"
+
 # egui-crates:
 ecolor = "0.28.1"
 eframe = { version = "0.28.1", default-features = false, features = [
@@ -159,13 +163,12 @@ document-features = "0.2.8"
 ehttp = "0.5.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
-ewebsock = "0.6.0"
 fixed = { version = "1.17", default-features = false }
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
 getrandom = "0.2"
-glam = "0.22" # glam update blocked by macaw
+glam = "0.28"
 glob = "0.3"
 gltf = "1.1"
 half = "2.3.1"
@@ -183,7 +186,6 @@ linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
 log-once = "0.4"
 lz4_flex = "0.11"
-macaw = "0.18"
 memory-stats = "1.1"
 mimalloc = "=0.1.37" # TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
 mime = "0.3"

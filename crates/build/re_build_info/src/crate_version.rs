@@ -49,6 +49,35 @@ pub struct CrateVersion {
     pub meta: Option<Meta>,
 }
 
+impl Ord for CrateVersion {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let Self {
+            major,
+            minor,
+            patch,
+            meta: _,
+        } = self;
+
+        match major.cmp(&other.major) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        match minor.cmp(&other.minor) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        patch.cmp(&other.patch)
+    }
+}
+
+impl PartialOrd for CrateVersion {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl CrateVersion {
     pub const LOCAL: Self = Self::parse(env!("CARGO_PKG_VERSION"));
 }

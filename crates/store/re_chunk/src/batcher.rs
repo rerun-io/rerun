@@ -119,7 +119,7 @@ pub struct ChunkBatcherConfig {
 
     /// Split a chunk if it contains >= rows than this threshold and one or more of its timelines are
     /// unsorted.
-    pub max_chunk_rows_if_unsorted: u64,
+    pub chunk_max_rows_if_unsorted: u64,
 
     /// Size of the internal channel of commands.
     ///
@@ -147,7 +147,7 @@ impl ChunkBatcherConfig {
         flush_tick: Duration::from_millis(8), // We want it fast enough for 60 Hz for real time camera feel
         flush_num_bytes: 1024 * 1024,         // 1 MiB
         flush_num_rows: u64::MAX,
-        max_chunk_rows_if_unsorted: 256,
+        chunk_max_rows_if_unsorted: 256,
         max_commands_in_flight: None,
         max_chunks_in_flight: None,
         hooks: BatcherHooks::NONE,
@@ -158,7 +158,7 @@ impl ChunkBatcherConfig {
         flush_tick: Duration::MAX,
         flush_num_bytes: 0,
         flush_num_rows: 0,
-        max_chunk_rows_if_unsorted: 256,
+        chunk_max_rows_if_unsorted: 256,
         max_commands_in_flight: None,
         max_chunks_in_flight: None,
         hooks: BatcherHooks::NONE,
@@ -169,7 +169,7 @@ impl ChunkBatcherConfig {
         flush_tick: Duration::MAX,
         flush_num_bytes: u64::MAX,
         flush_num_rows: u64::MAX,
-        max_chunk_rows_if_unsorted: 256,
+        chunk_max_rows_if_unsorted: 256,
         max_commands_in_flight: None,
         max_chunks_in_flight: None,
         hooks: BatcherHooks::NONE,
@@ -184,8 +184,14 @@ impl ChunkBatcherConfig {
     /// Environment variable to configure [`Self::flush_num_rows`].
     pub const ENV_FLUSH_NUM_ROWS: &'static str = "RERUN_FLUSH_NUM_ROWS";
 
-    /// Environment variable to configure [`Self::max_chunk_rows_if_unsorted`].
-    pub const ENV_MAX_CHUNK_ROWS_IF_UNSORTED: &'static str = "RERUN_MAX_CHUNK_ROWS_IF_UNSORTED";
+    /// Environment variable to configure [`Self::chunk_max_rows_if_unsorted`].
+    //
+    // NOTE: Shared with the same env-var on the store side, for consistency.
+    pub const ENV_CHUNK_MAX_ROWS_IF_UNSORTED: &'static str = "RERUN_CHUNK_MAX_ROWS_IF_UNSORTED";
+
+    /// Environment variable to configure [`Self::chunk_max_rows_if_unsorted`].
+    #[deprecated(note = "use `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` instead")]
+    const ENV_MAX_CHUNK_ROWS_IF_UNSORTED: &'static str = "RERUN_MAX_CHUNK_ROWS_IF_UNSORTED";
 
     /// Creates a new `ChunkBatcherConfig` using the default values, optionally overridden
     /// through the environment.
@@ -236,8 +242,19 @@ impl ChunkBatcherConfig {
             })?;
         }
 
+        if let Ok(s) = std::env::var(Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED) {
+            new.chunk_max_rows_if_unsorted =
+                s.parse().map_err(|err| ChunkBatcherError::ParseConfig {
+                    name: Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
+                    value: s.clone(),
+                    err: Box::new(err),
+                })?;
+        }
+
+        // Deprecated
+        #[allow(deprecated)]
         if let Ok(s) = std::env::var(Self::ENV_MAX_CHUNK_ROWS_IF_UNSORTED) {
-            new.max_chunk_rows_if_unsorted =
+            new.chunk_max_rows_if_unsorted =
                 s.parse().map_err(|err| ChunkBatcherError::ParseConfig {
                     name: Self::ENV_MAX_CHUNK_ROWS_IF_UNSORTED,
                     value: s.clone(),
@@ -255,18 +272,28 @@ fn chunk_batcher_config() {
     std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.3");
     std::env::set_var("RERUN_FLUSH_NUM_BYTES", "42");
     std::env::set_var("RERUN_FLUSH_NUM_ROWS", "666");
-    std::env::set_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED", "7777");
+    std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "7777");
 
     let config = ChunkBatcherConfig::from_env().unwrap();
-
     let expected = ChunkBatcherConfig {
         flush_tick: Duration::from_millis(300),
         flush_num_bytes: 42,
         flush_num_rows: 666,
-        max_chunk_rows_if_unsorted: 7777,
+        chunk_max_rows_if_unsorted: 7777,
         ..Default::default()
     };
+    assert_eq!(expected, config);
 
+    std::env::set_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED", "9999");
+
+    let config = ChunkBatcherConfig::from_env().unwrap();
+    let expected = ChunkBatcherConfig {
+        flush_tick: Duration::from_millis(300),
+        flush_num_bytes: 42,
+        flush_num_rows: 666,
+        chunk_max_rows_if_unsorted: 9999,
+        ..Default::default()
+    };
     assert_eq!(expected, config);
 }
 
@@ -516,7 +543,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
         acc: &mut Accumulator,
         tx_chunk: &Sender<Chunk>,
         reason: &str,
-        max_chunk_rows_if_unsorted: u64,
+        chunk_max_rows_if_unsorted: u64,
     ) {
         let rows = std::mem::take(&mut acc.pending_rows);
         if rows.is_empty() {
@@ -530,7 +557,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
         );
 
         let chunks =
-            PendingRow::many_into_chunks(acc.entity_path.clone(), max_chunk_rows_if_unsorted, rows);
+            PendingRow::many_into_chunks(acc.entity_path.clone(), chunk_max_rows_if_unsorted, rows);
         for chunk in chunks {
             let chunk = match chunk {
                 Ok(chunk) => chunk,
@@ -586,10 +613,10 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
                         }
 
                         if acc.pending_rows.len() as u64 >= config.flush_num_rows {
-                            do_flush_all(acc, &tx_chunk, "rows", config.max_chunk_rows_if_unsorted);
+                            do_flush_all(acc, &tx_chunk, "rows", config.chunk_max_rows_if_unsorted);
                             skip_next_tick = true;
                         } else if acc.pending_num_bytes >= config.flush_num_bytes {
-                            do_flush_all(acc, &tx_chunk, "bytes", config.max_chunk_rows_if_unsorted);
+                            do_flush_all(acc, &tx_chunk, "bytes", config.chunk_max_rows_if_unsorted);
                             skip_next_tick = true;
                         }
                     },
@@ -597,7 +624,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
                     Command::Flush(oneshot) => {
                         skip_next_tick = true;
                         for acc in accs.values_mut() {
-                            do_flush_all(acc, &tx_chunk, "manual", config.max_chunk_rows_if_unsorted);
+                            do_flush_all(acc, &tx_chunk, "manual", config.chunk_max_rows_if_unsorted);
                         }
                         drop(oneshot); // signals the oneshot
                     },
@@ -612,7 +639,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
                 } else {
                     // TODO(cmc): It would probably be better to have a ticker per entity path. Maybe. At some point.
                     for acc in accs.values_mut() {
-                        do_flush_all(acc, &tx_chunk, "tick", config.max_chunk_rows_if_unsorted);
+                        do_flush_all(acc, &tx_chunk, "tick", config.chunk_max_rows_if_unsorted);
                     }
                 }
             },
@@ -625,7 +652,7 @@ fn batching_thread(config: ChunkBatcherConfig, rx_cmd: Receiver<Command>, tx_chu
             acc,
             &tx_chunk,
             "shutdown",
-            config.max_chunk_rows_if_unsorted,
+            config.chunk_max_rows_if_unsorted,
         );
     }
     drop(tx_chunk);
@@ -738,7 +765,7 @@ impl PendingRow {
     // see if that actually matters in practice first.
     pub fn many_into_chunks(
         entity_path: EntityPath,
-        max_chunk_rows_if_unsorted: u64,
+        chunk_max_rows_if_unsorted: u64,
         mut rows: Vec<Self>,
     ) -> impl Iterator<Item = ChunkResult<Chunk>> {
         re_tracing::profile_function!();
@@ -818,7 +845,7 @@ impl PendingRow {
                     } = row;
 
                     // Look for unsorted timelines -- if we find any, and the chunk is larger than
-                    // the pre-configured `max_chunk_rows_if_unsorted` threshold, then split _even_
+                    // the pre-configured `chunk_max_rows_if_unsorted` threshold, then split _even_
                     // further!
                     for (&timeline, _) in row_timepoint {
                         let time_chunk = timelines
@@ -826,7 +853,7 @@ impl PendingRow {
                             .or_insert_with(|| PendingChunkTimeline::new(timeline));
 
                         if !row_ids.is_empty() // just being extra cautious
-                            && row_ids.len() as u64 >= max_chunk_rows_if_unsorted
+                            && row_ids.len() as u64 >= chunk_max_rows_if_unsorted
                             && !time_chunk.is_sorted
                         {
                             chunks.push(Chunk::from_native_row_ids(
@@ -1469,7 +1496,7 @@ mod tests {
     #[test]
     fn unsorted_timeline_below_threshold() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig {
-            max_chunk_rows_if_unsorted: 1000,
+            chunk_max_rows_if_unsorted: 1000,
             ..ChunkBatcherConfig::NEVER
         })?;
 
@@ -1583,7 +1610,7 @@ mod tests {
     #[test]
     fn unsorted_timeline_above_threshold() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig {
-            max_chunk_rows_if_unsorted: 3,
+            chunk_max_rows_if_unsorted: 3,
             ..ChunkBatcherConfig::NEVER
         })?;
 

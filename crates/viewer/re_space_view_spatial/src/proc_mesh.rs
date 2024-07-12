@@ -21,7 +21,7 @@ pub enum ProcMeshKey {
 /// A renderable mesh generated from a [`ProcMeshKey`] by the [`WireframeCache`],
 /// which is to be drawn as lines rather than triangles.
 pub struct WireframeMesh {
-    pub bbox: macaw::BoundingBox,
+    pub bbox: re_math::BoundingBox,
 
     pub vertex_count: usize,
 
@@ -125,7 +125,7 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                     .collect()
             };
             WireframeMesh {
-                bbox: macaw::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0)),
+                bbox: re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0)),
                 vertex_count: line_strips.iter().map(|v| v.len()).sum(),
                 line_strips,
             }

@@ -243,21 +243,8 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
-    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
-    /// match.
-    ///
-    /// This ignores the `log_time` timeline.
-    Compare {
-        path_to_rrd1: String,
-        path_to_rrd2: String,
-
-        /// If specified, dumps both .rrd files as tables.
-        #[clap(long, default_value_t = false)]
-        full_dump: bool,
-    },
-
-    /// Print the contents of an .rrd or .rbl file.
-    Print(PrintCommand),
+    #[command(subcommand)]
+    Rrd(RrdCommands),
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -300,6 +287,57 @@ enum AnalyticsCommands {
 
     /// Prints the current configuration.
     Config,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+enum RrdCommands {
+    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
+    /// match.
+    ///
+    /// This ignores the `log_time` timeline.
+    Compare {
+        path_to_rrd1: String,
+        path_to_rrd2: String,
+
+        /// If specified, dumps both .rrd files as tables.
+        #[clap(long, default_value_t = false)]
+        full_dump: bool,
+    },
+
+    /// Print the contents of an .rrd or .rbl file.
+    Print(PrintCommand),
+
+    /// Compacts the contents of an .rrd or .rbl file and writes the result to a new file.
+    ///
+    /// Use the usual environment variables to control the compaction thresholds:
+    /// `RERUN_CHUNK_MAX_ROWS`,
+    /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
+    /// `RERUN_CHUNK_MAX_BYTES`.
+    ///
+    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
+    Compact {
+        #[arg(short = 'i', long = "input", value_name = "src.(rrd|rbl)")]
+        path_to_input_rrd: String,
+
+        #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
+        path_to_output_rrd: String,
+    },
+
+    /// Merges the contents of multiple .rrd and/or .rbl files, and writes the result to a new file.
+    ///
+    /// Example: `rerun merge -i input1.rrd -i input2.rbl -i input3.rrd -o output.rrd`
+    Merge {
+        #[arg(
+            short = 'i',
+            long = "input",
+            value_name = "src.(rrd|rbl)",
+            required = true
+        )]
+        path_to_input_rrds: Vec<String>,
+
+        #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
+        path_to_output_rrd: String,
+    },
 }
 
 /// Where are we calling [`run`] from?
@@ -372,19 +410,9 @@ where
     let res = if let Some(command) = &args.command {
         match command {
             #[cfg(feature = "analytics")]
-            Command::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
+            Command::Analytics(analytics) => run_analytics_commands(analytics).map_err(Into::into),
 
-            Command::Compare {
-                path_to_rrd1,
-                path_to_rrd2,
-                full_dump,
-            } => {
-                let path_to_rrd1 = PathBuf::from(path_to_rrd1);
-                let path_to_rrd2 = PathBuf::from(path_to_rrd2);
-                run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
-            }
-
-            Command::Print(print_command) => print_command.run(),
+            Command::Rrd(rrd) => run_rrd_commands(rrd),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -442,6 +470,40 @@ fn initialize_thread_pool(threads_args: i32) {
     }
 }
 
+fn run_rrd_commands(cmd: &RrdCommands) -> anyhow::Result<()> {
+    match cmd {
+        RrdCommands::Compare {
+            path_to_rrd1,
+            path_to_rrd2,
+            full_dump,
+        } => {
+            let path_to_rrd1 = PathBuf::from(path_to_rrd1);
+            let path_to_rrd2 = PathBuf::from(path_to_rrd2);
+            run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
+        }
+
+        RrdCommands::Print(print_command) => print_command.run(),
+
+        RrdCommands::Compact {
+            path_to_input_rrd,
+            path_to_output_rrd,
+        } => {
+            let path_to_input_rrd = PathBuf::from(path_to_input_rrd);
+            let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
+            run_compact(&path_to_input_rrd, &path_to_output_rrd)
+        }
+
+        RrdCommands::Merge {
+            path_to_input_rrds,
+            path_to_output_rrd,
+        } => {
+            let path_to_input_rrds = path_to_input_rrds.iter().map(PathBuf::from).collect_vec();
+            let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
+            run_merge(&path_to_input_rrds, &path_to_output_rrd)
+        }
+    }
+}
+
 /// Checks whether two .rrd files are _similar_, i.e. not equal on a byte-level but
 /// functionally equivalent.
 ///
@@ -467,7 +529,7 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
             let msg = msg.context("decode rrd message")?;
             stores
                 .entry(msg.store_id().clone())
-                .or_insert(re_entity_db::EntityDb::new(msg.store_id().clone()))
+                .or_insert_with(|| re_entity_db::EntityDb::new(msg.store_id().clone()))
                 .add(&msg)
                 .context("decode rrd file contents")?;
         }
@@ -539,6 +601,195 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     Ok(())
 }
 
+fn run_compact(path_to_input_rrd: &Path, path_to_output_rrd: &Path) -> anyhow::Result<()> {
+    use re_entity_db::EntityDb;
+    use re_log_types::StoreId;
+
+    let rrd_in =
+        std::fs::File::open(path_to_input_rrd).with_context(|| format!("{path_to_input_rrd:?}"))?;
+    let rrd_in_size = rrd_in.metadata().ok().map(|md| md.len());
+
+    let file_size_to_string = |size: Option<u64>| {
+        size.map_or_else(
+            || "<unknown>".to_owned(),
+            |size| re_format::format_bytes(size as _),
+        )
+    };
+
+    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
+    // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
+    // (massively) slow us down.
+    store_config.enable_changelog = false;
+
+    re_log::info!(
+        src = ?path_to_input_rrd,
+        src_size_bytes = %file_size_to_string(rrd_in_size),
+        dst = ?path_to_output_rrd,
+        max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
+        max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
+        "compaction started"
+    );
+
+    let now = std::time::Instant::now();
+
+    let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
+    let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_in)?;
+    let version = decoder.version();
+    for msg in decoder {
+        let msg = msg.context("decode rrd message")?;
+        entity_dbs
+            .entry(msg.store_id().clone())
+            .or_insert_with(|| {
+                re_entity_db::EntityDb::with_store_config(
+                    msg.store_id().clone(),
+                    store_config.clone(),
+                )
+            })
+            .add(&msg)
+            .context("decode rrd file contents")?;
+    }
+
+    anyhow::ensure!(
+        !entity_dbs.is_empty(),
+        "no recordings found in rrd/rbl file"
+    );
+
+    let mut rrd_out = std::fs::File::create(path_to_output_rrd)
+        .with_context(|| format!("{path_to_output_rrd:?}"))?;
+
+    let messages: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
+        .into_values()
+        .map(|entity_db| entity_db.to_messages(None /* time selection */))
+        .collect();
+    let messages = messages?;
+    let messages = messages.iter().flatten();
+
+    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut rrd_out)
+        .context("Message encode")?;
+
+    let rrd_out_size = rrd_out.metadata().ok().map(|md| md.len());
+
+    let compaction_ratio =
+        if let (Some(rrd_in_size), Some(rrd_out_size)) = (rrd_in_size, rrd_out_size) {
+            format!(
+                "{:3.3}%",
+                100.0 - rrd_out_size as f64 / (rrd_in_size as f64 + f64::EPSILON) * 100.0
+            )
+        } else {
+            "N/A".to_owned()
+        };
+
+    re_log::info!(
+        src = ?path_to_input_rrd,
+        src_size_bytes = %file_size_to_string(rrd_in_size),
+        dst = ?path_to_output_rrd,
+        dst_size_bytes = %file_size_to_string(rrd_out_size),
+        time = ?now.elapsed(),
+        compaction_ratio,
+        "compaction finished"
+    );
+
+    Ok(())
+}
+
+fn run_merge(path_to_input_rrds: &[PathBuf], path_to_output_rrd: &Path) -> anyhow::Result<()> {
+    use re_entity_db::EntityDb;
+    use re_log_types::StoreId;
+
+    let rrds_in: Result<Vec<_>, _> = path_to_input_rrds
+        .iter()
+        .map(|path_to_input_rrd| {
+            std::fs::File::open(path_to_input_rrd).with_context(|| format!("{path_to_input_rrd:?}"))
+        })
+        .collect();
+    let rrds_in = rrds_in?;
+
+    let rrds_in_size = rrds_in
+        .iter()
+        .map(|rrd_in| rrd_in.metadata().ok().map(|md| md.len()))
+        .sum::<Option<u64>>();
+
+    let file_size_to_string = |size: Option<u64>| {
+        size.map_or_else(
+            || "<unknown>".to_owned(),
+            |size| re_format::format_bytes(size as _),
+        )
+    };
+
+    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
+    // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
+    // (massively) slow us down.
+    store_config.enable_changelog = false;
+
+    re_log::info!(
+        srcs = ?path_to_input_rrds,
+        dst = ?path_to_output_rrd,
+        max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
+        max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
+        "merge started"
+    );
+
+    let now = std::time::Instant::now();
+
+    let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
+    let mut version = None;
+    for rrd_in in rrds_in {
+        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_in)?;
+        version = version.max(Some(decoder.version()));
+        for msg in decoder {
+            let msg = msg.context("decode rrd message")?;
+            entity_dbs
+                .entry(msg.store_id().clone())
+                .or_insert_with(|| {
+                    re_entity_db::EntityDb::with_store_config(
+                        msg.store_id().clone(),
+                        store_config.clone(),
+                    )
+                })
+                .add(&msg)
+                .context("decode rrd file contents")?;
+        }
+    }
+
+    anyhow::ensure!(
+        !entity_dbs.is_empty(),
+        "no recordings found in rrd/rbl files"
+    );
+
+    let mut rrd_out = std::fs::File::create(path_to_output_rrd)
+        .with_context(|| format!("{path_to_output_rrd:?}"))?;
+
+    let messages: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
+        .into_values()
+        .map(|entity_db| entity_db.to_messages(None /* time selection */))
+        .collect();
+    let messages = messages?;
+    let messages = messages.iter().flatten();
+
+    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+    let version = version.unwrap_or(re_build_info::CrateVersion::LOCAL);
+    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut rrd_out)
+        .context("Message encode")?;
+
+    let rrd_out_size = rrd_out.metadata().ok().map(|md| md.len());
+
+    re_log::info!(
+        srcs = ?path_to_input_rrds,
+        srcs_size_bytes = %file_size_to_string(rrds_in_size),
+        dst = ?path_to_output_rrd,
+        dst_size_bytes = %file_size_to_string(rrd_out_size),
+        time = ?now.elapsed(),
+        "merge finished"
+    );
+
+    Ok(())
+}
+
 impl PrintCommand {
     fn run(&self) -> anyhow::Result<()> {
         let rrd_path = PathBuf::from(&self.rrd_path);
@@ -604,7 +855,7 @@ impl PrintCommand {
 }
 
 #[cfg(feature = "analytics")]
-fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
+fn run_analytics_commands(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
     match cmd {
         #[allow(clippy::unit_arg)]
         AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
@@ -738,10 +989,10 @@ fn run_impl(
             && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
         {
             anyhow::bail!(
-                    "Trying to spawn a websocket server on {}, but this port is \
-                    already used by the server we're connecting to. Please specify a different port.",
-                    args.port
-                );
+                "Trying to spawn a websocket server on {}, but this port is \
+                already used by the server we're connecting to. Please specify a different port.",
+                args.port
+            );
         }
 
         #[cfg(feature = "server")]

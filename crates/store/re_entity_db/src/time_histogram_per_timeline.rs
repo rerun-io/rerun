@@ -100,12 +100,13 @@ impl TimeHistogramPerTimeline {
                 });
         } else {
             for &(timeline, times) in times_per_timeline {
-                let histogram = self.times.entry(timeline).or_default();
-                for &time in times {
-                    histogram.decrement(time, n);
-                }
-                if histogram.is_empty() {
-                    self.times.remove(&timeline);
+                if let Some(histo) = self.times.get_mut(&timeline) {
+                    for &time in times {
+                        histo.decrement(time, n);
+                    }
+                    if histo.is_empty() {
+                        self.times.remove(&timeline);
+                    }
                 }
             }
         }

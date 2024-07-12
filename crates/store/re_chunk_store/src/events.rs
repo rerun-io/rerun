@@ -266,7 +266,7 @@ mod tests {
             .with_component_batch(row_id1, timepoint1.clone(), &MyIndex::from_iter(0..10))
             .build()?;
 
-        view.on_events(&[store.insert_chunk(&Arc::new(chunk1))?.unwrap()]);
+        view.on_events(&store.insert_chunk(&Arc::new(chunk1))?);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(
@@ -311,7 +311,7 @@ mod tests {
                 .build()?
         };
 
-        view.on_events(&[store.insert_chunk(&Arc::new(chunk2))?.unwrap()]);
+        view.on_events(&store.insert_chunk(&Arc::new(chunk2))?);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(
@@ -360,7 +360,7 @@ mod tests {
                 .build()?
         };
 
-        view.on_events(&[store.insert_chunk(&Arc::new(chunk3))?.unwrap()]);
+        view.on_events(&store.insert_chunk(&Arc::new(chunk3))?);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(

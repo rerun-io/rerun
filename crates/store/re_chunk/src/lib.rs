@@ -9,6 +9,7 @@ mod chunk;
 mod id;
 mod iter;
 mod latest_at;
+mod merge;
 mod range;
 mod shuffle;
 mod slice;

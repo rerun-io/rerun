@@ -152,7 +152,7 @@ impl ViewContextSystem for TransformContext {
                 }
                 Ok(None) => {}
                 Ok(Some(parent_from_child)) => {
-                    reference_from_ancestor = reference_from_ancestor * parent_from_child.inverse();
+                    reference_from_ancestor *= parent_from_child.inverse();
                 }
             }
 

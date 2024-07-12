@@ -607,7 +607,7 @@ def test_lint_workspace_deps() -> None:
 
         anyhow = "1.0"
         clap = { version = "4.0", features = ["derive"] }
-        glam = "0.22"
+        glam = "0.28"
         """,
     ]
 

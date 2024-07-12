@@ -125,7 +125,7 @@ impl EllipsoidsVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut bounding_box = macaw::BoundingBox::nothing();
+            let mut bounding_box = re_math::BoundingBox::NOTHING;
 
             let centers =
                 clamped(data.centers, num_instances).chain(std::iter::repeat(&Position3D::ZERO));

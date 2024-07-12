@@ -9,14 +9,80 @@ use re_chunk::{Chunk, ChunkId, RowId};
 use re_log_types::{EntityPath, StoreId, TimeInt, Timeline};
 use re_types_core::ComponentName;
 
-use crate::ChunkStoreChunkStats;
+use crate::{ChunkStoreChunkStats, ChunkStoreError, ChunkStoreResult};
 
 // ---
 
-// TODO(cmc): empty for now but soon will contain compaction settings, so preemptively
-// avoid breaking changes everywhere.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChunkStoreConfig {}
+pub struct ChunkStoreConfig {
+    /// If `true` (the default), the store will emit events when its contents are modified in
+    /// any way (insertion, GC), that can be subscribed to.
+    ///
+    /// Leaving this disabled can lead to major performance improvements on the ingestion path
+    /// in some workloads, provided that the subscribers aren't needed (e.g. headless mode).
+    pub enable_changelog: bool,
+
+    /// What is the threshold, in bytes, after which a [`Chunk`] cannot be compacted any further?
+    ///
+    /// This is a multi-dimensional trade-off:
+    /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
+    /// * Larger chunks lead to slower query execution on some unhappy paths. Bad.
+    /// * Larger chunks lead to slower and slower compaction as chunks grow larger. Bad.
+    /// * Larger chunks lead to coarser garbage collection. Good or bad depending on use case.
+    /// * Larger chunks lead to less precision in e.g. the time panel. Bad.
+    ///
+    /// Empirical testing shows that the space overhead gains rapidly diminish beyond ~1000 rows,
+    /// which is the default row threshold.
+    /// The default byte threshold is set to 8MiB, which is a reasonable unit of work when e.g.
+    /// sending chunks over the network.
+    pub chunk_max_bytes: u64,
+
+    /// What is the threshold, in rows, after which a [`Chunk`] cannot be compacted any further?
+    ///
+    /// This specifically applies to time-sorted chunks.
+    /// See also [`ChunkStoreConfig::chunk_max_rows_if_unsorted`].
+    ///
+    /// This is a multi-dimensional trade-off:
+    /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
+    /// * Larger chunks lead to slower query execution on some unhappy paths. Bad.
+    /// * Larger chunks lead to slower and slower compaction as chunks grow larger. Bad.
+    /// * Larger chunks lead to coarser garbage collection. Good or bad depending on use case.
+    /// * Larger chunks lead to less precision in e.g. the time panel. Bad.
+    ///
+    /// Empirical testing shows that the space overhead gains rapidly diminish beyond ~1000 rows,
+    /// which is the default row threshold.
+    /// The default byte threshold is set to 8MiB, which is a reasonable unit of work when e.g.
+    /// sending chunks over the network.
+    pub chunk_max_rows: u64,
+
+    /// What is the threshold, in rows, after which a [`Chunk`] cannot be compacted any further?
+    ///
+    /// This specifically applies to _non_ time-sorted chunks.
+    /// See also [`ChunkStoreConfig::chunk_max_rows`].
+    ///
+    /// This is a multi-dimensional trade-off:
+    /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
+    /// * Larger chunks lead to slower query execution on some unhappy paths. Bad.
+    /// * Larger chunks lead to slower and slower compaction as chunks grow larger. Bad.
+    /// * Larger chunks lead to coarser garbage collection. Good or bad depending on use case.
+    /// * Larger chunks lead to less precision in e.g. the time panel. Bad.
+    ///
+    /// Empirical testing shows that the space overhead gains rapidly diminish beyond ~1000 rows,
+    /// which is the default row threshold.
+    /// The default byte threshold is set to 8MiB, which is a reasonable unit of work when e.g.
+    /// sending chunks over the network.
+    pub chunk_max_rows_if_unsorted: u64,
+    //
+    // TODO(cmc): It could make sense to have time-range-based thresholds in here, since the time
+    // range covered by a chunk has direct effects on A) the complexity of backward walks and
+    // B) in downstream subscribers (e.g. the precision of the time panel).
+    //
+    // In practice this is highly recording-dependent, and would require either to make it
+    // user-configurable per-recording, or use heuristics to compute it on the fly.
+    //
+    // The added complexity just isn't worth it at the moment.
+    // Maybe at some point.
+}
 
 impl Default for ChunkStoreConfig {
     #[inline]
@@ -26,7 +92,100 @@ impl Default for ChunkStoreConfig {
 }
 
 impl ChunkStoreConfig {
-    pub const DEFAULT: Self = Self {};
+    /// Default configuration, applicable to most use cases, according to empirical testing.
+    pub const DEFAULT: Self = Self {
+        enable_changelog: true,
+        chunk_max_bytes: 8 * 1024 * 1024,
+        chunk_max_rows: 1024,
+        chunk_max_rows_if_unsorted: 256,
+    };
+
+    /// Environment variable to configure [`Self::enable_changelog`].
+    pub const ENV_STORE_ENABLE_CHANGELOG: &'static str = "RERUN_STORE_ENABLE_CHANGELOG";
+
+    /// Environment variable to configure [`Self::chunk_max_bytes`].
+    pub const ENV_CHUNK_MAX_BYTES: &'static str = "RERUN_CHUNK_MAX_BYTES";
+
+    /// Environment variable to configure [`Self::chunk_max_rows`].
+    pub const ENV_CHUNK_MAX_ROWS: &'static str = "RERUN_CHUNK_MAX_ROWS";
+
+    /// Environment variable to configure [`Self::chunk_max_rows_if_unsorted`].
+    //
+    // NOTE: Shared with the same env-var on the batcher side, for consistency.
+    pub const ENV_CHUNK_MAX_ROWS_IF_UNSORTED: &'static str = "RERUN_CHUNK_MAX_ROWS_IF_UNSORTED";
+
+    /// Creates a new `ChunkStoreConfig` using the default values, optionally overridden
+    /// through the environment.
+    ///
+    /// See [`Self::apply_env`].
+    #[inline]
+    pub fn from_env() -> ChunkStoreResult<Self> {
+        Self::default().apply_env()
+    }
+
+    /// Returns a copy of `self`, overriding existing fields with values from the environment if
+    /// they are present.
+    ///
+    /// See [`Self::ENV_STORE_ENABLE_CHANGELOG`], [`Self::ENV_CHUNK_MAX_BYTES`], [`Self::ENV_CHUNK_MAX_ROWS`]
+    /// and [`Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED`].
+    pub fn apply_env(&self) -> ChunkStoreResult<Self> {
+        let mut new = self.clone();
+
+        if let Ok(s) = std::env::var(Self::ENV_STORE_ENABLE_CHANGELOG) {
+            new.enable_changelog = s.parse().map_err(|err| ChunkStoreError::ParseConfig {
+                name: Self::ENV_STORE_ENABLE_CHANGELOG,
+                value: s.clone(),
+                err: Box::new(err),
+            })?;
+        }
+
+        if let Ok(s) = std::env::var(Self::ENV_CHUNK_MAX_BYTES) {
+            new.chunk_max_bytes = s.parse().map_err(|err| ChunkStoreError::ParseConfig {
+                name: Self::ENV_CHUNK_MAX_BYTES,
+                value: s.clone(),
+                err: Box::new(err),
+            })?;
+        }
+
+        if let Ok(s) = std::env::var(Self::ENV_CHUNK_MAX_ROWS) {
+            new.chunk_max_rows = s.parse().map_err(|err| ChunkStoreError::ParseConfig {
+                name: Self::ENV_CHUNK_MAX_ROWS,
+                value: s.clone(),
+                err: Box::new(err),
+            })?;
+        }
+
+        if let Ok(s) = std::env::var(Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED) {
+            new.chunk_max_rows_if_unsorted =
+                s.parse().map_err(|err| ChunkStoreError::ParseConfig {
+                    name: Self::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
+                    value: s.clone(),
+                    err: Box::new(err),
+                })?;
+        }
+
+        Ok(new)
+    }
+}
+
+#[test]
+fn chunk_store_config() {
+    // Detect breaking changes in our environment variables.
+    std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
+    std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42");
+    std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666");
+    std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999");
+
+    let config = ChunkStoreConfig::from_env().unwrap();
+
+    let expected = ChunkStoreConfig {
+        enable_changelog: false,
+        chunk_max_bytes: 42,
+        chunk_max_rows: 666,
+        chunk_max_rows_if_unsorted: 999,
+    };
+
+    assert_eq!(expected, config);
 }
 
 // ---
