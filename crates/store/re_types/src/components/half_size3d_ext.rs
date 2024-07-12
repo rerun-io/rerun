@@ -9,6 +9,12 @@ impl HalfSize3D {
         Self(Vec3D::new(half_width, half_height, half_depth))
     }
 
+    /// Create a new half-extent with all the same sizes (a radius, perhaps).
+    #[inline]
+    pub const fn splat(half_size: f32) -> Self {
+        Self(Vec3D::new(half_size, half_size, half_size))
+    }
+
     /// Width of a box using this half-extent.
     #[inline]
     pub fn width(self) -> f32 {

@@ -15,7 +15,7 @@ impl Ellipsoids {
     #[inline]
     #[doc(alias = "sphere")]
     pub fn from_radii(radii: impl IntoIterator<Item = f32>) -> Self {
-        Self::new(radii.into_iter().map(sphere_size))
+        Self::new(radii.into_iter().map(HalfSize3D::splat))
     }
 
     /// Creates a new [`Ellipsoids`] with [`Self::centers`] and [`Self::half_sizes`].
@@ -37,10 +37,6 @@ impl Ellipsoids {
         centers: impl IntoIterator<Item = impl Into<Position3D>>,
         radii: impl IntoIterator<Item = f32>,
     ) -> Self {
-        Self::new(radii.into_iter().map(sphere_size)).with_centers(centers)
+        Self::new(radii.into_iter().map(HalfSize3D::splat)).with_centers(centers)
     }
-}
-
-fn sphere_size(radius: f32) -> HalfSize3D {
-    HalfSize3D::new(radius, radius, radius)
 }
