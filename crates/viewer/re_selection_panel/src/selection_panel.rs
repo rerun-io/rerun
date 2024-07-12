@@ -879,7 +879,10 @@ fn list_existing_data_blueprints(
                 let response = response.on_hover_ui(|ui| {
                     item_ui::instance_hover_card_ui(ui, ctx, &query, db, instance_path);
                 });
-                item_ui::cursor_interact_with_selectable(ctx, response, item);
+
+                // We don't use item_ui::cursor_interact_with_selectable here because the forced
+                // hover background is distracting and not useful.
+                ctx.select_hovered_on_click(&response, item);
             }
         }
     }
