@@ -60,7 +60,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &re_ui::icons::SPACE_VIEW_3D
     }
 
-    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
+    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
         super::ui_3d::help_text(egui_ctx)
     }
 
