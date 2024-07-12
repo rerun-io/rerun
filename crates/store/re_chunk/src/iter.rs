@@ -66,11 +66,11 @@ impl Chunk {
     ) -> Option<Box<dyn ArrowArray>> {
         let list_array = self.components.get(component_name)?;
 
-        let row_id_128 = row_id.as_u128();
-        let row_id_time_ns = (row_id_128 >> 64) as u64;
-        let row_id_inc = (row_id_128 & (!0 >> 64)) as u64;
-
         if self.is_sorted() {
+            let row_id_128 = row_id.as_u128();
+            let row_id_time_ns = (row_id_128 >> 64) as u64;
+            let row_id_inc = (row_id_128 & (!0 >> 64)) as u64;
+
             let (times, incs) = self.row_ids_raw();
             let times = times.values().as_slice();
             let incs = incs.values().as_slice();
