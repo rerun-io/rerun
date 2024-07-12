@@ -325,7 +325,7 @@ enum RrdCommands {
 
     /// Merges the contents of multiple .rrd and/or .rbl files, and writes the result to a new file.
     ///
-    /// Example: rerun merge -i input1.rrd -i input2.rbl -i input3.rrd -o output.rrd`
+    /// Example: `rerun merge -i input1.rrd -i input2.rbl -i input3.rrd -o output.rrd`
     Merge {
         #[arg(
             short = 'i',
