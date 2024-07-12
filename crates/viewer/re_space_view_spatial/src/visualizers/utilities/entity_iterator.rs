@@ -19,6 +19,15 @@ use crate::{
 
 // ---
 
+/// Iterate over all the values in the slice, then repeat the last value forever.
+///
+/// If the input slice is empty, the second argument is returned forever.
+#[inline]
+pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> {
+    let repeated = values.last().unwrap_or(if_empty);
+    values.iter().chain(std::iter::repeat(repeated))
+}
+
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///
 /// Returns an empty iterator if values is empty.
