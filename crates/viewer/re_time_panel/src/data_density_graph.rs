@@ -438,7 +438,7 @@ pub fn data_density_graph_ui2(
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             ctx.selection_state().set_selection(item.to_item());
-            time_ctrl.set_time(data.hovered_time_range.min());
+            time_ctrl.set_time(data.hovered_time_range.max());
             time_ctrl.pause();
         } else if ui.ctx().dragged_id().is_none() {
             egui::show_tooltip_at_pointer(
