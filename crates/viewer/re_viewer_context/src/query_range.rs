@@ -11,10 +11,10 @@ pub enum QueryRange {
 
 impl QueryRange {
     pub fn is_latest_at(&self) -> bool {
-        matches!(self, QueryRange::LatestAt)
+        matches!(self, Self::LatestAt)
     }
 
     pub fn is_time_range(&self) -> bool {
-        matches!(self, QueryRange::TimeRange(_))
+        matches!(self, Self::TimeRange(_))
     }
 }
