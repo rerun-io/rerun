@@ -9,6 +9,7 @@ from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
+from .table_row_order import TableRowOrder
 from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
@@ -24,6 +25,7 @@ __all__ = [
     "ScalarAxis",
     "SpaceViewBlueprint",
     "SpaceViewContents",
+    "TableRowOrder",
     "TensorScalarMapping",
     "TensorSliceSelection",
     "TensorViewFit",

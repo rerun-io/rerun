@@ -147,6 +147,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SortOrder as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Sort order for data table.",
+                placeholder: Some(SortOrder::default().to_arrow()?),
+            },
+        ),
+        (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
@@ -165,6 +172,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The origin of a `SpaceView`.",
                 placeholder: Some(SpaceViewOrigin::default().to_arrow()?),
+            },
+        ),
+        (
+            <TableGroupBy as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Primary element by which to group by in a temporal data table.",
+                placeholder: Some(TableGroupBy::default().to_arrow()?),
             },
         ),
         (
@@ -610,6 +624,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     : "Zoom lock", docstring_md :
                     "If enabled, the Y axis range will remain locked to the specified range when zooming.",
                     },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TableRowOrder"),
+            ArchetypeReflection {
+                display_name: "Table row order",
+                docstring_md: "Configuration for the sorting of the rows of a time range table.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.TableGroupBy".into(), display_name :
+                    "Group by", docstring_md : "The type of the background.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortOrder".into(), display_name :
+                    "Sort order", docstring_md :
+                    "Color used for the `SolidColor` background type.", },
                 ],
             },
         ),

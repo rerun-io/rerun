@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration for the sorting of the rows of a time range table.
+table TableRowOrder (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy",
+    "attr.rust.generate_field_info"
+) {
+    // --- Optional ---
+
+    /// The type of the background.
+    group_by: rerun.blueprint.components.TableGroupBy ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// Color used for the `SolidColor` background type.
+    sort_order: rerun.blueprint.components.SortOrder ("attr.rerun.component_optional", nullable, order: 2000);
+}

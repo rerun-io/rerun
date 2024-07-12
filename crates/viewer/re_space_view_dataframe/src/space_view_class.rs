@@ -1,18 +1,22 @@
+use crate::visualizer_system::EmptySystem;
+use egui::Ui;
 use egui_extras::{Column, TableRow};
-use std::collections::{BTreeMap, BTreeSet};
-
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery, RowId};
 use re_data_ui::item_ui::{entity_path_button, instance_path_button};
 use re_entity_db::InstancePath;
-use re_log_types::{EntityPath, Instance, ResolvedTimeRange, Timeline};
+use re_log_types::{EntityPath, Instance, ResolvedTimeRange, TimeInt, Timeline};
+use re_space_view::view_property_ui;
+use re_types::blueprint::archetypes::{PlotLegend, TableRowOrder};
+use re_types::blueprint::components::{SortOrder, TableGroupBy};
 use re_types_core::datatypes::TimeRange;
 use re_types_core::{ComponentName, SpaceViewClassIdentifier};
+use re_ui::list_item;
 use re_viewer_context::{
-    QueryRange, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewState,
+    QueryRange, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
 };
-
-use crate::visualizer_system::EmptySystem;
+use re_viewport_blueprint::ViewProperty;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -63,15 +67,38 @@ impl SpaceViewClass for DataframeSpaceView {
         Default::default()
     }
 
+    fn selection_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        state: &mut dyn SpaceViewState,
+        _space_origin: &EntityPath,
+        space_view_id: SpaceViewId,
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
+            view_property_ui::<TableRowOrder>(ctx, ui, space_view_id, self, state);
+        });
+
+        Ok(())
+    }
+
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
+        state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let row_order = ViewProperty::from_archetype::<TableRowOrder>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+        let group_by = row_order.component_or_fallback::<TableGroupBy>(ctx, self, state)?;
+        let sort_order = row_order.component_or_fallback::<SortOrder>(ctx, self, state)?;
 
         // TODO(ab): we probably want a less "implicit" way to switch from temporal vs. latest at tables.
         let is_range_query = query
@@ -79,12 +106,14 @@ impl SpaceViewClass for DataframeSpaceView {
             .any(|data_result| data_result.property_overrides.query_range.is_time_range());
 
         if is_range_query {
-            entity_and_time_vs_component_ui(ctx, ui, query)
+            entity_and_time_vs_component_ui(ctx, ui, query, group_by, sort_order)
         } else {
             entity_and_instance_vs_component_ui(ctx, ui, query)
         }
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => []);
 
 /// Show a table with entities and time as rows, and components as columns.
 ///
@@ -105,6 +134,8 @@ fn entity_and_time_vs_component_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     query: &ViewQuery<'_>,
+    group_by: TableGroupBy,
+    sort_order: SortOrder,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
@@ -171,17 +202,36 @@ fn entity_and_time_vs_component_ui(
         })
         .collect::<BTreeMap<_, _>>();
 
-    let rows = rows_to_chunk.keys().collect::<Vec<_>>();
+    let mut rows = rows_to_chunk.keys().collect::<Vec<_>>();
+
+    // apply group_by
+    match group_by {
+        TableGroupBy::Entity => {} // already correctly sorted
+        TableGroupBy::Time => rows.sort_by_key(|(entity_path, time, _)| (*time, entity_path)),
+    };
+    if sort_order == SortOrder::Descending {
+        rows.reverse();
+    }
+
+    let entity_header = |ui: &mut egui::Ui| {
+        ui.strong("Entity");
+    };
+    let time_header = |ui: &mut egui::Ui| {
+        ui.strong("Time");
+    };
 
     // Draw the header row.
     let header_ui = |mut row: egui_extras::TableRow<'_, '_>| {
-        row.col(|ui| {
-            ui.strong("Entity");
-        });
-
-        row.col(|ui| {
-            ui.strong("Time");
-        });
+        match group_by {
+            TableGroupBy::Entity => {
+                row.col(entity_header);
+                row.col(time_header);
+            }
+            TableGroupBy::Time => {
+                row.col(time_header);
+                row.col(entity_header);
+            }
+        }
 
         row.col(|ui| {
             ui.strong("Row ID");
@@ -194,6 +244,27 @@ fn entity_and_time_vs_component_ui(
         }
     };
 
+    let latest_at_query = query.latest_at_query();
+    let entity_ui = |ui: &mut egui::Ui, entity_path: &EntityPath| {
+        entity_path_button(
+            ctx,
+            &latest_at_query,
+            ctx.recording(),
+            ui,
+            Some(query.space_view_id),
+            entity_path,
+        );
+    };
+
+    let time_ui = |ui: &mut egui::Ui, time: &TimeInt| {
+        ui.label(
+            query
+                .timeline
+                .typ()
+                .format(*time, ctx.app_options.time_zone),
+        );
+    };
+
     // Draw a single line of the table. This is called for each _visible_ row, so it's ok to
     // duplicate some of the querying.
     let latest_at_query = query.latest_at_query();
@@ -202,25 +273,16 @@ fn entity_and_time_vs_component_ui(
         let row_chunk = rows_to_chunk.get(row_key).unwrap();
         let (entity_path, time, row_id) = row_key;
 
-        row.col(|ui| {
-            entity_path_button(
-                ctx,
-                &latest_at_query,
-                ctx.recording(),
-                ui,
-                Some(query.space_view_id),
-                entity_path,
-            );
-        });
-
-        row.col(|ui| {
-            ui.label(
-                query
-                    .timeline
-                    .typ()
-                    .format(*time, ctx.app_options.time_zone),
-            );
-        });
+        match group_by {
+            TableGroupBy::Entity => {
+                row.col(|ui| entity_ui(ui, entity_path));
+                row.col(|ui| time_ui(ui, time));
+            }
+            TableGroupBy::Time => {
+                row.col(|ui| time_ui(ui, time));
+                row.col(|ui| entity_ui(ui, entity_path));
+            }
+        };
 
         row.col(|ui| {
             row_id_ui(ui, row_id);

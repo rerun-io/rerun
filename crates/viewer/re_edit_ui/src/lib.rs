@@ -15,6 +15,7 @@ use datatype_editors::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_multiline_string, edit_singleline_string, edit_view_enum,
 };
+use re_types::blueprint::components::{SortOrder, TableGroupBy};
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
@@ -68,8 +69,6 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         colormap_edit_or_view_ui(ctx.render_ctx, ui, value)
     });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
-    registry
-        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<BackgroundKind>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Colormap>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| {
@@ -79,6 +78,9 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_view_enum::<AggregationPolicy>(ui, value)
     });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortOrder>(ui, value));
+    registry
+        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<TableGroupBy>(ui, value));
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);

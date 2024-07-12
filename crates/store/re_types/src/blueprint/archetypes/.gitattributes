@@ -7,6 +7,7 @@ plot_legend.rs linguist-generated=true
 scalar_axis.rs linguist-generated=true
 space_view_blueprint.rs linguist-generated=true
 space_view_contents.rs linguist-generated=true
+table_row_order.rs linguist-generated=true
 tensor_scalar_mapping.rs linguist-generated=true
 tensor_slice_selection.rs linguist-generated=true
 tensor_view_fit.rs linguist-generated=true
