@@ -18,7 +18,7 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::clamped, process_annotation_and_keypoint_slices, process_color_slice,
+    entity_iterator::clamped_or, process_annotation_and_keypoint_slices, process_color_slice,
     process_labels_2d, process_radius_slice, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
@@ -80,8 +80,8 @@ impl Arrows2DVisualizer {
 
             let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
 
-            let origins =
-                clamped(data.origins, num_instances).chain(std::iter::repeat(&Position2D::ZERO));
+            let origins = clamped_or(data.origins, &Position2D::ZERO);
+
             for (i, (vector, origin, radius, &color)) in
                 itertools::izip!(data.vectors, origins, radii, &colors).enumerate()
             {
@@ -127,9 +127,8 @@ impl Arrows2DVisualizer {
                     ))
                 } else {
                     // Take middle point of every arrow.
-                    let origins = clamped(data.origins, num_instances)
-                        .chain(std::iter::repeat(&Position2D::ZERO));
-                    itertools::Either::Right(data.vectors.iter().zip(origins).map(
+                    let origins = clamped_or(data.origins, &Position2D::ZERO);
+                    itertools::Either::Right(itertools::izip!(data.vectors, origins).map(
                         |(vector, origin)| {
                             // `0.45` rather than `0.5` to account for cap and such
                             glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45
