@@ -256,6 +256,10 @@ impl ChunkStore {
                         store.chunks_per_chunk_id.get(&candidate_chunk_id).map_or(
                             false,
                             |candidate| {
+                                if !chunk.concatenable(candidate) {
+                                    return false;
+                                }
+
                                 let total_bytes =
                                     chunk.total_size_bytes() + candidate.total_size_bytes();
                                 let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
