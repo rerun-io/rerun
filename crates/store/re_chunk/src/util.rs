@@ -98,7 +98,9 @@ pub fn sparse_list_array_to_dense_list_array(
     )
 }
 
-/// Pads a `ListArray` by pushing null values to its back.
+/// Create a new `ListArray` of target length by appending null values to its back.
+///
+/// This will share the same child data array buffer, but will create new offset and validity buffers.
 pub fn pad_list_array_back(
     list_array: &ArrowListArray<i32>,
     target_len: usize,
@@ -144,7 +146,9 @@ pub fn pad_list_array_back(
     ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
 }
 
-/// Pads a `ListArray` by pushing null values to its front.
+/// Create a new `ListArray` of target length by appending null values to its front.
+///
+/// This will share the same child data array buffer, but will create new offset and validity buffers.
 pub fn pad_list_array_front(
     list_array: &ArrowListArray<i32>,
     target_len: usize,

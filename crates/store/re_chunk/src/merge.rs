@@ -29,13 +29,6 @@ impl Chunk {
             });
         }
 
-        if cr.is_empty() {
-            return Ok(cl.clone());
-        }
-        if cl.is_empty() {
-            return Ok(cr.clone());
-        }
-
         let Some((_cl0, cl1)) = cl.row_id_range() else {
             return Ok(cr.clone()); // `cl` is empty (`cr` might be too, that's fine)
         };
