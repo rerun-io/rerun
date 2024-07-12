@@ -180,25 +180,21 @@ fn entity_and_time_vs_component_ui(
                         *component,
                     )
                     .into_iter()
-                    .flat_map(move |chunk| {
+                    .filter_map(|chunk| {
                         chunk
                             .clone()
                             .iter_indices(&query.timeline)
-                            .into_iter()
-                            .flat_map(|iter| {
-                                iter.filter(|(time, _)| {
-                                    time.is_static() || resolved_time_range.contains(*time)
-                                })
-                                .map(|(time, row_id)| {
-                                    (
-                                        (data_result.entity_path.clone(), time, row_id),
-                                        chunk.clone(),
-                                    )
-                                })
+                            .map(|iter_indices| (iter_indices, chunk))
+                    })
+                    .flat_map(move |(indices_iter, chunk)| {
+                        indices_iter
+                            .filter(move |(time, _)| {
+                                time.is_static() || resolved_time_range.contains(*time)
                             })
-                            //TODO(ab): cmc help!?
-                            .collect::<Vec<_>>()
-                            .into_iter()
+                            .map(move |(time, row_id)| {
+                                let chunk = chunk.clone();
+                                ((data_result.entity_path.clone(), time, row_id), chunk)
+                            })
                     })
             })
         })
@@ -267,8 +263,7 @@ fn entity_and_time_vs_component_ui(
         );
     };
 
-    // Draw a single line of the table. This is called for each _visible_ row, so it's ok to
-    // duplicate some of the querying.
+    // Draw a single line of the table. This is called for each _visible_ row.
     let latest_at_query = query.latest_at_query();
     let row_ui = |mut row: egui_extras::TableRow<'_, '_>| {
         let row_key = rows[row.index()];
