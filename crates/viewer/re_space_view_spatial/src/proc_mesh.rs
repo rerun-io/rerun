@@ -92,11 +92,13 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
 
             let sphere_points = subdiv.raw_data();
 
+            // TODO(kpreid): There is a bug in `hexasphere` where it fails to return lines which
+            // reach the original corners of the shape. This will be fixed as part of
+            // <https://github.com/OptimisticPeach/hexasphere/issues/19>,
+            // which is merged but not yet published on crates.io.
+            // When hexasphere 15.0 or 14.0.1 is available, update, then keep the first branch
+            // of this `if` only.
             let line_strips: Vec<Vec<Vec3>> = if false {
-                // TODO(kpreid): There seems to be a bug in `hexasphere` where it fails to
-                // return lines which reach the original corners of the shape.
-                // Until that’s fixed, this code is skipped and we use the kludge of extracting
-                // edges from the triangles, below.
                 subdiv
                     .get_all_line_indices(1, |v| v.push(0))
                     .split(|&i| i == 0)
