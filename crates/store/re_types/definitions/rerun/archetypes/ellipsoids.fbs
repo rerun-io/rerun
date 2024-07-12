@@ -40,7 +40,7 @@ table Ellipsoids (
   /// If not specified, the centers will be at (0, 0, 0).
   centers: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
-  /// Optional rotations of the boxes.
+  /// Optional rotations of the ellipsoids.
   ///
   /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
   rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);
