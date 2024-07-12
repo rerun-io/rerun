@@ -44,7 +44,7 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerCollection,
 };
 
-use utilities::entity_iterator::clamped;
+use utilities::entity_iterator::clamped_or_nothing;
 
 use crate::view_2d::VisualizableFilterContext2D;
 use crate::view_3d::VisualizableFilterContext3D;
@@ -154,7 +154,7 @@ pub fn process_color_slice<'a>(
             // Common happy path
             vec![to_egui_color(last_color); num_instances]
         } else {
-            let colors = clamped(colors, num_instances);
+            let colors = clamped_or_nothing(colors, num_instances);
             colors.map(to_egui_color).collect()
         }
     } else {
@@ -206,7 +206,7 @@ pub fn process_radius_slice(
             let last_radius = process_radius(entity_path, *last_radius);
             vec![last_radius; num_instances]
         } else {
-            clamped(radii, num_instances)
+            clamped_or_nothing(radii, num_instances)
                 .map(|radius| process_radius(entity_path, *radius))
                 .collect()
         }
@@ -253,7 +253,7 @@ fn process_annotation_and_keypoint_slices(
         );
     };
 
-    let class_ids = clamped(class_ids, num_instances);
+    let class_ids = clamped_or_nothing(class_ids, num_instances);
 
     if keypoint_ids.is_empty() {
         let annotation_info = class_ids
@@ -268,7 +268,7 @@ fn process_annotation_and_keypoint_slices(
             Default::default(),
         )
     } else {
-        let keypoint_ids = clamped(keypoint_ids, num_instances);
+        let keypoint_ids = clamped_or_nothing(keypoint_ids, num_instances);
         let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
             .map(|(position, keypoint_id, &class_id)| {
                 let class_description = annotations.resolved_class_description(Some(class_id));

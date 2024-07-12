@@ -23,7 +23,8 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::clamped_vec, filter_visualizable_3d_entities, SpatialViewVisualizerData,
+    entity_iterator::clamped_vec_or_empty, filter_visualizable_3d_entities,
+    SpatialViewVisualizerData,
 };
 
 // ---
@@ -86,10 +87,12 @@ impl Mesh3DVisualizer {
                     media_type: None,
                 };
 
-                let vertex_normals = clamped_vec(data.vertex_normals, data.vertex_positions.len());
-                let vertex_colors = clamped_vec(data.vertex_colors, data.vertex_positions.len());
+                let vertex_normals =
+                    clamped_vec_or_empty(data.vertex_normals, data.vertex_positions.len());
+                let vertex_colors =
+                    clamped_vec_or_empty(data.vertex_colors, data.vertex_positions.len());
                 let vertex_texcoords =
-                    clamped_vec(data.vertex_texcoords, data.vertex_positions.len());
+                    clamped_vec_or_empty(data.vertex_texcoords, data.vertex_positions.len());
 
                 c.entry(
                     &entity_path.to_string(),

@@ -32,7 +32,7 @@ pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item
 ///
 /// Returns an empty iterator if values is empty.
 #[inline]
-pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> {
+pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> {
     let Some(last) = values.last() else {
         return Either::Left(std::iter::empty());
     };
@@ -49,7 +49,7 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
 ///
 /// Returns an empty vctor if values is empty.
 #[inline]
-pub fn clamped_vec<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
+pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
     if values.len() == clamped_len {
         // Happy path
         values.to_vec()
@@ -72,13 +72,19 @@ pub fn clamped_vec<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
 
 #[test]
 fn test_clamped_vec() {
-    assert_eq!(clamped_vec::<i32>(&[], 0), Vec::<i32>::default());
-    assert_eq!(clamped_vec::<i32>(&[], 3), Vec::<i32>::default());
-    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 0), Vec::<i32>::default());
-    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 1), vec![1]);
-    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 2), vec![1, 2]);
-    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 3), vec![1, 2, 3]);
-    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 5), vec![1, 2, 3, 3, 3]);
+    assert_eq!(clamped_vec_or_empty::<i32>(&[], 0), Vec::<i32>::default());
+    assert_eq!(clamped_vec_or_empty::<i32>(&[], 3), Vec::<i32>::default());
+    assert_eq!(
+        clamped_vec_or_empty::<i32>(&[1, 2, 3], 0),
+        Vec::<i32>::default()
+    );
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 1), vec![1]);
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 2), vec![1, 2]);
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 3), vec![1, 2, 3]);
+    assert_eq!(
+        clamped_vec_or_empty::<i32>(&[1, 2, 3], 5),
+        vec![1, 2, 3, 3, 3]
+    );
 }
 
 // --- Cached APIs ---
