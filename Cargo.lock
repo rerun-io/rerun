@@ -6465,6 +6465,7 @@ version = "0.18.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "rand",
  "re_log",
  "rerun",
 ]

@@ -5,7 +5,6 @@
 //! ```
 
 use rerun::external::re_log_types::NonMinI64;
-use rerun::time::TimeInt;
 use rerun::{
     external::{re_chunk_store, re_log},
     RecordingStream,
@@ -50,10 +49,23 @@ fn run(rec: &RecordingStream) -> anyhow::Result<()> {
         &rerun::TextDocument::from_markdown(DESCRIPTION),
     )?;
 
-    log(rec, "/small", 100, 100, true, 0)?;
-    log(rec, "/large", 5, 2000, true, 0)?;
-    log(rec, "/large-unsorted", 5, 2000, false, 0)?;
-    log(rec, "/gap", 2, 5000, true, 50000)?;
+    let entities = [
+        ("/small", 100, 100, true, 0),
+        ("/large", 5, 2000, true, 0),
+        ("/large-unsorted", 5, 2000, false, 0),
+        ("/gap", 2, 5000, true, 50000),
+    ];
+
+    for (entity_path, num_chunks, num_rows_per_chunk, sorted, time_start_ms) in entities {
+        log(
+            rec,
+            entity_path,
+            num_chunks,
+            num_rows_per_chunk,
+            sorted,
+            time_start_ms,
+        )?;
+    }
 
     Ok(())
 }
@@ -64,7 +76,7 @@ fn log(
     num_chunks: i64,
     num_rows_per_chunk: i64,
     sorted: bool,
-    first_tick: i64,
+    time_start_ms: i64,
 ) -> anyhow::Result<()> {
     // TODO(jprochazk): unsorted chunk
     let _ = sorted;
@@ -91,40 +103,41 @@ fn log(
             .build()?,
     );
 
-    let rotation = |chunk_idx: i64, row_idx: i64, tick: i64| {
-        let timepoint = rerun::TimePoint::default()
-            .with(
-                rerun::Timeline::log_time(),
-                TimeInt::from_milliseconds(tick.try_into().unwrap_or_default()),
-            )
-            .with(rerun::Timeline::log_tick(), tick);
-
-        let angle_deg = ((chunk_idx as f32 + 1.0) * (row_idx as f32) / 64.0) % 360.0;
-        let transform = rerun::Transform3D::from_rotation(rerun::Rotation3D::AxisAngle(
-            ((0.0, 0.0, 1.0), rerun::Angle::Degrees(angle_deg)).into(),
-        ));
-
-        (timepoint, transform)
-    };
-
-    let mut tick = first_tick;
-    for chunk_idx in 0..num_chunks {
-        let mut chunk = rerun::log::Chunk::builder(entity_path.clone());
-        for row_idx in 0..num_rows_per_chunk {
-            let (timepoint, transform) = rotation(chunk_idx, row_idx, tick);
-            chunk = chunk.with_archetype(rerun::log::RowId::new(), timepoint, &transform);
-
-            tick += 1;
+    let mut time = time_start_ms;
+    for _ in 0..num_chunks {
+        let mut log_times = vec![];
+        for _ in 0..num_rows_per_chunk {
+            time += 1;
+            log_times.push(time);
         }
-        let mut chunk = chunk.build()?;
+        time += 100;
+        log_times.push(time);
+
         if !sorted {
-            chunk.shuffle_random(0xab12_cd34_ef56_0178);
-            assert!(!chunk.is_sorted());
+            let mut rng = rand::thread_rng();
+            use rand::seq::SliceRandom as _;
+            log_times.shuffle(&mut rng);
         }
-        rec.record_chunk_raw(chunk);
 
-        // add space between chunks
-        tick += 100;
+        let components = (0..num_rows_per_chunk).map(|i| {
+            let angle_deg = i as f32 % 360.0;
+            rerun::Transform3D::from_rotation(rerun::Rotation3D::AxisAngle(
+                ((0.0, 0.0, 1.0), rerun::Angle::Degrees(angle_deg)).into(),
+            ))
+        });
+
+        let mut chunk = rerun::log::Chunk::builder(entity_path.clone());
+        for (time, component) in log_times.iter().zip(components) {
+            chunk = chunk.with_archetype(
+                rerun::log::RowId::new(),
+                rerun::TimePoint::default().with(
+                    rerun::Timeline::log_time(),
+                    rerun::time::TimeInt::from_milliseconds((*time).try_into().unwrap_or_default()),
+                ),
+                &component,
+            );
+        }
+        rec.record_chunk_raw(chunk.build()?);
     }
 
     Ok(())
