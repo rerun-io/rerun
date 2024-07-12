@@ -6,7 +6,7 @@ use re_data_ui::item_ui::{entity_path_button, instance_path_button};
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, Instance, ResolvedTimeRange, TimeInt, Timeline};
 use re_space_view::view_property_ui;
-use re_types::blueprint::archetypes::{PlotLegend, TableRowOrder};
+use re_types::blueprint::archetypes::TableRowOrder;
 use re_types::blueprint::components::{SortOrder, TableGroupBy};
 use re_types_core::datatypes::TimeRange;
 use re_types_core::{ComponentName, SpaceViewClassIdentifier};
@@ -182,7 +182,8 @@ fn entity_and_time_vs_component_ui(
                     .into_iter()
                     .flat_map(move |chunk| {
                         chunk
-                            .indices(&query.timeline)
+                            .clone()
+                            .iter_indices(&query.timeline)
                             .into_iter()
                             .flat_map(|iter| {
                                 iter.filter(|(time, _)| {
@@ -195,6 +196,7 @@ fn entity_and_time_vs_component_ui(
                                     )
                                 })
                             })
+                            //TODO(ab): cmc help!?
                             .collect::<Vec<_>>()
                             .into_iter()
                     })
