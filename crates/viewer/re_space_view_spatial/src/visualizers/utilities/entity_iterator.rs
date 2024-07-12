@@ -54,16 +54,19 @@ pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T
         // Happy path
         values.to_vec()
     } else if let Some(last) = values.last() {
-        let mut vec = Vec::with_capacity(clamped_len);
-        if values.len() < clamped_len {
+        if values.len() == 1 {
+            // Commo happy path
+            return vec![last.clone(); clamped_len];
+        } else if values.len() < clamped_len {
             // Clamp
+            let mut vec = Vec::with_capacity(clamped_len);
             vec.extend(values.iter().cloned());
             vec.extend(std::iter::repeat(last.clone()).take(clamped_len - values.len()));
+            vec
         } else {
             // Trim
-            vec.extend(values.iter().take(clamped_len).cloned());
+            values.iter().take(clamped_len).cloned().collect()
         }
-        vec
     } else {
         // Empty input
         Vec::new()
