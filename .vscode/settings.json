@@ -40,6 +40,7 @@
     "rust-analyzer.cargo.extraEnv": {
         "IS_IN_RERUN_WORKSPACE": "yes"
     },
+    "rust-analyzer.diagnostics.enable": false, // False positives
     "rust-analyzer.showUnlinkedFileNotification": false,
     // Uncomment the following option and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
     // Don't forget to put it in a comment again before committing.
