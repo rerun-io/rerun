@@ -25,7 +25,7 @@ impl Chunk {
 
         if !cl.concatenable(cr) {
             return Err(ChunkError::Malformed {
-                reason: "cannot concatenate incompatible Chunks:\n{cl}\n{cr}".to_owned(),
+                reason: format!("cannot concatenate incompatible Chunks:\n{cl}\n{cr}"),
             });
         }
 
