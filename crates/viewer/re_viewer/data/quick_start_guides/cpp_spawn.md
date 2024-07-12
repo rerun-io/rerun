@@ -4,7 +4,7 @@
 The Rerun C++ SDK works by connecting to an awaiting Rerun Viewer over TCP.
 
 If you need to install the viewer, follow the [installation guide](https://www.rerun.io/docs/getting-started/installing-viewer). Two of the more common ways to install the Rerun are:
-* Via cargo: `cargo install rerun-cli`
+* Via cargo: `cargo install rerun-cli --locked`
 * Via pip: `pip install rerun-sdk`
 
 After you have installed it, you should be able to type `rerun` in your terminal to start the viewer.

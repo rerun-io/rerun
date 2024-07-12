@@ -16,7 +16,7 @@ __all__ = ["QueryExpression", "QueryExpressionBatch", "QueryExpressionType"]
 
 class QueryExpression(datatypes.Utf8, ComponentMixin):
     """
-    **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
+    **Component**: An individual query expression used to filter a set of [`datatypes.EntityPath`][rerun.datatypes.EntityPath]s.
 
     Each expression is either an inclusion or an exclusion expression.
     Inclusions start with an optional `+` and exclusions must start with a `-`.

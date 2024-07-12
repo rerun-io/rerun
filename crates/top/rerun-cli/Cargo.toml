@@ -35,7 +35,7 @@ path = "src/bin/rerun.rs"
 doc = false
 
 [features]
-# The default is what the user gets when they call `cargo install rerun-cli`,
+# The default is what the user gets when they call `cargo install rerun-cli --locked`,
 # so wer have all the bells and wistles here
 default = ["native_viewer", "web_viewer"]
 

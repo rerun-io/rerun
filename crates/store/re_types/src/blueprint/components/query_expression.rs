@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
+/// **Component**: An individual query expression used to filter a set of [`datatypes::EntityPath`][crate::datatypes::EntityPath]s.
 ///
 /// Each expression is either an inclusion or an exclusion expression.
 /// Inclusions start with an optional `+` and exclusions must start with a `-`.

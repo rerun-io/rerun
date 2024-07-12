@@ -24,7 +24,7 @@ class DepthImage(DepthImageExt, Archetype):
     """
     **Archetype**: A depth image.
 
-    The shape of the `TensorData` must be mappable to an `HxW` tensor.
+    The shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to an `HxW` tensor.
     Each pixel corresponds to a depth value in units specified by `meter`.
 
     Example

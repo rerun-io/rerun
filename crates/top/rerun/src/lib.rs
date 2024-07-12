@@ -5,7 +5,7 @@
 //! There is also a `rerun` binary.
 //! The binary is required in order to stream log data
 //! over the networks, and to open our `.rrd` data files.
-//! If you need it, install the `rerun` binary with `cargo install rerun-cli`.
+//! If you need it, install the `rerun` binary with `cargo install rerun-cli --locked`.
 //!
 //!
 //! ## Feature flags
@@ -36,7 +36,7 @@
 //! The binary can act either as a server, a viewer, or both,
 //! depending on which options you use when you start it.
 //!
-//! Install it with `cargo install rerun-cli`.
+//! Install it with `cargo install rerun-cli --locked`.
 //!
 //! Running just `rerun` will start the viewer, waiting for the logging library to connect
 //! using [`RecordingStreamBuilder::connect`] (see below).

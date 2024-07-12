@@ -24,6 +24,9 @@ pub enum ChunkError {
     Malformed { reason: String },
 
     #[error(transparent)]
+    Arrow(#[from] arrow2::error::Error),
+
+    #[error(transparent)]
     Serialization(#[from] SerializationError),
 }
 
@@ -933,8 +936,6 @@ impl re_types_core::SizeBytes for ChunkTimeline {
             + time_range.heap_size_bytes()
     }
 }
-
-// TODO(cmc): methods to merge chunks (compaction).
 
 // --- Sanity checks ---
 

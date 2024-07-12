@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A text element intended to be displayed in its own text-box.
+/// **Archetype**: A text element intended to be displayed in its own text box.
 ///
 /// Supports raw text and markdown.
 ///

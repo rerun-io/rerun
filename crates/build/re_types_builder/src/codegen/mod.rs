@@ -1,6 +1,19 @@
 // TODO(#3408): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Target {
+    Cpp,
+    Python,
+    Rust,
+
+    /// Markdown files shown at <https://rerun.io/docs/reference/types>.
+    ///
+    /// This target is also used for the markdown strings in the reflection API,
+    /// for use with the in-viewer markdown renderer.
+    WebDocsMarkdown,
+}
+
 /// Implements the codegen pass.
 pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].

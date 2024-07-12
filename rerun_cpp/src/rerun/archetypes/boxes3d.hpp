@@ -22,7 +22,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
+    /// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
     ///
     /// ## Example
     ///
@@ -80,9 +80,9 @@ namespace rerun::archetypes {
         /// Otherwise, each instance will have its own label.
         std::optional<Collection<rerun::components::Text>> labels;
 
-        /// Optional `ClassId`s for the boxes.
+        /// Optional `components::ClassId`s for the boxes.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         std::optional<Collection<rerun::components::ClassId>> class_ids;
 
       public:
@@ -185,9 +185,9 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional `ClassId`s for the boxes.
+        /// Optional `components::ClassId`s for the boxes.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         Boxes3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
