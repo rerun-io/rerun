@@ -100,6 +100,14 @@ impl ChunkStoreConfig {
         chunk_max_rows_if_unsorted: 256,
     };
 
+    /// [`Self::DEFAULT`], but with compaction entirely disabled.
+    pub const COMPACTION_DISABLED: Self = Self {
+        chunk_max_bytes: 0,
+        chunk_max_rows: 0,
+        chunk_max_rows_if_unsorted: 0,
+        ..Self::DEFAULT
+    };
+
     /// Environment variable to configure [`Self::enable_changelog`].
     pub const ENV_STORE_ENABLE_CHANGELOG: &'static str = "RERUN_STORE_ENABLE_CHANGELOG";
 
