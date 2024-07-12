@@ -43,15 +43,15 @@ impl Default for EllipsoidsVisualizer {
 impl EllipsoidsVisualizer {
     fn process_labels<'a>(
         entity_path: &'a EntityPath,
-        half_sizes: &'a [HalfSize3D],
-        centers: impl Iterator<Item = &'a Position3D> + 'a,
+        num_instances: usize,
+        centers: &'a [Position3D],
         labels: &'a [Text],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_entity: glam::Affine3A,
     ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = clamped(labels, half_sizes.len());
-        let centers = centers.chain(std::iter::repeat(&Position3D::ZERO));
+        let labels = clamped(labels, num_instances);
+        let centers = clamped(centers, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
         itertools::izip!(annotation_infos.iter(), centers, labels, colors)
             .enumerate()
             .filter_map(move |(i, (annotation_info, center, label, color))| {
@@ -107,11 +107,10 @@ impl EllipsoidsVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
-            let centers = clamped(data.centers, num_instances);
             self.0.ui_labels.extend(Self::process_labels(
                 entity_path,
-                data.half_sizes,
-                centers,
+                num_instances,
+                data.centers,
                 data.labels,
                 &colors,
                 &annotation_infos,
