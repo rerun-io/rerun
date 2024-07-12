@@ -462,6 +462,7 @@ pub fn data_density_graph_ui2(
 }
 
 struct DensityDataAggregate<'a> {
+    ui: &'a egui::Ui,
     item: &'a TimePanelItem,
     timeline: Timeline,
     time_ranges_ui: &'a TimeRangesUi,
@@ -477,7 +478,7 @@ struct DensityDataAggregate<'a> {
 
 impl<'a> DensityDataAggregate<'a> {
     fn new(
-        ui: &egui::Ui,
+        ui: &'a egui::Ui,
         item: &'a TimePanelItem,
         timeline: Timeline,
         time_ranges_ui: &'a TimeRangesUi,
@@ -487,6 +488,7 @@ impl<'a> DensityDataAggregate<'a> {
         let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
         Self {
+            ui,
             item,
             timeline,
             time_ranges_ui,
@@ -544,6 +546,17 @@ impl<'a> DensityDataAggregate<'a> {
                 ) {
                     let pointer_time_range =
                         ResolvedTimeRange::new(min_time.floor(), max_time.ceil());
+
+                    self.ui.ctx().debug_painter().debug_text(
+                        egui::pos2(pointer_pos.x, pointer_pos.y),
+                        egui::Align2::LEFT_TOP,
+                        egui::Color32::GREEN,
+                        format!(
+                            "is_sorted={}, is_time_sorted={}",
+                            chunk.is_sorted(),
+                            chunk.is_time_sorted()
+                        ),
+                    );
 
                     let mut hovered_events = 0;
                     visit_chunk_sub_range(
