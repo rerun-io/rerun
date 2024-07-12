@@ -168,7 +168,7 @@ pub struct DepthCloud {
 
 impl DepthCloud {
     /// World-space bounding-box.
-    pub fn world_space_bbox(&self) -> macaw::BoundingBox {
+    pub fn world_space_bbox(&self) -> re_math::BoundingBox {
         let max_depth = self.max_depth_in_world;
         let w = self.depth_dimensions.x as f32;
         let h = self.depth_dimensions.y as f32;
@@ -184,7 +184,7 @@ impl DepthCloud {
         let focal_length = glam::vec2(intrinsics.col(0).x, intrinsics.col(1).y);
         let offset = intrinsics.col(2).truncate();
 
-        let mut bbox = macaw::BoundingBox::nothing();
+        let mut bbox = re_math::BoundingBox::NOTHING;
 
         for corner in corners {
             let depth = corner.z;

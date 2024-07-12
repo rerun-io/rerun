@@ -1,11 +1,9 @@
 use egui::{emath::RectTransform, NumExt as _};
-use glam::Affine3A;
-use macaw::{BoundingBox, Quat, Vec3};
-use re_ui::ContextExt;
-use re_viewport_blueprint::ViewProperty;
+use glam::{Affine3A, Quat, Vec3};
 use web_time::Instant;
 
 use re_log_types::EntityPath;
+use re_math::BoundingBox;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     LineDrawableBuilder, Size,
@@ -17,10 +15,12 @@ use re_space_view::controls::{
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, view_coordinates::SignedAxis3,
 };
+use re_ui::ContextExt;
 use re_viewer_context::{
     gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
     ViewQuery, ViewerContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
@@ -520,7 +520,7 @@ impl SpatialSpaceView3D {
             let axis_length = 1.0; // The axes are also a measuring stick
             crate::visualizers::add_axis_arrows(
                 &mut line_builder,
-                macaw::Affine3A::IDENTITY,
+                glam::Affine3A::IDENTITY,
                 None,
                 axis_length,
                 re_renderer::OutlineMaskPreference::NONE,
@@ -837,7 +837,7 @@ fn show_projections_from_2d_space(
                     let origin = cam.position();
 
                     if let Some(dir) = (stop_in_world - origin).try_normalize() {
-                        let ray = macaw::Ray3::from_origin_dir(origin, dir);
+                        let ray = re_math::Ray3::from_origin_dir(origin, dir);
 
                         let thick_ray_length = (stop_in_world - origin).length();
                         add_picking_ray(
@@ -864,7 +864,7 @@ fn show_projections_from_2d_space(
                 {
                     let cam_to_pos = *pos - tracked_camera.position();
                     let distance = cam_to_pos.length();
-                    let ray = macaw::Ray3::from_origin_dir(
+                    let ray = re_math::Ray3::from_origin_dir(
                         tracked_camera.position(),
                         cam_to_pos / distance,
                     );
@@ -884,7 +884,7 @@ fn show_projections_from_2d_space(
 
 fn add_picking_ray(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    ray: macaw::Ray3,
+    ray: re_math::Ray3,
     scene_bbox: &BoundingBox,
     thick_ray_length: f32,
     ray_color: egui::Color32,
@@ -908,7 +908,7 @@ fn add_picking_ray(
 }
 
 fn default_eye(
-    bounding_box: &macaw::BoundingBox,
+    bounding_box: &re_math::BoundingBox,
     scene_view_coordinates: Option<ViewCoordinates>,
 ) -> ViewEye {
     // Defaults to RFU.

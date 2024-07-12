@@ -81,7 +81,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
             self.0.add_bounding_box(
                 data_result.entity_path.hash(),
-                macaw::BoundingBox::ZERO,
+                re_math::BoundingBox::ZERO,
                 world_from_obj,
             );
 
@@ -123,7 +123,7 @@ const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 pub fn add_axis_arrows(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    world_from_obj: macaw::Affine3A,
+    world_from_obj: glam::Affine3A,
     ent_path: Option<&EntityPath>,
     axis_length: f32,
     outline_mask_ids: re_renderer::OutlineMaskPreference,

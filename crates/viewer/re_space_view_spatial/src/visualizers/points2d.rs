@@ -118,7 +118,8 @@ impl Points2DVisualizer {
                 }
             }
 
-            let obj_space_bounding_box = macaw::BoundingBox::from_points(positions.iter().copied());
+            let obj_space_bounding_box =
+                re_math::BoundingBox::from_points(positions.iter().copied());
             self.data.add_bounding_box(
                 entity_path.hash(),
                 obj_space_bounding_box,
