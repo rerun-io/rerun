@@ -52,7 +52,7 @@ pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<
 pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
     if values.len() == clamped_len {
         // Happy path
-        values.to_vec()
+        values.to_vec() // TODO(emilk): return a slice reference instead, in a `Cow` or similar
     } else if let Some(last) = values.last() {
         if values.len() == 1 {
             // Commo happy path
