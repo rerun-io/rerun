@@ -41,7 +41,7 @@ namespace rerun::archetypes {
         /// If not specified, the centers will be at (0, 0, 0).
         std::optional<Collection<rerun::components::Position3D>> centers;
 
-        /// Optional rotations of the boxes.
+        /// Optional rotations of the ellipsoids.
         ///
         /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
         std::optional<Collection<rerun::components::Rotation3D>> rotations;
@@ -113,7 +113,7 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional rotations of the boxes.
+        /// Optional rotations of the ellipsoids.
         ///
         /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
         Ellipsoids with_rotations(Collection<rerun::components::Rotation3D> _rotations) && {

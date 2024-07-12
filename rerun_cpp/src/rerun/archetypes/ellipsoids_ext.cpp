@@ -18,8 +18,8 @@ namespace rerun {
         }
 
         /// Creates new `Ellipsoids` with `half_sizes` created from radii.
-        ///
-        /// TODO(andreas): This should not take an std::vector.
+        //
+        // TODO(andreas): This should not take an std::vector.
         static Ellipsoids from_radii(const std::vector<float>& sizes);
 
         /// Creates new `Ellipsoids` with `centers` and `half_sizes`.
@@ -34,8 +34,8 @@ namespace rerun {
         }
 
         /// Creates new `Ellipsoids` with `half_sizes` and `centers` created from centers and radii.
-        ///
-        /// TODO(andreas): This should not take an std::vector.
+        //
+        // TODO(andreas): This should not take an std::vector.
         static Ellipsoids from_centers_and_radii(
             const std::vector<datatypes::Vec3D>& centers, const std::vector<float>& radii
         );

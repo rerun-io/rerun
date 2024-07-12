@@ -76,7 +76,7 @@ class Ellipsoids(EllipsoidsExt, Archetype):
         default=None,
         converter=components.Rotation3DBatch._optional,  # type: ignore[misc]
     )
-    # Optional rotations of the boxes.
+    # Optional rotations of the ellipsoids.
     #
     # If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
     #

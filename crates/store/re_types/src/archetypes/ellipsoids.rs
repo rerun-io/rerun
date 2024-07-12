@@ -38,7 +38,7 @@ pub struct Ellipsoids {
     /// If not specified, the centers will be at (0, 0, 0).
     pub centers: Option<Vec<crate::components::Position3D>>,
 
-    /// Optional rotations of the boxes.
+    /// Optional rotations of the ellipsoids.
     ///
     /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
     pub rotations: Option<Vec<crate::components::Rotation3D>>,
@@ -332,7 +332,7 @@ impl Ellipsoids {
         self
     }
 
-    /// Optional rotations of the boxes.
+    /// Optional rotations of the ellipsoids.
     ///
     /// If not specified, the axes of the ellipsoid align with the axes of the coordinate system.
     #[inline]
