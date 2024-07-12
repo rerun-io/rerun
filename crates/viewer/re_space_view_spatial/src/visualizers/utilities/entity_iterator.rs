@@ -19,7 +19,7 @@ use crate::{
 
 // ---
 
-/// Clamp the latest value in `values` in order to reach a length of `clamped_len`.
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///
 /// Returns an empty iterator if values is empty.
 #[inline]
@@ -34,6 +34,42 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
             .chain(std::iter::repeat(last))
             .take(clamped_len),
     )
+}
+
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
+///
+/// Returns an empty vctor if values is empty.
+#[inline]
+pub fn clamped_vec<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
+    if values.len() == clamped_len {
+        // Happy path
+        values.to_vec()
+    } else if let Some(last) = values.last() {
+        let mut vec = Vec::with_capacity(clamped_len);
+        if values.len() < clamped_len {
+            // Clamp
+            vec.extend(values.iter().cloned());
+            vec.extend(std::iter::repeat(last.clone()).take(clamped_len - values.len()));
+        } else {
+            // Trim
+            vec.extend(values.iter().take(clamped_len).cloned());
+        }
+        vec
+    } else {
+        // Empty input
+        Vec::new()
+    }
+}
+
+#[test]
+fn test_clamped_vec() {
+    assert_eq!(clamped_vec::<i32>(&[], 0), Vec::<i32>::default());
+    assert_eq!(clamped_vec::<i32>(&[], 3), Vec::<i32>::default());
+    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 0), Vec::<i32>::default());
+    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 1), vec![1]);
+    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 2), vec![1, 2]);
+    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 3), vec![1, 2, 3]);
+    assert_eq!(clamped_vec::<i32>(&[1, 2, 3], 5), vec![1, 2, 3, 3, 3]);
 }
 
 // --- Cached APIs ---
