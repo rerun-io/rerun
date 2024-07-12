@@ -259,6 +259,21 @@ enum Command {
     /// Print the contents of an .rrd or .rbl file.
     Print(PrintCommand),
 
+    /// Compacts the contents of an .rrd or .rbl file and writes the result to a new file.
+    ///
+    /// Use the usual environment variables to control the compaction thresholds:
+    /// `RERUN_CHUNK_MAX_ROWS`,
+    /// `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED`,
+    /// `RERUN_CHUNK_MAX_BYTES`.
+    ///
+    /// Example: `RERUN_CHUNK_MAX_ROWS=4096 RERUN_CHUNK_MAX_BYTES=1048576 rerun compact -i input.rrd -o output.rrd`
+    Compact {
+        #[arg(short = 'i', long = "input", value_name = "src.rrd")]
+        path_to_input_rrd: String,
+        #[arg(short = 'o', long = "output", value_name = "dst.rrd")]
+        path_to_output_rrd: String,
+    },
+
     /// Reset the memory of the Rerun Viewer.
     ///
     /// Only run this if you're having trouble with the Viewer,
@@ -386,6 +401,15 @@ where
 
             Command::Print(print_command) => print_command.run(),
 
+            Command::Compact {
+                path_to_input_rrd,
+                path_to_output_rrd,
+            } => {
+                let path_to_input_rrd = PathBuf::from(path_to_input_rrd);
+                let path_to_output_rrd = PathBuf::from(path_to_output_rrd);
+                run_compact(&path_to_input_rrd, &path_to_output_rrd)
+            }
+
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
         }
@@ -467,7 +491,7 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
             let msg = msg.context("decode rrd message")?;
             stores
                 .entry(msg.store_id().clone())
-                .or_insert(re_entity_db::EntityDb::new(msg.store_id().clone()))
+                .or_insert_with(|| re_entity_db::EntityDb::new(msg.store_id().clone()))
                 .add(&msg)
                 .context("decode rrd file contents")?;
         }
@@ -535,6 +559,100 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
             ),
         );
     }
+
+    Ok(())
+}
+
+fn run_compact(path_to_input_rrd: &Path, path_to_output_rrd: &Path) -> anyhow::Result<()> {
+    use re_entity_db::EntityDb;
+    use re_log_types::StoreId;
+
+    let rrd_in =
+        std::fs::File::open(path_to_input_rrd).with_context(|| format!("{path_to_input_rrd:?}"))?;
+    let rrd_in_size = rrd_in.metadata().ok().map(|md| md.len());
+
+    let file_size_to_string = |size: Option<u64>| {
+        size.map_or_else(
+            || "<unknown>".to_owned(),
+            |size| re_format::format_bytes(size as _),
+        )
+    };
+
+    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
+    // NOTE: We're doing headless, there's no point in running subscribers, it will just
+    // (massively) slow us down.
+    store_config.enable_changelog = false;
+
+    re_log::info!(
+        src = ?path_to_input_rrd,
+        src_size_bytes = %file_size_to_string(rrd_in_size),
+        dst = ?path_to_output_rrd,
+        max_num_rows = %re_format::format_uint(store_config.chunk_max_rows),
+        max_num_bytes = %re_format::format_bytes(store_config.chunk_max_bytes as _),
+        "compaction started"
+    );
+
+    let now = std::time::Instant::now();
+
+    let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
+    let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_in)?;
+    let version = decoder.version();
+    for msg in decoder {
+        let msg = msg.context("decode rrd message")?;
+        entity_dbs
+            .entry(msg.store_id().clone())
+            .or_insert_with(|| {
+                re_entity_db::EntityDb::with_store_config(
+                    msg.store_id().clone(),
+                    store_config.clone(),
+                )
+            })
+            .add(&msg)
+            .context("decode rrd file contents")?;
+    }
+
+    anyhow::ensure!(
+        !entity_dbs.is_empty(),
+        "no recordings found in rrd/rbl file"
+    );
+
+    let mut rrd_out = std::fs::File::create(path_to_output_rrd)
+        .with_context(|| format!("{path_to_input_rrd:?}"))?;
+
+    let messages: Result<Vec<Vec<LogMsg>>, _> = entity_dbs
+        .into_values()
+        .map(|entity_db| entity_db.to_messages(None /* time selection */))
+        .collect();
+    let messages = messages?;
+    let messages = messages.iter().flatten();
+
+    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut rrd_out)
+        .context("Message encode")?;
+
+    let rrd_out_size = rrd_out.metadata().ok().map(|md| md.len());
+
+    let compaction_ratio =
+        if let (Some(rrd_in_size), Some(rrd_out_size)) = (rrd_in_size, rrd_out_size) {
+            format!(
+                "{:3.3}%",
+                100.0 - rrd_out_size as f64 / (rrd_in_size as f64 + f64::EPSILON) * 100.0
+            )
+        } else {
+            "N/A".to_owned()
+        };
+
+    re_log::info!(
+        src = ?path_to_input_rrd,
+        src_size_bytes = %file_size_to_string(rrd_in_size),
+        dst = ?path_to_output_rrd,
+        dst_size_bytes = %file_size_to_string(rrd_out_size),
+        time = ?now.elapsed(),
+        compaction_ratio,
+        "compaction finished"
+    );
 
     Ok(())
 }
@@ -738,10 +856,10 @@ fn run_impl(
             && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
         {
             anyhow::bail!(
-                    "Trying to spawn a websocket server on {}, but this port is \
-                    already used by the server we're connecting to. Please specify a different port.",
-                    args.port
-                );
+                "Trying to spawn a websocket server on {}, but this port is \
+                already used by the server we're connecting to. Please specify a different port.",
+                args.port
+            );
         }
 
         #[cfg(feature = "server")]
