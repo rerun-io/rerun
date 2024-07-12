@@ -438,7 +438,7 @@ pub fn data_density_graph_ui2(
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             ctx.selection_state().set_selection(item.to_item());
-            time_ctrl.set_time(data.hovered_time_range.max());
+            time_ctrl.set_time(data.hovered_time_range.center());
             time_ctrl.pause();
         } else if ui.ctx().dragged_id().is_none() {
             egui::show_tooltip_at_pointer(
@@ -856,7 +856,7 @@ fn show_row_ids_tooltip(
     }
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.center());
 
     let TimePanelItem {
         entity_path,
