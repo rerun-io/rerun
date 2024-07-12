@@ -119,6 +119,7 @@ fn log(
         let mut chunk = chunk.build()?;
         if !sorted {
             chunk.shuffle_random(0xab12_cd34_ef56_0178);
+            assert!(!chunk.is_sorted());
         }
         rec.record_chunk_raw(chunk);
 
