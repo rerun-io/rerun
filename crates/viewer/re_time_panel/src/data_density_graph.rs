@@ -391,7 +391,7 @@ pub fn data_density_graph_ui2(
 
     let timeline = *time_ctrl.timeline();
 
-    let mut density = DensityDataAggregate::new(ui, item, timeline, time_ranges_ui, row_rect);
+    let mut data = DensityDataAggregate::new(ui, item, timeline, time_ranges_ui, row_rect);
 
     // Collect all relevant chunks in the visible time range.
     // We do this as a separate step so that we can also deduplicate chunks.
@@ -411,21 +411,21 @@ pub fn data_density_graph_ui2(
     );
 
     for (chunk, time_range, num_events) in chunk_ranges {
-        density.add_data_point(&chunk, time_range, num_events);
+        data.add_chunk_range(&chunk, time_range, num_events);
     }
 
     let hovered_x_range = (time_ranges_ui
-        .x_from_time_f32(density.hovered_time_range.min().into())
+        .x_from_time_f32(data.hovered_time_range.min().into())
         .unwrap_or(f32::MAX)
         - MARGIN_X)
         ..=(time_ranges_ui
-            .x_from_time_f32(density.hovered_time_range.max().into())
+            .x_from_time_f32(data.hovered_time_range.max().into())
             .unwrap_or(f32::MIN)
             + MARGIN_X);
 
-    density.density_graph.buckets = smooth(&density.density_graph.buckets);
+    data.density_graph.buckets = smooth(&data.density_graph.buckets);
 
-    density.density_graph.paint(
+    data.density_graph.paint(
         data_density_graph_painter,
         row_rect.y_range(),
         time_area_painter,
@@ -433,12 +433,12 @@ pub fn data_density_graph_ui2(
         hovered_x_range,
     );
 
-    if density.num_hovered_messages > 0 {
+    if data.num_hovered_messages > 0 {
         ctx.selection_state().set_hovered(item.to_item());
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             ctx.selection_state().set_selection(item.to_item());
-            time_ctrl.set_time(density.hovered_time_range.min());
+            time_ctrl.set_time(data.hovered_time_range.min());
             time_ctrl.pause();
         } else if ui.ctx().dragged_id().is_none() {
             egui::show_tooltip_at_pointer(
@@ -452,8 +452,8 @@ pub fn data_density_graph_ui2(
                         time_ctrl,
                         db,
                         item,
-                        density.hovered_time_range,
-                        density.num_hovered_messages,
+                        data.hovered_time_range,
+                        data.num_hovered_messages,
                     );
                 },
             );
@@ -501,8 +501,8 @@ impl<'a> DensityDataAggregate<'a> {
         }
     }
 
-    fn add_data_point(&mut self, chunk: &Chunk, time_range: ResolvedTimeRange, count: usize) {
-        if count == 0 {
+    fn add_chunk_range(&mut self, chunk: &Chunk, time_range: ResolvedTimeRange, num_events: usize) {
+        if num_events == 0 {
             return;
         }
 
@@ -513,7 +513,8 @@ impl<'a> DensityDataAggregate<'a> {
             return;
         };
 
-        self.density_graph.add_range((min_x, max_x), count as _);
+        self.density_graph
+            .add_range((min_x, max_x), num_events as _);
 
         if let Some(pointer_pos) = self.pointer_pos {
             let is_hovered = if (max_x - min_x).abs() < 1.0 {
@@ -579,6 +580,8 @@ fn visit_chunk_sub_range(
     time_range: ResolvedTimeRange,
     mut visitor: impl FnMut(Arc<Chunk>, &ChunkTimeline, usize),
 ) {
+    re_tracing::profile_function!();
+
     let query = RangeQuery::new(timeline, time_range);
     if let Some(component_name) = component_name {
         let chunk = Arc::new(chunk.range(&query, component_name));
@@ -619,6 +622,8 @@ fn visit_relevant_chunks(
     time_range: ResolvedTimeRange,
     mut visitor: impl FnMut(Arc<Chunk>, ResolvedTimeRange, usize),
 ) {
+    re_tracing::profile_function!();
+
     let query = RangeQuery::new(timeline, time_range);
 
     if let Some(component_name) = component_name {
