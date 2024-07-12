@@ -208,7 +208,7 @@ fn entity_and_time_vs_component_ui(
                 &latest_at_query,
                 ctx.recording(),
                 ui,
-                None,
+                Some(query.space_view_id),
                 entity_path,
             );
         });
@@ -325,7 +325,14 @@ fn entity_and_instance_vs_component_ui(
         let instance = &sorted_instance_paths[row.index()];
 
         row.col(|ui| {
-            instance_path_button(ctx, &latest_at_query, ctx.recording(), ui, None, instance);
+            instance_path_button(
+                ctx,
+                &latest_at_query,
+                ctx.recording(),
+                ui,
+                Some(query.space_view_id),
+                instance,
+            );
         });
 
         for component_name in &sorted_components {
@@ -338,7 +345,7 @@ fn entity_and_instance_vs_component_ui(
                 );
 
                 if let Some(results) =
-                    // This is a duplicate of the one above, but this ok since this codes runs
+                    // This is a duplicate of the one above, but this is ok since this codes runs
                     // *only* for visible rows.
                     results.components.get(component_name)
                 {
