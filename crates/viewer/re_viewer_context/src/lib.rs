@@ -73,7 +73,7 @@ pub use space_view::{
 };
 pub use store_context::StoreContext;
 pub use store_hub::StoreHub;
-pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
+pub use tensor::{ImageDecodeCache, TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use typed_entity_collections::{
     ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,

@@ -8,6 +8,7 @@ mod boxes3d;
 mod cameras;
 mod depth_images;
 mod ellipsoids;
+mod image_encoded;
 mod images;
 mod lines2d;
 mod lines3d;
@@ -74,6 +75,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
+    system_registry.register_visualizer::<image_encoded::ImageEncodedVisualizer>()?;
     system_registry.register_visualizer::<images::ImageVisualizer>()?;
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;

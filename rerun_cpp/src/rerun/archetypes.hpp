@@ -14,6 +14,7 @@
 #include "archetypes/disconnected_space.hpp"
 #include "archetypes/ellipsoids.hpp"
 #include "archetypes/image.hpp"
+#include "archetypes/image_encoded.hpp"
 #include "archetypes/line_strips2d.hpp"
 #include "archetypes/line_strips3d.hpp"
 #include "archetypes/mesh3d.hpp"

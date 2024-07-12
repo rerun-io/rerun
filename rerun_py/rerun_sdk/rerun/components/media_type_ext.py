@@ -20,6 +20,24 @@ class MediaTypeExt:
     <https://www.iana.org/assignments/media-types/text/markdown>
     """
 
+    # --------------------------
+    # Images:
+
+    JPEG: MediaType = None  # type: ignore[assignment]
+    """
+    [JPEG image](https://en.wikipedia.org/wiki/JPEG): `image/jpeg`.
+    """
+
+    PNG: MediaType = None  # type: ignore[assignment]
+    """
+    [PNG image](https://en.wikipedia.org/wiki/PNG): `image/png`.
+
+    <https://www.iana.org/assignments/media-types/image/png>
+    """
+
+    # --------------------------
+    # Meshes:
+
     GLB: MediaType = None  # type: ignore[assignment]
     """
     Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
@@ -53,6 +71,10 @@ class MediaTypeExt:
     def deferred_patch_class(cls: Any) -> None:
         cls.TEXT = cls("text/plain")
         cls.MARKDOWN = cls("text/markdown")
+
+        cls.JPEG = cls("image/jpeg")
+        cls.PNG = cls("image/png")
+
         cls.GLB = cls("model/gltf-binary")
         cls.GLTF = cls("model/gltf+json")
         cls.OBJ = cls("model/obj")
