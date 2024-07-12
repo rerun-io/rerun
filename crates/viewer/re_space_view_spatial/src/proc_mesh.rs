@@ -128,7 +128,8 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                     .collect()
             };
             WireframeMesh {
-                bbox: re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0)),
+                // sphere’s radius is 1, so its size is 2
+                bbox: re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0)),
                 vertex_count: line_strips.iter().map(|v| v.len()).sum(),
                 line_strips,
             }
