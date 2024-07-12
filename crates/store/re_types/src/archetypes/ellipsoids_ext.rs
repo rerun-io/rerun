@@ -13,6 +13,7 @@ impl Ellipsoids {
     // Note: This is not a `Radius` component because the `Radius` component is for
     // the on-screen sizes of lines and points.
     #[inline]
+    #[doc(alias = "sphere")]
     pub fn from_radii(radii: impl IntoIterator<Item = f32>) -> Self {
         Self::new(radii.into_iter().map(sphere_size))
     }
@@ -30,6 +31,7 @@ impl Ellipsoids {
     /// [`Self::half_sizes`] all equal to the given radii.
     // Note: This is not a `Radius` component because the `Radius` component is for
     // the on-screen sizes of lines and points.
+    #[doc(alias = "sphere")]
     #[inline]
     pub fn from_centers_and_radii(
         centers: impl IntoIterator<Item = impl Into<Position3D>>,
