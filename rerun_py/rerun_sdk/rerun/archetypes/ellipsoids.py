@@ -19,7 +19,7 @@ __all__ = ["Ellipsoids"]
 @define(str=False, repr=False, init=False)
 class Ellipsoids(EllipsoidsExt, Archetype):
     """
-    **Archetype**: 3D ellipsoids with half-extents and optional center, rotations, rotations, colors etc.
+    **Archetype**: 3D ellipsoids or spheres.
 
     This archetype is for ellipsoids or spheres whose size is a key part of the data
     (e.g. a bounding sphere).

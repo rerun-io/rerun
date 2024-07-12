@@ -38,7 +38,7 @@ This page lists all built-in archetypes.
 * [`Arrows3D`](archetypes/arrows3d.md): 3D arrows with optional colors, radii, labels, etc.
 * [`Asset3D`](archetypes/asset3d.md): A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 * [`Boxes3D`](archetypes/boxes3d.md): 3D boxes with half-extents and optional center, rotations, colors etc.
-* [`Ellipsoids`](archetypes/ellipsoids.md): 3D ellipsoids with half-extents and optional center, rotations, rotations, colors etc.
+* [`Ellipsoids`](archetypes/ellipsoids.md): 3D ellipsoids or spheres.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 * [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).

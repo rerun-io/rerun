@@ -22,7 +22,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: 3D ellipsoids with half-extents and optional center, rotations, rotations, colors etc.
+    /// **Archetype**: 3D ellipsoids or spheres.
     ///
     /// This archetype is for ellipsoids or spheres whose size is a key part of the data
     /// (e.g. a bounding sphere).
@@ -70,17 +70,25 @@ namespace rerun::archetypes {
       public:
         // Extensions to generated type defined in 'ellipsoids_ext.cpp'
 
+        /// Creates new `Ellipsoids` that are spheres, with `half_sizes` created from radii.
+        //
+        // TODO(andreas): This should not take an std::vector.
+        static Ellipsoids from_radii(const std::vector<float>& sizes);
+
+        /// Creates new `Ellipsoids` that are spheres, with `half_sizes` and `centers` created
+        /// from centers and radii.
+        //
+        // TODO(andreas): This should not take an std::vector.
+        static Ellipsoids from_centers_and_radii(
+            const std::vector<datatypes::Vec3D>& centers, const std::vector<float>& radii
+        );
+
         /// Creates new `Ellipsoids` with `half_sizes` centered around the local origin.
         static Ellipsoids from_half_sizes(Collection<components::HalfSize3D> half_sizes) {
             Ellipsoids ellipsoids;
             ellipsoids.half_sizes = std::move(half_sizes);
             return ellipsoids;
         }
-
-        /// Creates new `Ellipsoids` with `half_sizes` created from radii.
-        ///
-        /// TODO(andreas): This should not take an std::vector.
-        static Ellipsoids from_radii(const std::vector<float>& sizes);
 
         /// Creates new `Ellipsoids` with `centers` and `half_sizes`.
         static Ellipsoids from_centers_and_half_sizes(
@@ -92,13 +100,6 @@ namespace rerun::archetypes {
             ellipsoids.centers = std::move(centers);
             return ellipsoids;
         }
-
-        /// Creates new `Ellipsoids` with `half_sizes` and `centers` created from centers and radii.
-        ///
-        /// TODO(andreas): This should not take an std::vector.
-        static Ellipsoids from_centers_and_radii(
-            const std::vector<datatypes::Vec3D>& centers, const std::vector<float>& radii
-        );
 
       public:
         Ellipsoids() = default;
