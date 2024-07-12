@@ -52,7 +52,6 @@ skip = [
   { name = "block2" },            # Old version via winit 0.29 -> icrate 0.0.4
   { name = "cargo_metadata" },    # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "cfg_aliases" },       # Tiny macro-only crate. Winit and other use older version than us.
-  { name = "glam" },              # Old version used by hexasphere
   { name = "hashbrown" },         # Old version used by polar-rs
   { name = "libloading" },        # Old version used by ash (vulkan binding), newer version used by khronos-egl
   { name = "memoffset" },         # Small crate

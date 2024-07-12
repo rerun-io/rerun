@@ -84,13 +84,9 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
 
     match *key {
         ProcMeshKey::Sphere { subdivisions } => {
-            let subdiv = hexasphere::shapes::IcoSphere::new(subdivisions, |other_glam_vec| {
-                // `hexasphere` uses a different version of `glam` than we do.
-                // <https://github.com/OptimisticPeach/hexasphere/issues/19>
-                <[f32; 3]>::from(other_glam_vec).into()
-            });
+            let subdiv = hexasphere::shapes::IcoSphere::new(subdivisions, |_| ());
 
-            let sphere_points = subdiv.raw_data();
+            let sphere_points = subdiv.raw_points();
 
             // TODO(kpreid): There is a bug in `hexasphere` where it fails to return lines which
             // reach the original corners of the shape. This will be fixed as part of
@@ -105,7 +101,7 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                     .map(|strip| -> Vec<Vec3> {
                         strip
                             .iter()
-                            .map(|&i| sphere_points[i as usize - 1])
+                            .map(|&i| sphere_points[i as usize - 1].into())
                             .collect()
                     })
                     .collect()
@@ -123,7 +119,12 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
 
                 lines
                     .into_iter()
-                    .map(|(i1, i2)| vec![sphere_points[i1 as usize], sphere_points[i2 as usize]])
+                    .map(|(i1, i2)| {
+                        vec![
+                            sphere_points[i1 as usize].into(),
+                            sphere_points[i2 as usize].into(),
+                        ]
+                    })
                     .collect()
             };
             WireframeMesh {
