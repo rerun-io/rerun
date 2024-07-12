@@ -4445,6 +4445,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "rfd",
+ "unindent",
 ]
 
 [[package]]

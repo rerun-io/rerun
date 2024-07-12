@@ -43,10 +43,10 @@ pub struct ChunkStoreConfig {
     /// See also [`ChunkStoreConfig::chunk_max_rows_if_unsorted`].
     ///
     /// This is a multi-dimensional trade-off:
-    /// * Larger chunks lead to less fixed overhead caused to metadata, indices and such. Good.
-    /// * Larger chunks lead to slower query execution in unhappy paths. Bad.
+    /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
+    /// * Larger chunks lead to slower query execution on some unhappy paths. Bad.
     /// * Larger chunks lead to slower and slower compaction as chunks grow larger. Bad.
-    /// * Larger chunks lead to coarser garbage collection. Bad.
+    /// * Larger chunks lead to coarser garbage collection. Good or bad depending on use case.
     /// * Larger chunks lead to less precision in e.g. the time panel. Bad.
     ///
     /// Empirical testing shows that the space overhead gains rapidly diminish beyond ~1000 rows,
@@ -61,10 +61,10 @@ pub struct ChunkStoreConfig {
     /// See also [`ChunkStoreConfig::chunk_max_rows`].
     ///
     /// This is a multi-dimensional trade-off:
-    /// * Larger chunks lead to less fixed overhead caused to metadata, indices and such. Good.
-    /// * Larger chunks lead to slower query execution in unhappy paths. Bad.
+    /// * Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.
+    /// * Larger chunks lead to slower query execution on some unhappy paths. Bad.
     /// * Larger chunks lead to slower and slower compaction as chunks grow larger. Bad.
-    /// * Larger chunks lead to coarser garbage collection. Bad.
+    /// * Larger chunks lead to coarser garbage collection. Good or bad depending on use case.
     /// * Larger chunks lead to less precision in e.g. the time panel. Bad.
     ///
     /// Empirical testing shows that the space overhead gains rapidly diminish beyond ~1000 rows,
