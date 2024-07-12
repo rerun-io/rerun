@@ -250,6 +250,24 @@ impl SelectionPanel {
                 }
 
                 if instance_path.is_all() {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Store entity").value_fn(|ui, _| {
+                            let (query, db) = guess_query_and_db_for_selected_entity(
+                                ctx,
+                                &instance_path.entity_path,
+                            );
+
+                            item_ui::entity_path_button(
+                                ctx,
+                                &query,
+                                db,
+                                ui,
+                                None,
+                                &instance_path.entity_path,
+                            );
+                        }),
+                    );
+
                     let entity_path = &instance_path.entity_path;
                     let query_result = ctx.lookup_query_result(*view_id);
                     let data_result = query_result
