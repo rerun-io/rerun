@@ -4829,6 +4829,7 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_space_view",
+ "re_space_view_dataframe",
  "re_space_view_spatial",
  "re_space_view_time_series",
  "re_tracing",
