@@ -532,7 +532,7 @@ fn send_mem_sink_as_default_blueprint(
 }
 
 #[pyfunction]
-#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![]))]
+#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![], extra_env = vec![]))]
 fn spawn(
     port: u16,
     memory_limit: String,
@@ -540,6 +540,7 @@ fn spawn(
     executable_name: String,
     executable_path: Option<String>,
     extra_args: Vec<String>,
+    extra_env: Vec<(String, String)>,
 ) -> PyResult<()> {
     let spawn_opts = re_sdk::SpawnOptions {
         port,
@@ -549,6 +550,7 @@ fn spawn(
         executable_name,
         executable_path,
         extra_args,
+        extra_env,
     };
 
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))

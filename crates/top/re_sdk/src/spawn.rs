@@ -45,6 +45,9 @@ pub struct SpawnOptions {
     /// Extra arguments that will be passed as-is to the Rerun Viewer process.
     pub extra_args: Vec<String>,
 
+    /// Extra environment variables that will be passed as-is to the Rerun Viewer process.
+    pub extra_env: Vec<(String, String)>,
+
     /// Hide the welcome screen.
     pub hide_welcome_screen: bool,
 }
@@ -61,6 +64,7 @@ impl Default for SpawnOptions {
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
             extra_args: Vec::new(),
+            extra_env: Vec::new(),
             hide_welcome_screen: false,
         }
     }
@@ -268,6 +272,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     }
 
     rerun_bin.args(opts.extra_args.clone());
+    rerun_bin.envs(opts.extra_env.clone());
 
     // SAFETY: This code is only run in the child fork, we are not modifying any memory
     // that is shared with the parent process.
@@ -290,7 +295,8 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
         // at all, the connection will fail immediately, irrelevant of the timeout configuration.
         // For that reason we use an extra loop.
-        for _ in 0..5 {
+        for i in 0..5 {
+            re_log::debug!("connection attempt {}", i + 1);
             if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
                 break;
             }
