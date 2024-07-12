@@ -1524,6 +1524,21 @@ impl RecordingStream {
         }
     }
 
+    /// Records a single [`Chunk`].
+    ///
+    /// This will _not_ inject `log_tick` and `log_time` timeline columns into the chunk,
+    /// for that use [`Self::record_chunk`].
+    #[inline]
+    pub fn record_chunk_raw(&self, chunk: Chunk) {
+        let f = move |inner: &RecordingStreamInner| {
+            inner.batcher.push_chunk(chunk);
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to record_chunk() ignored");
+        }
+    }
+
     /// Swaps the underlying sink for a new one.
     ///
     /// This guarantees that:
