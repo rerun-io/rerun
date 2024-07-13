@@ -61,7 +61,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     }
 
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        super::ui_3d::help_text(egui_ctx)
+        super::ui_3d::help_markdown(egui_ctx)
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {

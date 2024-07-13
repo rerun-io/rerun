@@ -59,7 +59,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
     }
 
     fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        super::ui_2d::help_text(egui_ctx)
+        super::ui_2d::help_markdown(egui_ctx)
     }
 
     fn on_register(
