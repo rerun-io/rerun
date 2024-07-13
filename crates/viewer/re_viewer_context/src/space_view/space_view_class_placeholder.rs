@@ -54,12 +54,11 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        ui.centered_and_justified(|ui| {
-            ui.markdown_ui(
-                egui::Id::new(self.display_name()),
-                &self.help_markdown(ctx.egui_ctx),
-            );
-        });
+        ui.markdown_ui(
+            egui::Id::new(self.display_name()),
+            &self.help_markdown(ctx.egui_ctx),
+        );
+
         Ok(())
     }
 }
