@@ -31,7 +31,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     let image = include_bytes!("../../../../crates/viewer/re_ui/data/logo_dark_mode.png");
 ///
-///     rec.log("image", &rerun::ImageEncoded::from_bytes(image.to_vec()))?;
+///     rec.log(
+///         "image",
+///         &rerun::ImageEncoded::from_file_contents(image.to_vec()),
+///     )?;
 ///
 ///     Ok(())
 /// }
