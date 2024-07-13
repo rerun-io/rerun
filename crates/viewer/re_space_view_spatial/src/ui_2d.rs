@@ -127,7 +127,7 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
     )
 }
 
-pub fn help_text(egui_ctx: &egui::Context) -> String {
+pub fn help_markdown(egui_ctx: &egui::Context) -> String {
     format!(
         "# 2D View
 
