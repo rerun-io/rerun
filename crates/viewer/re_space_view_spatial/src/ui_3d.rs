@@ -385,7 +385,7 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help_text(egui_ctx: &egui::Context) -> String {
+pub fn help_markdown(egui_ctx: &egui::Context) -> String {
     // TODO(#6876): this line was removed to from the help text, because the corresponding feature no
     // longer works. To be restored when it works again (or deleted forever).
     /* - Reset the view again with {TRACKED_OBJECT_RESTORE_KEY}.*/
