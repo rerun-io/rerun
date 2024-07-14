@@ -5,7 +5,7 @@ use super::ImageEncoded;
 impl ImageEncoded {
     /// Creates a new image from the file contents at `path`.
     ///
-    /// The [`MediaType`] will first be guessed from the file contents.
+    /// The [`MediaType`][crate::components::MediaType] will first be guessed from the file contents.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn from_file(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
