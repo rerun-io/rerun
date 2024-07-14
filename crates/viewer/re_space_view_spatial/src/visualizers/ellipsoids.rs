@@ -140,7 +140,7 @@ impl EllipsoidsVisualizer {
 
                 // TODO(kpreid): subdivisions should be configurable, and possibly dynamic based on
                 // either world size or screen size (depending on application).
-                let subdivisions = 4;
+                let subdivisions = 2;
 
                 let Some(sphere_mesh) = ctx.viewer_ctx.cache.entry(|c: &mut WireframeCache| {
                     c.entry(ProcMeshKey::Sphere { subdivisions }, render_ctx)
