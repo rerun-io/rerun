@@ -33,14 +33,11 @@ class ImageEncoded(ImageEncodedExt, Archetype):
 
     import rerun as rr
 
-    current_file_dir = Path(__file__).parent
-    target_file_path = current_file_dir / "../../../../crates/viewer/re_ui/data/logo_dark_mode.png"
-    with open(target_file_path, "rb") as file:
-        file_bytes = file.read()
+    image_file_path = Path(__file__).parent / "../../../../crates/viewer/re_ui/data/logo_dark_mode.png"
 
     rr.init("rerun_example_image_encoded", spawn=True)
 
-    rr.log("image", rr.ImageEncoded(file_bytes))
+    rr.log("image", rr.ImageEncoded(path=image_file_path))
     ```
 
     """
