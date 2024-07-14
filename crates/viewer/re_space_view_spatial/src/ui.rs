@@ -35,8 +35,8 @@ use crate::{
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        CamerasVisualizer, DepthImageVisualizer, ImageVisualizer, SegmentationImageVisualizer,
-        UiLabel, UiLabelTarget,
+        CamerasVisualizer, DepthImageVisualizer, ImageEncodedVisualizer, ImageVisualizer,
+        SegmentationImageVisualizer, UiLabel, UiLabelTarget,
     },
 };
 
@@ -100,9 +100,13 @@ impl SpatialSpaceViewState {
         self.bounding_boxes.update(ui, &system_output.view_systems);
 
         let view_systems = &system_output.view_systems;
-        let num_images = view_systems.get::<ImageVisualizer>()?.images.len();
-        let num_depth_images = view_systems.get::<DepthImageVisualizer>()?.images.len();
-        self.num_non_segmentation_images_last_frame = num_images + num_depth_images;
+
+        self.num_non_segmentation_images_last_frame +=
+            view_systems.get::<ImageEncodedVisualizer>()?.images.len();
+        self.num_non_segmentation_images_last_frame +=
+            view_systems.get::<ImageVisualizer>()?.images.len();
+        self.num_non_segmentation_images_last_frame +=
+            view_systems.get::<DepthImageVisualizer>()?.images.len();
 
         Ok(())
     }
@@ -379,19 +383,23 @@ pub fn picking(
     );
 
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let images = visualizers.get::<ImageVisualizer>()?;
+
     let depth_images = visualizers.get::<DepthImageVisualizer>()?;
+    let images = visualizers.get::<ImageVisualizer>()?;
+    let images_encoded = visualizers.get::<ImageEncodedVisualizer>()?;
     let segmentation_images = visualizers.get::<SegmentationImageVisualizer>()?;
+    let image_picking_rects = itertools::chain!(
+        &depth_images.images,
+        &images.images,
+        &images_encoded.images,
+        &segmentation_images.images,
+    );
 
     let picking_result = picking_context.pick(
         render_ctx,
         query.space_view_id.gpu_readback_id(),
         &state.previous_picking_result,
-        images
-            .images
-            .iter()
-            .chain(depth_images.images.iter())
-            .chain(segmentation_images.images.iter()),
+        image_picking_rects,
         ui_rects,
     );
     state.previous_picking_result = Some(picking_result.clone());
