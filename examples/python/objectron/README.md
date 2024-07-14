@@ -18,7 +18,7 @@ Visualize the [Google Research Objectron](https://github.com/google-research-dat
 </picture>
 
 ## Used Rerun types
- [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`ImageEncodedHelper`](https://ref.rerun.io/docs/python/0.17.0/common/image_helpers)<sup>*</sup>, [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
+ [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`ImageEncoded`](https://www.rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
 
 ## Background
 
@@ -60,9 +60,9 @@ rr.log(
     ),
 )
 ```
-The input video is logged as a sequence of [`ImageEncodedHelper`](https://ref.rerun.io/docs/python/0.17.0/common/image_helpers) objects to the `world/camera` entity.
+The input video is logged as a sequence of [`ImageEncoded`](https://www.rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link) objects to the `world/camera` entity.
 ```python
-rr.log("world/camera", rr.ImageEncodedHelper(path=sample.image_path))
+rr.log("world/camera", rr.ImageEncoded(path=sample.image_path))
 ```
 
 ### Sparse point clouds
