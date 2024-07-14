@@ -11,7 +11,7 @@ NOTE! Rerun 0.18 has not yet been released
 `ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
 #### Python
-In python we already had a `ImageEncoded` class, but this has now been replaced with the new archetype.
+In Python we already had a `ImageEncoded` class, but this has now been replaced with the new archetype.
 
 * Python: `NV12/YUY2` are now logged with the new `ImageChromaDownsampled`
 * `ImageEncoded`:s `format` parameter has been replaced with `media_type` (MIME)
