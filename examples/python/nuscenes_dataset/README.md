@@ -92,7 +92,7 @@ rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colo
 ### Camera data
 Camera data is logged as encoded images using [`ImageEncoded`](https://www.rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).
 ```python
-rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncodedHelper(path=data_file_path))
+rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
 ```
 
 ### Radar data
