@@ -8,7 +8,7 @@ NOTE! Rerun 0.18 has not yet been released
 
 ## ⚠️ Breaking changes
 ### `ImageEncoded`
-* Python: `NV12/YUY2` are now logged with the new `ImageEncodedHelper`
+* Python: `NV12/YUY2` are now logged with the new `ImageChromaDownsampled`
 * `ImageEncoded`:s `format` parameter has been replaced with `media_type` (MIME)
 
 

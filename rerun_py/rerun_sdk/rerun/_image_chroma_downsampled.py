@@ -90,7 +90,7 @@ ImageFormat.NV12 = NV12
 ImageFormat.YUY2 = YUY2
 
 
-class ImageEncodedHelper(AsComponents):
+class ImageChromaDownsampled(AsComponents):
     """
     A chroma downsampled image.
 

@@ -19,8 +19,8 @@ from . import (
     experimental as experimental,
     notebook as notebook,
 )
-from ._image import (
-    ImageEncodedHelper as ImageEncodedHelper,
+from ._image_chroma_downsampled import (
+    ImageChromaDownsampled as ImageChromaDownsampled,
     ImageFormat as ImageFormat,
 )
 from ._log import (

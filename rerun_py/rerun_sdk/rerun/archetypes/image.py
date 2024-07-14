@@ -40,7 +40,7 @@ class Image(ImageExt, Archetype):
     Compressing images can save a lot of bandwidth and memory.
 
     You can compress an image using [`rerun.Image.compress`][].
-    To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageEncodedHelper`][].
+    To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageChromaDownsampled`][].
 
     See also [`components.TensorData`][rerun.components.TensorData] and [`datatypes.TensorBuffer`][rerun.datatypes.TensorBuffer].
 
