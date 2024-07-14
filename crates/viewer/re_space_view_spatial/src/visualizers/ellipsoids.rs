@@ -21,7 +21,7 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::clamped, filter_visualizable_3d_entities,
+    entity_iterator::clamped_or, filter_visualizable_3d_entities,
     process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
     SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
@@ -43,19 +43,20 @@ impl Default for EllipsoidsVisualizer {
 impl EllipsoidsVisualizer {
     fn process_labels<'a>(
         entity_path: &'a EntityPath,
-        num_instances: usize,
         centers: &'a [Position3D],
         labels: &'a [Text],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_entity: glam::Affine3A,
     ) -> impl Iterator<Item = UiLabel> + 'a {
-        let labels = clamped(labels, num_instances);
-        let centers = clamped(centers, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
-        itertools::izip!(annotation_infos.iter(), centers, labels, colors)
+        let labels = annotation_infos
+            .iter()
+            .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
+            .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
+
+        itertools::izip!(centers, labels, colors)
             .enumerate()
-            .filter_map(move |(i, (annotation_info, center, label, color))| {
-                let label = annotation_info.label(Some(label.as_str()));
+            .filter_map(move |(i, (center, label, color))| {
                 label.map(|label| UiLabel {
                     text: label,
                     color: *color,
@@ -107,9 +108,11 @@ impl EllipsoidsVisualizer {
             let colors =
                 process_color_slice(ctx, self, num_instances, &annotation_infos, data.colors);
 
+            let centers = clamped_or(data.centers, &Position3D::ZERO);
+            let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
+
             self.0.ui_labels.extend(Self::process_labels(
                 entity_path,
-                num_instances,
                 data.centers,
                 data.labels,
                 &colors,
@@ -126,10 +129,6 @@ impl EllipsoidsVisualizer {
 
             let mut bounding_box = re_math::BoundingBox::NOTHING;
 
-            let centers =
-                clamped(data.centers, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
-            let rotations = clamped(data.rotations, num_instances)
-                .chain(std::iter::repeat(&Rotation3D::IDENTITY));
             for (i, (half_size, &center, rotation, radius, color)) in
                 itertools::izip!(data.half_sizes, centers, rotations, radii, colors).enumerate()
             {
