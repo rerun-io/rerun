@@ -230,6 +230,7 @@ impl ImageVisualizer {
 
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
+                    row_id: tensor_data_row_id,
                     textured_rect,
                 });
             }
