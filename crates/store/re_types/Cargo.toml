@@ -55,7 +55,7 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External
-anyhow.workspace = true
+anyhow.workspace = true # TODO(#1845): Use thiserror instead
 array-init.workspace = true
 arrow2 = { workspace = true, features = [
   "io_ipc",
