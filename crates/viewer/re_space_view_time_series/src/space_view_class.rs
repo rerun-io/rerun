@@ -648,10 +648,10 @@ impl TypedComponentFallbackProvider<Range1D> for TimeSeriesSpaceView {
 fn make_range_sane(y_range: Range1D) -> Range1D {
     let (mut start, mut end) = (y_range.start(), y_range.end());
 
-    if !start.is_normal() {
+    if !start.is_normal() && start != 0.0 {
         start = -1.0;
     }
-    if !end.is_normal() {
+    if !end.is_normal() && end != 0.0 {
         end = 1.0;
     }
 
