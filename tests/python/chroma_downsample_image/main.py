@@ -49,14 +49,14 @@ def main() -> None:
 
     rr.log(
         "img_nv12",
-        rr.ImageEncoded(
+        rr.ImageEncodedHelper(
             contents=bytes(bgra2nv12(img_bgra)),
             format=rr.ImageFormat.NV12((img_bgra.shape[0], img_bgra.shape[1])),
         ),
     )
     rr.log(
         "img_yuy2",
-        rr.ImageEncoded(
+        rr.ImageEncodedHelper(
             contents=bytes(bgra2yuy2(img_bgra)),
             format=rr.ImageFormat.YUY2((img_bgra.shape[0], img_bgra.shape[1])),
         ),

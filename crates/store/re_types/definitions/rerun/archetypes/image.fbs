@@ -23,7 +23,7 @@ namespace rerun.archetypes;
 /// Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
 /// Using these formats can save a lot of bandwidth and memory.
 /// \py To compress an image, use [`rerun.Image.compress`][].
-/// \py To pass in an already encoded image, use  [`rerun.ImageEncoded`][].
+/// \py To pass in an already encoded image, use  [`rerun.ImageEncodedHelper`][].
 /// \rs See [`crate::components::TensorData`] for more.
 /// \cpp See [`rerun::datatypes::TensorBuffer`] for more.
 ///

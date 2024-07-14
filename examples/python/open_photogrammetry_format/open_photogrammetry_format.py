@@ -193,7 +193,7 @@ class OPFProject:
                 with Image.open(self.path.parent / camera.uri) as img:
                     rr.log(entity + "/image/rgb", rr.Image(np.array(img)).compress(jpeg_quality=jpeg_quality))
             else:
-                rr.log(entity + "/image/rgb", rr.ImageEncoded(path=self.path.parent / camera.uri))
+                rr.log(entity + "/image/rgb", rr.ImageEncodedHelper(path=self.path.parent / camera.uri))
 
 
 def main() -> None:
