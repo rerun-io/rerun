@@ -446,15 +446,6 @@ pub fn picking(
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
 
-        struct PickedImageInfo {
-            row_id: re_chunk_store::RowId,
-            tensor: TensorData,
-            meaning: TensorDataMeaning,
-            coordinates: [u32; 2],
-            colormap: Colormap,
-            depth_meter: Option<DepthMeter>,
-        }
-
         let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
             let meaning = if segmentation_images
                 .images
@@ -544,19 +535,14 @@ pub fn picking(
                     ui.set_max_width(320.0);
                     ui.vertical(|ui| {
                         image_hover_ui(
+                            ctx,
                             ui,
                             &instance_path,
-                            ctx,
-                            image_info.tensor,
                             spatial_kind,
                             ui_clip_rect,
-                            image_info.coordinates,
                             space_from_ui,
-                            image_info.row_id,
                             annotations,
-                            image_info.meaning,
-                            image_info.depth_meter.map(|d| *d.0),
-                            Some(image_info.colormap),
+                            image_info,
                         );
                     });
                 })
@@ -627,22 +613,36 @@ pub fn picking(
     Ok(response)
 }
 
+struct PickedImageInfo {
+    row_id: re_chunk_store::RowId,
+    tensor: TensorData,
+    meaning: TensorDataMeaning,
+    coordinates: [u32; 2],
+    colormap: Colormap,
+    depth_meter: Option<DepthMeter>,
+}
+
 #[allow(clippy::too_many_arguments)]
 fn image_hover_ui(
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
-    ctx: &ViewerContext<'_>,
-    tensor: TensorData,
     spatial_kind: SpatialSpaceViewKind,
     ui_clip_rect: egui::Rect,
-    coords: [u32; 2],
     space_from_ui: egui::emath::RectTransform,
-    tensor_data_row_id: re_chunk_store::RowId,
     annotations: &AnnotationSceneContext,
-    meaning: TensorDataMeaning,
-    meter: Option<f32>,
-    colormap: Option<Colormap>,
+    picked_image_info: PickedImageInfo,
 ) {
+    let PickedImageInfo {
+        row_id,
+        tensor,
+        meaning,
+        coordinates,
+        colormap,
+        depth_meter,
+    } = picked_image_info;
+    let depth_meter = depth_meter.map(|d| *d.0);
+
     ui.label(instance_path.to_string());
     if true {
         // Only show the `TensorData` component, to keep the hover UI small; see https://github.com/rerun-io/rerun/issues/3573
@@ -667,7 +667,7 @@ fn image_hover_ui(
                     ui.ctx(),
                     ui_clip_rect,
                     &tensor.0,
-                    [coords[0] as _, coords[1] as _],
+                    [coordinates[0] as _, coordinates[1] as _],
                     space_from_ui.inverse().transform_rect(rect),
                 );
             }
@@ -676,26 +676,26 @@ fn image_hover_ui(
 
             let decoded_tensor = ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0));
+                .entry(|c: &mut TensorDecodeCache| c.entry(row_id, tensor.0));
             match decoded_tensor {
                 Ok(decoded_tensor) => {
                     let annotations = annotations.0.find(&instance_path.entity_path);
-                    let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
-                        c.entry(tensor_data_row_id, &decoded_tensor)
-                    });
+                    let tensor_stats = ctx
+                        .cache
+                        .entry(|c: &mut TensorStatsCache| c.entry(row_id, &decoded_tensor));
                     if let Some(render_ctx) = ctx.render_ctx {
                         show_zoomed_image_region(
                             render_ctx,
                             ui,
-                            tensor_data_row_id,
+                            row_id,
                             &decoded_tensor,
                             &tensor_stats,
                             &annotations,
                             meaning,
-                            meter,
+                            depth_meter,
                             &tensor_name,
-                            [coords[0] as _, coords[1] as _],
-                            colormap,
+                            [coordinates[0] as _, coordinates[1] as _],
+                            Some(colormap),
                         );
                     }
                 }
