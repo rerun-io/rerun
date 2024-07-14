@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING, Any
+from typing import IO, TYPE_CHECKING, Any
 
 from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
@@ -30,7 +30,7 @@ class ImageEncodedExt:
         self: Any,
         *,
         path: str | pathlib.Path | None = None,
-        contents: datatypes.BlobLike | None = None,
+        contents: bytes | IO[bytes] | datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
         opacity: Float32Like | None = None,
         draw_order: Float32Like | None = None,
