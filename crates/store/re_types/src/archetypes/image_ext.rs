@@ -51,6 +51,7 @@ impl Image {
     ///
     /// The image format will be inferred from the path (extension), or the contents if that fails.
     #[deprecated = "Use ImageEncoded::from_file instead"]
+    #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> std::io::Result<ImageEncoded> {
         ImageEncoded::from_file(filepath)
