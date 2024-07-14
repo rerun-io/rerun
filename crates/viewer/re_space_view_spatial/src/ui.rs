@@ -447,64 +447,85 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
 
         let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-            let meaning = if segmentation_images
+            if let Some(picked) = images_encoded
                 .images
                 .iter()
-                .any(|i| i.ent_path == instance_path.entity_path)
+                .find(|i| i.ent_path == instance_path.entity_path)
             {
-                TensorDataMeaning::ClassId
-            } else if is_depth_cloud
-                || depth_images
+                let tensor = &picked.tensor;
+
+                tensor.image_height_width_channels().map(|[_, w, _]| {
+                    let coordinates = hit.instance_path_hash.instance.to_2d_image_coordinate(w);
+
+                    PickedImageInfo {
+                        row_id: picked.row_id,
+                        tensor: picked.tensor.inner().clone(),
+                        meaning: TensorDataMeaning::Unknown, // "Unknown" means color
+                        coordinates,
+                        colormap: Default::default(),
+                        depth_meter: None,
+                    }
+                })
+            } else {
+                let meaning = if segmentation_images
                     .images
                     .iter()
                     .any(|i| i.ent_path == instance_path.entity_path)
-            {
-                TensorDataMeaning::Depth
-            } else {
-                TensorDataMeaning::Unknown
-            };
+                {
+                    TensorDataMeaning::ClassId
+                } else if is_depth_cloud
+                    || depth_images
+                        .images
+                        .iter()
+                        .any(|i| i.ent_path == instance_path.entity_path)
+                {
+                    TensorDataMeaning::Depth
+                } else {
+                    TensorDataMeaning::Unknown
+                };
 
-            let query_shadowed_defaults = false;
-            let results = latest_at_with_blueprint_resolved_data(
-                &view_ctx,
-                None,
-                &ctx.current_query(),
-                data_result,
-                [TensorData::name(), Colormap::name(), DepthMeter::name()],
-                query_shadowed_defaults,
-            );
+                let query_shadowed_defaults = false;
+                let results = latest_at_with_blueprint_resolved_data(
+                    &view_ctx,
+                    None,
+                    &ctx.current_query(),
+                    data_result,
+                    [TensorData::name(), Colormap::name(), DepthMeter::name()],
+                    query_shadowed_defaults,
+                );
 
-            // TODO(andreas): Just calling `results.get_mono::<TensorData>` would be a lot more elegant.
-            // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
-            results.get(TensorData::name()).and_then(|tensor_untyped| {
-                tensor_untyped
-                    .mono::<TensorData>(&results.resolver)
-                    .and_then(|tensor| {
-                        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                        // (the back-projection property may be true despite this not being a depth image!)
-                        if hit.hit_type != PickingHitType::TexturedRect
-                            && is_depth_cloud
-                            && meaning != TensorDataMeaning::Depth
-                        {
-                            None
-                        } else {
-                            tensor.image_height_width_channels().map(|[_, w, _]| {
-                                let (_, row_id) = *tensor_untyped.index();
-                                let coordinates =
-                                    hit.instance_path_hash.instance.to_2d_image_coordinate(w);
+                // TODO(andreas): Just calling `results.get_mono::<TensorData>` would be a lot more elegant.
+                // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
+                results.get(TensorData::name()).and_then(|tensor_untyped| {
+                    tensor_untyped
+                        .mono::<TensorData>(&results.resolver)
+                        .and_then(|tensor| {
+                            // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                            // (the back-projection property may be true despite this not being a depth image!)
+                            if hit.hit_type != PickingHitType::TexturedRect
+                                && is_depth_cloud
+                                && meaning != TensorDataMeaning::Depth
+                            {
+                                None
+                            } else {
+                                tensor.image_height_width_channels().map(|[_, w, _]| {
+                                    let (_, row_id) = *tensor_untyped.index();
+                                    let coordinates =
+                                        hit.instance_path_hash.instance.to_2d_image_coordinate(w);
 
-                                PickedImageInfo {
-                                    row_id,
-                                    tensor,
-                                    meaning,
-                                    coordinates,
-                                    colormap: results.get_mono_with_fallback::<Colormap>(),
-                                    depth_meter: results.get_mono::<DepthMeter>(),
-                                }
-                            })
-                        }
-                    })
-            })
+                                    PickedImageInfo {
+                                        row_id,
+                                        tensor: tensor.0,
+                                        meaning,
+                                        coordinates,
+                                        colormap: results.get_mono_with_fallback::<Colormap>(),
+                                        depth_meter: results.get_mono::<DepthMeter>(),
+                                    }
+                                })
+                            }
+                        })
+                })
+            }
         } else {
             None
         };
@@ -615,7 +636,7 @@ pub fn picking(
 
 struct PickedImageInfo {
     row_id: re_chunk_store::RowId,
-    tensor: TensorData,
+    tensor: re_types::datatypes::TensorData,
     meaning: TensorDataMeaning,
     coordinates: [u32; 2],
     colormap: Colormap,
@@ -666,7 +687,7 @@ fn image_hover_ui(
                 show_zoomed_image_region_area_outline(
                     ui.ctx(),
                     ui_clip_rect,
-                    &tensor.0,
+                    &tensor,
                     [coordinates[0] as _, coordinates[1] as _],
                     space_from_ui.inverse().transform_rect(rect),
                 );
@@ -676,7 +697,7 @@ fn image_hover_ui(
 
             let decoded_tensor = ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(row_id, tensor.0));
+                .entry(|c: &mut TensorDecodeCache| c.entry(row_id, tensor));
             match decoded_tensor {
                 Ok(decoded_tensor) => {
                     let annotations = annotations.0.find(&instance_path.entity_path);

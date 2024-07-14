@@ -174,6 +174,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             ent_path: entity_path.clone(),
                             row_id: tensor_data_row_id,
                             textured_rect,
+                            tensor,
                         });
                     }
                 }
