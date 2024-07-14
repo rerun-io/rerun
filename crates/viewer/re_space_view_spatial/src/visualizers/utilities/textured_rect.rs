@@ -1,10 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer;
-use re_types::{
-    components::Colormap,
-    tensor_data::{DecodedTensor, TensorDataMeaning},
-};
+use re_types::{components::Colormap, datatypes::TensorData, tensor_data::TensorDataMeaning};
 use re_viewer_context::{gpu_bridge, TensorStatsCache, ViewerContext};
 
 use crate::contexts::SpatialSceneEntityContext;
@@ -15,7 +12,7 @@ pub fn tensor_to_textured_rect(
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
     tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
     colormap: Option<Colormap>,

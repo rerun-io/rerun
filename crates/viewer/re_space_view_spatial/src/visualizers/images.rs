@@ -11,7 +11,7 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TypedComponentFallbackProvider, ViewContext,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -184,17 +184,7 @@ impl ImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
-                c.entry(tensor_data_row_id, data.tensor.0.clone())
-            }) {
-                Ok(tensor) => tensor,
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {entity_path}: {err}"
-                    );
-                    continue;
-                }
-            };
+            let tensor = data.tensor.0.clone();
 
             // TODO(andreas): We only support colormap for depth image at this point.
             let colormap = None;

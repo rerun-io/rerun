@@ -23,8 +23,8 @@ use re_ui::{
 };
 use re_viewer_context::{
     HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
-    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
-    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, UiLayout, ViewContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -459,7 +459,7 @@ pub fn picking(
 
                     PickedImageInfo {
                         row_id: picked.row_id,
-                        tensor: picked.tensor.inner().clone(),
+                        tensor: picked.tensor.clone(),
                         meaning: TensorDataMeaning::Unknown, // "Unknown" means color
                         coordinates,
                         colormap: Default::default(),
@@ -695,34 +695,24 @@ fn image_hover_ui(
 
             let tensor_name = instance_path.to_string();
 
-            let decoded_tensor = ctx
+            let annotations = annotations.0.find(&instance_path.entity_path);
+            let tensor_stats = ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(row_id, tensor));
-            match decoded_tensor {
-                Ok(decoded_tensor) => {
-                    let annotations = annotations.0.find(&instance_path.entity_path);
-                    let tensor_stats = ctx
-                        .cache
-                        .entry(|c: &mut TensorStatsCache| c.entry(row_id, &decoded_tensor));
-                    if let Some(render_ctx) = ctx.render_ctx {
-                        show_zoomed_image_region(
-                            render_ctx,
-                            ui,
-                            row_id,
-                            &decoded_tensor,
-                            &tensor_stats,
-                            &annotations,
-                            meaning,
-                            depth_meter,
-                            &tensor_name,
-                            [coordinates[0] as _, coordinates[1] as _],
-                            Some(colormap),
-                        );
-                    }
-                }
-                Err(err) => re_log::warn_once!(
-                    "Encountered problem decoding tensor at path {tensor_name}: {err}"
-                ),
+                .entry(|c: &mut TensorStatsCache| c.entry(row_id, &tensor));
+            if let Some(render_ctx) = ctx.render_ctx {
+                show_zoomed_image_region(
+                    render_ctx,
+                    ui,
+                    row_id,
+                    &tensor,
+                    &tensor_stats,
+                    &annotations,
+                    meaning,
+                    depth_meter,
+                    &tensor_name,
+                    [coordinates[0] as _, coordinates[1] as _],
+                    Some(colormap),
+                );
             }
         });
     }

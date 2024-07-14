@@ -56,9 +56,6 @@ pub enum TensorBuffer {
     /// 64bit IEEE-754 floating point, also known as `double`.
     F64(::re_types_core::ArrowBuffer<f64>),
 
-    /// Raw bytes of a JPEG file.
-    Jpeg(::re_types_core::ArrowBuffer<u8>),
-
     /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
     ///
     /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
@@ -86,7 +83,6 @@ impl ::re_types_core::SizeBytes for TensorBuffer {
             Self::F16(v) => v.heap_size_bytes(),
             Self::F32(v) => v.heap_size_bytes(),
             Self::F64(v) => v.heap_size_bytes(),
-            Self::Jpeg(v) => v.heap_size_bytes(),
             Self::Nv12(v) => v.heap_size_bytes(),
             Self::Yuy2(v) => v.heap_size_bytes(),
         }
@@ -105,7 +101,6 @@ impl ::re_types_core::SizeBytes for TensorBuffer {
             && <::re_types_core::ArrowBuffer<arrow2::types::f16>>::is_pod()
             && <::re_types_core::ArrowBuffer<f32>>::is_pod()
             && <::re_types_core::ArrowBuffer<f64>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u8>>::is_pod()
             && <::re_types_core::ArrowBuffer<u8>>::is_pod()
             && <::re_types_core::ArrowBuffer<u8>>::is_pod()
     }
@@ -228,15 +223,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     false,
                 ),
                 Field::new(
-                    "JPEG",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::UInt8,
-                        false,
-                    ))),
-                    false,
-                ),
-                Field::new(
                     "NV12",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
@@ -257,7 +243,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
             ]),
             Some(std::sync::Arc::new(vec![
                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32, 12i32,
-                13i32, 14i32,
+                13i32,
             ])),
             UnionMode::Dense,
         )
@@ -296,9 +282,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     Some(Self::F16(_)) => 9i8,
                     Some(Self::F32(_)) => 10i8,
                     Some(Self::F64(_)) => 11i8,
-                    Some(Self::Jpeg(_)) => 12i8,
-                    Some(Self::Nv12(_)) => 13i8,
-                    Some(Self::Yuy2(_)) => 14i8,
+                    Some(Self::Nv12(_)) => 12i8,
+                    Some(Self::Yuy2(_)) => 13i8,
                 })
                 .collect();
             let fields = vec![
@@ -712,46 +697,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let jpeg: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::Jpeg(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let jpeg_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            jpeg.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let jpeg_inner_data: Buffer<_> = jpeg
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::UInt8,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(
-                                DataType::UInt8,
-                                jpeg_inner_data,
-                                jpeg_inner_bitmap,
-                            )
-                            .boxed(),
-                            jpeg_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
                     let nv12: Vec<_> = data
                         .iter()
                         .filter_map(|datum| match datum.as_deref() {
@@ -844,7 +789,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 let mut f16_offset = 0;
                 let mut f32_offset = 0;
                 let mut f64_offset = 0;
-                let mut jpeg_offset = 0;
                 let mut nv12_offset = 0;
                 let mut yuy2_offset = 0;
                 let mut nulls_offset = 0;
@@ -908,11 +852,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         Some(Self::F64(_)) => {
                             let offset = f64_offset;
                             f64_offset += 1;
-                            offset
-                        }
-                        Some(Self::Jpeg(_)) => {
-                            let offset = jpeg_offset;
-                            jpeg_offset += 1;
                             offset
                         }
                         Some(Self::Nv12(_)) => {
@@ -1719,79 +1658,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                     .collect::<Vec<_>>()
                 };
-                let jpeg = {
+                let nv12 = {
                     if 12usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
                     let arrow_data = &*arrow_data_arrays[12usize];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field::new(
-                                    "item",
-                                    DataType::UInt8,
-                                    false,
-                                )));
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
-                            .with_context("rerun.datatypes.TensorBuffer#JPEG")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::UInt8;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
-                                    .with_context("rerun.datatypes.TensorBuffer#JPEG")?
-                                    .values()
-                            };
-                            let offsets = arrow_data.offsets();
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end > arrow_data_inner.len() {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner
-                                            .clone()
-                                            .sliced_unchecked(start, end - start)
-                                    };
-                                    let data = ::re_types_core::ArrowBuffer::from(data);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
-                        }
-                        .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                let nv12 = {
-                    if 13usize >= arrow_data_arrays.len() {
-                        return Ok(Vec::new());
-                    }
-                    let arrow_data = &*arrow_data_arrays[13usize];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -1856,10 +1727,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     .collect::<Vec<_>>()
                 };
                 let yuy2 = {
-                    if 14usize >= arrow_data_arrays.len() {
+                    if 13usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
-                    let arrow_data = &*arrow_data_arrays[14usize];
+                    let arrow_data = &*arrow_data_arrays[13usize];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -2097,22 +1968,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F64")?
                                 }),
-                                12i8 => Self::Jpeg({
-                                    if offset as usize >= jpeg.len() {
-                                        return Err(DeserializationError::offset_oob(
-                                            offset as _,
-                                            jpeg.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TensorBuffer#JPEG");
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { jpeg.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorBuffer#JPEG")?
-                                }),
-                                13i8 => Self::Nv12({
+                                12i8 => Self::Nv12({
                                     if offset as usize >= nv12.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
@@ -2127,7 +1983,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                 }),
-                                14i8 => Self::Yuy2({
+                                13i8 => Self::Yuy2({
                                     if offset as usize >= yuy2.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,

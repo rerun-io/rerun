@@ -1,11 +1,11 @@
 use re_chunk::RowId;
-use re_types::tensor_data::{DecodedTensor, TensorImageLoadError};
+use re_types::{archetypes::Tensor, tensor_data::TensorImageLoadError};
 
 use crate::Cache;
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
-    tensor_result: Result<DecodedTensor, TensorImageLoadError>,
+    tensor_result: Result<Tensor, TensorImageLoadError>,
 
     /// Total memory used by this image.
     memory_used: u64,
@@ -35,7 +35,7 @@ impl ImageDecodeCache {
         key: RowId,
         image_bytes: &[u8],
         media_type: Option<&str>,
-    ) -> Result<DecodedTensor, TensorImageLoadError> {
+    ) -> Result<Tensor, TensorImageLoadError> {
         re_tracing::profile_function!();
 
         let lookup = self.cache.entry(key).or_insert_with(|| {
@@ -61,7 +61,7 @@ impl ImageDecodeCache {
 fn decode_image(
     image_bytes: &[u8],
     media_type: Option<&str>,
-) -> Result<DecodedTensor, TensorImageLoadError> {
+) -> Result<Tensor, TensorImageLoadError> {
     re_tracing::profile_function!();
 
     let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
@@ -83,7 +83,7 @@ fn decode_image(
 
     let img = reader.decode()?;
 
-    DecodedTensor::from_image(img)
+    Tensor::from_image(img)
 }
 
 impl Cache for ImageDecodeCache {

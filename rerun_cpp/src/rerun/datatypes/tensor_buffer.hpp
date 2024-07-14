@@ -37,7 +37,6 @@ namespace rerun::datatypes {
             F16,
             F32,
             F64,
-            JPEG,
             NV12,
             YUY2,
         };
@@ -76,9 +75,6 @@ namespace rerun::datatypes {
 
             /// 64bit IEEE-754 floating point, also known as `double`.
             rerun::Collection<double> f64;
-
-            /// Raw bytes of a JPEG file.
-            rerun::Collection<uint8_t> jpeg;
 
             /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
             ///
@@ -161,10 +157,6 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<double>;
                     new (&_data.f64) TypeAlias(other._data.f64);
                 } break;
-                case detail::TensorBufferTag::JPEG: {
-                    using TypeAlias = rerun::Collection<uint8_t>;
-                    new (&_data.jpeg) TypeAlias(other._data.jpeg);
-                } break;
                 case detail::TensorBufferTag::NV12: {
                     using TypeAlias = rerun::Collection<uint8_t>;
                     new (&_data.nv12) TypeAlias(other._data.nv12);
@@ -242,10 +234,6 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<double>;
                     _data.f64.~TypeAlias();
                 } break;
-                case detail::TensorBufferTag::JPEG: {
-                    using TypeAlias = rerun::Collection<uint8_t>;
-                    _data.jpeg.~TypeAlias();
-                } break;
                 case detail::TensorBufferTag::NV12: {
                     using TypeAlias = rerun::Collection<uint8_t>;
                     _data.nv12.~TypeAlias();
@@ -306,7 +294,7 @@ namespace rerun::datatypes {
 
         /// Number of elements in the buffer.
         ///
-        /// You may NOT call this for JPEG buffers.
+        /// You may NOT call this for NV12 or YUY2.
         size_t num_elems() const;
 
         void swap(TensorBuffer& other) noexcept {
@@ -399,14 +387,6 @@ namespace rerun::datatypes {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::F64;
             new (&self._data.f64) rerun::Collection<double>(std::move(f64));
-            return self;
-        }
-
-        /// Raw bytes of a JPEG file.
-        static TensorBuffer jpeg(rerun::Collection<uint8_t> jpeg) {
-            TensorBuffer self;
-            self._tag = detail::TensorBufferTag::JPEG;
-            new (&self._data.jpeg) rerun::Collection<uint8_t>(std::move(jpeg));
             return self;
         }
 
@@ -524,15 +504,6 @@ namespace rerun::datatypes {
         const rerun::Collection<double>* get_f64() const {
             if (_tag == detail::TensorBufferTag::F64) {
                 return &_data.f64;
-            } else {
-                return nullptr;
-            }
-        }
-
-        /// Return a pointer to jpeg if the union is in that state, otherwise `nullptr`.
-        const rerun::Collection<uint8_t>* get_jpeg() const {
-            if (_tag == detail::TensorBufferTag::JPEG) {
-                return &_data.jpeg;
             } else {
                 return nullptr;
             }

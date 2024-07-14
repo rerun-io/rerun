@@ -1,4 +1,7 @@
-use crate::datatypes::{TensorData, TensorDimension};
+use crate::{
+    datatypes::{TensorData, TensorDimension},
+    tensor_data::TensorImageLoadError,
+};
 
 use re_types_core::ArrowString;
 
@@ -51,6 +54,46 @@ impl Tensor {
             }
             .into(),
         }
+    }
+}
+
+#[cfg(feature = "image")]
+impl Tensor {
+    /// Construct a tensor from something that can be turned into a [`image::DynamicImage`].
+    ///
+    /// Requires the `image` feature.
+    pub fn from_image(image: impl Into<image::DynamicImage>) -> Result<Self, TensorImageLoadError> {
+        TensorData::from_image(image).map(|data| Self { data: data.into() })
+    }
+
+    /// Construct a tensor from [`image::DynamicImage`].
+    ///
+    /// Requires the `image` feature.
+    pub fn from_dynamic_image(image: image::DynamicImage) -> Result<Self, TensorImageLoadError> {
+        TensorData::from_dynamic_image(image).map(|data| Self { data: data.into() })
+    }
+}
+
+impl AsRef<TensorData> for Tensor {
+    #[inline(always)]
+    fn as_ref(&self) -> &TensorData {
+        &self.data
+    }
+}
+
+impl std::ops::Deref for Tensor {
+    type Target = TensorData;
+
+    #[inline(always)]
+    fn deref(&self) -> &TensorData {
+        &self.data
+    }
+}
+
+impl std::borrow::Borrow<TensorData> for Tensor {
+    #[inline(always)]
+    fn borrow(&self) -> &TensorData {
+        &self.data
     }
 }
 

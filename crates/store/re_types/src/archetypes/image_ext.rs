@@ -3,6 +3,8 @@ use crate::{
     image::{find_non_empty_dim_indices, ImageConstructionError},
 };
 
+use super::ImageEncoded;
+
 use super::Image;
 
 impl Image {
@@ -48,36 +50,22 @@ impl Image {
     /// Creates a new [`Image`] from a file.
     ///
     /// The image format will be inferred from the path (extension), or the contents if that fails.
-    #[cfg(feature = "image")]
-    #[cfg(not(target_arch = "wasm32"))]
+    #[deprecated = "Use ImageEncoded::from_file instead"]
     #[inline]
-    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
-        let filepath = filepath.as_ref();
-        Ok(Self::new(crate::datatypes::TensorData::from_image_file(
-            filepath,
-        )?))
+    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> std::io::Result<ImageEncoded> {
+        ImageEncoded::from_file(filepath)
     }
 
     /// Creates a new [`Image`] from the contents of a file.
     ///
     /// If unspecified, the image format will be inferred from the contents.
-    #[cfg(feature = "image")]
+    #[deprecated = "Use ImageEncoded::from_file_contents instead"]
     #[inline]
     pub fn from_file_contents(
         contents: Vec<u8>,
-        format: Option<image::ImageFormat>,
-    ) -> anyhow::Result<Self> {
-        let format = if let Some(format) = format {
-            format
-        } else {
-            image::guess_format(&contents)?
-        };
-
-        let tensor = crate::components::TensorData(crate::datatypes::TensorData::from_image_bytes(
-            contents, format,
-        )?);
-
-        Ok(Self::new(tensor))
+        _format: Option<image::ImageFormat>,
+    ) -> ImageEncoded {
+        ImageEncoded::from_file_contents(contents)
     }
 }
 
