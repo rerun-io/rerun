@@ -98,12 +98,16 @@ def test_angle() -> None:
 
 
 def test_transform3d() -> None:
+    # TODO(#6831): Test with arrays of all fields.
+
     axis_lengths = [None, 1, 1.0]
     from_parent_arrays = [None, True, False]
+    scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0]]
 
     # TODO(#6831): repopulate this list with all transform variants
     all_arrays = itertools.zip_longest(
         MAT_3X3_INPUT + [None],
+        scale_arrays,
         VEC_3D_INPUT + [None],
         from_parent_arrays,
         axis_lengths,
@@ -111,11 +115,13 @@ def test_transform3d() -> None:
 
     for (
         mat3x3,
+        scale,
         translation,
         from_parent,
         axis_length,
     ) in all_arrays:
         mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
+        scale = cast(Optional[rr.datatypes.Vec3DLike | rr.datatypes.Float32Like], scale)
         translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
         from_parent = cast(Optional[bool], from_parent)
         axis_length = cast(Optional[rr.datatypes.Float32Like], axis_length)
@@ -124,6 +130,7 @@ def test_transform3d() -> None:
             f"rr.Transform3D(\n"
             f"    mat3x3={mat3x3!r}\n"  #
             f"    translation={translation!r}\n"  #
+            f"    scale={scale!r}\n"  #
             f"    from_parent={from_parent!r}\n"  #
             f"    axis_length={axis_length!r}\n"  #
             f")"
@@ -131,6 +138,7 @@ def test_transform3d() -> None:
         arch = rr.Transform3D(
             mat3x3=mat3x3,
             translation=translation,
+            scale=scale,
             from_parent=from_parent,
             axis_length=axis_length,
         )
@@ -141,6 +149,9 @@ def test_transform3d() -> None:
         )
         assert arch.translation == rr.components.Translation3DBatch._optional(
             none_empty_or_value(translation, rr.components.Translation3D([1, 2, 3]))
+        )
+        assert arch.scale == rr.components.Scale3DBatch._optional(
+            none_empty_or_value(scale, rr.components.Scale3D(scale))  # type: ignore[arg-type]
         )
         assert arch.axis_length == rr.components.AxisLengthBatch._optional(
             none_empty_or_value(axis_length, rr.components.AxisLength(1.0))

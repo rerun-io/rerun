@@ -10,11 +10,12 @@ from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
+from .scale3d_ext import Scale3DExt
 
 __all__ = ["Scale3D", "Scale3DBatch", "Scale3DType"]
 
 
-class Scale3D(datatypes.Vec3D, ComponentMixin):
+class Scale3D(Scale3DExt, datatypes.Vec3D, ComponentMixin):
     """
     **Component**: A 3D scale factor.
 
@@ -24,7 +25,7 @@ class Scale3D(datatypes.Vec3D, ComponentMixin):
     """
 
     _BATCH_TYPE = None
-    # You can define your own __init__ function as a member of Scale3DExt in scale3d_ext.py
+    # __init__ can be found in scale3d_ext.py
 
     # Note: there are no fields here because Scale3D delegates to datatypes.Vec3D
     pass

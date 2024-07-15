@@ -79,6 +79,7 @@ from .components import (
     OutOfTreeTransform3D as OutOfTreeTransform3D,
     OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
     Radius as Radius,
+    Scale3D as Scale3D,
     TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
 )
@@ -87,7 +88,6 @@ from .datatypes import (
     ClassDescription as ClassDescription,
     Quaternion as Quaternion,
     RotationAxisAngle as RotationAxisAngle,
-    Scale3D as Scale3D,
     TensorData as TensorData,
     TensorDimensionSelection as TensorDimensionSelection,
     TimeInt as TimeInt,
