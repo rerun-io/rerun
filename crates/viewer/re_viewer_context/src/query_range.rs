@@ -14,6 +14,7 @@ impl QueryRange {
         matches!(self, Self::LatestAt)
     }
 
+    #[inline]
     pub fn is_time_range(&self) -> bool {
         matches!(self, Self::TimeRange(_))
     }
