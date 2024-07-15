@@ -58,6 +58,7 @@ snippet: views/spatial2d
 * [`Arrows3D`](../archetypes/arrows3d.md) (if logged above active projection)
 * [`Asset3D`](../archetypes/asset3d.md) (if logged above active projection)
 * [`Boxes3D`](../archetypes/boxes3d.md) (if logged above active projection)
+* [`Ellipsoids`](../archetypes/ellipsoids.md) (if logged above active projection)
 * [`LineStrips3D`](../archetypes/line_strips3d.md) (if logged above active projection)
 * [`Mesh3D`](../archetypes/mesh3d.md) (if logged above active projection)
 * [`Points3D`](../archetypes/points3d.md) (if logged above active projection)

@@ -4,6 +4,9 @@
 
 # ⚠️ Breaking changes
 * `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
+* Python: `ImageEncoded` has been renamed `ImageEncodedHelper`
+
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-18?speculative-link
 
 
 ## [0.17.0](https://github.com/rerun-io/rerun/compare/0.16.1...0.17.0) - More Blueprint features and better notebooks - 2024-07-08

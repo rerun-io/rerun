@@ -11,7 +11,7 @@ from ..datatypes import TensorBufferType
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .._image import ImageEncoded
+    from .._image import ImageEncodedHelper
     from ..components import TensorDataBatch
     from ..datatypes import TensorDataArrayLike
     from . import Image
@@ -22,9 +22,9 @@ class ImageExt:
 
     JPEG_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("JPEG")
 
-    def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:
+    def compress(self, *, jpeg_quality: int = 95) -> ImageEncodedHelper | Image:
         """
-        Converts an `Image` to an [`rerun.ImageEncoded`][] using JPEG compression.
+        Converts an `Image` to an [`rerun.ImageEncodedHelper`][] using JPEG compression.
 
         JPEG compression works best for photographs. Only RGB or Mono images are
         supported, not RGBA. Note that compressing to JPEG costs a bit of CPU time,
@@ -40,7 +40,7 @@ class ImageExt:
 
         from PIL import Image as PILImage
 
-        from .._image import ImageEncoded
+        from .._image import ImageEncodedHelper
         from . import Image
 
         self = cast(Image, self)
@@ -77,7 +77,7 @@ class ImageExt:
             pil_image.save(output, format="JPEG", quality=jpeg_quality)
             jpeg_bytes = output.getvalue()
             output.close()
-            return ImageEncoded(contents=jpeg_bytes)
+            return ImageEncodedHelper(contents=jpeg_bytes)
 
         # On failure to compress, still return the original image
         return self

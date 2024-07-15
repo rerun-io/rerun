@@ -121,7 +121,7 @@ ImageFormat.NV12 = NV12
 ImageFormat.YUY2 = YUY2
 
 
-class ImageEncoded(AsComponents):
+class ImageEncodedHelper(AsComponents):
     """
     A monochrome or color image encoded with a common format (PNG, JPEG, etc.).
 
