@@ -15,7 +15,7 @@ use re_viewer_context::{
 use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind};
 
 use super::{
-    entity_iterator::clamped, filter_visualizable_3d_entities,
+    entity_iterator::clamped_or, filter_visualizable_3d_entities,
     process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
     process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
@@ -76,10 +76,8 @@ impl Boxes3DVisualizer {
 
             let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
 
-            let centers =
-                clamped(data.centers, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
-            let rotations = clamped(data.rotations, num_instances)
-                .chain(std::iter::repeat(&Rotation3D::IDENTITY));
+            let centers = clamped_or(data.centers, &Position3D::ZERO);
+            let rotations = clamped_or(data.rotations, &Rotation3D::IDENTITY);
             for (i, (half_size, &center, rotation, radius, &color)) in
                 itertools::izip!(data.half_sizes, centers, rotations, radii, &colors).enumerate()
             {
@@ -123,9 +121,7 @@ impl Boxes3DVisualizer {
                 } else {
                     // Take center point of every box.
                     itertools::Either::Right(
-                        clamped(data.centers, num_instances)
-                            .chain(std::iter::repeat(&Position3D::ZERO))
-                            .map(|&c| c.into()),
+                        clamped_or(data.centers, &Position3D::ZERO).map(|&c| c.into()),
                     )
                 };
 

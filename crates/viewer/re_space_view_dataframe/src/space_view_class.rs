@@ -35,10 +35,11 @@ impl SpaceViewClass for DataframeSpaceView {
         &re_ui::icons::SPACE_VIEW_DATAFRAME
     }
 
-    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
-        "Show the data contained in entities in a table.\n\n\
-        Each entity is represented by as many rows as it has instances."
-            .into()
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "# Dataframe view
+
+Show the data contained in entities in a table. Each entity is represented by as many rows as it has instances."
+            .to_owned()
     }
 
     fn on_register(
