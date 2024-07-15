@@ -78,9 +78,6 @@ fn log(
     sorted: bool,
     time_start_ms: i64,
 ) -> anyhow::Result<()> {
-    // TODO(jprochazk): unsorted chunk
-    let _ = sorted;
-
     let entity_path = rerun::EntityPath::parse_strict(entity_path)?;
 
     // log points
