@@ -22,8 +22,8 @@ fn roundtrip() {
                     from_parent: false,
                 },
             )),
-            mat3x3: Some(Vec::new()),
-            translation: Some(Vec::new()),
+            mat3x3: None,
+            translation: None,
             axis_length: None,
         }, //
         Transform3D {
@@ -35,7 +35,7 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
-            mat3x3: Some(Vec::new()),
+            mat3x3: None,
             translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
             axis_length: None,
         }, //
@@ -51,7 +51,7 @@ fn roundtrip() {
                     from_parent: false,
                 },
             )),
-            mat3x3: Some(Vec::new()),
+            mat3x3: None,
             translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
             axis_length: None,
         }, //
@@ -67,7 +67,7 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
-            mat3x3: Some(Vec::new()),
+            mat3x3: None,
             translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
             axis_length: None,
         }, //
@@ -80,7 +80,7 @@ fn roundtrip() {
                     from_parent: true,
                 },
             )),
-            mat3x3: Some(Vec::new()),
+            mat3x3: None,
             translation: Some(vec![Vec3D([1.0, 2.0, 3.0]).into()]),
             axis_length: None,
         }, //
@@ -96,7 +96,7 @@ fn roundtrip() {
             mat3x3: Some(vec![
                 Mat3x3([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).into()
             ]),
-            translation: Some(Vec::new()),
+            translation: None,
             axis_length: None,
         }, //
     ];
