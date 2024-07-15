@@ -29,10 +29,10 @@ namespace rerun {
             bool from_parent = false
         )
             : transform(datatypes::TranslationRotationScale3D(from_parent)),
+              translation(Collection<components::Translation3D>::take_ownership(_translation)),
               mat3x3(Collection<components::TransformMat3x3>::take_ownership(
                   components::TransformMat3x3(columns)
-              )),
-              translation(Collection<components::Translation3D>::take_ownership(_translation)) {}
+              )) {}
 
         /// Creates a new 3D transform from translation/matrix.
         ///
@@ -44,8 +44,8 @@ namespace rerun {
             const components::TransformMat3x3& _mat3x3, bool from_parent = false
         )
             : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              mat3x3(Collection<components::TransformMat3x3>::take_ownership(_mat3x3)),
-              translation(Collection<components::Translation3D>::take_ownership(_translation)) {}
+              translation(Collection<components::Translation3D>::take_ownership(_translation)),
+              mat3x3(Collection<components::TransformMat3x3>::take_ownership(_mat3x3)) {}
 
         /// From a translation applied after a 3x3 matrix.
         ///
