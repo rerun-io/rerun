@@ -706,7 +706,6 @@ impl TimePanel {
                         ctx,
                         time_ctrl,
                         db,
-                        time_area_response,
                         time_area_painter,
                         ui,
                         &self.time_ranges_ui,
@@ -884,7 +883,6 @@ impl TimePanel {
                             ctx,
                             time_ctrl,
                             db,
-                            time_area_response,
                             time_area_painter,
                             ui,
                             &self.time_ranges_ui,
@@ -1405,25 +1403,31 @@ fn time_marker_ui(
 
     // "click here to view time here"
     if let Some(pointer_pos) = pointer_pos {
-        let is_pointer_in_timeline_rect = timeline_rect.contains(pointer_pos);
+        let is_pointer_in_time_area_rect = time_area_painter.clip_rect().contains(pointer_pos);
 
         // Show preview?
         if !is_hovering_time_cursor
-            && is_pointer_in_timeline_rect
+            && is_pointer_in_time_area_rect
             && !is_anything_being_dragged
             && !is_hovering_the_loop_selection
         {
             time_area_painter.vline(
                 pointer_pos.x,
                 timeline_rect.top()..=ui.max_rect().bottom(),
-                ui.visuals().widgets.noninteractive.bg_stroke,
+                ui.visuals().widgets.noninteractive.fg_stroke,
             );
             ui.ctx().set_cursor_icon(timeline_cursor_icon); // preview!
         }
 
         // Click to move time here:
-        if ui.input(|i| i.pointer.primary_down())
-            && is_pointer_in_timeline_rect
+        let time_area_response = ui.interact(
+            time_area_painter.clip_rect(),
+            ui.id().with("time_area_painter_id"),
+            egui::Sense::click(),
+        );
+
+        if is_pointer_in_time_area_rect
+            && time_area_response.clicked()
             && !is_anything_being_dragged
             && !is_hovering_the_loop_selection
         {
@@ -1431,7 +1435,6 @@ fn time_marker_ui(
                 let time = time_ranges_ui.clamp_time(time);
                 time_ctrl.set_time(time);
                 time_ctrl.pause();
-                ui.ctx().set_dragged_id(time_drag_id); // act as if the user grabbed the time marker cursor
             }
         }
     }

@@ -10,12 +10,12 @@ use std::sync::Arc;
 use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
-use re_chunk_store::external::re_chunk::ChunkTimeline;
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
 use re_log_types::EntityPath;
+use re_log_types::TimeInt;
 use re_log_types::Timeline;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
 use re_types::ComponentName;
@@ -378,9 +378,8 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 pub fn data_density_graph_ui2(
     data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
-    time_ctrl: &mut TimeControl,
+    time_ctrl: &TimeControl,
     db: &re_entity_db::EntityDb,
-    time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
@@ -391,7 +390,7 @@ pub fn data_density_graph_ui2(
 
     let timeline = *time_ctrl.timeline();
 
-    let mut data = DensityDataAggregate::new(ui, item, timeline, time_ranges_ui, row_rect);
+    let mut data = DensityDataAggregate::new(ui, time_ranges_ui, row_rect);
 
     // Collect all relevant chunks in the visible time range.
     // We do this as a separate step so that we can also deduplicate chunks.
@@ -410,18 +409,9 @@ pub fn data_density_graph_ui2(
         },
     );
 
-    for (chunk, time_range, num_events) in chunk_ranges {
-        data.add_chunk_range(&chunk, time_range, num_events);
+    for (_, time_range, num_events) in chunk_ranges {
+        data.add_chunk_range(time_range, num_events);
     }
-
-    let hovered_x_range = (time_ranges_ui
-        .x_from_time_f32(data.hovered_time_range.min().into())
-        .unwrap_or(f32::MAX)
-        - MARGIN_X)
-        ..=(time_ranges_ui
-            .x_from_time_f32(data.hovered_time_range.max().into())
-            .unwrap_or(f32::MIN)
-            + MARGIN_X);
 
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
 
@@ -430,17 +420,14 @@ pub fn data_density_graph_ui2(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
-        hovered_x_range,
+        // TODO(jprochazk): completely remove `hovered_x_range` and associated code from painter
+        0f32..=0f32,
     );
 
-    if data.num_hovered_messages > 0 {
+    if let Some(hovered_time) = data.hovered_time {
         ctx.selection_state().set_hovered(item.to_item());
 
-        if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            ctx.selection_state().set_selection(item.to_item());
-            time_ctrl.set_time(data.hovered_time_range.center());
-            time_ctrl.pause();
-        } else if ui.ctx().dragged_id().is_none() {
+        if ui.ctx().dragged_id().is_none() {
             // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
             //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
             egui::show_tooltip_at_pointer(
@@ -448,24 +435,45 @@ pub fn data_density_graph_ui2(
                 ui.layer_id(),
                 egui::Id::new("data_tooltip"),
                 |ui| {
-                    show_row_ids_tooltip(
-                        ctx,
-                        ui,
-                        time_ctrl,
-                        db,
-                        item,
-                        data.hovered_time_range,
-                        data.num_hovered_messages,
-                    );
+                    show_row_ids_tooltip2(ctx, ui, time_ctrl, db, item, hovered_time);
                 },
             );
         }
     }
 }
 
+fn show_row_ids_tooltip2(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    time_ctrl: &TimeControl,
+    db: &re_entity_db::EntityDb,
+    item: &TimePanelItem,
+    at_time: TimeInt,
+) {
+    use re_data_ui::DataUi as _;
+
+    let ui_layout = UiLayout::Tooltip;
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), at_time);
+
+    let TimePanelItem {
+        entity_path,
+        component_name,
+    } = item;
+
+    if let Some(component_name) = component_name {
+        let component_path = ComponentPath::new(entity_path.clone(), *component_name);
+        item_ui::component_path_button(ctx, ui, &component_path, db);
+        ui.add_space(8.0);
+        component_path.data_ui(ctx, ui, ui_layout, &query, db);
+    } else {
+        let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
+        item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
+        ui.add_space(8.0);
+        instance_path.data_ui(ctx, ui, ui_layout, &query, db);
+    }
+}
+
 struct DensityDataAggregate<'a> {
-    item: &'a TimePanelItem,
-    timeline: Timeline,
     time_ranges_ui: &'a TimeRangesUi,
     row_rect: Rect,
 
@@ -473,24 +481,15 @@ struct DensityDataAggregate<'a> {
     interact_radius: f32,
 
     density_graph: DensityGraph,
-    num_hovered_messages: usize,
-    hovered_time_range: ResolvedTimeRange,
+    hovered_time: Option<TimeInt>,
 }
 
 impl<'a> DensityDataAggregate<'a> {
-    fn new(
-        ui: &'a egui::Ui,
-        item: &'a TimePanelItem,
-        timeline: Timeline,
-        time_ranges_ui: &'a TimeRangesUi,
-        row_rect: Rect,
-    ) -> Self {
+    fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
         let pointer_pos = ui.input(|i| i.pointer.hover_pos());
         let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
         Self {
-            item,
-            timeline,
             time_ranges_ui,
             row_rect,
 
@@ -498,12 +497,11 @@ impl<'a> DensityDataAggregate<'a> {
             interact_radius,
 
             density_graph: DensityGraph::new(row_rect.x_range()),
-            num_hovered_messages: 0,
-            hovered_time_range: ResolvedTimeRange::EMPTY,
+            hovered_time: None,
         }
     }
 
-    fn add_chunk_range(&mut self, chunk: &Chunk, time_range: ResolvedTimeRange, num_events: usize) {
+    fn add_chunk_range(&mut self, time_range: ResolvedTimeRange, num_events: usize) {
         if num_events == 0 {
             return;
         }
@@ -536,74 +534,10 @@ impl<'a> DensityDataAggregate<'a> {
             };
 
             if is_hovered {
-                // We only want to show a tooltip for a small part of the chunk,
-                // close to the where the pointer is:
-                if let (Some(min_time), Some(max_time)) = (
-                    self.time_ranges_ui
-                        .time_from_x_f32(pointer_pos.x - self.interact_radius),
-                    self.time_ranges_ui
-                        .time_from_x_f32(pointer_pos.x + self.interact_radius),
-                ) {
-                    let pointer_time_range =
-                        ResolvedTimeRange::new(min_time.floor(), max_time.ceil());
-
-                    let mut hovered_events = 0;
-                    visit_chunk_sub_range(
-                        chunk,
-                        self.item.component_name,
-                        self.timeline,
-                        pointer_time_range,
-                        |_, _, num_events| {
-                            hovered_events += num_events;
-                        },
-                    );
-
-                    self.num_hovered_messages += hovered_events;
-                    self.hovered_time_range = self.hovered_time_range.union(pointer_time_range);
+                if let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                    self.hovered_time = Some(at_time.round());
                 }
             }
-        }
-    }
-}
-
-/// This is a wrapper over `Chunk::range` which also supports querying the entire entity.
-///
-/// This will return new chunks which:
-/// - Contain a `component_name` column (if provided)
-/// - Have data on the given `timeline`
-///
-/// Note that this may yield empty chunks if there is no data in the given `time_range`.
-///
-/// The does not deduplicates chunks when no `component_name` is provided.
-fn visit_chunk_sub_range(
-    chunk: &Chunk,
-    component_name: Option<ComponentName>,
-    timeline: Timeline,
-    time_range: ResolvedTimeRange,
-    mut visitor: impl FnMut(Arc<Chunk>, &ChunkTimeline, usize),
-) {
-    re_tracing::profile_function!();
-
-    let query = RangeQuery::new(timeline, time_range);
-    if let Some(component_name) = component_name {
-        let chunk = Arc::new(chunk.range(&query, component_name));
-        let Some(num_events) = chunk.num_events_for_component(component_name) else {
-            return;
-        };
-        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-            return;
-        };
-        visitor(Arc::clone(&chunk), chunk_timeline, num_events);
-    } else {
-        for component_name in chunk.component_names() {
-            let chunk = Arc::new(chunk.range(&query, component_name));
-            let Some(num_events) = chunk.num_events_for_component(component_name) else {
-                continue;
-            };
-            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                continue;
-            };
-            visitor(Arc::clone(&chunk), chunk_timeline, num_events);
         }
     }
 }
