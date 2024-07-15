@@ -17,8 +17,10 @@ As such, the shape of the [`components.TensorData`](https://rerun.io/docs/refere
 Leading and trailing unit-dimensions are ignored, so that
 `1x480x640x3x1` is treated as a `480x640x3` RGB image.
 
-Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
-Using these formats can save a lot of bandwidth and memory.
+Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).
+Compressing images can save a lot of bandwidth and memory.
+
+See also [`components.TensorData`](https://rerun.io/docs/reference/types/components/tensor_data) and [`datatypes.TensorBuffer`](https://rerun.io/docs/reference/types/datatypes/tensor_buffer).
 
 ## Components
 

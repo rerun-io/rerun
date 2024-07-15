@@ -20,5 +20,6 @@ Unless otherwise specified, the default value is 1.
 
 ## Used by
 
+* [`ImageEncoded`](../archetypes/image_encoded.md?speculative-link)
 * [`Image`](../archetypes/image.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)

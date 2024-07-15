@@ -50,6 +50,7 @@ from .archetypes import (
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids as Ellipsoids,
     Image as Image,
+    ImageEncoded as ImageEncoded,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
     Mesh3D as Mesh3D,
