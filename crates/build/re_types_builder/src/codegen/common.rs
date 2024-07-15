@@ -286,7 +286,7 @@ pub fn collect_snippets_for_api_docs<'a>(
 ) -> anyhow::Result<Vec<Example<'a>>> {
     let base_path = crate::rerun_workspace_path().join("docs/snippets/all");
 
-    let examples: Vec<&'a str> = docs.doc_lines_tagged("example");
+    let examples: Vec<&'a str> = docs.only_lines_tagged("example");
 
     let mut out: Vec<Example<'a>> = Vec::new();
 

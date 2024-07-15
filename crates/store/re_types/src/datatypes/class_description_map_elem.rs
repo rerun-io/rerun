@@ -18,12 +18,12 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: A helper type for mapping class IDs to class descriptions.
+/// **Datatype**: A helper type for mapping [`datatypes::ClassId`][crate::datatypes::ClassId]s to class descriptions.
 ///
-/// This is internal to the `AnnotationContext` structure.
+/// This is internal to [`components::AnnotationContext`][crate::components::AnnotationContext].
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ClassDescriptionMapElem {
-    /// The key: the class ID.
+    /// The key: the [`components::ClassId`][crate::components::ClassId].
     pub class_id: crate::datatypes::ClassId,
 
     /// The value: class name, color, etc.

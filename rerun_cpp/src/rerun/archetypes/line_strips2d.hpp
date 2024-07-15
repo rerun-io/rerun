@@ -108,9 +108,9 @@ namespace rerun::archetypes {
         /// Objects with higher values are drawn on top of those with lower values.
         std::optional<rerun::components::DrawOrder> draw_order;
 
-        /// Optional `ClassId`s for the lines.
+        /// Optional `components::ClassId`s for the lines.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         std::optional<Collection<rerun::components::ClassId>> class_ids;
 
       public:
@@ -160,9 +160,9 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional `ClassId`s for the lines.
+        /// Optional `components::ClassId`s for the lines.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         LineStrips2D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027

@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: The underlying storage for a `Tensor`.
+/// **Datatype**: The underlying storage for [`archetypes::Tensor`][crate::archetypes::Tensor].
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
 #[derive(Clone, PartialEq)]

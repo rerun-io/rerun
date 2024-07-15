@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The id refers either to a class or key-point id
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AnnotationInfo {
-    /// `ClassId` or `KeypointId` to which this annotation info belongs.
+    /// [`datatypes::ClassId`][crate::datatypes::ClassId] or [`datatypes::KeypointId`][crate::datatypes::KeypointId] to which this annotation info belongs.
     pub id: u16,
 
     /// The label that will be shown in the UI.

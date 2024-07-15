@@ -63,7 +63,7 @@ table YUY2Buffer(order: 100, transparent) {
 }
 
 
-/// The underlying storage for a `Tensor`.
+/// The underlying storage for [archetypes.Tensor].
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
 union TensorBuffer (

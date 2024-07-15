@@ -58,6 +58,7 @@ examples = [
   "depth_guided_stable_diffusion",
   "vista",
   "mcc",
+  "lerobot",
   "shape_pointe",
   "llm_embedding_ner",
   "tfrecord_loader",

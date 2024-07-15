@@ -16,13 +16,13 @@ use re_viewer_context::{
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{UiLabel, UiLabelTarget},
+    visualizers::{entity_iterator::clamped_or, UiLabel, UiLabelTarget},
 };
 
 use super::{
-    entity_iterator::clamped, filter_visualizable_2d_entities,
-    process_annotation_and_keypoint_slices, process_color_slice, process_labels_2d,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
+    process_labels_2d, process_radius_slice, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 // ---
@@ -64,7 +64,8 @@ impl Boxes2DVisualizer {
             .iter()
             .zip(labels.iter().map(Some).chain(std::iter::repeat(None)))
             .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
-        let colors = clamped(colors, annotation_infos.len());
+
+        let colors = clamped_or(colors, &egui::Color32::WHITE);
 
         itertools::izip!(half_sizes, centers, labels, colors)
             .enumerate()
@@ -127,10 +128,10 @@ impl Boxes2DVisualizer {
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
+            let mut obj_space_bounding_box = re_math::BoundingBox::NOTHING;
 
-            let centers =
-                clamped(data.centers, num_instances).chain(std::iter::repeat(&Position2D::ZERO));
+            let centers = clamped_or(data.centers, &Position2D::ZERO);
+
             for (i, (half_size, center, radius, &color)) in
                 itertools::izip!(data.half_sizes, centers, radii, &colors).enumerate()
             {
@@ -176,8 +177,7 @@ impl Boxes2DVisualizer {
                         ent_context.world_from_entity,
                     ));
                 } else {
-                    let centers = clamped(data.centers, num_instances)
-                        .chain(std::iter::repeat(&Position2D::ZERO));
+                    let centers = clamped_or(data.centers, &Position2D::ZERO);
                     self.data.ui_labels.extend(Self::process_labels(
                         entity_path,
                         data.half_sizes,

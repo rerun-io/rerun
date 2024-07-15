@@ -5,12 +5,16 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
+use re_space_view::controls::{
+    ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON,
+    SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER,
+};
 use re_space_view::{controls, view_property_ui};
 use re_types::blueprint::archetypes::{PlotLegend, ScalarAxis};
 use re_types::blueprint::components::{Corner2D, LockRangeDuringZoom, Visible};
 use re_types::components::AggregationPolicy;
 use re_types::{components::Range1D, datatypes::TimeRange, SpaceViewClassIdentifier, View};
-use re_ui::{list_item, UiExt as _};
+use re_ui::{list_item, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange,
     RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
@@ -80,33 +84,26 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &re_ui::icons::SPACE_VIEW_TIMESERIES
     }
 
-    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
-        let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
+    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
+        format!(
+            "# Time series view
 
-        layout.add("Pan by dragging, or scroll (+ ");
-        layout.add(controls::HORIZONTAL_SCROLL_MODIFIER);
-        layout.add(" for horizontal).\n");
+Display time series data in a plot.
 
-        layout.add("Zoom with pinch gesture or scroll + ");
-        layout.add(controls::ZOOM_SCROLL_MODIFIER);
-        layout.add(".\n");
+## Navigation controls
 
-        layout.add("Scroll + ");
-        layout.add(controls::ASPECT_SCROLL_MODIFIER);
-        layout.add(" to zoom only the temporal axis while holding the y-range fixed.\n");
-
-        layout.add("Drag ");
-        layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
-        layout.add(" to zoom in/out using a selection.\n");
-
-        layout.add("Click ");
-        layout.add(controls::MOVE_TIME_CURSOR_BUTTON);
-        layout.add(" to move the time cursor.\n\n");
-
-        layout.add_button_text(controls::RESET_VIEW_BUTTON_TEXT);
-        layout.add(" to reset the view.");
-
-        layout.layout_job.into()
+- Pan by dragging, or scroll (+{horizontal_scroll_modifier} for horizontal).
+- Zoom with pinch gesture or scroll + {zoom_scroll_modifier}.
+- Scroll + {aspect_scroll_modifier} to zoom only the temporal axis while holding the y-range fixed.
+- Drag with the {selection_rect_zoom_button} to zoom in/out using a selection.
+- Click the {move_time_cursor_button} to move the time cursor.
+- Double-click to reset the view.",
+            horizontal_scroll_modifier = ModifiersMarkdown(HORIZONTAL_SCROLL_MODIFIER, egui_ctx),
+            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
+            aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
+            selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
+            move_time_cursor_button = MouseButtonMarkdown(MOVE_TIME_CURSOR_BUTTON),
+        )
     }
 
     fn on_register(

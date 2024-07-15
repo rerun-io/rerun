@@ -119,7 +119,7 @@ pub struct MeshInstance {
     pub mesh: Option<Arc<Mesh>>,
 
     /// Where this instance is placed in world space and how its oriented & scaled.
-    pub world_from_mesh: macaw::Affine3A,
+    pub world_from_mesh: glam::Affine3A,
 
     /// Per-instance (as opposed to per-material/mesh!) tint color that is added to the albedo texture.
     /// Alpha channel is currently unused.
@@ -137,7 +137,7 @@ impl Default for MeshInstance {
         Self {
             gpu_mesh: GpuMeshHandle::Invalid,
             mesh: None,
-            world_from_mesh: macaw::Affine3A::IDENTITY,
+            world_from_mesh: glam::Affine3A::IDENTITY,
             additive_tint: Color32::TRANSPARENT,
             outline_mask_ids: OutlineMaskPreference::NONE,
             picking_layer_id: PickingLayerId::default(),

@@ -68,7 +68,7 @@ pixi run py-build --release
 ```
 To build SDK & Viewer for Python (or `pixi run py-build` for a debug build) and install it in the Pixi environment.
 
-You can then run examples from the repository, either by making the Pixi shell active with `pixi shell` and then running Python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`.
+You can then run examples from the repository, either by making the Pixi shell active with `pixi shell -e py` and then running Python or by using `pixi run -e py`, e.g. `pixi run -e py python examples/python/minimal/minimal.py`.
 
 Respectively, to build a wheel instead for manual install use:
 ```sh

@@ -138,9 +138,9 @@ class LineStrips3D(Archetype):
             If there's a single label present, it will be placed at the center of the entity.
             Otherwise, each instance will have its own label.
         class_ids:
-            Optional `ClassId`s for the lines.
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
-            The class ID provides colors and labels if not specified explicitly.
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
 
         """
 
@@ -210,9 +210,9 @@ class LineStrips3D(Archetype):
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    # Optional `ClassId`s for the lines.
+    # Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
     #
-    # The class ID provides colors and labels if not specified explicitly.
+    # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

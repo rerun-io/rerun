@@ -16,7 +16,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 class TextDocumentView(SpaceView):
     """
-    **View**: A view of a single text document, for use with the `TextDocument` archetype.
+    **View**: A view of a single text document, for use with [`archetypes.TextDocument`][rerun.archetypes.TextDocument].
 
     Example
     -------

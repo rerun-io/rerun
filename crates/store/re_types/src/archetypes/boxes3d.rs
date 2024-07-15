@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 ///
 /// ## Example
 ///
@@ -82,9 +82,9 @@ pub struct Boxes3D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<Vec<crate::components::Text>>,
 
-    /// Optional `ClassId`s for the boxes.
+    /// Optional [`components::ClassId`][crate::components::ClassId]s for the boxes.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
@@ -403,9 +403,9 @@ impl Boxes3D {
         self
     }
 
-    /// Optional `ClassId`s for the boxes.
+    /// Optional [`components::ClassId`][crate::components::ClassId]s for the boxes.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

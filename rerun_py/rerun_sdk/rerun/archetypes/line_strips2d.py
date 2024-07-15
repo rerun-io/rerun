@@ -124,9 +124,9 @@ class LineStrips2D(Archetype):
 
             Objects with higher values are drawn on top of those with lower values.
         class_ids:
-            Optional `ClassId`s for the lines.
+            Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
-            The class ID provides colors and labels if not specified explicitly.
+            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
 
         """
 
@@ -210,9 +210,9 @@ class LineStrips2D(Archetype):
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    # Optional `ClassId`s for the lines.
+    # Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
     #
-    # The class ID provides colors and labels if not specified explicitly.
+    # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

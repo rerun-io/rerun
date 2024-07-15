@@ -1,26 +1,26 @@
 use egui::{emath::RectTransform, NumExt as _};
-use glam::Affine3A;
-use macaw::{BoundingBox, Quat, Vec3};
-use re_ui::ContextExt;
-use re_viewport_blueprint::ViewProperty;
+use glam::{Affine3A, Quat, Vec3};
 use web_time::Instant;
 
 use re_log_types::EntityPath;
+use re_math::BoundingBox;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     LineDrawableBuilder, Size,
 };
 use re_space_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
-    ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
+    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
+    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, view_coordinates::SignedAxis3,
 };
+use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
     gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
     ViewQuery, ViewerContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
@@ -385,48 +385,36 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
 
 // ----------------------------------------------------------------------------
 
-pub fn help_text(egui_ctx: &egui::Context) -> egui::WidgetText {
-    let mut layout = re_ui::LayoutJobBuilder::new(egui_ctx);
+pub fn help_markdown(egui_ctx: &egui::Context) -> String {
+    // TODO(#6876): this line was removed to from the help text, because the corresponding feature no
+    // longer works. To be restored when it works again (or deleted forever).
+    /* - Reset the view again with {TRACKED_OBJECT_RESTORE_KEY}.*/
 
-    layout.add("Click and drag ");
-    layout.add(ROTATE3D_BUTTON);
-    layout.add(" to rotate.\n");
+    format!(
+        "# 3D view
 
-    layout.add("Click and drag with ");
-    layout.add(DRAG_PAN3D_BUTTON);
-    layout.add(" to pan.\n");
+Display 3D content in the reference frame defined by the space origin.
 
-    layout.add("Drag with ");
-    layout.add(ROLL_MOUSE);
-    layout.add(" ( ");
-    layout.add(ROLL_MOUSE_ALT);
-    layout.add(" + holding ");
-    layout.add(ROLL_MOUSE_MODIFIER);
-    layout.add(" ) to roll the view.\n");
+## Navigation controls
 
-    layout.add("Scroll or pinch to zoom.\n\n");
-
-    layout.add("While hovering the 3D view, navigate with ");
-    layout.add_button_text("WASD");
-    layout.add(" and ");
-    layout.add_button_text("QE");
-    layout.add(".\n");
-
-    layout.add(RuntimeModifiers::slow_down(&egui_ctx.os()));
-    layout.add(" slows down, ");
-    layout.add(SPEED_UP_3D_MODIFIER);
-    layout.add(" speeds up\n\n");
-
-    layout.add_button_text("double-click");
-    layout.add(" an object to focus the view on it.\n");
-    layout.add("You can restore the view again with ");
-    layout.add(TRACKED_OBJECT_RESTORE_KEY);
-    layout.add(" .\n\n");
-
-    layout.add_button_text(RESET_VIEW_BUTTON_TEXT);
-    layout.add(" on empty space to reset the view.");
-
-    layout.layout_job.into()
+- Click and drag the {rotate3d_button} to rotate.
+- Click and drag with the {drag_pan3d_button} to pan.
+- Drag with the {roll_mouse} (or the {roll_mouse_alt} + holding {roll_mouse_modifier}) to roll the view.
+- Scroll or pinch to zoom.
+- While hovering the 3D view, navigate with the `WASD` and `QE` keys.
+- {slow_down} slows down, {speed_up_3d_modifier} speeds up.
+- Double-click an object to focus the view on it.
+- Double-click on an empty space to reset the view.",
+        rotate3d_button = MouseButtonMarkdown(ROTATE3D_BUTTON),
+        drag_pan3d_button = MouseButtonMarkdown(DRAG_PAN3D_BUTTON),
+        roll_mouse = MouseButtonMarkdown(ROLL_MOUSE),
+        roll_mouse_alt = MouseButtonMarkdown(ROLL_MOUSE_ALT),
+        roll_mouse_modifier = ModifiersMarkdown(ROLL_MOUSE_MODIFIER, egui_ctx),
+        slow_down = ModifiersMarkdown(RuntimeModifiers::slow_down(&egui_ctx.os()), egui_ctx),
+        speed_up_3d_modifier = ModifiersMarkdown(SPEED_UP_3D_MODIFIER, egui_ctx),
+        // TODO(#6876): see above
+        /*TRACKED_OBJECT_RESTORE_KEY = KeyMarkdown(TRACKED_OBJECT_RESTORE_KEY),*/
+    )
 }
 
 impl SpatialSpaceView3D {
@@ -520,7 +508,7 @@ impl SpatialSpaceView3D {
             let axis_length = 1.0; // The axes are also a measuring stick
             crate::visualizers::add_axis_arrows(
                 &mut line_builder,
-                macaw::Affine3A::IDENTITY,
+                glam::Affine3A::IDENTITY,
                 None,
                 axis_length,
                 re_renderer::OutlineMaskPreference::NONE,
@@ -837,7 +825,7 @@ fn show_projections_from_2d_space(
                     let origin = cam.position();
 
                     if let Some(dir) = (stop_in_world - origin).try_normalize() {
-                        let ray = macaw::Ray3::from_origin_dir(origin, dir);
+                        let ray = re_math::Ray3::from_origin_dir(origin, dir);
 
                         let thick_ray_length = (stop_in_world - origin).length();
                         add_picking_ray(
@@ -864,7 +852,7 @@ fn show_projections_from_2d_space(
                 {
                     let cam_to_pos = *pos - tracked_camera.position();
                     let distance = cam_to_pos.length();
-                    let ray = macaw::Ray3::from_origin_dir(
+                    let ray = re_math::Ray3::from_origin_dir(
                         tracked_camera.position(),
                         cam_to_pos / distance,
                     );
@@ -884,7 +872,7 @@ fn show_projections_from_2d_space(
 
 fn add_picking_ray(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    ray: macaw::Ray3,
+    ray: re_math::Ray3,
     scene_bbox: &BoundingBox,
     thick_ray_length: f32,
     ray_color: egui::Color32,
@@ -908,7 +896,7 @@ fn add_picking_ray(
 }
 
 fn default_eye(
-    bounding_box: &macaw::BoundingBox,
+    bounding_box: &re_math::BoundingBox,
     scene_view_coordinates: Option<ViewCoordinates>,
 ) -> ViewEye {
     // Defaults to RFU.

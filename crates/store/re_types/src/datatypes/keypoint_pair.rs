@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: A connection between two `Keypoints`.
+/// **Datatype**: A connection between two [`datatypes::KeypointId`][crate::datatypes::KeypointId]s.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
     /// The first point of the pair.

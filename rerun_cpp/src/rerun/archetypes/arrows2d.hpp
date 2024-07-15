@@ -77,7 +77,7 @@ namespace rerun::archetypes {
 
         /// Optional class Ids for the points.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         std::optional<Collection<rerun::components::ClassId>> class_ids;
 
       public:
@@ -147,7 +147,7 @@ namespace rerun::archetypes {
 
         /// Optional class Ids for the points.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         Arrows2D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027

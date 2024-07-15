@@ -18,10 +18,10 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: An image made up of integer class-ids.
+/// **Archetype**: An image made up of integer [`components::ClassId`][crate::components::ClassId]s.
 ///
-/// The shape of the `TensorData` must be mappable to an `HxW` tensor.
-/// Each pixel corresponds to a class-id that will be mapped to a color based on annotation context.
+/// The shape of the [`components::TensorData`][crate::components::TensorData] must be mappable to an `HxW` tensor.
+/// Each pixel corresponds to a [`components::ClassId`][crate::components::ClassId] that will be mapped to a color based on annotation context.
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest
 /// integer value.
@@ -29,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
-/// See also [`AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
+/// See also [`archetypes::AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
 ///
 /// ## Example
 ///

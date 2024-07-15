@@ -115,9 +115,9 @@ pub struct LineStrips3D {
     /// Otherwise, each instance will have its own label.
     pub labels: Option<Vec<crate::components::Text>>,
 
-    /// Optional `ClassId`s for the lines.
+    /// Optional [`components::ClassId`][crate::components::ClassId]s for the lines.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
@@ -374,9 +374,9 @@ impl LineStrips3D {
         self
     }
 
-    /// Optional `ClassId`s for the lines.
+    /// Optional [`components::ClassId`][crate::components::ClassId]s for the lines.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

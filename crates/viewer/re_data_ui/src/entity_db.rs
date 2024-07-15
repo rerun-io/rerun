@@ -1,3 +1,4 @@
+use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_types::SizeBytes;
@@ -98,6 +99,59 @@ impl crate::DataUi for EntityDb {
                          If you hover an entity in the streams view (bottom panel) you can see the \
                          size of individual entities.",
                     );
+                ui.end_row();
+            }
+
+            {
+                let &ChunkStoreConfig {
+                    enable_changelog: _,
+                    chunk_max_bytes,
+                    chunk_max_rows,
+                    chunk_max_rows_if_unsorted,
+                } = self.store().config();
+
+                ui.grid_left_hand_label("Compaction");
+                ui.label(format!(
+                    "{} rows ({} if unsorted) or {}",
+                    re_format::format_uint(chunk_max_rows),
+                    re_format::format_uint(chunk_max_rows_if_unsorted),
+                    re_format::format_bytes(chunk_max_bytes as _),
+                ))
+                .on_hover_text(
+                    unindent::unindent(&format!("\
+                        The current compaction configuration for this recording is to merge chunks until they \
+                        reach either a maximum of {} rows ({} if unsorted) or {}, whichever comes first.
+
+                        The viewer compacts chunks together as they come in, in order to find the right \
+                        balance between space and compute overhead.
+                        This is not to be confused with the SDK's batcher, which does a similar job, with \
+                        different goals and constraints, on the logging side (SDK).
+                        These two functions (SDK batcher & viewer compactor) complement each other.
+
+                        Higher thresholds generally translate to better space overhead, but require more compute \
+                        for both ingestion and queries.
+                        Lower thresholds generally translate to worse space overhead, but faster ingestion times
+                        and more responsive queries.
+                        This is a broad oversimplification -- use the defaults if unsure, they fit most workfloads well.
+
+                        To modify the current configuration, set these environment variables before starting the viewer:
+                        * {}
+                        * {}
+                        * {}
+
+                        This compaction process is an ephemeral, in-memory optimization of the Rerun viewer.\
+                        It will not modify the recording itself: use the `Save` command of the viewer, or the \
+                        `rerun rrd compact` CLI tool if you wish to persist the compacted results, which will \
+                        make future runs cheaper.
+                        ",
+                        re_format::format_uint(chunk_max_rows),
+                        re_format::format_uint(chunk_max_rows_if_unsorted),
+                        re_format::format_bytes(chunk_max_bytes as _),
+                        ChunkStoreConfig::ENV_CHUNK_MAX_ROWS,
+                        ChunkStoreConfig::ENV_CHUNK_MAX_ROWS_IF_UNSORTED,
+                        ChunkStoreConfig::ENV_CHUNK_MAX_BYTES,
+                    )),
+                );
                 ui.end_row();
             }
 

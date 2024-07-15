@@ -19,11 +19,11 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: The `AnnotationContext` provides additional information on how to display entities.
+    /// **Component**: The annotation context provides additional information on how to display entities.
     ///
-    /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
+    /// Entities can use `datatypes::ClassId`s and `datatypes::KeypointId`s to provide annotations, and
     /// the labels and colors will be looked up in the appropriate
-    /// `AnnotationContext`. We use the *first* annotation context we find in the
+    /// annotation context. We use the *first* annotation context we find in the
     /// path-hierarchy when searching up through the ancestors of a given entity
     /// path.
     struct AnnotationContext {

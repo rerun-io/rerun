@@ -21,7 +21,7 @@ __all__ = ["TextDocument"]
 @define(str=False, repr=False, init=False)
 class TextDocument(Archetype):
     """
-    **Archetype**: A text element intended to be displayed in its own text-box.
+    **Archetype**: A text element intended to be displayed in its own text box.
 
     Supports raw text and markdown.
 

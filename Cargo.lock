@@ -2272,9 +2272,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.22.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f597d56c1bd55a811a1be189459e8fad2bbc272616375602443bdfb37fa774"
+checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
 dependencies = [
  "bytemuck",
  "serde",
@@ -2956,17 +2956,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ea9b256699eda7b0387ffbc776dd625e28bde3918446381781245b7a50349d8"
 dependencies = [
  "twox-hash",
-]
-
-[[package]]
-name = "macaw"
-version = "0.18.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e4daa18df16fd196b955e4bb16574641f39141fb3ea81b493a84b9439d17e6"
-dependencies = [
- "glam",
- "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -4445,6 +4434,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "rfd",
+ "unindent",
 ]
 
 [[package]]
@@ -4636,6 +4626,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_math"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "999db5029a2879efeddb538f2e486aabf33adf7a0b3708c6df5c1cae13b3af49"
+dependencies = [
+ "glam",
+ "serde",
+]
+
+[[package]]
 name = "re_memory"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
@@ -4709,7 +4709,6 @@ dependencies = [
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
- "macaw",
  "never",
  "notify",
  "ordered-float",
@@ -4720,6 +4719,7 @@ dependencies = [
  "re_build_tools",
  "re_error",
  "re_log",
+ "re_math",
  "re_tracing",
  "serde",
  "slotmap",
@@ -4747,10 +4747,10 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.13.0",
- "macaw",
  "pollster",
  "rand",
  "re_log",
+ "re_math",
  "re_renderer",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4920,7 +4920,6 @@ dependencies = [
  "egui",
  "glam",
  "itertools 0.13.0",
- "macaw",
  "mimalloc",
  "nohash-hasher",
  "once_cell",
@@ -4931,6 +4930,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_space_view",
@@ -5300,7 +5300,6 @@ dependencies = [
  "indexmap 2.1.0",
  "itertools 0.13.0",
  "linked-hash-map",
- "macaw",
  "ndarray",
  "nohash-hasher",
  "once_cell",
@@ -5313,6 +5312,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
+ "re_math",
  "re_query",
  "re_renderer",
  "re_smart_channel",
@@ -6411,9 +6411,9 @@ dependencies = [
 
 [[package]]
 name = "target-lexicon"
-version = "0.12.14"
+version = "0.12.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1fc403891a21bcfb7c37834ba66a547a8f402146eba7265b5a6d88059c9ff2f"
+checksum = "4873307b7c257eddcb50c9bedf158eb669578359fb28428bef438fec8e6ba7c2"
 
 [[package]]
 name = "tempfile"

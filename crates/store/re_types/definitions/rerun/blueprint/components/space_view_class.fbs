@@ -9,7 +9,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// The class of a `SpaceView`.
+/// The class identifier of view, e.g. `"2D"`, `"TextLog"`, ….
 table SpaceViewClass (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",

@@ -15,7 +15,7 @@ __all__ = ["SpaceViewClass", "SpaceViewClassBatch", "SpaceViewClassType"]
 
 
 class SpaceViewClass(datatypes.Utf8, ComponentMixin):
-    """**Component**: The class of a `SpaceView`."""
+    """**Component**: The class identifier of view, e.g. `"2D"`, `"TextLog"`, …."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SpaceViewClassExt in space_view_class_ext.py

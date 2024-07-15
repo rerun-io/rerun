@@ -64,7 +64,7 @@ class AnnotationInfo(AnnotationInfoExt):
         Parameters
         ----------
         id:
-            `ClassId` or `KeypointId` to which this annotation info belongs.
+            [`datatypes.ClassId`][rerun.datatypes.ClassId] or [`datatypes.KeypointId`][rerun.datatypes.KeypointId] to which this annotation info belongs.
         label:
             The label that will be shown in the UI.
         color:
@@ -76,7 +76,7 @@ class AnnotationInfo(AnnotationInfoExt):
         self.__attrs_init__(id=id, label=label, color=color)
 
     id: int = field(converter=int)
-    # `ClassId` or `KeypointId` to which this annotation info belongs.
+    # [`datatypes.ClassId`][rerun.datatypes.ClassId] or [`datatypes.KeypointId`][rerun.datatypes.KeypointId] to which this annotation info belongs.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

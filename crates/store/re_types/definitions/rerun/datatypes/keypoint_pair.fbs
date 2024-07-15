@@ -7,7 +7,7 @@ namespace rerun.datatypes;
 
 // ---
 
-/// A connection between two `Keypoints`.
+/// A connection between two [datatypes.KeypointId]s.
 table KeypointPair (
   "attr.python.aliases": "Sequence[datatypes.KeypointIdLike]",
   "attr.rust.derive": "Default, Eq, PartialEq"

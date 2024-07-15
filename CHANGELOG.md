@@ -1108,7 +1108,7 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 [Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
 
 * Python: `pip install rerun-sdk`
-* Rust: `cargo add rerun` and `cargo install rerun-cli`
+* Rust: `cargo add rerun` and `cargo install rerun-cli --locked`
 * Online demo: <https://app.rerun.io/version/0.10.0/>
 
 Release blog post: <https://www.rerun.io/blog/cpp-sdk>

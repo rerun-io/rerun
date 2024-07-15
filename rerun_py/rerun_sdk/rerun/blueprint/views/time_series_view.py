@@ -17,7 +17,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 class TimeSeriesView(SpaceView):
     """
-    **View**: A time series view for scalars over time, for use with the `Scalars` archetype.
+    **View**: A time series view for scalars over time, for use with [`archetypes.Scalar`][rerun.archetypes.Scalar].
 
     Example
     -------

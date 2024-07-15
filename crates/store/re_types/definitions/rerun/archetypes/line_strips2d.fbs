@@ -44,8 +44,8 @@ table LineStrips2D (
   /// Objects with higher values are drawn on top of those with lower values.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 
-  /// Optional `ClassId`s for the lines.
+  /// Optional [components.ClassId]s for the lines.
   ///
-  /// The class ID provides colors and labels if not specified explicitly.
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
 }

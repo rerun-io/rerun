@@ -238,10 +238,9 @@ impl EntityTree {
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
     ///
-    /// Only reacts to additions (`event.kind == StoreDiffKind::Addition`).
+    /// Only reacts to deletions (`event.kind == StoreDiffKind::Deletion`).
     pub fn on_store_additions(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
-
         for event in events
             .iter()
             .filter(|e| e.kind == ChunkStoreDiffKind::Addition)
@@ -297,7 +296,7 @@ impl EntityTree {
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
     ///
     /// Only reacts to deletions (`event.kind == StoreDiffKind::Deletion`).
-    pub fn on_store_deletions(&mut self, store_events: &[&ChunkStoreEvent]) {
+    pub fn on_store_deletions(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -310,8 +309,9 @@ impl EntityTree {
         // Only keep events relevant to this branch of the tree.
         let subtree_events = store_events
             .iter()
-            .filter(|e| e.diff.chunk.entity_path().starts_with(path))
-            .copied() // NOTE: not actually copying, just removing the superfluous ref layer
+            .filter(|e| e.kind == ChunkStoreDiffKind::Deletion)
+            .filter(|&e| e.diff.chunk.entity_path().starts_with(path))
+            .cloned()
             .collect_vec();
 
         {
@@ -341,7 +341,7 @@ impl EntityTree {
 
         {
             re_tracing::profile_scope!("subtree");
-            for &event in &subtree_events {
+            for event in &subtree_events {
                 subtree.on_event(event);
             }
         }

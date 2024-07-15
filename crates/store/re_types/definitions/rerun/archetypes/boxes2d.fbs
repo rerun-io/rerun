@@ -9,7 +9,7 @@ namespace rerun.archetypes;
 
 // ---
 
-/// 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// 2D boxes with half-extents and optional center, rotations, colors etc.
 ///
 /// \example archetypes/box2d_simple title="Simple 2D boxes" image="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1200w.png"
 table Boxes2D (
@@ -54,8 +54,8 @@ table Boxes2D (
   /// The default for 2D boxes is 10.0.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 
-  /// Optional `ClassId`s for the boxes.
+  /// Optional [components.ClassId]s for the boxes.
   ///
-  /// The class ID provides colors and labels if not specified explicitly.
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
 }

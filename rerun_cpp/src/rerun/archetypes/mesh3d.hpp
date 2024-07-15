@@ -25,6 +25,8 @@
 namespace rerun::archetypes {
     /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
     ///
+    /// See also `archetypes::Asset3D`.
+    ///
     /// ## Example
     ///
     /// ### Simple indexed 3D mesh
@@ -82,14 +84,15 @@ namespace rerun::archetypes {
 
         /// Optional albedo texture.
         ///
-        /// Used with `vertex_texcoords` on `Mesh3D`.
+        /// Used with the `components::Texcoord2D` of the mesh.
+        ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
         std::optional<rerun::components::TensorData> albedo_texture;
 
         /// Optional class Ids for the vertices.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         std::optional<Collection<rerun::components::ClassId>> class_ids;
 
       public:
@@ -145,7 +148,8 @@ namespace rerun::archetypes {
 
         /// Optional albedo texture.
         ///
-        /// Used with `vertex_texcoords` on `Mesh3D`.
+        /// Used with the `components::Texcoord2D` of the mesh.
+        ///
         /// Currently supports only sRGB(A) textures, ignoring alpha.
         /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
         Mesh3D with_albedo_texture(rerun::components::TensorData _albedo_texture) && {
@@ -156,7 +160,7 @@ namespace rerun::archetypes {
 
         /// Optional class Ids for the vertices.
         ///
-        /// The class ID provides colors and labels if not specified explicitly.
+        /// The `components::ClassId` provides colors and labels if not specified explicitly.
         Mesh3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027

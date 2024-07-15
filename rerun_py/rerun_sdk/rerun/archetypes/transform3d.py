@@ -19,7 +19,7 @@ __all__ = ["Transform3D"]
 @define(str=False, repr=False, init=False)
 class Transform3D(Transform3DExt, Archetype):
     """
-    **Archetype**: A 3D transform.
+    **Archetype**: A transform between two 3D spaces, i.e. a pose.
 
     All components are applied in the order they are listed here.
     E.g. if both a 4x4 matrix with a translation and a translation vector are present,

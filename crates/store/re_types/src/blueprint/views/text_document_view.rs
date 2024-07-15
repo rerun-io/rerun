@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **View**: A view of a single text document, for use with the `TextDocument` archetype.
+/// **View**: A view of a single text document, for use with [`archetypes::TextDocument`][crate::archetypes::TextDocument].
 #[derive(Clone, Debug)]
 pub struct TextDocumentView {}
 

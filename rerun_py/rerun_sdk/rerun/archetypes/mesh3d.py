@@ -21,7 +21,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     """
     **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
-    See also [`Asset3D`][rerun.archetypes.Asset3D].
+    See also [`archetypes.Asset3D`][rerun.archetypes.Asset3D].
 
     Example
     -------
@@ -137,7 +137,8 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
     # Optional albedo texture.
     #
-    # Used with `vertex_texcoords` on `Mesh3D`.
+    # Used with the [`components.Texcoord2D`][rerun.components.Texcoord2D] of the mesh.
+    #
     # Currently supports only sRGB(A) textures, ignoring alpha.
     # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #
@@ -150,7 +151,7 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
     # Optional class Ids for the vertices.
     #
-    # The class ID provides colors and labels if not specified explicitly.
+    # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

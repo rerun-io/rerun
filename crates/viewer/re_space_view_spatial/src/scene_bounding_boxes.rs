@@ -8,22 +8,22 @@ use crate::visualizers::SpatialViewVisualizerData;
 #[derive(Clone)]
 pub struct SceneBoundingBoxes {
     /// Overall bounding box of the scene for the current query.
-    pub current: macaw::BoundingBox,
+    pub current: re_math::BoundingBox,
 
     /// A bounding box that smoothly transitions to the current bounding box.
     ///
     /// If discontinuities are detected, this bounding box will be reset immediately to the current bounding box.
-    pub smoothed: macaw::BoundingBox,
+    pub smoothed: re_math::BoundingBox,
 
     /// Per-entity bounding boxes for the current query.
-    pub per_entity: IntMap<EntityPathHash, macaw::BoundingBox>,
+    pub per_entity: IntMap<EntityPathHash, re_math::BoundingBox>,
 }
 
 impl Default for SceneBoundingBoxes {
     fn default() -> Self {
         Self {
-            current: macaw::BoundingBox::nothing(),
-            smoothed: macaw::BoundingBox::nothing(),
+            current: re_math::BoundingBox::NOTHING,
+            smoothed: re_math::BoundingBox::NOTHING,
             per_entity: IntMap::default(),
         }
     }
@@ -34,7 +34,7 @@ impl SceneBoundingBoxes {
         re_tracing::profile_function!();
 
         let previous = self.current;
-        self.current = macaw::BoundingBox::nothing();
+        self.current = re_math::BoundingBox::NOTHING;
         self.per_entity.clear();
 
         for visualizer in visualizers.iter() {
@@ -79,7 +79,7 @@ impl SceneBoundingBoxes {
             let new_smoothed_size = self.smoothed.size().lerp(current_size, smoothing_factor);
 
             self.smoothed =
-                macaw::BoundingBox::from_center_size(new_smoothed_center, new_smoothed_size);
+                re_math::BoundingBox::from_center_size(new_smoothed_center, new_smoothed_size);
 
             let current_diagonal_length = current_size.length();
             let sameness_threshold = current_diagonal_length * (0.1 / 100.0); // 0.1% of the diagonal.
@@ -94,8 +94,8 @@ impl SceneBoundingBoxes {
 }
 
 fn detect_boundingbox_discontinuity(
-    current: macaw::BoundingBox,
-    previous: macaw::BoundingBox,
+    current: re_math::BoundingBox,
+    previous: re_math::BoundingBox,
 ) -> bool {
     if !previous.is_finite() {
         // Previous bounding box is not finite, so we can't compare.

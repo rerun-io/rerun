@@ -58,8 +58,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &re_ui::icons::SPACE_VIEW_2D
     }
 
-    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText {
-        super::ui_2d::help_text(egui_ctx)
+    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
+        super::ui_2d::help_markdown(egui_ctx)
     }
 
     fn on_register(

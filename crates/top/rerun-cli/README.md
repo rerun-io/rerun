@@ -13,7 +13,7 @@
 </h1>
 
 ## Rerun command-line tool
-You can install the binary with `cargo install rerun-cli`
+You can install the binary with `cargo install rerun-cli --locked`
 
 This can act either as a server, a viewer, or both, depending on which options you use when you start it.
 

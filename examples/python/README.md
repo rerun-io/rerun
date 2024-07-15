@@ -61,7 +61,7 @@ toolchain to be installed on your system.
 
 Before running the example, make sure the source build is up-to-date:
 ```shell
-pixi run -e examples py-build
+pixi run py-build-examples
 ```
 
 Now you can run the example with the source build:

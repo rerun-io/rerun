@@ -82,7 +82,7 @@ pub enum Environment {
     ///
     /// This is _most likely_ a Rerun user who is compiling a `re_` crate
     /// because they depend on it either directly or indirectly in their `Cargo.toml`,
-    /// or they running `cargo install rerun-cli` or other tool that depend on a `re_` crate.
+    /// or they running `cargo install rerun-cli --locked` or other tool that depend on a `re_` crate.
     ///
     /// In these cases we should do as little shenanigans in the `build.rs` as possible.
     UsedAsDependency,

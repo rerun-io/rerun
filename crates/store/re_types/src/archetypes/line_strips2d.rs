@@ -105,9 +105,9 @@ pub struct LineStrips2D {
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 
-    /// Optional `ClassId`s for the lines.
+    /// Optional [`components::ClassId`][crate::components::ClassId]s for the lines.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
@@ -391,9 +391,9 @@ impl LineStrips2D {
         self
     }
 
-    /// Optional `ClassId`s for the lines.
+    /// Optional [`components::ClassId`][crate::components::ClassId]s for the lines.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

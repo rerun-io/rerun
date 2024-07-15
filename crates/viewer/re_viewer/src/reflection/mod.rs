@@ -128,7 +128,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <QueryExpression as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "An individual `QueryExpression` used to filter a set of `EntityPath`s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
+                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 placeholder: Some(QueryExpression::default().to_arrow()?),
             },
         ),
@@ -149,7 +149,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The class of a `SpaceView`.",
+                docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
                 placeholder: Some(SpaceViewClass::default().to_arrow()?),
             },
         ),
@@ -233,7 +233,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <AnnotationContext as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The `AnnotationContext` provides additional information on how to display entities.\n\nEntities can use `ClassId`s and `KeypointId`s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\n`AnnotationContext`. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.",
+                docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.",
                 placeholder: Some(AnnotationContext::default().to_arrow()?),
             },
         ),
@@ -254,7 +254,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ClassId as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A 16-bit ID representing a type of semantic class.\n\nUsed to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].",
+                docstring_md: "A 16-bit ID representing a type of semantic class.",
                 placeholder: Some(ClassId::default().to_arrow()?),
             },
         ),
@@ -303,7 +303,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <FillRatio as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from `DepthImage` projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
+                docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
                 placeholder: Some(FillRatio::default().to_arrow()?),
             },
         ),
@@ -338,7 +338,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <KeypointId as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.\n\n`KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].\n\nUsed to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].",
+                docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.",
                 placeholder: Some(KeypointId::default().to_arrow()?),
             },
         ),
@@ -380,7 +380,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <MediaType as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.\n\nThe complete reference of officially registered media types is maintained by the IANA and can be\nconsulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.",
+                docstring_md: "A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.\n\nThe complete reference of officially registered media types is maintained by the IANA and can be\nconsulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.",
                 placeholder: Some(MediaType::default().to_arrow()?),
             },
         ),

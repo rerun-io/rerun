@@ -15,7 +15,7 @@ table AnnotationInfo (
   "attr.python.aliases": "int, Tuple[int, str], Tuple[int, str, datatypes.Rgba32Like]",
   "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
-  /// `ClassId` or `KeypointId` to which this annotation info belongs.
+  /// [datatypes.ClassId] or [datatypes.KeypointId] to which this annotation info belongs.
   // TODO(jleibs): make this typed
   id: ushort (order: 100);
 

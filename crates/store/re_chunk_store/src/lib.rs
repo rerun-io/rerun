@@ -44,6 +44,17 @@ pub mod external {
 pub enum ChunkStoreError {
     #[error("Chunks must be sorted before insertion in the chunk store")]
     UnsortedChunk,
+
+    #[error(transparent)]
+    Chunk(#[from] re_chunk::ChunkError),
+
+    /// Error when parsing configuration from environment.
+    #[error("Failed to parse config: '{name}={value}': {err}")]
+    ParseConfig {
+        name: &'static str,
+        value: String,
+        err: Box<dyn std::error::Error + Send + Sync>,
+    },
 }
 
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;

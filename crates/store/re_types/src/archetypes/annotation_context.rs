@@ -18,15 +18,15 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The `AnnotationContext` provides additional information on how to display entities.
+/// **Archetype**: The annotation context provides additional information on how to display entities.
 ///
-/// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
+/// Entities can use [`components::ClassId`][crate::components::ClassId]s and [`components::KeypointId`][crate::components::KeypointId]s to provide annotations, and
 /// the labels and colors will be looked up in the appropriate
-/// `AnnotationContext`. We use the *first* annotation context we find in the
+/// annotation context. We use the *first* annotation context we find in the
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
 ///
-/// See also [`ClassDescription`][crate::datatypes::ClassDescription].
+/// See also [`datatypes::ClassDescription`][crate::datatypes::ClassDescription].
 ///
 /// ## Example
 ///

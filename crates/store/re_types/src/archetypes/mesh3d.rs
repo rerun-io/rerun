@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///
-/// See also [`Asset3D`][crate::archetypes::Asset3D].
+/// See also [`archetypes::Asset3D`][crate::archetypes::Asset3D].
 ///
 /// ## Example
 ///
@@ -73,14 +73,15 @@ pub struct Mesh3D {
 
     /// Optional albedo texture.
     ///
-    /// Used with `vertex_texcoords` on `Mesh3D`.
+    /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
+    ///
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     pub albedo_texture: Option<crate::components::TensorData>,
 
     /// Optional class Ids for the vertices.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
@@ -417,7 +418,8 @@ impl Mesh3D {
 
     /// Optional albedo texture.
     ///
-    /// Used with `vertex_texcoords` on `Mesh3D`.
+    /// Used with the [`components::Texcoord2D`][crate::components::Texcoord2D] of the mesh.
+    ///
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #[inline]
@@ -431,7 +433,7 @@ impl Mesh3D {
 
     /// Optional class Ids for the vertices.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

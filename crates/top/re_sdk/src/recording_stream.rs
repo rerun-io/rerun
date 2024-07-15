@@ -475,7 +475,7 @@ impl RecordingStreamBuilder {
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
     /// connected web-viewer.
     ///
-    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli`).
+    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli --locked`).
     ///
     /// ## Details
     /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,

@@ -120,12 +120,12 @@ pub struct Points2D {
 
     /// Optional class Ids for the points.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 
     /// Optional keypoint IDs for the points, identifying them within a class.
     ///
-    /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
+    /// If keypoint IDs are passed in but no [`components::ClassId`][crate::components::ClassId]s were specified, the [`components::ClassId`][crate::components::ClassId] will
     /// default to 0.
     /// This is useful to identify points within a single classification (which is identified
     /// with `class_id`).
@@ -437,7 +437,7 @@ impl Points2D {
 
     /// Optional class Ids for the points.
     ///
-    /// The class ID provides colors and labels if not specified explicitly.
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,
@@ -449,7 +449,7 @@ impl Points2D {
 
     /// Optional keypoint IDs for the points, identifying them within a class.
     ///
-    /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
+    /// If keypoint IDs are passed in but no [`components::ClassId`][crate::components::ClassId]s were specified, the [`components::ClassId`][crate::components::ClassId] will
     /// default to 0.
     /// This is useful to identify points within a single classification (which is identified
     /// with `class_id`).

@@ -5,7 +5,7 @@ title: "FillRatio"
 
 How much a primitive fills out the available space.
 
-Used for instance to scale the points of the point cloud created from `DepthImage` projection in 3D views.
+Used for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.
 Valid range is from 0 to max float although typically values above 1.0 are not useful.
 
 Defaults to 1.0.

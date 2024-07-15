@@ -5,7 +5,7 @@ title: "DepthImage"
 
 A depth image.
 
-The shape of the `TensorData` must be mappable to an `HxW` tensor.
+The shape of the [`components.TensorData`](https://rerun.io/docs/reference/types/components/tensor_data) must be mappable to an `HxW` tensor.
 Each pixel corresponds to a depth value in units specified by `meter`.
 
 ## Components

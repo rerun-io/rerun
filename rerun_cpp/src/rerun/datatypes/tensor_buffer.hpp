@@ -108,7 +108,7 @@ namespace rerun::datatypes {
         };
     } // namespace detail
 
-    /// **Datatype**: The underlying storage for a `Tensor`.
+    /// **Datatype**: The underlying storage for `archetypes::Tensor`.
     ///
     /// Tensor elements are stored in a contiguous buffer of a single type.
     struct TensorBuffer {

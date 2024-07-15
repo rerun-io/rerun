@@ -12,13 +12,13 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Blob`](datatypes/blob.md): A binary blob of data.
 * [`Bool`](datatypes/bool.md): A single boolean.
 * [`ClassDescription`](datatypes/class_description.md): The description of a semantic Class.
-* [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md): A helper type for mapping class IDs to class descriptions.
+* [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md): A helper type for mapping [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s to class descriptions.
 * [`ClassId`](datatypes/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`EntityPath`](datatypes/entity_path.md): A path to an entity in the `ChunkStore`.
 * [`Float32`](datatypes/float32.md): A single-precision 32-bit IEEE 754 floating point number.
 * [`Float64`](datatypes/float64.md): A double-precision 64-bit IEEE 754 floating point number.
 * [`KeypointId`](datatypes/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
-* [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two `Keypoints`.
+* [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s.
 * [`Mat3x3`](datatypes/mat3x3.md): A 3x3 Matrix.
 * [`Mat4x4`](datatypes/mat4x4.md): A 4x4 Matrix.
 * [`Quaternion`](datatypes/quaternion.md): A Quaternion represented by 4 real numbers.
@@ -28,7 +28,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Rotation3D`](datatypes/rotation3d.md): A 3D rotation.
 * [`RotationAxisAngle`](datatypes/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`Scale3D`](datatypes/scale3d.md): 3D scaling factor, part of a transform representation.
-* [`TensorBuffer`](datatypes/tensor_buffer.md): The underlying storage for a `Tensor`.
+* [`TensorBuffer`](datatypes/tensor_buffer.md): The underlying storage for [`archetypes.Tensor`](https://rerun.io/docs/reference/types/archetypes/tensor).
 * [`TensorData`](datatypes/tensor_data.md): An N-dimensional array of numbers.
 * [`TensorDimension`](datatypes/tensor_dimension.md): A single dimension within a multi-dimensional tensor.
 * [`TensorDimensionIndexSelection`](datatypes/tensor_dimension_index_selection.md): Indexing a specific tensor dimension.
