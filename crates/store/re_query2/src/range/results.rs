@@ -14,7 +14,7 @@ use re_chunk_store::RangeQuery;
 use re_log_types::{ResolvedTimeRange, TimeInt};
 use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
 
-use crate::{ErasedFlatVecDeque, FlatVecDeque, LatestAtComponentResults, PromiseResult};
+use crate::{ErasedFlatVecDeque, FlatVecDeque, PromiseResult};
 
 // ---
 
@@ -70,18 +70,19 @@ impl RangeResults {
         }
     }
 
-    /// Returns the [`RangeComponentResults`] for the specified [`Component`].
-    ///
-    /// Returns empty results if the component is not present.
-    #[inline]
-    pub fn get_or_empty(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
-        let component_name = component_name.into();
-        if let Some(component) = self.components.get(&component_name) {
-            component
-        } else {
-            RangeComponentResults::empty()
-        }
-    }
+    // TODO: do we actually need this?
+    // /// Returns the [`RangeComponentResults`] for the specified [`Component`].
+    // ///
+    // /// Returns empty results if the component is not present.
+    // #[inline]
+    // pub fn get_or_empty(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
+    //     let component_name = component_name.into();
+    //     if let Some(component) = self.components.get(&component_name) {
+    //         component
+    //     } else {
+    //         RangeComponentResults::empty()
+    //     }
+    // }
 }
 
 impl RangeResults {
@@ -91,6 +92,10 @@ impl RangeResults {
         self.components.insert(component_name, cached);
     }
 }
+
+// // TODO
+// #[derive(Debug, Clone, Copy)]
+// pub struct RangeComponentResults;
 
 // ---
 
@@ -202,154 +207,154 @@ impl<'a, T: 'static> std::ops::Deref for Data<'a, T> {
     }
 }
 
-pub struct RangeData<'a, T> {
-    // NOTE: Options so we can represent an empty result without having to somehow conjure a mutex
-    // guard out of thin air.
-    //
-    // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
-    // impossible to return an owned type in a `parking_lot` guard.
-    // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
-    // indices: Option<MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>>,
-    indices: Option<Indices<'a>>,
-    data: Option<Data<'a, T>>,
-
-    time_range: ResolvedTimeRange,
-    front_status: PromiseResult<()>,
-    back_status: PromiseResult<()>,
-
-    /// Keeps track of reentrancy counts for the current thread.
-    ///
-    /// Used to detect and prevent potential deadlocks when using the cached APIs in work-stealing
-    /// environments such as Rayon.
-    reentering: &'static std::thread::LocalKey<RefCell<u32>>,
-}
-
-impl<'a, C: Component> RangeData<'a, C> {
-    /// Useful to abstract over latest-at and ranged results.
-    ///
-    /// Use `reindexed` override the index of the data, if needed.
-    #[inline]
-    pub fn from_latest_at(
-        results: &'a LatestAtComponentResults,
-        reindexed: Option<(TimeInt, RowId)>,
-    ) -> Self {
-        let LatestAtComponentResults {
-            index,
-            value: _,
-            cached_dense,
-        } = results;
-
-        let status = results.to_dense::<C>().map(|_| ());
-        let index = reindexed.unwrap_or(*index);
-
-        Self {
-            indices: Some(Indices::Owned(vec![index].into())),
-            data: cached_dense.get().map(|data| Data::Owned(Arc::clone(data))),
-            time_range: ResolvedTimeRange::new(index.0, index.0),
-            front_status: status.clone(),
-            back_status: status,
-            reentering: &REENTERING,
-        }
-    }
-}
-
-impl<'a, T> Drop for RangeData<'a, T> {
-    #[inline]
-    fn drop(&mut self) {
-        self.reentering
-            .with_borrow_mut(|reentering| *reentering = reentering.saturating_sub(1));
-    }
-}
-
-impl<'a, T: 'static> RangeData<'a, T> {
-    /// Returns the current status on both ends of the range.
-    ///
-    /// E.g. it is possible that the front-side of the range is still waiting for pending data while
-    /// the back-side has been fully loaded.
-    #[inline]
-    pub fn status(&self) -> (PromiseResult<()>, PromiseResult<()>) {
-        (self.front_status.clone(), self.back_status.clone())
-    }
-
-    #[inline]
-    pub fn range_indices(
-        &self,
-        entry_range: Range<usize>,
-    ) -> impl Iterator<Item = &(TimeInt, RowId)> {
-        let indices = match self.indices.as_ref() {
-            Some(indices) => itertools::Either::Left(indices.range(entry_range)),
-            None => itertools::Either::Right(std::iter::empty()),
-        };
-        indices
-    }
-
-    #[inline]
-    pub fn range_data(&self, entry_range: Range<usize>) -> impl Iterator<Item = &[T]> {
-        match self.data.as_ref() {
-            Some(indices) => itertools::Either::Left(indices.range(entry_range)),
-            None => itertools::Either::Right(std::iter::empty()),
-        }
-    }
-
-    /// Range both the indices and data by zipping them together.
-    ///
-    /// Useful for time-based joins (`range_zip`).
-    #[inline]
-    pub fn range_indexed(&self) -> impl Iterator<Item = (&(TimeInt, RowId), &[T])> {
-        let entry_range = self.entry_range();
-        itertools::izip!(
-            self.range_indices(entry_range.clone()),
-            self.range_data(entry_range)
-        )
-    }
-
-    /// Returns the index range that corresponds to the specified `time_range`.
-    ///
-    /// Use the returned range with one of the range iteration methods:
-    /// - [`Self::range_indices`]
-    /// - [`Self::range_data`]
-    /// - [`Self::range_indexed`]
-    ///
-    /// Make sure that the bucket hasn't been modified in-between!
-    ///
-    /// This is `O(2*log(n))`, so make sure to clone the returned range rather than calling this
-    /// multiple times.
-    #[inline]
-    pub fn entry_range(&self) -> Range<usize> {
-        let Some(indices) = self.indices.as_ref() else {
-            return 0..0;
-        };
-
-        // If there's any static data cached, make sure to look for it explicitly.
-        //
-        // Remember: `TimeRange`s can never contain `TimeInt::STATIC`.
-        let static_override = if matches!(indices.front(), Some((TimeInt::STATIC, _))) {
-            TimeInt::STATIC
-        } else {
-            TimeInt::MAX
-        };
-
-        let start_index = indices.partition_point(|(data_time, _)| {
-            *data_time < TimeInt::min(self.time_range.min(), static_override)
-        });
-        let end_index = indices.partition_point(|(data_time, _)| {
-            *data_time <= TimeInt::min(self.time_range.max(), static_override)
-        });
-
-        start_index..end_index
-    }
-
-    pub fn is_empty(&self) -> bool {
-        if let Some(data) = self.data.as_ref() {
-            match data {
-                Data::Owned(data) => data.dyn_num_values() == 0,
-                Data::Cached(data) => data.num_values() == 0,
-            }
-        } else {
-            true
-        }
-    }
-}
+// pub struct RangeData<'a, T> {
+//     // NOTE: Options so we can represent an empty result without having to somehow conjure a mutex
+//     // guard out of thin air.
+//     //
+//     // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
+//     // impossible to return an owned type in a `parking_lot` guard.
+//     // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
+//     // indices: Option<MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>>,
+//     indices: Option<Indices<'a>>,
+//     data: Option<Data<'a, T>>,
+//
+//     time_range: ResolvedTimeRange,
+//     front_status: PromiseResult<()>,
+//     back_status: PromiseResult<()>,
+//
+//     /// Keeps track of reentrancy counts for the current thread.
+//     ///
+//     /// Used to detect and prevent potential deadlocks when using the cached APIs in work-stealing
+//     /// environments such as Rayon.
+//     reentering: &'static std::thread::LocalKey<RefCell<u32>>,
+// }
+//
+// impl<'a, C: Component> RangeData<'a, C> {
+//     /// Useful to abstract over latest-at and ranged results.
+//     ///
+//     /// Use `reindexed` override the index of the data, if needed.
+//     #[inline]
+//     pub fn from_latest_at(
+//         results: &'a LatestAtComponentResults,
+//         reindexed: Option<(TimeInt, RowId)>,
+//     ) -> Self {
+//         let LatestAtComponentResults {
+//             index,
+//             value: _,
+//             cached_dense,
+//         } = results;
+//
+//         let status = results.to_dense::<C>().map(|_| ());
+//         let index = reindexed.unwrap_or(*index);
+//
+//         Self {
+//             indices: Some(Indices::Owned(vec![index].into())),
+//             data: cached_dense.get().map(|data| Data::Owned(Arc::clone(data))),
+//             time_range: ResolvedTimeRange::new(index.0, index.0),
+//             front_status: status.clone(),
+//             back_status: status,
+//             reentering: &REENTERING,
+//         }
+//     }
+// }
+//
+// impl<'a, T> Drop for RangeData<'a, T> {
+//     #[inline]
+//     fn drop(&mut self) {
+//         self.reentering
+//             .with_borrow_mut(|reentering| *reentering = reentering.saturating_sub(1));
+//     }
+// }
+//
+// impl<'a, T: 'static> RangeData<'a, T> {
+//     /// Returns the current status on both ends of the range.
+//     ///
+//     /// E.g. it is possible that the front-side of the range is still waiting for pending data while
+//     /// the back-side has been fully loaded.
+//     #[inline]
+//     pub fn status(&self) -> (PromiseResult<()>, PromiseResult<()>) {
+//         (self.front_status.clone(), self.back_status.clone())
+//     }
+//
+//     #[inline]
+//     pub fn range_indices(
+//         &self,
+//         entry_range: Range<usize>,
+//     ) -> impl Iterator<Item = &(TimeInt, RowId)> {
+//         let indices = match self.indices.as_ref() {
+//             Some(indices) => itertools::Either::Left(indices.range(entry_range)),
+//             None => itertools::Either::Right(std::iter::empty()),
+//         };
+//         indices
+//     }
+//
+//     #[inline]
+//     pub fn range_data(&self, entry_range: Range<usize>) -> impl Iterator<Item = &[T]> {
+//         match self.data.as_ref() {
+//             Some(indices) => itertools::Either::Left(indices.range(entry_range)),
+//             None => itertools::Either::Right(std::iter::empty()),
+//         }
+//     }
+//
+//     /// Range both the indices and data by zipping them together.
+//     ///
+//     /// Useful for time-based joins (`range_zip`).
+//     #[inline]
+//     pub fn range_indexed(&self) -> impl Iterator<Item = (&(TimeInt, RowId), &[T])> {
+//         let entry_range = self.entry_range();
+//         itertools::izip!(
+//             self.range_indices(entry_range.clone()),
+//             self.range_data(entry_range)
+//         )
+//     }
+//
+//     /// Returns the index range that corresponds to the specified `time_range`.
+//     ///
+//     /// Use the returned range with one of the range iteration methods:
+//     /// - [`Self::range_indices`]
+//     /// - [`Self::range_data`]
+//     /// - [`Self::range_indexed`]
+//     ///
+//     /// Make sure that the bucket hasn't been modified in-between!
+//     ///
+//     /// This is `O(2*log(n))`, so make sure to clone the returned range rather than calling this
+//     /// multiple times.
+//     #[inline]
+//     pub fn entry_range(&self) -> Range<usize> {
+//         let Some(indices) = self.indices.as_ref() else {
+//             return 0..0;
+//         };
+//
+//         // If there's any static data cached, make sure to look for it explicitly.
+//         //
+//         // Remember: `TimeRange`s can never contain `TimeInt::STATIC`.
+//         let static_override = if matches!(indices.front(), Some((TimeInt::STATIC, _))) {
+//             TimeInt::STATIC
+//         } else {
+//             TimeInt::MAX
+//         };
+//
+//         let start_index = indices.partition_point(|(data_time, _)| {
+//             *data_time < TimeInt::min(self.time_range.min(), static_override)
+//         });
+//         let end_index = indices.partition_point(|(data_time, _)| {
+//             *data_time <= TimeInt::min(self.time_range.max(), static_override)
+//         });
+//
+//         start_index..end_index
+//     }
+//
+//     pub fn is_empty(&self) -> bool {
+//         if let Some(data) = self.data.as_ref() {
+//             match data {
+//                 Data::Owned(data) => data.dyn_num_values() == 0,
+//                 Data::Cached(data) => data.num_values() == 0,
+//             }
+//         } else {
+//             true
+//         }
+//     }
+// }
 
 impl RangeComponentResults {
     /// Returns the component data as a dense vector.

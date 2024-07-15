@@ -6,12 +6,12 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use parking_lot::RwLock;
 
-use re_chunk::RowId;
+use re_chunk::{ChunkSharedMono, RowId};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _, SizeBytes};
 
-use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults};
+use crate::{CacheKey, Caches, LatestAtResults};
 
 // ---
 
@@ -90,19 +90,21 @@ impl Caches {
                 if let Some(cached) =
                     cache.latest_at(store, query, &clear_entity_path, ClearIsRecursive::name())
                 {
+                    let found_recursive_clear = cached.component_mono::<ClearIsRecursive>()
+                        == Some(ClearIsRecursive(true.into()));
                     // When checking the entity itself, any kind of `Clear` component
                     // (i.e. recursive or not) will do.
                     //
                     // For (recursive) parents, we need to deserialize the data to make sure the
                     // recursive flag is set.
                     #[allow(clippy::collapsible_if)] // readability
-                    if clear_entity_path == *entity_path
-                        || cached.mono::<ClearIsRecursive>() == Some(ClearIsRecursive(true.into()))
-                    {
-                        if compare_indices(*cached.index(), max_clear_index)
-                            == std::cmp::Ordering::Greater
-                        {
-                            max_clear_index = *cached.index();
+                    if clear_entity_path == *entity_path || found_recursive_clear {
+                        if let Some(index) = cached.index(&query.timeline()) {
+                            if compare_indices(index, max_clear_index)
+                                == std::cmp::Ordering::Greater
+                            {
+                                max_clear_index = index
+                            }
                         }
                     }
                 }
@@ -137,11 +139,12 @@ impl Caches {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
-                if component_name == ClearIsRecursive::name()
-                    || compare_indices(*cached.index(), max_clear_index)
-                        == std::cmp::Ordering::Greater
-                {
-                    results.add(component_name, cached);
+                if let Some(index) = cached.index(&query.timeline()) {
+                    if component_name == ClearIsRecursive::name()
+                        || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
+                    {
+                        results.add(component_name, index, cached);
+                    }
                 }
             }
         }
@@ -163,7 +166,7 @@ pub struct LatestAtCache {
     /// if there is any data available for the resulting _data_ time in [`Self::per_data_time`].
     //
     // NOTE: `Arc` so we can share buckets across query time & data time.
-    pub per_query_time: BTreeMap<TimeInt, Arc<LatestAtComponentResults>>,
+    pub per_query_time: BTreeMap<TimeInt, ChunkSharedMono>,
 
     /// Organized by _data_ time.
     ///
@@ -171,7 +174,7 @@ pub struct LatestAtCache {
     /// can result in a data time of `T`.
     //
     // NOTE: `Arc` so we can share buckets across query time & data time.
-    pub per_data_time: BTreeMap<TimeInt, Arc<LatestAtComponentResults>>,
+    pub per_data_time: BTreeMap<TimeInt, ChunkSharedMono>,
 
     /// These timestamps have been invalidated asynchronously.
     ///
@@ -213,20 +216,20 @@ impl std::fmt::Debug for LatestAtCache {
 
         let mut buckets: IndexMap<_, _> = per_data_time
             .iter()
-            .map(|(&data_time, bucket)| {
+            .map(|(&data_time, chunk)| {
                 (
-                    Arc::as_ptr(bucket),
+                    chunk.id(), // TODO: ?
                     StatsPerBucket {
                         query_times: Default::default(),
                         data_time,
-                        total_size_bytes: bucket.total_size_bytes(),
+                        total_size_bytes: chunk.total_size_bytes(),
                     },
                 )
             })
             .collect();
 
-        for (&query_time, bucket) in per_query_time {
-            if let Some(bucket) = buckets.get_mut(&Arc::as_ptr(bucket)) {
+        for (&query_time, chunk) in per_query_time {
+            if let Some(bucket) = buckets.get_mut(&chunk.id()) {
                 bucket.query_times.insert(query_time);
             }
         }
@@ -295,18 +298,17 @@ pub fn latest_at(
     query: &LatestAtQuery,
     entity_path: &EntityPath,
     component_name: ComponentName,
-) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
+) -> Option<((TimeInt, RowId), ChunkSharedMono)> {
     store
         .latest_at_relevant_chunks(query, entity_path, component_name)
         .into_iter()
-        .flat_map(|chunk| {
+        .filter_map(|chunk| {
             chunk
                 .latest_at(query, component_name)
-                .iter_rows(&query.timeline(), &component_name)
-                .collect_vec()
+                .into_mono()
+                .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })
-        .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
-        .and_then(|(data_time, row_id, array)| array.map(|array| (data_time, row_id, array)))
+        .max_by_key(|(index, _chunk)| index)
 }
 
 impl LatestAtCache {
@@ -317,7 +319,7 @@ impl LatestAtCache {
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> Option<Arc<LatestAtComponentResults>> {
+    ) -> Option<ChunkSharedMono> {
         re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
         let Self {
@@ -331,52 +333,52 @@ impl LatestAtCache {
             std::collections::btree_map::Entry::Occupied(entry) => {
                 // Fastest path: we have an entry for this exact query time, no need to look any
                 // further.
-                return Some(Arc::clone(entry.get()));
+                return Some(entry.get().clone());
             }
             std::collections::btree_map::Entry::Vacant(entry) => entry,
         };
 
-        if let Some((data_time, row_id, array)) =
+        if let Some(((data_time, row_id), chunk)) =
             latest_at(store, query, entity_path, component_name)
         {
             let result_data_time = data_time;
             let result_row_id = row_id;
-            let result_component_batch = array;
+            let result_chunk = chunk;
 
             // Fast path: we've run the query and realized that we already have the data for the resulting
             // _data_ time, so let's use that to avoid join & deserialization costs.
             if let Some(data_time_bucket_at_data_time) = per_data_time.get(&result_data_time) {
-                query_time_bucket_at_query_time.insert(Arc::clone(data_time_bucket_at_data_time));
+                query_time_bucket_at_query_time.insert(data_time_bucket_at_data_time.clone());
 
                 // We now know for a fact that a query at that data time would yield the same
                 // results: copy the bucket accordingly so that the next cache hit for that query
                 // time ends up taking the fastest path.
                 let query_time_bucket_at_data_time = per_query_time.entry(result_data_time);
                 query_time_bucket_at_data_time
-                    .and_modify(|v| *v = Arc::clone(data_time_bucket_at_data_time))
-                    .or_insert(Arc::clone(data_time_bucket_at_data_time));
+                    .and_modify(|v| *v = data_time_bucket_at_data_time.clone())
+                    .or_insert(data_time_bucket_at_data_time.clone());
 
-                return Some(Arc::clone(data_time_bucket_at_data_time));
+                return Some(data_time_bucket_at_data_time.clone());
             }
 
-            let bucket = Arc::new(LatestAtComponentResults {
-                index: (result_data_time, result_row_id),
-                value: Some((component_name, result_component_batch)),
-                cached_dense: Default::default(),
-            });
+            // let bucket = Arc::new(LatestAtComponentResults {
+            //     index: (result_data_time, result_row_id),
+            //     value: Some((component_name, result_chunk)),
+            //     cached_dense: Default::default(),
+            // });
 
             // Slowest path: this is a complete cache miss.
             {
                 let query_time_bucket_at_query_time =
-                    query_time_bucket_at_query_time.insert(Arc::clone(&bucket));
+                    query_time_bucket_at_query_time.insert(chunk.clone());
 
                 let data_time_bucket_at_data_time = per_data_time.entry(result_data_time);
                 data_time_bucket_at_data_time
-                    .and_modify(|v| *v = Arc::clone(query_time_bucket_at_query_time))
-                    .or_insert(Arc::clone(query_time_bucket_at_query_time));
+                    .and_modify(|v| *v = query_time_bucket_at_query_time.clone())
+                    .or_insert(query_time_bucket_at_query_time.clone());
             }
 
-            Some(bucket)
+            Some(chunk)
         } else {
             None
         }

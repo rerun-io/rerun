@@ -9,7 +9,7 @@ use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types_core::{ComponentName, SizeBytes};
 
-use crate::{CacheKey, Caches, RangeComponentResults, RangeComponentResultsInner, RangeResults};
+use crate::{CacheKey, Caches, RangeComponentResults, RangeResults};
 
 // ---
 
@@ -61,6 +61,7 @@ impl Caches {
             //
             // and coarsly invalidates the whole cache in that case, to avoid the kind of bugs
             // showcased in <https://github.com/rerun-io/rerun/issues/5686>.
+            #[cfg(TODO)]
             {
                 let time_range = cache.per_data_time.read_recursive().pending_time_range();
                 if let Some(time_range) = time_range {
@@ -156,6 +157,7 @@ impl std::fmt::Debug for RangeCache {
         let mut data_time_min = TimeInt::MAX;
         let mut data_time_max = TimeInt::MIN;
 
+        #[cfg(TODO)]
         {
             let per_data_time = per_data_time.read();
 

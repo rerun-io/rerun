@@ -6,6 +6,8 @@ use re_types_core::{external::arrow2::array::Array, ComponentName};
 
 use crate::{Caches, LatestAtComponentResults, PromiseResult};
 
+// TODO: get rid of all the promise stuff for real though.
+
 // ---
 
 impl LatestAtComponentResults {

@@ -71,29 +71,31 @@ impl Caches {
                 .collect()
         };
 
-        let range = {
-            let range = self.range_per_cache_key.read_recursive().clone();
-            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+        let range = Default::default(); // TODO
 
-            range
-                .iter()
-                .map(|(key, cache)| {
-                    let cache = cache.read_recursive();
-                    let cache = cache.per_data_time.read_recursive();
-                    (
-                        key.clone(),
-                        (
-                            cache.pending_time_range(),
-                            CachedComponentStats {
-                                total_indices: cache.indices.len() as _,
-                                total_instances: cache.num_instances(),
-                                total_size_bytes: cache.total_size_bytes(),
-                            },
-                        ),
-                    )
-                })
-                .collect()
-        };
+        // let range = {
+        //     let range = self.range_per_cache_key.read_recursive().clone();
+        //     // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+        //
+        //     range
+        //         .iter()
+        //         .map(|(key, cache)| {
+        //             let cache = cache.read_recursive();
+        //             let cache = cache.per_data_time.read_recursive();
+        //             (
+        //                 key.clone(),
+        //                 (
+        //                     cache.pending_time_range(),
+        //                     CachedComponentStats {
+        //                         total_indices: cache.indices.len() as _,
+        //                         total_instances: cache.num_instances(),
+        //                         total_size_bytes: cache.total_size_bytes(),
+        //                     },
+        //                 ),
+        //             )
+        //         })
+        //         .collect()
+        // };
 
         CachesStats { latest_at, range }
     }

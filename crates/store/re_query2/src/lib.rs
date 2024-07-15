@@ -14,13 +14,16 @@ pub use self::cache::{CacheKey, Caches};
 pub use self::cache_stats::{CachedComponentStats, CachesStats};
 pub use self::clamped_zip::*;
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
-pub use self::latest_at::{LatestAtComponentResults, LatestAtMonoResult, LatestAtResults};
+// pub use self::latest_at::{LatestAtComponentResults, LatestAtMonoResult, LatestAtResults};
+pub use self::latest_at::LatestAtResults;
 pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
-pub use self::range::{RangeComponentResults, RangeData, RangeResults};
+// pub use self::range::{RangeComponentResults, RangeData, RangeResults};
+pub use self::range::{RangeComponentResults, RangeResults};
 pub use self::range_zip::*;
 
 pub(crate) use self::latest_at::{latest_at, LatestAtCache};
-pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};
+// pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};
+pub(crate) use self::range::RangeCache;
 
 pub mod external {
     pub use paste;
