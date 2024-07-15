@@ -7,7 +7,7 @@ struct DecodedImageResult {
     /// Cached `Result` from decoding the image
     tensor_result: Result<DecodedTensor, TensorImageLoadError>,
 
-    /// Total memory used by this `Tensor`.\
+    /// Total memory used by this image.
     memory_used: u64,
 
     /// Which [`ImageDecodeCache::generation`] was this `Tensor` last used?
