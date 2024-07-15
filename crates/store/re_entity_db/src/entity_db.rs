@@ -126,6 +126,11 @@ impl EntityDb {
     }
 
     #[inline]
+    pub fn query_caches2(&self) -> &re_query2::Caches {
+        &self.query_caches2
+    }
+
+    #[inline]
     pub fn resolver(&self) -> &re_query::PromiseResolver {
         &self.resolver
     }

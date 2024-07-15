@@ -4924,6 +4924,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_query2",
  "re_tracing",
  "re_types_core",
  "re_ui",

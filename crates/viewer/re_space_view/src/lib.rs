@@ -6,7 +6,9 @@ pub mod controls;
 
 mod heuristics;
 mod query;
+mod query2;
 mod results_ext;
+mod results_ext2;
 mod screenshot;
 mod view_property_ui;
 
