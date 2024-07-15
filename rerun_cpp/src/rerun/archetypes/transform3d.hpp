@@ -50,12 +50,12 @@ namespace rerun::archetypes {
     ///
     ///     rec.log("base", arrow);
     ///
-    ///     rec.log("base/translated", rerun::Transform3D({1.0f, 0.0f, 0.0f}));
+    ///     rec.log("base/translated", rerun::Transform3D::from_translation({1.0f, 0.0f, 0.0f}));
     ///     rec.log("base/translated", arrow);
     ///
     ///     rec.log(
     ///         "base/rotated_scaled",
-    ///         rerun::Transform3D(
+    ///         rerun::Transform3D::from_rotation_scale(
     ///             rerun::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rerun::Angle::radians(TAU / 8.0f)),
     ///             2.0f
     ///         )
@@ -126,7 +126,7 @@ namespace rerun::archetypes {
     ///
     ///         rec.log(
     ///             "sun/planet",
-    ///             rerun::Transform3D(
+    ///             rerun::Transform3D::from_translation_rotation(
     ///                 {std::sin(r_planet) * d_planet, std::cos(r_planet) * d_planet, 0.0f},
     ///                 rerun::RotationAxisAngle{
     ///                     {1.0, 0.0f, 0.0f},
@@ -136,14 +136,10 @@ namespace rerun::archetypes {
     ///         );
     ///         rec.log(
     ///             "sun/planet/moon",
-    ///             rerun::Transform3D(
-    ///                 {
-    ///                     std::cos(r_moon) * d_moon,
-    ///                     std::sin(r_moon) * d_moon,
-    ///                     0.0f,
-    ///                 },
-    ///                 true
+    ///             rerun::Transform3D::from_translation(
+    ///                 {std::cos(r_moon) * d_moon, std::sin(r_moon) * d_moon, 0.0f}
     ///             )
+    ///                 .with_from_parent(true)
     ///         );
     ///     }
     /// }
@@ -287,14 +283,15 @@ namespace rerun::archetypes {
         ///
         /// \param _translation \copydoc Transform3D::translation
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
-        /// \param scale \copydoc datatypes::TranslationRotationScale3D::scale
+        /// \param _scale \copydoc Transform3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
             const components::Translation3D& _translation, const datatypes::Rotation3D& rotation,
-            const datatypes::Scale3D& scale, bool from_parent = false
+            const components::Scale3D& _scale, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(rotation, scale, from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(_translation)) {}
+            : transform(datatypes::TranslationRotationScale3D(rotation, from_parent)),
+              translation(Collection<components::Translation3D>::take_ownership(_translation)),
+              scale(Collection<components::Scale3D>::take_ownership(_scale)) {}
 
         /// Creates a new 3D transform from translation/rotation/uniform-scale.
         ///
@@ -309,18 +306,17 @@ namespace rerun::archetypes {
             const components::Translation3D& _translation, const datatypes::Rotation3D& rotation,
             float uniform_scale, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(rotation, uniform_scale, from_parent)
-              ),
-              translation(Collection<components::Translation3D>::take_ownership(_translation)) {}
+            : Transform3D(_translation, rotation, components::Scale3D(uniform_scale), from_parent) {
+        }
 
         /// From a translation, applied after a rotation & scale, known as an affine transformation.
         ///
         /// \param translation \copydoc Transform3D::translation
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
-        /// \param scale \copydoc datatypes::TranslationRotationScale3D::scale
+        /// \param scale \copydoc Transform3D::scale
         static Transform3D from_translation_rotation_scale(
             const components::Translation3D& translation, const datatypes::Rotation3D& rotation,
-            const datatypes::Scale3D& scale
+            const components::Scale3D& scale
         ) {
             return Transform3D(translation, rotation, scale, false);
         }
@@ -350,21 +346,22 @@ namespace rerun::archetypes {
         /// From translation & scale only.
         ///
         /// \param _translation \copydoc Transform3D::translation
-        /// \param scale datatypes::TranslationRotationScale3D::scale
+        /// \param _scale Transform3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
-            const components::Translation3D& _translation, const datatypes::Scale3D& scale,
+            const components::Translation3D& _translation, const components::Scale3D& _scale,
             bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(scale, from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(_translation)) {}
+            : transform(datatypes::TranslationRotationScale3D(from_parent)),
+              translation(Collection<components::Translation3D>::take_ownership(_translation)),
+              scale(Collection<components::Scale3D>::take_ownership(_scale)) {}
 
         /// From a translation applied after a scale.
         ///
         /// \param translation \copydoc Transform3D::translation
-        /// \param scale datatypes::TranslationRotationScale3D::scale
+        /// \param scale Transform3D::scale
         static Transform3D from_translation_scale(
-            const components::Translation3D& translation, const datatypes::Scale3D& scale
+            const components::Translation3D& translation, const components::Scale3D& scale
         ) {
             return Transform3D(translation, scale, false);
         }
@@ -381,19 +378,19 @@ namespace rerun::archetypes {
             const components::Translation3D& _translation, float uniform_scale,
             bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(uniform_scale, from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(_translation)) {}
+            : Transform3D(_translation, components::Scale3D(uniform_scale), from_parent) {}
 
         /// From rotation & scale.
         ///
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
-        /// \param scale datatypes::TranslationRotationScale3D::scale
+        /// \param _scale Transform3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
-            const datatypes::Rotation3D& rotation, const datatypes::Scale3D& scale,
+            const datatypes::Rotation3D& rotation, const components::Scale3D& _scale,
             bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(rotation, scale, from_parent)) {}
+            : transform(datatypes::TranslationRotationScale3D(rotation, from_parent)),
+              scale(Collection<components::Scale3D>::take_ownership(_scale)) {}
 
         /// From rotation & uniform scale.
         ///
@@ -406,15 +403,14 @@ namespace rerun::archetypes {
         Transform3D(
             const datatypes::Rotation3D& rotation, float uniform_scale, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(rotation, uniform_scale, from_parent)
-              ) {}
+            : Transform3D(rotation, components::Scale3D(uniform_scale), from_parent) {}
 
         /// From a rotation & scale.
         ///
         /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
-        /// \param scale datatypes::TranslationRotationScale3D::scale
+        /// \param scale Transform3D::scale
         static Transform3D from_rotation_scale(
-            const datatypes::Rotation3D& rotation, const datatypes::Scale3D& scale
+            const datatypes::Rotation3D& rotation, const components::Scale3D& scale
         ) {
             return Transform3D(rotation, scale, false);
         }
@@ -435,15 +431,16 @@ namespace rerun::archetypes {
 
         /// From scale only.
         ///
-        /// \param scale \copydoc datatypes::TranslationRotationScale3D::from_parent
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::scale
-        Transform3D(const datatypes::Scale3D& scale, bool from_parent = false)
-            : transform(datatypes::TranslationRotationScale3D(scale, from_parent)) {}
+        /// \param _scale \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent \copydoc Transform3D::scale
+        Transform3D(const components::Scale3D& scale, bool from_parent = false)
+            : transform(datatypes::TranslationRotationScale3D(from_parent)),
+              scale(Collection<components::Scale3D>::take_ownership(scale)) {}
 
         /// From scale only.
         ///
-        /// \param scale datatypes::TranslationRotationScale3D::scale
-        static Transform3D from_scale(const datatypes::Scale3D& scale) {
+        /// \param scale Transform3D::scale
+        static Transform3D from_scale(const components::Scale3D& scale) {
             return Transform3D(scale, false);
         }
 
