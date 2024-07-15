@@ -20,12 +20,9 @@ fn main() -> anyhow::Result<()> {
                 extra_env: {
                     use re_chunk_store::ChunkStoreConfig as C;
                     vec![
-                        (C::ENV_CHUNK_MAX_BYTES.into(), u64::MAX.to_string()),
-                        (C::ENV_CHUNK_MAX_ROWS.into(), u64::MAX.to_string()),
-                        (
-                            C::ENV_CHUNK_MAX_ROWS_IF_UNSORTED.into(),
-                            u64::MAX.to_string(),
-                        ),
+                        (C::ENV_CHUNK_MAX_BYTES.into(), "0".into()),
+                        (C::ENV_CHUNK_MAX_ROWS.into(), "0".into()),
+                        (C::ENV_CHUNK_MAX_ROWS_IF_UNSORTED.into(), "0".into()),
                     ]
                 },
                 ..Default::default()
