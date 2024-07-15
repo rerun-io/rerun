@@ -207,10 +207,29 @@ pub struct ChunkIdSetPerTime {
     /// This is used to bound the backwards linear walk when looking for overlapping chunks in
     /// latest-at queries.
     ///
-    /// See [`ChunkStore::latest_at_relevant_chunks`] implementation comments for more details.
+    /// See [`ChunkStore::latest_at`] implementation comments for more details.
     pub(crate) max_interval_length: u64,
 
+    /// [`ChunkId`]s organized by their _most specific_ start time.
+    ///
+    /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
+    /// was instantiated, e.g.:
+    /// * For an `(entity, timeline, component)` index, that would be the first timestamp at which this
+    ///   [`Chunk`] contains data for this particular component on this particular timeline (see
+    ///   [`Chunk::time_range_per_component`]).
+    /// * For an `(entity, timeline)` index, that would be the first timestamp at which this [`Chunk`]
+    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
     pub(crate) per_start_time: BTreeMap<TimeInt, ChunkIdSet>,
+
+    /// [`ChunkId`]s organized by their _most specific_ end time.
+    ///
+    /// What "most specific" means depends on the context in which the [`ChunkIdSetPerTime`]
+    /// was instantiated, e.g.:
+    /// * For an `(entity, timeline, component)` index, that would be the last timestamp at which this
+    ///   [`Chunk`] contains data for this particular component on this particular timeline (see
+    ///   [`Chunk::time_range_per_component`]).
+    /// * For an `(entity, timeline)` index, that would be the last timestamp at which this [`Chunk`]
+    ///   contains data for any component on this particular timeline (see [`re_chunk::ChunkTimeline::time_range`]).
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
