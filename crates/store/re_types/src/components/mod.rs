@@ -63,6 +63,7 @@ mod rotation3d_ext;
 mod scalar;
 mod scalar_ext;
 mod scale3d;
+mod scale3d_ext;
 mod stroke_width;
 mod stroke_width_ext;
 mod tensor_data;

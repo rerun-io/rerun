@@ -1,6 +1,6 @@
 use crate::{
-    components::{TransformMat3x3, Translation3D},
-    datatypes::{Rotation3D, Scale3D, TranslationRotationScale3D},
+    components::{Scale3D, TransformMat3x3, Translation3D},
+    datatypes::{Rotation3D, TranslationRotationScale3D},
 };
 
 use super::Transform3D;
@@ -37,7 +37,7 @@ impl Transform3D {
     #[inline]
     pub fn from_scale(scale: impl Into<Scale3D>) -> Self {
         Self {
-            transform: TranslationRotationScale3D::from_scale(scale).into(),
+            scale: Some(vec![scale.into()]),
             ..Self::default()
         }
     }
@@ -75,7 +75,7 @@ impl Transform3D {
         scale: impl Into<Scale3D>,
     ) -> Self {
         Self {
-            transform: TranslationRotationScale3D::from_scale(scale).into(),
+            scale: Some(vec![scale.into()]),
             translation: Some(vec![translation.into()]),
             ..Self::default()
         }
@@ -89,7 +89,8 @@ impl Transform3D {
         scale: impl Into<Scale3D>,
     ) -> Self {
         Self {
-            transform: TranslationRotationScale3D::from_rotation_scale(rotation, scale).into(),
+            transform: TranslationRotationScale3D::from_rotation(rotation).into(),
+            scale: Some(vec![scale.into()]),
             translation: Some(vec![translation.into()]),
             ..Self::default()
         }
@@ -99,7 +100,8 @@ impl Transform3D {
     #[inline]
     pub fn from_rotation_scale(rotation: impl Into<Rotation3D>, scale: impl Into<Scale3D>) -> Self {
         Self {
-            transform: TranslationRotationScale3D::from_rotation_scale(rotation, scale).into(),
+            transform: TranslationRotationScale3D::from_rotation(rotation).into(),
+            scale: Some(vec![scale.into()]),
             ..Self::default()
         }
     }
