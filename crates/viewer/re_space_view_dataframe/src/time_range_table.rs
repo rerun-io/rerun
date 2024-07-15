@@ -206,12 +206,17 @@ pub(crate) fn time_range_table_ui(
     };
 
     let time_ui = |ui: &mut egui::Ui, time: &TimeInt| {
-        ui.label(
-            query
-                .timeline
-                .typ()
-                .format(*time, ctx.app_options.time_zone),
-        );
+        if ui
+            .button(
+                query
+                    .timeline
+                    .typ()
+                    .format(*time, ctx.app_options.time_zone),
+            )
+            .clicked()
+        {
+            ctx.rec_cfg.time_ctrl.write().set_time(*time);
+        }
     };
 
     // Draw a single line of the table. This is called for each _visible_ row.
