@@ -271,9 +271,9 @@ namespace rerun {
         ///
         /// \param _scale \copydoc datatypes::TranslationRotationScale3D::from_parent
         /// \param from_parent \copydoc Transform3D::scale
-        Transform3D(const components::Scale3D& scale, bool from_parent = false)
+        Transform3D(const components::Scale3D& _scale, bool from_parent = false)
             : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              scale(Collection<components::Scale3D>::take_ownership(scale)) {}
+              scale(Collection<components::Scale3D>::take_ownership(_scale)) {}
 
         /// From scale only.
         ///
