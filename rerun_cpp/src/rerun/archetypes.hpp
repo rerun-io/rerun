@@ -12,6 +12,7 @@
 #include "archetypes/clear.hpp"
 #include "archetypes/depth_image.hpp"
 #include "archetypes/disconnected_space.hpp"
+#include "archetypes/ellipsoids.hpp"
 #include "archetypes/image.hpp"
 #include "archetypes/line_strips2d.hpp"
 #include "archetypes/line_strips3d.hpp"

@@ -250,6 +250,24 @@ impl SelectionPanel {
                 }
 
                 if instance_path.is_all() {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Entity").value_fn(
+                        |ui, _| {
+                            let (query, db) = guess_query_and_db_for_selected_entity(
+                                ctx,
+                                &instance_path.entity_path,
+                            );
+
+                            item_ui::entity_path_button(
+                                ctx,
+                                &query,
+                                db,
+                                ui,
+                                None,
+                                &instance_path.entity_path,
+                            );
+                        },
+                    ));
+
                     let entity_path = &instance_path.entity_path;
                     let query_result = ctx.lookup_query_result(*view_id);
                     let data_result = query_result
@@ -879,7 +897,10 @@ fn list_existing_data_blueprints(
                 let response = response.on_hover_ui(|ui| {
                     item_ui::instance_hover_card_ui(ui, ctx, &query, db, instance_path);
                 });
-                item_ui::cursor_interact_with_selectable(ctx, response, item);
+
+                // We don't use item_ui::cursor_interact_with_selectable here because the forced
+                // hover background is distracting and not useful.
+                ctx.select_hovered_on_click(&response, item);
             }
         }
     }

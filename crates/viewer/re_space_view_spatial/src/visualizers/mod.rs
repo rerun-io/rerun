@@ -7,6 +7,7 @@ mod boxes2d;
 mod boxes3d;
 mod cameras;
 mod depth_images;
+mod ellipsoids;
 mod images;
 mod lines2d;
 mod lines3d;
@@ -102,6 +103,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
+    system_registry.register_visualizer::<ellipsoids::EllipsoidsVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     Ok(())

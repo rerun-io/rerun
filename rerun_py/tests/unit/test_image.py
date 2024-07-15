@@ -103,13 +103,13 @@ def test_image_compress() -> None:
     image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint8)
 
     compressed = rr.Image(image_data).compress(jpeg_quality=80)
-    assert type(compressed) == rr.ImageEncoded
+    assert type(compressed) == rr.ImageEncodedHelper
 
     # Mono Supported
     image_data = np.asarray(rng.uniform(0, 255, (10, 20)), dtype=np.uint8)
 
     compressed = rr.Image(image_data).compress(jpeg_quality=80)
-    assert type(compressed) == rr.ImageEncoded
+    assert type(compressed) == rr.ImageEncodedHelper
 
     # RGBA Not supported
     with pytest.warns(RerunWarning) as warnings:
@@ -127,7 +127,7 @@ def test_image_compress() -> None:
     image.save(bin, format="jpeg")
 
     # Jump through some hoops to make a pre-compressed image
-    img_encoded = rr.ImageEncoded(contents=bin)
+    img_encoded = rr.ImageEncodedHelper(contents=bin)
     img = rr.Image(img_encoded.data)
 
     with pytest.warns(RerunWarning) as warnings:
