@@ -128,6 +128,7 @@ pub(crate) fn latest_at_table_ui(
     table_ui(
         ui,
         &sorted_components,
+        1, // entity column
         header_ui,
         sorted_instance_paths.len(),
         row_ui,

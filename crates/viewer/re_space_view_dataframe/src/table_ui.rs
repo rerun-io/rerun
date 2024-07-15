@@ -6,9 +6,12 @@ use re_chunk_store::RowId;
 use re_types_core::ComponentName;
 
 /// Display a nicely configured table with the provided header ui, row ui, and row count.
+///
+/// The `extra_columns` are hom many more columns there are in addition to the components.
 pub(crate) fn table_ui(
     ui: &mut egui::Ui,
     sorted_components: &BTreeSet<ComponentName>,
+    extra_columns: usize,
     header_ui: impl FnOnce(egui_extras::TableRow<'_, '_>),
     row_count: usize,
     row_ui: impl FnMut(TableRow<'_, '_>),
@@ -28,7 +31,7 @@ pub(crate) fn table_ui(
                 egui_extras::TableBuilder::new(ui)
                     .columns(
                         Column::auto_with_initial_suggestion(200.0).clip(true),
-                        3 + sorted_components.len(),
+                        extra_columns + sorted_components.len(),
                     )
                     .resizable(true)
                     .vscroll(true)

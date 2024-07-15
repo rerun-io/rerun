@@ -263,5 +263,12 @@ pub(crate) fn time_range_table_ui(
         }
     };
 
-    table_ui(ui, &sorted_components, header_ui, rows.len(), row_ui);
+    table_ui(
+        ui,
+        &sorted_components,
+        3, // time, entity, row id
+        header_ui,
+        rows.len(),
+        row_ui,
+    );
 }

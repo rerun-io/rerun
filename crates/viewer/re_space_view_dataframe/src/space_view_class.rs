@@ -48,13 +48,13 @@ The Dataframe view operates in two modes: the _latest at_ mode and the _time ran
 In the _latest at_ mode, the view displays the latest data for the timeline and time set in the time
 panel. A row is shown for each entity instance.
 
-The _time range_ mode, the view displays all the data logged within the time range set for each
+In the _time range_ mode, the view displays all the data logged within the time range set for each
 view entity. In this mode, each row corresponds to an entity and time pair. Rows are further split
 if multiple `rr.log()` calls were made for the same entity/time. Static data is also displayed.
 
 The view switches to _time range_ mode as soon as a single one of its entities has its visible time
 range set to _Override_. Each entity may have its own time range setting. (To set the same time range
-for all entities, it is preferable to override the view-level visible time range at the view.)"
+for all entities, it is preferable to override the view-level visible time range.)"
             .to_owned()
     }
 
