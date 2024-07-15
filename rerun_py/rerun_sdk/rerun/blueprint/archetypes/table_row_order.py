@@ -25,7 +25,7 @@ class TableRowOrder(Archetype):
     def __init__(
         self: Any,
         *,
-        group_by: blueprint_components.TableGroupByLike | None = None,
+        sort_key: blueprint_components.SortKeyLike | None = None,
         sort_order: blueprint_components.SortOrderLike | None = None,
     ):
         """
@@ -33,23 +33,23 @@ class TableRowOrder(Archetype):
 
         Parameters
         ----------
-        group_by:
-            The type of the background.
+        sort_key:
+            The primary sort key.
         sort_order:
-            Color used for the `SolidColor` background type.
+            The sort order.
 
         """
 
         # You can define your own __init__ function as a member of TableRowOrderExt in table_row_order_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(group_by=group_by, sort_order=sort_order)
+            self.__attrs_init__(sort_key=sort_key, sort_order=sort_order)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            group_by=None,  # type: ignore[arg-type]
+            sort_key=None,  # type: ignore[arg-type]
             sort_order=None,  # type: ignore[arg-type]
         )
 
@@ -60,12 +60,12 @@ class TableRowOrder(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    group_by: blueprint_components.TableGroupByBatch | None = field(
+    sort_key: blueprint_components.SortKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.TableGroupByBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.SortKeyBatch._optional,  # type: ignore[misc]
     )
-    # The type of the background.
+    # The primary sort key.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -74,7 +74,7 @@ class TableRowOrder(Archetype):
         default=None,
         converter=blueprint_components.SortOrderBatch._optional,  # type: ignore[misc]
     )
-    # Color used for the `SolidColor` background type.
+    # The sort order.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

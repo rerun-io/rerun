@@ -16,8 +16,8 @@ namespace rerun {
         std::vector<DataCell> cells;
         cells.reserve(3);
 
-        if (archetype.group_by.has_value()) {
-            auto result = DataCell::from_loggable(archetype.group_by.value());
+        if (archetype.sort_key.has_value()) {
+            auto result = DataCell::from_loggable(archetype.sort_key.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

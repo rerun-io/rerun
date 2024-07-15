@@ -15,9 +15,9 @@ table TableRowOrder (
 ) {
     // --- Optional ---
 
-    /// The type of the background.
-    group_by: rerun.blueprint.components.TableGroupBy ("attr.rerun.component_optional", nullable, order: 1000);
+    /// The primary sort key.
+    sort_key: rerun.blueprint.components.SortKey ("attr.rerun.component_optional", nullable, order: 1000);
 
-    /// Color used for the `SolidColor` background type.
+    /// The sort order.
     sort_order: rerun.blueprint.components.SortOrder ("attr.rerun.component_optional", nullable, order: 2000);
 }

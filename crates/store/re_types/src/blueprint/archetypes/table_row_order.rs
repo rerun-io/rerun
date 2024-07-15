@@ -21,22 +21,22 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the sorting of the rows of a time range table.
 #[derive(Clone, Debug, Copy)]
 pub struct TableRowOrder {
-    /// The type of the background.
-    pub group_by: Option<crate::blueprint::components::TableGroupBy>,
+    /// The primary sort key.
+    pub sort_key: Option<crate::blueprint::components::SortKey>,
 
-    /// Color used for the `SolidColor` background type.
+    /// The sort order.
     pub sort_order: Option<crate::blueprint::components::SortOrder>,
 }
 
 impl ::re_types_core::SizeBytes for TableRowOrder {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.group_by.heap_size_bytes() + self.sort_order.heap_size_bytes()
+        self.sort_key.heap_size_bytes() + self.sort_order.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::blueprint::components::TableGroupBy>>::is_pod()
+        <Option<crate::blueprint::components::SortKey>>::is_pod()
             && <Option<crate::blueprint::components::SortOrder>>::is_pod()
     }
 }
@@ -50,7 +50,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.TableGroupBy".into(),
+            "rerun.blueprint.components.SortKey".into(),
             "rerun.blueprint.components.SortOrder".into(),
         ]
     });
@@ -59,7 +59,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.TableRowOrderIndicator".into(),
-            "rerun.blueprint.components.TableGroupBy".into(),
+            "rerun.blueprint.components.SortKey".into(),
             "rerun.blueprint.components.SortOrder".into(),
         ]
     });
@@ -121,16 +121,16 @@ impl ::re_types_core::Archetype for TableRowOrder {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let group_by =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.TableGroupBy") {
-                <crate::blueprint::components::TableGroupBy>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.TableRowOrder#group_by")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let sort_key = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SortKey")
+        {
+            <crate::blueprint::components::SortKey>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.TableRowOrder#sort_key")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let sort_order =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SortOrder") {
                 <crate::blueprint::components::SortOrder>::from_arrow_opt(&**array)
@@ -142,7 +142,7 @@ impl ::re_types_core::Archetype for TableRowOrder {
                 None
             };
         Ok(Self {
-            group_by,
+            sort_key,
             sort_order,
         })
     }
@@ -154,7 +154,7 @@ impl ::re_types_core::AsComponents for TableRowOrder {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.group_by
+            self.sort_key
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.sort_order
@@ -174,22 +174,22 @@ impl TableRowOrder {
     #[inline]
     pub fn new() -> Self {
         Self {
-            group_by: None,
+            sort_key: None,
             sort_order: None,
         }
     }
 
-    /// The type of the background.
+    /// The primary sort key.
     #[inline]
-    pub fn with_group_by(
+    pub fn with_sort_key(
         mut self,
-        group_by: impl Into<crate::blueprint::components::TableGroupBy>,
+        sort_key: impl Into<crate::blueprint::components::SortKey>,
     ) -> Self {
-        self.group_by = Some(group_by.into());
+        self.sort_key = Some(sort_key.into());
         self
     }
 
-    /// Color used for the `SolidColor` background type.
+    /// The sort order.
     #[inline]
     pub fn with_sort_order(
         mut self,

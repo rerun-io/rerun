@@ -4,7 +4,7 @@ use std::sync::Arc;
 use re_chunk_store::{Chunk, RangeQuery, RowId};
 use re_data_ui::item_ui::entity_path_button;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_types::blueprint::components::{SortOrder, TableGroupBy};
+use re_types::blueprint::components::{SortKey, SortOrder};
 use re_types_core::datatypes::TimeRange;
 use re_types_core::ComponentName;
 use re_viewer_context::{QueryRange, UiLayout, ViewQuery, ViewerContext};
@@ -31,7 +31,7 @@ pub(crate) fn time_range_table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     query: &ViewQuery<'_>,
-    group_by: TableGroupBy,
+    sort_key: SortKey,
     sort_order: SortOrder,
 ) {
     re_tracing::profile_function!();
@@ -144,15 +144,15 @@ pub(crate) fn time_range_table_ui(
         .collect::<BTreeMap<_, _>>();
 
     //
-    // Row sorting/grouping based on view properties.
+    // Row sorting based on view properties.
     //
 
     let mut rows = rows_to_chunk.keys().collect::<Vec<_>>();
 
-    // apply group_by
-    match group_by {
-        TableGroupBy::Entity => {} // already correctly sorted
-        TableGroupBy::Time => rows.sort_by_key(|(entity_path, time, _)| (*time, entity_path)),
+    // apply sort key
+    match sort_key {
+        SortKey::Entity => {} // already correctly sorted
+        SortKey::Time => rows.sort_by_key(|(entity_path, time, _)| (*time, entity_path)),
     };
     if sort_order == SortOrder::Descending {
         rows.reverse();
@@ -171,12 +171,12 @@ pub(crate) fn time_range_table_ui(
 
     // Draw the header row.
     let header_ui = |mut row: egui_extras::TableRow<'_, '_>| {
-        match group_by {
-            TableGroupBy::Entity => {
+        match sort_key {
+            SortKey::Entity => {
                 row.col(entity_header);
                 row.col(time_header);
             }
-            TableGroupBy::Time => {
+            SortKey::Time => {
                 row.col(time_header);
                 row.col(entity_header);
             }
@@ -226,12 +226,12 @@ pub(crate) fn time_range_table_ui(
         let row_chunk = &rows_to_chunk[row_key];
         let (entity_path, time, row_id) = row_key;
 
-        match group_by {
-            TableGroupBy::Entity => {
+        match sort_key {
+            SortKey::Entity => {
                 row.col(|ui| entity_ui(ui, entity_path));
                 row.col(|ui| time_ui(ui, time));
             }
-            TableGroupBy::Time => {
+            SortKey::Time => {
                 row.col(|ui| time_ui(ui, time));
                 row.col(|ui| entity_ui(ui, entity_path));
             }

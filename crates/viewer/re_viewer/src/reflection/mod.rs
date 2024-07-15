@@ -147,6 +147,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SortKey as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Primary element by which to group by in a temporal data table.",
+                placeholder: Some(SortKey::default().to_arrow()?),
+            },
+        ),
+        (
             <SortOrder as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Sort order for data table.",
@@ -172,13 +179,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The origin of a `SpaceView`.",
                 placeholder: Some(SpaceViewOrigin::default().to_arrow()?),
-            },
-        ),
-        (
-            <TableGroupBy as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Primary element by which to group by in a temporal data table.",
-                placeholder: Some(TableGroupBy::default().to_arrow()?),
             },
         ),
         (
@@ -634,12 +634,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 docstring_md: "Configuration for the sorting of the rows of a time range table.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TableGroupBy".into(), display_name :
-                    "Group by", docstring_md : "The type of the background.", },
+                    "rerun.blueprint.components.SortKey".into(), display_name :
+                    "Sort key", docstring_md : "The primary sort key.", },
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md :
-                    "Color used for the `SolidColor` background type.", },
+                    "Sort order", docstring_md : "The sort order.", },
                 ],
             },
         ),

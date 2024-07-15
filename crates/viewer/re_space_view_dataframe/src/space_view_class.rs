@@ -4,7 +4,7 @@ use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::blueprint::{
     archetypes::TableRowOrder,
-    components::{SortOrder, TableGroupBy},
+    components::{SortKey, SortOrder},
 };
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::list_item;
@@ -115,14 +115,14 @@ for all entities, it is preferable to override the view-level visible time range
             ctx.blueprint_query,
             query.space_view_id,
         );
-        let group_by = row_order.component_or_fallback::<TableGroupBy>(ctx, self, state)?;
+        let sort_key = row_order.component_or_fallback::<SortKey>(ctx, self, state)?;
         let sort_order = row_order.component_or_fallback::<SortOrder>(ctx, self, state)?;
 
         let mode = self.table_mode(query);
 
         match mode {
             TableMode::LatestAtTable => latest_at_table_ui(ctx, ui, query),
-            TableMode::TimeRangeTable => time_range_table_ui(ctx, ui, query, group_by, sort_order),
+            TableMode::TimeRangeTable => time_range_table_ui(ctx, ui, query, sort_key, sort_order),
         };
 
         Ok(())

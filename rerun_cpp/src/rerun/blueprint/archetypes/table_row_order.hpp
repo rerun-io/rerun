@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "../../blueprint/components/sort_key.hpp"
 #include "../../blueprint/components/sort_order.hpp"
-#include "../../blueprint/components/table_group_by.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -19,10 +19,10 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the sorting of the rows of a time range table.
     struct TableRowOrder {
-        /// The type of the background.
-        std::optional<rerun::blueprint::components::TableGroupBy> group_by;
+        /// The primary sort key.
+        std::optional<rerun::blueprint::components::SortKey> sort_key;
 
-        /// Color used for the `SolidColor` background type.
+        /// The sort order.
         std::optional<rerun::blueprint::components::SortOrder> sort_order;
 
       public:
@@ -36,14 +36,14 @@ namespace rerun::blueprint::archetypes {
         TableRowOrder() = default;
         TableRowOrder(TableRowOrder&& other) = default;
 
-        /// The type of the background.
-        TableRowOrder with_group_by(rerun::blueprint::components::TableGroupBy _group_by) && {
-            group_by = std::move(_group_by);
+        /// The primary sort key.
+        TableRowOrder with_sort_key(rerun::blueprint::components::SortKey _sort_key) && {
+            sort_key = std::move(_sort_key);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Color used for the `SolidColor` background type.
+        /// The sort order.
         TableRowOrder with_sort_order(rerun::blueprint::components::SortOrder _sort_order) && {
             sort_order = std::move(_sort_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
