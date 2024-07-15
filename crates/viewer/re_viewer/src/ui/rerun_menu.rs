@@ -371,6 +371,12 @@ fn experimental_feature_ui(
         "Plots: query clamping",
     )
     .on_hover_text("Toggle query clamping for the plot visualizers.");
+
+    ui.re_checkbox(
+        &mut app_options.experimental_chunk_based_data_density_graph,
+        "Chunk-based data density graph",
+    )
+    .on_hover_text("Toggle chunk-based data density graph");
 }
 
 #[cfg(debug_assertions)]

@@ -221,6 +221,41 @@ impl Chunk {
             .collect()
     }
 
+    /// The cumulative number of events in this chunk.
+    ///
+    /// I.e. how many _component batches_ ("cells") were logged in total?
+    //
+    // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
+    #[inline]
+    pub fn num_events_cumulative(&self) -> usize {
+        // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
+        self.components
+            .values()
+            .map(|list_array| {
+                list_array.validity().map_or_else(
+                    || list_array.len(),
+                    |validity| validity.len() - validity.unset_bits(),
+                )
+            })
+            .sum()
+    }
+
+    /// The number of events in this chunk for the specified component.
+    ///
+    /// I.e. how many _component batches_ ("cells") were logged in total for this component?
+    //
+    // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
+    #[inline]
+    pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<usize> {
+        // Reminder: component columns are sparse, we must check validity bitmap.
+        self.components.get(&component_name).map(|list_array| {
+            list_array.validity().map_or_else(
+                || list_array.len(),
+                |validity| validity.len() - validity.unset_bits(),
+            )
+        })
+    }
+
     /// Computes the `RowId` range covered by each individual component column on each timeline.
     ///
     /// This is different from the `RowId` range covered by the [`Chunk`] as a whole because component
