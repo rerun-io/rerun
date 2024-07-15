@@ -9,7 +9,7 @@ include "./archetypes/clear.fbs";
 include "./archetypes/depth_image.fbs";
 include "./archetypes/disconnected_space.fbs";
 include "./archetypes/ellipsoids.fbs";
-include "./archetypes/image_encoded.fbs"
+include "./archetypes/image_encoded.fbs";
 include "./archetypes/image.fbs";
 include "./archetypes/line_strips2d.fbs";
 include "./archetypes/line_strips3d.fbs";
