@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from rerun.datatypes import (
-    BoolLike,
     Float32Like,
     Mat3x3Like,
     Rotation3DLike,
