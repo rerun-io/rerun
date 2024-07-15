@@ -115,10 +115,10 @@ def test_transform3d() -> None:
         from_parent,
         axis_length,
     ) in all_arrays:
-        mat3x3 = cast(Optional[rr.datatypes.Vec3DArrayLike], mat3x3)
-        translation = cast(Optional[rr.datatypes.Vec3DArrayLike], translation)
-        from_parent = cast(Optional[rr.datatypes.BoolLike], from_parent)
-        axis_length = cast(Optional[rr.datatypes.Float32ArrayLike], axis_length)
+        mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
+        translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
+        from_parent = cast(Optional[bool], from_parent)
+        axis_length = cast(Optional[rr.datatypes.Float32Like], axis_length)
 
         print(
             f"rr.Transform3D(\n"
@@ -157,7 +157,7 @@ def test_transform3d() -> None:
         # assert arch.from_parent == rr.components.Bool._optional(none_empty_or_value(from_parent, False))
 
 
-def test_transform_mat3x3_snippets():
+def test_transform_mat3x3_snippets() -> None:
     np.testing.assert_array_equal(
         rr.components.TransformMat3x3([1, 2, 3, 4, 5, 6, 7, 8, 9]).flat_columns,
         np.array([1, 4, 7, 2, 5, 8, 3, 6, 9], dtype=np.float32),

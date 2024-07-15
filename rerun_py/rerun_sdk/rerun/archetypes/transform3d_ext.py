@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from rerun.datatypes.mat3x3 import Mat3x3Like
-from rerun.datatypes.rotation3d import Rotation3DLike
-from rerun.datatypes.scale3d import Scale3DLike
-from rerun.datatypes.translation_rotation_scale3d import TranslationRotationScale3D
-from rerun.datatypes.vec3d import Vec3DLike
+from rerun.datatypes import (
+    BoolLike,
+    Float32Like,
+    Mat3x3Like,
+    Rotation3DLike,
+    Scale3DLike,
+    TranslationRotationScale3D,
+    Vec3DLike,
+)
 
 from ..error_utils import catch_and_log_exceptions
 
@@ -23,7 +27,7 @@ class Transform3DExt:
         rotation: Rotation3DLike | None = None,
         scale: Scale3DLike | None = None,
         from_parent: bool | None = None,
-        axis_length: float | None = None,
+        axis_length: Float32Like | None = None,
     ):
         """
         Create a new instance of the Transform3D archetype.
