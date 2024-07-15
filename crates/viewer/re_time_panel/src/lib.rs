@@ -485,6 +485,7 @@ impl TimePanel {
             &self.time_ranges_ui,
             time_ctrl,
             ui,
+            Some(&time_area_response),
             &time_area_painter,
             &timeline_rect,
         );
@@ -1046,6 +1047,7 @@ fn collapsed_time_marker_and_time(
                 &time_ranges_ui,
                 time_ctrl,
                 ui,
+                None,
                 &painter,
                 &time_range_rect,
             );
@@ -1360,6 +1362,7 @@ fn time_marker_ui(
     time_ranges_ui: &TimeRangesUi,
     time_ctrl: &mut TimeControl,
     ui: &egui::Ui,
+    time_area_response: Option<&egui::Response>,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
@@ -1370,6 +1373,7 @@ fn time_marker_ui(
     let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
     let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
     let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
+    let time_area_double_clicked = time_area_response.is_some_and(|resp| resp.double_clicked());
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     let mut is_hovering_time_cursor = false;
@@ -1382,8 +1386,14 @@ fn time_marker_ui(
                     Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
                         .expand(interact_radius);
 
+                let sense = if time_area_double_clicked {
+                    egui::Sense::hover()
+                } else {
+                    egui::Sense::drag()
+                };
+
                 let response = ui
-                    .interact(line_rect, time_drag_id, egui::Sense::drag())
+                    .interact(line_rect, time_drag_id, sense)
                     .on_hover_and_drag_cursor(timeline_cursor_icon);
 
                 is_hovering_time_cursor = response.hovered();
@@ -1414,9 +1424,11 @@ fn time_marker_ui(
     if ctx.app_options.experimental_chunk_based_data_density_graph {
         if let Some(pointer_pos) = pointer_pos {
             let is_pointer_in_time_area_rect = time_area_painter.clip_rect().contains(pointer_pos);
+            let is_pointer_in_timeline_rect = timeline_rect.contains(pointer_pos);
 
             // Show preview?
             if !is_hovering_time_cursor
+                && !time_area_double_clicked
                 && is_pointer_in_time_area_rect
                 && !is_anything_being_dragged
                 && !is_hovering_the_loop_selection
@@ -1436,15 +1448,30 @@ fn time_marker_ui(
                 egui::Sense::click(),
             );
 
-            if is_pointer_in_time_area_rect
-                && time_area_response.clicked()
-                && !is_anything_being_dragged
-                && !is_hovering_the_loop_selection
-            {
-                if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                    let time = time_ranges_ui.clamp_time(time);
-                    time_ctrl.set_time(time);
-                    time_ctrl.pause();
+            if !is_hovering_the_loop_selection {
+                let mut set_time_to_pointer = || {
+                    if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                        let time = time_ranges_ui.clamp_time(time);
+                        time_ctrl.set_time(time);
+                        time_ctrl.pause();
+                    }
+                };
+
+                // click on timeline = set time + start drag
+                // click on time area = set time
+                // double click on time area = reset time
+                if !is_anything_being_dragged
+                    && is_pointer_in_timeline_rect
+                    && ui.input(|i| i.pointer.primary_down())
+                {
+                    set_time_to_pointer();
+                    ui.ctx().set_dragged_id(time_drag_id);
+                } else if is_pointer_in_time_area_rect {
+                    if time_area_response.double_clicked() {
+                        time_ctrl.reset_time_view();
+                    } else if time_area_response.clicked() && !is_anything_being_dragged {
+                        set_time_to_pointer();
+                    }
                 }
             }
         }
