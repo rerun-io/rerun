@@ -33,7 +33,7 @@ class ImageEncoded(ImageEncodedExt, Archetype):
 
     import rerun as rr
 
-    image_file_path = Path(__file__).parent / "../../../../crates/viewer/re_ui/data/logo_dark_mode.png"
+    image_file_path = Path(__file__).parent / "ferris.png"
 
     rr.init("rerun_example_image_encoded", spawn=True)
 
