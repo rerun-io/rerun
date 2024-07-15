@@ -4,7 +4,7 @@ use re_log_types::{EntityPath, TimeInt};
 use re_types_core::Component;
 use re_types_core::{external::arrow2::array::Array, ComponentName};
 
-use crate::{Caches, LatestAtComponentResults, PromiseResolver, PromiseResult};
+use crate::{Caches, LatestAtComponentResults, PromiseResult};
 
 // ---
 
@@ -13,10 +13,10 @@ impl LatestAtComponentResults {
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
     #[inline]
-    pub fn dense<C: Component>(&self, resolver: &PromiseResolver) -> Option<&[C]> {
+    pub fn dense<C: Component>(&self) -> Option<&[C]> {
         let component_name = C::name();
         let level = re_log::Level::Warn;
-        match self.to_dense::<C>(resolver).flatten() {
+        match self.to_dense::<C>().flatten() {
             PromiseResult::Pending => {
                 re_log::debug_once!("Couldn't deserialize {component_name}: promise still pending",);
                 None
@@ -37,14 +37,10 @@ impl LatestAtComponentResults {
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
     #[inline]
-    pub fn raw(
-        &self,
-        resolver: &PromiseResolver,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<Box<dyn Array>> {
+    pub fn raw(&self, component_name: impl Into<ComponentName>) -> Option<Box<dyn Array>> {
         let component_name = component_name.into();
         let level = re_log::Level::Warn;
-        match self.resolved(resolver) {
+        match self.resolved() {
             PromiseResult::Pending => {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
@@ -65,16 +61,16 @@ impl LatestAtComponentResults {
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
     #[inline]
-    pub fn try_raw(&self, resolver: &PromiseResolver) -> Option<Box<dyn Array>> {
-        match self.resolved(resolver) {
+    pub fn try_raw(&self) -> Option<Box<dyn Array>> {
+        match self.resolved() {
             PromiseResult::Pending | PromiseResult::Error(_) => None,
             PromiseResult::Ready(array) => Some(array),
         }
     }
 
     /// Returns true if the component is missing, an empty array or still pending.
-    pub fn is_empty(&self, resolver: &PromiseResolver) -> bool {
-        match self.resolved(resolver) {
+    pub fn is_empty(&self) -> bool {
+        match self.resolved() {
             PromiseResult::Ready(cell) => cell.is_empty(),
             PromiseResult::Error(_) | PromiseResult::Pending => true,
         }
@@ -89,10 +85,10 @@ impl LatestAtComponentResults {
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
     #[inline]
-    pub fn mono<C: Component>(&self, resolver: &PromiseResolver) -> Option<C> {
+    pub fn mono<C: Component>(&self) -> Option<C> {
         let component_name = C::name();
         let level = re_log::Level::Warn;
-        match self.to_dense::<C>(resolver).flatten() {
+        match self.to_dense::<C>().flatten() {
             PromiseResult::Pending => {
                 re_log::debug_once!("Couldn't deserialize {component_name}: promise still pending",);
                 None
@@ -131,14 +127,10 @@ impl LatestAtComponentResults {
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
     #[inline]
-    pub fn mono_raw(
-        &self,
-        resolver: &PromiseResolver,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<Box<dyn Array>> {
+    pub fn mono_raw(&self, component_name: impl Into<ComponentName>) -> Option<Box<dyn Array>> {
         let component_name = component_name.into();
         let level = re_log::Level::Warn;
-        match self.resolved(resolver) {
+        match self.resolved() {
             PromiseResult::Pending => {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
@@ -174,13 +166,9 @@ impl LatestAtComponentResults {
     /// Returns None both for pending promises and if the index is out of bounds.
     /// Logs an error only in case of deserialization failure.
     #[inline]
-    pub fn try_instance<C: Component>(
-        &self,
-        resolver: &PromiseResolver,
-        index: usize,
-    ) -> Option<C> {
+    pub fn try_instance<C: Component>(&self, index: usize) -> Option<C> {
         let component_name = C::name();
-        match self.to_dense::<C>(resolver).flatten() {
+        match self.to_dense::<C>().flatten() {
             PromiseResult::Pending => None,
 
             PromiseResult::Ready(data) => {
@@ -213,10 +201,10 @@ impl LatestAtComponentResults {
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized, or
     /// the index doesn't exist.
     #[inline]
-    pub fn instance<C: Component>(&self, resolver: &PromiseResolver, index: usize) -> Option<C> {
+    pub fn instance<C: Component>(&self, index: usize) -> Option<C> {
         let component_name = C::name();
         let level = re_log::Level::Warn;
-        match self.to_dense::<C>(resolver).flatten() {
+        match self.to_dense::<C>().flatten() {
             PromiseResult::Pending => {
                 re_log::debug_once!("Couldn't deserialize {component_name}: promise still pending",);
                 None
@@ -260,13 +248,12 @@ impl LatestAtComponentResults {
     #[inline]
     pub fn instance_raw(
         &self,
-        resolver: &PromiseResolver,
         component_name: impl Into<ComponentName>,
         index: usize,
     ) -> Option<Box<dyn Array>> {
         let component_name = component_name.into();
         let level = re_log::Level::Warn;
-        match self.resolved(resolver) {
+        match self.resolved() {
             PromiseResult::Pending => {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
@@ -351,7 +338,6 @@ impl Caches {
     pub fn latest_at_component_with_log_level<C: Component>(
         &self,
         store: &ChunkStore,
-        resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
         level: re_log::Level,
@@ -363,7 +349,7 @@ impl Caches {
 
         let index @ (data_time, row_id) = *result.index();
 
-        match result.to_dense::<C>(resolver).flatten() {
+        match result.to_dense::<C>().flatten() {
             PromiseResult::Pending => {
                 re_log::debug_once!(
                     "Couldn't deserialize {entity_path}:{} @ {data_time:?}#{row_id}: promise still pending",
@@ -414,17 +400,10 @@ impl Caches {
     pub fn latest_at_component<C: Component>(
         &self,
         store: &ChunkStore,
-        resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
     ) -> Option<LatestAtMonoResult<C>> {
-        self.latest_at_component_with_log_level(
-            store,
-            resolver,
-            entity_path,
-            query,
-            re_log::Level::Warn,
-        )
+        self.latest_at_component_with_log_level(store, entity_path, query, re_log::Level::Warn)
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -439,24 +418,16 @@ impl Caches {
     pub fn latest_at_component_quiet<C: Component>(
         &self,
         store: &ChunkStore,
-        resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
     ) -> Option<LatestAtMonoResult<C>> {
-        self.latest_at_component_with_log_level(
-            store,
-            resolver,
-            entity_path,
-            query,
-            re_log::Level::Debug,
-        )
+        self.latest_at_component_with_log_level(store, entity_path, query, re_log::Level::Debug)
     }
 
     /// Call [`Self::latest_at_component`] at the given path, walking up the hierarchy until an instance is found.
     pub fn latest_at_component_at_closest_ancestor<C: Component>(
         &self,
         store: &ChunkStore,
-        resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
     ) -> Option<(EntityPath, LatestAtMonoResult<C>)> {
@@ -464,9 +435,7 @@ impl Caches {
 
         let mut cur_entity_path = Some(entity_path.clone());
         while let Some(entity_path) = cur_entity_path {
-            if let Some(result) =
-                self.latest_at_component::<C>(store, resolver, &entity_path, query)
-            {
+            if let Some(result) = self.latest_at_component::<C>(store, &entity_path, query) {
                 return Some((entity_path, result));
             }
             cur_entity_path = entity_path.parent();

@@ -9,8 +9,7 @@ use re_types::ComponentBatch;
 use re_types_core::{Archetype as _, Loggable as _};
 
 use re_query2::{
-    clamped_zip_1x2, range_zip_1x2, PromiseResolver, PromiseResult, RangeComponentResults,
-    RangeResults,
+    clamped_zip_1x2, range_zip_1x2, PromiseResult, RangeComponentResults, RangeResults,
 };
 
 // ---
@@ -18,8 +17,6 @@ use re_query2::{
 fn main() -> anyhow::Result<()> {
     let store = store()?;
     eprintln!("store:\n{store}");
-
-    let resolver = PromiseResolver::default();
 
     let entity_path = "points";
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
@@ -56,9 +53,9 @@ fn main() -> anyhow::Result<()> {
     // If the data has already been accessed in the past, then this will just grab the
     // pre-deserialized, pre-resolved/pre-converted result from the cache.
     // Otherwise, this will trigger a deserialization and cache the result for next time.
-    let all_points = all_points.to_dense::<MyPoint>(&resolver);
-    let all_colors = all_colors.to_dense::<MyColor>(&resolver);
-    let all_labels = all_labels.to_dense::<MyLabel>(&resolver);
+    let all_points = all_points.to_dense::<MyPoint>();
+    let all_colors = all_colors.to_dense::<MyColor>();
+    let all_labels = all_labels.to_dense::<MyLabel>();
 
     // The cache might not have been able to resolve and deserialize the entire dataset across all
     // available timestamps.

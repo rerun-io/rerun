@@ -101,12 +101,12 @@ impl<'a> HybridLatestAtResults<'a> {
 
         self.overrides
             .get(component_name)
-            .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+            .and_then(|r| r.try_instance::<T>(index))
             .or_else(||
                 // No override -> try recording store instead
                 self.results
                     .get(component_name)
-                    .and_then(|r| r.try_instance::<T>(&self.resolver, index)))
+                    .and_then(|r| r.try_instance::<T>(index)))
     }
 
     /// Utility for retrieving a single instance of a component.
@@ -118,7 +118,7 @@ impl<'a> HybridLatestAtResults<'a> {
             // No override & no store -> try default instead
             self.defaults
                 .get(T::name())
-                .and_then(|r| r.try_instance::<T>(&self.resolver, index))
+                .and_then(|r| r.try_instance::<T>(index))
         })
     }
 
@@ -208,36 +208,28 @@ pub trait RangeResultsExt {
     /// Defaults have no effect.
     fn get_required_component_dense<'a, C: Component>(
         &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>>;
+    ) -> Option<re_query2::Result<RangeData<'a, C>>>;
 
     /// Returns dense component data for the given component or an empty array.
     ///
     /// For results that are aware of the blueprint, overrides, store results, and defaults will be considered.
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>>;
+    fn get_or_empty_dense<'a, C: Component>(&'a self) -> re_query2::Result<RangeData<'a, C>>;
 }
 
 impl RangeResultsExt for Results {
     fn get_required_component_dense<'a, C: Component>(
         &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
+    ) -> Option<re_query2::Result<RangeData<'a, C>>> {
         match self {
-            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
-            Self::Range(_, results) => results.get_required_component_dense(resolver),
+            Self::LatestAt(_, results) => results.get_required_component_dense(),
+            Self::Range(_, results) => results.get_required_component_dense(),
         }
     }
 
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
+    fn get_or_empty_dense<'a, C: Component>(&'a self) -> re_query2::Result<RangeData<'a, C>> {
         match self {
-            Self::LatestAt(_, results) => results.get_or_empty_dense(resolver),
-            Self::Range(_, results) => results.get_or_empty_dense(resolver),
+            Self::LatestAt(_, results) => results.get_or_empty_dense(),
+            Self::Range(_, results) => results.get_or_empty_dense(),
         }
     }
 }
@@ -246,18 +238,21 @@ impl RangeResultsExt for RangeResults {
     #[inline]
     fn get_required_component_dense<'a, C: Component>(
         &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
-        let results = self.get(C::name())?.to_dense(resolver);
+    ) -> Option<re_query2::Result<RangeData<'a, C>>> {
+        let results = self.get(C::name())?.to_dense();
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = results.status();
         match front_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
+            PromiseResult::Error(err) => {
+                return Some(Err(re_query2::QueryError::Other(err.into())))
+            }
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
+            PromiseResult::Error(err) => {
+                return Some(Err(re_query2::QueryError::Other(err.into())))
+            }
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -265,20 +260,17 @@ impl RangeResultsExt for RangeResults {
     }
 
     #[inline]
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
-        let results = self.get_or_empty(C::name()).to_dense(resolver);
+    fn get_or_empty_dense<'a, C: Component>(&'a self) -> re_query2::Result<RangeData<'a, C>> {
+        let results = self.get_or_empty(C::name()).to_dense();
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = results.status();
         match front_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -290,19 +282,22 @@ impl RangeResultsExt for LatestAtResults {
     #[inline]
     fn get_required_component_dense<'a, C: Component>(
         &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
+    ) -> Option<re_query2::Result<RangeData<'a, C>>> {
         let results = self.get(C::name())?;
-        let data = RangeData::from_latest_at(resolver, results, None);
+        let data = RangeData::from_latest_at(results, None);
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();
         match front_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
+            PromiseResult::Error(err) => {
+                return Some(Err(re_query2::QueryError::Other(err.into())))
+            }
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
+            PromiseResult::Error(err) => {
+                return Some(Err(re_query2::QueryError::Other(err.into())))
+            }
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -310,27 +305,23 @@ impl RangeResultsExt for LatestAtResults {
     }
 
     #[inline]
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
+    fn get_or_empty_dense<'a, C: Component>(&'a self) -> re_query2::Result<RangeData<'a, C>> {
         let results = self.get_or_empty(C::name());
         // With latest-at semantics, we just want to join the secondary components onto the primary
         // ones, irrelevant of their indices.
         // In particular, it is pretty common to have a secondary component be more recent than the
         // associated primary component in latest-at contexts, e.g. colors in an otherwise fixed
         // point cloud being changed each frame.
-        let data =
-            RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+        let data = RangeData::from_latest_at(results, Some((TimeInt::STATIC, RowId::ZERO)));
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();
         match front_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -342,64 +333,58 @@ impl RangeResultsExt for HybridRangeResults {
     #[inline]
     fn get_required_component_dense<'a, C: Component>(
         &'a self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'a, C>>> {
+    ) -> Option<re_query2::Result<RangeData<'a, C>>> {
         let component_name = C::name();
 
         if self.overrides.contains(component_name) {
             let results = self.overrides.get(C::name())?;
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+            let data = RangeData::from_latest_at(results, Some((TimeInt::STATIC, RowId::ZERO)));
 
             // TODO(#5607): what should happen if the promise is still pending?
             let (front_status, back_status) = data.status();
             match front_status {
                 PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
+                    return Some(Err(re_query2::QueryError::Other(err.into())))
                 }
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
             match back_status {
                 PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
+                    return Some(Err(re_query2::QueryError::Other(err.into())))
                 }
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
 
             Some(Ok(data))
         } else {
-            self.results.get_required_component_dense(resolver)
+            self.results.get_required_component_dense()
         }
     }
 
     #[inline]
-    fn get_or_empty_dense<'a, C: Component>(
-        &'a self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'a, C>> {
+    fn get_or_empty_dense<'a, C: Component>(&'a self) -> re_query2::Result<RangeData<'a, C>> {
         let component_name = C::name();
 
         if self.overrides.contains(component_name) {
             let results = self.overrides.get_or_empty(C::name());
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+            let data = RangeData::from_latest_at(results, Some((TimeInt::STATIC, RowId::ZERO)));
 
             // TODO(#5607): what should happen if the promise is still pending?
             let (front_status, back_status) = data.status();
             match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
             match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
 
             Ok(data)
         } else {
-            let data = self.results.get_or_empty_dense(resolver);
+            let data = self.results.get_or_empty_dense();
 
             // If the data is not empty, return it.
             if let Ok(data) = data {
@@ -412,17 +397,16 @@ impl RangeResultsExt for HybridRangeResults {
 
             let results = self.defaults.get_or_empty(C::name());
             // Because this is an default from the blueprint we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+            let data = RangeData::from_latest_at(results, Some((TimeInt::STATIC, RowId::ZERO)));
 
             // TODO(#5607): what should happen if the promise is still pending?
             let (front_status, back_status) = data.status();
             match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
             match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
 
@@ -435,65 +419,59 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     #[inline]
     fn get_required_component_dense<'b, C: Component>(
         &'b self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'b, C>>> {
+    ) -> Option<re_query2::Result<RangeData<'b, C>>> {
         let component_name = C::name();
 
         if self.overrides.contains(component_name) {
             let results = self.overrides.get(C::name())?;
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+            let data = RangeData::from_latest_at(results, Some((TimeInt::STATIC, RowId::ZERO)));
 
             // TODO(#5607): what should happen if the promise is still pending?
             let (front_status, back_status) = data.status();
             match front_status {
                 PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
+                    return Some(Err(re_query2::QueryError::Other(err.into())))
                 }
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
             match back_status {
                 PromiseResult::Error(err) => {
-                    return Some(Err(re_query::QueryError::Other(err.into())))
+                    return Some(Err(re_query2::QueryError::Other(err.into())))
                 }
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
 
             Some(Ok(data))
         } else {
-            self.results.get_required_component_dense(resolver)
+            self.results.get_required_component_dense()
         }
     }
 
     #[inline]
-    fn get_or_empty_dense<'b, C: Component>(
-        &'b self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'b, C>> {
+    fn get_or_empty_dense<'b, C: Component>(&'b self) -> re_query2::Result<RangeData<'b, C>> {
         let component_name = C::name();
 
         if self.overrides.contains(component_name) {
             let results = self.overrides.get_or_empty(C::name());
 
             // Because this is an override we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+            let data = RangeData::from_latest_at(results, Some((TimeInt::STATIC, RowId::ZERO)));
 
             // TODO(#5607): what should happen if the promise is still pending?
             let (front_status, back_status) = data.status();
             match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
             match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
 
             Ok(data)
         } else {
-            let data = self.results.get_or_empty_dense(resolver);
+            let data = self.results.get_or_empty_dense();
 
             // If the data is not empty, return it.
             if let Ok(data) = data {
@@ -506,17 +484,16 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 
             let results = self.defaults.get_or_empty(C::name());
             // Because this is an default from the blueprint we always re-index the data as static
-            let data =
-                RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
+            let data = RangeData::from_latest_at(results, Some((TimeInt::STATIC, RowId::ZERO)));
 
             // TODO(#5607): what should happen if the promise is still pending?
             let (front_status, back_status) = data.status();
             match front_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
             match back_status {
-                PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
+                PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
                 PromiseResult::Pending | PromiseResult::Ready(_) => {}
             }
 
@@ -528,21 +505,17 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
 impl<'a> RangeResultsExt for HybridResults<'a> {
     fn get_required_component_dense<'b, C: Component>(
         &'b self,
-        resolver: &PromiseResolver,
-    ) -> Option<re_query::Result<RangeData<'b, C>>> {
+    ) -> Option<re_query2::Result<RangeData<'b, C>>> {
         match self {
-            Self::LatestAt(_, results) => results.get_required_component_dense(resolver),
-            Self::Range(_, results) => results.get_required_component_dense(resolver),
+            Self::LatestAt(_, results) => results.get_required_component_dense(),
+            Self::Range(_, results) => results.get_required_component_dense(),
         }
     }
 
-    fn get_or_empty_dense<'b, C: Component>(
-        &'b self,
-        resolver: &PromiseResolver,
-    ) -> re_query::Result<RangeData<'b, C>> {
+    fn get_or_empty_dense<'b, C: Component>(&'b self) -> re_query2::Result<RangeData<'b, C>> {
         match self {
-            Self::LatestAt(_, results) => results.get_or_empty_dense(resolver),
-            Self::Range(_, results) => results.get_or_empty_dense(resolver),
+            Self::LatestAt(_, results) => results.get_or_empty_dense(),
+            Self::Range(_, results) => results.get_or_empty_dense(),
         }
     }
 }

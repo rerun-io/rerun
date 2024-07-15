@@ -14,9 +14,7 @@ use re_chunk_store::RangeQuery;
 use re_log_types::{ResolvedTimeRange, TimeInt};
 use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
 
-use crate::{
-    ErasedFlatVecDeque, FlatVecDeque, LatestAtComponentResults, PromiseResolver, PromiseResult,
-};
+use crate::{ErasedFlatVecDeque, FlatVecDeque, LatestAtComponentResults, PromiseResult};
 
 // ---
 
@@ -232,7 +230,6 @@ impl<'a, C: Component> RangeData<'a, C> {
     /// Use `reindexed` override the index of the data, if needed.
     #[inline]
     pub fn from_latest_at(
-        resolver: &PromiseResolver,
         results: &'a LatestAtComponentResults,
         reindexed: Option<(TimeInt, RowId)>,
     ) -> Self {
@@ -242,7 +239,7 @@ impl<'a, C: Component> RangeData<'a, C> {
             cached_dense,
         } = results;
 
-        let status = results.to_dense::<C>(resolver).map(|_| ());
+        let status = results.to_dense::<C>().map(|_| ());
         let index = reindexed.unwrap_or(*index);
 
         Self {
@@ -362,13 +359,9 @@ impl RangeComponentResults {
     /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
-    pub fn to_dense<C: Component>(&self, resolver: &PromiseResolver) -> RangeData<'_, C> {
+    pub fn to_dense<C: Component>(&self) -> RangeData<'_, C> {
         // It's tracing the deserialization of an entire range query at once -- it's fine.
         re_tracing::profile_function!();
-
-        // TODO(cmc): completely get rid of the promise resolving stuff once we start exposing
-        // chunks all the way.
-        _ = resolver;
 
         // --- Step 1: try and upsert pending data (write lock) ---
 

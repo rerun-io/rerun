@@ -97,8 +97,7 @@ impl Caches {
                     // recursive flag is set.
                     #[allow(clippy::collapsible_if)] // readability
                     if clear_entity_path == *entity_path
-                        || cached.mono::<ClearIsRecursive>(&crate::PromiseResolver {})
-                            == Some(ClearIsRecursive(true.into()))
+                        || cached.mono::<ClearIsRecursive>() == Some(ClearIsRecursive(true.into()))
                     {
                         if compare_indices(*cached.index(), max_clear_index)
                             == std::cmp::Ordering::Greater

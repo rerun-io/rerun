@@ -9,17 +9,13 @@ use re_log_types::{build_frame_nr, TimeType, Timeline};
 use re_types::ComponentBatch;
 use re_types_core::{Archetype as _, Loggable as _};
 
-use re_query2::{
-    clamped_zip_1x2, LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult,
-};
+use re_query2::{clamped_zip_1x2, LatestAtComponentResults, LatestAtResults, PromiseResult};
 
 // ---
 
 fn main() -> anyhow::Result<()> {
     let store = store()?;
     eprintln!("store:\n{store}");
-
-    let resolver = PromiseResolver::default();
 
     let entity_path = "points";
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
@@ -60,7 +56,7 @@ fn main() -> anyhow::Result<()> {
     // pre-resolved/pre-converted result from the cache.
     // Otherwise, this will trigger a deserialization and cache the result for next time.
 
-    let points = match points.iter_dense::<MyPoint>(&resolver).flatten() {
+    let points = match points.iter_dense::<MyPoint>().flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
@@ -69,7 +65,7 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let colors = match colors.iter_dense::<MyColor>(&resolver).flatten() {
+    let colors = match colors.iter_dense::<MyColor>().flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
@@ -78,7 +74,7 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let labels = match labels.iter_dense::<MyLabel>(&resolver).flatten() {
+    let labels = match labels.iter_dense::<MyLabel>().flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());

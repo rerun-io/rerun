@@ -13,7 +13,6 @@ use re_log_types::{
     EntityPath, TimeInt, TimePoint,
 };
 use re_query2::Caches;
-use re_query2::PromiseResolver;
 use re_types::{Archetype as _, ComponentBatch};
 use re_types_core::Loggable as _;
 
@@ -559,8 +558,6 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let resolver = PromiseResolver::default();
-
     for _ in 0..3 {
         let cached = caches.latest_at(
             store,
@@ -570,16 +567,10 @@ fn query_and_compare(
         );
 
         let cached_points = cached.get_required(MyPoint::name()).unwrap();
-        let cached_points = cached_points
-            .to_dense::<MyPoint>(&resolver)
-            .flatten()
-            .unwrap();
+        let cached_points = cached_points.to_dense::<MyPoint>().flatten().unwrap();
 
         let cached_colors = cached.get_or_empty(MyColor::name());
-        let cached_colors = cached_colors
-            .to_dense::<MyColor>(&resolver)
-            .flatten()
-            .unwrap();
+        let cached_colors = cached_colors.to_dense::<MyColor>().flatten().unwrap();
 
         eprintln!("{store}");
         // eprintln!("{}", store.to_data_table().unwrap());

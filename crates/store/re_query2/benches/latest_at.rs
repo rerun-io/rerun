@@ -9,7 +9,7 @@ use itertools::Itertools;
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, LatestAtQuery};
 use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
-use re_query2::{clamped_zip_1x1, PromiseResolver};
+use re_query2::clamped_zip_1x1;
 use re_query2::{Caches, LatestAtResults};
 use re_types::{
     archetypes::Points2D,
@@ -270,8 +270,6 @@ fn query_and_visit_points(
     store: &ChunkStore,
     paths: &[EntityPath],
 ) -> Vec<SavePoint> {
-    let resolver = PromiseResolver::default();
-
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_POINTS as i64 / 2);
 
@@ -290,16 +288,12 @@ fn query_and_visit_points(
         let colors = results.get_or_empty(Color::name());
 
         let points = points
-            .iter_dense::<Position2D>(&resolver)
+            .iter_dense::<Position2D>()
             .flatten()
             .unwrap()
             .copied();
 
-        let colors = colors
-            .iter_dense::<Color>(&resolver)
-            .flatten()
-            .unwrap()
-            .copied();
+        let colors = colors.iter_dense::<Color>().flatten().unwrap().copied();
         let color_default_fn = || Color::from(0xFF00FFFF);
 
         for (point, color) in clamped_zip_1x1(points, colors, color_default_fn) {
@@ -322,8 +316,6 @@ fn query_and_visit_strings(
     store: &ChunkStore,
     paths: &[EntityPath],
 ) -> Vec<SaveString> {
-    let resolver = PromiseResolver::default();
-
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_STRINGS as i64 / 2);
 
@@ -341,16 +333,12 @@ fn query_and_visit_strings(
         let colors = results.get_or_empty(Text::name());
 
         let points = points
-            .iter_dense::<Position2D>(&resolver)
+            .iter_dense::<Position2D>()
             .flatten()
             .unwrap()
             .copied();
 
-        let labels = colors
-            .iter_dense::<Text>(&resolver)
-            .flatten()
-            .unwrap()
-            .cloned();
+        let labels = colors.iter_dense::<Text>().flatten().unwrap().cloned();
         let label_default_fn = || Text(String::new().into());
 
         for (_point, label) in clamped_zip_1x1(points, labels, label_default_fn) {

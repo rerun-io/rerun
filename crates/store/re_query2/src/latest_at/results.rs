@@ -7,7 +7,7 @@ use re_chunk::RowId;
 use re_log_types::TimeInt;
 use re_types_core::{Component, ComponentName, SizeBytes};
 
-use crate::{ErasedFlatVecDeque, FlatVecDeque, PromiseResolver, PromiseResult, QueryError};
+use crate::{ErasedFlatVecDeque, FlatVecDeque, PromiseResult, QueryError};
 
 // ---
 
@@ -91,28 +91,17 @@ impl LatestAtResults {
     }
 
     /// Utility for retrieving a single instance of a component.
-    pub fn get_instance<T: re_types_core::Component>(
-        &self,
-        resolver: &PromiseResolver,
-        index: usize,
-    ) -> Option<T> {
-        self.get(T::name())
-            .and_then(|r| r.try_instance::<T>(resolver, index))
+    pub fn get_instance<T: re_types_core::Component>(&self, index: usize) -> Option<T> {
+        self.get(T::name()).and_then(|r| r.try_instance::<T>(index))
     }
 
     /// Utility for retrieving a specific component.
-    pub fn get_slice<T: re_types_core::Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> Option<&[T]> {
-        self.get(T::name()).and_then(|r| r.dense::<T>(resolver))
+    pub fn get_slice<T: re_types_core::Component>(&self) -> Option<&[T]> {
+        self.get(T::name()).and_then(|r| r.dense::<T>())
     }
 
-    pub fn get_vec<T: re_types_core::Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> Option<Vec<T>> {
-        self.get_slice(resolver).map(|v| v.to_vec())
+    pub fn get_vec<T: re_types_core::Component>(&self) -> Option<Vec<T>> {
+        self.get_slice().map(|v| v.to_vec())
     }
 }
 
@@ -157,11 +146,7 @@ impl LatestAtComponentResults {
 
     /// Returns the [`ComponentName`] of the resolved data, if available.
     #[inline]
-    pub fn component_name(&self, resolver: &PromiseResolver) -> Option<ComponentName> {
-        // TODO(cmc): completely get rid of the promise resolving stuff once we start exposing
-        // chunks all the way.
-        _ = resolver;
-
+    pub fn component_name(&self) -> Option<ComponentName> {
         self.value
             .as_ref()
             .map(|(component_name, _)| *component_name)
@@ -231,11 +216,7 @@ impl LatestAtComponentResults {
 
     /// Returns the raw resolved data, if it's ready.
     #[inline]
-    pub fn resolved(&self, resolver: &PromiseResolver) -> PromiseResult<Box<dyn ArrowArray>> {
-        // TODO(cmc): completely get rid of the promise resolving stuff once we start exposing
-        // chunks all the way.
-        _ = resolver;
-
+    pub fn resolved(&self) -> PromiseResult<Box<dyn ArrowArray>> {
         if let Some((_, value)) = self.value.as_ref() {
             PromiseResult::Ready(value.clone())
         } else {
@@ -250,14 +231,7 @@ impl LatestAtComponentResults {
     /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
-    pub fn to_dense<C: Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> PromiseResult<crate::Result<&[C]>> {
-        // TODO(cmc): completely get rid of the promise resolving stuff once we start exposing
-        // chunks all the way.
-        _ = resolver;
-
+    pub fn to_dense<C: Component>(&self) -> PromiseResult<crate::Result<&[C]>> {
         if let Some((_, value)) = self.value.as_ref() {
             PromiseResult::Ready(self.downcast_dense(&**value))
         } else {
@@ -275,10 +249,8 @@ impl LatestAtComponentResults {
     #[inline]
     pub fn iter_dense<C: Component>(
         &self,
-        resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<impl ExactSizeIterator<Item = &C>>> {
-        self.to_dense(resolver)
-            .map(|data| data.map(|data| data.iter()))
+        self.to_dense().map(|data| data.map(|data| data.iter()))
     }
 }
 
