@@ -61,6 +61,7 @@ impl Image {
     ///
     /// If unspecified, the image format will be inferred from the contents.
     #[deprecated = "Use ImageEncoded::from_file_contents instead"]
+    #[cfg(feature = "image")]
     #[inline]
     pub fn from_file_contents(
         contents: Vec<u8>,
