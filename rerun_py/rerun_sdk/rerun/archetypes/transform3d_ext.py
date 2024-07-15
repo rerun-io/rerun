@@ -21,10 +21,10 @@ class Transform3DExt:
     def __init__(
         self: Any,
         *,
-        mat3x3: Mat3x3ArrayLike | None = None,
         translation: Vec3DArrayLike | None = None,
         rotation: Rotation3DLike | None = None,  # TODO(#6831): Should allow arrays.
         scale: Vec3DArrayLike | Float32Like | None = None,
+        mat3x3: Mat3x3ArrayLike | None = None,
         from_parent: bool | None = None,
         axis_length: Float32Like | None = None,
     ):
@@ -33,16 +33,16 @@ class Transform3DExt:
 
         Parameters
         ----------
-        mat3x3:
-            3x3 matrix representing scale and rotation, applied after translation.
-            Not compatible with `rotation` and `scale` parameters.
-            TODO(#3559): Support 4x4 and 4x3 matrices.
         translation:
             3D translation vector.
         rotation:
             3D rotation.
         scale:
             3D scale.
+        mat3x3:
+            3x3 matrix representing scale and rotation, applied after translation.
+            Not compatible with `rotation` and `scale` parameters.
+            TODO(#3559): Support 4x4 and 4x3 matrices.
         from_parent:
              If true, the transform maps from the parent space to the space where the transform was logged.
              Otherwise, the transform maps from the space to its parent.

@@ -8,9 +8,9 @@ namespace rerun.archetypes;
 
 /// A transform between two 3D spaces, i.e. a pose.
 ///
-/// All components are applied in the order they are listed here.
+/// All components are applied in the inverse order they are listed here.
 /// E.g. if both a 4x4 matrix with a translation and a translation vector are present,
-/// the matrix is applied first, then the translation vector on top.
+/// the translation is applied first, followed by the matrix.
 ///
 /// Each transform component can be listed multiple times, but transform tree propagation is only possible
 /// if there's only one instance for each transform component.
@@ -28,14 +28,14 @@ table Transform3D (
   // TODO(#6831): remove.
   transform: rerun.components.Transform3D ("attr.rerun.component_optional", order: 1000);
 
-  /// 3x3 transformation matrices.
-  mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1100);
+  /// Translation vectors.
+  translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1100);
 
   /// Scaling factor.
   scale: [rerun.components.Scale3D] ("attr.rerun.component_optional", nullable, order: 1200);
 
-  /// Translation vectors.
-  translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1300);
+  /// 3x3 transformation matrices.
+  mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1300);
 
   // --- visual representation
 

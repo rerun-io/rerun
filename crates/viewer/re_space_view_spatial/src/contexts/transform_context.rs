@@ -312,15 +312,16 @@ fn get_parent_from_child_transform(
         entity_path,
         [
             Transform3D::name(),
-            TransformMat3x3::name(),
             Translation3D::name(),
             Scale3D::name(),
+            TransformMat3x3::name(),
         ],
     );
     if result.components.is_empty() {
         return None;
     }
 
+    // Order is specified by order of components in the Transform3D archetype.
     let mut transform = glam::Affine3A::IDENTITY;
     if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
         transform *= glam::Affine3A::from(mat3x3);

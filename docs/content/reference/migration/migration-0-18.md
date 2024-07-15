@@ -46,7 +46,8 @@ For this purpose `TranslationRotationScale3D` and `TranslationAndMat3x3` datatyp
 * [`TransformMat3x3`](https://rerun.io/docs/reference/types/components/transform_mat3x3#speculative-link)
 * TODO(andreas): More!
 
-All components are applied to the final transform in order. E.g. if both a 4x4 matrix and a translation is set, the entity is first transformed with the matrix and then translated.
+All components are applied to the final transform in the opposite order they're listed in. E.g. if both a 4x4 matrix and a translation is set, the entity is first translated and then transformed with the matrix.
+If translation, rotation & scale are applied, then (just as in prior versions), from the point of view of the parent space the object is first scaled, then rotated and then translated.
 
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
