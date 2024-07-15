@@ -3,7 +3,7 @@ use egui::Ui;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::blueprint::{
-    archetypes::RangeTableSort,
+    archetypes::RangeTableOrder,
     components::{SortKey, SortOrder},
 };
 use re_types_core::SpaceViewClassIdentifier;
@@ -94,7 +94,7 @@ for all entities, it is preferable to override the view-level visible time range
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
-            view_property_ui::<RangeTableSort>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<RangeTableOrder>(ctx, ui, space_view_id, self, state);
         });
 
         Ok(())
@@ -110,7 +110,7 @@ for all entities, it is preferable to override the view-level visible time range
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let row_order = ViewProperty::from_archetype::<RangeTableSort>(
+        let row_order = ViewProperty::from_archetype::<RangeTableOrder>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             query.space_view_id,

@@ -610,9 +610,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.RangeTableSort"),
+            ArchetypeName::new("rerun.blueprint.archetypes.RangeTableOrder"),
             ArchetypeReflection {
-                display_name: "Range table sort",
+                display_name: "Range table order",
                 docstring_md: "Configuration for the sorting of the rows of a time range table.",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
