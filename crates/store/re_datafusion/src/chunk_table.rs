@@ -161,14 +161,13 @@ impl ExecutionPlan for CustomExec {
             .store
             .iter_chunks()
             .map(|chunk| {
-                let components = re_log_types::example_components::MyPoints::all_components();
-
                 RecordBatch::try_new(
                     self.projected_schema.clone(),
-                    components
+                    self.projected_schema
+                        .fields()
                         .iter()
-                        .filter_map(|c| {
-                            chunk.components().get(c).map(|c| {
+                        .filter_map(|f| {
+                            chunk.components().get(&f.name().clone().into()).map(|c| {
                                 let data = c.to_data();
                                 let converted = GenericListArray::<i32>::from(data);
 

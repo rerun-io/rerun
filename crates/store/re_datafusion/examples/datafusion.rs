@@ -47,7 +47,22 @@ async fn main() -> anyhow::Result<()> {
     let ctx = create_datafusion_context(store)?;
 
     let df = ctx.sql("SELECT * FROM custom_table").await?;
-
     df.show().await?;
+
+    let df = ctx
+        .sql("SELECT \"example.MyPoint\" FROM custom_table")
+        .await?;
+    df.show().await?;
+
+    let df = ctx
+        .sql("SELECT \"example.MyLabel\" FROM custom_table")
+        .await?;
+    df.show().await?;
+
+    let df = ctx
+        .sql("SELECT array_extract(\"example.MyPoint\", 'x') as X, array_extract(\"example.MyPoint\", 'y') as Y FROM custom_table")
+        .await?;
+    df.show().await?;
+
     Ok(())
 }
