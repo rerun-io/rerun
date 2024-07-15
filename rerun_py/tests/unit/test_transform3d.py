@@ -139,14 +139,6 @@ def test_transform3d() -> None:
         assert arch.mat3x3 == rr.components.TransformMat3x3Batch._optional(
             none_empty_or_value(mat3x3, rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
         )
-        print("left")
-        print(arch.translation)
-        print("right")
-        print(
-            rr.components.Translation3DBatch._optional(
-                none_empty_or_value(translation, rr.components.Translation3D([1, 2, 3]))
-            )
-        )
         assert arch.translation == rr.components.Translation3DBatch._optional(
             none_empty_or_value(translation, rr.components.Translation3D([1, 2, 3]))
         )
