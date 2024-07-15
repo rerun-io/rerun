@@ -21,8 +21,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.mat3x3.has_value()) {
-            auto result = DataCell::from_loggable(archetype.mat3x3.value());
+        if (archetype.translation.has_value()) {
+            auto result = DataCell::from_loggable(archetype.translation.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
@@ -31,8 +31,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.translation.has_value()) {
-            auto result = DataCell::from_loggable(archetype.translation.value());
+        if (archetype.mat3x3.has_value()) {
+            auto result = DataCell::from_loggable(archetype.mat3x3.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

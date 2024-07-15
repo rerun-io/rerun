@@ -23,9 +23,9 @@
 namespace rerun::archetypes {
     /// **Archetype**: A transform between two 3D spaces, i.e. a pose.
     ///
-    /// All components are applied in the order they are listed here.
+    /// All components are applied in the inverse order they are listed here.
     /// E.g. if both a 4x4 matrix with a translation and a translation vector are present,
-    /// the matrix is applied first, then the translation vector on top.
+    /// the translation is applied first, followed by the matrix.
     ///
     /// Each transform component can be listed multiple times, but transform tree propagation is only possible
     /// if there's only one instance for each transform component.
@@ -148,14 +148,14 @@ namespace rerun::archetypes {
         /// The transform
         rerun::components::Transform3D transform;
 
-        /// 3x3 transformation matrices.
-        std::optional<Collection<rerun::components::TransformMat3x3>> mat3x3;
+        /// Translation vectors.
+        std::optional<Collection<rerun::components::Translation3D>> translation;
 
         /// Scaling factor.
         std::optional<Collection<rerun::components::Scale3D>> scale;
 
-        /// Translation vectors.
-        std::optional<Collection<rerun::components::Translation3D>> translation;
+        /// 3x3 transformation matrices.
+        std::optional<Collection<rerun::components::TransformMat3x3>> mat3x3;
 
         /// Visual length of the 3 axes.
         ///
@@ -463,9 +463,9 @@ namespace rerun::archetypes {
         explicit Transform3D(rerun::components::Transform3D _transform)
             : transform(std::move(_transform)) {}
 
-        /// 3x3 transformation matrices.
-        Transform3D with_mat3x3(Collection<rerun::components::TransformMat3x3> _mat3x3) && {
-            mat3x3 = std::move(_mat3x3);
+        /// Translation vectors.
+        Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
+            translation = std::move(_translation);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -477,9 +477,9 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Translation vectors.
-        Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
-            translation = std::move(_translation);
+        /// 3x3 transformation matrices.
+        Transform3D with_mat3x3(Collection<rerun::components::TransformMat3x3> _mat3x3) && {
+            mat3x3 = std::move(_mat3x3);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
