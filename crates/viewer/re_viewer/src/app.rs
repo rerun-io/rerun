@@ -770,6 +770,11 @@ impl App {
                     re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
                 }
             }
+
+            UICommand::ToggleChunkBasedDataDensityGraph => {
+                self.app_options_mut()
+                    .experimental_chunk_based_data_density_graph ^= true;
+            }
         }
     }
 

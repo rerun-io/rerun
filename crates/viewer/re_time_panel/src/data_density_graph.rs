@@ -3,14 +3,22 @@
 //! The data density is the number of data points per unit of time.
 //! We collect this into a histogram, blur it, and then paint it.
 
+use std::collections::HashSet;
 use std::ops::RangeInclusive;
+use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
+use re_chunk_store::Chunk;
+use re_chunk_store::RangeQuery;
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
+use re_log_types::EntityPath;
+use re_log_types::TimeInt;
+use re_log_types::Timeline;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
+use re_types::ComponentName;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::TimePanelItem;
@@ -367,6 +375,245 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 // ----------------------------------------------------------------------------
 
 #[allow(clippy::too_many_arguments)]
+pub fn data_density_graph_ui2(
+    data_density_graph_painter: &mut DataDensityGraphPainter,
+    ctx: &ViewerContext<'_>,
+    time_ctrl: &TimeControl,
+    db: &re_entity_db::EntityDb,
+    time_area_painter: &egui::Painter,
+    ui: &egui::Ui,
+    time_ranges_ui: &TimeRangesUi,
+    row_rect: Rect,
+    item: &TimePanelItem,
+) {
+    re_tracing::profile_function!();
+
+    let timeline = *time_ctrl.timeline();
+
+    let mut data = DensityDataAggregate::new(ui, time_ranges_ui, row_rect);
+
+    // Collect all relevant chunks in the visible time range.
+    // We do this as a separate step so that we can also deduplicate chunks.
+    let visible_time_range = time_ranges_ui
+        .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
+    let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
+
+    visit_relevant_chunks(
+        db,
+        &item.entity_path,
+        item.component_name,
+        timeline,
+        visible_time_range,
+        |chunk, time_range, num_events| {
+            chunk_ranges.push((chunk, time_range, num_events));
+        },
+    );
+
+    for (_, time_range, num_events) in chunk_ranges {
+        data.add_chunk_range(time_range, num_events);
+    }
+
+    data.density_graph.buckets = smooth(&data.density_graph.buckets);
+
+    data.density_graph.paint(
+        data_density_graph_painter,
+        row_rect.y_range(),
+        time_area_painter,
+        graph_color(ctx, &item.to_item(), ui),
+        // TODO(jprochazk): completely remove `hovered_x_range` and associated code from painter
+        0f32..=0f32,
+    );
+
+    if let Some(hovered_time) = data.hovered_time {
+        ctx.selection_state().set_hovered(item.to_item());
+
+        if ui.ctx().dragged_id().is_none() {
+            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
+            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
+            egui::show_tooltip_at_pointer(
+                ui.ctx(),
+                ui.layer_id(),
+                egui::Id::new("data_tooltip"),
+                |ui| {
+                    show_row_ids_tooltip2(ctx, ui, time_ctrl, db, item, hovered_time);
+                },
+            );
+        }
+    }
+}
+
+fn show_row_ids_tooltip2(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    time_ctrl: &TimeControl,
+    db: &re_entity_db::EntityDb,
+    item: &TimePanelItem,
+    at_time: TimeInt,
+) {
+    use re_data_ui::DataUi as _;
+
+    let ui_layout = UiLayout::Tooltip;
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), at_time);
+
+    let TimePanelItem {
+        entity_path,
+        component_name,
+    } = item;
+
+    if let Some(component_name) = component_name {
+        let component_path = ComponentPath::new(entity_path.clone(), *component_name);
+        item_ui::component_path_button(ctx, ui, &component_path, db);
+        ui.add_space(8.0);
+        component_path.data_ui(ctx, ui, ui_layout, &query, db);
+    } else {
+        let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
+        item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
+        ui.add_space(8.0);
+        instance_path.data_ui(ctx, ui, ui_layout, &query, db);
+    }
+}
+
+struct DensityDataAggregate<'a> {
+    time_ranges_ui: &'a TimeRangesUi,
+    row_rect: Rect,
+
+    pointer_pos: Option<egui::Pos2>,
+    interact_radius: f32,
+
+    density_graph: DensityGraph,
+    hovered_time: Option<TimeInt>,
+}
+
+impl<'a> DensityDataAggregate<'a> {
+    fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
+        let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+        let interact_radius = ui.style().interaction.resize_grab_radius_side;
+
+        Self {
+            time_ranges_ui,
+            row_rect,
+
+            pointer_pos,
+            interact_radius,
+
+            density_graph: DensityGraph::new(row_rect.x_range()),
+            hovered_time: None,
+        }
+    }
+
+    fn add_chunk_range(&mut self, time_range: ResolvedTimeRange, num_events: usize) {
+        if num_events == 0 {
+            return;
+        }
+
+        let (Some(min_x), Some(max_x)) = (
+            self.time_ranges_ui.x_from_time_f32(time_range.min().into()),
+            self.time_ranges_ui.x_from_time_f32(time_range.max().into()),
+        ) else {
+            return;
+        };
+
+        self.density_graph
+            .add_range((min_x, max_x), num_events as _);
+
+        if let Some(pointer_pos) = self.pointer_pos {
+            let is_hovered = if (max_x - min_x).abs() < 1.0 {
+                // Are we close enough to center?
+                let center_x = (max_x + min_x) / 2.0;
+                let distance_sq = pos2(center_x, self.row_rect.center().y).distance_sq(pointer_pos);
+
+                distance_sq < self.interact_radius.powi(2)
+            } else {
+                // Are we within time range rect?
+                let time_range_rect = Rect {
+                    min: egui::pos2(min_x, self.row_rect.min.y),
+                    max: egui::pos2(max_x, self.row_rect.max.y),
+                };
+
+                time_range_rect.contains(pointer_pos)
+            };
+
+            if is_hovered {
+                if let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                    self.hovered_time = Some(at_time.round());
+                }
+            }
+        }
+    }
+}
+
+/// This is a wrapper over `range_relevant_chunks` which also supports querying the entire entity.
+/// Relevant chunks are those which:
+/// - Contain data for `entity_path`
+/// - Contain a `component_name` column (if provided)
+/// - Have data on the given `timeline`
+/// - Have data in the given `time_range`
+///
+/// The does not deduplicates chunks when no `component_name` is provided.
+fn visit_relevant_chunks(
+    db: &re_entity_db::EntityDb,
+    entity_path: &EntityPath,
+    component_name: Option<ComponentName>,
+    timeline: Timeline,
+    time_range: ResolvedTimeRange,
+    mut visitor: impl FnMut(Arc<Chunk>, ResolvedTimeRange, usize),
+) {
+    re_tracing::profile_function!();
+
+    let query = RangeQuery::new(timeline, time_range);
+
+    if let Some(component_name) = component_name {
+        let chunks = db
+            .store()
+            .range_relevant_chunks(&query, entity_path, component_name);
+
+        for chunk in chunks {
+            let Some(num_events) = chunk.num_events_for_component(component_name) else {
+                continue;
+            };
+
+            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                continue;
+            };
+
+            visitor(Arc::clone(&chunk), chunk_timeline.time_range(), num_events);
+        }
+    } else {
+        let mut seen = HashSet::new();
+        if let Some(subtree) = db.tree().subtree(entity_path) {
+            subtree.visit_children_recursively(&mut |entity_path, _| {
+                let Some(components) = db.store().all_components(&timeline, entity_path) else {
+                    return;
+                };
+
+                for component_name in components {
+                    let chunks =
+                        db.store()
+                            .range_relevant_chunks(&query, entity_path, component_name);
+
+                    for chunk in chunks {
+                        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                            continue;
+                        };
+
+                        if seen.contains(&chunk.id()) {
+                            continue;
+                        }
+                        seen.insert(chunk.id());
+
+                        visitor(
+                            Arc::clone(&chunk),
+                            chunk_timeline.time_range(),
+                            chunk.num_events_cumulative(),
+                        );
+                    }
+                }
+            });
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
     data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
@@ -545,7 +792,7 @@ fn show_row_ids_tooltip(
     }
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.center());
 
     let TimePanelItem {
         entity_path,

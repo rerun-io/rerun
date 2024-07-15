@@ -6491,6 +6491,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_data_density_graph"
+version = "0.18.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rand",
+ "re_log",
+ "rerun",
+]
+
+[[package]]
 name = "test_image_memory"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
