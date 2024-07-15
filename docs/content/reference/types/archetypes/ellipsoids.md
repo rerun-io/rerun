@@ -25,9 +25,9 @@ Opaque and transparent rendering will be supported later.
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 
 ## API reference links
- * 🌊 [C++ API docs for `Ellipsoids`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Ellipsoids.html)
- * 🐍 [Python API docs for `Ellipsoids`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Ellipsoids)
- * 🦀 [Rust API docs for `Ellipsoids`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Ellipsoids.html)
+ * 🌊 [C++ API docs for `Ellipsoids`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Ellipsoids.html?speculative-link)
+ * 🐍 [Python API docs for `Ellipsoids`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Ellipsoids)
+ * 🦀 [Rust API docs for `Ellipsoids`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Ellipsoids.html?speculative-link)
 
 ## Example
 
