@@ -48,6 +48,7 @@ from .archetypes import (
     Clear as Clear,
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,
+    Ellipsoids as Ellipsoids,
     Image as Image,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,

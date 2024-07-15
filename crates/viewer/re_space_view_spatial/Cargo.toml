@@ -46,6 +46,7 @@ bitflags.workspace = true
 bytemuck.workspace = true
 egui = { workspace = true, features = ["serde"] }
 glam.workspace = true
+hexasphere.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
