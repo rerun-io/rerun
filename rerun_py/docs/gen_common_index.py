@@ -155,14 +155,15 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "archetypes.DepthImage",
             "archetypes.Image",
-            "ImageEncodedHelper",
+            "archetypes.ImageEncoded",
             "archetypes.SegmentationImage",
+            "ImageChromaDownsampled",
         ],
         gen_page=False,
     ),
     Section(
         title="Image Helpers",
-        class_list=["ImageEncodedHelper"],
+        class_list=["ImageChromaDownsampled"],
         show_tables=False,
     ),
     Section(

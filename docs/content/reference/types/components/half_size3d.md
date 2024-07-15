@@ -23,4 +23,4 @@ Negative sizes indicate that the box is flipped along the respective axis, but t
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Ellipsoids`](../archetypes/ellipsoids.md)
+* [`Ellipsoids`](../archetypes/ellipsoids.md?speculative-link)

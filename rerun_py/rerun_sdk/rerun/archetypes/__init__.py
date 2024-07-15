@@ -14,6 +14,7 @@ from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
 from .ellipsoids import Ellipsoids
 from .image import Image
+from .image_encoded import ImageEncoded
 from .line_strips2d import LineStrips2D
 from .line_strips3d import LineStrips3D
 from .mesh3d import Mesh3D
@@ -43,6 +44,7 @@ __all__ = [
     "DisconnectedSpace",
     "Ellipsoids",
     "Image",
+    "ImageEncoded",
     "LineStrips2D",
     "LineStrips3D",
     "Mesh3D",

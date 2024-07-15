@@ -636,7 +636,7 @@ fn code_for_struct(
     };
     code.push_unindented(format!("class {name}{superclass_decl}:"), 1);
 
-    code.push_indented(1, quote_obj_docs(objects, obj), 0);
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     if *kind == ObjectKind::Component {
         code.push_indented(1, "_BATCH_TYPE = None", 1);
@@ -749,7 +749,7 @@ fn code_for_struct(
 
             // Generating docs for all the fields creates A LOT of visual noise in the API docs.
             let show_fields_in_docs = false;
-            let doc_lines = lines_from_docs(objects, &field.docs);
+            let doc_lines = lines_from_docs(reporter, objects, &field.docs);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
                     code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -838,7 +838,7 @@ fn code_for_enum(
     }
 
     code.push_str(&format!("class {name}(Enum):\n"));
-    code.push_indented(1, quote_obj_docs(objects, obj), 0);
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
@@ -852,7 +852,7 @@ fn code_for_enum(
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
-        let doc_lines = lines_from_docs(objects, &variant.docs);
+        let doc_lines = lines_from_docs(reporter, objects, &variant.docs);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
                 code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -965,7 +965,7 @@ fn code_for_union(
         0,
     );
 
-    code.push_indented(1, quote_obj_docs(objects, obj), 0);
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     if ext_class.has_init {
         code.push_indented(
@@ -1143,8 +1143,8 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
 }
 
 /// Ends with double newlines, unless empty.
-fn quote_obj_docs(objects: &Objects, obj: &Object) -> String {
-    let mut lines = lines_from_docs(objects, &obj.docs);
+fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
+    let mut lines = lines_from_docs(reporter, objects, &obj.docs);
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -1154,10 +1154,14 @@ fn quote_obj_docs(objects: &Objects, obj: &Object) -> String {
     quote_doc_lines(lines)
 }
 
-fn lines_from_docs(objects: &Objects, docs: &Docs) -> Vec<String> {
+fn lines_from_docs(reporter: &Reporter, objects: &Objects, docs: &Docs) -> Vec<String> {
     let mut lines = docs.lines_for(objects, Target::Python);
 
-    let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap();
+    let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap_or_else(|err| {
+        reporter.error_any(err);
+        vec![]
+    });
+
     if !examples.is_empty() {
         lines.push(String::new());
         let (section_title, divider) = if examples.len() == 1 {

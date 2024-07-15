@@ -8,7 +8,9 @@ NOTE! Rerun 0.18 has not yet been released
 
 ## ⚠️ Breaking changes
 ### `ImageEncoded`
-* `ImageEncoded` has been renamed to `ImageEncodedHelper`
+* Python: `NV12/YUY2` are now logged with the new `ImageChromaDownsampled`
+* `ImageEncoded`:s `format` parameter has been replaced with `media_type` (MIME)
+    * `ImageFormat` is now only for `NV12/YUY2`
 
 
 ### `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)

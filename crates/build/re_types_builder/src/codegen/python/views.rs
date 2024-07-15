@@ -28,7 +28,7 @@ from ..api import SpaceView, SpaceViewContentsLike
     code.push('\n');
 
     code.push_indented(0, format!("class {}(SpaceView):", obj.name), 1);
-    code.push_indented(1, quote_obj_docs(objects, obj), 1);
+    code.push_indented(1, quote_obj_docs(reporter, objects, obj), 1);
 
     code.push_indented(1, init_method(reporter, objects, obj), 1);
 

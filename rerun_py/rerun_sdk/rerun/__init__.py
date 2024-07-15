@@ -19,8 +19,8 @@ from . import (
     experimental as experimental,
     notebook as notebook,
 )
-from ._image import (
-    ImageEncodedHelper as ImageEncodedHelper,
+from ._image_chroma_downsampled import (
+    ImageChromaDownsampled as ImageChromaDownsampled,
     ImageFormat as ImageFormat,
 )
 from ._log import (
@@ -50,6 +50,7 @@ from .archetypes import (
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids as Ellipsoids,
     Image as Image,
+    ImageEncoded as ImageEncoded,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
     Mesh3D as Mesh3D,
