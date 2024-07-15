@@ -64,8 +64,13 @@ impl SpaceViewClass for TensorSpaceView {
         &re_ui::icons::SPACE_VIEW_TENSOR
     }
 
-    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
-        "Select the space view to configure which dimensions are shown.".into()
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "# Tensor view
+
+Display an N-dimensional tensor as an arbitrary 2D slice with custom colormap.
+
+Note: select the space view to configure which dimensions are shown."
+            .to_owned()
     }
 
     fn on_register(

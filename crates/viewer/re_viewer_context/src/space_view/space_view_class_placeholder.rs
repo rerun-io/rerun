@@ -4,6 +4,7 @@ use crate::{
     ViewerContext,
 };
 use re_types::SpaceViewClassIdentifier;
+use re_ui::UiExt;
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]
@@ -22,8 +23,8 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         &re_ui::icons::SPACE_VIEW_UNKNOWN
     }
 
-    fn help_text(&self, _egui_ctx: &egui::Context) -> egui::WidgetText {
-        "The space view class was not recognized.\nThis happens if either the blueprint specifies an invalid space view class or this version of the viewer does not know about this type.".into()
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "The space view class was not recognized.\n\nThis happens if either the blueprint specifies an invalid space view class or this version of the viewer does not know about this type.".to_owned()
     }
 
     fn on_register(
@@ -53,7 +54,11 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.egui_ctx)));
+        ui.markdown_ui(
+            egui::Id::new(self.display_name()),
+            &self.help_markdown(ctx.egui_ctx),
+        );
+
         Ok(())
     }
 }

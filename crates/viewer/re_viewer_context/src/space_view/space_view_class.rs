@@ -63,7 +63,7 @@ pub trait SpaceViewClass: Send + Sync {
     }
 
     /// Help text describing how to interact with this space view in the ui.
-    fn help_text(&self, egui_ctx: &egui::Context) -> egui::WidgetText;
+    fn help_markdown(&self, egui_ctx: &egui::Context) -> String;
 
     /// Called once upon registration of the class
     ///
