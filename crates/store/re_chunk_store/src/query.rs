@@ -3,11 +3,12 @@ use std::{
     sync::{atomic::Ordering, Arc},
 };
 
+use itertools::Itertools;
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentName, ComponentNameSet};
 
-use crate::ChunkStore;
+use crate::{store::ChunkIdSetPerTime, ChunkStore};
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
@@ -39,7 +40,7 @@ impl ChunkStore {
             });
 
         let temporal_components: Option<ComponentNameSet> = self
-            .temporal_chunk_ids_per_entity
+            .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
@@ -84,8 +85,9 @@ impl ChunkStore {
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> Option<TimeInt> {
-        let temporal_chunk_ids_per_timeline =
-            self.temporal_chunk_ids_per_entity.get(entity_path)?;
+        let temporal_chunk_ids_per_timeline = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)?;
         let temporal_chunk_ids_per_component = temporal_chunk_ids_per_timeline.get(timeline)?;
 
         let mut time_min = TimeInt::MAX;
@@ -102,8 +104,13 @@ impl ChunkStore {
 
         (time_min != TimeInt::MAX).then_some(time_min)
     }
+}
 
-    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
+// LatestAt
+impl ChunkStore {
+    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`] and [`ComponentName`].
+    ///
+    /// The returned vector is guaranteed free of duplicates, by definition.
     ///
     /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
     /// oblivious to the data therein.
@@ -139,8 +146,8 @@ impl ChunkStore {
             return vec![Arc::clone(static_chunk)];
         }
 
-        if let Some(temporal_chunk_ids) = self
-            .temporal_chunk_ids_per_entity
+        let chunks = self
+            .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.get(&query.timeline())
@@ -149,53 +156,108 @@ impl ChunkStore {
                 temporal_chunk_ids_per_component.get(&component_name)
             })
             .and_then(|temporal_chunk_ids_per_time| {
-                let upper_bound = temporal_chunk_ids_per_time
-                    .per_start_time
-                    .range(..=query.at())
-                    .next_back()
-                    .map(|(time, _)| *time)?;
-
-                // Overlapped chunks
-                // =================
-                //
-                // To deal with potentially overlapping chunks, we keep track of the longest
-                // interval in the entire map, which gives us an upper bound on how much we
-                // would need to walk backwards in order to find all potential overlaps.
-                //
-                // This is a fairly simple solution that scales much better than interval-tree
-                // based alternatives, both in terms of complexity and performance, in the normal
-                // case where most chunks in a collection have similar lengths.
-                //
-                // The most degenerate case -- a single chunk overlaps everything else -- results
-                // in `O(n)` performance, which gets amortized by the query cache.
-                // If that turns out to be a problem in practice, we can experiment with more
-                // complex solutions then.
-                let lower_bound = upper_bound
-                    .as_i64()
-                    .saturating_sub(temporal_chunk_ids_per_time.max_interval_length as _);
-
-                Some(
-                    temporal_chunk_ids_per_time
-                        .per_start_time
-                        .range(..=query.at())
-                        .rev()
-                        .take_while(|(time, _)| time.as_i64() >= lower_bound)
-                        .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
-                        .copied()
-                        .collect::<BTreeSet<_>>(),
-                )
+                self.latest_at(query, temporal_chunk_ids_per_time)
             })
-        {
-            return temporal_chunk_ids
-                .iter()
-                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
-                .collect();
-        }
+            .unwrap_or_default();
 
-        Vec::new()
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
     }
 
-    /// Returns the most-relevant chunk(s) for the given [`RangeQuery`].
+    /// Returns the most-relevant _temporal_ chunk(s) for the given [`LatestAtQuery`].
+    ///
+    /// The returned vector is guaranteed free of duplicates, by definition.
+    ///
+    /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
+    /// oblivious to the data therein.
+    /// For that reason, and because [`Chunk`]s are allowed to temporally overlap, it is possible
+    /// that a query has more than one relevant chunk.
+    ///
+    /// The caller should filter the returned chunks further (see [`Chunk::latest_at`]) in order to
+    /// determine what exact row contains the final result.
+    ///
+    /// **This ignores static data.**
+    pub fn latest_at_relevant_chunks_for_all_components(
+        &self,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+    ) -> Vec<Arc<Chunk>> {
+        re_tracing::profile_function!(format!("{query:?}"));
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let chunks = self
+            .temporal_chunk_ids_per_entity
+            .get(entity_path)
+            .and_then(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.get(&query.timeline())
+            })
+            .and_then(|temporal_chunk_ids_per_time| {
+                self.latest_at(query, temporal_chunk_ids_per_time)
+            })
+            .unwrap_or_default();
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
+    }
+
+    fn latest_at(
+        &self,
+        query: &LatestAtQuery,
+        temporal_chunk_ids_per_time: &ChunkIdSetPerTime,
+    ) -> Option<Vec<Arc<Chunk>>> {
+        re_tracing::profile_function!();
+
+        let upper_bound = temporal_chunk_ids_per_time
+            .per_start_time
+            .range(..=query.at())
+            .next_back()
+            .map(|(time, _)| *time)?;
+
+        // Overlapped chunks
+        // =================
+        //
+        // To deal with potentially overlapping chunks, we keep track of the longest
+        // interval in the entire map, which gives us an upper bound on how much we
+        // would need to walk backwards in order to find all potential overlaps.
+        //
+        // This is a fairly simple solution that scales much better than interval-tree
+        // based alternatives, both in terms of complexity and performance, in the normal
+        // case where most chunks in a collection have similar lengths.
+        //
+        // The most degenerate case -- a single chunk overlaps everything else -- results
+        // in `O(n)` performance, which gets amortized by the query cache.
+        // If that turns out to be a problem in practice, we can experiment with more
+        // complex solutions then.
+        let lower_bound = upper_bound
+            .as_i64()
+            .saturating_sub(temporal_chunk_ids_per_time.max_interval_length as _);
+
+        let temporal_chunk_ids = temporal_chunk_ids_per_time
+            .per_start_time
+            .range(..=query.at())
+            .rev()
+            .take_while(|(time, _)| time.as_i64() >= lower_bound)
+            .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
+            .copied()
+            .collect::<BTreeSet<_>>();
+
+        Some(
+            temporal_chunk_ids
+                .iter()
+                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
+                .collect(),
+        )
+    }
+}
+
+// Range
+impl ChunkStore {
+    /// Returns the most-relevant chunk(s) for the given [`RangeQuery`] and [`ComponentName`].
+    ///
+    /// The returned vector is guaranteed free of duplicates, by definition.
     ///
     /// The criteria for returning a chunk is only that it may contain data that overlaps with
     /// the queried range.
@@ -226,15 +288,98 @@ impl ChunkStore {
             return vec![Arc::clone(static_chunk)];
         }
 
-        self.temporal_chunk_ids_per_entity
-            .get(entity_path)
-            .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(&query.timeline())
-            })
-            .and_then(|temporal_chunk_ids_per_component| {
-                temporal_chunk_ids_per_component.get(&component_name)
-            })
+        let chunks = self
+            .range(
+                query,
+                self.temporal_chunk_ids_per_entity_per_component
+                    .get(entity_path)
+                    .and_then(|temporal_chunk_ids_per_timeline| {
+                        temporal_chunk_ids_per_timeline.get(&query.timeline())
+                    })
+                    .and_then(|temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component.get(&component_name)
+                    })
+                    .into_iter(),
+            )
             .into_iter()
+            // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
+            // need to make sure that the resulting chunks' per-component time range intersects with the
+            // time range of the query itself.
+            .filter(|chunk| {
+                chunk
+                    .timelines()
+                    .get(&query.timeline())
+                    .map_or(false, |time_chunk| {
+                        time_chunk
+                            .time_range_per_component(chunk.components())
+                            .get(&component_name)
+                            .map_or(false, |time_range| time_range.intersects(query.range()))
+                    })
+            })
+            .collect_vec();
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
+    }
+
+    /// Returns the most-relevant _temporal_ chunk(s) for the given [`RangeQuery`].
+    ///
+    /// The returned vector is guaranteed free of duplicates, by definition.
+    ///
+    /// The criteria for returning a chunk is only that it may contain data that overlaps with
+    /// the queried range.
+    ///
+    /// The caller should filter the returned chunks further (see [`Chunk::range`]) in order to
+    /// determine how exactly each row of data fit with the rest.
+    ///
+    /// **This ignores static data.**
+    pub fn range_relevant_chunks_for_all_components(
+        &self,
+        query: &RangeQuery,
+        entity_path: &EntityPath,
+    ) -> Vec<Arc<Chunk>> {
+        re_tracing::profile_function!(format!("{query:?}"));
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let chunks = self
+            .range(
+                query,
+                self.temporal_chunk_ids_per_entity
+                    .get(entity_path)
+                    .and_then(|temporal_chunk_ids_per_timeline| {
+                        temporal_chunk_ids_per_timeline.get(&query.timeline())
+                    })
+                    .into_iter(),
+            )
+            .into_iter()
+            // Post-processing: `Self::range` doesn't have access to the chunk metadata, so now we
+            // need to make sure that the resulting chunks' global time ranges intersect with the
+            // time range of the query itself.
+            .filter(|chunk| {
+                chunk
+                    .timelines()
+                    .get(&query.timeline())
+                    .map_or(false, |time_chunk| {
+                        time_chunk.time_range().intersects(query.range())
+                    })
+            })
+            .collect_vec();
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        chunks
+    }
+
+    fn range<'a>(
+        &'a self,
+        query: &RangeQuery,
+        temporal_chunk_ids_per_times: impl Iterator<Item = &'a ChunkIdSetPerTime>,
+    ) -> Vec<Arc<Chunk>> {
+        re_tracing::profile_function!();
+
+        temporal_chunk_ids_per_times
             .map(|temporal_chunk_ids_per_time| {
                 let start_time = temporal_chunk_ids_per_time
                     .per_start_time

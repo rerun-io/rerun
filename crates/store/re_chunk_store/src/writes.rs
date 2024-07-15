@@ -139,10 +139,10 @@ impl ChunkStore {
             };
 
             {
-                re_tracing::profile_scope!("insertion");
+                re_tracing::profile_scope!("insertion (w/ component)");
 
                 let temporal_chunk_ids_per_timeline = self
-                    .temporal_chunk_ids_per_entity
+                    .temporal_chunk_ids_per_entity_per_component
                     .entry(chunk_or_compacted.entity_path().clone())
                     .or_default();
 
@@ -178,6 +178,40 @@ impl ChunkStore {
                             .or_default()
                             .insert(chunk_or_compacted.id());
                     }
+                }
+            }
+
+            {
+                re_tracing::profile_scope!("insertion (w/o component)");
+
+                let temporal_chunk_ids_per_timeline = self
+                    .temporal_chunk_ids_per_entity
+                    .entry(chunk_or_compacted.entity_path().clone())
+                    .or_default();
+
+                for (timeline, time_chunk) in chunk_or_compacted.timelines() {
+                    let temporal_chunk_ids_per_time = temporal_chunk_ids_per_timeline
+                        .entry(*timeline)
+                        .or_default();
+
+                    let time_range = time_chunk.time_range();
+
+                    // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
+                    temporal_chunk_ids_per_time.max_interval_length = u64::max(
+                        temporal_chunk_ids_per_time.max_interval_length,
+                        time_range.abs_length(),
+                    );
+
+                    temporal_chunk_ids_per_time
+                        .per_start_time
+                        .entry(time_range.min())
+                        .or_default()
+                        .insert(chunk_or_compacted.id());
+                    temporal_chunk_ids_per_time
+                        .per_end_time
+                        .entry(time_range.max())
+                        .or_default()
+                        .insert(chunk_or_compacted.id());
                 }
             }
 
@@ -280,7 +314,7 @@ impl ChunkStore {
         let mut candidates: HashMap<ChunkId, u64> = HashMap::default();
 
         let temporal_chunk_ids_per_timeline = self
-            .temporal_chunk_ids_per_entity
+            .temporal_chunk_ids_per_entity_per_component
             .get(chunk.entity_path())?;
 
         for (timeline, time_range_per_component) in chunk.time_range_per_component() {
@@ -367,6 +401,7 @@ impl ChunkStore {
             type_registry: _,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
+            temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
             temporal_chunks_stats,
             static_chunk_ids_per_entity,
@@ -393,13 +428,12 @@ impl ChunkStore {
         };
 
         let dropped_temporal_chunks = {
+            temporal_chunk_ids_per_entity_per_component.remove(entity_path);
+
             let dropped_temporal_chunk_ids: BTreeSet<_> = temporal_chunk_ids_per_entity
                 .remove(entity_path)
                 .unwrap_or_default()
                 .into_values()
-                .flat_map(|temporal_chunk_ids_per_component| {
-                    temporal_chunk_ids_per_component.into_values()
-                })
                 .flat_map(|temporal_chunk_ids_per_time| {
                     let ChunkIdSetPerTime {
                         max_interval_length: _,
