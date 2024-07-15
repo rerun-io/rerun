@@ -610,6 +610,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.RangeTableSort"),
+            ArchetypeReflection {
+                display_name: "Range table sort",
+                docstring_md: "Configuration for the sorting of the rows of a time range table.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortKey".into(), display_name :
+                    "Sort key", docstring_md : "The primary sort key.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortOrder".into(), display_name :
+                    "Sort order", docstring_md : "The sort order.", },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
@@ -624,21 +639,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     : "Zoom lock", docstring_md :
                     "If enabled, the Y axis range will remain locked to the specified range when zooming.",
                     },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.TableRowOrder"),
-            ArchetypeReflection {
-                display_name: "Table row order",
-                docstring_md: "Configuration for the sorting of the rows of a time range table.",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortKey".into(), display_name :
-                    "Sort key", docstring_md : "The primary sort key.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md : "The sort order.", },
                 ],
             },
         ),

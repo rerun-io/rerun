@@ -6,10 +6,10 @@ from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
+from .range_table_sort import RangeTableSort
 from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
-from .table_row_order import TableRowOrder
 from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
@@ -22,10 +22,10 @@ __all__ = [
     "ContainerBlueprint",
     "PanelBlueprint",
     "PlotLegend",
+    "RangeTableSort",
     "ScalarAxis",
     "SpaceViewBlueprint",
     "SpaceViewContents",
-    "TableRowOrder",
     "TensorScalarMapping",
     "TensorSliceSelection",
     "TensorViewFit",

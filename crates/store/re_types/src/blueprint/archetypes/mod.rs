@@ -2,10 +2,10 @@
 
 mod background;
 mod plot_legend;
+mod range_table_sort;
 mod scalar_axis;
 mod space_view_blueprint;
 mod space_view_contents;
-mod table_row_order;
 mod tensor_scalar_mapping;
 mod tensor_slice_selection;
 mod tensor_view_fit;
@@ -15,10 +15,10 @@ mod visual_bounds2d;
 
 pub use self::background::Background;
 pub use self::plot_legend::PlotLegend;
+pub use self::range_table_sort::RangeTableSort;
 pub use self::scalar_axis::ScalarAxis;
 pub use self::space_view_blueprint::SpaceViewBlueprint;
 pub use self::space_view_contents::SpaceViewContents;
-pub use self::table_row_order::TableRowOrder;
 pub use self::tensor_scalar_mapping::TensorScalarMapping;
 pub use self::tensor_slice_selection::TensorSliceSelection;
 pub use self::tensor_view_fit::TensorViewFit;

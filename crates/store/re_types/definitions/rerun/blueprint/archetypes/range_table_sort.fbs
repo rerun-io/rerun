@@ -8,7 +8,7 @@ namespace rerun.blueprint.archetypes;
 
 
 /// Configuration for the sorting of the rows of a time range table.
-table TableRowOrder (
+table RangeTableSort (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy",
     "attr.rust.generate_field_info"

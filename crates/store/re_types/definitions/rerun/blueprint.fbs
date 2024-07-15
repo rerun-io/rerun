@@ -43,7 +43,7 @@ include "./blueprint/archetypes/visible_time_ranges.fbs";
 include "./blueprint/archetypes/visual_bounds2d.fbs";
 
 include "./blueprint/archetypes/plot_legend.fbs";
-include "./blueprint/archetypes/range_table_settings.fbs";
+include "./blueprint/archetypes/range_table_sort.fbs";
 include "./blueprint/archetypes/scalar_axis.fbs";
 
 include "./blueprint/views/bar_chart.fbs";
