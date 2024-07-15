@@ -32,9 +32,10 @@ namespace rerun::archetypes {
     /// Leading and trailing unit-dimensions are ignored, so that
     /// `1x480x640x3x1` is treated as a `480x640x3` RGB image.
     ///
-    /// Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
-    /// Using these formats can save a lot of bandwidth and memory.
-    /// See [`rerun::datatypes::TensorBuffer`] for more.
+    /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::ImageEncoded`.
+    /// Compressing images can save a lot of bandwidth and memory.
+    ///
+    /// See also `components::TensorData` and `datatypes::TensorBuffer`.
     ///
     /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.

@@ -21,4 +21,5 @@ consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 ## Used by
 
 * [`Asset3D`](../archetypes/asset3d.md)
+* [`ImageEncoded`](../archetypes/image_encoded.md?speculative-link)
 * [`TextDocument`](../archetypes/text_document.md)

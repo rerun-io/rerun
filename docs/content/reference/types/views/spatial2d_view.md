@@ -50,6 +50,7 @@ snippet: views/spatial2d
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`DisconnectedSpace`](../archetypes/disconnected_space.md)
 * [`Image`](../archetypes/image.md)
+* [`ImageEncoded`](../archetypes/image_encoded.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`Pinhole`](../archetypes/pinhole.md)
 * [`Pinhole`](../archetypes/pinhole.md)

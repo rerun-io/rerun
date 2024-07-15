@@ -5323,6 +5323,7 @@ dependencies = [
  "egui_tiles",
  "glam",
  "half 2.3.1",
+ "image",
  "indexmap 2.1.0",
  "itertools 0.13.0",
  "linked-hash-map",

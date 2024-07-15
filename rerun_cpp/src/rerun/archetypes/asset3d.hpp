@@ -80,10 +80,6 @@ namespace rerun::archetypes {
       public:
         // Extensions to generated type defined in 'asset3d_ext.cpp'
 
-        static std::optional<rerun::components::MediaType> guess_media_type(
-            const std::filesystem::path& path
-        );
-
         /// Creates a new `Asset3D` from the file contents at `path`.
         ///
         /// The `MediaType` will be guessed from the file extension.
@@ -97,13 +93,18 @@ namespace rerun::archetypes {
         /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
         static Asset3D from_bytes(
-            rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
+            rerun::Collection<uint8_t> bytes,
+            std::optional<rerun::components::MediaType> media_type = {}
         ) {
             // TODO(cmc): we could try and guess using magic bytes here, like rust does.
             Asset3D asset = Asset3D(std::move(bytes));
             asset.media_type = media_type;
             return asset;
         }
+
+        static std::optional<rerun::components::MediaType> guess_media_type(
+            const std::filesystem::path& path
+        );
 
       public:
         Asset3D() = default;

@@ -11,6 +11,20 @@ impl MediaType {
     /// <https://www.iana.org/assignments/media-types/text/markdown>
     pub const MARKDOWN: &'static str = "text/markdown";
 
+    // -------------------------------------------------------
+    // Images:
+
+    /// [JPEG image](https://en.wikipedia.org/wiki/JPEG): `image/jpeg`.
+    pub const JPEG: &'static str = "image/jpeg";
+
+    /// [PNG image](https://en.wikipedia.org/wiki/PNG): `image/png`.
+    ///
+    /// <https://www.iana.org/assignments/media-types/image/png>
+    pub const PNG: &'static str = "image/png";
+
+    // -------------------------------------------------------
+    // Meshes:
+
     /// [`glTF`](https://en.wikipedia.org/wiki/GlTF).
     ///
     /// <https://www.iana.org/assignments/media-types/model/gltf+json>
@@ -45,6 +59,24 @@ impl MediaType {
     pub fn markdown() -> Self {
         Self(Self::MARKDOWN.into())
     }
+
+    // -------------------------------------------------------
+    // Images:
+
+    /// `image/jpeg`
+    #[inline]
+    pub fn jpeg() -> Self {
+        Self(Self::JPEG.into())
+    }
+
+    /// `image/png`
+    #[inline]
+    pub fn png() -> Self {
+        Self(Self::PNG.into())
+    }
+
+    // -------------------------------------------------------
+    // Meshes:
 
     /// `model/gltf+json`
     #[inline]

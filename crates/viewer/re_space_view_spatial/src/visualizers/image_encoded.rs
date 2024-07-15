@@ -1,19 +1,17 @@
 use itertools::Itertools as _;
 
-use re_chunk_store::{ChunkStoreEvent, RowId};
-use re_log_types::TimeInt;
-use re_query::range_zip_1x1;
-use re_space_view::{diff_component_filter, HybridResults};
+use re_query::range_zip_1x2;
+use re_space_view::HybridResults;
 use re_types::{
-    archetypes::Image,
-    components::{DrawOrder, Opacity, TensorData},
+    archetypes::ImageEncoded,
+    components::{Blob, DrawOrder, MediaType, Opacity},
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TypedComponentFallbackProvider, ViewContext,
+    ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext, SpaceViewClass,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -26,12 +24,12 @@ use super::{
     SpatialViewVisualizerData,
 };
 
-pub struct ImageVisualizer {
+pub struct ImageEncodedVisualizer {
     pub data: SpatialViewVisualizerData,
     pub images: Vec<PickableImageRect>,
 }
 
-impl Default for ImageVisualizer {
+impl Default for ImageEncodedVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
@@ -40,36 +38,15 @@ impl Default for ImageVisualizer {
     }
 }
 
-struct ImageComponentData<'a> {
-    index: (TimeInt, RowId),
-
-    tensor: &'a TensorData,
-    opacity: Option<&'a Opacity>,
-}
-
-impl IdentifiedViewSystem for ImageVisualizer {
+impl IdentifiedViewSystem for ImageEncodedVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Image".into()
+        "ImageEncoded".into()
     }
 }
 
-struct ImageVisualizerEntityFilter;
-
-impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_shaped_like_an_image()
-        })
-    }
-}
-
-impl VisualizerSystem for ImageVisualizer {
+impl VisualizerSystem for ImageEncodedVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Image>()
-    }
-
-    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(ImageVisualizerEntityFilter))
+        VisualizerQueryInfo::from_archetype::<ImageEncoded>()
     }
 
     fn filter_visualizable_entities(
@@ -91,11 +68,11 @@ impl VisualizerSystem for ImageVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        process_archetype::<Self, Image, _>(
+        process_archetype::<Self, ImageEncoded, _>(
             ctx,
             view_query,
             context_systems,
-            |ctx, spatial_ctx, results| self.process_image(ctx, results, spatial_ctx),
+            |ctx, spatial_ctx, results| self.process_image_encoded(ctx, results, spatial_ctx),
         )?;
 
         // TODO(#702): draw order is translated to depth offset, which works fine for opaque images,
@@ -145,8 +122,8 @@ impl VisualizerSystem for ImageVisualizer {
     }
 }
 
-impl ImageVisualizer {
-    fn process_image(
+impl ImageEncodedVisualizer {
+    fn process_image_encoded(
         &mut self,
         ctx: &QueryContext<'_>,
         results: &HybridResults<'_>,
@@ -157,40 +134,37 @@ impl ImageVisualizer {
         let resolver = ctx.recording().resolver();
         let entity_path = ctx.target_entity_path;
 
-        let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
-            Some(tensors) => tensors?,
+        let blobs = match results.get_required_component_dense::<Blob>(resolver) {
+            Some(blobs) => blobs?,
             _ => return Ok(()),
         };
-
-        let opacity = results.get_or_empty_dense(resolver)?;
-
-        let data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed()).filter_map(
-            |(&index, tensors, opacity)| {
-                tensors.first().map(|tensor| ImageComponentData {
-                    index,
-                    tensor,
-                    opacity: opacity.and_then(|opacity| opacity.first()),
-                })
-            },
-        );
 
         // Unknown is currently interpreted as "Some Color" in most cases.
         // TODO(jleibs): Make this more explicit
         let meaning = TensorDataMeaning::Unknown;
 
-        for data in data {
-            if !data.tensor.is_shaped_like_an_image() {
-                continue;
-            }
+        let media_types = results.get_or_empty_dense::<MediaType>(resolver)?;
+        let opacities = results.get_or_empty_dense::<Opacity>(resolver)?;
 
-            let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
-                c.entry(tensor_data_row_id, data.tensor.0.clone())
-            }) {
+        for (&(_time, tensor_data_row_id), blobs, media_types, opacities) in range_zip_1x2(
+            blobs.range_indexed(),
+            media_types.range_indexed(),
+            opacities.range_indexed(),
+        ) {
+            let Some(blob) = blobs.first() else {
+                continue;
+            };
+            let media_type = media_types.and_then(|media_types| media_types.first());
+
+            let tensor = ctx.viewer_ctx.cache.entry(|c: &mut ImageDecodeCache| {
+                c.entry(tensor_data_row_id, blob, media_type.map(|mt| mt.as_str()))
+            });
+
+            let tensor = match tensor {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {entity_path}: {err}"
+                        "Failed to decode ImageEncoded at path {entity_path}: {err}"
                     );
                     continue;
                 }
@@ -199,10 +173,9 @@ impl ImageVisualizer {
             // TODO(andreas): We only support colormap for depth image at this point.
             let colormap = None;
 
-            let opacity = data
-                .opacity
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
+            let opacity = opacities.and_then(|opacity| opacity.first());
+
+            let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
@@ -241,16 +214,16 @@ impl ImageVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<Opacity> for ImageVisualizer {
+impl TypedComponentFallbackProvider<Opacity> for ImageEncodedVisualizer {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
         1.0.into()
     }
 }
 
-impl TypedComponentFallbackProvider<DrawOrder> for ImageVisualizer {
+impl TypedComponentFallbackProvider<DrawOrder> for ImageEncodedVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
         DrawOrder::DEFAULT_IMAGE
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [DrawOrder, Opacity]);
+re_viewer_context::impl_component_fallback_provider!(ImageEncodedVisualizer => [DrawOrder, Opacity]);

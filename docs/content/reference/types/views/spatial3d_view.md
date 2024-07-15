@@ -54,6 +54,7 @@ snippet: views/spatial3d
 * [`Boxes2D`](../archetypes/boxes2d.md) (if logged under a projection)
 * [`DepthImage`](../archetypes/depth_image.md) (if logged under a projection)
 * [`Image`](../archetypes/image.md) (if logged under a projection)
+* [`ImageEncoded`](../archetypes/image_encoded.md) (if logged under a projection)
 * [`LineStrips2D`](../archetypes/line_strips2d.md) (if logged under a projection)
 * [`Points2D`](../archetypes/points2d.md) (if logged under a projection)
 * [`SegmentationImage`](../archetypes/segmentation_image.md) (if logged under a projection)

@@ -51,6 +51,11 @@ impl Reporter {
             .send(format!("{virtpath} {fqname}: {}", text.to_string()))
             .ok();
     }
+
+    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    pub fn error_any(&self, text: impl ToString) {
+        self.errors.send(text.to_string()).ok();
+    }
 }
 
 /// Report which holds accumulated errors and warnings.

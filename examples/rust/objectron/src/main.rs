@@ -129,10 +129,9 @@ fn log_baseline_objects(
 
 fn log_video_frame(rec: &rerun::RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
-    let img = rerun::datatypes::TensorData::from_jpeg_file(&image_path)?;
 
     rec.set_timepoint(ar_frame.timepoint.clone());
-    rec.log("world/camera", &rerun::Image::new(img))
+    rec.log("world/camera", &rerun::ImageEncoded::from_file(image_path)?)
         .map_err(Into::into)
 }
 
