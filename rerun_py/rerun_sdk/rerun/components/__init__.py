@@ -63,6 +63,7 @@ from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .resolution2d import Resolution2D, Resolution2DBatch, Resolution2DType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
+from .rotation_quat import RotationQuat, RotationQuatBatch, RotationQuatType
 from .scalar import Scalar, ScalarBatch, ScalarType
 from .scale3d import Scale3D, Scale3DBatch, Scale3DType
 from .stroke_width import StrokeWidth, StrokeWidthBatch, StrokeWidthType
@@ -215,6 +216,9 @@ __all__ = [
     "Rotation3D",
     "Rotation3DBatch",
     "Rotation3DType",
+    "RotationQuat",
+    "RotationQuatBatch",
+    "RotationQuatType",
     "Scalar",
     "ScalarBatch",
     "ScalarType",

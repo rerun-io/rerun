@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/axis_length.hpp"
+#include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
 #include "../components/transform3d.hpp"
 #include "../components/transform_mat3x3.hpp"
@@ -150,6 +151,9 @@ namespace rerun::archetypes {
 
         /// Translation vectors.
         std::optional<Collection<rerun::components::Translation3D>> translation;
+
+        /// Rotation via quaternion.
+        std::optional<Collection<rerun::components::RotationQuat>> quaternion;
 
         /// Scaling factor.
         std::optional<Collection<rerun::components::Scale3D>> scale;
@@ -495,6 +499,13 @@ namespace rerun::archetypes {
         /// Translation vectors.
         Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
             translation = std::move(_translation);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Rotation via quaternion.
+        Transform3D with_quaternion(Collection<rerun::components::RotationQuat> _quaternion) && {
+            quaternion = std::move(_quaternion);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

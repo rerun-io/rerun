@@ -171,6 +171,9 @@ pub struct Transform3D {
     /// Translation vectors.
     pub translation: Option<Vec<crate::components::Translation3D>>,
 
+    /// Rotation via quaternion.
+    pub quaternion: Option<Vec<crate::components::RotationQuat>>,
+
     /// Scaling factor.
     pub scale: Option<Vec<crate::components::Scale3D>>,
 
@@ -189,6 +192,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
     fn heap_size_bytes(&self) -> u64 {
         self.transform.heap_size_bytes()
             + self.translation.heap_size_bytes()
+            + self.quaternion.heap_size_bytes()
             + self.scale.heap_size_bytes()
             + self.mat3x3.heap_size_bytes()
             + self.axis_length.heap_size_bytes()
@@ -198,6 +202,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
     fn is_pod() -> bool {
         <crate::components::Transform3D>::is_pod()
             && <Option<Vec<crate::components::Translation3D>>>::is_pod()
+            && <Option<Vec<crate::components::RotationQuat>>>::is_pod()
             && <Option<Vec<crate::components::Scale3D>>>::is_pod()
             && <Option<Vec<crate::components::TransformMat3x3>>>::is_pod()
             && <Option<crate::components::AxisLength>>::is_pod()
@@ -210,23 +215,25 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3D".into(),
             "rerun.components.Translation3D".into(),
+            "rerun.components.RotationQuat".into(),
             "rerun.components.Scale3D".into(),
             "rerun.components.TransformMat3x3".into(),
             "rerun.components.AxisLength".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3DIndicator".into(),
             "rerun.components.Transform3D".into(),
             "rerun.components.Translation3D".into(),
+            "rerun.components.RotationQuat".into(),
             "rerun.components.Scale3D".into(),
             "rerun.components.TransformMat3x3".into(),
             "rerun.components.AxisLength".into(),
@@ -234,8 +241,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     });
 
 impl Transform3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`Transform3D`] [`::re_types_core::Archetype`]
@@ -316,6 +323,18 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
+        let quaternion = if let Some(array) = arrays_by_name.get("rerun.components.RotationQuat") {
+            Some({
+                <crate::components::RotationQuat>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Transform3D#quaternion")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Transform3D#quaternion")?
+            })
+        } else {
+            None
+        };
         let scale = if let Some(array) = arrays_by_name.get("rerun.components.Scale3D") {
             Some({
                 <crate::components::Scale3D>::from_arrow_opt(&**array)
@@ -352,6 +371,7 @@ impl ::re_types_core::Archetype for Transform3D {
         Ok(Self {
             transform,
             translation,
+            quaternion,
             scale,
             mat3x3,
             axis_length,
@@ -367,6 +387,9 @@ impl ::re_types_core::AsComponents for Transform3D {
             Some(Self::indicator()),
             Some((&self.transform as &dyn ComponentBatch).into()),
             self.translation
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.quaternion
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.scale
@@ -394,6 +417,7 @@ impl Transform3D {
         Self {
             transform: transform.into(),
             translation: None,
+            quaternion: None,
             scale: None,
             mat3x3: None,
             axis_length: None,
@@ -407,6 +431,16 @@ impl Transform3D {
         translation: impl IntoIterator<Item = impl Into<crate::components::Translation3D>>,
     ) -> Self {
         self.translation = Some(translation.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Rotation via quaternion.
+    #[inline]
+    pub fn with_quaternion(
+        mut self,
+        quaternion: impl IntoIterator<Item = impl Into<crate::components::RotationQuat>>,
+    ) -> Self {
+        self.quaternion = Some(quaternion.into_iter().map(Into::into).collect());
         self
     }
 

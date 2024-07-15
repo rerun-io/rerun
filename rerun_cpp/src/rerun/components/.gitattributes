@@ -47,6 +47,7 @@ range1d.hpp linguist-generated=true
 resolution.hpp linguist-generated=true
 resolution2d.hpp linguist-generated=true
 rotation3d.hpp linguist-generated=true
+rotation_quat.hpp linguist-generated=true
 scalar.hpp linguist-generated=true
 scale3d.hpp linguist-generated=true
 stroke_width.hpp linguist-generated=true

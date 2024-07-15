@@ -39,6 +39,7 @@ range1d.py linguist-generated=true
 resolution.py linguist-generated=true
 resolution2d.py linguist-generated=true
 rotation3d.py linguist-generated=true
+rotation_quat.py linguist-generated=true
 scalar.py linguist-generated=true
 scale3d.py linguist-generated=true
 stroke_width.py linguist-generated=true
