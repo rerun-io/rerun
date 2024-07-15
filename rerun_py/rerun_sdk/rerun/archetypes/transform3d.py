@@ -139,6 +139,7 @@ class Transform3D(Transform3DExt, Archetype):
         self.__attrs_init__(
             transform=None,  # type: ignore[arg-type]
             mat3x3=None,  # type: ignore[arg-type]
+            scale=None,  # type: ignore[arg-type]
             translation=None,  # type: ignore[arg-type]
             axis_length=None,  # type: ignore[arg-type]
         )
@@ -164,6 +165,15 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.TransformMat3x3Batch._optional,  # type: ignore[misc]
     )
     # 3x3 transformation matrices.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    scale: components.Scale3DBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.Scale3DBatch._optional,  # type: ignore[misc]
+    )
+    # Scaling factor.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -476,6 +476,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Scale3D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3D scale factor.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
+                placeholder: Some(Scale3D::default().to_arrow()?),
+            },
+        ),
+        (
             <StrokeWidth as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",

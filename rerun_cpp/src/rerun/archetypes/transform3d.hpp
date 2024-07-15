@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/axis_length.hpp"
+#include "../components/scale3d.hpp"
 #include "../components/transform3d.hpp"
 #include "../components/transform_mat3x3.hpp"
 #include "../components/translation3d.hpp"
@@ -153,6 +154,9 @@ namespace rerun::archetypes {
 
         /// 3x3 transformation matrices.
         std::optional<Collection<rerun::components::TransformMat3x3>> mat3x3;
+
+        /// Scaling factor.
+        std::optional<Collection<rerun::components::Scale3D>> scale;
 
         /// Translation vectors.
         std::optional<Collection<rerun::components::Translation3D>> translation;
@@ -465,6 +469,13 @@ namespace rerun::archetypes {
         /// 3x3 transformation matrices.
         Transform3D with_mat3x3(Collection<rerun::components::TransformMat3x3> _mat3x3) && {
             mat3x3 = std::move(_mat3x3);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Scaling factor.
+        Transform3D with_scale(Collection<rerun::components::Scale3D> _scale) && {
+            scale = std::move(_scale);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -31,8 +31,11 @@ table Transform3D (
   /// 3x3 transformation matrices.
   mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1100);
 
+  /// Scaling factor.
+  scale: [rerun.components.Scale3D] ("attr.rerun.component_optional", nullable, order: 1200);
+
   /// Translation vectors.
-  translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1200);
+  translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1300);
 
   // --- visual representation
 

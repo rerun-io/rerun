@@ -171,6 +171,9 @@ pub struct Transform3D {
     /// 3x3 transformation matrices.
     pub mat3x3: Option<Vec<crate::components::TransformMat3x3>>,
 
+    /// Scaling factor.
+    pub scale: Option<Vec<crate::components::Scale3D>>,
+
     /// Translation vectors.
     pub translation: Option<Vec<crate::components::Translation3D>>,
 
@@ -186,6 +189,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
     fn heap_size_bytes(&self) -> u64 {
         self.transform.heap_size_bytes()
             + self.mat3x3.heap_size_bytes()
+            + self.scale.heap_size_bytes()
             + self.translation.heap_size_bytes()
             + self.axis_length.heap_size_bytes()
     }
@@ -194,6 +198,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
     fn is_pod() -> bool {
         <crate::components::Transform3D>::is_pod()
             && <Option<Vec<crate::components::TransformMat3x3>>>::is_pod()
+            && <Option<Vec<crate::components::Scale3D>>>::is_pod()
             && <Option<Vec<crate::components::Translation3D>>>::is_pod()
             && <Option<crate::components::AxisLength>>::is_pod()
     }
@@ -205,30 +210,32 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3D".into(),
             "rerun.components.TransformMat3x3".into(),
+            "rerun.components.Scale3D".into(),
             "rerun.components.Translation3D".into(),
             "rerun.components.AxisLength".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3DIndicator".into(),
             "rerun.components.Transform3D".into(),
             "rerun.components.TransformMat3x3".into(),
+            "rerun.components.Scale3D".into(),
             "rerun.components.Translation3D".into(),
             "rerun.components.AxisLength".into(),
         ]
     });
 
 impl Transform3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`Transform3D`] [`::re_types_core::Archetype`]
@@ -308,6 +315,18 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
+        let scale = if let Some(array) = arrays_by_name.get("rerun.components.Scale3D") {
+            Some({
+                <crate::components::Scale3D>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Transform3D#scale")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Transform3D#scale")?
+            })
+        } else {
+            None
+        };
         let translation = if let Some(array) = arrays_by_name.get("rerun.components.Translation3D")
         {
             Some({
@@ -333,6 +352,7 @@ impl ::re_types_core::Archetype for Transform3D {
         Ok(Self {
             transform,
             mat3x3,
+            scale,
             translation,
             axis_length,
         })
@@ -347,6 +367,9 @@ impl ::re_types_core::AsComponents for Transform3D {
             Some(Self::indicator()),
             Some((&self.transform as &dyn ComponentBatch).into()),
             self.mat3x3
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.scale
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.translation
@@ -369,6 +392,7 @@ impl Transform3D {
         Self {
             transform: transform.into(),
             mat3x3: None,
+            scale: None,
             translation: None,
             axis_length: None,
         }
@@ -381,6 +405,16 @@ impl Transform3D {
         mat3x3: impl IntoIterator<Item = impl Into<crate::components::TransformMat3x3>>,
     ) -> Self {
         self.mat3x3 = Some(mat3x3.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Scaling factor.
+    #[inline]
+    pub fn with_scale(
+        mut self,
+        scale: impl IntoIterator<Item = impl Into<crate::components::Scale3D>>,
+    ) -> Self {
+        self.scale = Some(scale.into_iter().map(Into::into).collect());
         self
     }
 
