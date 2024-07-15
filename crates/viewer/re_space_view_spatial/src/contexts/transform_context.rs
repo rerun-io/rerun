@@ -322,10 +322,10 @@ fn get_parent_from_child_transform(
 
     let mut transform = glam::Affine3A::IDENTITY;
     if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
-        transform = transform * glam::Affine3A::from(mat3x3);
+        transform *= glam::Affine3A::from(mat3x3);
     }
     if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
-        transform = transform * glam::Affine3A::from(translation);
+        transform *= glam::Affine3A::from(translation);
     }
 
     // TODO(#6831): To be removed. Note that the ordering of the old component is a bit arbitrary.
@@ -335,7 +335,7 @@ fn get_parent_from_child_transform(
         .as_ref()
         .map_or(false, |t| t.is_from_parent());
     if let Some(legacy_transform) = legacy_transform {
-        transform = transform * glam::Affine3A::from(legacy_transform.0);
+        transform *= glam::Affine3A::from(legacy_transform.0);
     }
 
     // TODO(#6831): Should add a unit test to this method once all variants are in.
