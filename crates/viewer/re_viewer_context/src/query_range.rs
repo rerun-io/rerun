@@ -10,6 +10,7 @@ pub enum QueryRange {
 }
 
 impl QueryRange {
+    #[inline]
     pub fn is_latest_at(&self) -> bool {
         matches!(self, Self::LatestAt)
     }
