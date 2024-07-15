@@ -7,7 +7,7 @@ namespace rerun.components;
 /// Each component scales along the corresponding axis.
 struct Scale3D (
   "attr.docs.unreleased",
-  "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
   scale: rerun.datatypes.Vec3D (order: 100);

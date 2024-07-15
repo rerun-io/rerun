@@ -6,8 +6,8 @@ use re_space_view::DataResultQuery as _;
 use re_types::{
     archetypes::Pinhole,
     components::{
-        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Transform3D, TransformMat3x3,
-        Translation3D, ViewCoordinates,
+        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Scale3D, Transform3D,
+        TransformMat3x3, Translation3D, ViewCoordinates,
     },
     ComponentNameSet, Loggable as _,
 };
@@ -314,6 +314,7 @@ fn get_parent_from_child_transform(
             Transform3D::name(),
             TransformMat3x3::name(),
             Translation3D::name(),
+            Scale3D::name(),
         ],
     );
     if result.components.is_empty() {
@@ -323,6 +324,9 @@ fn get_parent_from_child_transform(
     let mut transform = glam::Affine3A::IDENTITY;
     if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
         transform *= glam::Affine3A::from(mat3x3);
+    }
+    if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(scale);
     }
     if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
         transform *= glam::Affine3A::from(translation);

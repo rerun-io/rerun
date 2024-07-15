@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// A scale of 1.0 means no scaling.
 /// A scale of 2.0 means doubling the size.
 /// Each component scales along the corresponding axis.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Scale3D(pub crate::datatypes::Vec3D);
 
