@@ -19,11 +19,20 @@ use crate::{
 
 // ---
 
-/// Clamp the latest value in `values` in order to reach a length of `clamped_len`.
+/// Iterate over all the values in the slice, then repeat the last value forever.
+///
+/// If the input slice is empty, the second argument is returned forever.
+#[inline]
+pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> {
+    let repeated = values.last().unwrap_or(if_empty);
+    values.iter().chain(std::iter::repeat(repeated))
+}
+
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///
 /// Returns an empty iterator if values is empty.
 #[inline]
-pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> {
+pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> {
     let Some(last) = values.last() else {
         return Either::Left(std::iter::empty());
     };
@@ -34,6 +43,51 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
             .chain(std::iter::repeat(last))
             .take(clamped_len),
     )
+}
+
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
+///
+/// Returns an empty vctor if values is empty.
+#[inline]
+pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
+    if values.len() == clamped_len {
+        // Happy path
+        values.to_vec() // TODO(emilk): return a slice reference instead, in a `Cow` or similar
+    } else if let Some(last) = values.last() {
+        if values.len() == 1 {
+            // Commo happy path
+            return vec![last.clone(); clamped_len];
+        } else if values.len() < clamped_len {
+            // Clamp
+            let mut vec = Vec::with_capacity(clamped_len);
+            vec.extend(values.iter().cloned());
+            vec.extend(std::iter::repeat(last.clone()).take(clamped_len - values.len()));
+            vec
+        } else {
+            // Trim
+            values.iter().take(clamped_len).cloned().collect()
+        }
+    } else {
+        // Empty input
+        Vec::new()
+    }
+}
+
+#[test]
+fn test_clamped_vec() {
+    assert_eq!(clamped_vec_or_empty::<i32>(&[], 0), Vec::<i32>::default());
+    assert_eq!(clamped_vec_or_empty::<i32>(&[], 3), Vec::<i32>::default());
+    assert_eq!(
+        clamped_vec_or_empty::<i32>(&[1, 2, 3], 0),
+        Vec::<i32>::default()
+    );
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 1), vec![1]);
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 2), vec![1, 2]);
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 3), vec![1, 2, 3]);
+    assert_eq!(
+        clamped_vec_or_empty::<i32>(&[1, 2, 3], 5),
+        vec![1, 2, 3, 3, 3]
+    );
 }
 
 // --- Cached APIs ---
