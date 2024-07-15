@@ -2,6 +2,7 @@
 
 mod background;
 mod plot_legend;
+mod range_table_order;
 mod scalar_axis;
 mod space_view_blueprint;
 mod space_view_contents;
@@ -14,6 +15,7 @@ mod visual_bounds2d;
 
 pub use self::background::Background;
 pub use self::plot_legend::PlotLegend;
+pub use self::range_table_order::RangeTableOrder;
 pub use self::scalar_axis::ScalarAxis;
 pub use self::space_view_blueprint::SpaceViewBlueprint;
 pub use self::space_view_contents::SpaceViewContents;

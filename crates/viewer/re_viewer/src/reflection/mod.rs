@@ -147,6 +147,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SortKey as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Primary element by which to group by in a temporal data table.",
+                placeholder: Some(SortKey::default().to_arrow()?),
+            },
+        ),
+        (
+            <SortOrder as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Sort order for data table.",
+                placeholder: Some(SortOrder::default().to_arrow()?),
+            },
+        ),
+        (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
@@ -592,6 +606,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.Visible".into(), display_name :
                     "Visible", docstring_md :
                     "Whether the legend is shown at all.\n\nTrue by default.", },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.RangeTableOrder"),
+            ArchetypeReflection {
+                display_name: "Range table order",
+                docstring_md: "Configuration for the sorting of the rows of a time range table.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortKey".into(), display_name :
+                    "Sort key", docstring_md : "The primary sort key.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortOrder".into(), display_name :
+                    "Sort order", docstring_md : "The sort order.", },
                 ],
             },
         ),
