@@ -102,7 +102,7 @@ Note that the order of the method calls does _not_ affect the order in which tra
 an empty archetype instead that you can populate (e.g. `rerun::Transform3D().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
 
 
-Scale is no longer an enum datatype but a component with a 3d vec:
+Scale is no longer an enum datatype but a component with a 3D vec:
 Before:
 ```rust
 let scale_uniform = rerun::Scale3D::Uniform(2.0);
