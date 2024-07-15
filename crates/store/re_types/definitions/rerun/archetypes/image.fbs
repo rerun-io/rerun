@@ -24,7 +24,7 @@ namespace rerun.archetypes;
 /// Compressing images can save a lot of bandwidth and memory.
 ///
 /// \py You can compress an image using [`rerun.Image.compress`][].
-/// \py To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageEncodedHelper`][].
+/// \py To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageChromaDownsampled`][].
 ///
 /// See also [components.TensorData] and [datatypes.TensorBuffer].
 ///
