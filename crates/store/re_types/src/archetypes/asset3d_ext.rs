@@ -10,13 +10,13 @@ impl Asset3D {
     ///
     /// If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess one
     /// from the data at render-time. If it can't, rendering will fail with an error.
+    ///
+    /// Returns an error if the file cannot be read.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
-    pub fn from_file(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
-        use anyhow::Context as _;
+    pub fn from_file(filepath: impl AsRef<std::path::Path>) -> std::io::Result<Self> {
         let filepath = filepath.as_ref();
-        let contents = std::fs::read(filepath)
-            .with_context(|| format!("could not read file contents: {filepath:?}"))?;
+        let contents = std::fs::read(filepath)?;
         Ok(Self::from_file_contents(
             contents,
             MediaType::guess_from_path(filepath),

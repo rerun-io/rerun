@@ -8,3 +8,15 @@ pub enum QueryRange {
     #[default]
     LatestAt,
 }
+
+impl QueryRange {
+    #[inline]
+    pub fn is_latest_at(&self) -> bool {
+        matches!(self, Self::LatestAt)
+    }
+
+    #[inline]
+    pub fn is_time_range(&self) -> bool {
+        matches!(self, Self::TimeRange(_))
+    }
+}

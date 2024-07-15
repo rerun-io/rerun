@@ -67,13 +67,12 @@ namespace rerun::datatypes {
 
     /// Number of elements in the buffer.
     ///
-    /// You may NOT call this for JPEG buffers.
+    /// You may NOT call this for NV12 or YUY2.
     size_t num_elems() const;
 
     // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-    /// Number of elements in the buffer.
     size_t TensorBuffer::num_elems() const {
         switch (this->_tag) {
             case detail::TensorBufferTag::None: {
@@ -118,10 +117,6 @@ namespace rerun::datatypes {
             }
             case detail::TensorBufferTag::YUY2: {
                 assert(false && "Can't ask for the number of elements in an YUY2 encoded image");
-                break;
-            }
-            case detail::TensorBufferTag::JPEG: {
-                assert(false && "Can't ask for the number of elements in a JPEG");
                 break;
             }
         }

@@ -228,13 +228,6 @@ Display a 1D tensor as a bar chart.
                         TensorBuffer::F64(data) => {
                             create_bar_chart(ent_path, data.iter().copied(), color)
                         }
-                        TensorBuffer::Jpeg(_) => {
-                            re_log::warn_once!(
-                                "trying to display JPEG data as a bar chart ({:?})",
-                                ent_path
-                            );
-                            continue;
-                        }
                         TensorBuffer::Nv12(_) => {
                             re_log::warn_once!(
                                 "trying to display NV12 data as a bar chart ({:?})",

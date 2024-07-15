@@ -1,7 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer::TexturedRect;
-use re_types::tensor_data::DecodedTensor;
+use re_types::datatypes::TensorData;
 
 /// Image rectangle that can be picked in the view.
 pub struct PickableImageRect {
@@ -14,5 +14,5 @@ pub struct PickableImageRect {
     /// Textured rectangle used by the renderer.
     pub textured_rect: TexturedRect,
 
-    pub tensor: DecodedTensor,
+    pub tensor: TensorData,
 }

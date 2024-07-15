@@ -82,9 +82,6 @@ class TensorBuffer(TensorBufferExt):
     * F64 (npt.NDArray[np.float64]):
         64bit IEEE-754 floating point, also known as `double`.
 
-    * JPEG (npt.NDArray[np.uint8]):
-        Raw bytes of a JPEG file.
-
     * NV12 (npt.NDArray[np.uint8]):
         NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
 
@@ -96,8 +93,8 @@ class TensorBuffer(TensorBufferExt):
         The order of the channels is Y0, U0, Y1, V0.
     """
 
-    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuy2"] = (
-        field(default="u8")
+    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "nv12", "yuy2"] = field(
+        default="u8"
     )
     """
     Possible values:
@@ -134,9 +131,6 @@ class TensorBuffer(TensorBufferExt):
 
     * "f64":
         64bit IEEE-754 floating point, also known as `double`.
-
-    * "jpeg":
-        Raw bytes of a JPEG file.
 
     * "nv12":
         NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
@@ -256,12 +250,6 @@ class TensorBufferType(BaseExtensionType):
                 pa.field(
                     "F64",
                     pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "JPEG",
-                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
                     nullable=False,
                     metadata={},
                 ),

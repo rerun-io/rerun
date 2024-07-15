@@ -212,7 +212,7 @@ impl ChunkStore {
             return Default::default();
         }
 
-        self.temporal_chunk_ids_per_entity
+        self.temporal_chunk_ids_per_entity_per_component
             .values()
             .flat_map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.iter().flat_map(
@@ -321,6 +321,7 @@ impl ChunkStore {
                 type_registry: _,
                 chunks_per_chunk_id,
                 chunk_ids_per_min_row_id,
+                temporal_chunk_ids_per_entity_per_component,
                 temporal_chunk_ids_per_entity,
                 temporal_chunks_stats: _,
                 static_chunk_ids_per_entity: _, // we don't GC static data
@@ -352,7 +353,35 @@ impl ChunkStore {
                     !chunk_ids.is_empty()
                 });
 
-                for temporal_chunk_ids_per_component in temporal_chunk_ids_per_entity.values_mut() {
+                // Component-less indices
+                for temporal_chunk_ids_per_timeline in temporal_chunk_ids_per_entity.values_mut() {
+                    for temporal_chunk_ids_per_time in temporal_chunk_ids_per_timeline.values_mut()
+                    {
+                        let ChunkIdSetPerTime {
+                            max_interval_length: _,
+                            per_start_time,
+                            per_end_time,
+                        } = temporal_chunk_ids_per_time;
+
+                        // TODO(cmc): Technically, the optimal thing to do would be to
+                        // recompute `max_interval_length` per time here.
+                        // In practice, this adds a lot of complexity for likely very little
+                        // performance benefit, since we expect the chunks to have similar
+                        // interval lengths on the happy path.
+
+                        for chunk_ids in per_start_time.values_mut() {
+                            chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
+                        }
+                        for chunk_ids in per_end_time.values_mut() {
+                            chunk_ids.retain(|chunk_id| !chunk_ids_dangling.contains(chunk_id));
+                        }
+                    }
+                }
+
+                // Per-component indices
+                for temporal_chunk_ids_per_component in
+                    temporal_chunk_ids_per_entity_per_component.values_mut()
+                {
                     for temporal_chunk_ids_per_timeline in
                         temporal_chunk_ids_per_component.values_mut()
                     {
@@ -458,14 +487,92 @@ impl ChunkStore {
 
         let mut chunk_ids_removed = HashSet::default();
 
+        // Because we have both a per-component and a component-less index that refer to the same
+        // chunks, we must make sure that they get garbage collected in sync.
+        // That implies making sure that we don't run out of time budget after we've GC'd one but
+        // before we had time to clean the other.
+
         for (entity_path, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
-            let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_timeline) =
+            let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_timeline) = self
+                .temporal_chunk_ids_per_entity_per_component
+                .entry(entity_path.clone())
+            else {
+                continue;
+            };
+
+            let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_timeline_componentless) =
                 self.temporal_chunk_ids_per_entity.entry(entity_path)
             else {
                 continue;
             };
 
             for (timeline, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
+                // Component-less indices
+                {
+                    let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_time_componentless) =
+                        temporal_chunk_ids_per_timeline_componentless
+                            .get_mut()
+                            .entry(timeline)
+                    else {
+                        continue;
+                    };
+
+                    let ChunkIdSetPerTime {
+                        max_interval_length: _,
+                        per_start_time,
+                        per_end_time,
+                    } = temporal_chunk_ids_per_time_componentless.get_mut();
+
+                    // TODO(cmc): Technically, the optimal thing to do would be to
+                    // recompute `max_interval_length` per time here.
+                    // In practice, this adds a lot of complexity for likely very little
+                    // performance benefit, since we expect the chunks to have similar
+                    // interval lengths on the happy path.
+
+                    for chunk_ids_to_be_removed in chunk_ids_to_be_removed.values() {
+                        for (&time, chunk_ids) in chunk_ids_to_be_removed {
+                            if let BTreeMapEntry::Occupied(mut chunk_id_set) =
+                                per_start_time.entry(time)
+                            {
+                                for chunk_id in chunk_ids {
+                                    chunk_id_set.get_mut().remove(chunk_id);
+                                }
+                                if chunk_id_set.get().is_empty() {
+                                    chunk_id_set.remove_entry();
+                                }
+                            }
+
+                            if let BTreeMapEntry::Occupied(mut chunk_id_set) =
+                                per_end_time.entry(time)
+                            {
+                                for chunk_id in chunk_ids {
+                                    chunk_id_set.get_mut().remove(chunk_id);
+                                }
+                                if chunk_id_set.get().is_empty() {
+                                    chunk_id_set.remove_entry();
+                                }
+                            }
+
+                            chunk_ids_removed.extend(chunk_ids);
+                        }
+
+                        if let Some((start_time, time_budget)) = time_budget {
+                            if start_time.elapsed() >= time_budget {
+                                break;
+                            }
+                        }
+                    }
+
+                    if per_start_time.is_empty() && per_end_time.is_empty() {
+                        temporal_chunk_ids_per_time_componentless.remove_entry();
+                    }
+                }
+
+                // Per-component indices
+                //
+                // NOTE: This must go all the way, no matter the time budget left. Otherwise the
+                // component-less and per-component indices would go out of sync.
+
                 let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_component) =
                     temporal_chunk_ids_per_timeline.get_mut().entry(timeline)
                 else {
@@ -497,7 +604,10 @@ impl ChunkStore {
                         if let BTreeMapEntry::Occupied(mut chunk_id_set) =
                             per_start_time.entry(time)
                         {
-                            for chunk_id in &chunk_ids {
+                            for chunk_id in chunk_ids
+                                .iter()
+                                .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
+                            {
                                 chunk_id_set.get_mut().remove(chunk_id);
                             }
                             if chunk_id_set.get().is_empty() {
@@ -507,36 +617,25 @@ impl ChunkStore {
 
                         if let BTreeMapEntry::Occupied(mut chunk_id_set) = per_end_time.entry(time)
                         {
-                            for chunk_id in &chunk_ids {
+                            for chunk_id in chunk_ids
+                                .iter()
+                                .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
+                            {
                                 chunk_id_set.get_mut().remove(chunk_id);
                             }
                             if chunk_id_set.get().is_empty() {
                                 chunk_id_set.remove_entry();
                             }
                         }
-
-                        chunk_ids_removed.extend(chunk_ids);
                     }
 
                     if per_start_time.is_empty() && per_end_time.is_empty() {
                         temporal_chunk_ids_per_time.remove_entry();
                     }
-
-                    if let Some((start_time, time_budget)) = time_budget {
-                        if start_time.elapsed() >= time_budget {
-                            break;
-                        }
-                    }
                 }
 
                 if temporal_chunk_ids_per_component.get().is_empty() {
                     temporal_chunk_ids_per_component.remove_entry();
-                }
-
-                if let Some((start_time, time_budget)) = time_budget {
-                    if start_time.elapsed() >= time_budget {
-                        break;
-                    }
                 }
             }
 
@@ -544,10 +643,11 @@ impl ChunkStore {
                 temporal_chunk_ids_per_timeline.remove_entry();
             }
 
-            if let Some((start_time, time_budget)) = time_budget {
-                if start_time.elapsed() >= time_budget {
-                    break;
-                }
+            if temporal_chunk_ids_per_timeline_componentless
+                .get()
+                .is_empty()
+            {
+                temporal_chunk_ids_per_timeline_componentless.remove_entry();
             }
         }
 

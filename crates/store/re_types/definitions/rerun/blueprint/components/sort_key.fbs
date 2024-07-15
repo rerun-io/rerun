@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+
+/// Primary element by which to group by in a temporal data table.
+enum SortKey: byte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Group by entity.
+    Entity (default),
+
+    /// Group by instance.
+    Time,
+}

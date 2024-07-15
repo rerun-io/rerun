@@ -5,6 +5,7 @@ use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::TimeHistogram;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimeZone, TimelineName};
+use re_space_view_dataframe::DataframeSpaceView;
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
@@ -24,6 +25,7 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
         SpatialSpaceView3D::identifier(),
         SpatialSpaceView2D::identifier(),
         TimeSeriesSpaceView::identifier(),
+        DataframeSpaceView::identifier(),
     ]
     .map(Into::into)
     .into()

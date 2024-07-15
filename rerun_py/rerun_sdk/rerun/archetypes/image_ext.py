@@ -7,7 +7,6 @@ import numpy as np
 import pyarrow as pa
 
 from .._validators import find_non_empty_dim_indices
-from ..datatypes import TensorBufferType
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -19,8 +18,6 @@ if TYPE_CHECKING:
 
 class ImageExt:
     """Extension for [Image][rerun.archetypes.Image]."""
-
-    JPEG_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("JPEG")
 
     def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:
         """
@@ -47,14 +44,6 @@ class ImageExt:
 
         with catch_and_log_exceptions(context="Image compression"):
             tensor_data_arrow = self.data.as_arrow_array()
-
-            if tensor_data_arrow[0].value["buffer"].type_code == self.JPEG_TYPE_ID:
-                _send_warning_or_raise(
-                    "Image is already compressed as JPEG. Ignoring compression request.",
-                    1,
-                    recording=None,
-                )
-                return self
 
             shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
             non_empty_dims = find_non_empty_dim_indices(shape_dims)

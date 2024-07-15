@@ -147,6 +147,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SortKey as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Primary element by which to group by in a temporal data table.",
+                placeholder: Some(SortKey::default().to_arrow()?),
+            },
+        ),
+        (
+            <SortOrder as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Sort order for data table.",
+                placeholder: Some(SortOrder::default().to_arrow()?),
+            },
+        ),
+        (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
@@ -471,7 +485,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TensorData as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.\n\nNote that the buffer may be encoded in a compressed format such as `jpeg` or\nin a format with downsampled chroma, such as NV12 or YUY2.\nFor file formats, the shape is used as a hint, for chroma downsampled format\nthe shape has to be the shape of the decoded image.",
+                docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.\n\nNote that the buffer may in a format with downsampled chroma, such as NV12 or YUY2.\nFor chroma downsampled formats the shape has to be the shape of the decoded image.",
                 placeholder: Some(TensorData::default().to_arrow()?),
             },
         ),
@@ -592,6 +606,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.Visible".into(), display_name :
                     "Visible", docstring_md :
                     "Whether the legend is shown at all.\n\nTrue by default.", },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.RangeTableOrder"),
+            ArchetypeReflection {
+                display_name: "Range table order",
+                docstring_md: "Configuration for the sorting of the rows of a time range table.",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortKey".into(), display_name :
+                    "Sort key", docstring_md : "The primary sort key.", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortOrder".into(), display_name :
+                    "Sort order", docstring_md : "The sort order.", },
                 ],
             },
         ),

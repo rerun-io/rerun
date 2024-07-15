@@ -6,6 +6,7 @@ from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
+from .range_table_order import RangeTableOrder
 from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
@@ -21,6 +22,7 @@ __all__ = [
     "ContainerBlueprint",
     "PanelBlueprint",
     "PlotLegend",
+    "RangeTableOrder",
     "ScalarAxis",
     "SpaceViewBlueprint",
     "SpaceViewContents",

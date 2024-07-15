@@ -11,6 +11,8 @@ pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
+pub use re_types::blueprint::components::SortKey;
+pub use re_types::blueprint::components::SortOrder;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::TensorDimensionIndexSlider;
@@ -48,6 +50,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
+        && validate_component::<SortKey>(blueprint)
+        && validate_component::<SortOrder>(blueprint)
         && validate_component::<SpaceViewClass>(blueprint)
         && validate_component::<SpaceViewMaximized>(blueprint)
         && validate_component::<SpaceViewOrigin>(blueprint)

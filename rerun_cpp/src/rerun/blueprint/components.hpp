@@ -18,6 +18,8 @@
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"
+#include "blueprint/components/sort_key.hpp"
+#include "blueprint/components/sort_order.hpp"
 #include "blueprint/components/space_view_class.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/space_view_origin.hpp"
