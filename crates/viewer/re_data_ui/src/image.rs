@@ -6,11 +6,10 @@ use re_log_types::EntityPath;
 use re_renderer::renderer::ColormappedTexture;
 use re_types::components::{ClassId, Colormap, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
-use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
-use re_ui::{ContextExt as _, UiExt as _};
+use re_types::tensor_data::{TensorDataMeaning, TensorElement};
+use re_ui::UiExt as _;
 use re_viewer_context::{
-    gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
-    ViewerContext,
+    gpu_bridge, Annotations, TensorStats, TensorStatsCache, UiLayout, ViewerContext,
 };
 
 use crate::image_meaning::image_meaning_for_entity;
@@ -66,29 +65,18 @@ impl EntityDataUi for re_types::components::TensorData {
             .latest_at_component::<Self>(entity_path, query)
             .map_or(RowId::ZERO, |tensor| tensor.index.1);
 
-        let decoded = ctx
-            .cache
-            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, self.0.clone()));
-        match decoded {
-            Ok(decoded) => {
-                let annotations = crate::annotations(ctx, query, entity_path);
-                tensor_ui(
-                    ctx,
-                    query,
-                    db,
-                    ui,
-                    ui_layout,
-                    entity_path,
-                    &annotations,
-                    tensor_data_row_id,
-                    &self.0,
-                    &decoded,
-                );
-            }
-            Err(err) => {
-                ui_layout.label(ui, ui.ctx().error_text(err.to_string()));
-            }
-        }
+        let annotations = crate::annotations(ctx, query, entity_path);
+        tensor_ui(
+            ctx,
+            query,
+            db,
+            ui,
+            ui_layout,
+            entity_path,
+            &annotations,
+            tensor_data_row_id,
+            &self.0,
+        );
     }
 }
 
@@ -102,8 +90,7 @@ pub fn tensor_ui(
     entity_path: &re_entity_db::EntityPath,
     annotations: &Annotations,
     tensor_data_row_id: RowId,
-    original_tensor: &TensorData,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
 ) {
     // See if we can convert the tensor to a GPU texture.
     // Even if not, we will show info about the tensor.
@@ -192,11 +179,11 @@ pub fn tensor_ui(
                 };
                 let text = format!(
                     "{}, {}",
-                    original_tensor.dtype(),
+                    tensor.dtype(),
                     format_tensor_shape_single_line(&shape)
                 );
                 ui_layout.label(ui, text).on_hover_ui(|ui| {
-                    tensor_summary_ui(ui, original_tensor, tensor, meaning, meter, &tensor_stats);
+                    tensor_summary_ui(ui, tensor, meaning, meter, &tensor_stats);
                 });
             });
         }
@@ -204,7 +191,7 @@ pub fn tensor_ui(
         UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight | UiLayout::Tooltip => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
-                tensor_summary_ui(ui, original_tensor, tensor, meaning, meter, &tensor_stats);
+                tensor_summary_ui(ui, tensor, meaning, meter, &tensor_stats);
 
                 if let Some(texture) = &texture_result {
                     let preview_size = ui
@@ -243,10 +230,8 @@ pub fn tensor_ui(
 
                     // TODO(emilk): support copying and saving images on web
                     #[cfg(not(target_arch = "wasm32"))]
-                    if original_tensor.buffer.is_compressed_image()
-                        || tensor.could_be_dynamic_image()
-                    {
-                        copy_and_save_image_ui(ui, tensor, original_tensor);
+                    if tensor.buffer.is_compressed_image() || tensor.could_be_dynamic_image() {
+                        copy_and_save_image_ui(ui, tensor, tensor);
                     }
 
                     if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
@@ -335,13 +320,12 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
 
 pub fn tensor_summary_ui_grid_contents(
     ui: &mut egui::Ui,
-    original_tensor: &TensorData,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     meaning: TensorDataMeaning,
     meter: Option<f32>,
     tensor_stats: &TensorStats,
 ) {
-    let TensorData { shape, buffer: _ } = tensor.inner();
+    let TensorData { shape, buffer: _ } = tensor;
 
     ui.grid_left_hand_label("Data type")
         .on_hover_text("Data type used for all individual elements within the tensor");
@@ -381,7 +365,7 @@ pub fn tensor_summary_ui_grid_contents(
         ui.end_row();
     }
 
-    match &original_tensor.buffer {
+    match &tensor.buffer {
         TensorBuffer::U8(_)
         | TensorBuffer::U16(_)
         | TensorBuffer::U32(_)
@@ -393,19 +377,13 @@ pub fn tensor_summary_ui_grid_contents(
         | TensorBuffer::F16(_)
         | TensorBuffer::F32(_)
         | TensorBuffer::F64(_) => {}
-        TensorBuffer::Jpeg(jpeg_bytes) => {
-            ui.grid_left_hand_label("Encoding");
-            ui.label(format!(
-                "{} JPEG",
-                re_format::format_bytes(jpeg_bytes.size_in_bytes() as _),
-            ));
-            ui.end_row();
-        }
+
         TensorBuffer::Nv12(_) => {
             ui.grid_left_hand_label("Encoding");
             ui.label("NV12");
             ui.end_row();
         }
+
         TensorBuffer::Yuy2(_) => {
             ui.grid_left_hand_label("Encoding");
             ui.label("YUY2");
@@ -444,8 +422,7 @@ pub fn tensor_summary_ui_grid_contents(
 
 pub fn tensor_summary_ui(
     ui: &mut egui::Ui,
-    original_tensor: &TensorData,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     meaning: TensorDataMeaning,
     meter: Option<f32>,
     tensor_stats: &TensorStats,
@@ -453,14 +430,7 @@ pub fn tensor_summary_ui(
     egui::Grid::new("tensor_summary_ui")
         .num_columns(2)
         .show(ui, |ui| {
-            tensor_summary_ui_grid_contents(
-                ui,
-                original_tensor,
-                tensor,
-                meaning,
-                meter,
-                tensor_stats,
-            );
+            tensor_summary_ui_grid_contents(ui, tensor, meaning, meter, tensor_stats);
         });
 }
 
@@ -470,7 +440,7 @@ fn show_zoomed_image_region_tooltip(
     parent_ui: &egui::Ui,
     response: egui::Response,
     tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
     meaning: TensorDataMeaning,
@@ -563,7 +533,7 @@ pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
     meaning: TensorDataMeaning,
@@ -595,7 +565,7 @@ fn try_show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     tensor_data_row_id: RowId,
-    tensor: &DecodedTensor,
+    tensor: &TensorData,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
     meaning: TensorDataMeaning,
@@ -894,7 +864,7 @@ fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &TensorData, _encoded_tenso
         if ui.button("Save image…").clicked() {
             match tensor.to_dynamic_image() {
                 Ok(dynamic_image) => {
-                    save_image(_encoded_tensor, &dynamic_image);
+                    save_image(&dynamic_image);
                 }
                 Err(err) => {
                     re_log::error!("Failed to convert tensor to image: {err}");
@@ -905,46 +875,18 @@ fn copy_and_save_image_ui(ui: &mut egui::Ui, tensor: &TensorData, _encoded_tenso
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn save_image(tensor: &TensorData, dynamic_image: &image::DynamicImage) {
-    match &tensor.buffer {
-        TensorBuffer::Jpeg(bytes) => {
-            if let Some(path) = rfd::FileDialog::new()
-                .set_file_name("image.jpg")
-                .save_file()
-            {
-                match write_binary(&path, bytes.as_slice()) {
-                    Ok(()) => {
-                        re_log::info!("Image saved to {path:?}");
-                    }
-                    Err(err) => {
-                        re_log::error!(
-                            "Failed saving image to {path:?}: {}",
-                            re_error::format(&err)
-                        );
-                    }
-                }
+fn save_image(dynamic_image: &image::DynamicImage) {
+    if let Some(path) = rfd::FileDialog::new()
+        .set_file_name("image.png")
+        .save_file()
+    {
+        match dynamic_image.save(&path) {
+            Ok(()) => {
+                re_log::info!("Image saved to {path:?}");
             }
-        }
-        _ => {
-            if let Some(path) = rfd::FileDialog::new()
-                .set_file_name("image.png")
-                .save_file()
-            {
-                match dynamic_image.save(&path) {
-                    Ok(()) => {
-                        re_log::info!("Image saved to {path:?}");
-                    }
-                    Err(err) => {
-                        re_log::error!("Failed saving image to {path:?}: {err}");
-                    }
-                }
+            Err(err) => {
+                re_log::error!("Failed saving image to {path:?}: {err}");
             }
         }
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn write_binary(path: &std::path::PathBuf, data: &[u8]) -> anyhow::Result<()> {
-    use std::io::Write as _;
-    Ok(std::fs::File::create(path)?.write_all(data)?)
 }

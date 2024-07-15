@@ -9,12 +9,13 @@ use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::DepthImage,
-    components::{Colormap, DepthMeter, DrawOrder, FillRatio, TensorData, ViewCoordinates},
-    tensor_data::{DecodedTensor, TensorDataMeaning},
+    components::{self, Colormap, DepthMeter, DrawOrder, FillRatio, ViewCoordinates},
+    datatypes,
+    tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
     gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    SpaceViewClass, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
+    SpaceViewClass, SpaceViewSystemExecutionError, TensorStatsCache,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     VisualizableEntities, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
     VisualizerQueryInfo, VisualizerSystem,
@@ -49,7 +50,7 @@ impl Default for DepthImageVisualizer {
 struct DepthImageComponentData<'a> {
     index: (TimeInt, RowId),
 
-    tensor: &'a TensorData,
+    tensor: &'a datatypes::TensorData,
     colormap: Option<&'a Colormap>,
     depth_meter: Option<&'a DepthMeter>,
     fill_ratio: Option<&'a FillRatio>,
@@ -76,17 +77,7 @@ impl DepthImageVisualizer {
             }
 
             let tensor_data_row_id = data.index.1;
-            let tensor = match ctx.viewer_ctx.cache.entry(|c: &mut TensorDecodeCache| {
-                c.entry(tensor_data_row_id, data.tensor.0.clone())
-            }) {
-                Ok(tensor) => tensor,
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {entity_path}: {err}"
-                    );
-                    continue;
-                }
-            };
+            let tensor = data.tensor.clone();
 
             let colormap = data
                 .colormap
@@ -171,7 +162,7 @@ impl DepthImageVisualizer {
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         tensor_data_row_id: RowId,
-        tensor: &DecodedTensor,
+        tensor: &datatypes::TensorData,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
         colormap: Colormap,
@@ -308,7 +299,9 @@ impl VisualizerSystem for DepthImageVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
+                let tensors = match results
+                    .get_required_component_dense::<components::TensorData>(resolver)
+                {
                     Some(tensors) => tensors?,
                     _ => return Ok(()),
                 };
@@ -406,7 +399,7 @@ impl TypedComponentFallbackProvider<DepthMeter> for DepthImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> DepthMeter {
         let is_integer_tensor = ctx
             .recording()
-            .latest_at_component::<TensorData>(ctx.target_entity_path, ctx.query)
+            .latest_at_component::<components::TensorData>(ctx.target_entity_path, ctx.query)
             .map_or(false, |tensor| tensor.dtype().is_integer());
 
         if is_integer_tensor { 1000.0 } else { 1.0 }.into()

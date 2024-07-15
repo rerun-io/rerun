@@ -11,8 +11,8 @@ use re_types::{
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
-    datatypes::TensorDimension,
-    tensor_data::{DecodedTensor, TensorDataMeaning},
+    datatypes::{TensorData, TensorDimension},
+    tensor_data::TensorDataMeaning,
     SpaceViewClassIdentifier, View,
 };
 use re_ui::{list_item, ContextExt as _, UiExt as _};
@@ -38,7 +38,7 @@ type ViewType = re_types::blueprint::views::TensorView;
 pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
-    tensor: Option<(RowId, DecodedTensor)>,
+    tensor: Option<(RowId, TensorData)>,
 }
 
 impl SpaceViewState for ViewTensorState {
@@ -134,7 +134,7 @@ Note: select the space view to configure which dimensions are shown."
                 // We are in a bare Tensor view -- meaning / meter is unknown.
                 let meaning = TensorDataMeaning::Unknown;
                 let meter = None;
-                tensor_summary_ui_grid_contents(ui, tensor, tensor, meaning, meter, &tensor_stats);
+                tensor_summary_ui_grid_contents(ui, tensor, meaning, meter, &tensor_stats);
             }
         });
 
@@ -218,7 +218,7 @@ Note: select the space view to configure which dimensions are shown."
                 ));
             });
         } else if let Some((tensor_data_row_id, tensor)) = tensors.first() {
-            state.tensor = Some((*tensor_data_row_id, tensor.clone()));
+            state.tensor = Some((*tensor_data_row_id, tensor.0.clone()));
             self.view_tensor(ctx, ui, state, query.space_view_id, tensor)?;
         } else {
             ui.centered_and_justified(|ui| ui.label("(empty)"));
@@ -235,7 +235,7 @@ impl TensorSpaceView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: SpaceViewId,
-        tensor: &DecodedTensor,
+        tensor: &TensorData,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
