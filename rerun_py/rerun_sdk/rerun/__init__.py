@@ -20,7 +20,7 @@ from . import (
     notebook as notebook,
 )
 from ._image import (
-    ImageEncoded as ImageEncoded,
+    ImageEncodedHelper as ImageEncodedHelper,
     ImageFormat as ImageFormat,
 )
 from ._log import (
