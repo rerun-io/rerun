@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
-use re_query::{PromiseResult, QueryError};
-use re_space_view::range_with_blueprint_resolved_data;
+use re_query2::{PromiseResult, QueryError};
+use re_space_view::range_with_blueprint_resolved_data2;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
@@ -98,8 +98,6 @@ impl SeriesPointSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let resolver = ctx.recording().resolver();
-
         let (plot_bounds, time_per_pixel) =
             determine_plot_bounds_and_time_per_pixel(ctx.viewer_ctx, view_query);
 
@@ -144,14 +142,14 @@ impl SeriesPointSystem {
             );
 
             {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
                 let entity_path = &data_result.entity_path;
                 let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
-                let results = range_with_blueprint_resolved_data(
+                let results = range_with_blueprint_resolved_data2(
                     ctx,
                     None,
                     &query,
@@ -166,8 +164,7 @@ impl SeriesPointSystem {
                 );
 
                 // If we have no scalars, we can't do anything.
-                let Some(all_scalars) = results.get_required_component_dense::<Scalar>(resolver)
-                else {
+                let Some(all_scalars) = results.get_required_component_dense::<Scalar>() else {
                     return Ok(());
                 };
 
@@ -223,7 +220,7 @@ impl SeriesPointSystem {
 
                 // Fill in colors.
                 // TODO(jleibs): Handle Err values.
-                if let Ok(all_colors) = results.get_or_empty_dense::<Color>(resolver) {
+                if let Ok(all_colors) = results.get_or_empty_dense::<Color>() {
                     if !matches!(
                         all_colors.status(),
                         (PromiseResult::Ready(()), PromiseResult::Ready(()))
@@ -236,7 +233,7 @@ impl SeriesPointSystem {
                         .map(|index| (index, ()));
 
                     let all_frames =
-                        re_query::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
+                        re_query2::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
                             .enumerate();
 
                     for (i, (_index, _scalars, colors)) in all_frames {
@@ -258,7 +255,7 @@ impl SeriesPointSystem {
 
                 // Fill in marker sizes
                 // TODO(jleibs): Handle Err values.
-                if let Ok(all_marker_sizes) = results.get_or_empty_dense::<MarkerSize>(resolver) {
+                if let Ok(all_marker_sizes) = results.get_or_empty_dense::<MarkerSize>() {
                     if !matches!(
                         all_marker_sizes.status(),
                         (PromiseResult::Ready(()), PromiseResult::Ready(()))
@@ -270,7 +267,7 @@ impl SeriesPointSystem {
                         .range_indices(all_scalars_entry_range.clone())
                         .map(|index| (index, ()));
 
-                    let all_frames = re_query::range_zip_1x1(
+                    let all_frames = re_query2::range_zip_1x1(
                         all_scalars_indexed,
                         all_marker_sizes.range_indexed(),
                     )
@@ -287,7 +284,7 @@ impl SeriesPointSystem {
 
                 // Fill in marker sizes
                 // TODO(jleibs): Handle Err values.
-                if let Ok(all_marker_shapes) = results.get_or_empty_dense::<MarkerShape>(resolver) {
+                if let Ok(all_marker_shapes) = results.get_or_empty_dense::<MarkerShape>() {
                     if !matches!(
                         all_marker_shapes.status(),
                         (PromiseResult::Ready(()), PromiseResult::Ready(()))
@@ -299,7 +296,7 @@ impl SeriesPointSystem {
                         .range_indices(all_scalars_entry_range.clone())
                         .map(|index| (index, ()));
 
-                    let all_frames = re_query::range_zip_1x1(
+                    let all_frames = re_query2::range_zip_1x1(
                         all_scalars_indexed,
                         all_marker_shapes.range_indexed(),
                     )
@@ -316,7 +313,7 @@ impl SeriesPointSystem {
 
                 // Extract the series name
                 let series_name = results
-                    .get_or_empty_dense::<Name>(resolver)
+                    .get_or_empty_dense::<Name>()
                     .ok()
                     .and_then(|all_series_name| {
                         all_series_name

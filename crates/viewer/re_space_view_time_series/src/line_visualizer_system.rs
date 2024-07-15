@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
-use re_query::{PromiseResult, QueryError};
-use re_space_view::range_with_blueprint_resolved_data;
+use re_query2::{PromiseResult, QueryError};
+use re_space_view::range_with_blueprint_resolved_data2;
 use re_types::archetypes;
 use re_types::components::AggregationPolicy;
 use re_types::{
@@ -154,8 +154,6 @@ impl SeriesLineSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let resolver = ctx.recording().resolver();
-
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
@@ -183,14 +181,14 @@ impl SeriesLineSystem {
             ctx.viewer_ctx.app_options.experimental_plot_query_clamping,
         );
         {
-            use re_space_view::RangeResultsExt as _;
+            use re_space_view::RangeResultsExt2 as _;
 
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
             let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
-            let results = range_with_blueprint_resolved_data(
+            let results = range_with_blueprint_resolved_data2(
                 ctx,
                 None,
                 &query,
@@ -205,7 +203,7 @@ impl SeriesLineSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalars) = results.get_required_component_dense::<Scalar>(resolver) else {
+            let Some(all_scalars) = results.get_required_component_dense::<Scalar>() else {
                 return Ok(());
             };
 
@@ -258,7 +256,7 @@ impl SeriesLineSystem {
 
             // Fill in colors.
             // TODO(jleibs): Handle Err values.
-            if let Ok(all_colors) = results.get_or_empty_dense::<Color>(resolver) {
+            if let Ok(all_colors) = results.get_or_empty_dense::<Color>() {
                 if !matches!(
                     all_colors.status(),
                     (PromiseResult::Ready(()), PromiseResult::Ready(()))
@@ -271,7 +269,7 @@ impl SeriesLineSystem {
                     .map(|index| (index, ()));
 
                 let all_frames =
-                    re_query::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
+                    re_query2::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
                         .enumerate();
 
                 for (i, (_index, _scalars, colors)) in all_frames {
@@ -293,7 +291,7 @@ impl SeriesLineSystem {
 
             // Fill in stroke widths
             // TODO(jleibs): Handle Err values.
-            if let Ok(all_stroke_widths) = results.get_or_empty_dense::<StrokeWidth>(resolver) {
+            if let Ok(all_stroke_widths) = results.get_or_empty_dense::<StrokeWidth>() {
                 if !matches!(
                     all_stroke_widths.status(),
                     (PromiseResult::Ready(()), PromiseResult::Ready(()))
@@ -305,9 +303,11 @@ impl SeriesLineSystem {
                     .range_indices(all_scalars_entry_range.clone())
                     .map(|index| (index, ()));
 
-                let all_frames =
-                    re_query::range_zip_1x1(all_scalars_indexed, all_stroke_widths.range_indexed())
-                        .enumerate();
+                let all_frames = re_query2::range_zip_1x1(
+                    all_scalars_indexed,
+                    all_stroke_widths.range_indexed(),
+                )
+                .enumerate();
 
                 for (i, (_index, _scalars, stroke_widths)) in all_frames {
                     if let Some(stroke_width) =
@@ -320,7 +320,7 @@ impl SeriesLineSystem {
 
             // Extract the series name
             let series_name = results
-                .get_or_empty_dense::<Name>(resolver)
+                .get_or_empty_dense::<Name>()
                 .ok()
                 .and_then(|all_series_name| {
                     all_series_name
@@ -332,7 +332,7 @@ impl SeriesLineSystem {
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
-                .get_or_empty_dense::<AggregationPolicy>(resolver)
+                .get_or_empty_dense::<AggregationPolicy>()
                 .ok()
                 .and_then(|result| {
                     result
