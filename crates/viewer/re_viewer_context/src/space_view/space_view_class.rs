@@ -94,7 +94,7 @@ pub trait SpaceViewClass: Send + Sync {
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
     /// Default query range for this space view.
-    fn default_query_range(&self) -> QueryRange {
+    fn default_query_range(&self, _state: &dyn SpaceViewState) -> QueryRange {
         QueryRange::LatestAt
     }
 
