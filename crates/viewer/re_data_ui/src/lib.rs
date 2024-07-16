@@ -30,7 +30,7 @@ mod transform3d;
 pub mod item_ui;
 
 pub use crate::image::{
-    show_zoomed_image_region, show_zoomed_image_region_area_outline,
+    show_zoomed_image_region_area_outline, show_zoomed_tensor_region,
     tensor_summary_ui_grid_contents,
 };
 pub use component::EntityLatestAtResults;

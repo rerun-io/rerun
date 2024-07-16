@@ -5,7 +5,7 @@ use itertools::chain;
 use re_math::BoundingBox;
 
 use re_data_ui::{
-    item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline, DataUi,
+    item_ui, show_zoomed_image_region_area_outline, show_zoomed_tensor_region, DataUi,
 };
 use re_format::format_f32;
 use re_log_types::Instance;
@@ -752,7 +752,7 @@ fn image_hover_ui(
                 .cache
                 .entry(|c: &mut TensorStatsCache| c.entry(row_id, tensor));
             if let Some(render_ctx) = ctx.render_ctx {
-                show_zoomed_image_region(
+                show_zoomed_tensor_region(
                     render_ctx,
                     ui,
                     row_id,

@@ -2,6 +2,8 @@ use super::ColorModel;
 
 impl ColorModel {
     /// 1 for grayscale, 3 for RGB, etc.
+    ///
+    /// Also known as "channels".
     #[inline]
     pub fn num_components(self) -> usize {
         match self {
