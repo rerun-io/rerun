@@ -98,7 +98,7 @@ pub(crate) fn latest_at_table_ui(
             // We want to scroll only if the focus action originated from outside the table. We
             // allow the case of `Instance::ALL` for when the entity is double-clicked in the
             // blueprint tree.
-            //TODO(#6906): we should have an explict way to track the "source" of the focus event.
+            //TODO(#6906): we should have an explicit way to track the "source" of the focus event.
             let should_scroll =
                 (space_view_id != &query.space_view_id) || instance_path.instance.is_all();
 
