@@ -240,6 +240,49 @@ impl Chunk {
             .sum()
     }
 
+    /// The cumulative number of events in this chunk for each _unique_ timestamp.
+    ///
+    /// I.e. how many _component batches_ ("cells") were logged in total at each timestamp?
+    ///
+    /// Keep in mind that a timestamp can appear multiple times in a [`Chunk`].
+    /// This method will do a sum accumulation to account for these cases.
+    #[inline]
+    pub fn num_events_cumulative_per_unique_time(
+        &self,
+        timeline: &Timeline,
+    ) -> BTreeMap<TimeInt, u64> {
+        re_tracing::profile_function!();
+
+        let iter_times = || {
+            if self.is_static() {
+                arrow2::Either::Left(std::iter::repeat(TimeInt::STATIC))
+            } else {
+                let times = self.timelines.get(timeline).map_or_else(
+                    || arrow2::Either::Left(std::iter::empty()),
+                    |time_chunk| arrow2::Either::Right(time_chunk.times()),
+                );
+                arrow2::Either::Right(times)
+            }
+        };
+
+        self.components
+            .values()
+            .flat_map(|list_array| {
+                izip!(
+                    iter_times(),
+                    // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
+                    list_array.validity().map_or_else(
+                        || arrow2::Either::Left(std::iter::repeat(1).take(self.num_rows())),
+                        |validity| arrow2::Either::Right(validity.iter().map(|b| b as u64)),
+                    )
+                )
+            })
+            .fold(BTreeMap::default(), |mut acc, (time, is_valid)| {
+                *acc.entry(time).or_default() += is_valid;
+                acc
+            })
+    }
+
     /// The number of events in this chunk for the specified component.
     ///
     /// I.e. how many _component batches_ ("cells") were logged in total for this component?
