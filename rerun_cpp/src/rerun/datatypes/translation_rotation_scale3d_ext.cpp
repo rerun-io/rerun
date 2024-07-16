@@ -166,6 +166,13 @@ namespace rerun {
                   scale(scale_),
                   from_parent(from_parent_) {}
 
+            /// TODO(#6831): temporary utility until from_parent is its own component
+            TranslationRotationScale3D(bool from_parent_)
+                : translation(std::nullopt),
+                  rotation(std::nullopt),
+                  scale(std::nullopt),
+                  from_parent(from_parent_) {}
+
             // </CODEGEN_COPY_TO_HEADER>
         };
 #endif

@@ -1,8 +1,6 @@
 use super::{Scale3D, Transform3D};
 
-use crate::datatypes::{
-    Rotation3D, RotationAxisAngle, TranslationAndMat3x3, TranslationRotationScale3D, Vec3D,
-};
+use crate::datatypes::{Rotation3D, RotationAxisAngle, TranslationRotationScale3D, Vec3D};
 
 impl Transform3D {
     /// The identity transform, representing no transform.
@@ -24,15 +22,6 @@ impl Transform3D {
             translation,
             rotation,
         ))
-    }
-
-    /// From a translation applied after a 3x3 matrix.
-    #[inline]
-    pub fn from_translation_mat3x3(
-        translation: impl Into<Vec3D>,
-        mat3x3: impl Into<crate::datatypes::Mat3x3>,
-    ) -> Self {
-        Self::from(TranslationAndMat3x3::new(translation, mat3x3))
     }
 
     /// From a translation, applied after a rotation & scale, known as an affine transformation.
@@ -63,9 +52,6 @@ impl Transform3D {
     #[inline]
     pub fn from_parent(mut self) -> Self {
         match &mut self {
-            Self::TranslationAndMat3x3(t) => {
-                t.from_parent = true;
-            }
             Self::TranslationRotationScale(t) => {
                 t.from_parent = true;
             }
@@ -79,7 +65,6 @@ impl Transform3D {
     #[allow(clippy::wrong_self_convention)]
     pub fn is_from_parent(&self) -> bool {
         match self {
-            Self::TranslationAndMat3x3(t) => t.from_parent,
             Self::TranslationRotationScale(t) => t.from_parent,
         }
     }
@@ -89,13 +74,6 @@ impl Default for Transform3D {
     #[inline]
     fn default() -> Self {
         Self::IDENTITY
-    }
-}
-
-impl From<TranslationAndMat3x3> for Transform3D {
-    #[inline]
-    fn from(v: TranslationAndMat3x3) -> Self {
-        Self::TranslationAndMat3x3(v)
     }
 }
 
@@ -133,15 +111,6 @@ impl From<RotationAxisAngle> for Transform3D {
 impl From<Transform3D> for glam::Affine3A {
     fn from(value: Transform3D) -> Self {
         match value {
-            Transform3D::TranslationAndMat3x3(TranslationAndMat3x3 {
-                translation,
-                mat3x3,
-                from_parent: _,
-            }) => Self::from_mat3_translation(
-                mat3x3.unwrap_or(super::Mat3x3::IDENTITY).into(),
-                translation.map_or(glam::Vec3::ZERO, |v| v.into()),
-            ),
-
             Transform3D::TranslationRotationScale(TranslationRotationScale3D {
                 translation,
                 rotation,

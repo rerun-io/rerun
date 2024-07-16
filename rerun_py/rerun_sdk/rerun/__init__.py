@@ -93,8 +93,6 @@ from .datatypes import (
     TimeInt as TimeInt,
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
-    TranslationAndMat3x3 as TranslationAndMat3x3,
-    TranslationRotationScale3D as TranslationRotationScale3D,
     VisibleTimeRange as VisibleTimeRange,
 )
 from .error_utils import (

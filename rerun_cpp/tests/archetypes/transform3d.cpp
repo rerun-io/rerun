@@ -9,6 +9,10 @@ using namespace rerun::archetypes;
 
 #define TEST_TAG "[transform3d][archetypes]"
 
+// Something about the setup of `Transform3D manual` sets gcc off. Can't see any issue with it.
+// This warning known to be notoriously unreliable, so let's ignore it here.
+RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH
+
 SCENARIO(
     "The various utilities of Transform3D archetype produce the same data as manually constructed "
     "instances",
@@ -16,7 +20,6 @@ SCENARIO(
 ) {
     const bool from_parent = GENERATE(true, false);
 
-    SECTION("TranslationAndMat3x3") {
 // Do NOT write this as rrd::Mat3x3 as this actually caught an overload resolution bug.
 #define MATRIX_ILIST                              \
     {                                             \
@@ -24,154 +27,125 @@ SCENARIO(
             7.0f, 8.0f, 9.0f                      \
         }                                         \
     }
+    rrd::Vec3D columns[3] = MATRIX_ILIST;
+    const auto rotation = rrd::Quaternion::from_xyzw(1.0f, 2.0f, 3.0f, 4.0f);
 
-        rrd::Vec3D columns[3] = MATRIX_ILIST;
+    Transform3D manual;
+    // List out everything so that GCC doesn't get nervous around uninitialized values.
+    rrd::TranslationRotationScale3D manual_translation_rotation_scale;
+    manual_translation_rotation_scale.translation = std::nullopt;
+    manual_translation_rotation_scale.rotation = std::nullopt;
+    manual_translation_rotation_scale.scale = std::nullopt;
+    manual_translation_rotation_scale.from_parent = from_parent;
+    manual.transform =
+        rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
+    manual.mat3x3 = std::nullopt;
+    manual.translation = std::nullopt;
+    manual.axis_length = std::nullopt;
 
-        Transform3D manual;
-        rrd::TranslationAndMat3x3 translation_and_mat3;
+    GIVEN("Transform3D from translation from_parent==" << from_parent) {
+        auto utility =
+            Transform3D::from_translation({1.0f, 2.0f, 3.0f}).with_from_parent(from_parent);
 
-        GIVEN("Transform3D from translation & matrix and from_parent==" << from_parent) {
-            translation_and_mat3.translation = {1.0f, 2.0f, 3.0f};
-            translation_and_mat3.from_parent = from_parent;
-            manual.transform.repr = rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
+        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
 
-            AND_GIVEN("matrix as initializer list") {
-                auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST, true)
-                                           : Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST);
-                translation_and_mat3.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
-                manual.transform.repr =
-                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
+        test_compare_archetype_serialization(manual, utility);
+    }
 
-                test_compare_archetype_serialization(manual, utility);
-            }
-            AND_GIVEN("matrix as column vectors") {
-                auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, columns, true)
-                                           : Transform3D({1.0f, 2.0f, 3.0f}, columns);
-                translation_and_mat3.mat3x3 = columns;
-                manual.transform.repr =
-                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
+    GIVEN("Transform3D from 3x3 matrix and from_parent==" << from_parent) {
+        manual.translation = std::nullopt;
 
-                test_compare_archetype_serialization(manual, utility);
-            }
+        AND_GIVEN("matrix as initializer list") {
+            auto utility = Transform3D::from_mat3x3(MATRIX_ILIST).with_from_parent(from_parent);
+            manual.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
+
+            test_compare_archetype_serialization(manual, utility);
         }
-        GIVEN("Transform3D from matrix as initializer list and from_parent==" << from_parent) {
-            translation_and_mat3.translation = std::nullopt;
-            translation_and_mat3.from_parent = from_parent;
+        AND_GIVEN("matrix as column vectors") {
+            auto utility = Transform3D::from_mat3x3(columns).with_from_parent(from_parent);
+            manual.mat3x3 = rrd::Mat3x3(columns);
 
-            AND_GIVEN("matrix as initializer list") {
-                auto utility =
-                    from_parent ? Transform3D(MATRIX_ILIST, true) : Transform3D(MATRIX_ILIST);
-                translation_and_mat3.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
-                manual.transform.repr =
-                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
-
-                test_compare_archetype_serialization(manual, utility);
-            }
-            AND_GIVEN("matrix as column vectors") {
-                auto utility = from_parent ? Transform3D(columns, true) : Transform3D(columns);
-                translation_and_mat3.mat3x3 = columns;
-                manual.transform.repr =
-                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
-
-                test_compare_archetype_serialization(manual, utility);
-            }
+            test_compare_archetype_serialization(manual, utility);
         }
     }
 
-    SECTION("TranslationRotationScale") {
-        const auto rotation = rrd::Quaternion::from_xyzw(1.0f, 2.0f, 3.0f, 4.0f);
+    GIVEN("Transform3D from scale and from_parent==" << from_parent) {
+        auto utility = Transform3D::from_scale(
 
-        Transform3D manual;
-        rrd::TranslationRotationScale3D translation_rotation_scale;
+                           rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f})
+        )
+                           .with_from_parent(from_parent);
 
-        GIVEN("Transform3D from translation only and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, true)
-                                       : Transform3D({1.0f, 2.0f, 3.0f});
+        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.transform.repr =
+            rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
-            translation_rotation_scale.translation = {1.0f, 2.0f, 3.0f};
-            translation_rotation_scale.rotation = std::nullopt;
-            translation_rotation_scale.scale = std::nullopt;
-            translation_rotation_scale.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
+        test_compare_archetype_serialization(manual, utility);
+    }
 
-            test_compare_archetype_serialization(manual, utility);
-        }
-        GIVEN("Transform3D from translation/rotation/scale and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, rotation, 1.0f, true)
-                                       : Transform3D({1.0f, 2.0f, 3.0f}, rotation, 1.0f);
+    GIVEN("Transform3D from translation & 3x3 matrix and from_parent==" << from_parent) {
+        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
 
-            translation_rotation_scale.translation = {1.0f, 2.0f, 3.0f};
-            translation_rotation_scale.rotation = rotation;
-            translation_rotation_scale.scale = 1.0f;
-            translation_rotation_scale.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
+        AND_GIVEN("matrix as initializer list") {
+            auto utility = Transform3D::from_translation_mat3x3({1.0f, 2.0f, 3.0f}, MATRIX_ILIST)
+                               .with_from_parent(from_parent);
+            manual.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
 
             test_compare_archetype_serialization(manual, utility);
         }
-        GIVEN("Transform3D from translation/scale and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, 1.0f, true)
-                                       : Transform3D({1.0f, 2.0f, 3.0f}, 1.0f);
-
-            translation_rotation_scale.translation = {1.0f, 2.0f, 3.0f};
-            translation_rotation_scale.rotation = std::nullopt;
-            translation_rotation_scale.scale = 1.0f;
-            translation_rotation_scale.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
+        AND_GIVEN("matrix as column vectors") {
+            auto utility = Transform3D::from_translation_mat3x3({1.0f, 2.0f, 3.0f}, columns)
+                               .with_from_parent(from_parent);
+            manual.mat3x3 = rrd::Mat3x3(columns);
 
             test_compare_archetype_serialization(manual, utility);
         }
-        GIVEN("Transform3D from translation/rotation and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, rotation, true)
-                                       : Transform3D({1.0f, 2.0f, 3.0f}, rotation);
+    }
 
-            translation_rotation_scale.translation = {1.0f, 2.0f, 3.0f};
-            translation_rotation_scale.rotation = rotation;
-            translation_rotation_scale.scale = std::nullopt;
-            translation_rotation_scale.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
+    GIVEN("Transform3D from translation & scale and from_parent==" << from_parent) {
+        auto utility = Transform3D::from_translation_scale(
+                           {1.0f, 2.0f, 3.0f},
+                           rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f})
+        )
+                           .with_from_parent(from_parent);
 
-            test_compare_archetype_serialization(manual, utility);
-        }
-        GIVEN("Transform3D from rotation/scale and from_parent==" << from_parent) {
-            auto utility =
-                from_parent ? Transform3D(rotation, 1.0f, true) : Transform3D(rotation, 1.0f);
+        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
+        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.transform.repr =
+            rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
-            translation_rotation_scale.translation = std::nullopt;
-            translation_rotation_scale.rotation = rotation;
-            translation_rotation_scale.scale = 1.0f;
-            translation_rotation_scale.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
+        test_compare_archetype_serialization(manual, utility);
+    }
 
-            test_compare_archetype_serialization(manual, utility);
-        }
-        GIVEN("Transform3D from rotation only and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D(rotation, true) : Transform3D(rotation);
+    GIVEN("Transform3D from translation & rotation & scale and from_parent==" << from_parent) {
+        auto utility = Transform3D::from_translation_rotation_scale(
+                           {1.0f, 2.0f, 3.0f},
+                           rotation,
+                           rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f})
+        )
+                           .with_from_parent(from_parent);
 
-            translation_rotation_scale.translation = std::nullopt;
-            translation_rotation_scale.rotation = rotation;
-            translation_rotation_scale.scale = std::nullopt;
-            translation_rotation_scale.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
+        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
+        manual_translation_rotation_scale.rotation = rotation;
+        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.transform.repr =
+            rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
-            test_compare_archetype_serialization(manual, utility);
-        }
-        GIVEN("Transform3D from scale only and from_parent==" << from_parent) {
-            auto utility = from_parent ? Transform3D(1.0f, true) : Transform3D(1.0f);
+        test_compare_archetype_serialization(manual, utility);
+    }
 
-            translation_rotation_scale.translation = std::nullopt;
-            translation_rotation_scale.rotation = std::nullopt;
-            translation_rotation_scale.scale = 1.0f;
-            translation_rotation_scale.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
+    GIVEN("Transform3D from rotation & scale and from_parent==" << from_parent) {
+        auto utility =
+            Transform3D::from_rotation_scale(rotation, rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f}))
+                .with_from_parent(from_parent);
 
-            test_compare_archetype_serialization(manual, utility);
-        }
+        manual_translation_rotation_scale.rotation = rotation;
+        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.transform.repr =
+            rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
+
+        test_compare_archetype_serialization(manual, utility);
     }
 }
+
+RR_DISABLE_MAYBE_UNINITIALIZED_POP

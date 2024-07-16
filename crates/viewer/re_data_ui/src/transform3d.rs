@@ -1,4 +1,4 @@
-use re_types::datatypes::{Scale3D, Transform3D, TranslationAndMat3x3, TranslationRotationScale3D};
+use re_types::datatypes::{Scale3D, Transform3D, TranslationRotationScale3D};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::DataUi;
@@ -26,7 +26,6 @@ impl DataUi for re_types::components::Transform3D {
             | UiLayout::Tooltip => {
                 let from_parent = match &self.0 {
                     Transform3D::TranslationRotationScale(t) => t.from_parent,
-                    Transform3D::TranslationAndMat3x3(t) => t.from_parent,
                 };
                 let dir_string = if from_parent {
                     "parent ➡ child"
@@ -80,9 +79,6 @@ impl DataUi for Transform3D {
             UiLayout::SelectionPanelFull
             | UiLayout::SelectionPanelLimitHeight
             | UiLayout::Tooltip => match self {
-                Self::TranslationAndMat3x3(translation_matrix) => {
-                    translation_matrix.data_ui(ctx, ui, ui_layout, query, db);
-                }
                 Self::TranslationRotationScale(translation_rotation_scale) => {
                     translation_rotation_scale.data_ui(ctx, ui, ui_layout, query, db);
                 }
@@ -150,38 +146,5 @@ impl DataUi for Scale3D {
                 v.data_ui(ctx, ui, ui_layout, query, db);
             }
         }
-    }
-}
-
-impl DataUi for TranslationAndMat3x3 {
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
-    ) {
-        let Self {
-            translation,
-            mat3x3,
-            from_parent: _,
-        } = self;
-
-        egui::Grid::new("translation_and_mat3")
-            .num_columns(2)
-            .show(ui, |ui| {
-                if let Some(translation) = translation {
-                    ui.label("translation");
-                    translation.data_ui(ctx, ui, ui_layout, query, db);
-                    ui.end_row();
-                }
-
-                if let Some(matrix) = mat3x3 {
-                    ui.label("matrix");
-                    matrix.data_ui(ctx, ui, ui_layout, query, db);
-                    ui.end_row();
-                }
-            });
     }
 }

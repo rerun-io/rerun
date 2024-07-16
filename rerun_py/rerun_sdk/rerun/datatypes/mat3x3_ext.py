@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numbers
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -49,6 +50,10 @@ class Mat3x3Ext:
                 # Will raise ValueError if the wrong shape
                 matrices = [Mat3x3(data)]  # type: ignore[arg-type]
             except ValueError:
+                # If the data can't be possibly more than one Mat3x3, raise the original ValueError.
+                if isinstance(data[0], numbers.Number):
+                    raise
+
                 # Otherwise try to convert it to a sequence of Mat3x3s
                 # Let this value error propagate as the fallback
                 matrices = [Mat3x3(d) for d in data]

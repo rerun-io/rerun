@@ -9,11 +9,13 @@ mod marker_shape;
 mod radius;
 mod range1d;
 mod response_utils;
+mod transforms;
 mod visual_bounds2d;
 
 use datatype_editors::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_multiline_string, edit_singleline_string, edit_view_enum,
+    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
+    edit_view_enum,
 };
 use re_types::blueprint::components::{SortKey, SortOrder};
 use re_types::{
@@ -21,7 +23,7 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
         FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, StrokeWidth, Text,
+        Opacity, StrokeWidth, Text, Translation3D,
     },
     Loggable as _,
 };
@@ -83,4 +85,9 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
+
+    registry.add_multiline_edit_or_view(transforms::multiline_view_transform_mat3x3);
+    registry.add_singleline_edit_or_view(transforms::singleline_view_transform_mat3x3);
+
+    registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
 }

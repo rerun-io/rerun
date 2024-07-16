@@ -57,6 +57,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
 * [`Transform3D`](components/transform3d.md): An affine transform between two 3D spaces, represented in a given direction.
+* [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
+* [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.

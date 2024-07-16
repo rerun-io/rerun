@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/transform3d.hpp"
+#include "../datatypes/translation_rotation_scale3d.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -24,6 +25,16 @@ namespace rerun::components {
 
         OutOfTreeTransform3D& operator=(rerun::datatypes::Transform3D repr_) {
             repr = repr_;
+            return *this;
+        }
+
+        OutOfTreeTransform3D(rerun::datatypes::TranslationRotationScale3D TranslationRotationScale_)
+            : repr(TranslationRotationScale_) {}
+
+        OutOfTreeTransform3D& operator=(
+            rerun::datatypes::TranslationRotationScale3D TranslationRotationScale_
+        ) {
+            repr = TranslationRotationScale_;
             return *this;
         }
 

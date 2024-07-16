@@ -25,7 +25,6 @@ include "./datatypes/tensor_dimension_selection.fbs";
 include "./datatypes/tensor_dimension.fbs";
 include "./datatypes/time_int.fbs";
 include "./datatypes/transform3d.fbs";
-include "./datatypes/translation_and_mat3x3.fbs";
 include "./datatypes/translation_rotation_scale3d.fbs";
 include "./datatypes/uint32.fbs";
 include "./datatypes/uint64.fbs";

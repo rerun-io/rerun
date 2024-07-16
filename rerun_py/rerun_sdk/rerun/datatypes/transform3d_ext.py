@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pyarrow as pa
@@ -8,13 +8,11 @@ import pyarrow as pa
 from .._unions import build_dense_union, union_discriminant_type
 
 if TYPE_CHECKING:
-    from .._log import ComponentBatchLike
     from . import (
         Mat3x3,
         Rotation3D,
         Scale3D,
         Transform3DArrayLike,
-        TranslationAndMat3x3,
         TranslationRotationScale3D,
         Vec3D,
     )
@@ -26,7 +24,7 @@ class Transform3DExt:
     @staticmethod
     def native_to_pa_array_override(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
         from ..datatypes import Transform3DBatch
-        from . import Transform3D, TranslationAndMat3x3, TranslationRotationScale3D
+        from . import Transform3D, TranslationRotationScale3D
 
         if isinstance(data, Transform3DBatch):
             return data.pa_array.storage
@@ -34,18 +32,13 @@ class Transform3DExt:
         if isinstance(data, Transform3D):
             data = data.inner
 
-        if isinstance(data, TranslationAndMat3x3):
-            discriminant = "TranslationAndMat3x3"
-            repr_type = union_discriminant_type(data_type, discriminant)
-            transform_repr = _build_struct_array_from_translation_mat3x3(data, cast(pa.StructType, repr_type))
-        elif isinstance(data, TranslationRotationScale3D):
+        if isinstance(data, TranslationRotationScale3D):
             discriminant = "TranslationRotationScale"
             repr_type = union_discriminant_type(data_type, discriminant)
             transform_repr = _build_struct_array_from_translation_rotation_scale(data, cast(pa.StructType, repr_type))
         else:
             raise ValueError(
-                f"unknown transform 3D value: {data} (expected `Transform3D`, `TranslationAndMat3x3`, or "
-                "`TranslationRotationScale3D`"
+                f"unknown transform 3D value: {data} (expected `Transform3D` or " "`TranslationRotationScale3D`"
             )
 
         storage = build_dense_union(data_type, discriminant, transform_repr)
@@ -53,13 +46,6 @@ class Transform3DExt:
         # TODO(clement) enable extension type wrapper
         # return cast(Transform3DArray, pa.ExtensionArray.from_storage(Transform3DType(), storage))
         return storage
-
-    # Implement the AsComponents
-    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
-        from ..archetypes import Transform3D
-        from ..datatypes import Transform3D as Transform3DDataType
-
-        return Transform3D(cast(Transform3DDataType, self)).as_component_batches()
 
     def num_instances(self) -> int:
         # Always a mono-component
@@ -129,22 +115,6 @@ def _optional_rotation_to_arrow(rotation: Rotation3D | None, storage_type: pa.Da
             return Rotation3DBatch(rotation, strict=True).as_arrow_array().storage
         except ValueError as err:
             raise ValueError(f"rotation must be compatible with Rotation3D: {err}")
-
-
-def _build_struct_array_from_translation_mat3x3(
-    translation_mat3: TranslationAndMat3x3, type_: pa.StructType
-) -> pa.StructArray:
-    translation = _optional_translation_to_arrow(translation_mat3.translation)
-    mat3x3 = _optional_mat3x3_to_arrow(translation_mat3.mat3x3)
-
-    return pa.StructArray.from_arrays(
-        [
-            translation,
-            mat3x3,
-            pa.array([translation_mat3.from_parent], type=pa.bool_()),
-        ],
-        fields=list(type_),
-    )
 
 
 def _build_struct_array_from_translation_rotation_scale(
