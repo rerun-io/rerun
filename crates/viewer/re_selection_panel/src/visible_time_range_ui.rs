@@ -14,7 +14,7 @@ use re_types::{
     Archetype, SpaceViewClassIdentifier,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{QueryRange, SpaceViewClass, ViewerContext};
+use re_viewer_context::{QueryRange, SpaceViewClass, SpaceViewState, ViewerContext};
 use re_viewport_blueprint::{entity_path_for_view_property, SpaceViewBlueprint};
 
 /// These space views support the Visible History feature.
@@ -41,6 +41,7 @@ pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     view: &SpaceViewBlueprint,
+    view_state: &dyn SpaceViewState,
 ) {
     if !space_view_with_visible_history(view.class_identifier()) {
         return;
@@ -57,6 +58,7 @@ pub fn visible_time_range_ui_for_view(
         ctx.blueprint_query,
         ctx.rec_cfg.time_ctrl.read().timeline(),
         ctx.space_view_class_registry,
+        view_state,
     );
 
     let is_space_view = true;
