@@ -29,7 +29,7 @@ namespace rerun::components {
         explicit Scale3D(const float* xyz) : scale{xyz[0], xyz[1], xyz[2]} {}
 
         /// Construct a `Scale3D` from a uniform scale factor.
-        Scale3D(float uniform_scale)
+        explicit Scale3D(float uniform_scale)
             : Scale3D(datatypes::Vec3D{uniform_scale, uniform_scale, uniform_scale}) {}
 
         /// Explicitly construct a `Scale3D` from a uniform scale factor.
