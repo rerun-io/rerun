@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -43,11 +43,12 @@ class Angle(AngleExt):
         return hash(self.radians)
 
 
-AngleLike = Angle
-AngleArrayLike = Union[
-    Angle,
-    Sequence[AngleLike],
-]
+if TYPE_CHECKING:
+    AngleLike = Union[Angle, float, int]
+else:
+    AngleLike = Any
+
+AngleArrayLike = Union[Angle, Sequence[AngleLike], npt.ArrayLike, Sequence[float], Sequence[int]]
 
 
 class AngleType(BaseExtensionType):
@@ -62,12 +63,5 @@ class AngleBatch(BaseBatch[AngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, Angle):
-            data = [data]
-
-        return pa.StructArray.from_arrays(
-            [
-                pa.array(np.asarray([x.radians for x in data], dtype=np.float32)),
-            ],
-            fields=list(data_type),
-        )
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

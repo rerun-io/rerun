@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 from fractions import Fraction
+import math
 from typing import Optional, cast
 
 import numpy as np
@@ -67,8 +68,6 @@ def assert_correct_rotation3d(rot: Rotation3D | None) -> None:
         assert np.all(rot.inner.axis.xyz == np.array([1.0, 2.0, 3.0]))
         assert rot.inner.axis.xyz.dtype == np.float32
         assert rot.inner.angle == Angle(4.0)
-        assert isinstance(rot.inner.angle.inner, float)
-        assert rot.inner.angle.kind == "radians"
 
     else:
         assert False, f"Unexpected inner type: {type(rot.inner)}"
@@ -82,9 +81,7 @@ def test_angle() -> None:
     ]
 
     for a in five_rad:
-        assert a.inner == 5.0
-        assert isinstance(a.inner, float)
-        assert a.kind == "radians"
+        assert a.radians == 5.0
 
     five_deg = [
         Angle(deg=5),
@@ -92,9 +89,7 @@ def test_angle() -> None:
     ]
 
     for a in five_deg:
-        assert a.inner == 5.0
-        assert isinstance(a.inner, float)
-        assert a.kind == "degrees"
+        assert a.radians == math.radians(5.0)
 
 
 def test_transform3d() -> None:

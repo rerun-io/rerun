@@ -11,6 +11,8 @@ namespace rerun.datatypes;
 /// Angle in radians.
 struct Angle (
   "attr.arrow.transparent",
+  "attr.python.aliases": "float, int",
+  "attr.python.array_aliases": "npt.ArrayLike, Sequence[float], Sequence[int]",
   "attr.rust.derive": "Copy, Default, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
