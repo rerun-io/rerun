@@ -421,7 +421,7 @@ pub fn data_density_graph_ui2(
         // 1. The total number of chunks is less than some threshold
         // 2. The number of events in the chunks is less than N, where:
         //    N is relatively large for sorted chunks
-        //    N is much smaller for sorted chunks
+        //    N is much smaller for unsorted chunks
 
         const MAX_TOTAL_CHUNKS: usize = 100;
         const MAX_UNSORTED_CHUNK_EVENTS: usize = 5000;
