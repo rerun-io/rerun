@@ -21,6 +21,7 @@ namespace rerun.archetypes;
 // TODO(#6831): provide example with out of tree transform.
 table Transform3D (
   "attr.rust.derive": "Default, PartialEq",
+  "attr.rust.generate_field_info",
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {

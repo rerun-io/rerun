@@ -9,7 +9,7 @@ use re_types::{
         DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Scale3D, Transform3D,
         TransformMat3x3, Translation3D, ViewCoordinates,
     },
-    ComponentNameSet, Loggable as _,
+    Archetype as _, ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 
@@ -95,6 +95,8 @@ impl ViewContextSystem for TransformContext {
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();
+
+        debug_assert_transform_field_order(ctx.viewer_ctx.reflection);
 
         let entity_tree = ctx.recording().tree();
 
@@ -300,6 +302,43 @@ impl TransformContext {
     }
 }
 
+#[cfg(debug_assertions)]
+fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflection) {
+    let expected_order = vec![
+        Transform3D::name(),
+        Translation3D::name(),
+        Scale3D::name(),
+        TransformMat3x3::name(),
+    ];
+
+    let transform3d_reflection = reflection
+        .archetypes
+        .get(&re_types::archetypes::Transform3D::name())
+        .expect("Transform3D archetype not found in reflection");
+
+    let mut remaining_fields = expected_order.clone();
+    for field in transform3d_reflection.fields.iter().rev() {
+        if Some(&field.component_name) == remaining_fields.last() {
+            remaining_fields.pop();
+        }
+    }
+
+    if !remaining_fields.is_empty() {
+        let actual_order = transform3d_reflection
+            .fields
+            .iter()
+            .map(|f| f.component_name)
+            .collect::<Vec<_>>();
+        panic!(
+            "Expected transform fields in the following order:\n{expected_order:?}\n
+But they are instead ordered like this:\n{actual_order:?}"
+        );
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn debug_assert_transform_field_order(_: &re_types::reflection::Reflection) {}
+
 fn get_parent_from_child_transform(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -322,6 +361,7 @@ fn get_parent_from_child_transform(
     }
 
     // Order is specified by order of components in the Transform3D archetype.
+    // See `has_transform_expected_order`
     let mut transform = glam::Affine3A::IDENTITY;
     if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
         transform *= glam::Affine3A::from(mat3x3);

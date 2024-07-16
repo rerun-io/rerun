@@ -385,6 +385,8 @@ impl ::re_types_core::AsComponents for Transform3D {
     }
 }
 
+impl ::re_types_core::ArchetypeReflectionMarker for Transform3D {}
+
 impl Transform3D {
     /// Create a new `Transform3D`.
     #[inline]
