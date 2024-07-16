@@ -1,6 +1,8 @@
 use re_chunk::RowId;
 use re_types::{archetypes::Tensor, tensor_data::TensorImageLoadError};
 
+use egui::util::hash;
+
 use crate::Cache;
 
 struct DecodedImageResult {
@@ -14,11 +16,10 @@ struct DecodedImageResult {
     last_use_generation: u64,
 }
 
-/// Caches decoded tensors using a [`RowId`], i.e. a specific instance of
-/// a `TensorData` component.
+/// Caches the results of decoding [`ImageEncoded`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
-    cache: ahash::HashMap<RowId, DecodedImageResult>,
+    cache: ahash::HashMap<u64, DecodedImageResult>,
     memory_used: u64,
     generation: u64,
 }
@@ -27,16 +28,18 @@ pub struct ImageDecodeCache {
 impl ImageDecodeCache {
     /// Decode some image data and cache the result.
     ///
-    /// The key should be the `RowId` of the blob.
+    /// The `row_id` should be the `RowId` of the blob.
     /// NOTE: images are never batched atm (they are mono-archetypes),
     /// so we don't need the instance id here.
     pub fn entry(
         &mut self,
-        key: RowId,
+        row_id: RowId,
         image_bytes: &[u8],
         media_type: Option<&str>,
     ) -> Result<Tensor, TensorImageLoadError> {
         re_tracing::profile_function!();
+
+        let key = hash((row_id, media_type));
 
         let lookup = self.cache.entry(key).or_insert_with(|| {
             let tensor_result = decode_image(image_bytes, media_type);

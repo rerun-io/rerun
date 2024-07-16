@@ -1,18 +1,18 @@
-use re_chunk::RowId;
+use egui::util::hash;
 
-use super::TensorStats;
 use crate::{Cache, ImageComponents};
 
-/// Caches image stats using a [`RowId`]
+use super::TensorStats;
+// Caches image stats using a [`RowId`]
 #[derive(Default)]
-pub struct ImageStatsCache(ahash::HashMap<RowId, TensorStats>);
+pub struct ImageStatsCache(ahash::HashMap<u64, TensorStats>);
 
 impl ImageStatsCache {
-    /// The key should be the `RowId` of the blob
     pub fn entry(&mut self, image: &ImageComponents) -> TensorStats {
+        let key = hash((image.row_id, image.element_type));
         *self
             .0
-            .entry(image.row_id)
+            .entry(key)
             .or_insert_with(|| TensorStats::from_image(image))
     }
 }
