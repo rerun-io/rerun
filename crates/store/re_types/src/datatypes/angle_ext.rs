@@ -8,7 +8,7 @@ impl Angle {
         self.radians
     }
 
-    /// Angle in degrees, converts.
+    /// Angle in degrees (converts from radians).
     #[inline]
     pub fn degrees(&self) -> f32 {
         self.radians.to_degrees()
