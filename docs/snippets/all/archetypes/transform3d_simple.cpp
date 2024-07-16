@@ -13,12 +13,12 @@ int main() {
 
     rec.log("base", arrow);
 
-    rec.log("base/translated", rerun::Transform3D({1.0f, 0.0f, 0.0f}));
+    rec.log("base/translated", rerun::Transform3D::from_translation({1.0f, 0.0f, 0.0f}));
     rec.log("base/translated", arrow);
 
     rec.log(
         "base/rotated_scaled",
-        rerun::Transform3D(
+        rerun::Transform3D::from_rotation_scale(
             rerun::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rerun::Angle::radians(TAU / 8.0f)),
             2.0f
         )

@@ -5,9 +5,9 @@ title: "Transform3D"
 
 A transform between two 3D spaces, i.e. a pose.
 
-All components are applied in the order they are listed here.
+All components are applied in the inverse order they are listed here.
 E.g. if both a 4x4 matrix with a translation and a translation vector are present,
-the matrix is applied first, then the translation vector on top.
+the translation is applied first, followed by the matrix.
 
 Each transform component can be listed multiple times, but transform tree propagation is only possible
 if there's only one instance for each transform component.
@@ -15,7 +15,7 @@ TODO(#6831): write more about the exact interaction with the to be written `OutO
 
 ## Components
 
-**Optional**: [`Transform3D`](../components/transform3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`Translation3D`](../components/translation3d.md), [`AxisLength`](../components/axis_length.md)
+**Optional**: [`Transform3D`](../components/transform3d.md), [`Translation3D`](../components/translation3d.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`AxisLength`](../components/axis_length.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

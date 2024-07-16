@@ -60,9 +60,10 @@ exclude_path = [
   "venv",
 
   # Actually ignored files beyond .gitignore
-  "crates/utils/re_analytics/src/event.rs",       # Contains test with malformed urls
-  "scripts/lint.py",                              # Contains url-matching regexes that aren't actual urls
+  "crates/utils/re_analytics/src/event.rs",        # Contains test with malformed urls
+  "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
+  "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
 ]
 
 # Exclude URLs and mail addresses from checking (supports regex).

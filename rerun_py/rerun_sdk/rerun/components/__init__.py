@@ -55,6 +55,7 @@ from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarBatch, ScalarType
+from .scale3d import Scale3D, Scale3DBatch, Scale3DType
 from .stroke_width import StrokeWidth, StrokeWidthBatch, StrokeWidthType
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
 from .tensor_dimension_index_selection import (
@@ -195,6 +196,9 @@ __all__ = [
     "Scalar",
     "ScalarBatch",
     "ScalarType",
+    "Scale3D",
+    "Scale3DBatch",
+    "Scale3DType",
     "StrokeWidth",
     "StrokeWidthBatch",
     "StrokeWidthType",

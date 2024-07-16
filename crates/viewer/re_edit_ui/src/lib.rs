@@ -23,7 +23,7 @@ use re_types::{
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
         FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, StrokeWidth, Text, Translation3D,
+        Opacity, Scale3D, StrokeWidth, Text, Translation3D,
     },
     Loggable as _,
 };
@@ -90,4 +90,5 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view(transforms::singleline_view_transform_mat3x3);
 
     registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
+    registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
 }
