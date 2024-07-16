@@ -25,8 +25,14 @@ table DepthImage (
 ) {
   // --- Required ---
 
-  /// The depth-image data. Should always be a 2-dimensional tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
+  /// The raw depth image data.
+  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  /// The size of the image
+  resolution: rerun.components.Resolution2D ("attr.rerun.component_required", order: 1500);
+
+  /// The element type of the depth image data (U16, F32, …).
+  element_type: rerun.components.ElementType ("attr.rerun.component_required", order: 2000);
 
   // --- Optional ---
 

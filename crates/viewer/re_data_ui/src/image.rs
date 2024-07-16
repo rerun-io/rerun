@@ -466,7 +466,7 @@ fn show_zoomed_image_region_tooltip(
                     show_zoomed_image_region_area_outline(
                         parent_ui.ctx(),
                         response_rect,
-                        tensor,
+                        egui::vec2(w as f32, h as f32),
                         center_texel,
                         image_rect,
                     );
@@ -494,18 +494,14 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 pub fn show_zoomed_image_region_area_outline(
     egui_ctx: &egui::Context,
     ui_clip_rect: egui::Rect,
-    tensor: &TensorData,
+    image_resolution: egui::Vec2,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
     use egui::{pos2, remap, Rect};
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else {
-        return;
-    };
-
-    let width = width as f32;
-    let height = height as f32;
+    let width = image_resolution.x;
+    let height = image_resolution.y;
 
     // Show where on the original image the zoomed-in region is at:
     // The area shown is ZOOMED_IMAGE_TEXEL_RADIUS _surrounding_ the center.

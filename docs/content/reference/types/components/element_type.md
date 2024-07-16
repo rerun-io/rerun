@@ -27,3 +27,6 @@ How individual color components are encoded.
  * 🦀 [Rust API docs for `ElementType`](https://docs.rs/rerun/latest/rerun/components/enum.ElementType.html)
 
 
+## Used by
+
+* [`DepthImage`](../archetypes/depth_image.md)

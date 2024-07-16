@@ -15,3 +15,6 @@ The width and height of a 2D image.
  * 🦀 [Rust API docs for `Resolution2D`](https://docs.rs/rerun/latest/rerun/components/struct.Resolution2D.html)
 
 
+## Used by
+
+* [`DepthImage`](../archetypes/depth_image.md)

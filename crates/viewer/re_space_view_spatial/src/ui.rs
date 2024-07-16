@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
+use itertools::chain;
 use re_math::BoundingBox;
 
 use re_data_ui::{
@@ -22,9 +23,9 @@ use re_ui::{
     ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
-    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
-    SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, UiLayout, ViewContext,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
+    HoverHighlight, ImageComponents, Item, ItemSpaceContext, SelectionHighlight,
+    SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, UiLayout,
+    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 use re_viewport_blueprint::SpaceViewBlueprint;
 
@@ -447,23 +448,42 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
 
         let picked_image = if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-            if let Some(picked) = images_encoded
-                .images
-                .iter()
-                .find(|i| i.ent_path == instance_path.entity_path)
+            if let Some(picked) = chain!(
+                depth_images.images.iter(),
+                // images.images.iter(), // TODO(#6386)
+                images_encoded.images.iter(),
+                // segmentation_images.images.iter(), // TODO(#6386)
+            )
+            .find(|i| i.ent_path == instance_path.entity_path)
             {
-                let tensor = &picked.tensor;
+                picked.width().and_then(|width| {
+                    let coordinates = hit
+                        .instance_path_hash
+                        .instance
+                        .to_2d_image_coordinate(width);
 
-                tensor.image_height_width_channels().map(|[_, w, _]| {
-                    let coordinates = hit.instance_path_hash.instance.to_2d_image_coordinate(w);
-
-                    PickedImageInfo {
-                        row_id: picked.row_id,
-                        tensor: picked.tensor.clone(),
-                        meaning: TensorDataMeaning::Unknown, // "Unknown" means color
-                        coordinates,
-                        colormap: Default::default(),
-                        depth_meter: None,
+                    if let Some(image) = picked.image.clone() {
+                        Some(PickedImageInfo {
+                            row_id: picked.row_id,
+                            tensor: None,
+                            image: Some(image),
+                            meaning: TensorDataMeaning::Unknown, // "Unknown" means color
+                            coordinates,
+                            colormap: Default::default(),
+                            depth_meter: None,
+                        })
+                    } else if let Some(tensor) = picked.tensor.clone() {
+                        Some(PickedImageInfo {
+                            row_id: picked.row_id,
+                            tensor: Some(tensor),
+                            image: None,
+                            meaning: TensorDataMeaning::Unknown, // "Unknown" means color
+                            coordinates,
+                            colormap: Default::default(),
+                            depth_meter: None,
+                        })
+                    } else {
+                        None
                     }
                 })
             } else {
@@ -515,7 +535,8 @@ pub fn picking(
 
                                     PickedImageInfo {
                                         row_id,
-                                        tensor: tensor.0,
+                                        tensor: Some(tensor.0),
+                                        image: None,
                                         meaning,
                                         coordinates,
                                         colormap: results.get_mono_with_fallback::<Colormap>(),
@@ -542,10 +563,20 @@ pub fn picking(
             if image_info.meaning == TensorDataMeaning::Depth {
                 if let Some(meter) = image_info.depth_meter {
                     let [x, y] = image_info.coordinates;
-                    if let Some(raw_value) = image_info.tensor.get(&[y as _, x as _]) {
-                        let raw_value = raw_value.as_f64();
-                        let depth_in_meters = raw_value / *meter.0 as f64;
-                        depth_at_pointer = Some(depth_in_meters as f32);
+                    if let Some(image) = &image_info.image {
+                        if let Some(raw_value) = image.get_xy(x, y) {
+                            let raw_value = raw_value.as_f64();
+                            let depth_in_meters = raw_value / *meter.0 as f64;
+                            depth_at_pointer = Some(depth_in_meters as f32);
+                        }
+                    }
+
+                    if let Some(tensor) = &image_info.tensor {
+                        if let Some(raw_value) = tensor.get(&[y as _, x as _]) {
+                            let raw_value = raw_value.as_f64();
+                            let depth_in_meters = raw_value / *meter.0 as f64;
+                            depth_at_pointer = Some(depth_in_meters as f32);
+                        }
                     }
                 }
             }
@@ -636,7 +667,8 @@ pub fn picking(
 
 struct PickedImageInfo {
     row_id: re_chunk_store::RowId,
-    tensor: re_types::datatypes::TensorData,
+    tensor: Option<re_types::datatypes::TensorData>,
+    image: Option<ImageComponents>,
     meaning: TensorDataMeaning,
     coordinates: [u32; 2],
     colormap: Colormap,
@@ -657,54 +689,74 @@ fn image_hover_ui(
     let PickedImageInfo {
         row_id,
         tensor,
+        image,
         meaning,
         coordinates,
         colormap,
         depth_meter,
     } = picked_image_info;
+
     let depth_meter = depth_meter.map(|d| *d.0);
 
     ui.label(instance_path.to_string());
-    if true {
-        // Only show the `TensorData` component, to keep the hover UI small; see https://github.com/rerun-io/rerun/issues/3573
-        use re_types::Loggable as _;
-        let component_path = re_log_types::ComponentPath::new(
-            instance_path.entity_path.clone(),
-            re_types::components::TensorData::name(),
-        );
-        component_path.data_ui_recording(ctx, ui, UiLayout::List);
-    } else {
-        // Show it all, like we do for any other thing we hover
-        instance_path.data_ui_recording(ctx, ui, UiLayout::List);
+
+    if tensor.is_some() {
+        if true {
+            // Only show the `TensorData` component, to keep the hover UI small; see https://github.com/rerun-io/rerun/issues/3573
+            use re_types::Loggable as _;
+            let component_path = re_log_types::ComponentPath::new(
+                instance_path.entity_path.clone(),
+                re_types::components::TensorData::name(),
+            );
+            component_path.data_ui_recording(ctx, ui, UiLayout::List);
+        } else {
+            // Show it all, like we do for any other thing we hover
+            instance_path.data_ui_recording(ctx, ui, UiLayout::List);
+        }
     }
 
-    if let Some([h, w, ..]) = tensor.image_height_width_channels() {
-        ui.separator();
-        ui.horizontal(|ui| {
-            let (w, h) = (w as f32, h as f32);
-            if spatial_kind == SpatialSpaceViewKind::TwoD {
-                let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
-                show_zoomed_image_region_area_outline(
-                    ui.ctx(),
-                    ui_clip_rect,
-                    &tensor,
-                    [coordinates[0] as _, coordinates[1] as _],
-                    space_from_ui.inverse().transform_rect(rect),
-                );
-            }
+    let wh = if let Some(tensor) = &tensor {
+        tensor.image_height_width_channels().map(|[h, w, _]| (w, h))
+    } else if let Some(image) = &image {
+        Some((image.resolution[0] as u64, image.resolution[1] as u64))
+    } else {
+        None
+    };
 
-            let tensor_name = instance_path.to_string();
+    let Some((w, h)) = wh else { return };
 
-            let annotations = annotations.0.find(&instance_path.entity_path);
+    ui.add_space(8.0);
+
+    ui.horizontal(|ui| {
+        let (w, h) = (w as f32, h as f32);
+
+        if spatial_kind == SpatialSpaceViewKind::TwoD {
+            let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
+
+            show_zoomed_image_region_area_outline(
+                ui.ctx(),
+                ui_clip_rect,
+                egui::vec2(w, h),
+                [coordinates[0] as _, coordinates[1] as _],
+                space_from_ui.inverse().transform_rect(rect),
+            );
+        }
+
+        let tensor_name = instance_path.to_string();
+
+        let annotations = annotations.0.find(&instance_path.entity_path);
+
+        // TODO: for image
+        if let Some(tensor) = &tensor {
             let tensor_stats = ctx
                 .cache
-                .entry(|c: &mut TensorStatsCache| c.entry(row_id, &tensor));
+                .entry(|c: &mut TensorStatsCache| c.entry(row_id, tensor));
             if let Some(render_ctx) = ctx.render_ctx {
                 show_zoomed_image_region(
                     render_ctx,
                     ui,
                     row_id,
-                    &tensor,
+                    tensor,
                     &tensor_stats,
                     &annotations,
                     meaning,
@@ -714,8 +766,8 @@ fn image_hover_ui(
                     Some(colormap),
                 );
             }
-        });
-    }
+        }
+    });
 }
 
 fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {

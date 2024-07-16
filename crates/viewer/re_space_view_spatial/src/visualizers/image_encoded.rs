@@ -20,7 +20,7 @@ use crate::{
 };
 
 use super::{
-    bounding_box_for_textured_rect, entity_iterator::process_archetype, tensor_to_textured_rect,
+    bounding_box_for_textured_rect, entity_iterator::process_archetype, textured_rect_from_tensor,
     SpatialViewVisualizerData,
 };
 
@@ -179,7 +179,7 @@ impl ImageEncodedVisualizer {
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-            if let Some(textured_rect) = tensor_to_textured_rect(
+            if let Some(textured_rect) = textured_rect_from_tensor(
                 ctx.viewer_ctx,
                 entity_path,
                 spatial_ctx,
@@ -205,7 +205,8 @@ impl ImageEncodedVisualizer {
                     ent_path: entity_path.clone(),
                     row_id: tensor_data_row_id,
                     textured_rect,
-                    tensor: tensor.data.0,
+                    tensor: Some(tensor.data.0),
+                    image: None,
                 });
             }
         }

@@ -21,6 +21,7 @@ mod disconnected_space_ext;
 mod draw_order;
 mod draw_order_ext;
 mod element_type;
+mod element_type_ext;
 mod fill_ratio;
 mod fill_ratio_ext;
 mod gamma_correction;

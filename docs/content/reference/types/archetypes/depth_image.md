@@ -10,7 +10,7 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 
 ## Components
 
-**Required**: [`TensorData`](../components/tensor_data.md)
+**Required**: [`Blob`](../components/blob.md), [`Resolution2D`](../components/resolution2d.md), [`ElementType`](../components/element_type.md)
 
 **Optional**: [`DepthMeter`](../components/depth_meter.md), [`Colormap`](../components/colormap.md), [`FillRatio`](../components/fill_ratio.md), [`DrawOrder`](../components/draw_order.md)
 

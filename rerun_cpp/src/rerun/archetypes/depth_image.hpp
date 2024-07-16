@@ -5,11 +5,13 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/blob.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/element_type.hpp"
 #include "../components/fill_ratio.hpp"
-#include "../components/tensor_data.hpp"
+#include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -73,8 +75,14 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct DepthImage {
-        /// The depth-image data. Should always be a 2-dimensional tensor.
-        rerun::components::TensorData data;
+        /// The raw depth image data.
+        rerun::components::Blob data;
+
+        /// The size of the image
+        rerun::components::Resolution2D resolution;
+
+        /// The element type of the depth image data (U16, F32, …).
+        rerun::components::ElementType element_type;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///

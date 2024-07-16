@@ -67,7 +67,9 @@ class DepthImage(DepthImageExt, Archetype):
 
     def __init__(
         self: Any,
-        data: datatypes.TensorDataLike,
+        data: datatypes.BlobLike,
+        resolution: datatypes.UVec2DLike,
+        element_type: components.ElementTypeLike,
         *,
         meter: datatypes.Float32Like | None = None,
         colormap: components.ColormapLike | None = None,
@@ -80,7 +82,11 @@ class DepthImage(DepthImageExt, Archetype):
         Parameters
         ----------
         data:
-            The depth-image data. Should always be a 2-dimensional tensor.
+            The raw depth image data.
+        resolution:
+            The size of the image
+        element_type:
+            The element type of the depth image data (U16, F32, …).
         meter:
             An optional floating point value that specifies how long a meter is in the native depth units.
 
@@ -111,7 +117,13 @@ class DepthImage(DepthImageExt, Archetype):
         # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                data=data, meter=meter, colormap=colormap, point_fill_ratio=point_fill_ratio, draw_order=draw_order
+                data=data,
+                resolution=resolution,
+                element_type=element_type,
+                meter=meter,
+                colormap=colormap,
+                point_fill_ratio=point_fill_ratio,
+                draw_order=draw_order,
             )
             return
         self.__attrs_clear__()
@@ -120,6 +132,8 @@ class DepthImage(DepthImageExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
+            resolution=None,  # type: ignore[arg-type]
+            element_type=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
             point_fill_ratio=None,  # type: ignore[arg-type]
@@ -133,11 +147,27 @@ class DepthImage(DepthImageExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    data: components.TensorDataBatch = field(
+    data: components.BlobBatch = field(
         metadata={"component": "required"},
         converter=DepthImageExt.data__field_converter_override,  # type: ignore[misc]
     )
-    # The depth-image data. Should always be a 2-dimensional tensor.
+    # The raw depth image data.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    resolution: components.Resolution2DBatch = field(
+        metadata={"component": "required"},
+        converter=components.Resolution2DBatch._required,  # type: ignore[misc]
+    )
+    # The size of the image
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    element_type: components.ElementTypeBatch = field(
+        metadata={"component": "required"},
+        converter=components.ElementTypeBatch._required,  # type: ignore[misc]
+    )
+    # The element type of the depth image data (U16, F32, …).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

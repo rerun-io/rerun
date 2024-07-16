@@ -2,6 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer::TexturedRect;
 use re_types::datatypes::TensorData;
+use re_viewer_context::ImageComponents;
 
 /// Image rectangle that can be picked in the view.
 pub struct PickableImageRect {
@@ -14,5 +15,19 @@ pub struct PickableImageRect {
     /// Textured rectangle used by the renderer.
     pub textured_rect: TexturedRect,
 
-    pub tensor: TensorData,
+    pub tensor: Option<TensorData>,
+
+    pub image: Option<ImageComponents>,
+}
+
+impl PickableImageRect {
+    pub fn width(&self) -> Option<u64> {
+        if let Some(tensor) = &self.tensor {
+            tensor.image_height_width_channels().map(|[_, w, _]| w)
+        } else if let Some(image) = &self.image {
+            Some(image.width() as u64)
+        } else {
+            None
+        }
+    }
 }
