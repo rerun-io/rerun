@@ -36,8 +36,15 @@ use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
 
+#[doc(hidden)]
+pub mod __bench {
+    pub use crate::data_density_graph::*;
+    pub use crate::time_ranges_ui::TimeRangesUi;
+    pub use crate::TimePanelItem;
+}
+
 #[derive(Debug, Clone)]
-struct TimePanelItem {
+pub struct TimePanelItem {
     pub entity_path: EntityPath,
     pub component_name: Option<ComponentName>,
 }

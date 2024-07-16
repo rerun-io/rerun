@@ -35,3 +35,16 @@ egui.workspace = true
 itertools.workspace = true
 serde.workspace = true
 vec1.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+criterion.workspace = true
+rand.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench_density_graph"
+harness = false
+

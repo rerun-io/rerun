@@ -5074,8 +5074,11 @@ dependencies = [
 name = "re_time_panel"
 version = "0.18.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
+ "criterion",
  "egui",
  "itertools 0.13.0",
+ "rand",
  "re_chunk_store",
  "re_context_menu",
  "re_data_ui",

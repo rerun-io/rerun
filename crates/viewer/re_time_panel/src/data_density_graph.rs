@@ -88,7 +88,7 @@ impl DataDensityGraphPainter {
 
 // ----------------------------------------------------------------------------
 
-struct DensityGraph {
+pub struct DensityGraph {
     /// Number of datapoints per bucket.
     /// 0 == min_x, n-1 == max_x.
     buckets: Vec<f32>,
@@ -389,7 +389,55 @@ pub fn data_density_graph_ui2(
 
     let timeline = *time_ctrl.timeline();
 
-    let mut data = DensityDataAggregate::new(ui, time_ranges_ui, row_rect);
+    let mut data = build_density_graph(
+        ui,
+        time_ranges_ui,
+        row_rect,
+        db,
+        item,
+        timeline,
+        DensityGraphBuilderConfig::default(),
+    );
+
+    data.density_graph.buckets = smooth(&data.density_graph.buckets);
+
+    data.density_graph.paint(
+        data_density_graph_painter,
+        row_rect.y_range(),
+        time_area_painter,
+        graph_color(ctx, &item.to_item(), ui),
+        // TODO(jprochazk): completely remove `hovered_x_range` and associated code from painter
+        0f32..=0f32,
+    );
+
+    if let Some(hovered_time) = data.hovered_time {
+        ctx.selection_state().set_hovered(item.to_item());
+
+        if ui.ctx().dragged_id().is_none() {
+            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
+            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
+            egui::show_tooltip_at_pointer(
+                ui.ctx(),
+                ui.layer_id(),
+                egui::Id::new("data_tooltip"),
+                |ui| {
+                    show_row_ids_tooltip2(ctx, ui, time_ctrl, db, item, hovered_time);
+                },
+            );
+        }
+    }
+}
+
+pub fn build_density_graph<'a>(
+    ui: &'a egui::Ui,
+    time_ranges_ui: &'a TimeRangesUi,
+    row_rect: Rect,
+    db: &re_entity_db::EntityDb,
+    item: &TimePanelItem,
+    timeline: Timeline,
+    config: DensityGraphBuilderConfig,
+) -> DensityGraphBuilder<'a> {
+    let mut data = DensityGraphBuilder::new(ui, time_ranges_ui, row_rect);
 
     // Collect all relevant chunks in the visible time range.
     // We do this as a separate step so that we can also deduplicate chunks.
@@ -422,13 +470,15 @@ pub fn data_density_graph_ui2(
         //    N is relatively large for sorted chunks
         //    N is much smaller for unsorted chunks
 
-        const MAX_TOTAL_CHUNKS: usize = 100;
-        const MAX_UNSORTED_CHUNK_EVENTS: usize = 5000;
-        const MAX_SORTED_CHUNK_EVENTS: usize = 100_000;
+        let fits_max_total_chunks =
+            config.max_total_chunks == 0 || num_chunks < config.max_total_chunks;
+        let fits_max_sorted_chunk_events = config.max_sorted_chunk_events == 0
+            || (chunk.is_time_sorted() && num_events_in_chunk < config.max_sorted_chunk_events);
+        let fits_max_unsorted_chunk_events = config.max_unsorted_chunk_events == 0
+            || (!chunk.is_time_sorted() && num_events_in_chunk < config.max_unsorted_chunk_events);
 
-        let render_individual_events = num_chunks < MAX_TOTAL_CHUNKS
-            && ((chunk.is_time_sorted() && num_events_in_chunk < MAX_SORTED_CHUNK_EVENTS)
-                || (!chunk.is_time_sorted() && num_events_in_chunk < MAX_UNSORTED_CHUNK_EVENTS));
+        let render_individual_events = fits_max_total_chunks
+            && (fits_max_sorted_chunk_events || fits_max_unsorted_chunk_events);
 
         if render_individual_events {
             for (time, num_events) in chunk.num_events_cumulative_per_unique_time(&timeline) {
@@ -439,31 +489,22 @@ pub fn data_density_graph_ui2(
         }
     }
 
-    data.density_graph.buckets = smooth(&data.density_graph.buckets);
+    data
+}
 
-    data.density_graph.paint(
-        data_density_graph_painter,
-        row_rect.y_range(),
-        time_area_painter,
-        graph_color(ctx, &item.to_item(), ui),
-        // TODO(jprochazk): completely remove `hovered_x_range` and associated code from painter
-        0f32..=0f32,
-    );
+#[derive(Clone, Copy)]
+pub struct DensityGraphBuilderConfig {
+    pub max_total_chunks: usize,
+    pub max_unsorted_chunk_events: usize,
+    pub max_sorted_chunk_events: usize,
+}
 
-    if let Some(hovered_time) = data.hovered_time {
-        ctx.selection_state().set_hovered(item.to_item());
-
-        if ui.ctx().dragged_id().is_none() {
-            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
-            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-            egui::show_tooltip_at_pointer(
-                ui.ctx(),
-                ui.layer_id(),
-                egui::Id::new("data_tooltip"),
-                |ui| {
-                    show_row_ids_tooltip2(ctx, ui, time_ctrl, db, item, hovered_time);
-                },
-            );
+impl Default for DensityGraphBuilderConfig {
+    fn default() -> Self {
+        Self {
+            max_total_chunks: 100,
+            max_unsorted_chunk_events: 5000,
+            max_sorted_chunk_events: 100_000,
         }
     }
 }
@@ -499,18 +540,18 @@ fn show_row_ids_tooltip2(
     }
 }
 
-struct DensityDataAggregate<'a> {
+pub struct DensityGraphBuilder<'a> {
     time_ranges_ui: &'a TimeRangesUi,
     row_rect: Rect,
 
     pointer_pos: Option<egui::Pos2>,
     interact_radius: f32,
 
-    density_graph: DensityGraph,
-    hovered_time: Option<TimeInt>,
+    pub density_graph: DensityGraph,
+    pub hovered_time: Option<TimeInt>,
 }
 
-impl<'a> DensityDataAggregate<'a> {
+impl<'a> DensityGraphBuilder<'a> {
     fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
         let pointer_pos = ui.input(|i| i.pointer.hover_pos());
         let interact_radius = ui.style().interaction.resize_grab_radius_side;

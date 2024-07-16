@@ -50,7 +50,8 @@ fn run(rec: &RecordingStream) -> anyhow::Result<()> {
         ("/small", 100, 100, true, 0),
         ("/large", 5, 2000, true, 0),
         ("/large-unsorted", 5, 2000, false, 0),
-        ("/gap", 2, 5000, true, 50000),
+        ("/gap", 2, 5000, true, 500000),
+        ("/over-threshold", 1, 100000, true, 5000000),
     ];
 
     for (entity_path, num_chunks, num_rows_per_chunk, sorted, time_start_ms) in entities {
