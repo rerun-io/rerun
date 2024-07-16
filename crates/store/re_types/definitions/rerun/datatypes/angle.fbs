@@ -1,6 +1,7 @@
 include "arrow/attributes.fbs";
 include "rust/attributes.fbs";
 include "fbs/attributes.fbs";
+include "cpp/attributes.fbs";
 
 include "./float32.fbs";
 
@@ -14,8 +15,9 @@ struct Angle (
   "attr.python.aliases": "float, int",
   "attr.python.array_aliases": "npt.ArrayLike, Sequence[float], Sequence[int]",
   "attr.rust.derive": "Copy, Default, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
-  "attr.rust.repr": "transparent"
+  "attr.rust.repr": "transparent",
+  "attr.cpp.no_field_ctors"
 ) {
   /// Angle in radians. One turn is equal to 2π (or τ) radians.
-  radians: float (order: 100);
+  radians: float (order: 100, "attr.cpp.prefix_field");
 }

@@ -23,17 +23,26 @@ namespace rerun::datatypes {
     /// **Datatype**: Angle in radians.
     struct Angle {
         /// Angle in radians. One turn is equal to 2π (or τ) radians.
-        float radians;
+        float _radians;
+
+      public:
+        // Extensions to generated type defined in 'angle_ext.cpp'
+
+        /// New angle in radians.
+        static Angle radians(float radians_) {
+            return Angle{radians_};
+        }
+
+        /// New angle in degrees.
+        ///
+        /// Converts to radians to store the angle.
+        static Angle degrees(float degrees_) {
+            // Can't use math constants here: `M_PI` doesn't work on all platforms out of the box and std::numbers::pi is C++20.
+            return Angle{degrees_ * (3.14159265358979323846264338327950288f / 180.f)};
+        }
 
       public:
         Angle() = default;
-
-        Angle(float radians_) : radians(radians_) {}
-
-        Angle& operator=(float radians_) {
-            radians = radians_;
-            return *this;
-        }
     };
 } // namespace rerun::datatypes
 

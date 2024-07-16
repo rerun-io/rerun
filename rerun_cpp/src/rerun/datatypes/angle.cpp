@@ -47,9 +47,9 @@ namespace rerun {
             );
         }
 
-        static_assert(sizeof(*elements) == sizeof(elements->radians));
+        static_assert(sizeof(*elements) == sizeof(elements->_radians));
         ARROW_RETURN_NOT_OK(
-            builder->AppendValues(&elements->radians, static_cast<int64_t>(num_elements))
+            builder->AppendValues(&elements->_radians, static_cast<int64_t>(num_elements))
         );
 
         return Error::ok();
