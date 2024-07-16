@@ -3,7 +3,6 @@
 //! The data density is the number of data points per unit of time.
 //! We collect this into a histogram, blur it, and then paint it.
 
-use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
@@ -11,6 +10,7 @@ use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
 use re_chunk_store::Chunk;
+use re_chunk_store::LatestAtQuery;
 use re_chunk_store::RangeQuery;
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
@@ -396,6 +396,8 @@ pub fn data_density_graph_ui2(
     // We do this as a separate step so that we can also deduplicate chunks.
     let visible_time_range = time_ranges_ui
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
+
+    // NOTE: These chunks are guaranteed to have data on the current timeline
     let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
 
     visit_relevant_chunks(
@@ -409,8 +411,44 @@ pub fn data_density_graph_ui2(
         },
     );
 
-    for (_, time_range, num_events) in chunk_ranges {
-        data.add_chunk_range(time_range, num_events);
+    let num_chunks = chunk_ranges.len();
+    for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
+        // Small chunk heuristics:
+        // We want to render chunks as individual events, but it may be prohibitively expensive
+        // for larger chunks, or if the visible time range contains many chunks.
+        //
+        // We split a large chunk if:
+        // 1. The total number of chunks is less than some threshold
+        // 2. The number of events in the chunks is less than N, where:
+        //    N is relatively large for sorted chunks
+        //    N is much smaller for sorted chunks
+
+        const MAX_TOTAL_CHUNKS: usize = 100;
+        const MAX_UNSORTED_CHUNK_EVENTS: usize = 5000;
+        const MAX_SORTED_CHUNK_EVENTS: usize = 100_000;
+
+        let render_individual_events = num_chunks < MAX_TOTAL_CHUNKS
+            && ((chunk.is_time_sorted() && num_events_in_chunk < MAX_SORTED_CHUNK_EVENTS)
+                || (!chunk.is_time_sorted() && num_events_in_chunk < MAX_UNSORTED_CHUNK_EVENTS));
+
+        if render_individual_events {
+            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                unreachable!("attempted to render chunk without data on active timeline");
+            };
+
+            for time in chunk_timeline.times() {
+                let mut events = 0;
+                for component_name in chunk.component_names() {
+                    events += chunk
+                        .latest_at(&LatestAtQuery::new(timeline, time), component_name)
+                        .num_events_for_component(component_name)
+                        .unwrap_or(0);
+                }
+                data.add_chunk_point(time, events);
+            }
+        } else {
+            data.add_chunk_range(time_range, num_events_in_chunk);
+        }
     }
 
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
@@ -501,6 +539,29 @@ impl<'a> DensityDataAggregate<'a> {
         }
     }
 
+    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize) {
+        let Some(x) = self.time_ranges_ui.x_from_time_f32(time.into()) else {
+            return;
+        };
+
+        self.density_graph.add_point(x, num_events as _);
+
+        if let Some(pointer_pos) = self.pointer_pos {
+            let is_hovered = {
+                // Are we close enough to the point?
+                let distance_sq = pos2(x, self.row_rect.center().y).distance_sq(pointer_pos);
+
+                distance_sq < self.interact_radius.powi(2)
+            };
+
+            if is_hovered {
+                if let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x) {
+                    self.hovered_time = Some(at_time.round());
+                }
+            }
+        }
+    }
+
     fn add_chunk_range(&mut self, time_range: ResolvedTimeRange, num_events: usize) {
         if num_events == 0 {
             return;
@@ -578,38 +639,23 @@ fn visit_relevant_chunks(
 
             visitor(Arc::clone(&chunk), chunk_timeline.time_range(), num_events);
         }
-    } else {
-        let mut seen = HashSet::new();
-        if let Some(subtree) = db.tree().subtree(entity_path) {
-            subtree.visit_children_recursively(&mut |entity_path, _| {
-                let Some(components) = db.store().all_components(&timeline, entity_path) else {
-                    return;
+    } else if let Some(subtree) = db.tree().subtree(entity_path) {
+        subtree.visit_children_recursively(&mut |entity_path, _| {
+            for chunk in db
+                .store()
+                .range_relevant_chunks_for_all_components(&query, entity_path)
+            {
+                let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                    continue;
                 };
 
-                for component_name in components {
-                    let chunks =
-                        db.store()
-                            .range_relevant_chunks(&query, entity_path, component_name);
-
-                    for chunk in chunks {
-                        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                            continue;
-                        };
-
-                        if seen.contains(&chunk.id()) {
-                            continue;
-                        }
-                        seen.insert(chunk.id());
-
-                        visitor(
-                            Arc::clone(&chunk),
-                            chunk_timeline.time_range(),
-                            chunk.num_events_cumulative(),
-                        );
-                    }
-                }
-            });
-        }
+                visitor(
+                    Arc::clone(&chunk),
+                    chunk_timeline.time_range(),
+                    chunk.num_events_cumulative(),
+                );
+            }
+        });
     }
 }
 
