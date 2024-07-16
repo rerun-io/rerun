@@ -2,6 +2,7 @@ use super::ColorModel;
 
 impl ColorModel {
     /// 1 for grayscale, 3 for RGB, etc.
+    #[doc(alias = "depth")]
     #[inline]
     pub fn num_channels(self) -> usize {
         match self {

@@ -121,19 +121,19 @@ impl TensorStats {
         let element_type = image.element_type;
 
         let range = match element_type {
-            ElementType::U8 => slice_range_u8(&image.as_slice()),
-            ElementType::U16 => slice_range_u16(&image.as_slice()),
-            ElementType::U32 => slice_range_u32(&image.as_slice()),
-            ElementType::U64 => slice_range_u64(&image.as_slice()),
+            ElementType::U8 => slice_range_u8(&image.to_slice()),
+            ElementType::U16 => slice_range_u16(&image.to_slice()),
+            ElementType::U32 => slice_range_u32(&image.to_slice()),
+            ElementType::U64 => slice_range_u64(&image.to_slice()),
 
-            ElementType::I8 => slice_range_i8(&image.as_slice()),
-            ElementType::I16 => slice_range_i16(&image.as_slice()),
-            ElementType::I32 => slice_range_i32(&image.as_slice()),
-            ElementType::I64 => slice_range_i64(&image.as_slice()),
+            ElementType::I8 => slice_range_i8(&image.to_slice()),
+            ElementType::I16 => slice_range_i16(&image.to_slice()),
+            ElementType::I32 => slice_range_i32(&image.to_slice()),
+            ElementType::I64 => slice_range_i64(&image.to_slice()),
 
-            ElementType::F16 => slice_range_f16(&image.as_slice()),
-            ElementType::F32 => slice_range_f32(&image.as_slice()),
-            ElementType::F64 => slice_range_f64(&image.as_slice()),
+            ElementType::F16 => slice_range_f16(&image.to_slice()),
+            ElementType::F32 => slice_range_f32(&image.to_slice()),
+            ElementType::F64 => slice_range_f64(&image.to_slice()),
         };
 
         let finite_range = if range.0.is_finite() && range.1.is_finite() {
@@ -150,9 +150,9 @@ impl TensorStats {
                 | ElementType::I32
                 | ElementType::I64 => range,
 
-                ElementType::F16 => slice_finite_range_f16(&image.as_slice()),
-                ElementType::F32 => slice_finite_range_f32(&image.as_slice()),
-                ElementType::F64 => slice_finite_range_f64(&image.as_slice()),
+                ElementType::F16 => slice_finite_range_f16(&image.to_slice()),
+                ElementType::F32 => slice_finite_range_f32(&image.to_slice()),
+                ElementType::F64 => slice_finite_range_f64(&image.to_slice()),
             };
 
             // Ensure it actually is finite:

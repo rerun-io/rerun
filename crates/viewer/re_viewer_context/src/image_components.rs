@@ -41,7 +41,9 @@ impl ImageComponents {
         self.resolution[1]
     }
 
-    /// 1 for grayscale and depth images, 3 for RGB, etc
+    /// 1 for grayscale and depth images, 3 for RGB, etc.
+    ///
+    #[doc(alias = "depth")]
     #[inline]
     pub fn num_channels(&self) -> usize {
         self.color_model.map_or(1, ColorModel::num_channels)
@@ -103,7 +105,7 @@ impl ImageComponents {
     ///
     /// Cheap in most cases, but if the input buffer is not aligned to the element type,
     /// this function will copy the data.
-    pub fn as_slice<T: bytemuck::Pod>(&self) -> Cow<'_, [T]> {
+    pub fn to_slice<T: bytemuck::Pod>(&self) -> Cow<'_, [T]> {
         let element_size = std::mem::size_of::<T>();
         let num_elements = self.blob.len() / element_size;
         let num_bytes = num_elements * element_size;
