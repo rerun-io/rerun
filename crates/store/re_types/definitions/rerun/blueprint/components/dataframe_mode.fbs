@@ -1,0 +1,24 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+
+/// The kind of table displayed by the dataframe view.
+enum DataframeMode: byte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Display the "latest at" value of each view entities.
+    ///
+    /// In this mode, rows are entity instances, and columns are components.
+    LatestAt (default),
+
+    /// Display data according to the view entities visible time range setting.attribute
+    ///
+    /// In this mode, rows are combination of entity path, timestamp, and row id, and columsna re components.
+    TimeRange,
+}

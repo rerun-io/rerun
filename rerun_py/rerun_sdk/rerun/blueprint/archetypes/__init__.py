@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from .background import Background
 from .container_blueprint import ContainerBlueprint
+from .dataframe_settings import DataframeSettings
 from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
-from .range_table_order import RangeTableOrder
 from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
@@ -20,9 +20,9 @@ from .visual_bounds2d import VisualBounds2D
 __all__ = [
     "Background",
     "ContainerBlueprint",
+    "DataframeSettings",
     "PanelBlueprint",
     "PlotLegend",
-    "RangeTableOrder",
     "ScalarAxis",
     "SpaceViewBlueprint",
     "SpaceViewContents",

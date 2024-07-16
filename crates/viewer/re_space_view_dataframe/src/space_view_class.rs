@@ -1,16 +1,19 @@
 use egui::Ui;
+use std::any::Any;
 
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::blueprint::{
-    archetypes::RangeTableOrder,
-    components::{SortKey, SortOrder},
+    archetypes::DataframeSettings,
+    components::{DataframeMode, SortKey, SortOrder},
 };
+use re_types_core::datatypes::TimeRange;
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::list_item;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
+    QueryRange, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewStateExt, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -18,6 +21,25 @@ use crate::{
     latest_at_table::latest_at_table_ui, time_range_table::time_range_table_ui,
     visualizer_system::EmptySystem,
 };
+
+/// State for the Dataframe view.
+///
+/// We use this to carry information from `ui()` to `default_query_range()` as a workaround for
+/// `https://github.com/rerun-io/rerun/issues/6918`.
+#[derive(Debug, Default)]
+struct DataframeViewState {
+    mode: DataframeMode,
+}
+
+impl SpaceViewState for DataframeViewState {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -66,7 +88,7 @@ for all entities, it is preferable to override the view-level visible time range
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<()>::default()
+        Box::<DataframeViewState>::default()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
@@ -75,6 +97,20 @@ for all entities, it is preferable to override the view-level visible time range
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
+    }
+
+    fn default_query_range(&self, state: &dyn SpaceViewState) -> QueryRange {
+        // TODO(#6918): passing the mode via view state is a hacky work-around, until we're able to
+        // pass more context to this function.
+        let mode = state
+            .downcast_ref::<DataframeViewState>()
+            .map(|state| state.mode)
+            .unwrap_or_default();
+
+        match mode {
+            DataframeMode::LatestAt => QueryRange::LatestAt,
+            DataframeMode::TimeRange => QueryRange::TimeRange(TimeRange::EVERYTHING),
+        }
     }
 
     fn spawn_heuristics(
@@ -94,7 +130,8 @@ for all entities, it is preferable to override the view-level visible time range
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
-            view_property_ui::<RangeTableOrder>(ctx, ui, space_view_id, self, state);
+            //TODO(#6919): this bit of UI needs some love
+            view_property_ui::<DataframeSettings>(ctx, ui, space_view_id, self, state);
         });
 
         Ok(())
@@ -110,19 +147,23 @@ for all entities, it is preferable to override the view-level visible time range
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let row_order = ViewProperty::from_archetype::<RangeTableOrder>(
+        let settings = ViewProperty::from_archetype::<DataframeSettings>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             query.space_view_id,
         );
-        let sort_key = row_order.component_or_fallback::<SortKey>(ctx, self, state)?;
-        let sort_order = row_order.component_or_fallback::<SortOrder>(ctx, self, state)?;
 
-        let mode = self.table_mode(query);
+        let mode = settings.component_or_fallback::<DataframeMode>(ctx, self, state)?;
+        let sort_key = settings.component_or_fallback::<SortKey>(ctx, self, state)?;
+        let sort_order = settings.component_or_fallback::<SortOrder>(ctx, self, state)?;
+
+        // update state
+        let state = state.downcast_mut::<DataframeViewState>()?;
+        state.mode = mode;
 
         match mode {
-            TableMode::LatestAtTable => latest_at_table_ui(ctx, ui, query),
-            TableMode::TimeRangeTable => time_range_table_ui(ctx, ui, query, sort_key, sort_order),
+            DataframeMode::LatestAt => latest_at_table_ui(ctx, ui, query),
+            DataframeMode::TimeRange => time_range_table_ui(ctx, ui, query, sort_key, sort_order),
         };
 
         Ok(())
@@ -130,26 +171,3 @@ for all entities, it is preferable to override the view-level visible time range
 }
 
 re_viewer_context::impl_component_fallback_provider!(DataframeSpaceView => []);
-
-/// The two modes of the dataframe view.
-enum TableMode {
-    LatestAtTable,
-    TimeRangeTable,
-}
-
-impl DataframeSpaceView {
-    /// Determine which [`TableMode`] is currently active.
-    // TODO(ab): we probably want a less "implicit" way to switch from temporal vs. latest at tables.
-    #[allow(clippy::unused_self)]
-    fn table_mode(&self, query: &ViewQuery<'_>) -> TableMode {
-        let is_range_query = query
-            .iter_all_data_results()
-            .any(|data_result| data_result.property_overrides.query_range.is_time_range());
-
-        if is_range_query {
-            TableMode::TimeRangeTable
-        } else {
-            TableMode::LatestAtTable
-        }
-    }
-}

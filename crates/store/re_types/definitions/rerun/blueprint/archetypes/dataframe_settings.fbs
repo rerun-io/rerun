@@ -1,0 +1,26 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration for the dataframe view
+table DataframeSettings (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy",
+    "attr.rust.generate_field_info"
+) {
+    // --- Optional ---
+
+    /// The kind of table to display.
+    mode: rerun.blueprint.components.DataframeMode ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// The primary sort key (time range mode only).
+    sort_key: rerun.blueprint.components.SortKey ("attr.rerun.component_optional", nullable, order: 2000);
+
+    /// The sort order.
+    sort_order: rerun.blueprint.components.SortOrder ("attr.rerun.component_optional", nullable, order: 3000);
+}

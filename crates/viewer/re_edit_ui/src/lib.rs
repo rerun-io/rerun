@@ -17,7 +17,7 @@ use datatype_editors::{
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
     edit_view_enum,
 };
-use re_types::blueprint::components::{SortKey, SortOrder};
+use re_types::blueprint::components::{DataframeMode, SortKey, SortOrder};
 use re_types::{
     blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
@@ -80,6 +80,8 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_view_enum::<AggregationPolicy>(ui, value)
     });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
+    registry
+        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<DataframeMode>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortKey>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortOrder>(ui, value));
 
