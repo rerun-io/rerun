@@ -10,7 +10,6 @@ use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
 use re_chunk_store::Chunk;
-use re_chunk_store::LatestAtQuery;
 use re_chunk_store::RangeQuery;
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
@@ -432,19 +431,8 @@ pub fn data_density_graph_ui2(
                 || (!chunk.is_time_sorted() && num_events_in_chunk < MAX_UNSORTED_CHUNK_EVENTS));
 
         if render_individual_events {
-            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                unreachable!("attempted to render chunk without data on active timeline");
-            };
-
-            for time in chunk_timeline.times() {
-                let mut events = 0;
-                for component_name in chunk.component_names() {
-                    events += chunk
-                        .latest_at(&LatestAtQuery::new(timeline, time), component_name)
-                        .num_events_for_component(component_name)
-                        .unwrap_or(0);
-                }
-                data.add_chunk_point(time, events);
+            for (time, num_events) in chunk.num_events_cumulative_per_unique_time(&timeline) {
+                data.add_chunk_point(time, num_events as usize);
             }
         } else {
             data.add_chunk_range(time_range, num_events_in_chunk);
