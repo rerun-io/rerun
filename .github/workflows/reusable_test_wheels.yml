@@ -192,9 +192,15 @@ jobs:
         # --no-py-build because rerun-sdk is already built and installed
         run: pixi run -e wheel-test RUST_LOG=debug python tests/roundtrips.py --release --target ${{ needs.set-config.outputs.TARGET }} --no-py-build
 
+      - name: Build C++ examples
+        if: ${{ !inputs.FAST }}
+        # Separated out of compare_snippet_output.py run so we control the pixi environment.
+        # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
+        run: pixi run -e wheel-test cpp-build-snippets
+
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: pixi run -e wheel-test RUST_LOG=debug python docs/snippets/compare_snippet_output.py --release --target ${{ needs.set-config.outputs.TARGET }} --no-py-build
+        run: pixi run -e wheel-test RUST_LOG=debug python docs/snippets/compare_snippet_output.py --release --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
