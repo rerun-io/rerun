@@ -37,6 +37,7 @@ include "./components/range1d.fbs";
 include "./components/resolution.fbs";
 include "./components/resolution2d.fbs";
 include "./components/rotation3d.fbs";
+include "./components/rotation_axis_angle.fbs";
 include "./components/rotation_quat.fbs";
 include "./components/scalar.fbs";
 include "./components/scale3d.fbs";

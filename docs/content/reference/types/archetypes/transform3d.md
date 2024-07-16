@@ -15,7 +15,7 @@ TODO(#6831): write more about the exact interaction with the to be written `OutO
 
 ## Components
 
-**Optional**: [`Transform3D`](../components/transform3d.md), [`Translation3D`](../components/translation3d.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`AxisLength`](../components/axis_length.md)
+**Optional**: [`Transform3D`](../components/transform3d.md), [`Translation3D`](../components/translation3d.md), [`RotationAxisAngle`](../components/rotation_axis_angle.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`AxisLength`](../components/axis_length.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)

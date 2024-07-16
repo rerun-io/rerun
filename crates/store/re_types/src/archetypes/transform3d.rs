@@ -171,6 +171,9 @@ pub struct Transform3D {
     /// Translation vectors.
     pub translation: Option<Vec<crate::components::Translation3D>>,
 
+    /// Rotation via axis + angle.
+    pub rotation_axis_angle: Option<Vec<crate::components::RotationAxisAngle>>,
+
     /// Rotation via quaternion.
     pub quaternion: Option<Vec<crate::components::RotationQuat>>,
 
@@ -192,6 +195,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
     fn heap_size_bytes(&self) -> u64 {
         self.transform.heap_size_bytes()
             + self.translation.heap_size_bytes()
+            + self.rotation_axis_angle.heap_size_bytes()
             + self.quaternion.heap_size_bytes()
             + self.scale.heap_size_bytes()
             + self.mat3x3.heap_size_bytes()
@@ -202,6 +206,7 @@ impl ::re_types_core::SizeBytes for Transform3D {
     fn is_pod() -> bool {
         <crate::components::Transform3D>::is_pod()
             && <Option<Vec<crate::components::Translation3D>>>::is_pod()
+            && <Option<Vec<crate::components::RotationAxisAngle>>>::is_pod()
             && <Option<Vec<crate::components::RotationQuat>>>::is_pod()
             && <Option<Vec<crate::components::Scale3D>>>::is_pod()
             && <Option<Vec<crate::components::TransformMat3x3>>>::is_pod()
@@ -215,11 +220,12 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3D".into(),
             "rerun.components.Translation3D".into(),
+            "rerun.components.RotationAxisAngle".into(),
             "rerun.components.RotationQuat".into(),
             "rerun.components.Scale3D".into(),
             "rerun.components.TransformMat3x3".into(),
@@ -227,12 +233,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3DIndicator".into(),
             "rerun.components.Transform3D".into(),
             "rerun.components.Translation3D".into(),
+            "rerun.components.RotationAxisAngle".into(),
             "rerun.components.RotationQuat".into(),
             "rerun.components.Scale3D".into(),
             "rerun.components.TransformMat3x3".into(),
@@ -241,8 +248,8 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     });
 
 impl Transform3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 6 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 7 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`Transform3D`] [`::re_types_core::Archetype`]
@@ -323,6 +330,19 @@ impl ::re_types_core::Archetype for Transform3D {
         } else {
             None
         };
+        let rotation_axis_angle =
+            if let Some(array) = arrays_by_name.get("rerun.components.RotationAxisAngle") {
+                Some({
+                    <crate::components::RotationAxisAngle>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.archetypes.Transform3D#rotation_axis_angle")?
+                })
+            } else {
+                None
+            };
         let quaternion = if let Some(array) = arrays_by_name.get("rerun.components.RotationQuat") {
             Some({
                 <crate::components::RotationQuat>::from_arrow_opt(&**array)
@@ -371,6 +391,7 @@ impl ::re_types_core::Archetype for Transform3D {
         Ok(Self {
             transform,
             translation,
+            rotation_axis_angle,
             quaternion,
             scale,
             mat3x3,
@@ -387,6 +408,9 @@ impl ::re_types_core::AsComponents for Transform3D {
             Some(Self::indicator()),
             Some((&self.transform as &dyn ComponentBatch).into()),
             self.translation
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.rotation_axis_angle
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.quaternion
@@ -417,6 +441,7 @@ impl Transform3D {
         Self {
             transform: transform.into(),
             translation: None,
+            rotation_axis_angle: None,
             quaternion: None,
             scale: None,
             mat3x3: None,
@@ -431,6 +456,16 @@ impl Transform3D {
         translation: impl IntoIterator<Item = impl Into<crate::components::Translation3D>>,
     ) -> Self {
         self.translation = Some(translation.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Rotation via axis + angle.
+    #[inline]
+    pub fn with_rotation_axis_angle(
+        mut self,
+        rotation_axis_angle: impl IntoIterator<Item = impl Into<crate::components::RotationAxisAngle>>,
+    ) -> Self {
+        self.rotation_axis_angle = Some(rotation_axis_angle.into_iter().map(Into::into).collect());
         self
     }
 

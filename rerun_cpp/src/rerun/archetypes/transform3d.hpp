@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/axis_length.hpp"
+#include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
 #include "../components/transform3d.hpp"
@@ -151,6 +152,9 @@ namespace rerun::archetypes {
 
         /// Translation vectors.
         std::optional<Collection<rerun::components::Translation3D>> translation;
+
+        /// Rotation via axis + angle.
+        std::optional<Collection<rerun::components::RotationAxisAngle>> rotation_axis_angle;
 
         /// Rotation via quaternion.
         std::optional<Collection<rerun::components::RotationQuat>> quaternion;
@@ -499,6 +503,15 @@ namespace rerun::archetypes {
         /// Translation vectors.
         Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
             translation = std::move(_translation);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Rotation via axis + angle.
+        Transform3D with_rotation_axis_angle(
+            Collection<rerun::components::RotationAxisAngle> _rotation_axis_angle
+        ) && {
+            rotation_axis_angle = std::move(_rotation_axis_angle);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
