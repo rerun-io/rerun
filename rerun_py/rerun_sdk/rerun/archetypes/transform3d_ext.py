@@ -59,9 +59,7 @@ class Transform3DExt:
                 from_parent = False
 
             if scale is not None and (not hasattr(scale, "__len__") or len(scale) == 1):  # type: ignore[arg-type]
-                print("reached scalar case")
                 scale = Scale3D(scale)  # type: ignore[arg-type]
-                print(scale)
 
             self.__attrs_init__(
                 # TODO(#6831): Remove.
