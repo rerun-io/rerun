@@ -144,11 +144,10 @@ pub struct ExampleCategory {
     pub examples: Vec<String>,
 }
 
-#[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Channel {
     /// Our main examples, built on each PR
-    #[default]
     Main,
 
     /// Examples built for each release, plus all `Main` examples.
