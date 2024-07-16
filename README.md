@@ -12,8 +12,6 @@
   <a href="https://discord.gg/Gcm8BbTaAj">                              <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
 </h1>
 
-# TODO: failing link test http://rerunn.io/
-
 # Build time aware visualizations of multimodal data
 
 Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
