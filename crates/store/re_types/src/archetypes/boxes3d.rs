@@ -36,7 +36,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .with_rotations([
 ///             rerun::Rotation3D::IDENTITY,
 ///             rerun::Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]).into(), // 45 degrees around Z
-///             rerun::RotationAxisAngle::new((0.0, 1.0, 0.0), rerun::Angle::Degrees(30.0)).into(),
+///             rerun::RotationAxisAngle::new((0.0, 1.0, 0.0), rerun::Angle::from_degrees(30.0)).into(),
 ///         ])
 ///         .with_radii([0.025])
 ///         .with_colors([
