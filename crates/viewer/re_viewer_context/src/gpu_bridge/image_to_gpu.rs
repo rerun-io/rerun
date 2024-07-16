@@ -23,15 +23,15 @@ use super::get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 
-/// Returns a texture key for a given row id & usage.
+/// Returns a texture key for the given image.
 ///
-/// Several textures may be created from the same row.
-/// This makes sure that they all get different keys!
+/// If the key changes, we upload a new texture.
 fn generate_texture_key(image: &ImageComponents, meaning: TensorDataMeaning) -> u64 {
     // We need to inclde anything that, if changes, should result in a new texture being uploaded.
     let ImageComponents {
-        row_id,
-        blob: _, // from `row_id`
+        blob_row_id,
+        blob: _, // we hash `blob_row_id` instead; much faster!
+
         resolution,
         element_type,
         color_model,
@@ -39,7 +39,7 @@ fn generate_texture_key(image: &ImageComponents, meaning: TensorDataMeaning) -> 
     } = image;
 
     hash((
-        row_id,
+        blob_row_id,
         resolution,
         element_type,
         color_model,
@@ -57,8 +57,8 @@ pub fn image_to_gpu(
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!(format!(
-        "meaning: {:?}, resolution: {:?}, element_type: {:?}",
-        meaning, image.resolution, image.element_type,
+        "{:?} resolution: {:?}, {:?}, {}",
+        meaning, image.resolution, image.color_model, image.element_type,
     ));
 
     let texture_key = generate_texture_key(image, meaning);

@@ -10,7 +10,10 @@ use re_types::{
 /// Represents an `Image`, `SegmentationImage` or `DepthImage`.
 #[derive(Clone)]
 pub struct ImageComponents {
-    pub row_id: RowId,
+    /// The row id that contaoned the blob.
+    ///
+    /// Can be used instead of hashing [`Self::blob`].
+    pub blob_row_id: RowId,
 
     /// The image data, row-wise, with stride=width.
     pub blob: Blob,

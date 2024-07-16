@@ -126,7 +126,7 @@ impl DepthImageVisualizer {
 
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
-                    row_id: image.row_id,
+                    row_id: image.blob_row_id,
                     textured_rect,
                     meaning: TensorDataMeaning::Depth,
                     depth_meter: Some(depth_meter),
@@ -304,7 +304,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                         let blob = blobs.first()?;
                         Some(DepthImageComponentData {
                             image: ImageComponents {
-                                row_id: index.1,
+                                blob_row_id: index.1,
                                 blob: blob.0.clone(),
                                 resolution: first_copied(resolution)?.0 .0,
                                 color_model: None,
