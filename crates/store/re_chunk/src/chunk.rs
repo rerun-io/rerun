@@ -245,12 +245,13 @@ impl Chunk {
     /// I.e. how many _component batches_ ("cells") were logged in total at each timestamp?
     ///
     /// Keep in mind that a timestamp can appear multiple times in a [`Chunk`].
-    /// This method will do a sum accumulation to account for these cases.
+    /// This method will do a sum accumulation to account for these cases (i.e. every timestamp in
+    /// the returned vector is guaranteed to be unique).
     #[inline]
     pub fn num_events_cumulative_per_unique_time(
         &self,
         timeline: &Timeline,
-    ) -> BTreeMap<TimeInt, u64> {
+    ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
         let iter_times = || {
@@ -265,22 +266,50 @@ impl Chunk {
             }
         };
 
-        self.components
-            .values()
-            .flat_map(|list_array| {
-                izip!(
-                    iter_times(),
-                    // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
-                    list_array.validity().map_or_else(
-                        || arrow2::Either::Left(std::iter::repeat(1).take(self.num_rows())),
-                        |validity| arrow2::Either::Right(validity.iter().map(|b| b as u64)),
-                    )
-                )
-            })
-            .fold(BTreeMap::default(), |mut acc, (time, is_valid)| {
-                *acc.entry(time).or_default() += is_valid;
-                acc
-            })
+        // NOTE: This is used on some very hot paths (time panel rendering).
+        // Performance trumps readability. Optimized empirically.
+
+        // Raw, potentially duplicated counts (because timestamps aren't necessarily unique).
+        let mut counts_raw = vec![0u64; self.num_rows()];
+        {
+            self.components.values().for_each(|list_array| {
+                if let Some(validity) = list_array.validity() {
+                    validity
+                        .iter()
+                        .enumerate()
+                        .for_each(|(i, is_valid)| counts_raw[i] += is_valid as u64);
+                } else {
+                    counts_raw.iter_mut().for_each(|count| *count += 1);
+                }
+            });
+        }
+
+        let mut counts = Vec::with_capacity(counts_raw.len());
+
+        let Some(mut cur_time) = iter_times().next() else {
+            return Vec::new();
+        };
+        let mut cur_count = 0;
+        izip!(iter_times(), counts_raw).for_each(|(time, count)| {
+            if time == cur_time {
+                cur_count += count;
+            } else {
+                counts.push((cur_time, cur_count));
+                cur_count = count;
+                cur_time = time;
+            }
+        });
+
+        if counts.last().map(|(time, _)| *time) != Some(cur_time) {
+            counts.push((cur_time, cur_count));
+        }
+
+        debug_assert!(counts
+            .iter()
+            .tuple_windows::<(_, _)>()
+            .all(|((time1, _), (time2, _))| time1 != time2));
+
+        counts
     }
 
     /// The number of events in this chunk for the specified component.
