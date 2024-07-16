@@ -4,9 +4,9 @@
 
 #include "blueprint/archetypes/background.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"
+#include "blueprint/archetypes/dataframe_settings.hpp"
 #include "blueprint/archetypes/panel_blueprint.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
-#include "blueprint/archetypes/range_table_order.hpp"
 #include "blueprint/archetypes/scalar_axis.hpp"
 #include "blueprint/archetypes/space_view_blueprint.hpp"
 #include "blueprint/archetypes/space_view_contents.hpp"

@@ -5,6 +5,7 @@ active_tab.rs linguist-generated=true
 background_kind.rs linguist-generated=true
 column_share.rs linguist-generated=true
 corner2d.rs linguist-generated=true
+dataframe_mode.rs linguist-generated=true
 included_content.rs linguist-generated=true
 interactive.rs linguist-generated=true
 lock_range_during_zoom.rs linguist-generated=true
