@@ -1,10 +1,30 @@
+use crate::datatypes::Vec3D;
+
 use super::Scale3D;
 
 impl Scale3D {
     /// Scale the same amount along all axis.
     #[inline]
     pub fn uniform(value: f32) -> Self {
-        Self(crate::datatypes::Vec3D([value, value, value]))
+        Self(Vec3D([value, value, value]))
+    }
+
+    /// Scale the same amount along all axis.
+    ///
+    /// Deprecated method to mimic previous enum variant.
+    #[allow(non_snake_case)]
+    #[deprecated(since = "0.18.0", note = "Use `Scale3D::uniform` instead.")]
+    pub fn Uniform(value: f32) -> Self {
+        Self::uniform(value)
+    }
+
+    /// Scale individually along each axis.
+    ///
+    /// Deprecated method to mimic previous enum variant.
+    #[allow(non_snake_case)]
+    #[deprecated(since = "0.18.0", note = "Use `Scale3D::from` instead.")]
+    pub fn ThreeD(value: impl Into<Vec3D>) -> Self {
+        Self::from(value.into())
     }
 }
 
