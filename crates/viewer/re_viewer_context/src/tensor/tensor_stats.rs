@@ -118,8 +118,6 @@ impl TensorStats {
         // ---------------------------
 
         let bytes: &[u8] = image.blob.as_slice();
-        let num_elements = image.num_elements();
-        let shape = (num_elements,);
         let element_type = image.element_type;
 
         let range = match element_type {
@@ -138,10 +136,19 @@ impl TensorStats {
             ElementType::F64 => try_cast_slice(bytes).ok().map(slice_range_f64),
         };
 
-        let finite_range = if range.map_or(true, |r| r.0.is_finite() && r.1.is_finite()) {
-            range.clone()
+        let mut finite_range = None;
+
+        if let Some(range) = range {
+            if range.0.is_finite() && range.1.is_finite() {
+                finite_range = Some(range);
+            }
         } else {
-            let finite_range = match element_type {
+            // TODO(emilk): handle the case the the blob bytes aren't aligned to the destination type.
+            re_log::warn_once!("Not yet implemented: Unaligned image buffers.");
+        }
+
+        if finite_range.is_none() {
+            finite_range = match element_type {
                 ElementType::U8
                 | ElementType::U16
                 | ElementType::U32
@@ -149,21 +156,15 @@ impl TensorStats {
                 | ElementType::I8
                 | ElementType::I16
                 | ElementType::I32
-                | ElementType::I64 => range.clone(),
+                | ElementType::I64 => range,
 
                 ElementType::F16 => try_cast_slice(bytes).ok().map(slice_finite_range_f16),
                 ElementType::F32 => try_cast_slice(bytes).ok().map(slice_finite_range_f32),
                 ElementType::F64 => try_cast_slice(bytes).ok().map(slice_finite_range_f64),
             };
 
-            // If we didn't find a finite range, set it to None.
-            finite_range.and_then(|r| {
-                if r.0.is_finite() && r.1.is_finite() {
-                    Some(r)
-                } else {
-                    None
-                }
-            })
+            // Ensure it is finite:
+            finite_range = finite_range.filter(|r| r.0.is_finite() && r.1.is_finite());
         };
 
         Self {

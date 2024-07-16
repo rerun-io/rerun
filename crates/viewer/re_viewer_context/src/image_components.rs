@@ -1,4 +1,3 @@
-use bytemuck::cast_slice;
 use re_chunk::RowId;
 use re_types::{
     components::{ColorModel, Colormap, ElementType},

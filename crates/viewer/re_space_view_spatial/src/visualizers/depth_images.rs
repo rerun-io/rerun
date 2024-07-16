@@ -1,11 +1,9 @@
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{DepthCloud, DepthClouds};
-use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::DepthImage,
     components::{self, Colormap, DepthMeter, DrawOrder, FillRatio, ViewCoordinates},
@@ -15,8 +13,7 @@ use re_viewer_context::{
     gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageComponents,
     ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{

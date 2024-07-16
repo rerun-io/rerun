@@ -1,32 +1,24 @@
 //! Upload images to [`re_renderer`].
 
-use std::borrow::{Borrow, Cow};
+use std::borrow::Cow;
 
-use anyhow::Context;
-use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use egui::util::hash;
 use wgpu::TextureFormat;
 
 use re_chunk::RowId;
 use re_renderer::{
-    pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
+    renderer::{ColorMapper, ColormappedTexture},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_types::{
-    components::ClassId,
-    datatypes::{TensorBuffer, TensorData},
-    tensor_data::TensorDataMeaning,
-};
-use re_types::{components::Colormap, tensor_data::TensorElement};
-use re_types::{components::ElementType, datatypes::Blob};
+use re_types::components::Colormap;
+use re_types::{components::ElementType, tensor_data::TensorDataMeaning};
 
 use crate::{
     gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageComponents, TensorStats,
 };
 
-use super::{get_or_create_texture, try_get_or_create_texture};
+use super::try_get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 
