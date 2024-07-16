@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 
 use re_data_ui::item_ui::instance_path_button;
-use re_viewer_context::{UiLayout, ViewQuery, ViewerContext};
+use re_entity_db::InstancePath;
+use re_log_types::Instance;
+use re_viewer_context::{Item, UiLayout, ViewQuery, ViewerContext};
 
 use crate::{
     table_ui::table_ui,
@@ -18,6 +20,10 @@ pub(crate) fn latest_at_table_ui(
     query: &ViewQuery<'_>,
 ) {
     re_tracing::profile_function!();
+
+    //
+    // DATA
+    //
 
     // These are the entity paths whose content we must display.
     let sorted_entity_paths = sorted_visible_entity_path(ctx, query);
@@ -64,6 +70,47 @@ pub(crate) fn latest_at_table_ui(
             .filter(|comp| !comp.is_indicator_component())
             .collect();
     }
+
+    //
+    // SCROLL TO ROW
+    //
+
+    let index_for_instance_path = |instance_path: &InstancePath| {
+        let instance_path = if instance_path.instance == Instance::ALL {
+            InstancePath::instance(instance_path.entity_path.clone(), 0.into())
+        } else {
+            instance_path.clone()
+        };
+
+        sorted_instance_paths.binary_search(&instance_path).ok()
+    };
+
+    let scroll_to_row = ctx.focused_item.as_ref().and_then(|item| match item {
+        Item::AppId(_)
+        | Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_) //TODO(ab): implement scroll to column?
+        | Item::SpaceView(_)
+        | Item::Container(_) => None,
+
+        Item::InstancePath(instance_path) => index_for_instance_path(instance_path),
+        Item::DataResult(space_view_id, instance_path) => {
+            // We want to scroll only if the focus action originated from outside the table. We
+            // allow the case of `Instance::ALL` for when the entity is double-clicked in the
+            // blueprint tree.
+            //TODO(#6906): we should have an explict way to track the "source" of the focus event.
+            let should_scroll =
+                (space_view_id != &query.space_view_id) || instance_path.instance.is_all();
+
+            should_scroll
+                .then(|| index_for_instance_path(instance_path))
+                .flatten()
+        }
+    });
+
+    //
+    // DRAW
+    //
 
     // Draw the header row.
     let header_ui = |mut row: egui_extras::TableRow<'_, '_>| {
@@ -155,5 +202,6 @@ pub(crate) fn latest_at_table_ui(
         header_ui,
         sorted_instance_paths.len(),
         row_ui,
+        scroll_to_row,
     );
 }

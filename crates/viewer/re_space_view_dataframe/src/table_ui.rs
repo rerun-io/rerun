@@ -15,6 +15,7 @@ pub(crate) fn table_ui(
     header_ui: impl FnOnce(egui_extras::TableRow<'_, '_>),
     row_count: usize,
     row_ui: impl FnMut(TableRow<'_, '_>),
+    scroll_to_row: Option<usize>,
 ) {
     re_tracing::profile_function!();
 
@@ -28,7 +29,7 @@ pub(crate) fn table_ui(
                 ..Default::default()
             }
             .show(ui, |ui| {
-                egui_extras::TableBuilder::new(ui)
+                let mut table_builder = egui_extras::TableBuilder::new(ui)
                     .columns(
                         Column::auto_with_initial_suggestion(200.0).clip(true),
                         extra_columns + sorted_components.len(),
@@ -38,7 +39,14 @@ pub(crate) fn table_ui(
                     //TODO(ab): remove when https://github.com/emilk/egui/pull/4817 is merged/released
                     .max_scroll_height(f32::INFINITY)
                     .auto_shrink([false, false])
-                    .striped(true)
+                    .striped(true);
+
+                if let Some(scroll_to_row) = scroll_to_row {
+                    table_builder =
+                        table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::TOP));
+                }
+
+                table_builder
                     .header(re_ui::DesignTokens::table_line_height(), header_ui)
                     .body(|body| {
                         body.rows(re_ui::DesignTokens::table_line_height(), row_count, row_ui);
