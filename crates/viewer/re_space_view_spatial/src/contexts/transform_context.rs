@@ -9,7 +9,7 @@ use re_types::{
         DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Scale3D, Transform3D,
         TransformMat3x3, Translation3D, ViewCoordinates,
     },
-    Archetype as _, ComponentNameSet, Loggable as _,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 
@@ -311,6 +311,7 @@ fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflect
         TransformMat3x3::name(),
     ];
 
+    use re_types::Archetype as _;
     let transform3d_reflection = reflection
         .archetypes
         .get(&re_types::archetypes::Transform3D::name())
