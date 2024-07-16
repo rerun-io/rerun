@@ -8,6 +8,7 @@ axis_length.rs linguist-generated=true
 blob.rs linguist-generated=true
 class_id.rs linguist-generated=true
 color.rs linguist-generated=true
+color_model.rs linguist-generated=true
 colormap.rs linguist-generated=true
 depth_meter.rs linguist-generated=true
 disconnected_space.rs linguist-generated=true

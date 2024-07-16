@@ -22,6 +22,7 @@ from .blob import Blob, BlobBatch, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch, ClearIsRecursiveType
 from .color import Color, ColorBatch, ColorType
+from .color_model import ColorModel, ColorModelArrayLike, ColorModelBatch, ColorModelLike, ColorModelType
 from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, ColormapType
 from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
 from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
@@ -106,6 +107,11 @@ __all__ = [
     "ClearIsRecursiveType",
     "Color",
     "ColorBatch",
+    "ColorModel",
+    "ColorModelArrayLike",
+    "ColorModelBatch",
+    "ColorModelLike",
+    "ColorModelType",
     "ColorType",
     "Colormap",
     "ColormapArrayLike",

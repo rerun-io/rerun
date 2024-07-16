@@ -10,6 +10,7 @@
 #include "components/class_id.hpp"
 #include "components/clear_is_recursive.hpp"
 #include "components/color.hpp"
+#include "components/color_model.hpp"
 #include "components/colormap.hpp"
 #include "components/depth_meter.hpp"
 #include "components/disconnected_space.hpp"

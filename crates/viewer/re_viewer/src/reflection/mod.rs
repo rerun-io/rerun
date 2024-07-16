@@ -287,6 +287,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ColorModel as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ElementType`](https://rerun.io/docs/reference/types/components/element_type) determines the pixel format of an image.",
+                placeholder: Some(ColorModel::default().to_arrow()?),
+            },
+        ),
+        (
             <Colormap as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Colormap for mapping scalar values within a given range to a color.\n\nThis provides a number of popular pre-defined colormaps.\nIn the future, the Rerun Viewer will allow users to define their own colormaps,\nbut currently the Viewer is limited to the types defined here.",

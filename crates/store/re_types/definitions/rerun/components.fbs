@@ -5,6 +5,7 @@ include "./components/axis_length.fbs";
 include "./components/blob.fbs";
 include "./components/class_id.fbs";
 include "./components/clear_is_recursive.fbs";
+include "./components/color_model.fbs";
 include "./components/color.fbs";
 include "./components/colormap.fbs";
 include "./components/depth_meter.fbs";
