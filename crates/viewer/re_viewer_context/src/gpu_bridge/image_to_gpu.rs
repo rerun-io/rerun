@@ -36,7 +36,7 @@ type Result<T = (), E = UploadError> = std::result::Result<T, E>;
 
 #[derive(Copy, Clone, Hash)]
 enum TextureKeyUsage {
-    AnnotationContextColormap,
+    // AnnotationContextColormap,
     TensorData(TensorDataMeaning),
 }
 
@@ -54,7 +54,7 @@ pub fn image_to_gpu(
     image: &ImageComponents,
     meaning: TensorDataMeaning,
     tensor_stats: &TensorStats,
-    annotations: &Annotations,
+    _annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!(format!(
         "meaning: {:?}, resolution: {:?}, element_type: {:?}",

@@ -1,3 +1,5 @@
+#![allow(clippy::manual_map)] // Annoying
+
 use std::sync::Arc;
 
 use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};

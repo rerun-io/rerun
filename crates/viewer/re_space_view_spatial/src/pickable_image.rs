@@ -22,6 +22,8 @@ pub struct PickableImageRect {
 
 impl PickableImageRect {
     pub fn width(&self) -> Option<u64> {
+        #![allow(clippy::manual_map)] // Annoying
+
         if let Some(tensor) = &self.tensor {
             tensor.image_height_width_channels().map(|[_, w, _]| w)
         } else if let Some(image) = &self.image {
