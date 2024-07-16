@@ -197,10 +197,10 @@ jobs:
       # Check https://github.com/lycheeverse/lychee on how to run locally.
       - name: Link Checker
         id: lychee
-        uses: lycheeverse/lychee-action@v1.9.0
+        uses: lycheeverse/lychee-action@v1.10.0
         with:
           fail: true
-          lycheeVersion: "0.14.3"
+          lycheeVersion: "0.15.1"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           args: |
