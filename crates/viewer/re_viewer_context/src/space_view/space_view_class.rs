@@ -94,6 +94,7 @@ pub trait SpaceViewClass: Send + Sync {
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
     /// Default query range for this space view.
+    //TODO(#6918): also provide ViewerContext and SpaceViewId, to enable reading view properties.
     fn default_query_range(&self, _state: &dyn SpaceViewState) -> QueryRange {
         QueryRange::LatestAt
     }
