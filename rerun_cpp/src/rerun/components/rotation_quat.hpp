@@ -6,7 +6,6 @@
 #include "../datatypes/quaternion.hpp"
 #include "../result.hpp"
 
-#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -25,13 +24,6 @@ namespace rerun::components {
 
         RotationQuat& operator=(rerun::datatypes::Quaternion quaternion_) {
             quaternion = quaternion_;
-            return *this;
-        }
-
-        RotationQuat(std::array<float, 4> xyzw_) : quaternion(xyzw_) {}
-
-        RotationQuat& operator=(std::array<float, 4> xyzw_) {
-            quaternion = xyzw_;
             return *this;
         }
 
