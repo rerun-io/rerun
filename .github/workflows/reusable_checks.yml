@@ -210,5 +210,5 @@ jobs:
             --verbose --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
 
       - name: Warn because of broken links
-        if: steps.lychee.outputs.exit_code != 0
+        if: ${{ steps.lychee.outputs.exit_code != 0 }}
         run: echo "::warning title="Link checker"::Link checker detected broken links!"
