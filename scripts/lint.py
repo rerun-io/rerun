@@ -881,14 +881,15 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
             in_metadata = False
 
         if not in_code_block:
-            # Check the casing on markdown headers
-            if m := re.match(r"(\#+ )(.*)", line):
-                new_header = fix_header_casing(m.group(2))
-                if new_header != m.group(2):
-                    errors.append(
-                        f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
-                    )
-                    line = m.group(1) + new_header + "\n"
+            if not in_metadata:
+                # Check the casing on markdown headers
+                if m := re.match(r"(\#+ )(.*)", line):
+                    new_header = fix_header_casing(m.group(2))
+                    if new_header != m.group(2):
+                        errors.append(
+                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
+                        )
+                        line = m.group(1) + new_header + "\n"
 
             # Check the casing on `title = "…"` frontmatter
             elif m := re.match(r'title\s*\=\s*"(.*)"', line):
