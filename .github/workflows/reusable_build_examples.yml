@@ -9,7 +9,7 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: true
         type: string
-      CHANNEL: # `nightly` or `main`
+      CHANNEL: # `nightly`/`main`/`pr`
         required: true
         type: string
 
