@@ -616,7 +616,7 @@ fn run_compact(path_to_input_rrd: &Path, path_to_output_rrd: &Path) -> anyhow::R
         )
     };
 
-    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    use re_chunk_store::ChunkStoreConfig;
     let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
     // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
     // (massively) slow us down.
@@ -719,7 +719,7 @@ fn run_merge(path_to_input_rrds: &[PathBuf], path_to_output_rrd: &Path) -> anyho
         )
     };
 
-    use re_viewer::external::re_chunk_store::ChunkStoreConfig;
+    use re_chunk_store::ChunkStoreConfig;
     let mut store_config = ChunkStoreConfig::from_env().unwrap_or_default();
     // NOTE: We're doing headless processing, there's no point in running subscribers, it will just
     // (massively) slow us down.

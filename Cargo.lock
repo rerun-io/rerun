@@ -5527,6 +5527,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_chunk",
+ "re_chunk_store",
  "re_crash_handler",
  "re_data_source",
  "re_entity_db",
