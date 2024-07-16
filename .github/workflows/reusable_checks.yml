@@ -6,6 +6,9 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      CHANNEL: # `nightly`/`main`/`pr`
+        required: true
+        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks
@@ -188,6 +191,7 @@ jobs:
 
   link-checker:
     name: Check links
+    if: ${{ inputs.CHANNEL != 'pr' }}
     runs-on: ubuntu-latest
     # do not fail entire workflow (e.g. nightly) if this is the only failing check
     continue-on-error: true
