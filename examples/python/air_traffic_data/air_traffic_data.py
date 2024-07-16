@@ -232,9 +232,9 @@ def log_everything(paths: list[Path], raw: bool) -> None:
         ):
             rr.log(
                 entity_path,
-                rr.Points3D(
-                    [proj.transform(measurement.longitude, measurement.latitude, measurement.barometric_altitude)]
-                ),
+                rr.Points3D([
+                    proj.transform(measurement.longitude, measurement.latitude, measurement.barometric_altitude)
+                ]),
             )
 
         if len(metadata) > 0:

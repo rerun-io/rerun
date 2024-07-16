@@ -1,0 +1,21 @@
+[project]
+name = "air_traffic_data"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "geopandas",
+  "numpy",
+  "pyproj",
+  "requests",
+  "rerun-sdk",
+  "shapely",
+  "tqdm",
+]
+
+[project.scripts]
+air_traffic_data = "air_traffic_data:main"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

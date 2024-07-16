@@ -1,7 +1,0 @@
-geopandas
-numpy
-pyproj
-requests
-rerun-sdk
-shapely
-tqdm
