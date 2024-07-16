@@ -3,7 +3,6 @@
 
 #include "transform3d.hpp"
 
-#include "translation_and_mat3x3.hpp"
 #include "translation_rotation_scale3d.hpp"
 
 #include <arrow/builder.h>
@@ -15,11 +14,6 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::Transform3D>::arrow_datatype() {
         static const auto datatype = arrow::dense_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field(
-                "TranslationAndMat3x3",
-                Loggable<rerun::datatypes::TranslationAndMat3x3>::arrow_datatype(),
-                false
-            ),
             arrow::field(
                 "TranslationRotationScale",
                 Loggable<rerun::datatypes::TranslationRotationScale3D>::arrow_datatype(),
@@ -76,17 +70,6 @@ namespace rerun {
             switch (union_instance.get_union_tag()) {
                 case TagType::None: {
                     ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                } break;
-                case TagType::TranslationAndMat3x3: {
-                    auto variant_builder =
-                        static_cast<arrow::StructBuilder*>(variant_builder_untyped);
-                    RR_RETURN_NOT_OK(
-                        Loggable<rerun::datatypes::TranslationAndMat3x3>::fill_arrow_array_builder(
-                            variant_builder,
-                            &union_instance.get_union_data().translation_and_mat3x3,
-                            1
-                        )
-                    );
                 } break;
                 case TagType::TranslationRotationScale: {
                     auto variant_builder =

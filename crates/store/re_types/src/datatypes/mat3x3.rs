@@ -28,7 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
 /// row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 /// ```
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct Mat3x3(
     /// Flat list of matrix coefficients in column-major order.
     pub [f32; 9usize],

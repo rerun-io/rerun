@@ -539,6 +539,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TransformMat3x3 as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
+                placeholder: Some(TransformMat3x3::default().to_arrow()?),
+            },
+        ),
+        (
+            <Translation3D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A translation vector in 3D space.",
+                placeholder: Some(Translation3D::default().to_arrow()?),
+            },
+        ),
+        (
             <TriangleIndices as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The three indices of a triangle in a triangle mesh.",

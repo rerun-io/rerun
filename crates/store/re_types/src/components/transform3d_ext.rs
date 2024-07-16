@@ -1,8 +1,7 @@
 use super::Transform3D;
 
 use crate::datatypes::{
-    Rotation3D, Scale3D, Transform3D as Transform3DDatatype, TranslationAndMat3x3,
-    TranslationRotationScale3D, Vec3D,
+    Rotation3D, Scale3D, Transform3D as Transform3DDatatype, TranslationRotationScale3D, Vec3D,
 };
 
 impl Transform3D {
@@ -31,15 +30,6 @@ impl Transform3D {
             translation,
             rotation,
         ))
-    }
-
-    /// From a translation applied after a 3x3 matrix.
-    #[inline]
-    pub fn from_translation_mat3x3(
-        translation: impl Into<Vec3D>,
-        mat3x3: impl Into<crate::datatypes::Mat3x3>,
-    ) -> Self {
-        Self::from(TranslationAndMat3x3::new(translation, mat3x3))
     }
 
     /// From a translation, applied after a rotation & scale, known as an affine transformation.

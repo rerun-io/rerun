@@ -80,13 +80,6 @@ from .time_range_boundary import (
     TimeRangeBoundaryType,
 )
 from .transform3d import Transform3D, Transform3DArrayLike, Transform3DBatch, Transform3DLike, Transform3DType
-from .translation_and_mat3x3 import (
-    TranslationAndMat3x3,
-    TranslationAndMat3x3ArrayLike,
-    TranslationAndMat3x3Batch,
-    TranslationAndMat3x3Like,
-    TranslationAndMat3x3Type,
-)
 from .translation_rotation_scale3d import (
     TranslationRotationScale3D,
     TranslationRotationScale3DArrayLike,
@@ -270,11 +263,6 @@ __all__ = [
     "Transform3DBatch",
     "Transform3DLike",
     "Transform3DType",
-    "TranslationAndMat3x3",
-    "TranslationAndMat3x3ArrayLike",
-    "TranslationAndMat3x3Batch",
-    "TranslationAndMat3x3Like",
-    "TranslationAndMat3x3Type",
     "TranslationRotationScale3D",
     "TranslationRotationScale3DArrayLike",
     "TranslationRotationScale3DBatch",

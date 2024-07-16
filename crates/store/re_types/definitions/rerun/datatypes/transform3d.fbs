@@ -12,9 +12,6 @@ namespace rerun.datatypes;
 union Transform3D (
   "attr.rust.derive": "Copy, PartialEq"
 ) {
-  /// Translation plus a 3x3 matrix for scale, rotation, skew, etc.
-  TranslationAndMat3x3: TranslationAndMat3x3,
-
   /// Translation, rotation and scale, decomposed.
   TranslationRotationScale: TranslationRotationScale3D,
 

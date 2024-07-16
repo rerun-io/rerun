@@ -69,6 +69,16 @@ where
     }
 }
 
+impl<Idx> std::ops::IndexMut<Idx> for Vec2D
+where
+    Idx: std::slice::SliceIndex<[f32]>,
+{
+    #[inline]
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
 #[cfg(feature = "glam")]
 impl From<Vec2D> for glam::Vec2 {
     fn from(v: Vec2D) -> Self {

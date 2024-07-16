@@ -8,21 +8,38 @@ namespace rerun.archetypes;
 
 /// A transform between two 3D spaces, i.e. a pose.
 ///
+/// All components are applied in the order they are listed here.
+/// E.g. if both a 4x4 matrix with a translation and a translation vector are present,
+/// the matrix is applied first, then the translation vector on top.
+///
+/// Each transform component can be listed multiple times, but transform tree propagation is only possible
+/// if there's only one instance for each transform component.
+/// TODO(#6831): write more about the exact interaction with the to be written `OutOfTreeTransform` component.
+///
 /// \example archetypes/transform3d_simple title="Variety of 3D transforms" image="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png"
 /// \example archetypes/transform3d_hierarchy title="Transform hierarchy" image="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png"
+// TODO(#6831): provide example with out of tree transform.
 table Transform3D (
-  "attr.rust.derive": "PartialEq",
+  "attr.rust.derive": "Default, PartialEq",
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
   /// The transform
-  transform: rerun.components.Transform3D ("attr.rerun.component_required", order: 1000);
+  // TODO(#6831): remove.
+  transform: rerun.components.Transform3D ("attr.rerun.component_optional", order: 1000);
 
-  // --- Optional ---
+  /// 3x3 transformation matrices.
+  mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1100);
+
+  /// Translation vectors.
+  translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1200);
+
+  // --- visual representation
 
   /// Visual length of the 3 axes.
   ///
   /// The length is interpreted in the local coordinate system of the transform.
   /// If the transform is scaled, the axes will be scaled accordingly.
+  // TODO(#6831): Should be an array as well.
   axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 2000);
 }

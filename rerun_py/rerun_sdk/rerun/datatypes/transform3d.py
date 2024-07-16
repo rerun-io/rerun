@@ -26,12 +26,9 @@ class Transform3D(Transform3DExt):
 
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
-    inner: Union[datatypes.TranslationAndMat3x3, datatypes.TranslationRotationScale3D] = field()
+    inner: datatypes.TranslationRotationScale3D = field()
     """
     Must be one of:
-
-    * TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
-        Translation plus a 3x3 matrix for scale, rotation, skew, etc.
 
     * TranslationRotationScale (datatypes.TranslationRotationScale3D):
         Translation, rotation and scale, decomposed.
@@ -41,12 +38,10 @@ class Transform3D(Transform3DExt):
 if TYPE_CHECKING:
     Transform3DLike = Union[
         Transform3D,
-        datatypes.TranslationAndMat3x3,
         datatypes.TranslationRotationScale3D,
     ]
     Transform3DArrayLike = Union[
         Transform3D,
-        datatypes.TranslationAndMat3x3,
         datatypes.TranslationRotationScale3D,
         Sequence[Transform3DLike],
     ]
@@ -63,26 +58,6 @@ class Transform3DType(BaseExtensionType):
             self,
             pa.dense_union([
                 pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field(
-                    "TranslationAndMat3x3",
-                    pa.struct([
-                        pa.field(
-                            "translation",
-                            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                            nullable=True,
-                            metadata={},
-                        ),
-                        pa.field(
-                            "mat3x3",
-                            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
-                            nullable=True,
-                            metadata={},
-                        ),
-                        pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
                 pa.field(
                     "TranslationRotationScale",
                     pa.struct([

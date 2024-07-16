@@ -6,7 +6,8 @@ use re_space_view::DataResultQuery as _;
 use re_types::{
     archetypes::Pinhole,
     components::{
-        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Transform3D, ViewCoordinates,
+        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Transform3D, TransformMat3x3,
+        Translation3D, ViewCoordinates,
     },
     ComponentNameSet, Loggable as _,
 };
@@ -281,10 +282,7 @@ impl TransformContext {
             ent_path.parent(),
         ) {
             self.reference_from_entity(&parent).map(|t| {
-                t * get_cached_transform(ent_path, entity_db, query)
-                    .map_or(glam::Affine3A::IDENTITY, |transform| {
-                        transform.into_parent_from_child_transform()
-                    })
+                t * get_parent_from_child_transform(ent_path, entity_db, query).unwrap_or_default()
             })
         } else {
             Some(transform_info.reference_from_entity)
@@ -302,14 +300,52 @@ impl TransformContext {
     }
 }
 
-fn get_cached_transform(
+fn get_parent_from_child_transform(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Option<Transform3D> {
-    entity_db
-        .latest_at_component::<Transform3D>(entity_path, query)
-        .map(|res| res.value)
+) -> Option<glam::Affine3A> {
+    let resolver = entity_db.resolver();
+    // TODO(#6743): Doesn't take into account overrides.
+    let result = entity_db.latest_at(
+        query,
+        entity_path,
+        [
+            Transform3D::name(),
+            TransformMat3x3::name(),
+            Translation3D::name(),
+        ],
+    );
+    if result.components.is_empty() {
+        return None;
+    }
+
+    let mut transform = glam::Affine3A::IDENTITY;
+    if let Some(mat3x3) = result.get_instance::<TransformMat3x3>(resolver, 0) {
+        transform *= glam::Affine3A::from(mat3x3);
+    }
+    if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
+        transform *= glam::Affine3A::from(translation);
+    }
+
+    // TODO(#6831): To be removed. Note that the ordering of the old component is a bit arbitrary.
+    // Picked such that the planets demo still works ;-)
+    let legacy_transform = result.get_instance::<Transform3D>(resolver, 0);
+    let is_from_parent = legacy_transform
+        .as_ref()
+        .map_or(false, |t| t.is_from_parent());
+    if let Some(legacy_transform) = legacy_transform {
+        transform *= glam::Affine3A::from(legacy_transform.0);
+    }
+
+    // TODO(#6831): Should add a unit test to this method once all variants are in.
+    // (Should test correct order being applied etc.. Might require splitting)
+
+    if is_from_parent {
+        Some(transform.inverse())
+    } else {
+        Some(transform)
+    }
 }
 
 fn get_cached_pinhole(
@@ -349,8 +385,7 @@ fn transform_at(
         }
     }
 
-    let transform3d = get_cached_transform(entity_path, entity_db, query)
-        .map(|transform| transform.clone().into_parent_from_child_transform());
+    let transform3d = get_parent_from_child_transform(entity_path, entity_db, query);
 
     let pinhole = pinhole.map(|(image_from_camera, camera_xyz)| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.

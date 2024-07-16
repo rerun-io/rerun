@@ -37,7 +37,6 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`TimeRange`](datatypes/time_range.md): Visible time range bounds for a specific timeline.
 * [`TimeRangeBoundary`](datatypes/time_range_boundary.md): Left or right boundary of a time range.
 * [`Transform3D`](datatypes/transform3d.md): Representation of a 3D affine transform.
-* [`TranslationAndMat3x3`](datatypes/translation_and_mat3x3.md): Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 * [`TranslationRotationScale3D`](datatypes/translation_rotation_scale3d.md): Representation of an affine transform via separate translation, rotation & scale.
 * [`UInt32`](datatypes/uint32.md): A 32bit unsigned integer.
 * [`UInt64`](datatypes/uint64.md): A 64bit unsigned integer.
