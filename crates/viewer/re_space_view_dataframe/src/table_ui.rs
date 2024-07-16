@@ -7,7 +7,7 @@ use re_types_core::ComponentName;
 
 /// Display a nicely configured table with the provided header ui, row ui, and row count.
 ///
-/// The `extra_columns` are hom many more columns there are in addition to the components.
+/// The `extra_columns` are how many more columns there are in addition to the components.
 pub(crate) fn table_ui(
     ui: &mut egui::Ui,
     sorted_components: &BTreeSet<ComponentName>,
