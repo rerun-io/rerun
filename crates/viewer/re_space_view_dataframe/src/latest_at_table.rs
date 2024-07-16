@@ -10,7 +10,7 @@ use crate::{
 
 /// Display a "latest at" table.
 ///
-/// This table has entity instances as rows and components as column. That data is the result of a
+/// This table has entity instances as rows and components as columns. That data is the result of a
 /// "latest at" query based on the current timeline and time.
 pub(crate) fn latest_at_table_ui(
     ctx: &ViewerContext<'_>,
@@ -81,7 +81,7 @@ pub(crate) fn latest_at_table_ui(
     // Draw a single line of the table. This is called for each _visible_ row, so it's ok to
     // duplicate some of the querying.
     let row_ui = |mut row: egui_extras::TableRow<'_, '_>| {
-        let instance = &sorted_instance_paths[row.index()];
+        let instance_path = &sorted_instance_paths[row.index()];
 
         row.col(|ui| {
             instance_path_button(
@@ -90,34 +90,57 @@ pub(crate) fn latest_at_table_ui(
                 ctx.recording(),
                 ui,
                 Some(query.space_view_id),
-                instance,
+                instance_path,
             );
         });
 
+        // Note: a lot of duplicated querying potentially happens here, but this is ok since this
+        // code runs *only* for visible rows.
         for component_name in &sorted_components {
             row.col(|ui| {
-                let results = ctx.recording().query_caches().latest_at(
-                    ctx.recording_store(),
-                    &latest_at_query,
-                    &instance.entity_path,
-                    [*component_name],
-                );
-
-                if let Some(results) =
-                    // This is a duplicate of the one above, but this is ok since this codes runs
-                    // *only* for visible rows.
-                    results.components.get(component_name)
-                {
-                    ctx.component_ui_registry.ui(
-                        ctx,
-                        ui,
-                        UiLayout::List,
+                // TODO(ab, cmc): use the suitable API from re_query when it becomes available.
+                let result = ctx
+                    .recording_store()
+                    .latest_at_relevant_chunks(
                         &latest_at_query,
-                        ctx.recording(),
-                        &instance.entity_path,
-                        results,
-                        &instance.instance,
-                    );
+                        &instance_path.entity_path,
+                        *component_name,
+                    )
+                    .into_iter()
+                    .flat_map(|chunk| {
+                        chunk
+                            .latest_at(&latest_at_query, *component_name)
+                            .iter_rows(&query.timeline, component_name)
+                            .collect::<Vec<_>>()
+                    })
+                    .max_by_key(|(data_time, row_id, _)| (*data_time, *row_id))
+                    .and_then(|(data_time, row_id, array)| {
+                        array.map(|array| (data_time, row_id, array))
+                    });
+
+                // TODO(#4466): it would be nice to display the time and row id somewhere, since we
+                //              have them.
+                if let Some((_time, _row_id, array)) = result {
+                    let instance_index = instance_path.instance.get() as usize;
+
+                    let (data, clamped) = if instance_index >= array.len() {
+                        (array.sliced(array.len() - 1, 1), true)
+                    } else {
+                        (array.sliced(instance_index, 1), false)
+                    };
+
+                    ui.add_enabled_ui(!clamped, |ui| {
+                        ctx.component_ui_registry.ui_raw(
+                            ctx,
+                            ui,
+                            UiLayout::List,
+                            &latest_at_query,
+                            ctx.recording(),
+                            &instance_path.entity_path,
+                            *component_name,
+                            &*data,
+                        );
+                    });
                 } else {
                     ui.weak("-");
                 }
