@@ -20,7 +20,7 @@ namespace rerun::components {
     /// This combined with `components::ElementType` determines the pixel format of an image.
     enum class ColorModel : uint8_t {
 
-        /// Grayscale luminance instancity, sometimes called `Y`
+        /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
         L = 1,
 
         /// Red, Green, Blue

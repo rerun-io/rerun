@@ -1,4 +1,3 @@
-use bytemuck::try_cast_slice;
 use half::f16;
 use ndarray::ArrayViewD;
 
@@ -119,38 +118,29 @@ impl TensorStats {
 
         // ---------------------------
 
-        let bytes: &[u8] = image.blob.as_slice();
         let element_type = image.element_type;
 
         let range = match element_type {
-            ElementType::U8 => try_cast_slice(bytes).ok().map(slice_range_u8),
-            ElementType::U16 => try_cast_slice(bytes).ok().map(slice_range_u16),
-            ElementType::U32 => try_cast_slice(bytes).ok().map(slice_range_u32),
-            ElementType::U64 => try_cast_slice(bytes).ok().map(slice_range_u64),
+            ElementType::U8 => slice_range_u8(&image.as_slice()),
+            ElementType::U16 => slice_range_u16(&image.as_slice()),
+            ElementType::U32 => slice_range_u32(&image.as_slice()),
+            ElementType::U64 => slice_range_u64(&image.as_slice()),
 
-            ElementType::I8 => try_cast_slice(bytes).ok().map(slice_range_i8),
-            ElementType::I16 => try_cast_slice(bytes).ok().map(slice_range_i16),
-            ElementType::I32 => try_cast_slice(bytes).ok().map(slice_range_i32),
-            ElementType::I64 => try_cast_slice(bytes).ok().map(slice_range_i64),
+            ElementType::I8 => slice_range_i8(&image.as_slice()),
+            ElementType::I16 => slice_range_i16(&image.as_slice()),
+            ElementType::I32 => slice_range_i32(&image.as_slice()),
+            ElementType::I64 => slice_range_i64(&image.as_slice()),
 
-            ElementType::F16 => try_cast_slice(bytes).ok().map(slice_range_f16),
-            ElementType::F32 => try_cast_slice(bytes).ok().map(slice_range_f32),
-            ElementType::F64 => try_cast_slice(bytes).ok().map(slice_range_f64),
+            ElementType::F16 => slice_range_f16(&image.as_slice()),
+            ElementType::F32 => slice_range_f32(&image.as_slice()),
+            ElementType::F64 => slice_range_f64(&image.as_slice()),
         };
 
-        let mut finite_range = None;
-
-        if let Some(range) = range {
-            if range.0.is_finite() && range.1.is_finite() {
-                finite_range = Some(range);
-            }
+        let finite_range = if range.0.is_finite() && range.1.is_finite() {
+            // Already finite
+            Some(range)
         } else {
-            // TODO(emilk): handle the case the the blob bytes aren't aligned to the destination type.
-            re_log::warn_once!("Not yet implemented: Unaligned image buffers.");
-        }
-
-        if finite_range.is_none() {
-            finite_range = match element_type {
+            let finite_range = match element_type {
                 ElementType::U8
                 | ElementType::U16
                 | ElementType::U32
@@ -160,17 +150,21 @@ impl TensorStats {
                 | ElementType::I32
                 | ElementType::I64 => range,
 
-                ElementType::F16 => try_cast_slice(bytes).ok().map(slice_finite_range_f16),
-                ElementType::F32 => try_cast_slice(bytes).ok().map(slice_finite_range_f32),
-                ElementType::F64 => try_cast_slice(bytes).ok().map(slice_finite_range_f64),
+                ElementType::F16 => slice_finite_range_f16(&image.as_slice()),
+                ElementType::F32 => slice_finite_range_f32(&image.as_slice()),
+                ElementType::F64 => slice_finite_range_f64(&image.as_slice()),
             };
 
-            // Ensure it is finite:
-            finite_range = finite_range.filter(|r| r.0.is_finite() && r.1.is_finite());
+            // Ensure it actually is finite:
+            if finite_range.0.is_finite() && finite_range.1.is_finite() {
+                Some(finite_range)
+            } else {
+                None
+            }
         };
 
         Self {
-            range,
+            range: Some(range),
             finite_range,
         }
     }

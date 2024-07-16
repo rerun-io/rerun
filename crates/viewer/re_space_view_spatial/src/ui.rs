@@ -749,7 +749,6 @@ fn image_hover_ui(
 
         let annotations = annotations.0.find(&instance_path.entity_path);
 
-        // TODO: for image
         if let Some(image) = &image {
             let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
             if let Some(render_ctx) = ctx.render_ctx {

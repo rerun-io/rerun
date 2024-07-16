@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This combined with [`components::ElementType`][crate::components::ElementType] determines the pixel format of an image.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum ColorModel {
-    /// Grayscale luminance instancity, sometimes called `Y`
+    /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
     #[default]
     L = 1,
 
@@ -43,7 +43,7 @@ impl ::re_types_core::reflection::Enum for ColorModel {
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::L => "Grayscale luminance instancity, sometimes called `Y`",
+            Self::L => "Grayscale luminance intencity/brightness/value, sometimes called `Y`",
             Self::Rgb => "Red, Green, Blue",
             Self::Rgba => "Red, Green, Blue, Alpha",
         }

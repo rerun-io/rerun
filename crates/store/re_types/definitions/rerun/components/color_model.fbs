@@ -6,7 +6,7 @@ namespace rerun.components;
 ///
 /// This combined with [components.ElementType] determines the pixel format of an image.
 enum ColorModel: byte {
-    /// Grayscale luminance instancity, sometimes called `Y`
+    /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
     L (default),
 
     /// Red, Green, Blue

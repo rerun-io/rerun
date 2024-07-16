@@ -29,7 +29,7 @@ class ColorModel(Enum):
     """
 
     L = 1
-    """Grayscale luminance instancity, sometimes called `Y`"""
+    """Grayscale luminance intencity/brightness/value, sometimes called `Y`"""
 
     Rgb = 2
     """Red, Green, Blue"""

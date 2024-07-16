@@ -18,19 +18,7 @@ use crate::{
     gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageComponents, TensorStats,
 };
 
-use super::try_get_or_create_texture;
-
-// ----------------------------------------------------------------------------
-
-/// Errors that can occur when uploading imaghes to GPU.
-#[derive(thiserror::Error, Debug)]
-pub enum UploadError {
-    /// This is not yet implemented
-    #[error("NotImplemented")]
-    NotImplemented,
-}
-
-type Result<T = (), E = UploadError> = std::result::Result<T, E>;
+use super::get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 
@@ -75,7 +63,7 @@ pub fn image_to_gpu(
 
     let range = data_range(tensor_stats, image.element_type);
 
-    let texture = try_get_or_create_texture(render_ctx, texture_key, || {
+    let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image)
     })
     .map_err(|err| anyhow::anyhow!("Failed to create depth texture: {err}"))?;
@@ -126,7 +114,9 @@ fn data_range(tensor_stats: &TensorStats, element_type: ElementType) -> [f32; 2]
 fn general_texture_creation_desc_from_image<'a>(
     debug_name: &str,
     image: &'a ImageComponents,
-) -> Result<Texture2DCreationDesc<'a>> {
+) -> Texture2DCreationDesc<'a> {
+    re_tracing::profile_function!();
+
     let [width, height] = image.resolution;
 
     let buf: &[u8] = image.blob.as_ref();
@@ -135,35 +125,65 @@ fn general_texture_creation_desc_from_image<'a>(
         ElementType::U8 => (Cow::Borrowed(buf), TextureFormat::R8Uint),
         ElementType::U16 => (Cow::Borrowed(buf), TextureFormat::R16Uint),
         ElementType::U32 => (Cow::Borrowed(buf), TextureFormat::R32Uint),
-        ElementType::U64 => (narrow_u64_to_f32s(buf)?, TextureFormat::R32Float), // narrowing to f32!
+        ElementType::U64 => (
+            // wgpu doesn't support u64 textures
+            narrow_u64_to_f32s(&image.as_slice()),
+            TextureFormat::R32Float,
+        ),
 
         ElementType::I8 => (Cow::Borrowed(buf), TextureFormat::R8Sint),
         ElementType::I16 => (Cow::Borrowed(buf), TextureFormat::R16Sint),
         ElementType::I32 => (Cow::Borrowed(buf), TextureFormat::R32Sint),
-        ElementType::I64 => (narrow_i64_to_f32s(buf)?, TextureFormat::R32Float), // narrowing to f32!
+        ElementType::I64 => (
+            // wgpu doesn't support i64 textures
+            narrow_i64_to_f32s(&image.as_slice()),
+            TextureFormat::R32Float,
+        ),
 
         ElementType::F16 => (Cow::Borrowed(buf), TextureFormat::R16Float),
         ElementType::F32 => (Cow::Borrowed(buf), TextureFormat::R32Float),
-        ElementType::F64 => (narrow_f64_to_f32s(buf)?, TextureFormat::R32Float), // narrowing to f32!
+        ElementType::F64 => (
+            // wgpu doesn't support f64 textures
+            narrow_f64_to_f32s(&image.as_slice()),
+            TextureFormat::R32Float,
+        ),
     };
 
-    Ok(Texture2DCreationDesc {
+    Texture2DCreationDesc {
         label: debug_name.into(),
         data,
         format,
         width,
         height,
-    })
+    }
 }
 
-fn narrow_f64_to_f32s(_buf: &[u8]) -> Result<Cow<'_, [u8]>> {
-    Err(UploadError::NotImplemented) // TODO
+// wgpu doesn't support u64 textures, so we need to narrow to f32:
+fn narrow_u64_to_f32s(slice: &[u64]) -> Cow<'static, [u8]> {
+    re_tracing::profile_function!();
+    let bytes: Vec<u8> = slice
+        .iter()
+        .flat_map(|&f| (f as f32).to_le_bytes())
+        .collect();
+    bytes.into()
 }
 
-fn narrow_i64_to_f32s(_buf: &[u8]) -> Result<Cow<'_, [u8]>> {
-    Err(UploadError::NotImplemented) // TODO
+// wgpu doesn't support i64 textures, so we need to narrow to f32:
+fn narrow_i64_to_f32s(slice: &[i64]) -> Cow<'static, [u8]> {
+    re_tracing::profile_function!();
+    let bytes: Vec<u8> = slice
+        .iter()
+        .flat_map(|&f| (f as f32).to_le_bytes())
+        .collect();
+    bytes.into()
 }
 
-fn narrow_u64_to_f32s(_buf: &[u8]) -> Result<Cow<'_, [u8]>> {
-    Err(UploadError::NotImplemented) // TODO
+// wgpu doesn't support f64 textures, so we need to narrow to f32:
+fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
+    re_tracing::profile_function!();
+    let bytes: Vec<u8> = slice
+        .iter()
+        .flat_map(|&f| (f as f32).to_le_bytes())
+        .collect();
+    bytes.into()
 }

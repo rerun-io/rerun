@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use re_chunk::RowId;
 use re_types::{
     components::{ColorModel, Colormap, ElementType},
@@ -92,6 +94,41 @@ impl ImageComponents {
     #[inline]
     pub fn num_elements(&self) -> usize {
         self.blob.len() * 8 / self.bits_per_texel()
+    }
+
+    /// Cast the buffer to the given type.
+    ///
+    /// This will never fail.
+    /// If the buffer is 5 bytes long and the target type is `f32`, the last byte is just ignored.
+    ///
+    /// Cheap in most cases, but if the input buffer is not aligned to the element type,
+    /// this function will copy the data.
+    pub fn as_slice<T: bytemuck::Pod>(&self) -> Cow<'_, [T]> {
+        let element_size = std::mem::size_of::<T>();
+        let num_elements = self.blob.len() / element_size;
+        let num_bytes = num_elements * element_size;
+        let bytes = &self.blob[..num_bytes];
+
+        if let Ok(slice) = bytemuck::try_cast_slice(bytes) {
+            Cow::Borrowed(slice)
+        } else {
+            // This should happen very rarely.
+            // But it can happen, e.g. when logging a `1x1xu8` image followed by a `1x1xf32` image
+            // to the same entity path, and they are put in the same chunk.
+
+            if cfg!(debug_asserttions) {
+                re_log::warn_once!(
+                    "The image buffer was not aligned to the element type {}",
+                    std::any::type_name::<T>()
+                );
+            }
+            re_tracing::profile_scope!("copy_image_buffer");
+
+            let mut dest = vec![T::zeroed(); num_elements];
+            let dest_bytes: &mut [u8] = bytemuck::cast_slice_mut(&mut dest);
+            dest_bytes.copy_from_slice(bytes);
+            Cow::Owned(dest)
+        }
     }
 }
 
