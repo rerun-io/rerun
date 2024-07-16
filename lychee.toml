@@ -32,6 +32,9 @@ insecure = true
 # Maximum number of allowed retries before a link is declared dead.
 max_retries = 4
 
+# Wait time between attempts in seconds.
+retry_wait_time = 2
+
 # Comma-separated list of accepted status codes for valid links.
 accept = [
   "100..=103", # Informational codes.
