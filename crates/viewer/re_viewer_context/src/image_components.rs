@@ -41,43 +41,35 @@ impl ImageComponents {
 
     /// 1 for grayscale and depth images, 3 for RGB, etc
     #[inline]
-    pub fn components_per_pixel(&self) -> usize {
-        self.color_model.map_or(1, ColorModel::num_components)
+    pub fn num_channels(&self) -> usize {
+        self.color_model.map_or(1, ColorModel::num_channels)
     }
 
     #[inline]
     pub fn bits_per_texel(&self) -> usize {
         // TODO(#6386): use `PixelFormat`
-        self.element_type.bits() * self.components_per_pixel()
+        self.element_type.bits() * self.num_channels()
     }
 
     /// Get the value of the element at the given index.
     ///
     /// Return `None` if out-of-bounds.
     #[inline]
-    pub fn get_xy(&self, x: u32, y: u32) -> Option<TensorElement> {
-        if x >= self.width() {
+    pub fn get_xyc(&self, x: u32, y: u32, channel: u32) -> Option<TensorElement> {
+        let width = self.width();
+        let height = self.height();
+        let num_channels = self.num_channels();
+
+        if width <= x || height <= y {
+            return None;
+        }
+        debug_assert!(channel < num_channels as u32);
+        if num_channels as u32 <= channel {
             return None;
         }
 
-        fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
-            // NOTE: `blob` is not necessary aligned to `T`,
-            // hence the complexity of this function.
-
-            let size = std::mem::size_of::<T>();
-            let byte_offset = element_offset * size;
-            if blob.len() <= byte_offset + size {
-                return None;
-            }
-
-            let slice = &blob[byte_offset..byte_offset + size];
-
-            let mut dest = T::zeroed();
-            bytemuck::bytes_of_mut(&mut dest).copy_from_slice(slice);
-            Some(dest)
-        }
-
-        let offset = y as usize * self.width() as usize + x as usize;
+        let stride = width; // TODO(#6008): support stride
+        let offset = (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
 
         match self.element_type {
             ElementType::U8 => self.blob.get(offset).copied().map(TensorElement::U8),
@@ -101,4 +93,21 @@ impl ImageComponents {
     pub fn num_elements(&self) -> usize {
         self.blob.len() * 8 / self.bits_per_texel()
     }
+}
+
+fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
+    // NOTE: `blob` is not necessary aligned to `T`,
+    // hence the complexity of this function.
+
+    let size = std::mem::size_of::<T>();
+    let byte_offset = element_offset * size;
+    if blob.len() <= byte_offset + size {
+        return None;
+    }
+
+    let slice = &blob[byte_offset..byte_offset + size];
+
+    let mut dest = T::zeroed();
+    bytemuck::bytes_of_mut(&mut dest).copy_from_slice(slice);
+    Some(dest)
 }

@@ -222,6 +222,8 @@ impl ImageVisualizer {
                     ent_path: entity_path.clone(),
                     row_id: tensor_data_row_id,
                     textured_rect,
+                    meaning: TensorDataMeaning::Unknown,
+                    depth_meter: None,
                     tensor: Some(tensor),
                     image: None,
                 });

@@ -7,7 +7,8 @@ use itertools::chain;
 use re_math::BoundingBox;
 
 use re_data_ui::{
-    item_ui, show_zoomed_image_region_area_outline, show_zoomed_tensor_region, DataUi,
+    item_ui, show_zoomed_image_region, show_zoomed_image_region_area_outline,
+    show_zoomed_tensor_region, DataUi,
 };
 use re_format::format_f32;
 use re_log_types::Instance;
@@ -25,7 +26,7 @@ use re_ui::{
     ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
-    HoverHighlight, ImageComponents, Item, ItemSpaceContext, SelectionHighlight,
+    HoverHighlight, ImageComponents, ImageStatsCache, Item, ItemSpaceContext, SelectionHighlight,
     SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, UiLayout,
     ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
@@ -467,22 +468,22 @@ pub fn picking(
                     if let Some(image) = picked.image.clone() {
                         Some(PickedImageInfo {
                             row_id: picked.row_id,
+                            meaning: picked.meaning,
+                            coordinates,
+                            colormap: image.colormap.unwrap_or_default(),
+                            depth_meter: picked.depth_meter,
                             tensor: None,
                             image: Some(image),
-                            meaning: TensorDataMeaning::Unknown, // "Unknown" means color
-                            coordinates,
-                            colormap: Default::default(),
-                            depth_meter: None,
                         })
                     } else if let Some(tensor) = picked.tensor.clone() {
                         Some(PickedImageInfo {
                             row_id: picked.row_id,
-                            tensor: Some(tensor),
-                            image: None,
-                            meaning: TensorDataMeaning::Unknown, // "Unknown" means color
+                            meaning: picked.meaning,
                             coordinates,
                             colormap: Default::default(),
-                            depth_meter: None,
+                            depth_meter: picked.depth_meter,
+                            tensor: Some(tensor),
+                            image: None,
                         })
                     } else {
                         None
@@ -566,7 +567,7 @@ pub fn picking(
                 if let Some(meter) = image_info.depth_meter {
                     let [x, y] = image_info.coordinates;
                     if let Some(image) = &image_info.image {
-                        if let Some(raw_value) = image.get_xy(x, y) {
+                        if let Some(raw_value) = image.get_xyc(x, y, 0) {
                             let raw_value = raw_value.as_f64();
                             let depth_in_meters = raw_value / *meter.0 as f64;
                             depth_at_pointer = Some(depth_in_meters as f32);
@@ -669,12 +670,12 @@ pub fn picking(
 
 struct PickedImageInfo {
     row_id: re_chunk_store::RowId,
-    tensor: Option<re_types::datatypes::TensorData>,
-    image: Option<ImageComponents>,
     meaning: TensorDataMeaning,
     coordinates: [u32; 2],
     colormap: Colormap,
     depth_meter: Option<DepthMeter>,
+    tensor: Option<re_types::datatypes::TensorData>,
+    image: Option<ImageComponents>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -690,12 +691,12 @@ fn image_hover_ui(
 ) {
     let PickedImageInfo {
         row_id,
-        tensor,
-        image,
         meaning,
         coordinates,
         colormap,
         depth_meter,
+        tensor,
+        image,
     } = picked_image_info;
 
     let depth_meter = depth_meter.map(|d| *d.0);
@@ -749,6 +750,22 @@ fn image_hover_ui(
         let annotations = annotations.0.find(&instance_path.entity_path);
 
         // TODO: for image
+        if let Some(image) = &image {
+            let tensor_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(image));
+            if let Some(render_ctx) = ctx.render_ctx {
+                show_zoomed_image_region(
+                    render_ctx,
+                    ui,
+                    image,
+                    &tensor_stats,
+                    &annotations,
+                    meaning,
+                    depth_meter,
+                    &tensor_name,
+                    [coordinates[0] as _, coordinates[1] as _],
+                );
+            }
+        }
         if let Some(tensor) = &tensor {
             let tensor_stats = ctx
                 .cache

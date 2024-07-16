@@ -400,6 +400,8 @@ pub enum TensorDataMeaning {
     /// Default behavior: guess based on shape
     Unknown,
 
+    /// A segmentation image.
+    ///
     /// The data is an annotated [`crate::components::ClassId`] which should be
     /// looked up using the appropriate [`crate::components::AnnotationContext`]
     ClassId,

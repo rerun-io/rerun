@@ -22,6 +22,8 @@ impl TensorStats {
     pub fn from_image(image: &ImageComponents) -> Self {
         re_tracing::profile_function!();
 
+        // TODO(#6008): support stride
+
         macro_rules! declare_slice_range_int {
             ($name:ident, $typ:ty) => {
                 fn $name(slice: &[$typ]) -> (f64, f64) {

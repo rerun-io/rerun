@@ -64,6 +64,7 @@ impl DepthImageVisualizer {
         let meaning = TensorDataMeaning::Depth;
 
         for data in images {
+            let depth_meter = data.depth_meter.unwrap_or_else(|| self.fallback_for(ctx));
             let mut image = data.image.clone();
 
             // All depth images must have a colormap:
@@ -71,7 +72,6 @@ impl DepthImageVisualizer {
 
             if is_3d_view {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
-                    let depth_meter = data.depth_meter.unwrap_or_else(|| self.fallback_for(ctx));
                     let fill_ratio = data.fill_ratio.unwrap_or_default();
 
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
@@ -128,6 +128,8 @@ impl DepthImageVisualizer {
                     ent_path: entity_path.clone(),
                     row_id: image.row_id,
                     textured_rect,
+                    meaning: TensorDataMeaning::Depth,
+                    depth_meter: Some(depth_meter),
                     tensor: None,
                     image: Some(image),
                 });
