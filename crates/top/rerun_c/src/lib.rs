@@ -614,7 +614,7 @@ pub extern "C" fn rr_recording_stream_disable_timeline(
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
-    if let Some(stream) = RECORDING_STREAMS.lock().remove(stream) {
+    if let Some(stream) = RECORDING_STREAMS.lock().get(stream) {
         stream.reset_time();
     }
 }
