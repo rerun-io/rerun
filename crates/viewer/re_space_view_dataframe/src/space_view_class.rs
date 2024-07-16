@@ -60,12 +60,12 @@ impl SpaceViewClass for DataframeSpaceView {
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
         "# Dataframe view
 
-This view displays the content of the entities it contains in tabular form. Click on the view and
-use the _Entity path filter_ to control which entities are displayed.
+This view displays the content of the entities it contains in tabular form.
 
 ## View types
 
-The Dataframe view operates in two modes: the _latest at_ mode and the _time range_ mode.
+The Dataframe view operates in two modes: the _latest at_ mode and the _time range_ mode. You can
+select the mode in the selection panel.
 
 In the _latest at_ mode, the view displays the latest data for the timeline and time set in the time
 panel. A row is shown for each entity instance.
@@ -74,9 +74,8 @@ In the _time range_ mode, the view displays all the data logged within the time 
 view entity. In this mode, each row corresponds to an entity and time pair. Rows are further split
 if multiple `rr.log()` calls were made for the same entity/time. Static data is also displayed.
 
-The view switches to _time range_ mode as soon as a single one of its entities has its visible time
-range set to _Override_. Each entity may have its own time range setting. (To set the same time range
-for all entities, it is preferable to override the view-level visible time range.)"
+Note that the default visible time range depends on the selected mode. In particular, the time range
+mode sets the default time range to _everything_. You can override this in the selection panel."
             .to_owned()
     }
 

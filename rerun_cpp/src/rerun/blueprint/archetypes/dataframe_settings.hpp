@@ -20,13 +20,13 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the dataframe view
     struct DataframeSettings {
-        /// The kind of table to display.
+        /// The kind of table to display
         std::optional<rerun::blueprint::components::DataframeMode> mode;
 
-        /// The primary sort key (time range mode only).
+        /// The primary sort key (time range mode only)
         std::optional<rerun::blueprint::components::SortKey> sort_key;
 
-        /// The sort order.
+        /// The sort order (time range mode only)
         std::optional<rerun::blueprint::components::SortOrder> sort_order;
 
       public:
@@ -40,21 +40,21 @@ namespace rerun::blueprint::archetypes {
         DataframeSettings() = default;
         DataframeSettings(DataframeSettings&& other) = default;
 
-        /// The kind of table to display.
+        /// The kind of table to display
         DataframeSettings with_mode(rerun::blueprint::components::DataframeMode _mode) && {
             mode = std::move(_mode);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The primary sort key (time range mode only).
+        /// The primary sort key (time range mode only)
         DataframeSettings with_sort_key(rerun::blueprint::components::SortKey _sort_key) && {
             sort_key = std::move(_sort_key);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The sort order.
+        /// The sort order (time range mode only)
         DataframeSettings with_sort_order(rerun::blueprint::components::SortOrder _sort_order) && {
             sort_order = std::move(_sort_order);
             // See: https://github.com/rerun-io/rerun/issues/4027

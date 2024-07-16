@@ -652,14 +652,15 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.DataframeMode".into(), display_name :
-                    "Mode", docstring_md : "The kind of table to display.", },
+                    "Mode", docstring_md : "The kind of table to display", },
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SortKey".into(), display_name :
                     "Sort key", docstring_md :
-                    "The primary sort key (time range mode only).", },
+                    "The primary sort key (time range mode only)", },
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md : "The sort order.", },
+                    "Sort order", docstring_md : "The sort order (time range mode only)",
+                    },
                 ],
             },
         ),
