@@ -26,6 +26,7 @@ from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, 
 from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
 from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
 from .draw_order import DrawOrder, DrawOrderBatch, DrawOrderType
+from .element_type import ElementType, ElementTypeArrayLike, ElementTypeBatch, ElementTypeLike, ElementTypeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
@@ -53,6 +54,7 @@ from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusBatch, RadiusType
 from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
+from .resolution2d import Resolution2D, Resolution2DBatch, Resolution2DType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarBatch, ScalarType
 from .scale3d import Scale3D, Scale3DBatch, Scale3DType
@@ -119,6 +121,11 @@ __all__ = [
     "DrawOrder",
     "DrawOrderBatch",
     "DrawOrderType",
+    "ElementType",
+    "ElementTypeArrayLike",
+    "ElementTypeBatch",
+    "ElementTypeLike",
+    "ElementTypeType",
     "FillRatio",
     "FillRatioBatch",
     "FillRatioType",
@@ -188,6 +195,9 @@ __all__ = [
     "Range1DBatch",
     "Range1DType",
     "Resolution",
+    "Resolution2D",
+    "Resolution2DBatch",
+    "Resolution2DType",
     "ResolutionBatch",
     "ResolutionType",
     "Rotation3D",

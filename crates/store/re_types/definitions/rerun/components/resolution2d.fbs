@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// The width and height of a 2D image.
+struct Resolution2D (
+  "attr.python.aliases": "npt.NDArray[np.int], Sequence[int], Tuple[int, int]",
+  "attr.python.array_aliases": "npt.NDArray[np.int], Sequence[int]",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  wh: rerun.datatypes.UVec2D (order: 100);
+}
