@@ -211,7 +211,7 @@ impl Channel {
                 };
 
                 let Some(channel) = readme.channel else {
-                    eprintln!("{name:?}: skipped");
+                    eprintln!("{name:?}: skipped - missing `channel` in frontmatter");
                     continue;
                 };
 
