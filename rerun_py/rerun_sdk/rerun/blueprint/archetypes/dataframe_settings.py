@@ -35,11 +35,11 @@ class DataframeSettings(Archetype):
         Parameters
         ----------
         mode:
-            The kind of table to display.
+            The kind of table to display
         sort_key:
-            The primary sort key (time range mode only).
+            The primary sort key (time range mode only)
         sort_order:
-            The sort order.
+            The sort order (time range mode only)
 
         """
 
@@ -69,7 +69,7 @@ class DataframeSettings(Archetype):
         default=None,
         converter=blueprint_components.DataframeModeBatch._optional,  # type: ignore[misc]
     )
-    # The kind of table to display.
+    # The kind of table to display
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -78,7 +78,7 @@ class DataframeSettings(Archetype):
         default=None,
         converter=blueprint_components.SortKeyBatch._optional,  # type: ignore[misc]
     )
-    # The primary sort key (time range mode only).
+    # The primary sort key (time range mode only)
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -87,7 +87,7 @@ class DataframeSettings(Archetype):
         default=None,
         converter=blueprint_components.SortOrderBatch._optional,  # type: ignore[misc]
     )
-    # The sort order.
+    # The sort order (time range mode only)
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

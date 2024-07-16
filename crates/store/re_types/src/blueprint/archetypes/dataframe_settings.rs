@@ -21,13 +21,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the dataframe view
 #[derive(Clone, Debug, Copy)]
 pub struct DataframeSettings {
-    /// The kind of table to display.
+    /// The kind of table to display
     pub mode: Option<crate::blueprint::components::DataframeMode>,
 
-    /// The primary sort key (time range mode only).
+    /// The primary sort key (time range mode only)
     pub sort_key: Option<crate::blueprint::components::SortKey>,
 
-    /// The sort order.
+    /// The sort order (time range mode only)
     pub sort_order: Option<crate::blueprint::components::SortOrder>,
 }
 
@@ -202,7 +202,7 @@ impl DataframeSettings {
         }
     }
 
-    /// The kind of table to display.
+    /// The kind of table to display
     #[inline]
     pub fn with_mode(
         mut self,
@@ -212,7 +212,7 @@ impl DataframeSettings {
         self
     }
 
-    /// The primary sort key (time range mode only).
+    /// The primary sort key (time range mode only)
     #[inline]
     pub fn with_sort_key(
         mut self,
@@ -222,7 +222,7 @@ impl DataframeSettings {
         self
     }
 
-    /// The sort order.
+    /// The sort order (time range mode only)
     #[inline]
     pub fn with_sort_order(
         mut self,
