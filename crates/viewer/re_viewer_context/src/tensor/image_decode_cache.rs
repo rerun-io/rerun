@@ -16,7 +16,7 @@ struct DecodedImageResult {
     last_use_generation: u64,
 }
 
-/// Caches the results of decoding [`ImageEncoded`].
+/// Caches the results of decoding `ImageEncoded`.
 #[derive(Default)]
 pub struct ImageDecodeCache {
     cache: ahash::HashMap<u64, DecodedImageResult>,
