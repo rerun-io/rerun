@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::DepthImage,
-    components::DepthMeter,
-    datatypes::{TensorBuffer, TensorData, TensorDimension},
+    components::{ChannelDataType, DepthMeter, Resolution2D},
     Archetype as _, AsComponents as _,
 };
 
@@ -12,20 +11,9 @@ mod util;
 #[test]
 fn depth_image_roundtrip() {
     let all_expected = [DepthImage {
-        data: TensorData {
-            shape: vec![
-                TensorDimension {
-                    size: 2,
-                    name: Some("height".into()),
-                },
-                TensorDimension {
-                    size: 3,
-                    name: Some("width".into()),
-                },
-            ],
-            buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
-        }
-        .into(),
+        data: vec![1, 2, 3, 4, 5, 6].into(),
+        resolution: Resolution2D::new(3, 2),
+        data_type: ChannelDataType::U8,
         meter: Some(DepthMeter::from(1000.0)),
         draw_order: None,
         colormap: None,
@@ -40,7 +28,7 @@ fn depth_image_roundtrip() {
             .unwrap(),
     ];
 
-    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();
+    let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.Blob"])].into();
 
     for (expected, serialized) in all_expected.into_iter().zip(all_arch_serialized) {
         for (field, array) in &serialized {

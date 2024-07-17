@@ -266,6 +266,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ChannelDataType as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The innermost datatype of an image.\n\nHow individual color channel components are encoded.",
+                placeholder: Some(ChannelDataType::default().to_arrow()?),
+            },
+        ),
+        (
             <ClassId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -284,6 +291,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
                 placeholder: Some(Color::default().to_arrow()?),
+            },
+        ),
+        (
+            <ColorModel as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type) determines the pixel format of an image.",
+                placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
         (
@@ -459,6 +473,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
                 placeholder: Some(Resolution::default().to_arrow()?),
+            },
+        ),
+        (
+            <Resolution2D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The width and height of a 2D image.",
+                placeholder: Some(Resolution2D::default().to_arrow()?),
             },
         ),
         (

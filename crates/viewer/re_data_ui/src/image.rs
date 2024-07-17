@@ -4,12 +4,12 @@ use itertools::Itertools as _;
 use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components::{ClassId, Colormap, DepthMeter};
+use re_types::components::{ClassId, ColorModel, Colormap, DepthMeter};
 use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{TensorDataMeaning, TensorElement};
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    gpu_bridge, Annotations, TensorStats, TensorStatsCache, UiLayout, ViewerContext,
+    gpu_bridge, Annotations, ImageInfo, TensorStats, TensorStatsCache, UiLayout, ViewerContext,
 };
 
 use crate::image_meaning::image_meaning_for_entity;
@@ -211,7 +211,7 @@ pub fn tensor_ui(
 
                     if let Some(pointer_pos) = ui.ctx().pointer_latest_pos() {
                         let image_rect = response.rect;
-                        show_zoomed_image_region_tooltip(
+                        show_zoomed_tensor_region_tooltip(
                             render_ctx,
                             ui,
                             response,
@@ -435,7 +435,7 @@ pub fn tensor_summary_ui(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn show_zoomed_image_region_tooltip(
+fn show_zoomed_tensor_region_tooltip(
     render_ctx: &re_renderer::RenderContext,
     parent_ui: &egui::Ui,
     response: egui::Response,
@@ -466,11 +466,11 @@ fn show_zoomed_image_region_tooltip(
                     show_zoomed_image_region_area_outline(
                         parent_ui.ctx(),
                         response_rect,
-                        tensor,
+                        egui::vec2(w as f32, h as f32),
                         center_texel,
                         image_rect,
                     );
-                    show_zoomed_image_region(
+                    show_zoomed_tensor_region(
                         render_ctx,
                         ui,
                         tensor_data_row_id,
@@ -494,18 +494,14 @@ const ZOOMED_IMAGE_TEXEL_RADIUS: isize = 10;
 pub fn show_zoomed_image_region_area_outline(
     egui_ctx: &egui::Context,
     ui_clip_rect: egui::Rect,
-    tensor: &TensorData,
+    image_resolution: egui::Vec2,
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
     use egui::{pos2, remap, Rect};
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else {
-        return;
-    };
-
-    let width = width as f32;
-    let height = height as f32;
+    let width = image_resolution.x;
+    let height = image_resolution.y;
 
     // Show where on the original image the zoomed-in region is at:
     // The area shown is ZOOMED_IMAGE_TEXEL_RADIUS _surrounding_ the center.
@@ -532,28 +528,39 @@ pub fn show_zoomed_image_region_area_outline(
 pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    tensor_data_row_id: RowId,
-    tensor: &TensorData,
+    image: &ImageInfo,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
     meaning: TensorDataMeaning,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
-    colormap: Option<Colormap>,
 ) {
+    let texture = match gpu_bridge::image_to_gpu(
+        render_ctx,
+        debug_name,
+        image,
+        meaning,
+        tensor_stats,
+        annotations,
+    ) {
+        Ok(texture) => texture,
+        Err(err) => {
+            ui.label(format!("Error: {err}"));
+            return;
+        }
+    };
+
     if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
         ui,
-        tensor_data_row_id,
-        tensor,
-        tensor_stats,
+        image,
+        texture,
         annotations,
         meaning,
         meter,
         debug_name,
         center_texel,
-        colormap,
     ) {
         ui.label(format!("Error: {err}"));
     }
@@ -562,6 +569,196 @@ pub fn show_zoomed_image_region(
 /// `meter`: iff this is a depth map, how long is one meter?
 #[allow(clippy::too_many_arguments)]
 fn try_show_zoomed_image_region(
+    render_ctx: &re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    image: &ImageInfo,
+    texture: ColormappedTexture,
+    annotations: &Annotations,
+    meaning: TensorDataMeaning,
+    meter: Option<f32>,
+    debug_name: &str,
+    center_texel: [isize; 2],
+) -> anyhow::Result<()> {
+    let (width, height) = (image.width(), image.height());
+
+    const POINTS_PER_TEXEL: f32 = 5.0;
+    let size = Vec2::splat(((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32) * POINTS_PER_TEXEL);
+
+    let (_id, zoom_rect) = ui.allocate_space(size);
+    let painter = ui.painter();
+
+    painter.rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
+
+    let center_of_center_texel = egui::vec2(
+        (center_texel[0] as f32) + 0.5,
+        (center_texel[1] as f32) + 0.5,
+    );
+
+    // Paint the zoomed in region:
+    {
+        let image_rect_on_screen = egui::Rect::from_min_size(
+            zoom_rect.center() - POINTS_PER_TEXEL * center_of_center_texel,
+            POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
+        );
+
+        gpu_bridge::render_image(
+            render_ctx,
+            &painter.with_clip_rect(zoom_rect),
+            image_rect_on_screen,
+            texture.clone(),
+            egui::TextureOptions::NEAREST,
+            debug_name,
+        )?;
+    }
+
+    // Outline the center texel, to indicate which texel we're printing the values of:
+    {
+        let center_texel_rect =
+            egui::Rect::from_center_size(zoom_rect.center(), Vec2::splat(POINTS_PER_TEXEL));
+        painter.rect_stroke(center_texel_rect.expand(1.0), 0.0, (1.0, Color32::BLACK));
+        painter.rect_stroke(center_texel_rect, 0.0, (1.0, Color32::WHITE));
+    }
+
+    let [x, y] = center_texel;
+    if 0 <= x && (x as u32) < width && 0 <= y && (y as u32) < height {
+        ui.separator();
+
+        ui.vertical(|ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+
+            image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meaning, meter);
+
+            // Show a big sample of the color of the middle texel:
+            let (rect, _) =
+                ui.allocate_exact_size(Vec2::splat(ui.available_height()), egui::Sense::hover());
+            // Position texture so that the center texel is at the center of the rect:
+            let zoom = rect.width();
+            let image_rect_on_screen = egui::Rect::from_min_size(
+                rect.center() - zoom * center_of_center_texel,
+                zoom * egui::vec2(width as f32, height as f32),
+            );
+            gpu_bridge::render_image(
+                render_ctx,
+                &ui.painter().with_clip_rect(rect),
+                image_rect_on_screen,
+                texture,
+                egui::TextureOptions::NEAREST,
+                debug_name,
+            )
+        })
+        .inner?;
+    }
+    Ok(())
+}
+
+fn image_pixel_value_ui(
+    ui: &mut egui::Ui,
+    image: &ImageInfo,
+    annotations: &Annotations,
+    [x, y]: [u32; 2],
+    meaning: TensorDataMeaning,
+    meter: Option<f32>,
+) {
+    egui::Grid::new("hovered pixel properties").show(ui, |ui| {
+        ui.label("Position:");
+        ui.label(format!("{x}, {y}"));
+        ui.end_row();
+
+        // Check for annotations on any single-channel image
+        if meaning == TensorDataMeaning::ClassId {
+            if let Some(raw_value) = image.get_xyc(x, y, 0) {
+                if let (TensorDataMeaning::ClassId, Some(u16_val)) =
+                    (meaning, raw_value.try_as_u16())
+                {
+                    ui.label("Label:");
+                    ui.label(
+                        annotations
+                            .resolved_class_description(Some(ClassId::from(u16_val)))
+                            .annotation_info()
+                            .label(None)
+                            .unwrap_or_else(|| u16_val.to_string()),
+                    );
+                    ui.end_row();
+                };
+            }
+        }
+        if let Some(meter) = meter {
+            // This is a depth map
+            if let Some(raw_value) = image.get_xyc(x, y, 0) {
+                let raw_value = raw_value.as_f64();
+                let meters = raw_value / (meter as f64);
+                ui.label("Depth:");
+                if meters < 1.0 {
+                    ui.monospace(format!("{:.1} mm", meters * 1e3));
+                } else {
+                    ui.monospace(format!("{meters:.3} m"));
+                }
+            }
+        }
+    });
+
+    let text = match image.color_model {
+        None => image.get_xyc(x, y, 0).map(|v| format!("Val: {v}")),
+
+        Some(ColorModel::L) => image.get_xyc(x, y, 0).map(|v| format!("L: {v}")),
+
+        Some(ColorModel::Rgb) => {
+            if let Some([r, g, b]) = {
+                if let [Some(r), Some(g), Some(b)] = [
+                    image.get_xyc(x, y, 0),
+                    image.get_xyc(x, y, 1),
+                    image.get_xyc(x, y, 2),
+                ] {
+                    Some([r, g, b])
+                } else {
+                    None
+                }
+            } {
+                match (r, g, b) {
+                    (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
+                        Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
+                    }
+                    _ => Some(format!("R: {r}, G: {g}, B: {b}")),
+                }
+            } else {
+                None
+            }
+        }
+
+        Some(ColorModel::Rgba) => {
+            if let (Some(r), Some(g), Some(b), Some(a)) = (
+                image.get_xyc(x, y, 0),
+                image.get_xyc(x, y, 1),
+                image.get_xyc(x, y, 2),
+                image.get_xyc(x, y, 3),
+            ) {
+                match (r, g, b, a) {
+                    (
+                        TensorElement::U8(r),
+                        TensorElement::U8(g),
+                        TensorElement::U8(b),
+                        TensorElement::U8(a),
+                    ) => Some(format!(
+                        "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                    )),
+                    _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+                }
+            } else {
+                None
+            }
+        }
+    };
+
+    if let Some(text) = text {
+        ui.label(text);
+    } else {
+        ui.label("No Value");
+    }
+}
+
+/// `meter`: iff this is a depth map, how long is one meter?
+#[allow(clippy::too_many_arguments)]
+pub fn show_zoomed_tensor_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     tensor_data_row_id: RowId,
@@ -573,12 +770,8 @@ fn try_show_zoomed_image_region(
     debug_name: &str,
     center_texel: [isize; 2],
     colormap: Option<Colormap>,
-) -> anyhow::Result<()> {
-    let Some([height, width, _]) = tensor.image_height_width_channels() else {
-        return Ok(());
-    };
-
-    let texture = gpu_bridge::tensor_to_gpu(
+) {
+    let texture = match gpu_bridge::tensor_to_gpu(
         render_ctx,
         debug_name,
         tensor_data_row_id,
@@ -587,7 +780,59 @@ fn try_show_zoomed_image_region(
         tensor_stats,
         annotations,
         colormap,
-    )?;
+    ) {
+        Ok(texture) => texture,
+        Err(err) => {
+            ui.label(format!("Error: {err}"));
+            return;
+        }
+    };
+
+    if let Err(err) = try_show_zoomed_tensor_region(
+        render_ctx,
+        ui,
+        tensor,
+        texture,
+        annotations,
+        meaning,
+        meter,
+        debug_name,
+        center_texel,
+    ) {
+        ui.label(format!("Error: {err}"));
+    }
+}
+
+/// `meter`: iff this is a depth map, how long is one meter?
+#[allow(clippy::too_many_arguments)]
+fn try_show_zoomed_tensor_region(
+    render_ctx: &re_renderer::RenderContext,
+    ui: &mut egui::Ui,
+    tensor: &TensorData,
+    texture: ColormappedTexture,
+    annotations: &Annotations,
+    meaning: TensorDataMeaning,
+    meter: Option<f32>,
+    debug_name: &str,
+    center_texel: [isize; 2],
+) -> anyhow::Result<()> {
+    let Some([height, width, num_channels]) = tensor.image_height_width_channels() else {
+        return Ok(());
+    };
+
+    let color_model = match meaning {
+        TensorDataMeaning::Unknown => match num_channels {
+            // TODO(#6386): remove this code
+            1 => Some(ColorModel::L),
+            3 => Some(ColorModel::Rgb),
+            4 => Some(ColorModel::Rgba),
+            _ => {
+                return Ok(());
+            }
+        },
+
+        TensorDataMeaning::ClassId | TensorDataMeaning::Depth => None,
+    };
 
     const POINTS_PER_TEXEL: f32 = 5.0;
     let size = Vec2::splat(((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32) * POINTS_PER_TEXEL);
@@ -597,15 +842,15 @@ fn try_show_zoomed_image_region(
 
     painter.rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
 
+    let center_of_center_texel = egui::vec2(
+        (center_texel[0] as f32) + 0.5,
+        (center_texel[1] as f32) + 0.5,
+    );
+
     // Paint the zoomed in region:
     {
         let image_rect_on_screen = egui::Rect::from_min_size(
-            zoom_rect.center()
-                - POINTS_PER_TEXEL
-                    * egui::vec2(
-                        (center_texel[0] as f32) + 0.5,
-                        (center_texel[1] as f32) + 0.5,
-                    ),
+            zoom_rect.center() - POINTS_PER_TEXEL * center_of_center_texel,
             POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
         );
 
@@ -634,7 +879,15 @@ fn try_show_zoomed_image_region(
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-            tensor_pixel_value_ui(ui, tensor, annotations, [x as _, y as _], meaning, meter);
+            tensor_pixel_value_ui(
+                ui,
+                tensor,
+                color_model,
+                annotations,
+                [x as _, y as _],
+                meaning,
+                meter,
+            );
 
             // Show a big sample of the color of the middle texel:
             let (rect, _) =
@@ -642,12 +895,7 @@ fn try_show_zoomed_image_region(
             // Position texture so that the center texel is at the center of the rect:
             let zoom = rect.width();
             let image_rect_on_screen = egui::Rect::from_min_size(
-                rect.center()
-                    - zoom
-                        * egui::vec2(
-                            (center_texel[0] as f32) + 0.5,
-                            (center_texel[1] as f32) + 0.5,
-                        ),
+                rect.center() - zoom * center_of_center_texel,
                 zoom * egui::vec2(width as f32, height as f32),
             );
             gpu_bridge::render_image(
@@ -667,6 +915,7 @@ fn try_show_zoomed_image_region(
 fn tensor_pixel_value_ui(
     ui: &mut egui::Ui,
     tensor: &TensorData,
+    color_model: Option<ColorModel>,
     annotations: &Annotations,
     [x, y]: [u64; 2],
     meaning: TensorDataMeaning,
@@ -678,7 +927,7 @@ fn tensor_pixel_value_ui(
         ui.end_row();
 
         // Check for annotations on any single-channel image
-        if let Some([_, _, 1]) = tensor.image_height_width_channels() {
+        if meaning == TensorDataMeaning::ClassId {
             if let Some(raw_value) = tensor.get(&[y, x]) {
                 if let (TensorDataMeaning::ClassId, Some(u16_val)) =
                     (meaning, raw_value.try_as_u16())
@@ -710,72 +959,69 @@ fn tensor_pixel_value_ui(
         }
     });
 
-    let text = if let Some([_, _, channel]) = tensor.image_height_width_channels() {
-        match channel {
-            1 => tensor
-                .get_with_image_coords(x, y, 0)
-                .map(|v| format!("Val: {v}")),
-            3 => {
-                // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
-                if let Some([r, g, b]) = match &tensor.buffer {
-                    TensorBuffer::Nv12(_) => tensor
-                        .get_nv12_pixel(x, y)
-                        .map(|rgb| rgb.map(TensorElement::U8)),
-                    TensorBuffer::Yuy2(_) => tensor
-                        .get_yuy2_pixel(x, y)
-                        .map(|rgb| rgb.map(TensorElement::U8)),
-                    _ => {
-                        if let [Some(r), Some(g), Some(b)] = [
-                            tensor.get_with_image_coords(x, y, 0),
-                            tensor.get_with_image_coords(x, y, 1),
-                            tensor.get_with_image_coords(x, y, 2),
-                        ] {
-                            Some([r, g, b])
-                        } else {
-                            None
-                        }
+    let text = match color_model {
+        None => tensor
+            .get_with_image_coords(x, y, 0)
+            .map(|v| format!("Val: {v}")),
+
+        Some(ColorModel::L) => tensor
+            .get_with_image_coords(x, y, 0)
+            .map(|v| format!("L: {v}")),
+
+        Some(ColorModel::Rgb) => {
+            if let Some([r, g, b]) = match &tensor.buffer {
+                TensorBuffer::Nv12(_) => tensor
+                    .get_nv12_pixel(x, y)
+                    .map(|rgb| rgb.map(TensorElement::U8)),
+
+                TensorBuffer::Yuy2(_) => tensor
+                    .get_yuy2_pixel(x, y)
+                    .map(|rgb| rgb.map(TensorElement::U8)),
+                _ => {
+                    if let [Some(r), Some(g), Some(b)] = [
+                        tensor.get_with_image_coords(x, y, 0),
+                        tensor.get_with_image_coords(x, y, 1),
+                        tensor.get_with_image_coords(x, y, 2),
+                    ] {
+                        Some([r, g, b])
+                    } else {
+                        None
                     }
-                } {
-                    match (r, g, b) {
-                        (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
-                            Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
-                        }
-                        _ => Some(format!("R: {r}, G: {g}, B: {b}")),
-                    }
-                } else {
-                    None
                 }
-            }
-            4 => {
-                // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
-                if let (Some(r), Some(g), Some(b), Some(a)) = (
-                    tensor.get_with_image_coords(x, y, 0),
-                    tensor.get_with_image_coords(x, y, 1),
-                    tensor.get_with_image_coords(x, y, 2),
-                    tensor.get_with_image_coords(x, y, 3),
-                ) {
-                    match (r, g, b, a) {
-                        (
-                            TensorElement::U8(r),
-                            TensorElement::U8(g),
-                            TensorElement::U8(b),
-                            TensorElement::U8(a),
-                        ) => Some(format!(
-                            "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
-                        )),
-                        _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+            } {
+                match (r, g, b) {
+                    (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
+                        Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
                     }
-                } else {
-                    None
+                    _ => Some(format!("R: {r}, G: {g}, B: {b}")),
                 }
+            } else {
+                None
             }
-            channel => Some(format!("Cannot preview {channel}-size channel image")),
         }
-    } else {
-        Some(format!(
-            "Cannot preview tensors with a shape of {:?}",
-            tensor.shape()
-        ))
+
+        Some(ColorModel::Rgba) => {
+            if let (Some(r), Some(g), Some(b), Some(a)) = (
+                tensor.get_with_image_coords(x, y, 0),
+                tensor.get_with_image_coords(x, y, 1),
+                tensor.get_with_image_coords(x, y, 2),
+                tensor.get_with_image_coords(x, y, 3),
+            ) {
+                match (r, g, b, a) {
+                    (
+                        TensorElement::U8(r),
+                        TensorElement::U8(g),
+                        TensorElement::U8(b),
+                        TensorElement::U8(a),
+                    ) => Some(format!(
+                        "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                    )),
+                    _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+                }
+            } else {
+                None
+            }
+        }
     };
 
     if let Some(text) = text {

@@ -17,7 +17,7 @@ impl TensorStatsCache {
         *self
             .0
             .entry(key)
-            .or_insert_with(|| TensorStats::new(tensor))
+            .or_insert_with(|| TensorStats::from_tensor(tensor))
     }
 }
 
