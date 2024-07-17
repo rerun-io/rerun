@@ -19,8 +19,8 @@ use datatype_editors::{
 };
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, DataframeMode, LockRangeDuringZoom, SortKey, SortOrder, ViewFit,
-        Visible,
+        BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, SortKey, SortOrder,
+        ViewFit, Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
