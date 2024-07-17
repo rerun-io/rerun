@@ -13,7 +13,7 @@ use re_renderer::{
     RenderContext,
 };
 use re_types::components::{ClassId, ColorModel, Colormap};
-use re_types::{components::ElementType, tensor_data::TensorDataMeaning};
+use re_types::{components::ChannelDataType, tensor_data::TensorDataMeaning};
 
 use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageInfo, TensorStats};
 
@@ -31,13 +31,13 @@ fn generate_texture_key(image: &ImageInfo, meaning: TensorDataMeaning) -> u64 {
         blob: _, // we hash `blob_row_id` instead; much faster!
 
         resolution,
-        element_type,
+        data_type,
         color_model,
 
         colormap: _, // No need to upload new texture when this changes
     } = image;
 
-    hash((blob_row_id, resolution, element_type, color_model, meaning))
+    hash((blob_row_id, resolution, data_type, color_model, meaning))
 }
 
 pub fn image_to_gpu(
@@ -50,7 +50,7 @@ pub fn image_to_gpu(
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!(format!(
         "{:?} resolution: {:?}, {:?}, {}",
-        meaning, image.resolution, image.color_model, image.element_type,
+        meaning, image.resolution, image.color_model, image.data_type,
     ));
 
     let texture_key = generate_texture_key(image, meaning);
@@ -82,23 +82,23 @@ fn color_image_to_gpu(
 ) -> Result<ColormappedTexture, anyhow::Error> {
     re_tracing::profile_function!();
 
-    let element_type = image.element_type;
+    let data_type = image.data_type;
     let color_model = image.color_model.unwrap_or_default();
 
     let texture_handle = get_or_create_texture(render_ctx, texture_key, || {
         // Profile creation of the texture, but not cache hits (those take close to no time, which would just add profiler overhead).
         re_tracing::profile_function!();
 
-        let (data, format) = match (color_model, element_type) {
+        let (data, format) = match (color_model, data_type) {
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
             // Why? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
-            (ColorModel::Rgb, ElementType::U8) => (
+            (ColorModel::Rgb, ChannelDataType::U8) => (
                 pad_rgb_to_rgba(&image.blob, u8::MAX).into(),
                 TextureFormat::Rgba8Unorm,
             ),
 
-            (ColorModel::Rgba, ElementType::U8) => {
+            (ColorModel::Rgba, ChannelDataType::U8) => {
                 (cast_slice_to_cow(&image.blob), TextureFormat::Rgba8Unorm)
             }
 
@@ -130,12 +130,12 @@ fn color_image_to_gpu(
         [-1.0, 1.0]
     } else {
         // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
-        super::image_data_range_heuristic(tensor_stats, element_type)?
+        super::image_data_range_heuristic(tensor_stats, data_type)?
     };
 
     // TODO(emilk): let the user specify the color space.
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || super::image_decode_srgb_gamma_heuristic(tensor_stats, element_type, color_model)?;
+        || super::image_decode_srgb_gamma_heuristic(tensor_stats, data_type, color_model)?;
 
     let color_mapper = if texture_format.components() == 1 {
         // TODO(andreas): support colormap property
@@ -185,7 +185,7 @@ fn depth_image_to_gpu(
 ) -> Result<ColormappedTexture, anyhow::Error> {
     re_tracing::profile_function!();
 
-    let range = data_range(tensor_stats, image.element_type);
+    let range = data_range(tensor_stats, image.data_type);
 
     let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image)
@@ -269,12 +269,12 @@ fn segmentation_image_to_gpu(
     })
 }
 
-fn data_range(tensor_stats: &TensorStats, element_type: ElementType) -> [f32; 2] {
+fn data_range(tensor_stats: &TensorStats, data_type: ChannelDataType) -> [f32; 2] {
     let default_min = 0.0;
-    let default_max = if element_type.is_float() {
+    let default_max = if data_type.is_float() {
         1.0
     } else {
-        element_type.max_value()
+        data_type.max_value()
     };
 
     let range = tensor_stats
@@ -313,28 +313,28 @@ fn general_texture_creation_desc_from_image<'a>(
 
     let (data, format) = match color_model {
         ColorModel::L => {
-            match image.element_type {
-                ElementType::U8 => (Cow::Borrowed(buf), TextureFormat::R8Uint),
-                ElementType::U16 => (Cow::Borrowed(buf), TextureFormat::R16Uint),
-                ElementType::U32 => (Cow::Borrowed(buf), TextureFormat::R32Uint),
-                ElementType::U64 => (
+            match image.data_type {
+                ChannelDataType::U8 => (Cow::Borrowed(buf), TextureFormat::R8Uint),
+                ChannelDataType::U16 => (Cow::Borrowed(buf), TextureFormat::R16Uint),
+                ChannelDataType::U32 => (Cow::Borrowed(buf), TextureFormat::R32Uint),
+                ChannelDataType::U64 => (
                     // wgpu doesn't support u64 textures
                     narrow_u64_to_f32s(&image.to_slice()),
                     TextureFormat::R32Float,
                 ),
 
-                ElementType::I8 => (Cow::Borrowed(buf), TextureFormat::R8Sint),
-                ElementType::I16 => (Cow::Borrowed(buf), TextureFormat::R16Sint),
-                ElementType::I32 => (Cow::Borrowed(buf), TextureFormat::R32Sint),
-                ElementType::I64 => (
+                ChannelDataType::I8 => (Cow::Borrowed(buf), TextureFormat::R8Sint),
+                ChannelDataType::I16 => (Cow::Borrowed(buf), TextureFormat::R16Sint),
+                ChannelDataType::I32 => (Cow::Borrowed(buf), TextureFormat::R32Sint),
+                ChannelDataType::I64 => (
                     // wgpu doesn't support i64 textures
                     narrow_i64_to_f32s(&image.to_slice()),
                     TextureFormat::R32Float,
                 ),
 
-                ElementType::F16 => (Cow::Borrowed(buf), TextureFormat::R16Float),
-                ElementType::F32 => (Cow::Borrowed(buf), TextureFormat::R32Float),
-                ElementType::F64 => (
+                ChannelDataType::F16 => (Cow::Borrowed(buf), TextureFormat::R16Float),
+                ChannelDataType::F32 => (Cow::Borrowed(buf), TextureFormat::R32Float),
+                ChannelDataType::F64 => (
                     // wgpu doesn't support f64 textures
                     narrow_f64_to_f32s(&image.to_slice()),
                     TextureFormat::R32Float,
@@ -348,53 +348,53 @@ fn general_texture_creation_desc_from_image<'a>(
             // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
             // TODO(emilk): tell the shader to ignore the alpha channel instead!
 
-            match image.element_type {
-                ElementType::U8 => (
+            match image.data_type {
+                ChannelDataType::U8 => (
                     pad_rgb_to_rgba(buf, u8::MAX).into(),
                     TextureFormat::Rgba8Uint,
                 ),
-                ElementType::U16 => (
+                ChannelDataType::U16 => (
                     pad_and_cast(&image.to_slice(), u16::MAX),
                     TextureFormat::Rgba16Uint,
                 ),
-                ElementType::U32 => (
+                ChannelDataType::U32 => (
                     pad_and_cast(&image.to_slice(), u32::MAX),
                     TextureFormat::Rgba32Uint,
                 ),
-                ElementType::U64 => (
+                ChannelDataType::U64 => (
                     pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: u64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
-                ElementType::I8 => (
+                ChannelDataType::I8 => (
                     pad_and_cast(&image.to_slice(), i8::MAX),
                     TextureFormat::Rgba8Sint,
                 ),
-                ElementType::I16 => (
+                ChannelDataType::I16 => (
                     pad_and_cast(&image.to_slice(), i16::MAX),
                     TextureFormat::Rgba16Sint,
                 ),
-                ElementType::I32 => (
+                ChannelDataType::I32 => (
                     pad_and_cast(&image.to_slice(), i32::MAX),
                     TextureFormat::Rgba32Sint,
                 ),
-                ElementType::I64 => (
+                ChannelDataType::I64 => (
                     pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: i64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
-                ElementType::F16 => (
+                ChannelDataType::F16 => (
                     pad_and_cast(
                         &image.to_slice(),
                         re_log_types::external::arrow2::types::f16::from_f32(1.0),
                     ),
                     TextureFormat::Rgba16Float,
                 ),
-                ElementType::F32 => (
+                ChannelDataType::F32 => (
                     pad_and_cast(&image.to_slice(), 1.0),
                     TextureFormat::Rgba32Float,
                 ),
-                ElementType::F64 => (
+                ChannelDataType::F64 => (
                     pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: f64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
@@ -404,28 +404,28 @@ fn general_texture_creation_desc_from_image<'a>(
         ColorModel::Rgba => {
             // TODO(emilk): premultiply alpha, or tell the shader to assume unmultiplied alpha
 
-            match image.element_type {
-                ElementType::U8 => (Cow::Borrowed(buf), TextureFormat::Rgba8Uint),
-                ElementType::U16 => (Cow::Borrowed(buf), TextureFormat::Rgba16Uint),
-                ElementType::U32 => (Cow::Borrowed(buf), TextureFormat::Rgba32Uint),
-                ElementType::U64 => (
+            match image.data_type {
+                ChannelDataType::U8 => (Cow::Borrowed(buf), TextureFormat::Rgba8Uint),
+                ChannelDataType::U16 => (Cow::Borrowed(buf), TextureFormat::Rgba16Uint),
+                ChannelDataType::U32 => (Cow::Borrowed(buf), TextureFormat::Rgba32Uint),
+                ChannelDataType::U64 => (
                     // wgpu doesn't support u64 textures
                     narrow_u64_to_f32s(&image.to_slice()),
                     TextureFormat::Rgba32Float,
                 ),
 
-                ElementType::I8 => (Cow::Borrowed(buf), TextureFormat::Rgba8Sint),
-                ElementType::I16 => (Cow::Borrowed(buf), TextureFormat::Rgba16Sint),
-                ElementType::I32 => (Cow::Borrowed(buf), TextureFormat::Rgba32Sint),
-                ElementType::I64 => (
+                ChannelDataType::I8 => (Cow::Borrowed(buf), TextureFormat::Rgba8Sint),
+                ChannelDataType::I16 => (Cow::Borrowed(buf), TextureFormat::Rgba16Sint),
+                ChannelDataType::I32 => (Cow::Borrowed(buf), TextureFormat::Rgba32Sint),
+                ChannelDataType::I64 => (
                     // wgpu doesn't support i64 textures
                     narrow_i64_to_f32s(&image.to_slice()),
                     TextureFormat::Rgba32Float,
                 ),
 
-                ElementType::F16 => (Cow::Borrowed(buf), TextureFormat::Rgba16Float),
-                ElementType::F32 => (Cow::Borrowed(buf), TextureFormat::Rgba32Float),
-                ElementType::F64 => (
+                ChannelDataType::F16 => (Cow::Borrowed(buf), TextureFormat::Rgba16Float),
+                ChannelDataType::F32 => (Cow::Borrowed(buf), TextureFormat::Rgba32Float),
+                ChannelDataType::F64 => (
                     // wgpu doesn't support f64 textures
                     narrow_f64_to_f32s(&image.to_slice()),
                     TextureFormat::Rgba32Float,

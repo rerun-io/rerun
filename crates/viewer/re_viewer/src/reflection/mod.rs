@@ -266,6 +266,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ChannelDataType as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The innermost datatype of an image.\n\nHow individual color channel components are encoded.",
+                placeholder: Some(ChannelDataType::default().to_arrow()?),
+            },
+        ),
+        (
             <ClassId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -289,7 +296,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ColorModel as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ElementType`](https://rerun.io/docs/reference/types/components/element_type) determines the pixel format of an image.",
+                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type) determines the pixel format of an image.",
                 placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
@@ -319,13 +326,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
                 placeholder: Some(DrawOrder::default().to_arrow()?),
-            },
-        ),
-        (
-            <ElementType as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The innermost datatype of an image.\n\nHow individual color components are encoded.",
-                placeholder: Some(ElementType::default().to_arrow()?),
             },
         ),
         (

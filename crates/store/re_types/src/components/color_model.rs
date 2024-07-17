@@ -20,7 +20,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specified what color components are present in an [`archetypes::Image`][crate::archetypes::Image].
 ///
-/// This combined with [`components::ElementType`][crate::components::ElementType] determines the pixel format of an image.
+/// This combined with [`components::ChannelDataType`][crate::components::ChannelDataType] determines the pixel format of an image.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum ColorModel {
     /// Grayscale luminance intencity/brightness/value, sometimes called `Y`

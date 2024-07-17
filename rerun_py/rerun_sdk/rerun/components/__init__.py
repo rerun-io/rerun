@@ -19,6 +19,13 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
 from .blob import Blob, BlobBatch, BlobType
+from .channel_data_type import (
+    ChannelDataType,
+    ChannelDataTypeArrayLike,
+    ChannelDataTypeBatch,
+    ChannelDataTypeLike,
+    ChannelDataTypeType,
+)
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch, ClearIsRecursiveType
 from .color import Color, ColorBatch, ColorType
@@ -27,7 +34,6 @@ from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, 
 from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
 from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
 from .draw_order import DrawOrder, DrawOrderBatch, DrawOrderType
-from .element_type import ElementType, ElementTypeArrayLike, ElementTypeBatch, ElementTypeLike, ElementTypeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
@@ -99,6 +105,11 @@ __all__ = [
     "Blob",
     "BlobBatch",
     "BlobType",
+    "ChannelDataType",
+    "ChannelDataTypeArrayLike",
+    "ChannelDataTypeBatch",
+    "ChannelDataTypeLike",
+    "ChannelDataTypeType",
     "ClassId",
     "ClassIdBatch",
     "ClassIdType",
@@ -127,11 +138,6 @@ __all__ = [
     "DrawOrder",
     "DrawOrderBatch",
     "DrawOrderType",
-    "ElementType",
-    "ElementTypeArrayLike",
-    "ElementTypeBatch",
-    "ElementTypeLike",
-    "ElementTypeType",
     "FillRatio",
     "FillRatioBatch",
     "FillRatioType",

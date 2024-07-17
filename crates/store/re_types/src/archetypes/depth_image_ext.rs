@@ -1,5 +1,5 @@
 use crate::{
-    components::{ElementType, Resolution2D},
+    components::{ChannelDataType, Resolution2D},
     datatypes::{Blob, TensorBuffer, TensorData},
     image::{find_non_empty_dim_indices, ImageConstructionError},
 };
@@ -27,18 +27,18 @@ impl DepthImage {
             return Err(ImageConstructionError::BadImageShape(tensor_data.shape));
         }
 
-        let (blob, element_type) = match tensor_data.buffer {
-            TensorBuffer::U8(buffer) => (Blob(buffer), ElementType::U8),
-            TensorBuffer::U16(buffer) => (Blob(buffer.cast_to_u8()), ElementType::U16),
-            TensorBuffer::U32(buffer) => (Blob(buffer.cast_to_u8()), ElementType::U32),
-            TensorBuffer::U64(buffer) => (Blob(buffer.cast_to_u8()), ElementType::U64),
-            TensorBuffer::I8(buffer) => (Blob(buffer.cast_to_u8()), ElementType::I8),
-            TensorBuffer::I16(buffer) => (Blob(buffer.cast_to_u8()), ElementType::I16),
-            TensorBuffer::I32(buffer) => (Blob(buffer.cast_to_u8()), ElementType::I32),
-            TensorBuffer::I64(buffer) => (Blob(buffer.cast_to_u8()), ElementType::I64),
-            TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ElementType::F16),
-            TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ElementType::F32),
-            TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ElementType::F64),
+        let (blob, data_type) = match tensor_data.buffer {
+            TensorBuffer::U8(buffer) => (Blob(buffer), ChannelDataType::U8),
+            TensorBuffer::U16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::U16),
+            TensorBuffer::U32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::U32),
+            TensorBuffer::U64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::U64),
+            TensorBuffer::I8(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I8),
+            TensorBuffer::I16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I16),
+            TensorBuffer::I32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I32),
+            TensorBuffer::I64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::I64),
+            TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F16),
+            TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F32),
+            TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F64),
             TensorBuffer::Nv12(_) | TensorBuffer::Yuy2(_) => {
                 return Err(ImageConstructionError::ChromaDownsamplingNotSupported);
             }
@@ -55,7 +55,7 @@ impl DepthImage {
         Ok(Self {
             data: blob.into(),
             resolution,
-            element_type,
+            data_type,
             draw_order: None,
             meter: None,
             colormap: None,

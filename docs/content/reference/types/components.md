@@ -18,6 +18,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
+* [`ChannelDataType`](components/channel_data_type.md): The innermost datatype of an image.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
@@ -26,7 +27,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
 * [`DrawOrder`](components/draw_order.md): Draw order of 2D elements. Higher values are drawn on top of lower values.
-* [`ElementType`](components/element_type.md): The innermost datatype of an image.
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
 * [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.

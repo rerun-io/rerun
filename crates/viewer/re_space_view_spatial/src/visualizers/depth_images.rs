@@ -266,10 +266,10 @@ impl VisualizerSystem for DepthImageVisualizer {
                     Some(blobs) => blobs?,
                     _ => return Ok(()),
                 };
-                let element_types = match results
-                    .get_required_component_dense::<components::ElementType>(resolver)
+                let data_types = match results
+                    .get_required_component_dense::<components::ChannelDataType>(resolver)
                 {
-                    Some(element_types) => element_types?,
+                    Some(data_types) => data_types?,
                     _ => return Ok(()),
                 };
                 let resolutions = match results
@@ -285,22 +285,14 @@ impl VisualizerSystem for DepthImageVisualizer {
 
                 let mut data = re_query::range_zip_1x5(
                     blobs.range_indexed(),
-                    element_types.range_indexed(),
+                    data_types.range_indexed(),
                     resolutions.range_indexed(),
                     colormap.range_indexed(),
                     depth_meter.range_indexed(),
                     fill_ratio.range_indexed(),
                 )
                 .filter_map(
-                    |(
-                        &index,
-                        blobs,
-                        element_type,
-                        resolution,
-                        colormap,
-                        depth_meter,
-                        fill_ratio,
-                    )| {
+                    |(&index, blobs, data_type, resolution, colormap, depth_meter, fill_ratio)| {
                         let blob = blobs.first()?;
                         Some(DepthImageComponentData {
                             image: ImageInfo {
@@ -308,7 +300,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                                 blob: blob.0.clone(),
                                 resolution: first_copied(resolution)?.0 .0,
                                 color_model: None,
-                                element_type: first_copied(element_type)?,
+                                data_type: first_copied(data_type)?,
                                 colormap: first_copied(colormap),
                             },
                             depth_meter: first_copied(depth_meter),

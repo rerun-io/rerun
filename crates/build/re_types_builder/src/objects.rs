@@ -860,32 +860,32 @@ pub enum Type {
     Float64,
     String,
     Array {
-        elem_type: ElementType,
+        elem_type: ChannelDataType,
         length: usize,
     },
     Vector {
-        elem_type: ElementType,
+        elem_type: ChannelDataType,
     },
     Object(String), // fqname
 }
 
-impl From<ElementType> for Type {
-    fn from(typ: ElementType) -> Self {
+impl From<ChannelDataType> for Type {
+    fn from(typ: ChannelDataType) -> Self {
         match typ {
-            ElementType::UInt8 => Self::UInt8,
-            ElementType::UInt16 => Self::UInt16,
-            ElementType::UInt32 => Self::UInt32,
-            ElementType::UInt64 => Self::UInt64,
-            ElementType::Int8 => Self::Int8,
-            ElementType::Int16 => Self::Int16,
-            ElementType::Int32 => Self::Int32,
-            ElementType::Int64 => Self::Int64,
-            ElementType::Bool => Self::Bool,
-            ElementType::Float16 => Self::Float16,
-            ElementType::Float32 => Self::Float32,
-            ElementType::Float64 => Self::Float64,
-            ElementType::String => Self::String,
-            ElementType::Object(fqname) => Self::Object(fqname),
+            ChannelDataType::UInt8 => Self::UInt8,
+            ChannelDataType::UInt16 => Self::UInt16,
+            ChannelDataType::UInt32 => Self::UInt32,
+            ChannelDataType::UInt64 => Self::UInt64,
+            ChannelDataType::Int8 => Self::Int8,
+            ChannelDataType::Int16 => Self::Int16,
+            ChannelDataType::Int32 => Self::Int32,
+            ChannelDataType::Int64 => Self::Int64,
+            ChannelDataType::Bool => Self::Bool,
+            ChannelDataType::Float16 => Self::Float16,
+            ChannelDataType::Float32 => Self::Float32,
+            ChannelDataType::Float64 => Self::Float64,
+            ChannelDataType::String => Self::String,
+            ChannelDataType::Object(fqname) => Self::Object(fqname),
         }
     }
 }
@@ -966,7 +966,7 @@ impl Type {
                 Self::Object(union.name().to_owned())
             }
             FbsBaseType::Array => Self::Array {
-                elem_type: ElementType::from_raw_base_type(
+                elem_type: ChannelDataType::from_raw_base_type(
                     enums,
                     objs,
                     field_type,
@@ -976,7 +976,7 @@ impl Type {
                 length: field_type.fixed_length() as usize,
             },
             FbsBaseType::Vector => Self::Vector {
-                elem_type: ElementType::from_raw_base_type(
+                elem_type: ChannelDataType::from_raw_base_type(
                     enums,
                     objs,
                     field_type,
@@ -999,7 +999,7 @@ impl Type {
     }
 
     /// Returns element type for arrays and vectors.
-    pub fn plural_inner(&self) -> Option<&ElementType> {
+    pub fn plural_inner(&self) -> Option<&ChannelDataType> {
         match self {
             Self::Vector { elem_type }
             | Self::Array {
@@ -1025,7 +1025,7 @@ impl Type {
         }
     }
 
-    pub fn vector_inner(&self) -> Option<&ElementType> {
+    pub fn vector_inner(&self) -> Option<&ChannelDataType> {
         self.plural_inner()
             .filter(|_| matches!(self, Self::Vector { .. }))
     }
@@ -1074,7 +1074,7 @@ impl Type {
 /// Flatbuffers doesn't support directly nesting multiple layers of arrays, they
 /// always have to be wrapped into intermediate layers of structs or tables!
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum ElementType {
+pub enum ChannelDataType {
     UInt8,
     UInt16,
     UInt32,
@@ -1091,7 +1091,7 @@ pub enum ElementType {
     Object(String), // fqname
 }
 
-impl ElementType {
+impl ChannelDataType {
     pub fn from_raw_base_type(
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],

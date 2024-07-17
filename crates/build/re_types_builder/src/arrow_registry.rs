@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{ElementType, Object, ObjectField, Type, ATTR_ARROW_SPARSE_UNION};
+use crate::{ChannelDataType, Object, ObjectField, Type, ATTR_ARROW_SPARSE_UNION};
 
 // --- Registry ---
 
@@ -190,23 +190,23 @@ impl ArrowRegistry {
         datatype
     }
 
-    fn arrow_datatype_from_element_type(&self, typ: ElementType) -> LazyDatatype {
+    fn arrow_datatype_from_element_type(&self, typ: ChannelDataType) -> LazyDatatype {
         _ = self;
         match typ {
-            ElementType::UInt8 => LazyDatatype::UInt8,
-            ElementType::UInt16 => LazyDatatype::UInt16,
-            ElementType::UInt32 => LazyDatatype::UInt32,
-            ElementType::UInt64 => LazyDatatype::UInt64,
-            ElementType::Int8 => LazyDatatype::Int8,
-            ElementType::Int16 => LazyDatatype::Int16,
-            ElementType::Int32 => LazyDatatype::Int32,
-            ElementType::Int64 => LazyDatatype::Int64,
-            ElementType::Bool => LazyDatatype::Boolean,
-            ElementType::Float16 => LazyDatatype::Float16,
-            ElementType::Float32 => LazyDatatype::Float32,
-            ElementType::Float64 => LazyDatatype::Float64,
-            ElementType::String => LazyDatatype::Utf8,
-            ElementType::Object(fqname) => LazyDatatype::Unresolved(fqname),
+            ChannelDataType::UInt8 => LazyDatatype::UInt8,
+            ChannelDataType::UInt16 => LazyDatatype::UInt16,
+            ChannelDataType::UInt32 => LazyDatatype::UInt32,
+            ChannelDataType::UInt64 => LazyDatatype::UInt64,
+            ChannelDataType::Int8 => LazyDatatype::Int8,
+            ChannelDataType::Int16 => LazyDatatype::Int16,
+            ChannelDataType::Int32 => LazyDatatype::Int32,
+            ChannelDataType::Int64 => LazyDatatype::Int64,
+            ChannelDataType::Bool => LazyDatatype::Boolean,
+            ChannelDataType::Float16 => LazyDatatype::Float16,
+            ChannelDataType::Float32 => LazyDatatype::Float32,
+            ChannelDataType::Float64 => LazyDatatype::Float64,
+            ChannelDataType::String => LazyDatatype::Utf8,
+            ChannelDataType::Object(fqname) => LazyDatatype::Unresolved(fqname),
         }
     }
 }

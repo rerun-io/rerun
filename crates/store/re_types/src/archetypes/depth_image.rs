@@ -73,8 +73,8 @@ pub struct DepthImage {
     /// The size of the image
     pub resolution: crate::components::Resolution2D,
 
-    /// The element type of the depth image data (U16, F32, …).
-    pub element_type: crate::components::ElementType,
+    /// The data type of the depth image data (U16, F32, …).
+    pub data_type: crate::components::ChannelDataType,
 
     /// An optional floating point value that specifies how long a meter is in the native depth units.
     ///
@@ -110,7 +110,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
     fn heap_size_bytes(&self) -> u64 {
         self.data.heap_size_bytes()
             + self.resolution.heap_size_bytes()
-            + self.element_type.heap_size_bytes()
+            + self.data_type.heap_size_bytes()
             + self.meter.heap_size_bytes()
             + self.colormap.heap_size_bytes()
             + self.point_fill_ratio.heap_size_bytes()
@@ -121,7 +121,7 @@ impl ::re_types_core::SizeBytes for DepthImage {
     fn is_pod() -> bool {
         <crate::components::Blob>::is_pod()
             && <crate::components::Resolution2D>::is_pod()
-            && <crate::components::ElementType>::is_pod()
+            && <crate::components::ChannelDataType>::is_pod()
             && <Option<crate::components::DepthMeter>>::is_pod()
             && <Option<crate::components::Colormap>>::is_pod()
             && <Option<crate::components::FillRatio>>::is_pod()
@@ -134,7 +134,7 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         [
             "rerun.components.Blob".into(),
             "rerun.components.Resolution2D".into(),
-            "rerun.components.ElementType".into(),
+            "rerun.components.ChannelDataType".into(),
         ]
     });
 
@@ -156,7 +156,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
         [
             "rerun.components.Blob".into(),
             "rerun.components.Resolution2D".into(),
-            "rerun.components.ElementType".into(),
+            "rerun.components.ChannelDataType".into(),
             "rerun.components.DepthImageIndicator".into(),
             "rerun.components.DepthMeter".into(),
             "rerun.components.Colormap".into(),
@@ -248,18 +248,18 @@ impl ::re_types_core::Archetype for DepthImage {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DepthImage#resolution")?
         };
-        let element_type = {
+        let data_type = {
             let array = arrays_by_name
-                .get("rerun.components.ElementType")
+                .get("rerun.components.ChannelDataType")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#element_type")?;
-            <crate::components::ElementType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.DepthImage#element_type")?
+                .with_context("rerun.archetypes.DepthImage#data_type")?;
+            <crate::components::ChannelDataType>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#data_type")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.DepthImage#element_type")?
+                .with_context("rerun.archetypes.DepthImage#data_type")?
         };
         let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
             <crate::components::DepthMeter>::from_arrow_opt(&**array)
@@ -301,7 +301,7 @@ impl ::re_types_core::Archetype for DepthImage {
         Ok(Self {
             data,
             resolution,
-            element_type,
+            data_type,
             meter,
             colormap,
             point_fill_ratio,
@@ -318,7 +318,7 @@ impl ::re_types_core::AsComponents for DepthImage {
             Some(Self::indicator()),
             Some((&self.data as &dyn ComponentBatch).into()),
             Some((&self.resolution as &dyn ComponentBatch).into()),
-            Some((&self.element_type as &dyn ComponentBatch).into()),
+            Some((&self.data_type as &dyn ComponentBatch).into()),
             self.meter
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -344,12 +344,12 @@ impl DepthImage {
     pub fn new(
         data: impl Into<crate::components::Blob>,
         resolution: impl Into<crate::components::Resolution2D>,
-        element_type: impl Into<crate::components::ElementType>,
+        data_type: impl Into<crate::components::ChannelDataType>,
     ) -> Self {
         Self {
             data: data.into(),
             resolution: resolution.into(),
-            element_type: element_type.into(),
+            data_type: data_type.into(),
             meter: None,
             colormap: None,
             point_fill_ratio: None,

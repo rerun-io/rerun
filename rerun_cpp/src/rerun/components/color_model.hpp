@@ -17,7 +17,7 @@ namespace arrow {
 namespace rerun::components {
     /// **Component**: Specified what color components are present in an `archetypes::Image`.
     ///
-    /// This combined with `components::ElementType` determines the pixel format of an image.
+    /// This combined with `components::ChannelDataType` determines the pixel format of an image.
     enum class ColorModel : uint8_t {
 
         /// Grayscale luminance intencity/brightness/value, sometimes called `Y`

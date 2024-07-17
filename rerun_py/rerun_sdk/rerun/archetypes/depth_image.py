@@ -69,7 +69,7 @@ class DepthImage(DepthImageExt, Archetype):
         self.__attrs_init__(
             data=None,  # type: ignore[arg-type]
             resolution=None,  # type: ignore[arg-type]
-            element_type=None,  # type: ignore[arg-type]
+            data_type=None,  # type: ignore[arg-type]
             meter=None,  # type: ignore[arg-type]
             colormap=None,  # type: ignore[arg-type]
             point_fill_ratio=None,  # type: ignore[arg-type]
@@ -99,11 +99,11 @@ class DepthImage(DepthImageExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    element_type: components.ElementTypeBatch = field(
+    data_type: components.ChannelDataTypeBatch = field(
         metadata={"component": "required"},
-        converter=components.ElementTypeBatch._required,  # type: ignore[misc]
+        converter=components.ChannelDataTypeBatch._required,  # type: ignore[misc]
     )
-    # The element type of the depth image data (U16, F32, …).
+    # The data type of the depth image data (U16, F32, …).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

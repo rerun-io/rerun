@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use re_chunk::RowId;
 use re_types::{
-    components::{ColorModel, Colormap, ElementType},
+    components::{ChannelDataType, ColorModel, Colormap},
     datatypes::Blob,
     tensor_data::TensorElement,
 };
@@ -23,8 +23,8 @@ pub struct ImageInfo {
     /// Width and height
     pub resolution: [u32; 2],
 
-    /// The element type.
-    pub element_type: ElementType,
+    /// The innermost data type (e.g. `U8`).
+    pub data_type: ChannelDataType,
 
     /// `None` for depth images and segmentation images,
     /// `Some` for color images.
@@ -57,7 +57,7 @@ impl ImageInfo {
     #[inline]
     pub fn bits_per_texel(&self) -> usize {
         // TODO(#6386): use `PixelFormat`
-        self.element_type.bits() * self.num_channels()
+        self.data_type.bits() * self.num_channels()
     }
 
     /// Get the value of the element at the given index.
@@ -80,20 +80,20 @@ impl ImageInfo {
         let stride = width; // TODO(#6008): support stride
         let offset = (y as usize * stride as usize + x as usize) * num_channels + channel as usize;
 
-        match self.element_type {
-            ElementType::U8 => self.blob.get(offset).copied().map(TensorElement::U8),
-            ElementType::U16 => get(&self.blob, offset).map(TensorElement::U16),
-            ElementType::U32 => get(&self.blob, offset).map(TensorElement::U32),
-            ElementType::U64 => get(&self.blob, offset).map(TensorElement::U64),
+        match self.data_type {
+            ChannelDataType::U8 => self.blob.get(offset).copied().map(TensorElement::U8),
+            ChannelDataType::U16 => get(&self.blob, offset).map(TensorElement::U16),
+            ChannelDataType::U32 => get(&self.blob, offset).map(TensorElement::U32),
+            ChannelDataType::U64 => get(&self.blob, offset).map(TensorElement::U64),
 
-            ElementType::I8 => get(&self.blob, offset).map(TensorElement::I8),
-            ElementType::I16 => get(&self.blob, offset).map(TensorElement::I16),
-            ElementType::I32 => get(&self.blob, offset).map(TensorElement::I32),
-            ElementType::I64 => get(&self.blob, offset).map(TensorElement::I64),
+            ChannelDataType::I8 => get(&self.blob, offset).map(TensorElement::I8),
+            ChannelDataType::I16 => get(&self.blob, offset).map(TensorElement::I16),
+            ChannelDataType::I32 => get(&self.blob, offset).map(TensorElement::I32),
+            ChannelDataType::I64 => get(&self.blob, offset).map(TensorElement::I64),
 
-            ElementType::F16 => get(&self.blob, offset).map(TensorElement::F16),
-            ElementType::F32 => get(&self.blob, offset).map(TensorElement::F32),
-            ElementType::F64 => get(&self.blob, offset).map(TensorElement::F64),
+            ChannelDataType::F16 => get(&self.blob, offset).map(TensorElement::F16),
+            ChannelDataType::F32 => get(&self.blob, offset).map(TensorElement::F32),
+            ChannelDataType::F64 => get(&self.blob, offset).map(TensorElement::F64),
         }
     }
 

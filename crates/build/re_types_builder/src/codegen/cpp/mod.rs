@@ -15,7 +15,7 @@ use crate::{
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    ArrowRegistry, Docs, ChannelDataType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
 
@@ -1730,7 +1730,7 @@ fn quote_fill_arrow_array_builder(
                         } else if arrow_builder_type == "ListBuilder" {
                             let field_name = format_ident!("{}", variant.snake_case_name());
 
-                            if *element_type == ElementType::Float16 {
+                            if *element_type == ChannelDataType::Float16 {
                                 // We need an extra cast for float16:
                                 quote! {
                                     ARROW_RETURN_NOT_OK(variant_builder->Append());
@@ -1744,20 +1744,20 @@ fn quote_fill_arrow_array_builder(
                                 }
                             } else {
                                 let type_builder_name = match element_type {
-                                    ElementType::UInt8 => Some("UInt8Builder"),
-                                    ElementType::UInt16 => Some("UInt16Builder"),
-                                    ElementType::UInt32 => Some("UInt32Builder"),
-                                    ElementType::UInt64 => Some("UInt64Builder"),
-                                    ElementType::Int8 => Some("Int8Builder"),
-                                    ElementType::Int16 => Some("Int16Builder"),
-                                    ElementType::Int32 => Some("Int32Builder"),
-                                    ElementType::Int64 => Some("Int64Builder"),
-                                    ElementType::Bool => Some("BoolBuilder"),
-                                    ElementType::Float16 => Some("HalfFloatBuilder"),
-                                    ElementType::Float32 => Some("FloatBuilder"),
-                                    ElementType::Float64 => Some("DoubleBuilder"),
-                                    ElementType::String => Some("StringBuilder"),
-                                    ElementType::Object(_) => None,
+                                    ChannelDataType::UInt8 => Some("UInt8Builder"),
+                                    ChannelDataType::UInt16 => Some("UInt16Builder"),
+                                    ChannelDataType::UInt32 => Some("UInt32Builder"),
+                                    ChannelDataType::UInt64 => Some("UInt64Builder"),
+                                    ChannelDataType::Int8 => Some("Int8Builder"),
+                                    ChannelDataType::Int16 => Some("Int16Builder"),
+                                    ChannelDataType::Int32 => Some("Int32Builder"),
+                                    ChannelDataType::Int64 => Some("Int64Builder"),
+                                    ChannelDataType::Bool => Some("BoolBuilder"),
+                                    ChannelDataType::Float16 => Some("HalfFloatBuilder"),
+                                    ChannelDataType::Float32 => Some("FloatBuilder"),
+                                    ChannelDataType::Float64 => Some("DoubleBuilder"),
+                                    ChannelDataType::String => Some("StringBuilder"),
+                                    ChannelDataType::Object(_) => None,
                                 };
 
                                 if let Some(type_builder_name) = type_builder_name {
@@ -2013,23 +2013,23 @@ fn quote_append_single_value_to_builder(
             let num_items_per_element = quote_num_items_per_value(typ, value_access);
 
             match elem_type {
-                ElementType::UInt8
-                | ElementType::UInt16
-                | ElementType::UInt32
-                | ElementType::UInt64
-                | ElementType::Int8
-                | ElementType::Int16
-                | ElementType::Int32
-                | ElementType::Int64
-                | ElementType::Bool
-                | ElementType::Float32
-                | ElementType::Float64 => {
+                ChannelDataType::UInt8
+                | ChannelDataType::UInt16
+                | ChannelDataType::UInt32
+                | ChannelDataType::UInt64
+                | ChannelDataType::Int8
+                | ChannelDataType::Int16
+                | ChannelDataType::Int32
+                | ChannelDataType::Int64
+                | ChannelDataType::Bool
+                | ChannelDataType::Float32
+                | ChannelDataType::Float64 => {
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
                         ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(#num_items_per_element), nullptr));
                     }
                 }
-                ElementType::Float16 => {
+                ChannelDataType::Float16 => {
                     // We need to convert `rerun::half` to `uint16_t`:
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
@@ -2039,14 +2039,14 @@ fn quote_append_single_value_to_builder(
                         );
                     }
                 }
-                ElementType::String => {
+                ChannelDataType::String => {
                     quote! {
                         for (size_t item_idx = 0; item_idx < #num_items_per_element; item_idx += 1) {
                             ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access[item_idx]));
                         }
                     }
                 }
-                ElementType::Object(fqname) => {
+                ChannelDataType::Object(fqname) => {
                     let fqname = quote_fqname_as_type_path(includes, fqname);
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
@@ -2237,29 +2237,29 @@ fn quote_variable(
     }
 }
 
-fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {
+fn quote_element_type(includes: &mut Includes, typ: &ChannelDataType) -> TokenStream {
     #[allow(clippy::match_same_arms)]
     match typ {
-        ElementType::UInt8 => quote! { uint8_t },
-        ElementType::UInt16 => quote! { uint16_t },
-        ElementType::UInt32 => quote! { uint32_t },
-        ElementType::UInt64 => quote! { uint64_t },
-        ElementType::Int8 => quote! { int8_t },
-        ElementType::Int16 => quote! { int16_t },
-        ElementType::Int32 => quote! { int32_t },
-        ElementType::Int64 => quote! { int64_t },
-        ElementType::Bool => quote! { bool },
-        ElementType::Float16 => {
+        ChannelDataType::UInt8 => quote! { uint8_t },
+        ChannelDataType::UInt16 => quote! { uint16_t },
+        ChannelDataType::UInt32 => quote! { uint32_t },
+        ChannelDataType::UInt64 => quote! { uint64_t },
+        ChannelDataType::Int8 => quote! { int8_t },
+        ChannelDataType::Int16 => quote! { int16_t },
+        ChannelDataType::Int32 => quote! { int32_t },
+        ChannelDataType::Int64 => quote! { int64_t },
+        ChannelDataType::Bool => quote! { bool },
+        ChannelDataType::Float16 => {
             includes.insert_rerun("half.hpp");
             quote! { rerun::half }
         }
-        ElementType::Float32 => quote! { float },
-        ElementType::Float64 => quote! { double },
-        ElementType::String => {
+        ChannelDataType::Float32 => quote! { float },
+        ChannelDataType::Float64 => quote! { double },
+        ChannelDataType::String => {
             includes.insert_system("string");
             quote! { std::string }
         }
-        ElementType::Object(fqname) => quote_fqname_as_type_path(includes, fqname),
+        ChannelDataType::Object(fqname) => quote_fqname_as_type_path(includes, fqname),
     }
 }
 
@@ -2453,7 +2453,7 @@ fn quote_arrow_field_type(
 }
 
 fn quote_arrow_elem_type(
-    elem_type: &ElementType,
+    elem_type: &ChannelDataType,
     objects: &Objects,
     includes: &mut Includes,
 ) -> TokenStream {

@@ -6,10 +6,10 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
+#include "../components/channel_data_type.hpp"
 #include "../components/colormap.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
-#include "../components/element_type.hpp"
 #include "../components/fill_ratio.hpp"
 #include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
@@ -82,8 +82,8 @@ namespace rerun::archetypes {
         /// The size of the image
         rerun::components::Resolution2D resolution;
 
-        /// The element type of the depth image data (U16, F32, …).
-        rerun::components::ElementType element_type;
+        /// The data type of the depth image data (U16, F32, …).
+        rerun::components::ChannelDataType data_type;
 
         /// An optional floating point value that specifies how long a meter is in the native depth units.
         ///
@@ -126,9 +126,7 @@ namespace rerun::archetypes {
         template <typename TElement>
         DepthImage(components::Resolution2D resolution_, const TElement* pixels)
             : DepthImage{
-                  resolution_,
-                  get_element_type(pixels),
-                  reinterpret_cast<const uint8_t*>(pixels)} {}
+                  resolution_, get_data_type(pixels), reinterpret_cast<const uint8_t*>(pixels)} {}
 
         template <typename TElement>
         DepthImage(components::Resolution2D resolution_, std::vector<TElement> pixels)
@@ -136,27 +134,27 @@ namespace rerun::archetypes {
 
         template <typename TElement>
         DepthImage(components::Resolution2D resolution_, Collection<TElement> pixels)
-            : DepthImage{resolution_, get_element_type(pixels.data()), pixels.to_uint8()} {}
+            : DepthImage{resolution_, get_data_type(pixels.data()), pixels.to_uint8()} {}
 
-        /// New depth image from an `ElementType` and a pointer.
+        /// New depth image from an `ChannelDataType` and a pointer.
         ///
-        /// The length of the data should be `W * H * element_type.size`
+        /// The length of the data should be `W * H * data_type.size`
         DepthImage(
-            components::Resolution2D resolution_, components::ElementType element_type_,
+            components::Resolution2D resolution_, components::ChannelDataType data_type_,
             const void* data_
         )
-            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, element_type_))},
+            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, data_type_))},
               resolution{resolution_},
-              element_type{element_type_} {}
+              data_type{data_type_} {}
 
-        /// New depth image from an `ElementType` and a pointer.
+        /// New depth image from an `ChannelDataType` and a pointer.
         ///
-        /// The length of the data should be `W * H * element_type.size`
+        /// The length of the data should be `W * H * data_type.size`
         DepthImage(
-            components::Resolution2D resolution_, components::ElementType element_type_,
+            components::Resolution2D resolution_, components::ChannelDataType data_type_,
             Collection<uint8_t> data_
         )
-            : data{data_}, resolution{resolution_}, element_type{element_type_} {}
+            : data{data_}, resolution{resolution_}, data_type{data_type_} {}
 
       public:
         DepthImage() = default;

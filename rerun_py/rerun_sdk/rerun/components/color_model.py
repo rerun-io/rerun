@@ -25,7 +25,7 @@ class ColorModel(Enum):
     """
     **Component**: Specified what color components are present in an [`archetypes.Image`][rerun.archetypes.Image].
 
-    This combined with [`components.ElementType`][rerun.components.ElementType] determines the pixel format of an image.
+    This combined with [`components.ChannelDataType`][rerun.components.ChannelDataType] determines the pixel format of an image.
     """
 
     L = 1

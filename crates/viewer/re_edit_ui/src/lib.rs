@@ -23,7 +23,7 @@ use re_types::{
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, ColorModel, Colormap, DepthMeter,
-        DrawOrder, ElementType, FillRatio, GammaCorrection, ImagePlaneDistance,
+        DrawOrder, ChannelDataType, FillRatio, GammaCorrection, ImagePlaneDistance,
         MagnificationFilter, MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text, Translation3D,
     },
     Loggable as _,
@@ -75,7 +75,7 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ColorModel>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
     registry
-        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ElementType>(ui, value));
+        .add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ChannelDataType>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| {
         edit_view_enum::<MagnificationFilter>(ui, value)
     });

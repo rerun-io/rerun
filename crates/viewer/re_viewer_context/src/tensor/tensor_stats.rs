@@ -1,7 +1,7 @@
 use half::f16;
 use ndarray::ArrayViewD;
 
-use re_types::{components::ElementType, tensor_data::TensorDataType};
+use re_types::{components::ChannelDataType, tensor_data::TensorDataType};
 
 use crate::ImageInfo;
 
@@ -118,41 +118,41 @@ impl TensorStats {
 
         // ---------------------------
 
-        let element_type = image.element_type;
+        let data_type = image.data_type;
 
-        let range = match element_type {
-            ElementType::U8 => slice_range_u8(&image.to_slice()),
-            ElementType::U16 => slice_range_u16(&image.to_slice()),
-            ElementType::U32 => slice_range_u32(&image.to_slice()),
-            ElementType::U64 => slice_range_u64(&image.to_slice()),
+        let range = match data_type {
+            ChannelDataType::U8 => slice_range_u8(&image.to_slice()),
+            ChannelDataType::U16 => slice_range_u16(&image.to_slice()),
+            ChannelDataType::U32 => slice_range_u32(&image.to_slice()),
+            ChannelDataType::U64 => slice_range_u64(&image.to_slice()),
 
-            ElementType::I8 => slice_range_i8(&image.to_slice()),
-            ElementType::I16 => slice_range_i16(&image.to_slice()),
-            ElementType::I32 => slice_range_i32(&image.to_slice()),
-            ElementType::I64 => slice_range_i64(&image.to_slice()),
+            ChannelDataType::I8 => slice_range_i8(&image.to_slice()),
+            ChannelDataType::I16 => slice_range_i16(&image.to_slice()),
+            ChannelDataType::I32 => slice_range_i32(&image.to_slice()),
+            ChannelDataType::I64 => slice_range_i64(&image.to_slice()),
 
-            ElementType::F16 => slice_range_f16(&image.to_slice()),
-            ElementType::F32 => slice_range_f32(&image.to_slice()),
-            ElementType::F64 => slice_range_f64(&image.to_slice()),
+            ChannelDataType::F16 => slice_range_f16(&image.to_slice()),
+            ChannelDataType::F32 => slice_range_f32(&image.to_slice()),
+            ChannelDataType::F64 => slice_range_f64(&image.to_slice()),
         };
 
         let finite_range = if range.0.is_finite() && range.1.is_finite() {
             // Already finite
             Some(range)
         } else {
-            let finite_range = match element_type {
-                ElementType::U8
-                | ElementType::U16
-                | ElementType::U32
-                | ElementType::U64
-                | ElementType::I8
-                | ElementType::I16
-                | ElementType::I32
-                | ElementType::I64 => range,
+            let finite_range = match data_type {
+                ChannelDataType::U8
+                | ChannelDataType::U16
+                | ChannelDataType::U32
+                | ChannelDataType::U64
+                | ChannelDataType::I8
+                | ChannelDataType::I16
+                | ChannelDataType::I32
+                | ChannelDataType::I64 => range,
 
-                ElementType::F16 => slice_finite_range_f16(&image.to_slice()),
-                ElementType::F32 => slice_finite_range_f32(&image.to_slice()),
-                ElementType::F64 => slice_finite_range_f64(&image.to_slice()),
+                ChannelDataType::F16 => slice_finite_range_f16(&image.to_slice()),
+                ChannelDataType::F32 => slice_finite_range_f32(&image.to_slice()),
+                ChannelDataType::F64 => slice_finite_range_f64(&image.to_slice()),
             };
 
             // Ensure it actually is finite:

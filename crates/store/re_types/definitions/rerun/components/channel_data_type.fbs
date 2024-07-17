@@ -9,11 +9,8 @@ namespace rerun.components;
 
 /// The innermost datatype of an image.
 ///
-/// How individual color components are encoded.
-enum ElementType: byte
-{
-    // TODO(emilk): U4 and U10 are also common in images, but not yet implemented
-
+/// How individual color channel components are encoded.
+enum ChannelDataType: byte {
     /// 8-bit unsigned integer.
     U8 (default),
 

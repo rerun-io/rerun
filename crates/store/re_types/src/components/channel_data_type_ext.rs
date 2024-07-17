@@ -1,8 +1,8 @@
 use half::f16;
 
-use super::ElementType;
+use super::ChannelDataType;
 
-impl ElementType {
+impl ChannelDataType {
     /// Number of bits used to represent this element type.
     #[inline]
     pub fn bits(self) -> usize {

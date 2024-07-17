@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from ..components import Colormap, ElementType, Resolution2D
+from ..components import Colormap, ChannelDataType, Resolution2D
 
 if TYPE_CHECKING:
     ImageLike = Union[
@@ -45,18 +45,18 @@ class DepthImageExt:
         meter: float | None = None,
         colormap: Colormap | None = None,
     ):
-        element_type_from_dtype = {
-            np.uint8: ElementType.U8,
-            np.uint16: ElementType.U16,
-            np.uint32: ElementType.U32,
-            np.uint64: ElementType.U64,
-            np.int8: ElementType.I8,
-            np.int16: ElementType.I16,
-            np.int32: ElementType.I32,
-            np.int64: ElementType.I64,
-            np.float16: ElementType.F16,
-            np.float32: ElementType.F32,
-            np.float64: ElementType.F64,
+        channel_dtype_from_np_dtype = {
+            np.uint8: ChannelDataType.U8,
+            np.uint16: ChannelDataType.U16,
+            np.uint32: ChannelDataType.U32,
+            np.uint64: ChannelDataType.U64,
+            np.int8: ChannelDataType.I8,
+            np.int16: ChannelDataType.I16,
+            np.int32: ChannelDataType.I32,
+            np.int64: ChannelDataType.I64,
+            np.float16: ChannelDataType.F16,
+            np.float32: ChannelDataType.F32,
+            np.float64: ChannelDataType.F64,
         }
 
         data = _to_numpy(data)
@@ -74,14 +74,14 @@ class DepthImageExt:
         height, width = shape
 
         try:
-            element_type = element_type_from_dtype[data.dtype.type]
+            data_type = channel_dtype_from_np_dtype[data.dtype.type]
         except KeyError:
             raise ValueError(f"Unsupported dtype {data.dtype} for DepthImage")
 
         self.__attrs_init__(
             data=data.tobytes(),
             resolution=Resolution2D(width=width, height=height),
-            element_type=element_type,
+            data_type=data_type,
             meter=meter,
             colormap=colormap,
         )
