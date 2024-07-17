@@ -11,8 +11,7 @@ namespace rerun::archetypes {
     template <typename TElement>
     DepthImage(components::Resolution2D resolution_, const TElement* pixels)
         : DepthImage{
-              resolution_, get_element_type(pixels), reinterpret_cast<const uint8_t*>(pixels)
-          } {}
+              resolution_, get_element_type(pixels), reinterpret_cast<const uint8_t*>(pixels)} {}
 
     template <typename TElement>
     DepthImage(components::Resolution2D resolution_, std::vector<TElement> pixels)
