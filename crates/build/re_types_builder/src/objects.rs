@@ -1291,14 +1291,15 @@ fn filepath_from_declaration_file(
         });
 
     let declaration_file = Utf8PathBuf::from(declaration_file);
-    if declaration_file.is_absolute() {
+    let declaration_file = if declaration_file.is_absolute() {
         declaration_file
     } else {
         include_dir_path
             .as_ref()
-            .join("rerun")
             .join(crate::format_path(&declaration_file))
-    }
-    .canonicalize_utf8()
-    .expect("Failed to canonicalize declaration path")
+    };
+
+    declaration_file
+        .canonicalize_utf8()
+        .unwrap_or_else(|_| panic!("Failed to canonicalize declaration path {declaration_file:?}"))
 }

@@ -1,13 +1,4 @@
-include "arrow/attributes.fbs";
-include "python/attributes.fbs";
-include "rust/attributes.fbs";
-
-include "rerun/datatypes.fbs";
-include "rerun/attributes.fbs";
-
 namespace rerun.components;
-
-// ---
 
 /// The width and height of a 2D image.
 struct Resolution2D (

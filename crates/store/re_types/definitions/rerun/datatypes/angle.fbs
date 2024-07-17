@@ -1,13 +1,4 @@
-include "arrow/attributes.fbs";
-include "rust/attributes.fbs";
-include "fbs/attributes.fbs";
-include "cpp/attributes.fbs";
-
-include "./float32.fbs";
-
 namespace rerun.datatypes;
-
-// ---
 
 /// Angle in radians.
 struct Angle (

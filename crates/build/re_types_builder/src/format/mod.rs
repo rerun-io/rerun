@@ -13,9 +13,11 @@ impl CodeFormatter for NoopCodeFormatter {
 // ---
 
 mod cpp;
+mod fbs;
 mod python;
 mod rust;
 
 pub use self::cpp::CppCodeFormatter;
+pub use self::fbs::FbsCodeFormatter;
 pub use self::python::PythonCodeFormatter;
 pub use self::rust::RustCodeFormatter;
