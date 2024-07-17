@@ -197,23 +197,10 @@ const fn many_chunks(num_chunks: i64, num_rows_per_chunk: i64) -> ChunkEntry {
 }
 
 const SCENARIOS: [(&str, DensityGraphBuilderConfig); 2] = [
-    // never split any chunks
-    (
-        "split_never",
-        DensityGraphBuilderConfig {
-            max_total_chunk_events: 0,
-            max_events_in_unsorted_chunk: 0,
-            max_events_in_sorted_chunk: 0,
-        },
-    ),
-    // always split sorted chunks
+    ("split_never", DensityGraphBuilderConfig::NEVER_SPLIT_CHUNKS),
     (
         "split_sorted_always",
-        DensityGraphBuilderConfig {
-            max_total_chunk_events: usize::MAX,
-            max_events_in_unsorted_chunk: 0,
-            max_events_in_sorted_chunk: usize::MAX,
-        },
+        DensityGraphBuilderConfig::ALWAYS_SPLIT_SORTED_CHUNKS,
     ),
 ];
 

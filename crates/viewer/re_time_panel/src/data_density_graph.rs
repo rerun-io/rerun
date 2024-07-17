@@ -437,6 +437,8 @@ pub fn build_density_graph<'a>(
     timeline: Timeline,
     config: DensityGraphBuilderConfig,
 ) -> DensityGraphBuilder<'a> {
+    re_tracing::profile_function!();
+
     let mut data = DensityGraphBuilder::new(ui, time_ranges_ui, row_rect);
 
     // Collect all relevant chunks in the visible time range.
@@ -448,17 +450,19 @@ pub fn build_density_graph<'a>(
     let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
     let mut total_events = 0;
 
-    visit_relevant_chunks(
-        db,
-        &item.entity_path,
-        item.component_name,
-        timeline,
-        visible_time_range,
-        |chunk, time_range, num_events| {
-            chunk_ranges.push((chunk, time_range, num_events));
-            total_events += num_events;
-        },
-    );
+    {
+        visit_relevant_chunks(
+            db,
+            &item.entity_path,
+            item.component_name,
+            timeline,
+            visible_time_range,
+            |chunk, time_range, num_events| {
+                chunk_ranges.push((chunk, time_range, num_events));
+                total_events += num_events;
+            },
+        );
+    }
 
     // Small chunk heuristics:
     // We want to render chunks as individual events, but it may be prohibitively expensive
@@ -470,25 +474,29 @@ pub fn build_density_graph<'a>(
     //    N is relatively large for sorted chunks
     //    N is much smaller for unsorted chunks
 
-    let can_render_individual_events =
-        config.max_total_chunk_events == 0 || total_events < config.max_total_chunk_events;
+    {
+        re_tracing::profile_scope!("add_data");
 
-    for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
-        let should_render_individual_events = can_render_individual_events
-            && if chunk.is_time_sorted() {
-                config.max_events_in_sorted_chunk == 0
-                    || num_events_in_chunk < config.max_events_in_sorted_chunk
+        let can_render_individual_events =
+            config.max_total_chunk_events != 0 && total_events < config.max_total_chunk_events;
+
+        for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
+            let should_render_individual_events = can_render_individual_events
+                && if chunk.is_time_sorted() {
+                    config.max_events_in_sorted_chunk != 0
+                        && num_events_in_chunk < config.max_events_in_sorted_chunk
+                } else {
+                    config.max_events_in_unsorted_chunk != 0
+                        && num_events_in_chunk < config.max_events_in_unsorted_chunk
+                };
+
+            if should_render_individual_events {
+                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(&timeline) {
+                    data.add_chunk_point(time, num_events as usize);
+                }
             } else {
-                config.max_events_in_unsorted_chunk == 0
-                    || num_events_in_chunk < config.max_events_in_unsorted_chunk
-            };
-
-        if should_render_individual_events {
-            for (time, num_events) in chunk.num_events_cumulative_per_unique_time(&timeline) {
-                data.add_chunk_point(time, num_events as usize);
+                data.add_chunk_range(time_range, num_events_in_chunk);
             }
-        } else {
-            data.add_chunk_range(time_range, num_events_in_chunk);
         }
     }
 
@@ -500,6 +508,30 @@ pub struct DensityGraphBuilderConfig {
     pub max_total_chunk_events: usize,
     pub max_events_in_sorted_chunk: usize,
     pub max_events_in_unsorted_chunk: usize,
+}
+
+impl DensityGraphBuilderConfig {
+    /// All chunks will be rendered whole.
+    pub const NEVER_SPLIT_CHUNKS: Self = Self {
+        max_total_chunk_events: 0,
+        max_events_in_unsorted_chunk: 0,
+        max_events_in_sorted_chunk: 0,
+    };
+
+    /// All sorted chunks will be rendered as individual events,
+    /// and all unsorted chunks will be rendered whole.
+    pub const ALWAYS_SPLIT_SORTED_CHUNKS: Self = Self {
+        max_total_chunk_events: usize::MAX,
+        max_events_in_unsorted_chunk: 0,
+        max_events_in_sorted_chunk: usize::MAX,
+    };
+
+    /// All chunks will be rendered as individual events.
+    pub const ALWAYS_SPLIT_ALL_CHUNKS: Self = Self {
+        max_total_chunk_events: usize::MAX,
+        max_events_in_unsorted_chunk: usize::MAX,
+        max_events_in_sorted_chunk: usize::MAX,
+    };
 }
 
 impl Default for DensityGraphBuilderConfig {
