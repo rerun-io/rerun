@@ -18,18 +18,19 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The kind of table displayed by the dataframe view.
+/// **Component**: The kind of table displayed by the dataframe view
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 pub enum DataframeViewMode {
-    /// Display the "latest at" value of each view entities.
+    /// Display the entity values at the current time.
     ///
-    /// In this mode, rows are entity instances, and columns are components.
+    /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
     #[default]
     LatestAt = 1,
 
-    /// Display data according to the view entities visible time range setting.attribute
+    /// Display a temporal table of entity values.
     ///
-    /// In this mode, rows are combination of entity path, timestamp, and row id, and columsna re components.
+    /// In this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The
+    /// timestamp shown are determined by each view entity's visible time range setting.
     TimeRange = 2,
 }
 
@@ -43,10 +44,10 @@ impl ::re_types_core::reflection::Enum for DataframeViewMode {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::LatestAt => {
-                "Display the \"latest at\" value of each view entities.\n\nIn this mode, rows are entity instances, and columns are components."
+                "Display the entity values at the current time.\n\nIn this mode, rows are entity instances, and columns are components. The visible time range setting is ignored."
             }
             Self::TimeRange => {
-                "Display data according to the view entities visible time range setting.attribute\n\nIn this mode, rows are combination of entity path, timestamp, and row id, and columsna re components."
+                "Display a temporal table of entity values.\n\nIn this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The\ntimestamp shown are determined by each view entity's visible time range setting."
             }
         }
     }
