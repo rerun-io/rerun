@@ -19,5 +19,5 @@ struct Angle (
   "attr.cpp.no_field_ctors"
 ) {
   /// Angle in radians. One turn is equal to 2π (or τ) radians.
-  radians: float (order: 100, "attr.cpp.prefix_field");
+  radians: float (order: 100, "attr.cpp.rename_field": "angle_radians"); // Rename field to avoid nameclash with `radians` function.
 }

@@ -23,7 +23,7 @@ namespace rerun::datatypes {
     /// **Datatype**: Angle in radians.
     struct Angle {
         /// Angle in radians. One turn is equal to 2π (or τ) radians.
-        float _radians;
+        float angle_radians;
 
       public:
         // Extensions to generated type defined in 'angle_ext.cpp'

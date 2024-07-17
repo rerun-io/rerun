@@ -16,7 +16,7 @@ use crate::{
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_PREFIX_FIELD,
+    Reporter, Type, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -1264,8 +1264,8 @@ impl QuotedObject {
 }
 
 fn field_name_identifier(obj_field: &ObjectField) -> Ident {
-    if obj_field.has_attr(ATTR_CPP_PREFIX_FIELD) {
-        format_ident!("_{}", obj_field.name)
+    if let Some(name) = obj_field.try_get_attr::<String>(ATTR_CPP_RENAME_FIELD) {
+        format_ident!("{}", name)
     } else {
         format_ident!("{}", obj_field.name)
     }
