@@ -84,6 +84,7 @@ from .components import (
     TextLogLevel as TextLogLevel,
 )
 from .datatypes import (
+    Angle as Angle,
     AnnotationInfo as AnnotationInfo,
     ClassDescription as ClassDescription,
     Quaternion as Quaternion,
