@@ -11,7 +11,7 @@ rr.init("rerun_example_exceptions", spawn=False)
 mem = rr.memory_recording()
 
 
-def expect_warning(call: Callable, expected_warning: str) -> None:
+def expect_warning(call: Callable[..., None], expected_warning: str) -> None:
     with pytest.warns(RerunWarning) as warnings:
         call()
         print("Logged warnings:")

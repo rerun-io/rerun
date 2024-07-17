@@ -122,7 +122,6 @@ def test_transform3d() -> None:
         axis_length,
     ) in all_arrays:
         translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
-        rotation_axis_angle = cast(Optional[rr.datatypes.RotationAxisAngleLike], rotation_axis_angle)
         quaternion = cast(Optional[rr.datatypes.QuaternionLike], quaternion)
         scale = cast(Optional[rr.datatypes.Vec3DLike | rr.datatypes.Float32Like], scale)
         mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
@@ -142,7 +141,7 @@ def test_transform3d() -> None:
         )
         arch = rr.Transform3D(
             translation=translation,
-            rotation_axis_angle=rotation_axis_angle,
+            rotation_axis_angle=rotation_axis_angle,  # type: ignore[assignment, arg-type] # prior cast didn't work here
             quaternion=quaternion,
             scale=scale,
             mat3x3=mat3x3,
