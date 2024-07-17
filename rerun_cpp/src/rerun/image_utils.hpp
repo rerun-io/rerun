@@ -1,6 +1,6 @@
 #pragma once
 
-#include "components/data_type.hpp"
+#include "components/channel_data_type.hpp"
 #include "half.hpp"
 
 #include <cstdint>
