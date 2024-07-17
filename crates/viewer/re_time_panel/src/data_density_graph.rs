@@ -446,6 +446,7 @@ pub fn build_density_graph<'a>(
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
     let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
+    let mut total_events = 0;
 
     visit_relevant_chunks(
         db,
@@ -455,32 +456,34 @@ pub fn build_density_graph<'a>(
         visible_time_range,
         |chunk, time_range, num_events| {
             chunk_ranges.push((chunk, time_range, num_events));
+            total_events += num_events;
         },
     );
 
-    let num_chunks = chunk_ranges.len();
+    // Small chunk heuristics:
+    // We want to render chunks as individual events, but it may be prohibitively expensive
+    // for larger chunks, or if the visible time range contains many chunks.
+    //
+    // We split a large chunk if:
+    // 1. The total number of events is less than some threshold
+    // 2. The number of events in the chunks is less than N, where:
+    //    N is relatively large for sorted chunks
+    //    N is much smaller for unsorted chunks
+
+    let can_render_individual_events =
+        config.max_total_chunk_events == 0 || total_events < config.max_total_chunk_events;
+
     for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
-        // Small chunk heuristics:
-        // We want to render chunks as individual events, but it may be prohibitively expensive
-        // for larger chunks, or if the visible time range contains many chunks.
-        //
-        // We split a large chunk if:
-        // 1. The total number of chunks is less than some threshold
-        // 2. The number of events in the chunks is less than N, where:
-        //    N is relatively large for sorted chunks
-        //    N is much smaller for unsorted chunks
+        let should_render_individual_events = can_render_individual_events
+            && if chunk.is_time_sorted() {
+                config.max_events_in_sorted_chunk == 0
+                    || num_events_in_chunk < config.max_events_in_sorted_chunk
+            } else {
+                config.max_events_in_unsorted_chunk == 0
+                    || num_events_in_chunk < config.max_events_in_unsorted_chunk
+            };
 
-        let fits_max_total_chunks =
-            config.max_total_chunks == 0 || num_chunks < config.max_total_chunks;
-        let fits_max_sorted_chunk_events = config.max_sorted_chunk_events == 0
-            || (chunk.is_time_sorted() && num_events_in_chunk < config.max_sorted_chunk_events);
-        let fits_max_unsorted_chunk_events = config.max_unsorted_chunk_events == 0
-            || (!chunk.is_time_sorted() && num_events_in_chunk < config.max_unsorted_chunk_events);
-
-        let render_individual_events = fits_max_total_chunks
-            && (fits_max_sorted_chunk_events || fits_max_unsorted_chunk_events);
-
-        if render_individual_events {
+        if should_render_individual_events {
             for (time, num_events) in chunk.num_events_cumulative_per_unique_time(&timeline) {
                 data.add_chunk_point(time, num_events as usize);
             }
@@ -494,17 +497,19 @@ pub fn build_density_graph<'a>(
 
 #[derive(Clone, Copy)]
 pub struct DensityGraphBuilderConfig {
-    pub max_total_chunks: usize,
-    pub max_unsorted_chunk_events: usize,
-    pub max_sorted_chunk_events: usize,
+    pub max_total_chunk_events: usize,
+    pub max_events_in_sorted_chunk: usize,
+    pub max_events_in_unsorted_chunk: usize,
 }
 
 impl Default for DensityGraphBuilderConfig {
     fn default() -> Self {
         Self {
-            max_total_chunks: 100,
-            max_unsorted_chunk_events: 5000,
-            max_sorted_chunk_events: 100_000,
+            // benchmarks report that this scales linearly,
+            // with ~1ms cost for a single chunk with 100k events
+            max_total_chunk_events: 100_000,
+            max_events_in_sorted_chunk: 10_000,
+            max_events_in_unsorted_chunk: 1_000,
         }
     }
 }

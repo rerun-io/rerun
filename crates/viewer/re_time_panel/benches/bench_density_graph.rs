@@ -14,15 +14,11 @@ use re_log_types::Timeline;
 use re_time_panel::__bench::*;
 use re_viewer_context::TimeView;
 
-#[derive(Clone, Copy)]
-struct Entry {
-    num_chunks: i64,
-    num_rows_per_chunk: i64,
-    sorted: bool,
-    time_start_ms: i64,
-}
-
-fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, data_entries: &[Entry]) {
+fn run(
+    b: &mut Bencher<'_, WallTime>,
+    config: DensityGraphBuilderConfig,
+    data_entries: &[ChunkEntry],
+) {
     egui::__run_test_ui(|ui| {
         let row_rect = ui.max_rect();
         assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
@@ -33,7 +29,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, data_en
         );
         let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();
 
-        for Entry {
+        for ChunkEntry {
             num_chunks,
             num_rows_per_chunk,
             sorted,
@@ -58,8 +54,17 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, data_en
 
         let times = db.times_per_timeline().get(&Timeline::log_time()).unwrap();
         let time_range = ResolvedTimeRange::new(
-            *times.first_key_value().unwrap().0,
-            *times.last_key_value().unwrap().0,
+            times
+                .keys()
+                .next()
+                .copied()
+                .unwrap_or(re_log_types::TimeInt::MIN),
+            times
+                .keys()
+                .rev()
+                .next()
+                .copied()
+                .unwrap_or(re_log_types::TimeInt::MIN),
         );
 
         let time_ranges_ui = TimeRangesUi::new(
@@ -94,6 +99,11 @@ fn add_data(
     sorted: bool,
     time_start_ms: i64,
 ) -> anyhow::Result<()> {
+    // empty chunk
+    if num_chunks == 0 || num_rows_per_chunk == 0 {
+        return Ok(());
+    }
+
     // log points
     db.add_chunk(&Arc::new(
         re_chunk_store::Chunk::builder(entity_path.clone())
@@ -157,60 +167,83 @@ fn add_data(
     Ok(())
 }
 
-fn bench_density_graph(c: &mut Criterion) {
-    let mut group = c.benchmark_group("build_density_graph");
+#[derive(Clone, Copy)]
+struct ChunkEntry {
+    num_chunks: i64,
+    num_rows_per_chunk: i64,
+    sorted: bool,
+    time_start_ms: i64,
+}
 
-    let config = |max_total_chunks: usize,
-                  max_unsorted_chunk_events: usize,
-                  max_sorted_chunk_events: usize| DensityGraphBuilderConfig {
-        max_total_chunks,
-        max_unsorted_chunk_events,
-        max_sorted_chunk_events,
-    };
-    let entry =
-        |num_chunks: i64, num_rows_per_chunk: i64, sorted: bool, time_start_ms: i64| Entry {
-            num_chunks,
-            num_rows_per_chunk,
-            sorted,
-            time_start_ms,
-        };
+const fn single_chunk(num_rows_per_chunk: i64, sorted: bool) -> ChunkEntry {
+    ChunkEntry {
+        num_chunks: 1,
+        num_rows_per_chunk,
+        sorted,
+        time_start_ms: 0,
+    }
+}
 
-    let benches = [
+const fn many_chunks(num_chunks: i64, num_rows_per_chunk: i64) -> ChunkEntry {
+    ChunkEntry {
+        num_chunks,
+        num_rows_per_chunk,
+        sorted: true,
+        time_start_ms: 0,
+    }
+}
+
+fn bench_split_scenarios(c: &mut Criterion) {
+    let scenarios = [
         (
-            "many_small_chunks/under_threshold",
-            config(0, 0, 1000),
-            &[entry(1000, 100, true, 0)],
+            "split_never",
+            DensityGraphBuilderConfig {
+                max_total_chunk_events: 0,
+                max_events_in_unsorted_chunk: 0,
+                max_events_in_sorted_chunk: 0,
+            },
         ),
+        // split only sorted chunks
         (
-            "many_small_chunks/above_threshold",
-            config(0, 0, 10),
-            &[entry(1000, 100, true, 0)],
-        ),
-        (
-            "few_large_chunks/under_threshold",
-            config(0, 0, 100000),
-            &[entry(10, 10000, true, 0)],
-        ),
-        (
-            "few_large_chunks/above_threshold",
-            config(0, 0, 1000),
-            &[entry(10, 10000, true, 0)],
+            "split_sorted_always",
+            DensityGraphBuilderConfig {
+                max_total_chunk_events: usize::MAX,
+                max_events_in_unsorted_chunk: 0,
+                max_events_in_sorted_chunk: usize::MAX,
+            },
         ),
     ];
 
-    for (id, config, entries) in benches {
-        group.bench_with_input(id, &(config, entries), |b, (config, entries)| {
-            run(b, *config, *entries);
-        });
+    let sizes = [0, 1, 10, 100, 1000, 10000];
+
+    for (name, config) in scenarios {
+        let mut group = c.benchmark_group(name);
+
+        for size in sizes {
+            for sorted in [true, false] {
+                let id = if sorted {
+                    format!("{size}/sorted")
+                } else {
+                    format!("{size}/unsorted")
+                };
+                group.bench_with_input(id, &single_chunk(size, sorted), |b, &entry| {
+                    run(b, config, &[entry]);
+                });
+            }
+        }
     }
 }
 
 fn main() {
+    // More noisy results, but benchmark ends a lot sooner.
     let mut criterion = Criterion::default()
         .configure_from_args()
         .warm_up_time(Duration::from_millis(100))
-        .measurement_time(Duration::from_secs(5))
-        .sample_size(10);
-    bench_density_graph(&mut criterion);
+        .measurement_time(Duration::from_secs(1))
+        .sample_size(10)
+        .noise_threshold(0.05);
+
+    bench_split_scenarios(&mut criterion);
+
     criterion.final_summary();
 }
