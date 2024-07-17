@@ -148,10 +148,15 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        {
-                            _ = angle_bitmap;
-                            crate::datatypes::Angle::to_arrow_opt(angle)?
-                        }
+                        PrimitiveArray::new(
+                            DataType::Float32,
+                            angle
+                                .into_iter()
+                                .map(|datum| datum.map(|datum| datum.radians).unwrap_or_default())
+                                .collect(),
+                            angle_bitmap,
+                        )
+                        .boxed()
                     },
                 ],
                 bitmap,
@@ -278,9 +283,20 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         .with_context("rerun.datatypes.RotationAxisAngle");
                     }
                     let arrow_data = &**arrays_by_name["angle"];
-                    crate::datatypes::Angle::from_arrow_opt(arrow_data)
+                    arrow_data
+                        .as_any()
+                        .downcast_ref::<Float32Array>()
+                        .ok_or_else(|| {
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
+                        })
                         .with_context("rerun.datatypes.RotationAxisAngle#angle")?
                         .into_iter()
+                        .map(|opt| opt.copied())
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|radians| crate::datatypes::Angle { radians })
+                        })
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(axis, angle),

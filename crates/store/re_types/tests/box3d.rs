@@ -17,7 +17,7 @@ fn roundtrip() {
             components::Rotation3D::from(datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])),
             components::Rotation3D::from(datatypes::RotationAxisAngle::new(
                 [1.0, 2.0, 3.0],
-                datatypes::Angle::Radians(4.0),
+                datatypes::Angle::from_radians(4.0),
             )),
         ]),
         colors: Some(vec![
@@ -44,7 +44,7 @@ fn roundtrip() {
             components::Rotation3D::from(datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])),
             components::Rotation3D::from(datatypes::RotationAxisAngle::new(
                 [1.0, 2.0, 3.0],
-                datatypes::Angle::Radians(4.0),
+                datatypes::Angle::from_radians(4.0),
             )),
         ])
         .with_colors([0xAA0000CC, 0x00BB00DD])

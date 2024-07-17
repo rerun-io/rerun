@@ -447,12 +447,13 @@ fn quote_arrow_field_serializer(
             // hence `unwrap_or_default` (unless elements_are_nullable is false)
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                 let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
                 let quoted_member_accessor = if is_tuple_struct {
                     quote!(0)
                 } else {
-                    quote!(#quoted_inner_obj_type)
+                    let inner_field_name =
+                        format_ident!("{}", inner_obj.fields[0].snake_case_name());
+                    quote!(#inner_field_name)
                 };
 
                 if elements_are_nullable {

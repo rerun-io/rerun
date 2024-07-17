@@ -51,7 +51,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     rec.log(
 ///         "base/rotated_scaled",
 ///         &rerun::Transform3D::from_rotation_scale(
-///             rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::Radians(TAU / 8.0)),
+///             rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::from_radians(TAU / 8.0)),
 ///             rerun::Scale3D::from(2.0),
 ///         ),
 ///     )?;
@@ -136,7 +136,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///                 [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],
 ///                 rerun::RotationAxisAngle {
 ///                     axis: [1.0, 0.0, 0.0].into(),
-///                     angle: rerun::Angle::Degrees(20.0),
+///                     angle: rerun::Angle::from_degrees(20.0),
 ///                 },
 ///             ),
 ///         )?;

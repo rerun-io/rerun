@@ -36,7 +36,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         "transform/rigid",
         &Transform3D::from_translation_rotation(
             [1.0, 2.0, 3.0],
-            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
+            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::from_radians(0.5 * TAU)),
         ),
     )?;
 
@@ -44,7 +44,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         "transform/affine",
         &Transform3D::from_translation_rotation_scale(
             [1.0, 2.0, 3.0],
-            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
+            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::from_radians(0.5 * TAU)),
             42.0,
         )
         .from_parent(),
