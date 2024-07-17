@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],
                 rerun::RotationAxisAngle {
                     axis: [1.0, 0.0, 0.0].into(),
-                    angle: rerun::Angle::Degrees(20.0),
+                    angle: rerun::Angle::from_degrees(20.0),
                 },
             ),
         )?;

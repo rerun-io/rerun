@@ -152,7 +152,7 @@ fn rotation3d() {
     {
         let datatype: datatypes::Rotation3D = datatypes::RotationAxisAngle {
             axis: [1.0, 0.0, 0.0].into(),
-            angle: datatypes::Angle::Degrees(90.0),
+            angle: datatypes::Angle::from_degrees(90.0),
         }
         .into();
         let mint: mint::Quaternion<f32> = datatype.into();
@@ -175,7 +175,7 @@ fn rotation3d() {
     {
         let component: components::Rotation3D = datatypes::RotationAxisAngle {
             axis: [1.0, 0.0, 0.0].into(),
-            angle: datatypes::Angle::Degrees(90.0),
+            angle: datatypes::Angle::from_degrees(90.0),
         }
         .into();
         let mint: mint::Quaternion<f32> = component.into();

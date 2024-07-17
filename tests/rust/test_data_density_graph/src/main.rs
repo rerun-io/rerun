@@ -117,7 +117,7 @@ fn log(
         let components = (0..num_rows_per_chunk).map(|i| {
             let angle_deg = i as f32 % 360.0;
             rerun::Transform3D::from_rotation(rerun::Rotation3D::AxisAngle(
-                ((0.0, 0.0, 1.0), rerun::Angle::Degrees(angle_deg)).into(),
+                ((0.0, 0.0, 1.0), rerun::Angle::from_degrees(angle_deg)).into(),
             ))
         });
 

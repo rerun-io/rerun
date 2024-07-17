@@ -44,11 +44,14 @@ Instead, there are now several components for translation/scale/rotation/matrice
 For this purpose `TranslationRotationScale3D` and `TranslationAndMat3x3` datatypes & components have been removed and split up into new components:
 * [`Translation3D`](https://rerun.io/docs/reference/types/components/translation3d#speculative-link)
 * [`TransformMat3x3`](https://rerun.io/docs/reference/types/components/transform_mat3x3#speculative-link)
-* TODO(andreas): More!
+* [`Scale3D`](https://rerun.io/docs/reference/types/components/scale3d#speculative-link)
 
 All components are applied to the final transform in the opposite order they're listed in. E.g. if both a 4x4 matrix and a translation is set, the entity is first translated and then transformed with the matrix.
 If translation, rotation & scale are applied, then (just as in prior versions), from the point of view of the parent space the object is first scaled, then rotated and then translated.
 
+Other changes in data representation:
+* Scaling no longer distinguishes uniform and 3D scaling in its data representation, it is now always expressed as 3 floats with the same value. Helper functions are provided to build uniform scales.
+* Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
 TODO(andreas): Write about OutOfTreeTransform changes and how `Transform3D` has now arrays of components.

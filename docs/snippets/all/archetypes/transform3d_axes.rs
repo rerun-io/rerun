@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "base/rotated",
             &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
                 [1.0, 1.0, 1.0],
-                rerun::Angle::Degrees(deg as f32),
+                rerun::Angle::from_degrees(deg as f32),
             )),
         )?;
         rec.log(

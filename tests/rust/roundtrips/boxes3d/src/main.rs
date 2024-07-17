@@ -22,7 +22,10 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_centers([[0., 0., 0.], [-1., 1., -2.]])
             .with_rotations([
                 Rotation3D::from(Quaternion::from_xyzw([0., 1., 2., 3.])),
-                Rotation3D::from(RotationAxisAngle::new([0., 1., 2.], Angle::Degrees(45.))),
+                Rotation3D::from(RotationAxisAngle::new(
+                    [0., 1., 2.],
+                    Angle::from_degrees(45.),
+                )),
             ])
             .with_colors([0xAA0000CC, 0x00BB00DD])
             .with_labels(["hello", "friend"])

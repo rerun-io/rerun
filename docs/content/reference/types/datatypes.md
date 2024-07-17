@@ -7,7 +7,7 @@ order: 3
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
 
-* [`Angle`](datatypes/angle.md): Angle in either radians or degrees.
+* [`Angle`](datatypes/angle.md): Angle in radians.
 * [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
 * [`Blob`](datatypes/blob.md): A binary blob of data.
 * [`Bool`](datatypes/bool.md): A single boolean.

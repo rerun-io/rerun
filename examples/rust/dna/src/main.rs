@@ -80,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "dna/structure",
             &rerun::archetypes::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
                 glam::Vec3::Z,
-                rerun::Angle::Radians(time / 4.0 * TAU),
+                rerun::Angle::from_radians(time / 4.0 * TAU),
             )),
         )?;
     }

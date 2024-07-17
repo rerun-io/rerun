@@ -2,36 +2,60 @@ use super::Angle;
 use std::fmt::Formatter;
 
 impl Angle {
-    /// Angle in radians independent of the underlying representation.
+    /// Angle in radians.
     #[inline]
     pub fn radians(&self) -> f32 {
-        match self {
-            Self::Radians(v) => *v,
-            Self::Degrees(v) => v.to_radians(),
+        self.radians
+    }
+
+    /// Angle in degrees (converts from radians).
+    #[inline]
+    pub fn degrees(&self) -> f32 {
+        self.radians.to_degrees()
+    }
+
+    /// Create a new angle from degrees.
+    ///
+    /// Converts the value to radians.
+    ///
+    /// Deprecated method to mimic previous enum variant.
+    #[allow(non_snake_case)]
+    #[deprecated(since = "0.18.0", note = "Use `Angle::from_degrees` instead.")]
+    #[inline]
+    pub fn Degrees(degrees: f32) -> Self {
+        Self::from_degrees(degrees)
+    }
+
+    /// Create a new angle from radians.
+    ///
+    /// Deprecated method to mimic previous enum variant.
+    #[allow(non_snake_case)]
+    #[deprecated(since = "0.18.0", note = "Use `Angle::from_radians` instead.")]
+    #[inline]
+    pub fn Radians(radians: f32) -> Self {
+        Self { radians }
+    }
+
+    /// Create a new angle from degrees.
+    ///
+    /// Converts the value to radians.
+    #[inline]
+    pub fn from_degrees(degrees: f32) -> Self {
+        Self {
+            radians: degrees.to_radians(),
         }
     }
 
-    /// Angle in degrees independent of the underlying representation.
+    /// Create a new angle from radians.
     #[inline]
-    pub fn degrees(&self) -> f32 {
-        match self {
-            Self::Radians(v) => v.to_degrees(),
-            Self::Degrees(v) => *v,
-        }
+    pub fn from_radians(radians: f32) -> Self {
+        Self { radians }
     }
 }
 
 impl std::fmt::Display for Angle {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Radians(v) => {
-                write!(f, "{} rad", re_format::format_f32(*v))
-            }
-            Self::Degrees(v) => {
-                // TODO(andreas): Convert to arc minutes/seconds for very small angles.
-                // That code should be in re_format!
-                write!(f, "{} °", re_format::format_f32(*v))
-            }
-        }
+        let prec = f.precision().unwrap_or(crate::DEFAULT_DISPLAY_DECIMALS);
+        write!(f, "{:.prec$} rad", re_format::format_f32(self.radians))
     }
 }
