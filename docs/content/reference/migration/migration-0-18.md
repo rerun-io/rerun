@@ -7,6 +7,11 @@ NOTE! Rerun 0.18 has not yet been released
 
 
 ## ⚠️ Breaking changes
+### `DepthImage`
+The `DepthImage` archetype used to be encoded as a tensor, but now it is encoded as a blob of bytes, a resolution, and a datatype.
+The constructs have changed to now expect the shape in `[width, height]` order.
+
+
 ### `ImageEncoded`
 `ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
