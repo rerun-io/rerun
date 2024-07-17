@@ -19,7 +19,8 @@ use datatype_editors::{
 };
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, ViewFit, Visible,
+        BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, SortKey, SortOrder,
+        ViewFit, Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
@@ -84,6 +85,9 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_view_enum::<AggregationPolicy>(ui, value)
     });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
+        edit_view_enum::<DataframeViewMode>(ui, value)
+    });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortKey>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortOrder>(ui, value));
 

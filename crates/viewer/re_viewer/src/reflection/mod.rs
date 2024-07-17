@@ -84,6 +84,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <DataframeViewMode as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The kind of table displayed by the dataframe view",
+                placeholder: Some(DataframeViewMode::default().to_arrow()?),
+            },
+        ),
+        (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -659,6 +666,18 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeViewMode"),
+            ArchetypeReflection {
+                display_name: "Dataframe view mode",
+                docstring_md: "Configuration for the dataframe view",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.DataframeViewMode".into(), display_name :
+                    "Mode", docstring_md : "The kind of table to display", },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.PlotLegend"),
             ArchetypeReflection {
                 display_name: "Plot legend",
@@ -672,21 +691,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.Visible".into(), display_name :
                     "Visible", docstring_md :
                     "Whether the legend is shown at all.\n\nTrue by default.", },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.RangeTableOrder"),
-            ArchetypeReflection {
-                display_name: "Range table order",
-                docstring_md: "Configuration for the sorting of the rows of a time range table.",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortKey".into(), display_name :
-                    "Sort key", docstring_md : "The primary sort key.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md : "The sort order.", },
                 ],
             },
         ),
@@ -765,6 +769,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.ViewFit".into(), display_name :
                     "Scaling", docstring_md : "How the image is scaled to fit the view.",
                     },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TimeRangeTableOrder"),
+            ArchetypeReflection {
+                display_name: "Time range table order",
+                docstring_md: "Ordering of the time range table of the dataframe view",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortKey".into(), display_name :
+                    "Sort key", docstring_md : "The primary sort key", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortOrder".into(), display_name :
+                    "Sort order", docstring_md : "The sort order", },
                 ],
             },
         ),

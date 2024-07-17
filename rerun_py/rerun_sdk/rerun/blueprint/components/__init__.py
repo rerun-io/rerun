@@ -21,6 +21,13 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
+from .dataframe_view_mode import (
+    DataframeViewMode,
+    DataframeViewModeArrayLike,
+    DataframeViewModeBatch,
+    DataframeViewModeLike,
+    DataframeViewModeType,
+)
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
@@ -79,6 +86,11 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
+    "DataframeViewMode",
+    "DataframeViewModeArrayLike",
+    "DataframeViewModeBatch",
+    "DataframeViewModeLike",
+    "DataframeViewModeType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",

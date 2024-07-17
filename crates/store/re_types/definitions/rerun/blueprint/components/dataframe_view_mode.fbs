@@ -1,0 +1,18 @@
+namespace rerun.blueprint.components;
+
+
+/// The kind of table displayed by the dataframe view
+enum DataframeViewMode: byte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Display the entity values at the current time.
+    ///
+    /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
+    LatestAt (default),
+
+    /// Display a temporal table of entity values.
+    ///
+    /// In this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The
+    /// timestamp shown are determined by each view entity's visible time range setting.
+    TimeRange,
+}
