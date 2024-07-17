@@ -14,8 +14,7 @@ namespace rerun::archetypes {
     template <typename TElement>
     SegmentationImage(const TElement* pixels, components::Resolution2D resolution_)
         : SegmentationImage{
-              reinterpret_cast<const uint8_t*>(pixels), resolution_, get_data_type(pixels)
-          } {}
+              reinterpret_cast<const uint8_t*>(pixels), resolution_, get_data_type(pixels)} {}
 
     /// Row-major.
     ///
