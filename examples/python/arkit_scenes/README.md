@@ -3,7 +3,7 @@ title = "ARKit scenes"
 tags = ["2D", "3D", "Depth", "Mesh", "Object detection", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"
 thumbnail_dimensions = [480, 480]
-channel = "main"
+# channel = "main" # TODO(#6901)
 -->
 
 This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun.
