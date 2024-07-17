@@ -1392,7 +1392,7 @@ fn arrow_data_type_method(
             )
         } else {
             cpp_includes.insert_system("arrow/type_fwd.h");
-            hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("ElementType")));
+            hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
 
             let quoted_datatype = quote_arrow_data_type(
                 &Type::Object(obj.fqname.clone()),
@@ -1414,7 +1414,7 @@ fn arrow_data_type_method(
         docs: "Returns the arrow data type this type corresponds to.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { const std::shared_ptr<arrow::ElementType>& },
+            return_type: quote! { const std::shared_ptr<arrow::DataType>& },
             name_and_parameters: quote! { arrow_datatype() },
         },
         definition_body,
