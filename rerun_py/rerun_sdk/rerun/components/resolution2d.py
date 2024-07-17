@@ -10,15 +10,16 @@ from .._baseclasses import (
     ComponentBatchMixin,
     ComponentMixin,
 )
+from .resolution2d_ext import Resolution2DExt
 
 __all__ = ["Resolution2D", "Resolution2DBatch", "Resolution2DType"]
 
 
-class Resolution2D(datatypes.UVec2D, ComponentMixin):
+class Resolution2D(Resolution2DExt, datatypes.UVec2D, ComponentMixin):
     """**Component**: The width and height of a 2D image."""
 
     _BATCH_TYPE = None
-    # You can define your own __init__ function as a member of Resolution2DExt in resolution2d_ext.py
+    # __init__ can be found in resolution2d_ext.py
 
     # Note: there are no fields here because Resolution2D delegates to datatypes.UVec2D
     pass

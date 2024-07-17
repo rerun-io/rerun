@@ -1,79 +1,80 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
-import pyarrow as pa
-
-from .._validators import find_non_empty_dim_indices
-from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
+import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from ..components import TensorDataBatch
-    from ..datatypes import TensorDataArrayLike
+    from ..components import Colormap, ElementType, Resolution2D
+
+    ImageLike = Union[
+        npt.NDArray[np.float16],
+        npt.NDArray[np.float32],
+        npt.NDArray[np.float64],
+        npt.NDArray[np.int16],
+        npt.NDArray[np.int32],
+        npt.NDArray[np.int64],
+        npt.NDArray[np.int8],
+        npt.NDArray[np.uint16],
+        npt.NDArray[np.uint32],
+        npt.NDArray[np.uint64],
+        npt.NDArray[np.uint8],
+    ]
+
+
+def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
+    # isinstance is 4x faster than catching AttributeError
+    if isinstance(tensor, np.ndarray):
+        return tensor
+
+    try:
+        # Make available to the cpu
+        return tensor.numpy(force=True)  # type: ignore[union-attr]
+    except AttributeError:
+        return np.array(tensor, copy=False)
 
 
 class DepthImageExt:
     """Extension for [DepthImage][rerun.archetypes.DepthImage]."""
 
-    @staticmethod
-    @catch_and_log_exceptions("DepthImage converter")
-    def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
-        from ..components import TensorDataBatch
-        from ..datatypes import TensorDataType, TensorDimensionType
+    def __init__(
+        self: Any,
+        pixels: ImageLike,
+        *,
+        meter: float | None = None,
+        colormap: Colormap | None = None,
+    ):
+        element_type_from_dtype = {
+            np.uint8: ElementType.U8,
+            np.uint16: ElementType.U16,
+            np.uint32: ElementType.U32,
+            np.uint64: ElementType.U64,
+            np.int8: ElementType.I8,
+            np.int16: ElementType.I16,
+            np.int32: ElementType.I32,
+            np.int64: ElementType.I64,
+            np.float16: ElementType.F16,
+            np.float32: ElementType.F32,
+            np.float64: ElementType.F64,
+        }
 
-        tensor_data = TensorDataBatch(data)
-        tensor_data_arrow = tensor_data.as_arrow_array()
+        pixels = _to_numpy(pixels)
 
-        # TODO(jleibs): Doing this on raw arrow data is not great. Clean this up
-        # once we coerce to a canonical non-arrow type.
-        shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
-        shape_names = tensor_data_arrow[0].value["shape"].values.field(1).to_numpy(zero_copy_only=False)
+        shape = pixels.shape
+        if len(shape) != 2:
+            raise ValueError(f"DepthImage must be 2D, got shape {shape}")
+        height, width = shape
 
-        non_empty_dims = find_non_empty_dim_indices(shape_dims)
+        try:
+            element_type = element_type_from_dtype[pixels.dtype.type]
+        except KeyError:
+            raise ValueError(f"Unsupported dtype {pixels.dtype} for DepthImage")
 
-        num_non_empty_dims = len(non_empty_dims)
-
-        # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
-        if num_non_empty_dims != 2:
-            _send_warning_or_raise(f"Expected depth image, got array of shape {shape_dims}", 1, recording=None)
-
-        # IF no labels are set, add them
-        # TODO(jleibs): Again, needing to do this at the arrow level is awful
-        if all(label is None for label in shape_names):
-            for ind, label in zip(non_empty_dims, ["height", "width"]):
-                shape_names[ind] = label
-
-            tensor_data_type = TensorDataType().storage_type
-            shape_data_type = TensorDimensionType().storage_type
-
-            shape_names = pa.array(
-                shape_names, mask=np.array([n is None for n in shape_names]), type=shape_data_type.field("name").type
-            )
-
-            new_shape = pa.ListArray.from_arrays(
-                offsets=[0, len(shape_dims)],
-                values=pa.StructArray.from_arrays(
-                    [
-                        tensor_data_arrow[0].value["shape"].values.field(0),
-                        shape_names,
-                    ],
-                    fields=[shape_data_type.field("size"), shape_data_type.field("name")],
-                ),
-            ).cast(tensor_data_type.field("shape").type)
-
-            return TensorDataBatch(
-                pa.StructArray.from_arrays(
-                    [
-                        new_shape,
-                        tensor_data_arrow.storage.field(1),
-                    ],
-                    fields=[
-                        tensor_data_type.field("shape"),
-                        tensor_data_type.field("buffer"),
-                    ],
-                ).cast(tensor_data_arrow.storage.type)
-            )
-
-        # TODO(jleibs): Should we enforce specific names on images? Specifically, what if the existing names are wrong.
-        return tensor_data
+        self.__attrs_init__(
+            data=pixels.tobytes(),
+            resolution=Resolution2D(width=width, height=height),
+            element_type=element_type,
+            meter=meter,
+            colormap=colormap,
+        )
