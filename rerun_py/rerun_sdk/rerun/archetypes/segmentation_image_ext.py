@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 import numpy.typing as npt
 
-from ..components import ChannelDataType, Colormap, Resolution2D
+from ..components import ChannelDataType, Resolution2D
 from ..datatypes import Float32Like
 
 if TYPE_CHECKING:
