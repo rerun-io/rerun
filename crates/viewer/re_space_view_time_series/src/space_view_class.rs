@@ -127,7 +127,7 @@ Display time series data in a plot.
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }
 
-    fn default_query_range(&self) -> QueryRange {
+    fn default_query_range(&self, _view_state: &dyn SpaceViewState) -> QueryRange {
         QueryRange::TimeRange(TimeRange::EVERYTHING)
     }
 

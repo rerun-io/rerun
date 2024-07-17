@@ -434,10 +434,8 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
             view_components_defaults_section_ui(&view_ctx, ui, view);
-        }
 
-        if let Some(view) = blueprint.view(view_id) {
-            visible_time_range_ui_for_view(ctx, ui, view);
+            visible_time_range_ui_for_view(ctx, ui, view, view_state);
         }
     }
 }
