@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-from ..components import Colormap, ChannelDataType, Resolution2D
+from ..components import ChannelDataType, Colormap, Resolution2D
+from ..datatypes import Float32Like
 
 if TYPE_CHECKING:
     ImageLike = Union[
@@ -42,7 +43,7 @@ class DepthImageExt:
         self: Any,
         data: ImageLike,
         *,
-        meter: float | None = None,
+        meter: Float32Like | None = None,
         colormap: Colormap | None = None,
     ):
         channel_dtype_from_np_dtype = {
