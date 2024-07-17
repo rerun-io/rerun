@@ -4,7 +4,7 @@ use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_types::{components::Colormap, datatypes::TensorData, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
-    gpu_bridge, ImageComponents, ImageStatsCache, TensorStatsCache, ViewerContext,
+    gpu_bridge, ImageInfo, ImageStatsCache, TensorStatsCache, ViewerContext,
 };
 
 use crate::contexts::SpatialSceneEntityContext;
@@ -14,7 +14,7 @@ pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
-    image: &ImageComponents,
+    image: &ImageInfo,
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
 ) -> Option<renderer::TexturedRect> {

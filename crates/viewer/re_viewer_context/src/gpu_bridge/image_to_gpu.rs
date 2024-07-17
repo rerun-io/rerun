@@ -15,9 +15,7 @@ use re_renderer::{
 use re_types::components::{ClassId, ColorModel, Colormap};
 use re_types::{components::ElementType, tensor_data::TensorDataMeaning};
 
-use crate::{
-    gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageComponents, TensorStats,
-};
+use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageInfo, TensorStats};
 
 use super::get_or_create_texture;
 
@@ -26,9 +24,9 @@ use super::get_or_create_texture;
 /// Returns a texture key for the given image.
 ///
 /// If the key changes, we upload a new texture.
-fn generate_texture_key(image: &ImageComponents, meaning: TensorDataMeaning) -> u64 {
+fn generate_texture_key(image: &ImageInfo, meaning: TensorDataMeaning) -> u64 {
     // We need to inclde anything that, if changes, should result in a new texture being uploaded.
-    let ImageComponents {
+    let ImageInfo {
         blob_row_id,
         blob: _, // we hash `blob_row_id` instead; much faster!
 
@@ -51,7 +49,7 @@ fn generate_texture_key(image: &ImageComponents, meaning: TensorDataMeaning) -> 
 pub fn image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    image: &ImageComponents,
+    image: &ImageInfo,
     meaning: TensorDataMeaning,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
@@ -85,7 +83,7 @@ fn color_image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     texture_key: u64,
-    image: &ImageComponents,
+    image: &ImageInfo,
     tensor_stats: &TensorStats,
 ) -> Result<ColormappedTexture, anyhow::Error> {
     re_tracing::profile_function!();
@@ -188,7 +186,7 @@ fn depth_image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     texture_key: u64,
-    image: &ImageComponents,
+    image: &ImageInfo,
     tensor_stats: &TensorStats,
 ) -> Result<ColormappedTexture, anyhow::Error> {
     re_tracing::profile_function!();
@@ -217,7 +215,7 @@ fn segmentation_image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     texture_key: u64,
-    image: &ImageComponents,
+    image: &ImageInfo,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> Result<ColormappedTexture, anyhow::Error> {
@@ -309,7 +307,7 @@ fn data_range(tensor_stats: &TensorStats, element_type: ElementType) -> [f32; 2]
 /// Uses no `Unorm/Snorm` formats.
 fn general_texture_creation_desc_from_image<'a>(
     debug_name: &str,
-    image: &'a ImageComponents,
+    image: &'a ImageInfo,
 ) -> Texture2DCreationDesc<'a> {
     re_tracing::profile_function!();
 

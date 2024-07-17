@@ -10,7 +10,7 @@ use re_types::{
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageComponents,
+    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageInfo,
     ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
@@ -43,7 +43,7 @@ impl Default for DepthImageVisualizer {
 }
 
 struct DepthImageComponentData {
-    image: ImageComponents,
+    image: ImageInfo,
     depth_meter: Option<DepthMeter>,
     fill_ratio: Option<FillRatio>,
 }
@@ -142,7 +142,7 @@ impl DepthImageVisualizer {
         ctx: &QueryContext<'_>,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
-        image: &ImageComponents,
+        image: &ImageInfo,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
         depth_meter: DepthMeter,
@@ -303,7 +303,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     )| {
                         let blob = blobs.first()?;
                         Some(DepthImageComponentData {
-                            image: ImageComponents {
+                            image: ImageInfo {
                                 blob_row_id: index.1,
                                 blob: blob.0.clone(),
                                 resolution: first_copied(resolution)?.0 .0,

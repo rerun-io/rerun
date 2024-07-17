@@ -26,7 +26,7 @@ use re_ui::{
     ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
-    HoverHighlight, ImageComponents, ImageStatsCache, Item, ItemSpaceContext, SelectionHighlight,
+    HoverHighlight, ImageInfo, ImageStatsCache, Item, ItemSpaceContext, SelectionHighlight,
     SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, UiLayout,
     ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
@@ -675,7 +675,7 @@ struct PickedImageInfo {
     colormap: Colormap,
     depth_meter: Option<DepthMeter>,
     tensor: Option<re_types::datatypes::TensorData>,
-    image: Option<ImageComponents>,
+    image: Option<ImageInfo>,
 }
 
 #[allow(clippy::too_many_arguments)]

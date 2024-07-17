@@ -8,8 +8,10 @@ use re_types::{
 };
 
 /// Represents an `Image`, `SegmentationImage` or `DepthImage`.
+///
+/// It has enough information to render the image on the screen.
 #[derive(Clone)]
-pub struct ImageComponents {
+pub struct ImageInfo {
     /// The row id that contaoned the blob.
     ///
     /// Can be used instead of hashing [`Self::blob`].
@@ -33,7 +35,7 @@ pub struct ImageComponents {
     // TODO(#6386): `PixelFormat` and `ColorModel`
 }
 
-impl ImageComponents {
+impl ImageInfo {
     #[inline]
     pub fn width(&self) -> u32 {
         self.resolution[0]

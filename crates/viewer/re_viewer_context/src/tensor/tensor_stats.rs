@@ -3,7 +3,7 @@ use ndarray::ArrayViewD;
 
 use re_types::{components::ElementType, tensor_data::TensorDataType};
 
-use crate::ImageComponents;
+use crate::ImageInfo;
 
 /// Stats about a tensor or image.
 #[derive(Clone, Copy, Debug)]
@@ -18,7 +18,7 @@ pub struct TensorStats {
 }
 
 impl TensorStats {
-    pub fn from_image(image: &ImageComponents) -> Self {
+    pub fn from_image(image: &ImageInfo) -> Self {
         re_tracing::profile_function!();
 
         // TODO(#6008): support stride

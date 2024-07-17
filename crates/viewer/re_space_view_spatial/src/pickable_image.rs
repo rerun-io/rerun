@@ -2,7 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer::TexturedRect;
 use re_types::{components::DepthMeter, datatypes::TensorData, tensor_data::TensorDataMeaning};
-use re_viewer_context::ImageComponents;
+use re_viewer_context::ImageInfo;
 
 /// Image rectangle that can be picked in the view.
 pub struct PickableImageRect {
@@ -21,7 +21,7 @@ pub struct PickableImageRect {
 
     pub tensor: Option<TensorData>,
 
-    pub image: Option<ImageComponents>,
+    pub image: Option<ImageInfo>,
 }
 
 impl PickableImageRect {

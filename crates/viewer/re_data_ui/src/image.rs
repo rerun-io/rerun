@@ -9,7 +9,7 @@ use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{TensorDataMeaning, TensorElement};
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    gpu_bridge, Annotations, ImageComponents, TensorStats, TensorStatsCache, UiLayout,
+    gpu_bridge, Annotations, ImageInfo, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
 };
 
@@ -529,7 +529,7 @@ pub fn show_zoomed_image_region_area_outline(
 pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    image: &ImageComponents,
+    image: &ImageInfo,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
     meaning: TensorDataMeaning,
@@ -572,7 +572,7 @@ pub fn show_zoomed_image_region(
 fn try_show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
-    image: &ImageComponents,
+    image: &ImageInfo,
     texture: ColormappedTexture,
     annotations: &Annotations,
     meaning: TensorDataMeaning,
@@ -654,7 +654,7 @@ fn try_show_zoomed_image_region(
 
 fn image_pixel_value_ui(
     ui: &mut egui::Ui,
-    image: &ImageComponents,
+    image: &ImageInfo,
     annotations: &Annotations,
     [x, y]: [u32; 2],
     meaning: TensorDataMeaning,
