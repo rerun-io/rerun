@@ -17,7 +17,9 @@ use re_space_view::{latest_at_with_blueprint_resolved_data, ScreenshotMode};
 use re_types::{
     archetypes::Pinhole,
     blueprint::components::VisualBounds2D,
-    components::{Colormap, DepthMeter, TensorData, ViewCoordinates},
+    components::{
+        Blob, ChannelDataType, Colormap, DepthMeter, Resolution2D, TensorData, ViewCoordinates,
+    },
     tensor_data::TensorDataMeaning,
     Loggable as _,
 };
@@ -507,7 +509,18 @@ pub fn picking(
                     TensorDataMeaning::Unknown
                 };
 
-                picked_image_from_tensor_query(&view_ctx, data_result, hit, is_depth_cloud, meaning)
+                if hit.hit_type != PickingHitType::TexturedRect
+                    && is_depth_cloud
+                    && meaning != TensorDataMeaning::Depth
+                {
+                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                    // (the back-projection property may be true despite this not being a depth image!)
+                    None
+                } else {
+                    picked_image_from_image_query(&view_ctx, data_result, hit, meaning).or_else(
+                        || picked_image_from_tensor_query(&view_ctx, data_result, hit, meaning),
+                    )
+                }
             }
         } else {
             None
@@ -631,7 +644,6 @@ fn picked_image_from_tensor_query(
     view_ctx: &ViewContext<'_>,
     data_result: &re_viewer_context::DataResult,
     hit: &crate::picking::PickingRayHit,
-    is_depth_cloud: bool,
     meaning: TensorDataMeaning,
 ) -> Option<PickedImageInfo> {
     let query_shadowed_defaults = false;
@@ -649,15 +661,6 @@ fn picked_image_from_tensor_query(
     let tensor_untyped = results.get(TensorData::name())?;
     let tensor = tensor_untyped.mono::<TensorData>(&results.resolver)?;
 
-    if hit.hit_type != PickingHitType::TexturedRect
-        && is_depth_cloud
-        && meaning != TensorDataMeaning::Depth
-    {
-        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-        // (the back-projection property may be true despite this not being a depth image!)
-        return None;
-    }
-
     tensor.image_height_width_channels().map(|[_, w, _]| {
         let (_, row_id) = *tensor_untyped.index();
         let coordinates = hit.instance_path_hash.instance.to_2d_image_coordinate(w);
@@ -671,6 +674,64 @@ fn picked_image_from_tensor_query(
             colormap: results.get_mono_with_fallback::<Colormap>(),
             depth_meter: results.get_mono::<DepthMeter>(),
         }
+    })
+}
+
+fn picked_image_from_image_query(
+    view_ctx: &ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    hit: &crate::picking::PickingRayHit,
+    meaning: TensorDataMeaning,
+) -> Option<PickedImageInfo> {
+    let query_shadowed_defaults = false;
+    let results = latest_at_with_blueprint_resolved_data(
+        view_ctx,
+        None,
+        &view_ctx.viewer_ctx.current_query(),
+        data_result,
+        [
+            Blob::name(),
+            Resolution2D::name(),
+            ChannelDataType::name(),
+            Colormap::name(),
+            DepthMeter::name(),
+        ],
+        query_shadowed_defaults,
+    );
+
+    // TODO(andreas): Just calling `results.get_mono::<Blob>` would be a lot more elegant.
+    // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
+    let blob_untyped = results.get(Blob::name())?;
+    let blob = blob_untyped.mono::<Blob>(&results.resolver)?.0;
+
+    let resolution = results.get_mono::<Resolution2D>()?;
+    let data_type = results.get_mono::<ChannelDataType>()?;
+    let colormap = results.get_mono_with_fallback::<Colormap>();
+    let depth_meter = results.get_mono::<DepthMeter>();
+
+    let (_, blob_row_id) = *blob_untyped.index();
+    let coordinates = hit
+        .instance_path_hash
+        .instance
+        .to_2d_image_coordinate(resolution.width() as _);
+
+    let image = ImageInfo {
+        blob_row_id,
+        blob,
+        resolution: resolution.0.into(),
+        data_type,
+        color_model: None,
+        colormap: Some(colormap),
+    };
+
+    Some(PickedImageInfo {
+        row_id: blob_row_id,
+        tensor: None,
+        image: Some(image),
+        meaning,
+        coordinates,
+        colormap,
+        depth_meter,
     })
 }
 
