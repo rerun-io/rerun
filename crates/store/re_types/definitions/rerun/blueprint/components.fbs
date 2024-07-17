@@ -7,6 +7,7 @@ include "./components/background_kind.fbs";
 include "./components/column_share.fbs";
 include "./components/container_kind.fbs";
 include "./components/corner_2d.fbs";
+include "./components/dataframe_view_mode.fbs";
 include "./components/grid_columns.fbs";
 include "./components/included_content.fbs";
 include "./components/included_space_view.fbs";
