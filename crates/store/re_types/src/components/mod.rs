@@ -68,6 +68,7 @@ mod rotation3d;
 mod rotation3d_ext;
 mod rotation_axis_angle;
 mod rotation_quat;
+mod rotation_quat_ext;
 mod scalar;
 mod scalar_ext;
 mod scale3d;

@@ -20,6 +20,9 @@ mod prelude {
     // the amount of typing for our users.
     pub use re_types::archetypes::*;
 
+    // Special utility types.
+    pub use re_types::Rotation3D;
+
     // Also import any component or datatype that has a unique name:
     pub use re_chunk::ChunkTimeline;
     pub use re_types::components::{
@@ -29,8 +32,8 @@ mod prelude {
     };
     pub use re_types::datatypes::{
         Angle, AnnotationInfo, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32,
-        Rotation3D, RotationAxisAngle, TensorBuffer, TensorData, TensorDimension,
-        TranslationRotationScale3D, Vec2D, Vec3D, Vec4D,
+        RotationAxisAngle, TensorBuffer, TensorData, TensorDimension, TranslationRotationScale3D,
+        Vec2D, Vec3D, Vec4D,
     };
 }
 pub use prelude::*;

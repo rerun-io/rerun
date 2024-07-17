@@ -1,49 +1,9 @@
 use crate::{
-    components::{RotationAxisAngle, RotationQuat, Scale3D, TransformMat3x3, Translation3D},
-    datatypes,
+    components::{Scale3D, TransformMat3x3, Translation3D},
+    Rotation3D,
 };
 
 use super::Transform3D;
-
-/// A 3D rotation.
-///
-/// This is *not* a component, but a helper type for populating `Transform3D` with rotations.
-#[derive(Clone, Debug, Copy, PartialEq)]
-pub enum Rotation3D {
-    /// Rotation defined by a quaternion.
-    Quaternion(RotationQuat),
-
-    /// Rotation defined with an axis and an angle.
-    AxisAngle(RotationAxisAngle),
-}
-
-impl From<RotationQuat> for Rotation3D {
-    #[inline]
-    fn from(quat: RotationQuat) -> Self {
-        Self::Quaternion(quat)
-    }
-}
-
-impl From<RotationAxisAngle> for Rotation3D {
-    #[inline]
-    fn from(axis_angle: RotationAxisAngle) -> Self {
-        Self::AxisAngle(axis_angle)
-    }
-}
-
-impl From<datatypes::Quaternion> for Rotation3D {
-    #[inline]
-    fn from(quat: datatypes::Quaternion) -> Self {
-        Self::Quaternion(quat.into())
-    }
-}
-
-impl From<datatypes::RotationAxisAngle> for Rotation3D {
-    #[inline]
-    fn from(axis_angle: datatypes::RotationAxisAngle) -> Self {
-        Self::AxisAngle(axis_angle.into())
-    }
-}
 
 impl Transform3D {
     /// Convenience method that takes any kind of (single) rotation representation and sets it on this transform.
