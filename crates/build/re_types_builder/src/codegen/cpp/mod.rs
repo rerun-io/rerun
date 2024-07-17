@@ -422,7 +422,7 @@ impl QuotedObject {
             },
             ObjectClass::Enum => {
                 if !hpp_type_extensions.is_empty() {
-                    reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, becuase C++ enums doesn't support member functions");
+                    reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, because C++ enums doesn't support member functions");
                 }
                 Ok(Self::from_enum(objects, obj, hpp_includes))
             }
