@@ -136,8 +136,6 @@ namespace rerun::archetypes {
               resolution{resolution_},
               data_type{data_type_} {}
 
-        /// New depth image from an `ChannelDataType` and a pointer.
-        ///
         /// The length of the data should be `W * H * data_type.size`
         SegmentationImage(
             Collection<uint8_t> data_, components::Resolution2D resolution_,
