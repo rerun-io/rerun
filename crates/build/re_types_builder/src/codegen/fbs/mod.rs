@@ -68,6 +68,7 @@ fn generate_include_file_for_dir(reporter: &crate::Reporter, dir_path: &Utf8Path
 
     let dir_name = dir_path.file_name().unwrap();
 
+    let mut include_entries = Vec::new();
     for entry in read_dir {
         match entry {
             Ok(entry) => {
@@ -76,7 +77,7 @@ fn generate_include_file_for_dir(reporter: &crate::Reporter, dir_path: &Utf8Path
                 let entry_name = entry_name.to_str().unwrap();
 
                 if entry_path.is_file() && entry_name.ends_with(".fbs") {
-                    contents.push_str(&format!("include \"./{dir_name}/{entry_name}\";\n"));
+                    include_entries.push(format!("include \"./{dir_name}/{entry_name}\";\n"));
                 }
             }
             Err(err) => {
@@ -84,6 +85,11 @@ fn generate_include_file_for_dir(reporter: &crate::Reporter, dir_path: &Utf8Path
                 return contents;
             }
         }
+    }
+
+    include_entries.sort();
+    for include_entry in include_entries {
+        contents.push_str(&include_entry);
     }
 
     contents
