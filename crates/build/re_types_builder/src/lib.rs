@@ -576,13 +576,20 @@ pub fn generate_fbs(reporter: &Reporter, definition_dir: impl AsRef<Utf8Path>, c
     let objects = Objects::default();
     let arrow_registry = ArrowRegistry::default();
 
+    let orphan_path_opt_outs = [
+        definition_dir.as_ref().to_path_buf(),
+        definition_dir.as_ref().join("rerun"),
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+
     generate_code(
         reporter,
         &objects,
         &arrow_registry,
         &mut generator,
         &mut formatter,
-        &Default::default(),
+        &orphan_path_opt_outs,
         check,
     );
 }

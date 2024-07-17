@@ -1,4 +1,4 @@
-include "rerun/attributes.fbs";
+
 
 namespace rerun.builtins;
 
