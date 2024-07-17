@@ -9,24 +9,24 @@ namespace rerun::archetypes {
 #include "../image_utils.hpp"
 
     template <typename TElement>
-    DepthImage(components::Resolution2D resolution_, const TElement* pixels)
-        : DepthImage{resolution_, get_data_type(pixels), reinterpret_cast<const uint8_t*>(pixels)} {
+    DepthImage(const TElement* pixels, components::Resolution2D resolution_)
+        : DepthImage{reinterpret_cast<const uint8_t*>(pixels), resolution_, get_data_type(pixels)} {
     }
 
     template <typename TElement>
-    DepthImage(components::Resolution2D resolution_, std::vector<TElement> pixels)
-        : DepthImage{resolution_, Collection<TElement>::take_ownership(std::move(pixels))} {}
+    DepthImage(std::vector<TElement> pixels, components::Resolution2D resolution_)
+        : DepthImage{Collection<TElement>::take_ownership(std::move(pixels)), resolution_} {}
 
     template <typename TElement>
-    DepthImage(components::Resolution2D resolution_, Collection<TElement> pixels)
-        : DepthImage{resolution_, get_data_type(pixels.data()), pixels.to_uint8()} {}
+    DepthImage(Collection<TElement> pixels, components::Resolution2D resolution_)
+        : DepthImage{pixels.to_uint8(), resolution_, get_data_type(pixels.data())} {}
 
     /// New depth image from an `ChannelDataType` and a pointer.
     ///
     /// The length of the data should be `W * H * data_type.size`
     DepthImage(
-        components::Resolution2D resolution_, components::ChannelDataType data_type_,
-        const void* data_
+        const void* data_, components::Resolution2D resolution_,
+        components::ChannelDataType data_type_
     )
         : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, data_type_))},
           resolution{resolution_},
@@ -36,8 +36,8 @@ namespace rerun::archetypes {
     ///
     /// The length of the data should be `W * H * data_type.size`
     DepthImage(
-        components::Resolution2D resolution_, components::ChannelDataType data_type_,
-        Collection<uint8_t> data_
+        Collection<uint8_t> data_, components::Resolution2D resolution_,
+        components::ChannelDataType data_type_
     )
         : data{data_}, resolution{resolution_}, data_type{data_type_} {}
 
