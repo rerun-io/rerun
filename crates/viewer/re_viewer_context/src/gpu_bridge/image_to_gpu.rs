@@ -33,17 +33,11 @@ fn generate_texture_key(image: &ImageInfo, meaning: TensorDataMeaning) -> u64 {
         resolution,
         element_type,
         color_model,
-        colormap,
+
+        colormap: _, // No need to upload new texture when this changes
     } = image;
 
-    hash((
-        blob_row_id,
-        resolution,
-        element_type,
-        color_model,
-        colormap,
-        meaning,
-    ))
+    hash((blob_row_id, resolution, element_type, color_model, meaning))
 }
 
 pub fn image_to_gpu(
