@@ -12,7 +12,7 @@ rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.integers(0, 255, size=(10, 20))
 
 
-IMAGE_INPUTS: list[TensorDataLike] = [
+SEGMENTATION_IMAGE_INPUTS: list[TensorDataLike] = [
     # Full explicit construction
     TensorData(
         shape=[
@@ -30,16 +30,16 @@ def segmentation_image_image_expected() -> Any:
     return rr.SegmentationImage(data=RANDOM_IMAGE_SOURCE)
 
 
-def test_image() -> None:
+def test_segmenetation_image() -> None:
     expected = segmentation_image_image_expected()
 
-    for img in IMAGE_INPUTS:
+    for img in SEGMENTATION_IMAGE_INPUTS:
         arch = rr.SegmentationImage(data=img)
 
         assert arch == expected
 
 
-GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
+GOOD_DEPTH_IMAGE_INPUTS: list[TensorDataLike] = [
     # Mono
     rng.integers(0, 255, (10, 20)),
     # Assorted Extra Dimensions
@@ -49,7 +49,7 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     torch.randint(0, 255, (10, 20)),
 ]
 
-BAD_IMAGE_INPUTS: list[TensorDataLike] = [
+BAD_DEPTH_IMAGE_INPUTS: list[TensorDataLike] = [
     rng.integers(0, 255, (10, 20, 3)),
     rng.integers(0, 255, (10, 20, 4)),
     rng.integers(0, 255, (10,)),
@@ -63,14 +63,14 @@ BAD_IMAGE_INPUTS: list[TensorDataLike] = [
 ]
 
 
-def test_segmentation_image_shapes() -> None:
+def test_depth_image() -> None:
     import rerun as rr
 
     rr.set_strict_mode(True)
 
-    for img in GOOD_IMAGE_INPUTS:
+    for img in GOOD_DEPTH_IMAGE_INPUTS:
         rr.DepthImage(img)
 
-    for img in BAD_IMAGE_INPUTS:
+    for img in BAD_DEPTH_IMAGE_INPUTS:
         with pytest.raises(ValueError):
             rr.DepthImage(img)
