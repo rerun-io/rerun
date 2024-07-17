@@ -19,15 +19,15 @@ namespace rerun {
         Rotation3D() : axis_angle(std::nullopt), quaternion(std::nullopt) {}
 
         /// Construct a `Rotation3D` from a rotation axis and angle component.
-        Rotation3D(rerun::components::RotationAxisAngle axis_angle) : axis_angle(axis_angle) {}
+        Rotation3D(rerun::components::RotationAxisAngle axis_angle_) : axis_angle(axis_angle_) {}
 
         /// Construct a `Rotation3D` from a quaternion component.
-        Rotation3D(rerun::components::RotationQuat quaternion) : quaternion(quaternion) {}
+        Rotation3D(rerun::components::RotationQuat quaternion_) : quaternion(quaternion_) {}
 
         /// Construct a `Rotation3D` from a rotation axis and angle datatype.
-        Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle) : axis_angle(axis_angle) {}
+        Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle_) : axis_angle(axis_angle_) {}
 
         /// Construct a `Rotation3D` from a quaternion datatype.
-        Rotation3D(rerun::datatypes::Quaternion quaternion) : quaternion(quaternion) {}
+        Rotation3D(rerun::datatypes::Quaternion quaternion_) : quaternion(quaternion_) {}
     };
 } // namespace rerun
