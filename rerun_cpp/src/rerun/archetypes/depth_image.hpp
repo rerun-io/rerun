@@ -69,7 +69,7 @@ namespace rerun::archetypes {
     ///
     ///     rec.log(
     ///         "world/camera/depth",
-    ///         rerun::DepthImage({HEIGHT, WIDTH}, data)
+    ///         rerun::DepthImage({WIDTH, HEIGHT}, data)
     ///             .with_meter(10000.0)
     ///             .with_colormap(rerun::components::Colormap::Viridis)
     ///     );
