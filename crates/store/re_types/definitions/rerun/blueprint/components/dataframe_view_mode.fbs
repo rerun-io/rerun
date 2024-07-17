@@ -9,7 +9,7 @@ namespace rerun.blueprint.components;
 
 
 /// The kind of table displayed by the dataframe view.
-enum DataframeMode: byte (
+enum DataframeViewMode: byte (
     "attr.rerun.scope": "blueprint"
 ) {
     /// Display the "latest at" value of each view entities.

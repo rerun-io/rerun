@@ -2,7 +2,7 @@
 
 .gitattributes linguist-generated=true
 background.rs linguist-generated=true
-dataframe_settings.rs linguist-generated=true
+dataframe_view_mode.rs linguist-generated=true
 mod.rs linguist-generated=true
 plot_legend.rs linguist-generated=true
 scalar_axis.rs linguist-generated=true
@@ -11,5 +11,6 @@ space_view_contents.rs linguist-generated=true
 tensor_scalar_mapping.rs linguist-generated=true
 tensor_slice_selection.rs linguist-generated=true
 tensor_view_fit.rs linguist-generated=true
+time_range_table_order.rs linguist-generated=true
 visible_time_ranges.rs linguist-generated=true
 visual_bounds2d.rs linguist-generated=true

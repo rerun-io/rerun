@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration for the dataframe view
+table DataframeViewMode (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy",
+    "attr.rust.generate_field_info"
+) {
+    // --- Optional ---
+
+    /// The kind of table to display
+    mode: rerun.blueprint.components.DataframeViewMode ("attr.rerun.component_optional", nullable, order: 1000);
+}

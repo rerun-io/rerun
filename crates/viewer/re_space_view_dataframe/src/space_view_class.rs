@@ -3,10 +3,7 @@ use std::any::Any;
 
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
-use re_types::blueprint::{
-    archetypes::DataframeSettings,
-    components::{DataframeMode, SortKey, SortOrder},
-};
+use re_types::blueprint::{archetypes, components};
 use re_types_core::datatypes::TimeRange;
 use re_types_core::SpaceViewClassIdentifier;
 use re_ui::list_item;
@@ -28,14 +25,16 @@ use crate::{
 /// `https://github.com/rerun-io/rerun/issues/6918`.
 #[derive(Debug, Default)]
 struct DataframeViewState {
-    mode: DataframeMode,
+    mode: components::DataframeViewMode,
 }
 
 impl SpaceViewState for DataframeViewState {
+    #[inline]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
+    #[inline]
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
@@ -104,11 +103,14 @@ mode sets the default time range to _everything_. You can override this in the s
         let mode = state
             .downcast_ref::<DataframeViewState>()
             .map(|state| state.mode)
+            .inspect_err(|err| re_log::warn_once!("Unexpected view type: {err}"))
             .unwrap_or_default();
 
         match mode {
-            DataframeMode::LatestAt => QueryRange::LatestAt,
-            DataframeMode::TimeRange => QueryRange::TimeRange(TimeRange::EVERYTHING),
+            components::DataframeViewMode::LatestAt => QueryRange::LatestAt,
+            components::DataframeViewMode::TimeRange => {
+                QueryRange::TimeRange(TimeRange::EVERYTHING)
+            }
         }
     }
 
@@ -128,9 +130,28 @@ mode sets the default time range to _everything_. You can override this in the s
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        let settings = ViewProperty::from_archetype::<archetypes::DataframeViewMode>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            space_view_id,
+        );
+
+        let mode =
+            settings.component_or_fallback::<components::DataframeViewMode>(ctx, self, state)?;
+
         list_item::list_item_scope(ui, "dataframe_view_selection_ui", |ui| {
-            //TODO(#6919): this bit of UI needs some love
-            view_property_ui::<DataframeSettings>(ctx, ui, space_view_id, self, state);
+            //TODO(ab): ideally we'd drop the "Dataframe" part in the UI label
+            view_property_ui::<archetypes::DataframeViewMode>(ctx, ui, space_view_id, self, state);
+
+            ui.add_enabled_ui(mode == components::DataframeViewMode::TimeRange, |ui| {
+                view_property_ui::<archetypes::TimeRangeTableOrder>(
+                    ctx,
+                    ui,
+                    space_view_id,
+                    self,
+                    state,
+                );
+            });
         });
 
         Ok(())
@@ -146,23 +167,36 @@ mode sets the default time range to _everything_. You can override this in the s
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let settings = ViewProperty::from_archetype::<DataframeSettings>(
+        let settings = ViewProperty::from_archetype::<archetypes::DataframeViewMode>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             query.space_view_id,
         );
 
-        let mode = settings.component_or_fallback::<DataframeMode>(ctx, self, state)?;
-        let sort_key = settings.component_or_fallback::<SortKey>(ctx, self, state)?;
-        let sort_order = settings.component_or_fallback::<SortOrder>(ctx, self, state)?;
+        let mode =
+            settings.component_or_fallback::<components::DataframeViewMode>(ctx, self, state)?;
 
         // update state
         let state = state.downcast_mut::<DataframeViewState>()?;
         state.mode = mode;
 
         match mode {
-            DataframeMode::LatestAt => latest_at_table_ui(ctx, ui, query),
-            DataframeMode::TimeRange => time_range_table_ui(ctx, ui, query, sort_key, sort_order),
+            components::DataframeViewMode::LatestAt => latest_at_table_ui(ctx, ui, query),
+
+            components::DataframeViewMode::TimeRange => {
+                let time_range_table_order =
+                    ViewProperty::from_archetype::<archetypes::TimeRangeTableOrder>(
+                        ctx.blueprint_db(),
+                        ctx.blueprint_query,
+                        query.space_view_id,
+                    );
+                let sort_key = time_range_table_order
+                    .component_or_fallback::<components::SortKey>(ctx, self, state)?;
+                let sort_order = time_range_table_order
+                    .component_or_fallback::<components::SortOrder>(ctx, self, state)?;
+
+                time_range_table_ui(ctx, ui, query, sort_key, sort_order);
+            }
         };
 
         Ok(())
