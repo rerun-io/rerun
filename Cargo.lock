@@ -4926,6 +4926,7 @@ dependencies = [
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
+ "re_log",
  "re_log_types",
  "re_renderer",
  "re_space_view",

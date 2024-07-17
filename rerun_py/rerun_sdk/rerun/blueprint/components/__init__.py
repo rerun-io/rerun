@@ -21,12 +21,12 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .dataframe_mode import (
-    DataframeMode,
-    DataframeModeArrayLike,
-    DataframeModeBatch,
-    DataframeModeLike,
-    DataframeModeType,
+from .dataframe_view_mode import (
+    DataframeViewMode,
+    DataframeViewModeArrayLike,
+    DataframeViewModeBatch,
+    DataframeViewModeLike,
+    DataframeViewModeType,
 )
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
@@ -86,11 +86,11 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "DataframeMode",
-    "DataframeModeArrayLike",
-    "DataframeModeBatch",
-    "DataframeModeLike",
-    "DataframeModeType",
+    "DataframeViewMode",
+    "DataframeViewModeArrayLike",
+    "DataframeViewModeBatch",
+    "DataframeViewModeLike",
+    "DataframeViewModeType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",
