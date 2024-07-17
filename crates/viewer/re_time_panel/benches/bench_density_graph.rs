@@ -193,32 +193,32 @@ const fn many_chunks(num_chunks: i64, num_rows_per_chunk: i64) -> ChunkEntry {
     }
 }
 
-fn bench_split_scenarios(c: &mut Criterion) {
-    let scenarios = [
-        (
-            "split_never",
-            DensityGraphBuilderConfig {
-                max_total_chunk_events: 0,
-                max_events_in_unsorted_chunk: 0,
-                max_events_in_sorted_chunk: 0,
-            },
-        ),
-        // split only sorted chunks
-        (
-            "split_sorted_always",
-            DensityGraphBuilderConfig {
-                max_total_chunk_events: usize::MAX,
-                max_events_in_unsorted_chunk: 0,
-                max_events_in_sorted_chunk: usize::MAX,
-            },
-        ),
-    ];
+const SCENARIOS: [(&str, DensityGraphBuilderConfig); 2] = [
+    // never split any chunks
+    (
+        "split_never",
+        DensityGraphBuilderConfig {
+            max_total_chunk_events: 0,
+            max_events_in_unsorted_chunk: 0,
+            max_events_in_sorted_chunk: 0,
+        },
+    ),
+    // always split sorted chunks
+    (
+        "split_sorted_always",
+        DensityGraphBuilderConfig {
+            max_total_chunk_events: usize::MAX,
+            max_events_in_unsorted_chunk: 0,
+            max_events_in_sorted_chunk: usize::MAX,
+        },
+    ),
+];
 
-    let sizes = [0, 1, 10, 100, 1000, 10000];
+fn bench_single_chunks(c: &mut Criterion) {
+    for (name, config) in SCENARIOS {
+        let mut group = c.benchmark_group(format!("single_chunks/{name}"));
 
-    for (name, config) in scenarios {
-        let mut group = c.benchmark_group(name);
-
+        let sizes = [0, 1, 10, 100, 1000, 10000, 100000];
         for size in sizes {
             for sorted in [true, false] {
                 let id = if sorted {
@@ -234,6 +234,23 @@ fn bench_split_scenarios(c: &mut Criterion) {
     }
 }
 
+fn bench_many_chunks(c: &mut Criterion) {
+    for (name, config) in SCENARIOS {
+        let mut group = c.benchmark_group(format!("many_chunks/{name}"));
+
+        let sizes = [(100, 0), (100, 1), (100, 10), (100, 100), (100, 1000)];
+        for (num_chunks, num_rows_per_chunk) in sizes {
+            group.bench_with_input(
+                format!("{num_chunks}x{num_rows_per_chunk}"),
+                &many_chunks(num_chunks, num_rows_per_chunk),
+                |b, &entry| {
+                    run(b, config, &[entry]);
+                },
+            );
+        }
+    }
+}
+
 fn main() {
     // More noisy results, but benchmark ends a lot sooner.
     let mut criterion = Criterion::default()
@@ -243,7 +260,8 @@ fn main() {
         .sample_size(10)
         .noise_threshold(0.05);
 
-    bench_split_scenarios(&mut criterion);
+    bench_single_chunks(&mut criterion);
+    bench_many_chunks(&mut criterion);
 
     criterion.final_summary();
 }
