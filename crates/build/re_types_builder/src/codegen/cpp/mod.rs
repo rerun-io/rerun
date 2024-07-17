@@ -181,6 +181,7 @@ impl CppCodeGenerator {
 
         for &obj in &objects_of_kind {
             if let Err(err) = generate_object_files(
+                reporter,
                 objects,
                 &folder_path_sdk,
                 &folder_path_testing,
@@ -225,6 +226,7 @@ impl CppCodeGenerator {
 }
 
 fn generate_object_files(
+    reporter: &Reporter,
     objects: &Objects,
     folder_path_sdk: &Utf8PathBuf,
     folder_path_testing: &Utf8PathBuf,
@@ -242,7 +244,7 @@ fn generate_object_files(
     let (hpp_type_extensions, hpp_extension_string) =
         hpp_type_extensions(folder_path_sdk, &filename_stem, &mut hpp_includes);
 
-    let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions)?;
+    let (hpp, cpp) = generate_hpp_cpp(reporter, objects, obj, hpp_includes, &hpp_type_extensions)?;
 
     for (extension, tokens) in [("hpp", Some(hpp)), ("cpp", cpp)] {
         let Some(tokens) = tokens else {
@@ -351,13 +353,14 @@ fn hpp_type_extensions(
 }
 
 fn generate_hpp_cpp(
+    reporter: &Reporter,
     objects: &Objects,
     obj: &Object,
     hpp_includes: Includes,
     hpp_type_extensions: &TokenStream,
 ) -> Result<(TokenStream, Option<TokenStream>)> {
     let QuotedObject { hpp, cpp } =
-        QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions)?;
+        QuotedObject::new(reporter, objects, obj, hpp_includes, hpp_type_extensions)?;
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -392,6 +395,7 @@ struct QuotedObject {
 impl QuotedObject {
     #[allow(clippy::unnecessary_wraps)] // TODO(emilk): implement proper error handling instead of panicking
     pub fn new(
+        reporter: &Reporter,
         objects: &Objects,
         obj: &Object,
         hpp_includes: Includes,
@@ -412,11 +416,16 @@ impl QuotedObject {
                     hpp_type_extensions,
                 )),
                 ObjectKind::View => {
-                    // TODO(#5521): Implement view codegen for Rust.
+                    // TODO(#5521): Implement view codegen for C++.
                     unimplemented!();
                 }
             },
-            ObjectClass::Enum => Ok(Self::from_enum(objects, obj, hpp_includes)),
+            ObjectClass::Enum => {
+                if !hpp_type_extensions.is_empty() {
+                    reporter.error(&obj.virtpath, &obj.fqname, "C++ enums cannot have type extensions, becuase C++ enums doesn't support member functions");
+                }
+                Ok(Self::from_enum(objects, obj, hpp_includes))
+            }
             ObjectClass::Union => Ok(Self::from_union(
                 objects,
                 obj,
