@@ -64,6 +64,8 @@ impl<T: bytemuck::Pod> ArrowBuffer<T> {
     pub fn cast_pod<Target: bytemuck::Pod>(
         &self,
     ) -> Result<ArrowBuffer<Target>, bytemuck::PodCastError> {
+        // TODO(emilk): when we switch from arrow2, see if we can make this function zero-copy
+        re_tracing::profile_function!();
         let target_slice: &[Target] = bytemuck::try_cast_slice(self.as_slice())?;
         Ok(ArrowBuffer::from(target_slice.to_vec()))
     }

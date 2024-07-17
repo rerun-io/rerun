@@ -123,20 +123,29 @@ namespace rerun::archetypes {
       public:
         // Extensions to generated type defined in 'depth_image_ext.cpp'
 
+        /// Row-major. Borrows.
+        ///
+        /// The length of the data should be `W * H`.
         template <typename TElement>
         DepthImage(const TElement* pixels, components::Resolution2D resolution_)
             : DepthImage{
                   reinterpret_cast<const uint8_t*>(pixels), resolution_, get_data_type(pixels)} {}
 
+        /// Row-major.
+        ///
+        /// The length of the data should be `W * H`.
         template <typename TElement>
         DepthImage(std::vector<TElement> pixels, components::Resolution2D resolution_)
             : DepthImage{Collection<TElement>::take_ownership(std::move(pixels)), resolution_} {}
 
+        /// Row-major.
+        ///
+        /// The length of the data should be `W * H`.
         template <typename TElement>
         DepthImage(Collection<TElement> pixels, components::Resolution2D resolution_)
             : DepthImage{pixels.to_uint8(), resolution_, get_data_type(pixels.data())} {}
 
-        /// New depth image from an `ChannelDataType` and a pointer.
+        /// Row-major. Borrows.
         ///
         /// The length of the data should be `W * H * data_type.size`
         DepthImage(
