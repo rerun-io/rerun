@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Any, Union
 import numpy as np
 import numpy.typing as npt
 
-if TYPE_CHECKING:
-    from ..components import Colormap, ElementType, Resolution2D
+from ..components import Colormap, ElementType, Resolution2D
 
+if TYPE_CHECKING:
     ImageLike = Union[
         npt.NDArray[np.float16],
         npt.NDArray[np.float32],
@@ -40,7 +40,7 @@ class DepthImageExt:
 
     def __init__(
         self: Any,
-        pixels: ImageLike,
+        data: ImageLike,
         *,
         meter: float | None = None,
         colormap: Colormap | None = None,
@@ -59,20 +59,27 @@ class DepthImageExt:
             np.float64: ElementType.F64,
         }
 
-        pixels = _to_numpy(pixels)
+        data = _to_numpy(data)
 
-        shape = pixels.shape
+        shape = data.shape
+
+        # Ignore leading and trailing dimensions of size 1:
+        while 2 < len(shape) and shape[0] == 1:
+            shape = shape[1:]
+        while 2 < len(shape) and shape[-1] == 1:
+            shape = shape[:-1]
+
         if len(shape) != 2:
-            raise ValueError(f"DepthImage must be 2D, got shape {shape}")
+            raise ValueError(f"DepthImage must be 2D, got shape {data.shape}")
         height, width = shape
 
         try:
-            element_type = element_type_from_dtype[pixels.dtype.type]
+            element_type = element_type_from_dtype[data.dtype.type]
         except KeyError:
-            raise ValueError(f"Unsupported dtype {pixels.dtype} for DepthImage")
+            raise ValueError(f"Unsupported dtype {data.dtype} for DepthImage")
 
         self.__attrs_init__(
-            data=pixels.tobytes(),
+            data=data.tobytes(),
             resolution=Resolution2D(width=width, height=height),
             element_type=element_type,
             meter=meter,
