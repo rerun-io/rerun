@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/uvec2d.hpp"
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -14,6 +15,20 @@ namespace rerun::components {
     /// **Component**: The width and height of a 2D image.
     struct Resolution2D {
         rerun::datatypes::UVec2D wh;
+
+      public:
+        // Extensions to generated type defined in 'resolution2d_ext.cpp'
+
+        /// Construct resolution from width and height.
+        Resolution2D(uint32_t width, uint32_t height) : wh{width, height} {}
+
+        uint32_t width() const {
+            return wh.x();
+        }
+
+        uint32_t height() const {
+            return wh.y();
+        }
 
       public:
         Resolution2D() = default;

@@ -334,6 +334,25 @@ namespace rerun {
             return result;
         }
 
+        /// Reinterpret this collection as a collection of bytes.
+        Collection<uint8_t> to_uint8() const {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed: {
+                    return Collection<uint8_t>::borrow(
+                        reinterpret_cast<const uint8_t*>(data()),
+                        size() * sizeof(TElement)
+                    );
+                }
+                case CollectionOwnership::VectorOwned: {
+                    auto ptr = reinterpret_cast<const uint8_t*>(data());
+                    auto num_bytes = size() * sizeof(TElement);
+                    return Collection<uint8_t>::take_ownership(
+                        std::vector<uint8_t>(ptr, ptr + num_bytes)
+                    );
+                }
+            }
+        }
+
       private:
         template <typename T>
         union CollectionStorage {

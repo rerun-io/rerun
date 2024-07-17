@@ -13,6 +13,7 @@
 #include "../components/fill_ratio.hpp"
 #include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
+#include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -122,36 +123,40 @@ namespace rerun::archetypes {
       public:
         // Extensions to generated type defined in 'depth_image_ext.cpp'
 
-        /// New depth image from height/width and tensor buffer.
-        ///
-        /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
-        /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// \param buffer
-        /// The tensor buffer containing the depth image data.
-        DepthImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
-            : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
-
-        /// New depth image from tensor data.
-        ///
-        /// \param data_
-        /// The tensor buffer containing the depth image data.
-        /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the tensor is not 2-dimensional
-        explicit DepthImage(components::TensorData data_);
-
-        /// New depth image from dimensions and pointer to depth image data.
-        ///
-        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
-        /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
-        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
-        /// Determines the number of elements expected to be in `data`.
-        /// \param data_
-        /// Target of the pointer must outlive the archetype.
         template <typename TElement>
-        explicit DepthImage(Collection<datatypes::TensorDimension> shape, const TElement* data_)
-            : DepthImage(datatypes::TensorData(std::move(shape), data_)) {}
+        DepthImage(components::Resolution2D resolution_, const TElement* pixels)
+            : DepthImage{
+                  resolution_,
+                  get_element_type(pixels),
+                  reinterpret_cast<const uint8_t*>(pixels)} {}
+
+        template <typename TElement>
+        DepthImage(components::Resolution2D resolution_, std::vector<TElement> pixels)
+            : DepthImage{resolution_, Collection<TElement>::take_ownership(std::move(pixels))} {}
+
+        template <typename TElement>
+        DepthImage(components::Resolution2D resolution_, Collection<TElement> pixels)
+            : DepthImage{resolution_, get_element_type(pixels.data()), pixels.to_uint8()} {}
+
+        /// New depth image from an `ElementType` and a pointer.
+        ///
+        /// The length of the data should be `W * H * element_type.size`
+        DepthImage(
+            components::Resolution2D resolution_, components::ElementType element_type_,
+            const void* data_
+        )
+            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, element_type_))},
+              resolution{resolution_},
+              element_type{element_type_} {}
+
+        /// New depth image from an `ElementType` and a pointer.
+        ///
+        /// The length of the data should be `W * H * element_type.size`
+        DepthImage(
+            components::Resolution2D resolution_, components::ElementType element_type_,
+            Collection<uint8_t> data_
+        )
+            : data{data_}, resolution{resolution_}, element_type{element_type_} {}
 
       public:
         DepthImage() = default;
