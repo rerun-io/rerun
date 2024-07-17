@@ -135,7 +135,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/transform3d_axes" = [ # Degree to radian conversion is slightly different.
+"archetypes/transform3d_axes" = [ # TODO(#3235): Degree to radian conversion is slightly different.
   "cpp",
   "py",
   "rust",

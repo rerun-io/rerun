@@ -50,7 +50,7 @@ All components are applied to the final transform in the opposite order they're 
 If translation, rotation & scale are applied, then (just as in prior versions), from the point of view of the parent space the object is first scaled, then rotated and then translated.
 
 Other changes in data representation:
-* Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
+* Scaling no longer distinguishes uniform and 3D scaling in its data representation, it is now always expressed as 3 floats with the same value. Helper functions are provided to build uniform scales.
 * Angles (as used in `RotationAxisAngle`) are now always stored in radians, conversion functions for degrees are provided.
 Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
