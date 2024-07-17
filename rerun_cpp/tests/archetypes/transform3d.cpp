@@ -28,7 +28,8 @@ SCENARIO(
         }                                         \
     }
     rrd::Vec3D columns[3] = MATRIX_ILIST;
-    const auto rotation = rrd::Quaternion::from_xyzw(1.0f, 2.0f, 3.0f, 4.0f);
+    const auto quaternion = rrd::Quaternion::from_xyzw(1.0f, 2.0f, 3.0f, 4.0f);
+    const auto axis_angle = rrd::RotationAxisAngle({1.0f, 2.0f, 3.0f}, rrd::Angle::degrees(90.0f));
 
     Transform3D manual;
     // List out everything so that GCC doesn't get nervous around uninitialized values.
@@ -110,32 +111,71 @@ SCENARIO(
         test_compare_archetype_serialization(manual, utility);
     }
 
-    GIVEN("Transform3D from translation & rotation & scale and from_parent==" << from_parent) {
+    GIVEN(
+        "Transform3D from translation & rotation (quaternion) & scale and from_parent=="
+        << from_parent
+    ) {
         auto utility = Transform3D::from_translation_rotation_scale(
                            {1.0f, 2.0f, 3.0f},
-                           rotation,
+                           quaternion,
                            {3.0f, 2.0f, 1.0f}
         )
                            .with_from_parent(from_parent);
 
         manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        manual_translation_rotation_scale.rotation = rotation;
+        manual.quaternion = quaternion;
         manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
-        manual.transform.repr =
-            rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
         test_compare_archetype_serialization(manual, utility);
     }
 
-    GIVEN("Transform3D from rotation & scale and from_parent==" << from_parent) {
-        auto utility = Transform3D::from_rotation_scale(rotation, {3.0f, 2.0f, 1.0f})
+    GIVEN(
+        "Transform3D from translation & rotation (axis angle) & scale and from_parent=="
+        << from_parent
+    ) {
+        auto utility = Transform3D::from_translation_rotation_scale(
+                           {1.0f, 2.0f, 3.0f},
+                           axis_angle,
+                           {3.0f, 2.0f, 1.0f}
+        )
                            .with_from_parent(from_parent);
 
-        manual_translation_rotation_scale.rotation = rotation;
+        manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
+        manual.rotation_axis_angle = axis_angle;
         manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
-        manual.transform.repr =
-            rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
+        test_compare_archetype_serialization(manual, utility);
+    }
+
+    GIVEN("Transform3D from rotation (quaternion) & scale and from_parent==" << from_parent) {
+        auto utility = Transform3D::from_rotation_scale(quaternion, {3.0f, 2.0f, 1.0f})
+                           .with_from_parent(from_parent);
+
+        manual.quaternion = quaternion;
+        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+
+        test_compare_archetype_serialization(manual, utility);
+    }
+
+    GIVEN("Transform3D from rotation (axis angle) & scale and from_parent==" << from_parent) {
+        auto utility = Transform3D::from_rotation_scale(axis_angle, {3.0f, 2.0f, 1.0f})
+                           .with_from_parent(from_parent);
+
+        manual.rotation_axis_angle = axis_angle;
+        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
+
+        test_compare_archetype_serialization(manual, utility);
+    }
+
+    GIVEN("Transform3D from rotation (quaternion) and from_parent==" << from_parent) {
+        auto utility = Transform3D::from_rotation(quaternion).with_from_parent(from_parent);
+        manual.quaternion = quaternion;
+        test_compare_archetype_serialization(manual, utility);
+    }
+
+    GIVEN("Transform3D from rotation (axis angle) and from_parent==" << from_parent) {
+        auto utility = Transform3D::from_rotation(axis_angle).with_from_parent(from_parent);
+        manual.rotation_axis_angle = axis_angle;
         test_compare_archetype_serialization(manual, utility);
     }
 }
