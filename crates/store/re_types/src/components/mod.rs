@@ -62,6 +62,7 @@ mod range1d;
 mod range1d_ext;
 mod resolution;
 mod resolution2d;
+mod resolution2d_ext;
 mod resolution_ext;
 mod rotation3d;
 mod rotation3d_ext;
