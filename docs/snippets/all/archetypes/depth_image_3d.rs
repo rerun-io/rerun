@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     image.slice_mut(s![50..150, 50..150]).fill(20000);
     image.slice_mut(s![130..180, 100..280]).fill(45000);
 
-    let depth_image = rerun::DepthImage::try_from(image.clone())?
+    let depth_image = rerun::DepthImage::try_from(image)?
         .with_meter(10000.0)
         .with_colormap(rerun::components::Colormap::Viridis);
 
