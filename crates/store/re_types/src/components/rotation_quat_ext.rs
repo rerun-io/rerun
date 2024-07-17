@@ -7,3 +7,11 @@ impl RotationQuat {
     /// in thus far that it will write data to the store.
     pub const IDENTITY: Self = Self(crate::datatypes::Quaternion::IDENTITY);
 }
+
+#[cfg(feature = "glam")]
+impl From<RotationQuat> for glam::Affine3A {
+    #[inline]
+    fn from(val: RotationQuat) -> Self {
+        Self::from_quat(val.0.into())
+    }
+}

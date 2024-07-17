@@ -6,8 +6,8 @@ use re_space_view::DataResultQuery as _;
 use re_types::{
     archetypes::Pinhole,
     components::{
-        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, Scale3D, Transform3D,
-        TransformMat3x3, Translation3D, ViewCoordinates,
+        DisconnectedSpace, ImagePlaneDistance, PinholeProjection, RotationAxisAngle, RotationQuat,
+        Scale3D, Transform3D, TransformMat3x3, Translation3D, ViewCoordinates,
     },
     ComponentNameSet, Loggable as _,
 };
@@ -307,6 +307,8 @@ fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflect
     let expected_order = vec![
         Transform3D::name(),
         Translation3D::name(),
+        RotationAxisAngle::name(),
+        RotationQuat::name(),
         Scale3D::name(),
         TransformMat3x3::name(),
     ];
@@ -353,6 +355,8 @@ fn get_parent_from_child_transform(
         [
             Transform3D::name(),
             Translation3D::name(),
+            RotationAxisAngle::name(),
+            RotationQuat::name(),
             Scale3D::name(),
             TransformMat3x3::name(),
         ],
@@ -369,6 +373,12 @@ fn get_parent_from_child_transform(
     }
     if let Some(scale) = result.get_instance::<Scale3D>(resolver, 0) {
         transform *= glam::Affine3A::from(scale);
+    }
+    if let Some(rotation) = result.get_instance::<RotationQuat>(resolver, 0) {
+        transform *= glam::Affine3A::from(rotation);
+    }
+    if let Some(rotation) = result.get_instance::<RotationAxisAngle>(resolver, 0) {
+        transform *= glam::Affine3A::from(rotation);
     }
     if let Some(translation) = result.get_instance::<Translation3D>(resolver, 0) {
         transform *= glam::Affine3A::from(translation);
