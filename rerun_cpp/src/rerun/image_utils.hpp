@@ -3,6 +3,8 @@
 #include "components/element_type.hpp"
 #include "half.hpp"
 
+#include <cstdint>
+
 namespace rerun {
     /// Number of bits used by this element type
     inline size_t element_type_bits(components::ElementType value) {

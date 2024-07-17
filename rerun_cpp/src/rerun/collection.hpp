@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <cstring> // std::memset
 #include <utility>
 #include <vector>
