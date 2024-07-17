@@ -86,7 +86,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <DataframeViewMode as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "The kind of table displayed by the dataframe view.",
+                docstring_md: "The kind of table displayed by the dataframe view",
                 placeholder: Some(DataframeViewMode::default().to_arrow()?),
             },
         ),

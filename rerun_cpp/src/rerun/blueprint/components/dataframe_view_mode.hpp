@@ -15,17 +15,18 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: The kind of table displayed by the dataframe view.
+    /// **Component**: The kind of table displayed by the dataframe view
     enum class DataframeViewMode : uint8_t {
 
-        /// Display the "latest at" value of each view entities.
+        /// Display the entity values at the current time.
         ///
-        /// In this mode, rows are entity instances, and columns are components.
+        /// In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
         LatestAt = 1,
 
-        /// Display data according to the view entities visible time range setting.attribute
+        /// Display a temporal table of entity values.
         ///
-        /// In this mode, rows are combination of entity path, timestamp, and row id, and columsna re components.
+        /// In this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The
+        /// timestamp shown are determined by each view entity's visible time range setting.
         TimeRange = 2,
     };
 } // namespace rerun::blueprint::components

@@ -32,16 +32,17 @@ class DataframeViewMode(Enum):
 
     LatestAt = 1
     """
-    Display the "latest at" value of each view entities.
+    Display the entity values at the current time.
 
-    In this mode, rows are entity instances, and columns are components.
+    In this mode, rows are entity instances, and columns are components. The visible time range setting is ignored.
     """
 
     TimeRange = 2
     """
-    Display data according to the view entities visible time range setting.attribute
+    Display a temporal table of entity values.
 
-    In this mode, rows are combination of entity path, timestamp, and row id, and columsna re components.
+    In this mode, rows are combination of entity path, timestamp, and row id, and columns are components. The
+    timestamp shown are determined by each view entity's visible time range setting.
     """
 
 
