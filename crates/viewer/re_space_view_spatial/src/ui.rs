@@ -726,7 +726,9 @@ fn image_hover_ui(
         None
     };
 
-    let Some((w, h)) = wh else { return };
+    let Some((w, h)) = wh else {
+        return;
+    };
 
     ui.add_space(8.0);
 

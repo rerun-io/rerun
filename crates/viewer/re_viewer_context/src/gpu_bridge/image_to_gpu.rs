@@ -79,7 +79,7 @@ fn color_image_to_gpu(
     texture_key: u64,
     image: &ImageInfo,
     tensor_stats: &TensorStats,
-) -> Result<ColormappedTexture, anyhow::Error> {
+) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
     let data_type = image.data_type;
@@ -182,7 +182,7 @@ fn depth_image_to_gpu(
     texture_key: u64,
     image: &ImageInfo,
     tensor_stats: &TensorStats,
-) -> Result<ColormappedTexture, anyhow::Error> {
+) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
     let range = data_range(tensor_stats, image.data_type);
@@ -212,7 +212,7 @@ fn segmentation_image_to_gpu(
     image: &ImageInfo,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
-) -> Result<ColormappedTexture, anyhow::Error> {
+) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
     let colormap_key = hash(annotations.row_id());
