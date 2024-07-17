@@ -507,48 +507,7 @@ pub fn picking(
                     TensorDataMeaning::Unknown
                 };
 
-                let query_shadowed_defaults = false;
-                let results = latest_at_with_blueprint_resolved_data(
-                    &view_ctx,
-                    None,
-                    &ctx.current_query(),
-                    data_result,
-                    [TensorData::name(), Colormap::name(), DepthMeter::name()],
-                    query_shadowed_defaults,
-                );
-
-                // TODO(andreas): Just calling `results.get_mono::<TensorData>` would be a lot more elegant.
-                // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
-                results.get(TensorData::name()).and_then(|tensor_untyped| {
-                    tensor_untyped
-                        .mono::<TensorData>(&results.resolver)
-                        .and_then(|tensor| {
-                            // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                            // (the back-projection property may be true despite this not being a depth image!)
-                            if hit.hit_type != PickingHitType::TexturedRect
-                                && is_depth_cloud
-                                && meaning != TensorDataMeaning::Depth
-                            {
-                                None
-                            } else {
-                                tensor.image_height_width_channels().map(|[_, w, _]| {
-                                    let (_, row_id) = *tensor_untyped.index();
-                                    let coordinates =
-                                        hit.instance_path_hash.instance.to_2d_image_coordinate(w);
-
-                                    PickedImageInfo {
-                                        row_id,
-                                        tensor: Some(tensor.0),
-                                        image: None,
-                                        meaning,
-                                        coordinates,
-                                        colormap: results.get_mono_with_fallback::<Colormap>(),
-                                        depth_meter: results.get_mono::<DepthMeter>(),
-                                    }
-                                })
-                            }
-                        })
-                })
+                picked_image_from_tensor_query(&view_ctx, data_result, hit, is_depth_cloud, meaning)
             }
         } else {
             None
@@ -666,6 +625,53 @@ pub fn picking(
     ctx.select_hovered_on_click(&response, hovered_items.into_iter());
 
     Ok(response)
+}
+
+fn picked_image_from_tensor_query(
+    view_ctx: &ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
+    hit: &crate::picking::PickingRayHit,
+    is_depth_cloud: bool,
+    meaning: TensorDataMeaning,
+) -> Option<PickedImageInfo> {
+    let query_shadowed_defaults = false;
+    let results = latest_at_with_blueprint_resolved_data(
+        view_ctx,
+        None,
+        &view_ctx.viewer_ctx.current_query(),
+        data_result,
+        [TensorData::name(), Colormap::name(), DepthMeter::name()],
+        query_shadowed_defaults,
+    );
+
+    // TODO(andreas): Just calling `results.get_mono::<TensorData>` would be a lot more elegant.
+    // However, we're in the rare case where we really want a RowId to be able to identify the tensor for caching purposes.
+    let tensor_untyped = results.get(TensorData::name())?;
+    let tensor = tensor_untyped.mono::<TensorData>(&results.resolver)?;
+
+    if hit.hit_type != PickingHitType::TexturedRect
+        && is_depth_cloud
+        && meaning != TensorDataMeaning::Depth
+    {
+        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+        // (the back-projection property may be true despite this not being a depth image!)
+        return None;
+    }
+
+    tensor.image_height_width_channels().map(|[_, w, _]| {
+        let (_, row_id) = *tensor_untyped.index();
+        let coordinates = hit.instance_path_hash.instance.to_2d_image_coordinate(w);
+
+        PickedImageInfo {
+            row_id,
+            tensor: Some(tensor.0),
+            image: None,
+            meaning,
+            coordinates,
+            colormap: results.get_mono_with_fallback::<Colormap>(),
+            depth_meter: results.get_mono::<DepthMeter>(),
+        }
+    })
 }
 
 struct PickedImageInfo {
