@@ -46,7 +46,7 @@ fn roundtrip() {
                     translation: None,
                     rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
                         axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::Radians(0.5 * TAU),
+                        angle: Angle::from_radians(0.5 * TAU),
                     })),
                     scale: None,
                     from_parent: false,
@@ -63,7 +63,7 @@ fn roundtrip() {
                     translation: None,
                     rotation: Some(Rotation3D::AxisAngle(RotationAxisAngle {
                         axis: Vec3D([0.2, 0.2, 0.8]),
-                        angle: Angle::Radians(0.5 * TAU),
+                        angle: Angle::from_radians(0.5 * TAU),
                     })),
                     scale: None,
                     from_parent: true,
@@ -111,11 +111,11 @@ fn roundtrip() {
         Transform3D::from_translation_scale([1.0, 2.0, 3.0], Scale3D::uniform(42.0)).from_parent(), //
         Transform3D::from_translation_rotation(
             [1.0, 2.0, 3.0],
-            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
+            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::from_radians(0.5 * TAU)),
         ), //
         Transform3D::from_translation_rotation_scale(
             [1.0, 2.0, 3.0],
-            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),
+            RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::from_radians(0.5 * TAU)),
             42.0,
         )
         .from_parent(),

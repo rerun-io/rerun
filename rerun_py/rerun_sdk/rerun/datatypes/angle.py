@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -21,65 +23,39 @@ __all__ = ["Angle", "AngleArrayLike", "AngleBatch", "AngleLike", "AngleType"]
 
 @define(init=False)
 class Angle(AngleExt):
-    """**Datatype**: Angle in either radians or degrees."""
+    """**Datatype**: Angle in radians."""
 
     # __init__ can be found in angle_ext.py
 
-    inner: float = field(converter=float)
-    """
-    Must be one of:
+    radians: float = field(converter=float)
+    # Angle in radians. One turn is equal to 2π (or τ) radians.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
-    * Radians (float):
-        Angle in radians. One turn is equal to 2π (or τ) radians.
-        Only one of `degrees` or `radians` should be set.
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can define your own __array__ function as a member of AngleExt in angle_ext.py
+        return np.asarray(self.radians, dtype=dtype)
 
-    * Degrees (float):
-        Angle in degrees. One turn is equal to 360 degrees.
-        Only one of `degrees` or `radians` should be set.
-    """
+    def __float__(self) -> float:
+        return float(self.radians)
 
-    kind: Literal["radians", "degrees"] = field(default="radians")
-    """
-    Possible values:
-
-    * "radians":
-        Angle in radians. One turn is equal to 2π (or τ) radians.
-        Only one of `degrees` or `radians` should be set.
-
-    * "degrees":
-        Angle in degrees. One turn is equal to 360 degrees.
-        Only one of `degrees` or `radians` should be set.
-    """
+    def __hash__(self) -> int:
+        return hash(self.radians)
 
 
 if TYPE_CHECKING:
-    AngleLike = Union[
-        Angle,
-        float,
-    ]
-    AngleArrayLike = Union[
-        Angle,
-        float,
-        Sequence[AngleLike],
-    ]
+    AngleLike = Union[Angle, float, int]
 else:
     AngleLike = Any
-    AngleArrayLike = Any
+
+AngleArrayLike = Union[Angle, Sequence[AngleLike], npt.ArrayLike, Sequence[float], Sequence[int]]
 
 
 class AngleType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.datatypes.Angle"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.dense_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("Radians", pa.float32(), nullable=False, metadata={}),
-                pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.float32(), self._TYPE_NAME)
 
 
 class AngleBatch(BaseBatch[AngleArrayLike]):
@@ -87,52 +63,5 @@ class AngleBatch(BaseBatch[AngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        from typing import cast
-
-        # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
-        # If we can call iter, it may be that one of the variants implements __iter__.
-        if not hasattr(data, "__iter__") or isinstance(data, (Angle, float)):  # type: ignore[arg-type]
-            data = [data]  # type: ignore[list-item]
-        data = cast(Sequence[AngleLike], data)  # type: ignore[redundant-cast]
-
-        types: list[int] = []
-        value_offsets: list[int] = []
-
-        num_nulls = 0
-        variant_radians: list[float] = []
-        variant_degrees: list[float] = []
-
-        for value in data:
-            if value is None:
-                value_offsets.append(num_nulls)
-                num_nulls += 1
-                types.append(0)
-            else:
-                if not isinstance(value, Angle):
-                    value = Angle(value)
-                if value.kind == "radians":
-                    value_offsets.append(len(variant_radians))
-                    variant_radians.append(value.inner)  # type: ignore[arg-type]
-                    types.append(1)
-                elif value.kind == "degrees":
-                    value_offsets.append(len(variant_degrees))
-                    variant_degrees.append(value.inner)  # type: ignore[arg-type]
-                    types.append(2)
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-            pa.array(value_offsets, type=pa.int32()).buffers()[1],
-        ]
-        children = [
-            pa.nulls(num_nulls),
-            pa.array(variant_radians, type=pa.float32()),
-            pa.array(variant_degrees, type=pa.float32()),
-        ]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
-        )
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)
