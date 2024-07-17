@@ -47,4 +47,3 @@ bench = false
 [[bench]]
 name = "bench_density_graph"
 harness = false
-
