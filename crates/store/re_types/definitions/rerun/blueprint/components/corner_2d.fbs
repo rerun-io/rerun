@@ -1,7 +1,3 @@
-include "arrow/attributes.fbs";
-include "python/attributes.fbs";
-include "rust/attributes.fbs";
-
 namespace rerun.blueprint.components;
 
 /// One of four 2D corners, typically used to align objects.

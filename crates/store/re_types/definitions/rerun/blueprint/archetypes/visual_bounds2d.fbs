@@ -1,9 +1,3 @@
-include "arrow/attributes.fbs";
-include "python/attributes.fbs";
-include "rust/attributes.fbs";
-
-include "rerun/blueprint/components/visual_bounds2d.fbs";
-
 namespace rerun.blueprint.archetypes;
 
 

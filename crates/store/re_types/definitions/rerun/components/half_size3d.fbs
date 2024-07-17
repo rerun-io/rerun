@@ -1,9 +1,3 @@
-include "arrow/attributes.fbs";
-include "python/attributes.fbs";
-include "fbs/attributes.fbs";
-include "rust/attributes.fbs";
-
-include "../datatypes/vec2d.fbs";
 
 namespace rerun.components;
 

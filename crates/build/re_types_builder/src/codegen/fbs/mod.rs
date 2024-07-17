@@ -24,11 +24,8 @@ impl FbsCodeGenerator {
         directory: &str,
     ) {
         files_to_write.insert(
-            self.definition_dir.join(format!("rerun/{directory}.fbs")),
-            generate_include_file_for_dir(
-                reporter,
-                &self.definition_dir.join(format!("rerun/{directory}")),
-            ),
+            self.definition_dir.join(format!("{directory}.fbs")),
+            generate_include_file_for_dir(reporter, &self.definition_dir.join(directory)),
         );
     }
 }
@@ -42,14 +39,16 @@ impl CodeGenerator for FbsCodeGenerator {
     ) -> crate::GeneratedFiles {
         let mut files_to_write = GeneratedFiles::default();
 
-        self.add_include_for(reporter, &mut files_to_write, "datatypes");
-        self.add_include_for(reporter, &mut files_to_write, "components");
-        self.add_include_for(reporter, &mut files_to_write, "archetypes");
+        self.add_include_for(reporter, &mut files_to_write, "attributes");
 
-        self.add_include_for(reporter, &mut files_to_write, "blueprint/datatypes");
-        self.add_include_for(reporter, &mut files_to_write, "blueprint/components");
-        self.add_include_for(reporter, &mut files_to_write, "blueprint/archetypes");
-        self.add_include_for(reporter, &mut files_to_write, "blueprint/views");
+        self.add_include_for(reporter, &mut files_to_write, "rerun/datatypes");
+        self.add_include_for(reporter, &mut files_to_write, "rerun/components");
+        self.add_include_for(reporter, &mut files_to_write, "rerun/archetypes");
+
+        self.add_include_for(reporter, &mut files_to_write, "rerun/blueprint/datatypes");
+        self.add_include_for(reporter, &mut files_to_write, "rerun/blueprint/components");
+        self.add_include_for(reporter, &mut files_to_write, "rerun/blueprint/archetypes");
+        self.add_include_for(reporter, &mut files_to_write, "rerun/blueprint/views");
 
         files_to_write
     }

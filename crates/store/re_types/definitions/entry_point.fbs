@@ -1,5 +1,10 @@
 // The entry point for re_type_builder's codegen.
 
+include "./attributes.fbs";
+include "./rerun/attributes.fbs";
+
+include "./rerun/unit_type.fbs";
+
 include "./rerun/datatypes.fbs";
 include "./rerun/blueprint/datatypes.fbs";
 

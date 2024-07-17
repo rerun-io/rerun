@@ -1,7 +1,3 @@
-include "rust/attributes.fbs";
-
-include "../datatypes/mat3x3.fbs";
-
 namespace rerun.components;
 
 // ---

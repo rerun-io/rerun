@@ -1,7 +1,3 @@
-include "arrow/attributes.fbs";
-include "rerun/datatypes.fbs";
-include "rerun/attributes.fbs";
-
 namespace rerun.components;
 
 // ---
