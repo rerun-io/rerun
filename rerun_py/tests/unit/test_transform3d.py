@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import itertools
-from fractions import Fraction
 import math
+from fractions import Fraction
 from typing import Optional, cast
 
 import numpy as np
