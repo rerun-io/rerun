@@ -118,6 +118,9 @@ fn main() {
     re_log::info!("Running codegen…");
     let (report, reporter) = re_types_builder::report::init();
 
+    re_log::info!("Generating flatbuffers code…");
+    re_types_builder::generate_fbs(&reporter, &definitions_dir_path, check);
+
     let (objects, arrow_registry) =
         re_types_builder::generate_lang_agnostic(&reporter, definitions_dir_path, entrypoint_path);
 
