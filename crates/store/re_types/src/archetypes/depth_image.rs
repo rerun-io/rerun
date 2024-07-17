@@ -18,10 +18,9 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A depth image.
+/// **Archetype**: A depth image, i.e. as captured by a depth camera.
 ///
-/// The shape of the [`components::TensorData`][crate::components::TensorData] must be mappable to an `HxW` tensor.
-/// Each pixel corresponds to a depth value in units specified by `meter`.
+/// Each pixel corresponds to a depth value in units specified by [`components::DepthMeter`][crate::components::DepthMeter].
 ///
 /// ## Example
 ///

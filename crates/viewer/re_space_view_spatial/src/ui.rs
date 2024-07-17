@@ -457,7 +457,7 @@ pub fn picking(
                 depth_images.images.iter(),
                 // images.images.iter(), // TODO(#6386)
                 images_encoded.images.iter(),
-                // segmentation_images.images.iter(), // TODO(#6386)
+                segmentation_images.images.iter(),
             )
             .find(|i| i.ent_path == instance_path.entity_path)
             {
@@ -492,18 +492,7 @@ pub fn picking(
                     }
                 })
             } else {
-                let meaning = if segmentation_images
-                    .images
-                    .iter()
-                    .any(|i| i.ent_path == instance_path.entity_path)
-                {
-                    TensorDataMeaning::ClassId
-                } else if is_depth_cloud
-                    || depth_images
-                        .images
-                        .iter()
-                        .any(|i| i.ent_path == instance_path.entity_path)
-                {
+                let meaning = if is_depth_cloud {
                     TensorDataMeaning::Depth
                 } else {
                     TensorDataMeaning::Unknown

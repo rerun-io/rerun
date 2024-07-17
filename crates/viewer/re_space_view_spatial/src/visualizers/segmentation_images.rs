@@ -1,27 +1,25 @@
 use itertools::Itertools as _;
 
-use re_chunk_store::RowId;
-use re_log_types::TimeInt;
-use re_query::range_zip_1x1;
-use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::SegmentationImage,
-    components::{DrawOrder, Opacity, TensorData},
+    components::{self, DrawOrder, Opacity},
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewClass,
+    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext, SpaceViewClass,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
-    visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
+    ui::SpatialSpaceViewState,
+    view_kind::SpatialSpaceViewKind,
+    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    PickableImageRect, SpatialSpaceView2D,
 };
 
-use super::{bounding_box_for_textured_rect, textured_rect_from_tensor, SpatialViewVisualizerData};
+use super::{bounding_box_for_textured_rect, SpatialViewVisualizerData};
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -37,11 +35,9 @@ impl Default for SegmentationImageVisualizer {
     }
 }
 
-struct SegmentationImageComponentData<'a> {
-    index: (TimeInt, RowId),
-
-    tensor: &'a TensorData,
-    opacity: Option<&'a Opacity>,
+struct SegmentationImageComponentData {
+    image: ImageInfo,
+    opacity: Option<Opacity>,
 }
 
 impl IdentifiedViewSystem for SegmentationImageVisualizer {
@@ -50,23 +46,9 @@ impl IdentifiedViewSystem for SegmentationImageVisualizer {
     }
 }
 
-struct SegmentationImageVisualizerEntityFilter;
-
-impl VisualizerAdditionalApplicabilityFilter for SegmentationImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_shaped_like_an_image()
-        })
-    }
-}
-
 impl VisualizerSystem for SegmentationImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<SegmentationImage>()
-    }
-
-    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(SegmentationImageVisualizerEntityFilter))
     }
 
     fn filter_visualizable_entities(
@@ -98,53 +80,63 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let entity_path = ctx.target_entity_path;
                 let resolver = ctx.recording().resolver();
 
-                let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
-                    Some(tensors) => tensors?,
+                let blobs = match results.get_required_component_dense::<components::Blob>(resolver)
+                {
+                    Some(blobs) => blobs?,
+                    _ => return Ok(()),
+                };
+                let data_types = match results
+                    .get_required_component_dense::<components::ChannelDataType>(resolver)
+                {
+                    Some(data_types) => data_types?,
+                    _ => return Ok(()),
+                };
+                let resolutions = match results
+                    .get_required_component_dense::<components::Resolution2D>(resolver)
+                {
+                    Some(resolutions) => resolutions?,
                     _ => return Ok(()),
                 };
 
                 let opacity = results.get_or_empty_dense(resolver)?;
 
-                let data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed())
-                    .filter_map(|(&index, tensors, opacity)| {
-                        tensors
-                            .first()
-                            .map(|tensor| SegmentationImageComponentData {
-                                index,
-                                tensor,
-                                opacity: opacity.and_then(|opacity| opacity.first()),
-                            })
-                    });
+                let data = re_query::range_zip_1x3(
+                    blobs.range_indexed(),
+                    data_types.range_indexed(),
+                    resolutions.range_indexed(),
+                    opacity.range_indexed(),
+                )
+                .filter_map(|(&index, blobs, data_type, resolution, opacity)| {
+                    let blob = blobs.first()?;
+                    Some(SegmentationImageComponentData {
+                        image: ImageInfo {
+                            blob_row_id: index.1,
+                            blob: blob.0.clone(),
+                            resolution: first_copied(resolution)?.0 .0,
+                            color_model: None,
+                            data_type: first_copied(data_type)?,
+                            colormap: None,
+                        },
+                        opacity: first_copied(opacity),
+                    })
+                });
 
                 let meaning = TensorDataMeaning::ClassId;
 
                 for data in data {
-                    if !data.tensor.is_shaped_like_an_image() {
-                        continue;
-                    }
+                    let SegmentationImageComponentData { image, opacity } = data;
 
-                    let tensor_data_row_id = data.index.1;
-                    let tensor = data.tensor.0.clone();
-
-                    // TODO(andreas): colormap is only available for depth images right now.
-                    let colormap = None;
-
-                    let opacity = data
-                        .opacity
-                        .copied()
-                        .unwrap_or_else(|| self.fallback_for(ctx));
+                    let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
                     let multiplicative_tint =
                         re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-                    if let Some(textured_rect) = textured_rect_from_tensor(
+                    if let Some(textured_rect) = textured_rect_from_image(
                         ctx.viewer_ctx,
                         entity_path,
                         spatial_ctx,
-                        tensor_data_row_id,
-                        &tensor,
+                        &image,
                         meaning,
                         multiplicative_tint,
-                        colormap,
                     ) {
                         // Only update the bounding box if this is a 2D space view.
                         // This is avoids a cyclic relationship where the image plane grows
@@ -162,12 +154,12 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                         self.images.push(PickableImageRect {
                             ent_path: entity_path.clone(),
-                            row_id: tensor_data_row_id,
+                            row_id: image.blob_row_id,
                             textured_rect,
-                            meaning: TensorDataMeaning::ClassId,
+                            meaning,
                             depth_meter: None,
-                            tensor: Some(tensor),
-                            image: None,
+                            tensor: None,
+                            image: Some(image),
                         });
                     }
                 }
@@ -256,3 +248,7 @@ impl TypedComponentFallbackProvider<DrawOrder> for SegmentationImageVisualizer {
 }
 
 re_viewer_context::impl_component_fallback_provider!(SegmentationImageVisualizer => [DrawOrder, Opacity]);
+
+fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
+    slice.and_then(|element| element.first()).copied()
+}

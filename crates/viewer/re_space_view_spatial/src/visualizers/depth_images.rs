@@ -64,15 +64,20 @@ impl DepthImageVisualizer {
         let meaning = TensorDataMeaning::Depth;
 
         for data in images {
-            let depth_meter = data.depth_meter.unwrap_or_else(|| self.fallback_for(ctx));
-            let mut image = data.image.clone();
+            let DepthImageComponentData {
+                mut image,
+                depth_meter,
+                fill_ratio,
+            } = data;
+
+            let depth_meter = depth_meter.unwrap_or_else(|| self.fallback_for(ctx));
 
             // All depth images must have a colormap:
             image.colormap = Some(image.colormap.unwrap_or_else(|| self.fallback_for(ctx)));
 
             if is_3d_view {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
-                    let fill_ratio = data.fill_ratio.unwrap_or_default();
+                    let fill_ratio = fill_ratio.unwrap_or_default();
 
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.

@@ -3,14 +3,10 @@ namespace rerun.archetypes;
 
 /// An image made up of integer [components.ClassId]s.
 ///
-/// The shape of the [components.TensorData] must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a [components.ClassId] that will be mapped to a color based on annotation context.
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest
 /// integer value.
-///
-/// Leading and trailing unit-dimensions are ignored, so that
-/// `1x640x480x1` is treated as a `640x480` image.
 ///
 /// See also [archetypes.AnnotationContext] to associate each class with a color and a label.
 ///
@@ -27,8 +23,14 @@ table SegmentationImage (
 ) {
   // --- Required ---
 
-  /// The image data. Should always be a 2-dimensional tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
+  /// The raw image data.
+  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  /// The size of the image.
+  resolution: rerun.components.Resolution2D ("attr.rerun.component_required", order: 1500);
+
+  /// The data type of the segmentation image data (U16, U32, …).
+  data_type: rerun.components.ChannelDataType ("attr.rerun.component_required", order: 2000);
 
   // --- Optional ---
 

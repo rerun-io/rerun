@@ -5,10 +5,13 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/blob.hpp"
+#include "../components/channel_data_type.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/opacity.hpp"
-#include "../components/tensor_data.hpp"
+#include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
+#include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -20,14 +23,10 @@
 namespace rerun::archetypes {
     /// **Archetype**: An image made up of integer `components::ClassId`s.
     ///
-    /// The shape of the `components::TensorData` must be mappable to an `HxW` tensor.
     /// Each pixel corresponds to a `components::ClassId` that will be mapped to a color based on annotation context.
     ///
     /// In the case of floating point images, the label will be looked up based on rounding to the nearest
     /// integer value.
-    ///
-    /// Leading and trailing unit-dimensions are ignored, so that
-    /// `1x640x480x1` is treated as a `640x480` image.
     ///
     /// See also `archetypes::AnnotationContext` to associate each class with a color and a label.
     ///
@@ -70,12 +69,18 @@ namespace rerun::archetypes {
     ///         })
     ///     );
     ///
-    ///     rec.log("image", rerun::SegmentationImage({HEIGHT, WIDTH}, data));
+    ///     rec.log("image", rerun::SegmentationImage(data, {WIDTH, HEIGHT}));
     /// }
     /// ```
     struct SegmentationImage {
-        /// The image data. Should always be a 2-dimensional tensor.
-        rerun::components::TensorData data;
+        /// The raw image data.
+        rerun::components::Blob data;
+
+        /// The size of the image.
+        rerun::components::Resolution2D resolution;
+
+        /// The data type of the segmentation image data (U16, U32, …).
+        rerun::components::ChannelDataType data_type;
 
         /// Opacity of the image, useful for layering the segmentation image on top of another image.
         ///
@@ -97,40 +102,48 @@ namespace rerun::archetypes {
       public:
         // Extensions to generated type defined in 'segmentation_image_ext.cpp'
 
-        /// New segmentation image from height/width and tensor buffer.
+        /// Row-major. Borrows.
         ///
-        /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
-        /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// \param buffer
-        /// The tensor buffer containing the segmentation image data.
-        SegmentationImage(
-            Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
-        )
-            : SegmentationImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
-
-        /// New segmentation image from tensor data.
-        ///
-        /// \param data_
-        /// The tensor buffer containing the segmentation image data.
-        /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the tensor is not 2-dimensional
-        explicit SegmentationImage(components::TensorData data_);
-
-        /// New segmentation image from dimensions and pointer to segmentation image data.
-        ///
-        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
-        /// \param shape
-        /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
-        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
-        /// Determines the number of elements expected to be in `data`.
-        /// \param data_
-        /// Target of the pointer must outlive the archetype.
+        /// The length of the data should be `W * H`.
         template <typename TElement>
-        explicit SegmentationImage(
-            Collection<datatypes::TensorDimension> shape, const TElement* data_
+        SegmentationImage(const TElement* pixels, components::Resolution2D resolution_)
+            : SegmentationImage{
+                  reinterpret_cast<const uint8_t*>(pixels), resolution_, get_data_type(pixels)} {}
+
+        /// Row-major.
+        ///
+        /// The length of the data should be `W * H`.
+        template <typename TElement>
+        SegmentationImage(std::vector<TElement> pixels, components::Resolution2D resolution_)
+            : SegmentationImage{
+                  Collection<TElement>::take_ownership(std::move(pixels)), resolution_} {}
+
+        /// Row-major.
+        ///
+        /// The length of the data should be `W * H`.
+        template <typename TElement>
+        SegmentationImage(Collection<TElement> pixels, components::Resolution2D resolution_)
+            : SegmentationImage{pixels.to_uint8(), resolution_, get_data_type(pixels.data())} {}
+
+        /// Row-major. Borrows.
+        ///
+        /// The length of the data should be `W * H * data_type.size`
+        SegmentationImage(
+            const void* data_, components::Resolution2D resolution_,
+            components::ChannelDataType data_type_
         )
-            : SegmentationImage(datatypes::TensorData(std::move(shape), data_)) {}
+            : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, data_type_))},
+              resolution{resolution_},
+              data_type{data_type_} {}
+
+        /// New depth image from an `ChannelDataType` and a pointer.
+        ///
+        /// The length of the data should be `W * H * data_type.size`
+        SegmentationImage(
+            Collection<uint8_t> data_, components::Resolution2D resolution_,
+            components::ChannelDataType data_type_
+        )
+            : data{data_}, resolution{resolution_}, data_type{data_type_} {}
 
       public:
         SegmentationImage() = default;

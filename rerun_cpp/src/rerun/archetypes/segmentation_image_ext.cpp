@@ -1,75 +1,57 @@
-#include "segmentation_image.hpp"
-
-#include "../collection_adapter_builtins.hpp"
 #include "../error.hpp"
-
-#include <sstream>
+#include "segmentation_image.hpp"
 
 namespace rerun::archetypes {
 
-#if 0
+#ifdef EDIT_EXTENSION
     // <CODEGEN_COPY_TO_HEADER>
 
-    /// New segmentation image from height/width and tensor buffer.
-    ///
-    /// \param shape
-    /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
-    /// Sets the dimension names to "height" and "width" if they are not specified.
-    /// \param buffer
-    /// The tensor buffer containing the segmentation image data.
-    SegmentationImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
-        : SegmentationImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+#include "../image_utils.hpp"
 
-    /// New segmentation image from tensor data.
+    /// Row-major. Borrows.
     ///
-    /// \param data_
-    /// The tensor buffer containing the segmentation image data.
-    /// Sets the dimension names to "height" and "width" if they are not specified.
-    /// Calls `Error::handle()` if the tensor is not 2-dimensional
-    explicit SegmentationImage(components::TensorData data_);
-
-    /// New segmentation image from dimensions and pointer to segmentation image data.
-    ///
-    /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
-    /// \param shape
-    /// Shape of the image. Calls `Error::handle()` if the tensor is not 2-dimensional
-    /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
-    /// Determines the number of elements expected to be in `data`.
-    /// \param data_
-    /// Target of the pointer must outlive the archetype.
+    /// The length of the data should be `W * H`.
     template <typename TElement>
-    explicit SegmentationImage(Collection<datatypes::TensorDimension> shape, const TElement* data_)
-        : SegmentationImage(datatypes::TensorData(std::move(shape), data_)) {}
+    SegmentationImage(const TElement* pixels, components::Resolution2D resolution_)
+        : SegmentationImage{
+              reinterpret_cast<const uint8_t*>(pixels), resolution_, get_data_type(pixels)
+          } {}
+
+    /// Row-major.
+    ///
+    /// The length of the data should be `W * H`.
+    template <typename TElement>
+    SegmentationImage(std::vector<TElement> pixels, components::Resolution2D resolution_)
+        : SegmentationImage{Collection<TElement>::take_ownership(std::move(pixels)), resolution_} {}
+
+    /// Row-major.
+    ///
+    /// The length of the data should be `W * H`.
+    template <typename TElement>
+    SegmentationImage(Collection<TElement> pixels, components::Resolution2D resolution_)
+        : SegmentationImage{pixels.to_uint8(), resolution_, get_data_type(pixels.data())} {}
+
+    /// Row-major. Borrows.
+    ///
+    /// The length of the data should be `W * H * data_type.size`
+    SegmentationImage(
+        const void* data_, components::Resolution2D resolution_,
+        components::ChannelDataType data_type_
+    )
+        : data{Collection<uint8_t>::borrow(data_, num_bytes(resolution_, data_type_))},
+          resolution{resolution_},
+          data_type{data_type_} {}
+
+    /// New depth image from an `ChannelDataType` and a pointer.
+    ///
+    /// The length of the data should be `W * H * data_type.size`
+    SegmentationImage(
+        Collection<uint8_t> data_, components::Resolution2D resolution_,
+        components::ChannelDataType data_type_
+    )
+        : data{data_}, resolution{resolution_}, data_type{data_type_} {}
 
     // </CODEGEN_COPY_TO_HEADER>
 #endif
-
-    SegmentationImage::SegmentationImage(components::TensorData data_) : data(std::move(data_)) {
-        auto& shape = data.data.shape;
-        if (shape.size() != 2) {
-            std::stringstream ss;
-            ss << "Expected 2-dimensional tensor, got " << shape.size() << " dimensions.";
-            Error(ErrorCode::InvalidTensorDimension, ss.str()).handle();
-            return;
-        }
-
-        // We want to change the dimension names if they are not specified.
-        // But rerun collections are strictly immutable, so create a new one if necessary.
-        bool overwrite_height = !shape[0].name.has_value();
-        bool overwrite_width = !shape[1].name.has_value();
-
-        if (overwrite_height || overwrite_width) {
-            auto new_shape = shape.to_vector();
-
-            if (overwrite_height) {
-                new_shape[0].name = "height";
-            }
-            if (overwrite_width) {
-                new_shape[1].name = "width";
-            }
-
-            shape = std::move(new_shape);
-        }
-    }
 
 } // namespace rerun::archetypes

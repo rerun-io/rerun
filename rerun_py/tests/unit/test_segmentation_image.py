@@ -27,14 +27,14 @@ IMAGE_INPUTS: list[TensorDataLike] = [
 
 
 def segmentation_image_image_expected() -> Any:
-    return rr.SegmentationImage(data=RANDOM_IMAGE_SOURCE)
+    return rr.SegmentationImage(RANDOM_IMAGE_SOURCE)
 
 
 def test_image() -> None:
     expected = segmentation_image_image_expected()
 
     for img in IMAGE_INPUTS:
-        arch = rr.SegmentationImage(data=img)
+        arch = rr.SegmentationImage(img)
 
         assert arch == expected
 
