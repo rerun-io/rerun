@@ -17,7 +17,7 @@ use crate::{
     },
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, CodeGenerator, Docs, ChannelDataType, GeneratedFiles, Object, ObjectField,
+    ArrowRegistry, ChannelDataType, CodeGenerator, Docs, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
@@ -1557,7 +1557,9 @@ fn quote_field_type_from_field(
                 }
             }
         },
-        Type::Object(fqname) => quote_type_from_element_type(&ChannelDataType::Object(fqname.clone())),
+        Type::Object(fqname) => {
+            quote_type_from_element_type(&ChannelDataType::Object(fqname.clone()))
+        }
     };
 
     (typ, unwrapped)

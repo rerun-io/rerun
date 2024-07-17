@@ -3,9 +3,7 @@ use re_chunk_store::RowId;
 use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_types::{components::Colormap, datatypes::TensorData, tensor_data::TensorDataMeaning};
-use re_viewer_context::{
-    gpu_bridge, ImageInfo, ImageStatsCache, TensorStatsCache, ViewerContext,
-};
+use re_viewer_context::{gpu_bridge, ImageInfo, ImageStatsCache, TensorStatsCache, ViewerContext};
 
 use crate::contexts::SpatialSceneEntityContext;
 

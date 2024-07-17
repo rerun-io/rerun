@@ -15,7 +15,7 @@ use crate::{
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, Docs, ChannelDataType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    ArrowRegistry, ChannelDataType, Docs, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
 

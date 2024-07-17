@@ -9,8 +9,7 @@ use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{TensorDataMeaning, TensorElement};
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    gpu_bridge, Annotations, ImageInfo, TensorStats, TensorStatsCache, UiLayout,
-    ViewerContext,
+    gpu_bridge, Annotations, ImageInfo, TensorStats, TensorStatsCache, UiLayout, ViewerContext,
 };
 
 use crate::image_meaning::image_meaning_for_entity;
