@@ -20,6 +20,7 @@ impl ImageEncoded {
     ///
     /// [`Self::media_type`] will be guessed from the bytes.
     pub fn from_file_contents(bytes: Vec<u8>) -> Self {
+        #[allow(clippy::unnecessary_struct_initialization)]
         Self {
             #[cfg(feature = "image")]
             media_type: image::guess_format(&bytes)

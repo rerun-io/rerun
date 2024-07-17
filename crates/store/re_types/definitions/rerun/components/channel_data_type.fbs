@@ -1,0 +1,46 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+/// The innermost datatype of an image.
+///
+/// How individual color channel components are encoded.
+enum ChannelDataType: byte {
+    /// 8-bit unsigned integer.
+    U8 (default),
+
+    /// 16-bit unsigned integer.
+    U16,
+
+    /// 32-bit unsigned integer.
+    U32,
+
+    /// 64-bit unsigned integer.
+    U64,
+
+    /// 8-bit signed integer.
+    I8,
+
+    /// 16-bit signed integer.
+    I16,
+
+    /// 32-bit signed integer.
+    I32,
+
+    /// 64-bit signed integer.
+    I64,
+
+    /// 16-bit IEEE-754 floating point, also known as `half`.
+    F16,
+
+    /// 32-bit IEEE-754 floating point, also known as `float` or `single`.
+    F32,
+
+    /// 64-bit IEEE-754 floating point, also known as `double`.
+    F64,
+}

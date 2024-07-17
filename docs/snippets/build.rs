@@ -89,8 +89,10 @@ fn main() {
         let args: Vec<String> = std::env::args().skip(1).collect();
 
         if args.is_empty() {
-            eprintln!("Usage: {} <snippet-name>\n", std::env::args().next().unwrap_or("snippets".to_owned()));
-            eprintln!("Available snippets ${SNIPPETS}:\n");
+            eprintln!("Usage: {} <snippet-name>", std::env::args().next().unwrap_or("snippets".to_owned()));
+            eprintln!("Available snippets:");
+            eprintln!();
+            eprintln!("${SNIPPETS}");
             std::process::exit(1);
         }
 
@@ -111,7 +113,7 @@ fn main() {
         "${MODS}",
         &snippets.iter().map(|m| format!("mod {m};")).join("\n"),
     )
-    .replace("${SNIPPETS}", &snippets.iter().join(" "))
+    .replace("${SNIPPETS}", &snippets.iter().join("\\n"))
     .replace(
         "${MATCH_SNIPPETS}",
         &snippets

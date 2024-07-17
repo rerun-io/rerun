@@ -17,14 +17,18 @@ where
     /// The tensor did not have the right shape for an image (e.g. had too many dimensions).
     #[error("Could not create Image from TensorData with shape {0:?}")]
     BadImageShape(Vec<TensorDimension>),
+
+    /// Happens if you try to cast `NV12` or `YUY2` to a depth image or segmentation image.
+    #[error("Chroma downsampling is not supported for this image type (e.g. DepthImage or SegmentationImage)")]
+    ChromaDownsamplingNotSupported,
 }
 
 /// Returns the indices of an appropriate set of dimensions.
 ///
 /// Ignores leading and trailing 1-sized dimensions.
 ///
-/// For instance: `[1, 640, 480, 3, 1]` would return `[1, 2, 3]`,
-/// the indices of the `[640, 480, 3]` dimensions.
+/// For instance: `[1, 480, 640, 3, 1]` would return `[1, 2, 3]`,
+/// the indices of the `[480, 640, 3]` dimensions.
 pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize; 4]> {
     match shape.len() {
         0 => return smallvec![],
@@ -34,7 +38,7 @@ pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize;
     }
 
     // Find a range of non-unit dimensions.
-    // [1, 1, 1, 640, 480, 3, 1, 1, 1]
+    // [1, 1, 1, 480, 640, 3, 1, 1, 1]
     //           ^---------^   goal range
 
     let mut non_unit_indices =
@@ -94,15 +98,15 @@ fn test_find_non_empty_dim_indices() {
     expect(&[1], &[0]);
     expect(&[100], &[0]);
 
-    expect(&[640, 480], &[0, 1]);
-    expect(&[640, 480, 1], &[0, 1]);
-    expect(&[640, 480, 1, 1], &[0, 1]);
-    expect(&[640, 480, 3], &[0, 1, 2]);
-    expect(&[1, 640, 480], &[1, 2]);
-    expect(&[1, 640, 480, 3, 1], &[1, 2, 3]);
-    expect(&[1, 3, 640, 480, 1], &[1, 2, 3]);
-    expect(&[1, 1, 640, 480], &[2, 3]);
-    expect(&[1, 1, 640, 480, 1, 1], &[2, 3]);
+    expect(&[480, 640], &[0, 1]);
+    expect(&[480, 640, 1], &[0, 1]);
+    expect(&[480, 640, 1, 1], &[0, 1]);
+    expect(&[480, 640, 3], &[0, 1, 2]);
+    expect(&[1, 480, 640], &[1, 2]);
+    expect(&[1, 480, 640, 3, 1], &[1, 2, 3]);
+    expect(&[1, 3, 480, 640, 1], &[1, 2, 3]);
+    expect(&[1, 1, 480, 640], &[2, 3]);
+    expect(&[1, 1, 480, 640, 1, 1], &[2, 3]);
 
     expect(&[1, 1, 3], &[0, 1, 2]);
     expect(&[1, 1, 3, 1], &[2, 3]);

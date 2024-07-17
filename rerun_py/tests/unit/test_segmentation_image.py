@@ -69,8 +69,8 @@ def test_segmentation_image_shapes() -> None:
     rr.set_strict_mode(True)
 
     for img in GOOD_IMAGE_INPUTS:
-        rr.DepthImage(img)
+        rr.SegmentationImage(img)
 
     for img in BAD_IMAGE_INPUTS:
         with pytest.raises(ValueError):
-            rr.DepthImage(img)
+            rr.SegmentationImage(img)

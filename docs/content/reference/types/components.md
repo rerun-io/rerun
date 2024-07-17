@@ -18,9 +18,11 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
+* [`ChannelDataType`](components/channel_data_type.md): The innermost datatype of an image.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
 * [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+* [`ColorModel`](components/color_model.md): Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`Colormap`](components/colormap.md): Colormap for mapping scalar values within a given range to a color.
 * [`DepthMeter`](components/depth_meter.md): The world->depth map scaling factor.
 * [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
@@ -46,6 +48,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
+* [`Resolution2D`](components/resolution2d.md): The width and height of a 2D image.
 * [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.

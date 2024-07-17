@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <cstring> // std::memset
 #include <utility>
 #include <vector>
@@ -332,6 +333,26 @@ namespace rerun {
             result.reserve(size());
             result.insert(result.end(), begin(), end());
             return result;
+        }
+
+        /// Reinterpret this collection as a collection of bytes.
+        Collection<uint8_t> to_uint8() const {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed: {
+                    return Collection<uint8_t>::borrow(
+                        reinterpret_cast<const uint8_t*>(data()),
+                        size() * sizeof(TElement)
+                    );
+                }
+                case CollectionOwnership::VectorOwned: {
+                    auto ptr = reinterpret_cast<const uint8_t*>(data());
+                    auto num_bytes = size() * sizeof(TElement);
+                    return Collection<uint8_t>::take_ownership(
+                        std::vector<uint8_t>(ptr, ptr + num_bytes)
+                    );
+                }
+            }
+            return Collection<uint8_t>();
         }
 
       private:

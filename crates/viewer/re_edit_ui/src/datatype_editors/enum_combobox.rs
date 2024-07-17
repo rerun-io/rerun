@@ -21,7 +21,10 @@ fn edit_view_enum_impl<EnumT: re_types_core::reflection::Enum>(
 
         let mut combobox_response = egui::ComboBox::from_id_source(id_source)
             .selected_text(format!("{current_value}"))
+            .height(250.0)
             .show_ui(ui, |ui| {
+                ui.set_min_width(60.0);
+
                 let variants = EnumT::variants();
                 let mut iter = variants.iter().copied();
                 let Some(first) = iter.next() else {

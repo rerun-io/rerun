@@ -21,7 +21,7 @@ use crate::{
     visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
 };
 
-use super::{bounding_box_for_textured_rect, tensor_to_textured_rect, SpatialViewVisualizerData};
+use super::{bounding_box_for_textured_rect, textured_rect_from_tensor, SpatialViewVisualizerData};
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -136,7 +136,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     let multiplicative_tint =
                         re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-                    if let Some(textured_rect) = tensor_to_textured_rect(
+                    if let Some(textured_rect) = textured_rect_from_tensor(
                         ctx.viewer_ctx,
                         entity_path,
                         spatial_ctx,
@@ -164,7 +164,10 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             ent_path: entity_path.clone(),
                             row_id: tensor_data_row_id,
                             textured_rect,
-                            tensor,
+                            meaning: TensorDataMeaning::ClassId,
+                            depth_meter: None,
+                            tensor: Some(tensor),
+                            image: None,
                         });
                     }
                 }
