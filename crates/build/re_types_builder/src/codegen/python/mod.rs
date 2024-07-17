@@ -17,7 +17,7 @@ use crate::{
     },
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, ChannelDataType, CodeGenerator, Docs, GeneratedFiles, Object, ObjectField,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
@@ -1448,7 +1448,7 @@ fn quote_import_clauses_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
-            ChannelDataType::Object(fqname) => Some(fqname),
+            ElementType::Object(fqname) => Some(fqname),
             _ => None,
         },
         Type::Object(fqname) => Some(fqname),
@@ -1534,20 +1534,20 @@ fn quote_field_type_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
-            ChannelDataType::UInt8 => "npt.NDArray[np.uint8]".to_owned(),
-            ChannelDataType::UInt16 => "npt.NDArray[np.uint16]".to_owned(),
-            ChannelDataType::UInt32 => "npt.NDArray[np.uint32]".to_owned(),
-            ChannelDataType::UInt64 => "npt.NDArray[np.uint64]".to_owned(),
-            ChannelDataType::Int8 => "npt.NDArray[np.int8]".to_owned(),
-            ChannelDataType::Int16 => "npt.NDArray[np.int16]".to_owned(),
-            ChannelDataType::Int32 => "npt.NDArray[np.int32]".to_owned(),
-            ChannelDataType::Int64 => "npt.NDArray[np.int64]".to_owned(),
-            ChannelDataType::Bool => "npt.NDArray[np.bool_]".to_owned(),
-            ChannelDataType::Float16 => "npt.NDArray[np.float16]".to_owned(),
-            ChannelDataType::Float32 => "npt.NDArray[np.float32]".to_owned(),
-            ChannelDataType::Float64 => "npt.NDArray[np.float64]".to_owned(),
-            ChannelDataType::String => "list[str]".to_owned(),
-            ChannelDataType::Object(_) => {
+            ElementType::UInt8 => "npt.NDArray[np.uint8]".to_owned(),
+            ElementType::UInt16 => "npt.NDArray[np.uint16]".to_owned(),
+            ElementType::UInt32 => "npt.NDArray[np.uint32]".to_owned(),
+            ElementType::UInt64 => "npt.NDArray[np.uint64]".to_owned(),
+            ElementType::Int8 => "npt.NDArray[np.int8]".to_owned(),
+            ElementType::Int16 => "npt.NDArray[np.int16]".to_owned(),
+            ElementType::Int32 => "npt.NDArray[np.int32]".to_owned(),
+            ElementType::Int64 => "npt.NDArray[np.int64]".to_owned(),
+            ElementType::Bool => "npt.NDArray[np.bool_]".to_owned(),
+            ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
+            ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
+            ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
+            ElementType::String => "list[str]".to_owned(),
+            ElementType::Object(_) => {
                 let typ = quote_type_from_element_type(elem_type);
                 if unwrap {
                     unwrapped = true;
@@ -1557,9 +1557,7 @@ fn quote_field_type_from_field(
                 }
             }
         },
-        Type::Object(fqname) => {
-            quote_type_from_element_type(&ChannelDataType::Object(fqname.clone()))
-        }
+        Type::Object(fqname) => quote_type_from_element_type(&ElementType::Object(fqname.clone())),
     };
 
     (typ, unwrapped)
@@ -1619,22 +1617,22 @@ fn quote_field_converter_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
-            ChannelDataType::UInt8 => "to_np_uint8".to_owned(),
-            ChannelDataType::UInt16 => "to_np_uint16".to_owned(),
-            ChannelDataType::UInt32 => "to_np_uint32".to_owned(),
-            ChannelDataType::UInt64 => "to_np_uint64".to_owned(),
-            ChannelDataType::Int8 => "to_np_int8".to_owned(),
-            ChannelDataType::Int16 => "to_np_int16".to_owned(),
-            ChannelDataType::Int32 => "to_np_int32".to_owned(),
-            ChannelDataType::Int64 => "to_np_int64".to_owned(),
-            ChannelDataType::Bool => "to_np_bool".to_owned(),
-            ChannelDataType::Float16 => "to_np_float16".to_owned(),
-            ChannelDataType::Float32 => "to_np_float32".to_owned(),
-            ChannelDataType::Float64 => "to_np_float64".to_owned(),
+            ElementType::UInt8 => "to_np_uint8".to_owned(),
+            ElementType::UInt16 => "to_np_uint16".to_owned(),
+            ElementType::UInt32 => "to_np_uint32".to_owned(),
+            ElementType::UInt64 => "to_np_uint64".to_owned(),
+            ElementType::Int8 => "to_np_int8".to_owned(),
+            ElementType::Int16 => "to_np_int16".to_owned(),
+            ElementType::Int32 => "to_np_int32".to_owned(),
+            ElementType::Int64 => "to_np_int64".to_owned(),
+            ElementType::Bool => "to_np_bool".to_owned(),
+            ElementType::Float16 => "to_np_float16".to_owned(),
+            ElementType::Float32 => "to_np_float32".to_owned(),
+            ElementType::Float64 => "to_np_float64".to_owned(),
             _ => String::new(),
         },
         Type::Object(fqname) => {
-            let typ = quote_type_from_element_type(&ChannelDataType::Object(fqname.clone()));
+            let typ = quote_type_from_element_type(&ElementType::Object(fqname.clone()));
             let field_obj = &objects[fqname];
 
             // we generate a default converter only if the field's type can be constructed with a
@@ -1732,7 +1730,7 @@ fn quote_type_from_type(typ: &Type) -> String {
     }
 }
 
-fn quote_type_from_element_type(typ: &ChannelDataType) -> String {
+fn quote_type_from_element_type(typ: &ElementType) -> String {
     quote_type_from_type(&Type::from(typ.clone()))
 }
 

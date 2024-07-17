@@ -162,7 +162,7 @@ pub use self::{
     docs::Docs,
     format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter},
     objects::{
-        Attributes, ChannelDataType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
+        Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
     },
     report::{Report, Reporter},
 };

@@ -22,8 +22,8 @@ use crate::{
     },
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, ChannelDataType, CodeGenerator, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
     ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_GENERATE_FIELD_INFO,
     ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
@@ -734,23 +734,23 @@ impl quote::ToTokens for TypeTokenizer<'_> {
     }
 }
 
-impl quote::ToTokens for &ChannelDataType {
+impl quote::ToTokens for &ElementType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ChannelDataType::UInt8 => quote!(u8),
-            ChannelDataType::UInt16 => quote!(u16),
-            ChannelDataType::UInt32 => quote!(u32),
-            ChannelDataType::UInt64 => quote!(u64),
-            ChannelDataType::Int8 => quote!(i8),
-            ChannelDataType::Int16 => quote!(i16),
-            ChannelDataType::Int32 => quote!(i32),
-            ChannelDataType::Int64 => quote!(i64),
-            ChannelDataType::Bool => quote!(bool),
-            ChannelDataType::Float16 => quote!(arrow2::types::f16),
-            ChannelDataType::Float32 => quote!(f32),
-            ChannelDataType::Float64 => quote!(f64),
-            ChannelDataType::String => quote!(::re_types_core::ArrowString),
-            ChannelDataType::Object(fqname) => quote_fqname_as_type_path(fqname),
+            ElementType::UInt8 => quote!(u8),
+            ElementType::UInt16 => quote!(u16),
+            ElementType::UInt32 => quote!(u32),
+            ElementType::UInt64 => quote!(u64),
+            ElementType::Int8 => quote!(i8),
+            ElementType::Int16 => quote!(i16),
+            ElementType::Int32 => quote!(i32),
+            ElementType::Int64 => quote!(i64),
+            ElementType::Bool => quote!(bool),
+            ElementType::Float16 => quote!(arrow2::types::f16),
+            ElementType::Float32 => quote!(f32),
+            ElementType::Float64 => quote!(f64),
+            ElementType::String => quote!(::re_types_core::ArrowString),
+            ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
     }
