@@ -4,7 +4,8 @@ use std::f32::consts::TAU;
 
 use rerun::{
     archetypes::Transform3D,
-    datatypes::{Angle, RotationAxisAngle, Scale3D},
+    components::Scale3D,
+    datatypes::{Angle, RotationAxisAngle},
     RecordingStream,
 };
 
@@ -28,7 +29,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 
     rec.log(
         "transform/translation_scale",
-        &Transform3D::from_translation_scale([1.0, 2.0, 3.0], Scale3D::Uniform(42.0)).from_parent(),
+        &Transform3D::from_translation_scale([1.0, 2.0, 3.0], Scale3D::uniform(42.0)).from_parent(),
     )?;
 
     rec.log(

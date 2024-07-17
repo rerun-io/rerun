@@ -78,10 +78,7 @@ if TYPE_CHECKING:
 else:
     Mat3x3Like = Any
 
-Mat3x3ArrayLike = Union[
-    Mat3x3,
-    Sequence[Mat3x3Like],
-]
+Mat3x3ArrayLike = Union[Mat3x3, Sequence[Mat3x3Like], npt.ArrayLike]
 
 
 class Mat3x3Type(BaseExtensionType):

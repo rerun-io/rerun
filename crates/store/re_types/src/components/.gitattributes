@@ -36,6 +36,7 @@ range1d.rs linguist-generated=true
 resolution.rs linguist-generated=true
 rotation3d.rs linguist-generated=true
 scalar.rs linguist-generated=true
+scale3d.rs linguist-generated=true
 stroke_width.rs linguist-generated=true
 tensor_data.rs linguist-generated=true
 tensor_dimension_index_selection.rs linguist-generated=true

@@ -94,6 +94,14 @@ impl From<Vec3D> for glam::Vec3 {
 }
 
 #[cfg(feature = "glam")]
+impl From<Vec3D> for glam::Vec3A {
+    #[inline]
+    fn from(v: Vec3D) -> Self {
+        Self::from_slice(&v.0)
+    }
+}
+
+#[cfg(feature = "glam")]
 impl From<glam::Vec3> for Vec3D {
     #[inline]
     fn from(v: glam::Vec3) -> Self {

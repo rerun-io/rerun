@@ -35,7 +35,7 @@ SCENARIO(
     rrd::TranslationRotationScale3D manual_translation_rotation_scale;
     manual_translation_rotation_scale.translation = std::nullopt;
     manual_translation_rotation_scale.rotation = std::nullopt;
-    manual_translation_rotation_scale.scale = std::nullopt;
+    manual.scale = std::nullopt;
     manual_translation_rotation_scale.from_parent = from_parent;
     manual.transform =
         rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
@@ -70,13 +70,9 @@ SCENARIO(
     }
 
     GIVEN("Transform3D from scale and from_parent==" << from_parent) {
-        auto utility = Transform3D::from_scale(
+        auto utility = Transform3D::from_scale({3.0f, 2.0f, 1.0f}).with_from_parent(from_parent);
 
-                           rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f})
-        )
-                           .with_from_parent(from_parent);
-
-        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
@@ -103,14 +99,11 @@ SCENARIO(
     }
 
     GIVEN("Transform3D from translation & scale and from_parent==" << from_parent) {
-        auto utility = Transform3D::from_translation_scale(
-                           {1.0f, 2.0f, 3.0f},
-                           rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f})
-        )
+        auto utility = Transform3D::from_translation_scale({1.0f, 2.0f, 3.0f}, {3.0f, 2.0f, 1.0f})
                            .with_from_parent(from_parent);
 
         manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
-        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
@@ -121,13 +114,13 @@ SCENARIO(
         auto utility = Transform3D::from_translation_rotation_scale(
                            {1.0f, 2.0f, 3.0f},
                            rotation,
-                           rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f})
+                           {3.0f, 2.0f, 1.0f}
         )
                            .with_from_parent(from_parent);
 
         manual.translation = rerun::components::Translation3D(1.0f, 2.0f, 3.0f);
         manual_translation_rotation_scale.rotation = rotation;
-        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 
@@ -135,12 +128,11 @@ SCENARIO(
     }
 
     GIVEN("Transform3D from rotation & scale and from_parent==" << from_parent) {
-        auto utility =
-            Transform3D::from_rotation_scale(rotation, rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f}))
-                .with_from_parent(from_parent);
+        auto utility = Transform3D::from_rotation_scale(rotation, {3.0f, 2.0f, 1.0f})
+                           .with_from_parent(from_parent);
 
         manual_translation_rotation_scale.rotation = rotation;
-        manual_translation_rotation_scale.scale = rrd::Scale3D::three_d({3.0f, 2.0f, 1.0f});
+        manual.scale = rerun::components::Scale3D(3.0f, 2.0f, 1.0f);
         manual.transform.repr =
             rrd::Transform3D::translation_rotation_scale(manual_translation_rotation_scale);
 

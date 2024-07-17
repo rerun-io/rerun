@@ -27,7 +27,7 @@ int main(int, char** argv) {
         "transform/translation_scale",
         rerun::archetypes::Transform3D::from_translation_scale(
             {1.0f, 2.0f, 3.0f},
-            rerun::datatypes::Scale3D::uniform(42.0f)
+            rerun::components::Scale3D::uniform(42.0f)
         )
             .with_from_parent(true)
     );
@@ -51,7 +51,7 @@ int main(int, char** argv) {
                 {0.2f, 0.2f, 0.8f},
                 rerun::datatypes::Angle::radians(PI)
             ),
-            rerun::datatypes::Scale3D::uniform(42.0)
+            rerun::components::Scale3D::uniform(42.0)
         )
             .with_from_parent(true)
     );

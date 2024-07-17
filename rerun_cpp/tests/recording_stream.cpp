@@ -560,6 +560,10 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     SECTION("Resetting time does not log errors") {
         check_logged_error([&] { stream.reset_time(); });
     }
+    SECTION("Can set time again after resetting the time") {
+        check_logged_error([&] { stream.reset_time(); });
+        check_logged_error([&] { stream.set_time_seconds("duration", 1.0f); });
+    }
 
     SECTION("Disabling timeline does not log errors") {
         check_logged_error([&] { stream.disable_timeline("doesn't exist"); });

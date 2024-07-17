@@ -21,9 +21,9 @@ class Transform3D(Transform3DExt, Archetype):
     """
     **Archetype**: A transform between two 3D spaces, i.e. a pose.
 
-    All components are applied in the order they are listed here.
+    All components are applied in the inverse order they are listed here.
     E.g. if both a 4x4 matrix with a translation and a translation vector are present,
-    the matrix is applied first, then the translation vector on top.
+    the translation is applied first, followed by the matrix.
 
     Each transform component can be listed multiple times, but transform tree propagation is only possible
     if there's only one instance for each transform component.
@@ -138,8 +138,9 @@ class Transform3D(Transform3DExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             transform=None,  # type: ignore[arg-type]
-            mat3x3=None,  # type: ignore[arg-type]
             translation=None,  # type: ignore[arg-type]
+            scale=None,  # type: ignore[arg-type]
+            mat3x3=None,  # type: ignore[arg-type]
             axis_length=None,  # type: ignore[arg-type]
         )
 
@@ -158,21 +159,30 @@ class Transform3D(Transform3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    mat3x3: components.TransformMat3x3Batch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.TransformMat3x3Batch._optional,  # type: ignore[misc]
-    )
-    # 3x3 transformation matrices.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
     translation: components.Translation3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Translation3DBatch._optional,  # type: ignore[misc]
     )
     # Translation vectors.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    scale: components.Scale3DBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.Scale3DBatch._optional,  # type: ignore[misc]
+    )
+    # Scaling factor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    mat3x3: components.TransformMat3x3Batch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.TransformMat3x3Batch._optional,  # type: ignore[misc]
+    )
+    # 3x3 transformation matrices.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

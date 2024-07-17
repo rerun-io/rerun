@@ -3,11 +3,12 @@ use std::sync::Arc;
 
 use re_chunk_store::{Chunk, RangeQuery, RowId};
 use re_data_ui::item_ui::entity_path_button;
+use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types::blueprint::components::{SortKey, SortOrder};
 use re_types_core::datatypes::TimeRange;
 use re_types_core::ComponentName;
-use re_viewer_context::{QueryRange, UiLayout, ViewQuery, ViewerContext};
+use re_viewer_context::{Item, QueryRange, UiLayout, ViewQuery, ViewerContext};
 
 use crate::table_ui::{row_id_ui, table_ui};
 
@@ -161,6 +162,35 @@ pub(crate) fn time_range_table_ui(
     }
 
     //
+    // Scroll to focused item.
+    //
+
+    let index_for_instance_path = |instance_path: &InstancePath| {
+        rows.iter()
+            .position(|(entity_path, _, _)| entity_path == &instance_path.entity_path)
+    };
+
+    let scroll_to_row = (sort_key == SortKey::Entity)
+        .then(|| {
+            ctx.focused_item.as_ref().and_then(|item| match item {
+                Item::AppId(_)
+                | Item::DataSource(_)
+                | Item::StoreId(_)
+                | Item::ComponentPath(_)
+                | Item::SpaceView(_)
+                | Item::Container(_) => None,
+
+                // TODO(#6906): we shouldn't scroll when we originate the focus event.
+                // Note: we can't filter on space view id, because we really want to handle focus
+                // event from this view's blueprint tree.
+                Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => {
+                    index_for_instance_path(instance_path)
+                }
+            })
+        })
+        .flatten();
+
+    //
     // Drawing code.
     //
 
@@ -272,5 +302,6 @@ pub(crate) fn time_range_table_ui(
         header_ui,
         rows.len(),
         row_ui,
+        scroll_to_row,
     );
 }

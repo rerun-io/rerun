@@ -58,7 +58,7 @@ int main() {
 
         rec.log(
             "sun/planet",
-            rerun::Transform3D(
+            rerun::Transform3D::from_translation_rotation(
                 {std::sin(r_planet) * d_planet, std::cos(r_planet) * d_planet, 0.0f},
                 rerun::RotationAxisAngle{
                     {1.0, 0.0f, 0.0f},
@@ -68,14 +68,10 @@ int main() {
         );
         rec.log(
             "sun/planet/moon",
-            rerun::Transform3D(
-                {
-                    std::cos(r_moon) * d_moon,
-                    std::sin(r_moon) * d_moon,
-                    0.0f,
-                },
-                true
+            rerun::Transform3D::from_translation(
+                {std::cos(r_moon) * d_moon, std::sin(r_moon) * d_moon, 0.0f}
             )
+                .with_from_parent(true)
         );
     }
 }

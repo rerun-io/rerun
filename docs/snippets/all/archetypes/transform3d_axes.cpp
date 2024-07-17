@@ -23,12 +23,15 @@ int main() {
 
         rec.log(
             "base/rotated",
-            rerun::Transform3D(rerun::RotationAxisAngle(
+            rerun::Transform3D::from_rotation(rerun::RotationAxisAngle(
                 {1.0f, 1.0f, 1.0f},
                 rerun::Angle::degrees(static_cast<float>(deg))
             ))
         );
 
-        rec.log("base/rotated/translated", rerun::Transform3D({2.0f, 0.0f, 0.0f}));
+        rec.log(
+            "base/rotated/translated",
+            rerun::Transform3D::from_translation({2.0f, 0.0f, 0.0f})
+        );
     }
 }

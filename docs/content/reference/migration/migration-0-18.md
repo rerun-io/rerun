@@ -46,8 +46,10 @@ For this purpose `TranslationRotationScale3D` and `TranslationAndMat3x3` datatyp
 * [`TransformMat3x3`](https://rerun.io/docs/reference/types/components/transform_mat3x3#speculative-link)
 * TODO(andreas): More!
 
-All components are applied to the final transform in order. E.g. if both a 4x4 matrix and a translation is set, the entity is first transformed with the matrix and then translated.
+All components are applied to the final transform in the opposite order they're listed in. E.g. if both a 4x4 matrix and a translation is set, the entity is first translated and then transformed with the matrix.
+If translation, rotation & scale are applied, then (just as in prior versions), from the point of view of the parent space the object is first scaled, then rotated and then translated.
 
+Scaling no longer distinguishes uniform and 3D scaling in its data representation. Uniform scaling is now always expressed as 3 floats with the same value.
 
 TODO(andreas): Write about OutOfTreeTransform changes and how `Transform3D` has now arrays of components.
 
@@ -85,7 +87,6 @@ Before:
 ```cpp
 rec.log("myentity", rerun::Transform3D({1.0f, 2.0f, 3.0f}));
 ```
-
 After:
 ```cpp
 rec.log("myentity", rerun::Transform3D::from_translation({1.0f, 2.0f, 3.0f}));
@@ -100,6 +101,18 @@ Note that the order of the method calls does _not_ affect the order in which tra
 `rerun::Transform3D::IDENTITY` has been removed, sue `rerun::Transform3D()` to start out with
 an empty archetype instead that you can populate (e.g. `rerun::Transform3D().with_mat3x3(rerun::datatypes::Mat3x3::IDENTITY)`).
 
+
+Scale is no longer an enum datatype but a component with a 3D vec:
+Before:
+```rust
+let scale_uniform = rerun::Scale3D::Uniform(2.0);
+let scale_y = rerun::Scale3D::ThreeD([1.0, 2.0, 1.0]);
+```
+After:
+```rust
+let scale_uniform = rerun::Scale3D::uniform(2.0);
+let scale_y = rerun::Scale3D::from([1.0, 2.0, 1.0]);
+```
 
 TODO(andreas): Talk about OutOfTreeTransform
 TODO(andreas): … and Asset3D specifically

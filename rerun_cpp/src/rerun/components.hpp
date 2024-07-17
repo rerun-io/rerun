@@ -37,6 +37,7 @@
 #include "components/resolution.hpp"
 #include "components/rotation3d.hpp"
 #include "components/scalar.hpp"
+#include "components/scale3d.hpp"
 #include "components/stroke_width.hpp"
 #include "components/tensor_data.hpp"
 #include "components/tensor_dimension_index_selection.hpp"

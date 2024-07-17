@@ -18,10 +18,10 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'translation3d_ext.cpp'
 
-        /// Construct Translation3D from x/y/z values.
+        /// Construct `Translation3D` from x/y/z values.
         Translation3D(float x, float y, float z) : vector{x, y, z} {}
 
-        /// Construct Vec3D from x/y/z float pointer.
+        /// Construct `Translation3D` from x/y/z float pointer.
         explicit Translation3D(const float* xyz) : vector{xyz[0], xyz[1], xyz[2]} {}
 
         float x() const {
