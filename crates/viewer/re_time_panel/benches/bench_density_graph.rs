@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // acceptable for code which is not user-facing
+
 use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,7 +13,9 @@ use re_log_types::ResolvedTimeRange;
 use re_log_types::StoreId;
 use re_log_types::StoreKind;
 use re_log_types::Timeline;
-use re_time_panel::__bench::*;
+use re_time_panel::__bench::{
+    build_density_graph, DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi,
+};
 use re_viewer_context::TimeView;
 
 fn run(
@@ -61,8 +65,7 @@ fn run(
                 .unwrap_or(re_log_types::TimeInt::MIN),
             times
                 .keys()
-                .rev()
-                .next()
+                .next_back()
                 .copied()
                 .unwrap_or(re_log_types::TimeInt::MIN),
         );
