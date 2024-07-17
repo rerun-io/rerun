@@ -352,6 +352,7 @@ namespace rerun {
                     );
                 }
             }
+            return Collection<uint8_t>();
         }
 
       private:

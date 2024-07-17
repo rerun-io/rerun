@@ -43,6 +43,7 @@ namespace rerun {
                 return 64;
             }
         }
+        return 0;
     }
 
     inline size_t num_bytes(
