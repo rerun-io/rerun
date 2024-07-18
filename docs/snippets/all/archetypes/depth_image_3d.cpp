@@ -31,7 +31,7 @@ int main() {
 
     rec.log(
         "world/camera/depth",
-        rerun::DepthImage({HEIGHT, WIDTH}, data)
+        rerun::DepthImage(data, {WIDTH, HEIGHT})
             .with_meter(10000.0)
             .with_colormap(rerun::components::Colormap::Viridis)
     );

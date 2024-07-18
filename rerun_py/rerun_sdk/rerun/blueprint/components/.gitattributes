@@ -9,6 +9,7 @@ background_kind.py linguist-generated=true
 column_share.py linguist-generated=true
 container_kind.py linguist-generated=true
 corner2d.py linguist-generated=true
+dataframe_view_mode.py linguist-generated=true
 grid_columns.py linguist-generated=true
 included_content.py linguist-generated=true
 included_space_view.py linguist-generated=true

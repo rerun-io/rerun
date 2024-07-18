@@ -12,6 +12,7 @@
 #include "rerun/config.hpp"
 #include "rerun/entity_path.hpp"
 #include "rerun/error.hpp"
+#include "rerun/image_utils.hpp"
 #include "rerun/recording_stream.hpp"
 #include "rerun/result.hpp"
 #include "rerun/sdk_info.hpp"

@@ -1,24 +1,19 @@
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
-use re_log_types::{EntityPathHash, TimeInt};
-use re_query::range_zip_1x3;
+use re_log_types::EntityPathHash;
 use re_renderer::renderer::{DepthCloud, DepthClouds};
-use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::DepthImage,
     components::{self, Colormap, DepthMeter, DrawOrder, FillRatio, ViewCoordinates},
-    datatypes,
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, QueryContext,
-    SpaceViewClass, SpaceViewSystemExecutionError, TensorStatsCache,
+    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageInfo,
+    ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -29,7 +24,7 @@ use crate::{
     PickableImageRect, SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
-use super::{bounding_box_for_textured_rect, tensor_to_textured_rect, SpatialViewVisualizerData};
+use super::{bounding_box_for_textured_rect, textured_rect_from_image, SpatialViewVisualizerData};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -47,23 +42,20 @@ impl Default for DepthImageVisualizer {
     }
 }
 
-struct DepthImageComponentData<'a> {
-    index: (TimeInt, RowId),
-
-    tensor: &'a datatypes::TensorData,
-    colormap: Option<&'a Colormap>,
-    depth_meter: Option<&'a DepthMeter>,
-    fill_ratio: Option<&'a FillRatio>,
+struct DepthImageComponentData {
+    image: ImageInfo,
+    depth_meter: Option<DepthMeter>,
+    fill_ratio: Option<FillRatio>,
 }
 
 impl DepthImageVisualizer {
-    fn process_depth_image_data<'a>(
+    fn process_depth_image_data(
         &mut self,
         ctx: &QueryContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = DepthImageComponentData<'a>>,
+        images: impl Iterator<Item = DepthImageComponentData>,
     ) {
         let is_3d_view =
             ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
@@ -71,26 +63,21 @@ impl DepthImageVisualizer {
         let entity_path = ctx.target_entity_path;
         let meaning = TensorDataMeaning::Depth;
 
-        for data in data {
-            if !data.tensor.is_shaped_like_an_image() {
-                continue;
-            }
+        for data in images {
+            let DepthImageComponentData {
+                mut image,
+                depth_meter,
+                fill_ratio,
+            } = data;
 
-            let tensor_data_row_id = data.index.1;
-            let tensor = data.tensor.clone();
+            let depth_meter = depth_meter.unwrap_or_else(|| self.fallback_for(ctx));
 
-            let colormap = data
-                .colormap
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
+            // All depth images must have a colormap:
+            image.colormap = Some(image.colormap.unwrap_or_else(|| self.fallback_for(ctx)));
 
             if is_3d_view {
                 if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
-                    let depth_meter = data
-                        .depth_meter
-                        .copied()
-                        .unwrap_or_else(|| self.fallback_for(ctx));
-                    let fill_ratio = data.fill_ratio.copied().unwrap_or_default();
+                    let fill_ratio = fill_ratio.unwrap_or_default();
 
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
@@ -99,11 +86,9 @@ impl DepthImageVisualizer {
                         ctx,
                         transforms,
                         ent_context,
-                        tensor_data_row_id,
-                        &tensor,
+                        &image,
                         entity_path,
                         parent_pinhole_path,
-                        colormap,
                         depth_meter,
                         fill_ratio,
                     ) {
@@ -124,15 +109,13 @@ impl DepthImageVisualizer {
                 };
             }
 
-            if let Some(textured_rect) = tensor_to_textured_rect(
+            if let Some(textured_rect) = textured_rect_from_image(
                 ctx.viewer_ctx,
                 entity_path,
                 ent_context,
-                tensor_data_row_id,
-                &tensor,
+                &image,
                 meaning,
                 re_renderer::Rgba::WHITE,
-                Some(colormap),
             ) {
                 // Only update the bounding box if this is a 2D space view.
                 // This is avoids a cyclic relationship where the image plane grows
@@ -148,9 +131,12 @@ impl DepthImageVisualizer {
 
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
-                    row_id: tensor_data_row_id,
+                    row_id: image.blob_row_id,
                     textured_rect,
-                    tensor,
+                    meaning: TensorDataMeaning::Depth,
+                    depth_meter: Some(depth_meter),
+                    tensor: None,
+                    image: Some(image),
                 });
             }
         }
@@ -161,11 +147,9 @@ impl DepthImageVisualizer {
         ctx: &QueryContext<'_>,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
-        tensor_data_row_id: RowId,
-        tensor: &datatypes::TensorData,
+        image: &ImageInfo,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
-        colormap: Colormap,
         depth_meter: DepthMeter,
         radius_scale: FillRatio,
     ) -> anyhow::Result<DepthCloud> {
@@ -194,30 +178,25 @@ impl DepthImageVisualizer {
                     .from_rdf(),
             );
 
-        let Some([height, width, _]) = tensor.image_height_width_channels() else {
-            anyhow::bail!("Tensor at {ent_path:?} is not an image");
-        };
-        let dimensions = glam::UVec2::new(width as _, height as _);
+        let dimensions = glam::UVec2::from(image.resolution);
 
         let debug_name = ent_path.to_string();
         let tensor_stats = ctx
             .viewer_ctx
             .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
+            .entry(|c: &mut ImageStatsCache| c.entry(image));
 
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             anyhow::bail!("No render context available for depth cloud creation");
         };
 
-        let depth_texture = re_viewer_context::gpu_bridge::tensor_to_gpu(
+        let depth_texture = re_viewer_context::gpu_bridge::image_to_gpu(
             render_ctx,
             &debug_name,
-            tensor_data_row_id,
-            tensor,
+            image,
             TensorDataMeaning::Depth,
             &tensor_stats,
             &ent_context.annotations,
-            Some(colormap),
         )?;
 
         let world_depth_from_texture_depth = 1.0 / *depth_meter.0;
@@ -225,7 +204,7 @@ impl DepthImageVisualizer {
         // We want point radius to be defined in a scale where the radius of a point
         // is a factor of the diameter of a pixel projected at that distance.
         let fov_y = intrinsics.fov_y().unwrap_or(1.0);
-        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * height as f32);
+        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * image.height() as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
         Ok(DepthCloud {
@@ -236,7 +215,9 @@ impl DepthImageVisualizer {
             max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
             depth_dimensions: dimensions,
             depth_texture: depth_texture.texture,
-            colormap: colormap_to_re_renderer(colormap),
+            colormap: colormap_to_re_renderer(
+                image.colormap.expect("We should have set this earlier"),
+            ),
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
         })
@@ -249,23 +230,9 @@ impl IdentifiedViewSystem for DepthImageVisualizer {
     }
 }
 
-struct DepthImageVisualizerEntityFilter;
-
-impl VisualizerAdditionalApplicabilityFilter for DepthImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_shaped_like_an_image()
-        })
-    }
-}
-
 impl VisualizerSystem for DepthImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<DepthImage>()
-    }
-
-    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(DepthImageVisualizerEntityFilter))
     }
 
     fn filter_visualizable_entities(
@@ -299,10 +266,21 @@ impl VisualizerSystem for DepthImageVisualizer {
 
                 let resolver = ctx.recording().resolver();
 
-                let tensors = match results
-                    .get_required_component_dense::<components::TensorData>(resolver)
+                let blobs = match results.get_required_component_dense::<components::Blob>(resolver)
                 {
-                    Some(tensors) => tensors?,
+                    Some(blobs) => blobs?,
+                    _ => return Ok(()),
+                };
+                let data_types = match results
+                    .get_required_component_dense::<components::ChannelDataType>(resolver)
+                {
+                    Some(data_types) => data_types?,
+                    _ => return Ok(()),
+                };
+                let resolutions = match results
+                    .get_required_component_dense::<components::Resolution2D>(resolver)
+                {
+                    Some(resolutions) => resolutions?,
                     _ => return Ok(()),
                 };
 
@@ -310,20 +288,28 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let depth_meter = results.get_or_empty_dense(resolver)?;
                 let fill_ratio = results.get_or_empty_dense(resolver)?;
 
-                let mut data = range_zip_1x3(
-                    tensors.range_indexed(),
+                let mut data = re_query::range_zip_1x5(
+                    blobs.range_indexed(),
+                    data_types.range_indexed(),
+                    resolutions.range_indexed(),
                     colormap.range_indexed(),
                     depth_meter.range_indexed(),
                     fill_ratio.range_indexed(),
                 )
                 .filter_map(
-                    |(&index, tensors, colormap, depth_meter, fill_ratio)| {
-                        tensors.first().map(|tensor| DepthImageComponentData {
-                            index,
-                            tensor,
-                            colormap: colormap.and_then(|colormap| colormap.first()),
-                            depth_meter: depth_meter.and_then(|depth_meter| depth_meter.first()),
-                            fill_ratio: fill_ratio.and_then(|fill_ratio| fill_ratio.first()),
+                    |(&index, blobs, data_type, resolution, colormap, depth_meter, fill_ratio)| {
+                        let blob = blobs.first()?;
+                        Some(DepthImageComponentData {
+                            image: ImageInfo {
+                                blob_row_id: index.1,
+                                blob: blob.0.clone(),
+                                resolution: first_copied(resolution)?.0 .0,
+                                color_model: None,
+                                data_type: first_copied(data_type)?,
+                                colormap: first_copied(colormap),
+                            },
+                            depth_meter: first_copied(depth_meter),
+                            fill_ratio: first_copied(fill_ratio),
                         })
                     },
                 );
@@ -413,3 +399,7 @@ impl TypedComponentFallbackProvider<DrawOrder> for DepthImageVisualizer {
 }
 
 re_viewer_context::impl_component_fallback_provider!(DepthImageVisualizer => [Colormap, DepthMeter, DrawOrder]);
+
+fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
+    slice.and_then(|element| element.first()).copied()
+}

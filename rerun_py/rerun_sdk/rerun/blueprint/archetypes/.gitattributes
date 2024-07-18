@@ -4,15 +4,16 @@
 __init__.py linguist-generated=true
 background.py linguist-generated=true
 container_blueprint.py linguist-generated=true
+dataframe_view_mode.py linguist-generated=true
 panel_blueprint.py linguist-generated=true
 plot_legend.py linguist-generated=true
-range_table_order.py linguist-generated=true
 scalar_axis.py linguist-generated=true
 space_view_blueprint.py linguist-generated=true
 space_view_contents.py linguist-generated=true
 tensor_scalar_mapping.py linguist-generated=true
 tensor_slice_selection.py linguist-generated=true
 tensor_view_fit.py linguist-generated=true
+time_range_table_order.py linguist-generated=true
 viewport_blueprint.py linguist-generated=true
 visible_time_ranges.py linguist-generated=true
 visual_bounds2d.py linguist-generated=true

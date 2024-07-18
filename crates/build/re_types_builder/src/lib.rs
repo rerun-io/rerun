@@ -121,6 +121,8 @@ mod reflection;
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Context as _;
+use codegen::FbsCodeGenerator;
+use format::FbsCodeFormatter;
 use re_build_tools::{
     compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
 };
@@ -558,6 +560,37 @@ pub fn generate_docs(
         &mut generator,
         &mut formatter,
         &Default::default(),
+        check,
+    );
+}
+
+/// Generate flatbuffers definition files.
+///
+/// This should run as the first step in the codegen pipeline as it influences all others.
+pub fn generate_fbs(reporter: &Reporter, definition_dir: impl AsRef<Utf8Path>, check: bool) {
+    re_tracing::profile_function!();
+
+    let mut generator = FbsCodeGenerator::new(definition_dir.as_ref());
+    let mut formatter = FbsCodeFormatter;
+
+    // We don't have arrow registry & objects yet!
+    let objects = Objects::default();
+    let arrow_registry = ArrowRegistry::default();
+
+    let orphan_path_opt_outs = [
+        definition_dir.as_ref().to_path_buf(),
+        definition_dir.as_ref().join("rerun"),
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+
+    generate_code(
+        reporter,
+        &objects,
+        &arrow_registry,
+        &mut generator,
+        &mut formatter,
+        &orphan_path_opt_outs,
         check,
     );
 }

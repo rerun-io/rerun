@@ -17,13 +17,15 @@ use datatype_editors::{
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
     edit_view_enum,
 };
-use re_types::blueprint::components::{SortKey, SortOrder};
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
+    blueprint::components::{
+        BackgroundKind, Corner2D, DataframeViewMode, LockRangeDuringZoom, SortKey, SortOrder,
+        ViewFit, Visible,
+    },
     components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, Color, Colormap, DepthMeter, DrawOrder,
-        FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, Scale3D, StrokeWidth, Text, Translation3D,
+        AggregationPolicy, AlbedoFactor, AxisLength, ChannelDataType, Color, ColorModel, Colormap,
+        DepthMeter, DrawOrder, FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter,
+        MarkerSize, Name, Opacity, Scale3D, StrokeWidth, Text, Translation3D,
     },
     Loggable as _,
 };
@@ -70,9 +72,12 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_singleline_edit_or_view(|ctx, ui, value| {
         colormap_edit_or_view_ui(ctx.render_ctx, ui, value)
     });
-    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Colormap>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ColorModel>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<Corner2D>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
+        edit_view_enum::<ChannelDataType>(ui, value)
+    });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| {
         edit_view_enum::<MagnificationFilter>(ui, value)
     });
@@ -80,6 +85,9 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         edit_view_enum::<AggregationPolicy>(ui, value)
     });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<ViewFit>(ui, value));
+    registry.add_singleline_edit_or_view(|_ctx, ui, value| {
+        edit_view_enum::<DataframeViewMode>(ui, value)
+    });
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortKey>(ui, value));
     registry.add_singleline_edit_or_view(|_ctx, ui, value| edit_view_enum::<SortOrder>(ui, value));
 

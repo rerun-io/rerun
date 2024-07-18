@@ -19,9 +19,17 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
 from .blob import Blob, BlobBatch, BlobType
+from .channel_data_type import (
+    ChannelDataType,
+    ChannelDataTypeArrayLike,
+    ChannelDataTypeBatch,
+    ChannelDataTypeLike,
+    ChannelDataTypeType,
+)
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import ClearIsRecursive, ClearIsRecursiveBatch, ClearIsRecursiveType
 from .color import Color, ColorBatch, ColorType
+from .color_model import ColorModel, ColorModelArrayLike, ColorModelBatch, ColorModelLike, ColorModelType
 from .colormap import Colormap, ColormapArrayLike, ColormapBatch, ColormapLike, ColormapType
 from .depth_meter import DepthMeter, DepthMeterBatch, DepthMeterType
 from .disconnected_space import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceType
@@ -53,6 +61,7 @@ from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusBatch, RadiusType
 from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
+from .resolution2d import Resolution2D, Resolution2DBatch, Resolution2DType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarBatch, ScalarType
 from .scale3d import Scale3D, Scale3DBatch, Scale3DType
@@ -96,6 +105,11 @@ __all__ = [
     "Blob",
     "BlobBatch",
     "BlobType",
+    "ChannelDataType",
+    "ChannelDataTypeArrayLike",
+    "ChannelDataTypeBatch",
+    "ChannelDataTypeLike",
+    "ChannelDataTypeType",
     "ClassId",
     "ClassIdBatch",
     "ClassIdType",
@@ -104,6 +118,11 @@ __all__ = [
     "ClearIsRecursiveType",
     "Color",
     "ColorBatch",
+    "ColorModel",
+    "ColorModelArrayLike",
+    "ColorModelBatch",
+    "ColorModelLike",
+    "ColorModelType",
     "ColorType",
     "Colormap",
     "ColormapArrayLike",
@@ -188,6 +207,9 @@ __all__ = [
     "Range1DBatch",
     "Range1DType",
     "Resolution",
+    "Resolution2D",
+    "Resolution2DBatch",
+    "Resolution2DType",
     "ResolutionBatch",
     "ResolutionType",
     "Rotation3D",

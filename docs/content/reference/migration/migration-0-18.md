@@ -7,7 +7,12 @@ NOTE! Rerun 0.18 has not yet been released
 
 
 ## ⚠️ Breaking changes
-### `ImageEncoded`
+### [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image)
+The `DepthImage` and `SegmentationImage` archetypes used to be encoded as a tensor, but now it is encoded as a blob of bytes, a resolution, and a datatype.
+The constructs have changed to now expect the shape in `[width, height]` order.
+
+
+### [`ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link)
 `ImageEncoded` is our new archetype for logging an image file, e.g. a PNG or JPEG.
 
 #### Python
@@ -28,12 +33,12 @@ For all of these, use `ImageEncoded` instead.
 ### `mesh_material: Material` has been renamed to `albedo_factor: AlbedoFactor` [#6841](https://github.com/rerun-io/rerun/pull/6841)
 The field `mesh_material` in `Mesh3D` is now named `albedo_factor` and wraps a `datatypes.Rgba32`.
 
-When constructing a `Mesh3D`:
+When constructing a [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d):
 * C++ & Rust: `.with_mesh_material(Material::from_albedo_factor(color))` -> `with_albedo_factor(color)`
 * Python: `mesh_material=rr.Material(albedo_factor=color)` -> `albedo_factor=color`
 
 
-### Overhaul of Transform3D
+### Overhaul of [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/Transform3D)
 
 In order to simplify the Arrow schema (which determines how data is stored and retrieved) wide reaching changes have been made to the Transform3D API.
 Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed, sometimes nested within.

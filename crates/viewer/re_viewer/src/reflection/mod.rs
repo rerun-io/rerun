@@ -84,6 +84,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <DataframeViewMode as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The kind of table displayed by the dataframe view",
+                placeholder: Some(DataframeViewMode::default().to_arrow()?),
+            },
+        ),
+        (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -266,6 +273,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ChannelDataType as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The innermost datatype of an image.\n\nHow individual color channel components are encoded.",
+                placeholder: Some(ChannelDataType::default().to_arrow()?),
+            },
+        ),
+        (
             <ClassId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
@@ -284,6 +298,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
                 placeholder: Some(Color::default().to_arrow()?),
+            },
+        ),
+        (
+            <ColorModel as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type) determines the pixel format of an image.",
+                placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
         (
@@ -459,6 +480,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
                 placeholder: Some(Resolution::default().to_arrow()?),
+            },
+        ),
+        (
+            <Resolution2D as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "The width and height of a 2D image.",
+                placeholder: Some(Resolution2D::default().to_arrow()?),
             },
         ),
         (
@@ -638,6 +666,18 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.DataframeViewMode"),
+            ArchetypeReflection {
+                display_name: "Dataframe view mode",
+                docstring_md: "Configuration for the dataframe view",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.DataframeViewMode".into(), display_name :
+                    "Mode", docstring_md : "The kind of table to display", },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.PlotLegend"),
             ArchetypeReflection {
                 display_name: "Plot legend",
@@ -651,21 +691,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.Visible".into(), display_name :
                     "Visible", docstring_md :
                     "Whether the legend is shown at all.\n\nTrue by default.", },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.RangeTableOrder"),
-            ArchetypeReflection {
-                display_name: "Range table order",
-                docstring_md: "Configuration for the sorting of the rows of a time range table.",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortKey".into(), display_name :
-                    "Sort key", docstring_md : "The primary sort key.", },
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.SortOrder".into(), display_name :
-                    "Sort order", docstring_md : "The sort order.", },
                 ],
             },
         ),
@@ -744,6 +769,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.blueprint.components.ViewFit".into(), display_name :
                     "Scaling", docstring_md : "How the image is scaled to fit the view.",
                     },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TimeRangeTableOrder"),
+            ArchetypeReflection {
+                display_name: "Time range table order",
+                docstring_md: "Ordering of the time range table of the dataframe view",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortKey".into(), display_name :
+                    "Sort key", docstring_md : "The primary sort key", },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.SortOrder".into(), display_name :
+                    "Sort order", docstring_md : "The sort order", },
                 ],
             },
         ),

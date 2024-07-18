@@ -1,0 +1,17 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Ordering of the time range table of the dataframe view
+table TimeRangeTableOrder (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy",
+    "attr.rust.generate_field_info"
+) {
+    // --- Optional ---
+
+    /// The primary sort key
+    sort_key: rerun.blueprint.components.SortKey ("attr.rerun.component_optional", nullable, order: 2000);
+
+    /// The sort order
+    sort_order: rerun.blueprint.components.SortOrder ("attr.rerun.component_optional", nullable, order: 3000);
+}

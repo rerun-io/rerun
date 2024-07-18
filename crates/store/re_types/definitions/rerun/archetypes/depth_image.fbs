@@ -1,15 +1,9 @@
-include "fbs/attributes.fbs";
-
-include "rerun/datatypes.fbs";
-include "rerun/components.fbs";
-
 namespace rerun.archetypes;
 
 
-/// A depth image.
+/// A depth image, i.e. as captured by a depth camera.
 ///
-/// The shape of the [components.TensorData] must be mappable to an `HxW` tensor.
-/// Each pixel corresponds to a depth value in units specified by `meter`.
+/// Each pixel corresponds to a depth value in units specified by [components.DepthMeter].
 ///
 /// \cpp Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
@@ -25,8 +19,14 @@ table DepthImage (
 ) {
   // --- Required ---
 
-  /// The depth-image data. Should always be a 2-dimensional tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
+  /// The raw depth image data.
+  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  /// The size of the image
+  resolution: rerun.components.Resolution2D ("attr.rerun.component_required", order: 1500);
+
+  /// The data type of the depth image data (U16, F32, …).
+  data_type: rerun.components.ChannelDataType ("attr.rerun.component_required", order: 2000);
 
   // --- Optional ---
 

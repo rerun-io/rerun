@@ -1,11 +1,3 @@
-include "arrow/attributes.fbs";
-include "python/attributes.fbs";
-include "rust/attributes.fbs";
-include "docs/attributes.fbs";
-include "rerun/attributes.fbs";
-
-include "rerun/datatypes.fbs";
-
 namespace rerun.datatypes;
 
 // ---

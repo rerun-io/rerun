@@ -56,6 +56,30 @@ impl<T> ArrowBuffer<T> {
     }
 }
 
+impl<T: bytemuck::Pod> ArrowBuffer<T> {
+    /// Cast POD (plain-old-data) types to another POD type.
+    ///
+    /// For instance: cast a buffer of `u8` to a buffer of `f32`.
+    #[inline]
+    pub fn cast_pod<Target: bytemuck::Pod>(
+        &self,
+    ) -> Result<ArrowBuffer<Target>, bytemuck::PodCastError> {
+        // TODO(emilk): when we switch from arrow2, see if we can make this function zero-copy
+        re_tracing::profile_function!();
+        let target_slice: &[Target] = bytemuck::try_cast_slice(self.as_slice())?;
+        Ok(ArrowBuffer::from(target_slice.to_vec()))
+    }
+
+    /// Cast POD (plain-old-data) types to `u8`.
+    #[inline]
+    pub fn cast_to_u8(&self) -> ArrowBuffer<u8> {
+        match self.cast_pod() {
+            Ok(buf) => buf,
+            Err(_) => unreachable!("We can always cast POD types to u8"),
+        }
+    }
+}
+
 impl<T: Eq> Eq for ArrowBuffer<T> {}
 
 impl<T: Clone> ArrowBuffer<T> {
