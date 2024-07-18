@@ -243,7 +243,7 @@ impl EntityDb {
         }
     }
 
-    /// Returns the time range of data on the given timeline.
+    /// Returns the time range of data on the given timeline, ignoring any static times.
     ///
     /// This is O(N) in the number of times on the timeline.
     pub fn time_range_for(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
