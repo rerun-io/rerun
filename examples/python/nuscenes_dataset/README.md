@@ -3,7 +3,7 @@ title = "nuScenes"
 tags = ["Lidar", "3D", "2D", "Object detection", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/nuscenes/9c50bf5cadb879ef818ac3d35fe75696a9586cb4/480w.png"
 thumbnail_dimensions = [480, 480]
-# channel = "release" # TODO(#6901)
+channel = "release"
 build_args = ["--seconds=5"]
 -->
 
