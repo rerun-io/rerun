@@ -99,7 +99,13 @@ def test_transform3d() -> None:
     quaternion_arrays = [None, Quaternion(xyzw=[1, 2, 3, 4])]
     scale_arrays = [None, 1.0, 1, [1.0, 2.0, 3.0]]
     axis_lengths = [None, 1, 1.0]
-    from_parent_arrays = [None, True, False]
+    relations = [
+        None,
+        rr.TransformRelation.ParentFromChild,
+        rr.TransformRelation.ChildFromParent,
+        "parentfromchild",
+        "childfromparent",
+    ]
 
     # TODO(#6831): repopulate this list with all transform variants
     all_arrays = itertools.zip_longest(
@@ -108,7 +114,7 @@ def test_transform3d() -> None:
         quaternion_arrays,
         scale_arrays,
         MAT_3X3_INPUT + [None],
-        from_parent_arrays,
+        relations,
         axis_lengths,
     )
 
@@ -118,14 +124,14 @@ def test_transform3d() -> None:
         quaternion,
         scale,
         mat3x3,
-        from_parent,
+        relation,
         axis_length,
     ) in all_arrays:
         translation = cast(Optional[rr.datatypes.Vec3DLike], translation)
         quaternion = cast(Optional[rr.datatypes.QuaternionLike], quaternion)
         scale = cast(Optional[rr.datatypes.Vec3DLike | rr.datatypes.Float32Like], scale)
         mat3x3 = cast(Optional[rr.datatypes.Mat3x3Like], mat3x3)
-        from_parent = cast(Optional[bool], from_parent)
+        relation = cast(Optional[rr.components.TransformRelationLike], relations)
         axis_length = cast(Optional[rr.datatypes.Float32Like], axis_length)
 
         print(
@@ -135,7 +141,7 @@ def test_transform3d() -> None:
             f"    quaternion={quaternion!r}\n"  #
             f"    scale={scale!r}\n"  #
             f"    mat3x3={mat3x3!r}\n"  #
-            f"    from_parent={from_parent!r}\n"  #
+            f"    relation={relation!r}\n"  #
             f"    axis_length={axis_length!r}\n"  #
             f")"
         )
@@ -145,7 +151,7 @@ def test_transform3d() -> None:
             quaternion=quaternion,
             scale=scale,
             mat3x3=mat3x3,
-            from_parent=from_parent,
+            relation=relation,
             axis_length=axis_length,
         )
         print(f"{arch}\n")
@@ -168,8 +174,7 @@ def test_transform3d() -> None:
         assert arch.axis_length == rr.components.AxisLengthBatch._optional(
             none_empty_or_value(axis_length, rr.components.AxisLength(1.0))
         )
-        # TODO(#6831): from parent!
-        # assert arch.from_parent == rr.components.Bool._optional(none_empty_or_value(from_parent, False))
+        assert arch.relation == rr.components.TransformRelationBatch._optional(relation)
 
 
 def test_transform_mat3x3_snippets() -> None:
