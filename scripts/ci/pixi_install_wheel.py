@@ -15,10 +15,10 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
 import platform
-from pathlib import Path
 import subprocess
+import sys
+from pathlib import Path
 
 
 def run_pixi_install(feature: str, dir: str, pkg: str) -> None:
