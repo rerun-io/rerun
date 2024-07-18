@@ -10,7 +10,7 @@ use wgpu::TextureFormat;
 use re_chunk::RowId;
 use re_renderer::{
     pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
+    renderer::{ColorMapper, ColormappedTexture},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
@@ -108,9 +108,6 @@ fn color_tensor_to_gpu(
         re_tracing::profile_function!();
 
         let (data, format) = match (depth, &tensor.buffer) {
-            (3, TensorBuffer::Nv12(buf) | TensorBuffer::Yuy2(buf)) => {
-                (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint)
-            }
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
             // Why? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
@@ -137,19 +134,9 @@ fn color_tensor_to_gpu(
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     let texture_format = texture_handle.format();
-    let shader_decoding = match tensor.buffer {
-        TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
-        TensorBuffer::Yuy2(_) => Some(ShaderDecoding::Yuy2),
-        _ => None,
-    };
     // TODO(emilk): let the user specify the color space.
-    let decode_srgb = match shader_decoding {
-        Some(ShaderDecoding::Nv12 | ShaderDecoding::Yuy2) => true,
-        None => {
-            texture_format == TextureFormat::Rgba8Unorm
-                || super::tensor_decode_srgb_gamma_heuristic(tensor_stats, tensor.dtype(), depth)?
-        }
-    };
+    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
+        || super::tensor_decode_srgb_gamma_heuristic(tensor_stats, tensor.dtype(), depth)?;
 
     // Special casing for normalized textures used above:
     let range = if matches!(
@@ -159,35 +146,25 @@ fn color_tensor_to_gpu(
         [0.0, 1.0]
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
-    } else if shader_decoding == Some(ShaderDecoding::Nv12)
-        || shader_decoding == Some(ShaderDecoding::Yuy2)
-    {
-        [0.0, 1.0]
     } else {
         // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
         super::tensor_data_range_heuristic(tensor_stats, tensor.dtype())?
     };
 
-    let color_mapper = match shader_decoding {
-        None => {
-            // TODO(andreas): support colormap property
-            if texture_format.components() == 1 {
-                if decode_srgb {
-                    // Leave grayscale images unmolested - don't apply a colormap to them.
-                    ColorMapper::OffGrayscale
-                } else {
-                    // This is something like a uint16 image, or a float image
-                    // with a range outside of 0-255 (see tensor_decode_srgb_gamma_heuristic).
-                    // `tensor_data_range_heuristic` will make sure we map this to a 0-1
-                    // range, and then we apply a gray colormap to it.
-                    ColorMapper::Function(re_renderer::Colormap::Grayscale)
-                }
-            } else {
-                ColorMapper::OffRGB
-            }
+    // TODO(andreas): support colormap property
+    let color_mapper = if texture_format.components() == 1 {
+        if decode_srgb {
+            // Leave grayscale images unmolested - don't apply a colormap to them.
+            ColorMapper::OffGrayscale
+        } else {
+            // This is something like a uint16 image, or a float image
+            // with a range outside of 0-255 (see tensor_decode_srgb_gamma_heuristic).
+            // `tensor_data_range_heuristic` will make sure we map this to a 0-1
+            // range, and then we apply a gray colormap to it.
+            ColorMapper::Function(re_renderer::Colormap::Grayscale)
         }
-
-        Some(ShaderDecoding::Nv12 | ShaderDecoding::Yuy2) => ColorMapper::OffRGB,
+    } else {
+        ColorMapper::OffRGB
     };
 
     // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
@@ -196,7 +173,7 @@ fn color_tensor_to_gpu(
     let gamma = 1.0;
 
     re_log::trace_once!(
-        "color_tensor_to_gpu {debug_name:?}, range: {range:?}, decode_srgb: {decode_srgb:?}, multiply_rgb_with_alpha: {multiply_rgb_with_alpha:?}, gamma: {gamma:?}, color_mapper: {color_mapper:?}, shader_decoding: {shader_decoding:?}",
+        "color_tensor_to_gpu {debug_name:?}, range: {range:?}, decode_srgb: {decode_srgb:?}, multiply_rgb_with_alpha: {multiply_rgb_with_alpha:?}, gamma: {gamma:?}, color_mapper: {color_mapper:?}",
     );
 
     Ok(ColormappedTexture {
@@ -206,7 +183,7 @@ fn color_tensor_to_gpu(
         multiply_rgb_with_alpha,
         gamma,
         color_mapper,
-        shader_decoding,
+        shader_decoding: None,
     })
 }
 
@@ -381,13 +358,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::R16Float),
                 TensorBuffer::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::R32Float),
                 TensorBuffer::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::R32Float), // narrowing to f32!
-
-                TensorBuffer::Nv12(_) => {
-                    unreachable!("An NV12 tensor can only contain a 3 channel image.")
-                }
-                TensorBuffer::Yuy2(_) => {
-                    unreachable!("A YUY2 tensor can only contain a 3 channel image.")
-                }
             }
         }
         2 => {
@@ -406,13 +376,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg16Float),
                 TensorBuffer::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rg32Float),
                 TensorBuffer::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rg32Float), // narrowing to f32!
-
-                TensorBuffer::Nv12(_) => {
-                    unreachable!("An NV12 tensor can only contain a 3 channel image.")
-                }
-                TensorBuffer::Yuy2(_) => {
-                    unreachable!("A Yuy2 tensor can only contain a 3 channel image.")
-                }
             }
         }
         3 => {
@@ -452,10 +415,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                     pad_and_narrow_and_cast(buf, 1.0, |x: f64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
-
-                TensorBuffer::Nv12(buf) | TensorBuffer::Yuy2(buf) => {
-                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm)
-                }
             }
         }
         4 => {
@@ -474,13 +433,6 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::F16(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba16Float),
                 TensorBuffer::F32(buf) => (cast_slice_to_cow(buf), TextureFormat::Rgba32Float),
                 TensorBuffer::F64(buf) => (narrow_f64_to_f32s(buf), TextureFormat::Rgba32Float), // narrowing to f32!
-
-                TensorBuffer::Nv12(_) => {
-                    unreachable!("An NV12 tensor can only contain a 3 channel image.")
-                }
-                TensorBuffer::Yuy2(_) => {
-                    unreachable!("A Yuy2 tensor can only contain a 3 channel image.")
-                }
             }
         }
         depth => {
@@ -558,19 +510,8 @@ fn pad_and_narrow_and_cast<T: Copy + Pod>(
 pub fn texture_height_width_channels(tensor: &TensorData) -> anyhow::Result<[u32; 3]> {
     use anyhow::Context as _;
 
-    let Some([mut height, mut width, channel]) = tensor.image_height_width_channels() else {
+    let Some([height, width, channel]) = tensor.image_height_width_channels() else {
         anyhow::bail!("TensorData with shape {:?} is not an image", tensor.shape);
-    };
-    height = match tensor.buffer {
-        // Correct the texture height for NV12, tensor.image_height_width_channels returns the RGB size for NV12 images.
-        // The actual texture size has dimensions (h*3/2, w, 1).
-        TensorBuffer::Nv12(_) => height * 3 / 2,
-        _ => height,
-    };
-
-    width = match tensor.buffer {
-        TensorBuffer::Yuy2(_) => width * 2,
-        _ => width,
     };
 
     let [height, width] = [

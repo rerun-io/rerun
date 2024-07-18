@@ -23,8 +23,6 @@ namespace rerun {
             arrow::field("F16", arrow::list(arrow::field("item", arrow::float16(), false)), false),
             arrow::field("F32", arrow::list(arrow::field("item", arrow::float32(), false)), false),
             arrow::field("F64", arrow::list(arrow::field("item", arrow::float64(), false)), false),
-            arrow::field("NV12", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
-            arrow::field("YUY2", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
         });
         return datatype;
     }
@@ -197,28 +195,6 @@ namespace rerun {
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
                         union_instance.get_union_data().f64.data(),
                         static_cast<int64_t>(union_instance.get_union_data().f64.size())
-                    ));
-                } break;
-                case TagType::NV12: {
-                    auto variant_builder =
-                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                    ARROW_RETURN_NOT_OK(variant_builder->Append());
-                    auto value_builder =
-                        static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
-                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                        union_instance.get_union_data().nv12.data(),
-                        static_cast<int64_t>(union_instance.get_union_data().nv12.size())
-                    ));
-                } break;
-                case TagType::YUY2: {
-                    auto variant_builder =
-                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                    ARROW_RETURN_NOT_OK(variant_builder->Append());
-                    auto value_builder =
-                        static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
-                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                        union_instance.get_union_data().yuy2.data(),
-                        static_cast<int64_t>(union_instance.get_union_data().yuy2.size())
                     ));
                 } break;
             }

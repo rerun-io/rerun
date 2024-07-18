@@ -18,8 +18,6 @@ impl TensorBuffer {
             Self::F16(_) => TensorDataType::F16,
             Self::F32(_) => TensorDataType::F32,
             Self::F64(_) => TensorDataType::F64,
-            Self::Nv12(_) => TensorDataType::U8,
-            Self::Yuy2(_) => TensorDataType::U8,
         }
     }
 
@@ -38,34 +36,12 @@ impl TensorBuffer {
             Self::F16(buf) => buf.size_in_bytes(),
             Self::F32(buf) => buf.size_in_bytes(),
             Self::F64(buf) => buf.size_in_bytes(),
-            Self::Nv12(buf) => buf.size_in_bytes(),
-            Self::Yuy2(buf) => buf.size_in_bytes(),
         }
     }
 
     /// Is this buffer empty?
     pub fn is_empty(&self) -> bool {
         self.size_in_bytes() == 0
-    }
-
-    /// Is this tensor represented by a compressed image format
-    /// (JPEG, NV12, YUY2)?
-    pub fn is_compressed_image(&self) -> bool {
-        match self {
-            Self::U8(_)
-            | Self::U16(_)
-            | Self::U32(_)
-            | Self::U64(_)
-            | Self::I8(_)
-            | Self::I16(_)
-            | Self::I32(_)
-            | Self::I64(_)
-            | Self::F16(_)
-            | Self::F32(_)
-            | Self::F64(_) => false,
-
-            Self::Nv12(_) | Self::Yuy2(_) => true,
-        }
     }
 }
 
@@ -83,8 +59,6 @@ impl std::fmt::Debug for TensorBuffer {
             Self::F16(_) => write!(f, "F16({} bytes)", self.size_in_bytes()),
             Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
             Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
-            Self::Nv12(_) => write!(f, "NV12({} bytes)", self.size_in_bytes()),
-            Self::Yuy2(_) => write!(f, "YUY2({} bytes)", self.size_in_bytes()),
         }
     }
 }

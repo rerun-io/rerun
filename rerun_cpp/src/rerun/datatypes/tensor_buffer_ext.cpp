@@ -111,14 +111,6 @@ namespace rerun::datatypes {
             case detail::TensorBufferTag::F64: {
                 return _data.f64.size();
             }
-            case detail::TensorBufferTag::NV12: {
-                assert(false && "Can't ask for the number of elements in an NV12 encoded image");
-                break;
-            }
-            case detail::TensorBufferTag::YUY2: {
-                assert(false && "Can't ask for the number of elements in an YUY2 encoded image");
-                break;
-            }
         }
         assert(false && "Unknown TensorBuffer tag");
         return 0;

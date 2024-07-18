@@ -40,9 +40,6 @@ pub fn blob_and_data_type_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, Cha
         TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F16),
         TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F32),
         TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDataType::F64),
-        TensorBuffer::Nv12(_) | TensorBuffer::Yuy2(_) => {
-            todo!() // TODO: remove this branch
-        }
     }
 }
 

@@ -230,14 +230,11 @@ pub fn tensor_ui(
 
                     // TODO(emilk): support copying and saving images on web
                     #[cfg(not(target_arch = "wasm32"))]
-                    if tensor.buffer.is_compressed_image() || tensor.could_be_dynamic_image() {
+                    if tensor.could_be_dynamic_image() {
                         copy_and_save_image_ui(ui, tensor, tensor);
                     }
 
                     if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
-                        if let TensorBuffer::Nv12(_) = &tensor.buffer {
-                            return;
-                        }
                         if channels == 3 {
                             if let TensorBuffer::U8(data) = &tensor.buffer {
                                 ui.collapsing("Histogram", |ui| {
@@ -363,32 +360,6 @@ pub fn tensor_summary_ui_grid_contents(
             .on_hover_text(format!("{meter} depth units equals one world unit"));
         ui.label(meter.to_string());
         ui.end_row();
-    }
-
-    match &tensor.buffer {
-        TensorBuffer::U8(_)
-        | TensorBuffer::U16(_)
-        | TensorBuffer::U32(_)
-        | TensorBuffer::U64(_)
-        | TensorBuffer::I8(_)
-        | TensorBuffer::I16(_)
-        | TensorBuffer::I32(_)
-        | TensorBuffer::I64(_)
-        | TensorBuffer::F16(_)
-        | TensorBuffer::F32(_)
-        | TensorBuffer::F64(_) => {}
-
-        TensorBuffer::Nv12(_) => {
-            ui.grid_left_hand_label("Encoding");
-            ui.label("NV12");
-            ui.end_row();
-        }
-
-        TensorBuffer::Yuy2(_) => {
-            ui.grid_left_hand_label("Encoding");
-            ui.label("YUY2");
-            ui.end_row();
-        }
     }
 
     let TensorStats {
@@ -963,26 +934,11 @@ fn tensor_pixel_value_ui(
             .map(|v| format!("L: {v}")),
 
         Some(ColorModel::RGB) => {
-            if let Some([r, g, b]) = match &tensor.buffer {
-                TensorBuffer::Nv12(_) => tensor
-                    .get_nv12_pixel(x, y)
-                    .map(|rgb| rgb.map(TensorElement::U8)),
-
-                TensorBuffer::Yuy2(_) => tensor
-                    .get_yuy2_pixel(x, y)
-                    .map(|rgb| rgb.map(TensorElement::U8)),
-                _ => {
-                    if let [Some(r), Some(g), Some(b)] = [
-                        tensor.get_with_image_coords(x, y, 0),
-                        tensor.get_with_image_coords(x, y, 1),
-                        tensor.get_with_image_coords(x, y, 2),
-                    ] {
-                        Some([r, g, b])
-                    } else {
-                        None
-                    }
-                }
-            } {
+            if let [Some(r), Some(g), Some(b)] = [
+                tensor.get_with_image_coords(x, y, 0),
+                tensor.get_with_image_coords(x, y, 1),
+                tensor.get_with_image_coords(x, y, 2),
+            ] {
                 match (r, g, b) {
                     (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
                         Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))

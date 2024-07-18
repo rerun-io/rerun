@@ -37,8 +37,6 @@ namespace rerun::datatypes {
             F16,
             F32,
             F64,
-            NV12,
-            YUY2,
         };
 
         /// \private
@@ -75,16 +73,6 @@ namespace rerun::datatypes {
 
             /// 64bit IEEE-754 floating point, also known as `double`.
             rerun::Collection<double> f64;
-
-            /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
-            ///
-            /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
-            rerun::Collection<uint8_t> nv12;
-
-            /// YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
-            ///
-            /// The order of the channels is Y0, U0, Y1, V0.
-            rerun::Collection<uint8_t> yuy2;
 
             TensorBufferData() {
                 std::memset(reinterpret_cast<void*>(this), 0, sizeof(TensorBufferData));
@@ -157,14 +145,6 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<double>;
                     new (&_data.f64) TypeAlias(other._data.f64);
                 } break;
-                case detail::TensorBufferTag::NV12: {
-                    using TypeAlias = rerun::Collection<uint8_t>;
-                    new (&_data.nv12) TypeAlias(other._data.nv12);
-                } break;
-                case detail::TensorBufferTag::YUY2: {
-                    using TypeAlias = rerun::Collection<uint8_t>;
-                    new (&_data.yuy2) TypeAlias(other._data.yuy2);
-                } break;
                 case detail::TensorBufferTag::None: {
                 } break;
             }
@@ -234,14 +214,6 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<double>;
                     _data.f64.~TypeAlias();
                 } break;
-                case detail::TensorBufferTag::NV12: {
-                    using TypeAlias = rerun::Collection<uint8_t>;
-                    _data.nv12.~TypeAlias();
-                } break;
-                case detail::TensorBufferTag::YUY2: {
-                    using TypeAlias = rerun::Collection<uint8_t>;
-                    _data.yuy2.~TypeAlias();
-                } break;
             }
         }
 
@@ -300,6 +272,61 @@ namespace rerun::datatypes {
         void swap(TensorBuffer& other) noexcept {
             std::swap(this->_tag, other._tag);
             this->_data.swap(other._data);
+        }
+
+        /// 8bit unsigned integer.
+        TensorBuffer(rerun::Collection<uint8_t> u8) : TensorBuffer() {
+            *this = TensorBuffer::u8(std::move(u8));
+        }
+
+        /// 16bit unsigned integer.
+        TensorBuffer(rerun::Collection<uint16_t> u16) : TensorBuffer() {
+            *this = TensorBuffer::u16(std::move(u16));
+        }
+
+        /// 32bit unsigned integer.
+        TensorBuffer(rerun::Collection<uint32_t> u32) : TensorBuffer() {
+            *this = TensorBuffer::u32(std::move(u32));
+        }
+
+        /// 64bit unsigned integer.
+        TensorBuffer(rerun::Collection<uint64_t> u64) : TensorBuffer() {
+            *this = TensorBuffer::u64(std::move(u64));
+        }
+
+        /// 8bit signed integer.
+        TensorBuffer(rerun::Collection<int8_t> i8) : TensorBuffer() {
+            *this = TensorBuffer::i8(std::move(i8));
+        }
+
+        /// 16bit signed integer.
+        TensorBuffer(rerun::Collection<int16_t> i16) : TensorBuffer() {
+            *this = TensorBuffer::i16(std::move(i16));
+        }
+
+        /// 32bit signed integer.
+        TensorBuffer(rerun::Collection<int32_t> i32) : TensorBuffer() {
+            *this = TensorBuffer::i32(std::move(i32));
+        }
+
+        /// 64bit signed integer.
+        TensorBuffer(rerun::Collection<int64_t> i64) : TensorBuffer() {
+            *this = TensorBuffer::i64(std::move(i64));
+        }
+
+        /// 16bit IEEE-754 floating point, also known as `half`.
+        TensorBuffer(rerun::Collection<rerun::half> f16) : TensorBuffer() {
+            *this = TensorBuffer::f16(std::move(f16));
+        }
+
+        /// 32bit IEEE-754 floating point, also known as `float` or `single`.
+        TensorBuffer(rerun::Collection<float> f32) : TensorBuffer() {
+            *this = TensorBuffer::f32(std::move(f32));
+        }
+
+        /// 64bit IEEE-754 floating point, also known as `double`.
+        TensorBuffer(rerun::Collection<double> f64) : TensorBuffer() {
+            *this = TensorBuffer::f64(std::move(f64));
         }
 
         /// 8bit unsigned integer.
@@ -387,26 +414,6 @@ namespace rerun::datatypes {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::F64;
             new (&self._data.f64) rerun::Collection<double>(std::move(f64));
-            return self;
-        }
-
-        /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
-        ///
-        /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
-        static TensorBuffer nv12(rerun::Collection<uint8_t> nv12) {
-            TensorBuffer self;
-            self._tag = detail::TensorBufferTag::NV12;
-            new (&self._data.nv12) rerun::Collection<uint8_t>(std::move(nv12));
-            return self;
-        }
-
-        /// YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
-        ///
-        /// The order of the channels is Y0, U0, Y1, V0.
-        static TensorBuffer yuy2(rerun::Collection<uint8_t> yuy2) {
-            TensorBuffer self;
-            self._tag = detail::TensorBufferTag::YUY2;
-            new (&self._data.yuy2) rerun::Collection<uint8_t>(std::move(yuy2));
             return self;
         }
 
@@ -504,24 +511,6 @@ namespace rerun::datatypes {
         const rerun::Collection<double>* get_f64() const {
             if (_tag == detail::TensorBufferTag::F64) {
                 return &_data.f64;
-            } else {
-                return nullptr;
-            }
-        }
-
-        /// Return a pointer to nv12 if the union is in that state, otherwise `nullptr`.
-        const rerun::Collection<uint8_t>* get_nv12() const {
-            if (_tag == detail::TensorBufferTag::NV12) {
-                return &_data.nv12;
-            } else {
-                return nullptr;
-            }
-        }
-
-        /// Return a pointer to yuy2 if the union is in that state, otherwise `nullptr`.
-        const rerun::Collection<uint8_t>* get_yuy2() const {
-            if (_tag == detail::TensorBufferTag::YUY2) {
-                return &_data.yuy2;
             } else {
                 return nullptr;
             }
