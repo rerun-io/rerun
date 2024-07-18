@@ -12,11 +12,10 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
 use re_data_ui::item_ui;
-use re_entity_db::TimeHistogram;
 use re_log_types::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::Timeline;
-use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
+use re_log_types::{ComponentPath, ResolvedTimeRange};
 use re_types::ComponentName;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
@@ -374,7 +373,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 // ----------------------------------------------------------------------------
 
 #[allow(clippy::too_many_arguments)]
-pub fn data_density_graph_ui2(
+pub fn data_density_graph_ui(
     data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
@@ -736,148 +735,6 @@ fn visit_relevant_chunks(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn data_density_graph_ui(
-    data_density_graph_painter: &mut DataDensityGraphPainter,
-    ctx: &ViewerContext<'_>,
-    time_ctrl: &mut TimeControl,
-    db: &re_entity_db::EntityDb,
-    time_area_response: &egui::Response,
-    time_area_painter: &egui::Painter,
-    ui: &egui::Ui,
-    time_histogram: &TimeHistogram,
-    row_rect: Rect,
-    time_ranges_ui: &TimeRangesUi,
-    item: &TimePanelItem,
-) {
-    re_tracing::profile_function!();
-
-    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
-    let interact_radius_sq = ui.style().interaction.resize_grab_radius_side.powi(2);
-    let center_y = row_rect.center().y;
-
-    // Density over x-axis in UI points.
-    let mut density_graph = DensityGraph::new(row_rect.x_range());
-
-    let mut num_hovered_messages = 0;
-    let mut hovered_time_range = ResolvedTimeRange::EMPTY;
-
-    {
-        let mut add_data_point = |time_range: ResolvedTimeRange, count: usize| {
-            if count == 0 {
-                return;
-            }
-
-            if let (Some(min_x), Some(max_x)) = (
-                time_ranges_ui.x_from_time_f32(time_range.min().into()),
-                time_ranges_ui.x_from_time_f32(time_range.max().into()),
-            ) {
-                density_graph.add_range((min_x, max_x), count as _);
-
-                // Hover:
-                if let Some(pointer_pos) = pointer_pos {
-                    let center_x = (min_x + max_x) / 2.0;
-                    let distance_sq = pos2(center_x, center_y).distance_sq(pointer_pos);
-                    let is_hovered = distance_sq < interact_radius_sq;
-
-                    if is_hovered {
-                        hovered_time_range = hovered_time_range.union(time_range);
-                        num_hovered_messages += count;
-                    }
-                }
-            } else {
-                // We (correctly) assume the time range is narrow, and can be approximated with its center:
-                let time_real = TimeReal::from(time_range.center());
-                if let Some(x) = time_ranges_ui.x_from_time_f32(time_real) {
-                    density_graph.add_point(x, count as _);
-
-                    if let Some(pointer_pos) = pointer_pos {
-                        let distance_sq = pos2(x, center_y).distance_sq(pointer_pos);
-                        let is_hovered = distance_sq < interact_radius_sq;
-
-                        if is_hovered {
-                            hovered_time_range = hovered_time_range.union(time_range);
-                            num_hovered_messages += count;
-                        }
-                    }
-                }
-            }
-        };
-
-        let visible_time_range = time_ranges_ui
-            .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
-
-        // The more zoomed out we are, the bigger chunks of time_histogram we can process at a time.
-        // Larger chunks is faster.
-        let chunk_size_in_ui_points = 4.0;
-        let time_chunk_size =
-            (chunk_size_in_ui_points / time_ranges_ui.points_per_time).round() as _;
-        let ranges: Vec<_> = {
-            re_tracing::profile_scope!("time_histogram.range");
-            time_histogram
-                .range(
-                    visible_time_range.min().as_i64()..=visible_time_range.max().as_i64(),
-                    time_chunk_size,
-                )
-                .collect()
-        };
-
-        re_tracing::profile_scope!("add_data_point");
-        for (time_range, num_messages_at_time) in ranges {
-            add_data_point(
-                ResolvedTimeRange::new(time_range.min, time_range.max),
-                num_messages_at_time as _,
-            );
-        }
-    }
-
-    let hovered_x_range = (time_ranges_ui
-        .x_from_time_f32(hovered_time_range.min().into())
-        .unwrap_or(f32::MAX)
-        - MARGIN_X)
-        ..=(time_ranges_ui
-            .x_from_time_f32(hovered_time_range.max().into())
-            .unwrap_or(f32::MIN)
-            + MARGIN_X);
-
-    density_graph.buckets = smooth(&density_graph.buckets);
-
-    density_graph.paint(
-        data_density_graph_painter,
-        row_rect.y_range(),
-        time_area_painter,
-        graph_color(ctx, &item.to_item(), ui),
-        hovered_x_range,
-    );
-
-    if 0 < num_hovered_messages {
-        ctx.selection_state().set_hovered(item.to_item());
-
-        if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            ctx.selection_state().set_selection(item.to_item());
-            time_ctrl.set_time(hovered_time_range.min());
-            time_ctrl.pause();
-        } else if ui.ctx().dragged_id().is_none() && 0 < num_hovered_messages {
-            egui::show_tooltip_at_pointer(
-                ui.ctx(),
-                ui.layer_id(),
-                egui::Id::new("data_tooltip"),
-                |ui| {
-                    show_row_ids_tooltip(
-                        ctx,
-                        ui,
-                        time_ctrl,
-                        db,
-                        item,
-                        hovered_time_range,
-                        num_hovered_messages,
-                    );
-                },
-            );
-        }
-    }
-}
-
 fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains_item(item);
     if is_selected {
@@ -895,42 +752,4 @@ fn make_brighter(color: Color32) -> Color32 {
         g.saturating_add(64),
         b.saturating_add(64),
     )
-}
-
-fn show_row_ids_tooltip(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    time_ctrl: &TimeControl,
-    db: &re_entity_db::EntityDb,
-    item: &TimePanelItem,
-    time_range: ResolvedTimeRange,
-    num_events: usize,
-) {
-    use re_data_ui::DataUi as _;
-
-    if num_events == 1 {
-        ui.label(format!("{num_events} event"));
-    } else {
-        ui.label(format!("{num_events} events"));
-    }
-
-    let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.center());
-
-    let TimePanelItem {
-        entity_path,
-        component_name,
-    } = item;
-
-    if let Some(component_name) = component_name {
-        let component_path = ComponentPath::new(entity_path.clone(), *component_name);
-        item_ui::component_path_button(ctx, ui, &component_path, db);
-        ui.add_space(8.0);
-        component_path.data_ui(ctx, ui, ui_layout, &query, db);
-    } else {
-        let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
-        item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
-        ui.add_space(8.0);
-        instance_path.data_ui(ctx, ui, ui_layout, &query, db);
-    }
 }
