@@ -47,7 +47,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     image.slice_mut(s![50..150, 50..150, 0]).fill(0);
 ///     image.slice_mut(s![50..150, 50..150, 1]).fill(255);
 ///
-///     rec.log("image", &rerun::Image::from_color_model_and_tensor(image)?)?;
+///     rec.log(
+///         "image",
+///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::Rgb, image)?,
+///     )?;
 ///
 ///     Ok(())
 /// }

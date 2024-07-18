@@ -5,15 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
 from .image_ext import ImageExt
 
 __all__ = ["Image"]
@@ -36,7 +33,6 @@ class Image(ImageExt, Archetype):
     Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
 
     You can compress an `Image` using [`rerun.Image.compress`][].
-    To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageChromaDownsampled`][].
 
     See also [`components.TensorData`][rerun.components.TensorData] and [`datatypes.TensorBuffer`][rerun.datatypes.TensorBuffer].
 
@@ -68,64 +64,7 @@ class Image(ImageExt, Archetype):
 
     """
 
-    def __init__(
-        self: Any,
-        data: datatypes.BlobLike,
-        resolution: datatypes.UVec2DLike,
-        *,
-        pixel_format: components.PixelFormatLike | None = None,
-        color_model: components.ColorModelLike | None = None,
-        data_type: components.ChannelDataTypeLike | None = None,
-        opacity: datatypes.Float32Like | None = None,
-        draw_order: datatypes.Float32Like | None = None,
-    ):
-        """
-        Create a new instance of the Image archetype.
-
-        Parameters
-        ----------
-        data:
-            The raw image data.
-        resolution:
-            The size of the image.
-
-            For chroma downsampled formats, this is the size of the full image (the luminance channel).
-        pixel_format:
-            Used mainly for chroma downsampled formats and differing number of bits per channel.
-
-            If specified, this takes precedence over [`both components.ColorModel`][rerun.both components.ColorModel] and [`components.ChannelDataType`][rerun.components.ChannelDataType] (which are ignored).
-        color_model:
-            L, RGB, RGBA, …
-
-            Also requires a [`components.ChannelDataType`][rerun.components.ChannelDataType] to fully specify the pixel format.
-        data_type:
-            The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
-
-            Also requires a [`components.ColorModel`][rerun.components.ColorModel] to fully specify the pixel format.
-        opacity:
-            Opacity of the image, useful for layering several images.
-
-            Defaults to 1.0 (fully opaque).
-        draw_order:
-            An optional floating point value that specifies the 2D drawing order.
-
-            Objects with higher values are drawn on top of those with lower values.
-
-        """
-
-        # You can define your own __init__ function as a member of ImageExt in image_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                data=data,
-                resolution=resolution,
-                pixel_format=pixel_format,
-                color_model=color_model,
-                data_type=data_type,
-                opacity=opacity,
-                draw_order=draw_order,
-            )
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in image_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
@@ -148,7 +87,7 @@ class Image(ImageExt, Archetype):
 
     data: components.BlobBatch = field(
         metadata={"component": "required"},
-        converter=ImageExt.data__field_converter_override,  # type: ignore[misc]
+        converter=components.BlobBatch._required,  # type: ignore[misc]
     )
     # The raw image data.
     #

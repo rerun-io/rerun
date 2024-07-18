@@ -1,19 +1,48 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 
 import numpy as np
-import pyarrow as pa
+import numpy.typing as npt
+
+from rerun.components.color_model import ColorModel, ColorModelLike
+from rerun.components.pixel_format import PixelFormatLike
 
 from .._validators import find_non_empty_dim_indices
+from ..components import ChannelDataType, Resolution2D
+from ..datatypes import Float32Like
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from ..archetypes import ImageEncoded
-    from ..components import TensorDataBatch
-    from ..datatypes import TensorDataArrayLike
     from . import Image
+
+    ImageLike = Union[
+        npt.NDArray[np.float16],
+        npt.NDArray[np.float32],
+        npt.NDArray[np.float64],
+        npt.NDArray[np.int16],
+        npt.NDArray[np.int32],
+        npt.NDArray[np.int64],
+        npt.NDArray[np.int8],
+        npt.NDArray[np.uint16],
+        npt.NDArray[np.uint32],
+        npt.NDArray[np.uint64],
+        npt.NDArray[np.uint8],
+    ]
+
+
+def _to_numpy(tensor: ImageLike) -> npt.NDArray[Any]:
+    # isinstance is 4x faster than catching AttributeError
+    if isinstance(tensor, np.ndarray):
+        return tensor
+
+    try:
+        # Make available to the cpu
+        return tensor.numpy(force=True)  # type: ignore[union-attr]
+    except AttributeError:
+        return np.array(tensor, copy=False)
 
 
 # TODO: add to constructor docs
@@ -28,6 +57,143 @@ if TYPE_CHECKING:
 
 class ImageExt:
     """Extension for [Image][rerun.archetypes.Image]."""
+
+    def __init__(
+        self: Any,
+        # These:
+        image: ImageLike | None = None,
+        color_model: ColorModelLike | None = None,
+        *,
+        # Or these:
+        pixel_format: PixelFormatLike | None = None,
+        bytes: bytes | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        # Any any of these:
+        opacity: Float32Like | None = None,
+        draw_order: Float32Like | None = None,
+    ):
+        """
+        Create a new image with a given format.
+
+        There are two ways to create an image:
+        * By specifying an `image` and a `color_model`.
+        * By specifying a `pixel_format`, together with `width`, `height`, and `bytes`.
+
+        Parameters
+        ----------
+        image:
+            A numpy array or tensor with the data.
+            You also need to specify the `color_model` of it (e.g. "RGB").
+        color_model:
+            L, RGB, RGBA, etc, specifying how to interpret `image`.
+        pixel_format:
+            NV12, YUV420, etc. For chroma-downsampling.
+            Requires `width`, `height`, and `bytes`.
+        bytes:
+            The raw bytes of an image specified by `pixel_format`.
+        width:
+            The width of the image. Only requires for `pixel_format`.
+        height:
+            The height of the image. Only requires for `pixel_format`.
+        opacity:
+            Optional opacity of the image, in 0-1. Set to 0.5 for a translucent image.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing
+            order. Objects with higher values are drawn on top of those with
+            lower values.
+
+        """
+
+        channel_dtype_from_np_dtype = {
+            np.uint8: ChannelDataType.U8,
+            np.uint16: ChannelDataType.U16,
+            np.uint32: ChannelDataType.U32,
+            np.uint64: ChannelDataType.U64,
+            np.int8: ChannelDataType.I8,
+            np.int16: ChannelDataType.I16,
+            np.int32: ChannelDataType.I32,
+            np.int64: ChannelDataType.I64,
+            np.float16: ChannelDataType.F16,
+            np.float32: ChannelDataType.F32,
+            np.float64: ChannelDataType.F64,
+        }
+
+        channel_count_from_color_model = {
+            "l": 1,
+            "rgb": 3,
+            "rgba": 4,
+        }
+
+        if pixel_format is not None:
+            if width is None or height is None or bytes is None:
+                raise ValueError("Must provide 'width', 'height', and 'bytes' with 'pixel_format'")
+
+            if isinstance(bytes, np.ndarray):
+                bytes = bytes.tobytes()
+
+            self.__attrs_init__(
+                data=bytes,
+                resolution=Resolution2D(width=width, height=height),
+                pixel_format=pixel_format,
+                opacity=opacity,
+                draw_order=draw_order,
+            )
+            return
+
+        if image is None:
+            raise ValueError("Missing `image` argument")
+
+        image = _to_numpy(image)
+
+        shape = image.shape
+
+        # Ignore leading and trailing dimensions of size 1:
+        while 2 < len(shape) and shape[0] == 1:
+            shape = shape[1:]
+        while 2 < len(shape) and shape[-1] == 1:
+            shape = shape[:-1]
+
+        if len(shape) == 2:
+            height, width = shape
+            channels = 1
+        elif len(shape) == 3:
+            height, width, channels = shape
+        else:
+            raise ValueError(f"Expected a 2D or 3D tensor, got {shape}")
+
+        if color_model is None:
+            if channels == 1:
+                color_model = ColorModel.L
+            elif channels == 3:
+                color_model = ColorModel.Rgb  # TODO(#2340): change default to BGR
+            elif channels == 4:
+                color_model = ColorModel.Rgba  # TODO(#2340): change default to BGRA
+            else:
+                _send_warning_or_raise(f"Expected 1, 3, or 4 channels; got {channels}")
+        else:
+            try:
+                num_expected_channels = channel_count_from_color_model[str(color_model).lower()]
+                if channels != num_expected_channels:
+                    _send_warning_or_raise(
+                        f"Expected {num_expected_channels} channels for {color_model}; got {channels} channels"
+                    )
+            except KeyError:
+                _send_warning_or_raise(f"Unknown ColorModel: '{color_model}'")
+
+        try:
+            data_type = channel_dtype_from_np_dtype[image.dtype.type]
+        except KeyError:
+            _send_warning_or_raise(f"Unsupported dtype {image.dtype} for Image")
+
+        self.__attrs_init__(
+            data=image.tobytes(),
+            resolution=Resolution2D(width=width, height=height),
+            color_model=color_model,
+            data_type=data_type,
+            opacity=opacity,
+            draw_order=draw_order,
+        )
 
     def compress(self, *, jpeg_quality: int = 95) -> ImageEncoded | Image:
         """
@@ -80,76 +246,3 @@ class ImageExt:
 
         # On failure to compress, still return the original image
         return self
-
-    @staticmethod
-    @catch_and_log_exceptions("Image converter")
-    def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
-        from ..components import TensorDataBatch
-        from ..datatypes import TensorDataType, TensorDimensionType
-
-        tensor_data = TensorDataBatch(data)
-        tensor_data_arrow = tensor_data.as_arrow_array()
-
-        tensor_data_type = TensorDataType().storage_type
-        shape_data_type = TensorDimensionType().storage_type
-
-        # TODO(jleibs): Doing this on raw arrow data is not great. Clean this up
-        # once we coerce to a canonical non-arrow type.
-        shape_dims = tensor_data_arrow[0].value["shape"].values.field(0).to_numpy()
-        shape_names = tensor_data_arrow[0].value["shape"].values.field(1).to_numpy(zero_copy_only=False)
-
-        non_empty_dims = find_non_empty_dim_indices(shape_dims)
-
-        num_non_empty_dims = len(non_empty_dims)
-
-        # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
-        if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
-            _send_warning_or_raise(f"Expected image, got array of shape {shape_dims}", 1, recording=None)
-
-        if num_non_empty_dims == 3:
-            depth = shape_dims[non_empty_dims[-1]]
-            if depth not in (3, 4):
-                _send_warning_or_raise(
-                    f"Expected image 3 (RGB) or 4 (RGBA). Instead got array of shape {shape_dims}",
-                    1,
-                    recording=None,
-                )
-
-        # IF no labels are set, add them
-        # TODO(jleibs): Again, needing to do this at the arrow level is awful
-        if all(label is None for label in shape_names):
-            for ind, label in zip(non_empty_dims, ["height", "width", "depth"]):
-                shape_names[ind] = label
-
-            tensor_data_type = TensorDataType().storage_type
-            shape_data_type = TensorDimensionType().storage_type
-
-            shape_names = pa.array(
-                shape_names, mask=np.array([n is None for n in shape_names]), type=shape_data_type.field("name").type
-            )
-
-            new_shape = pa.ListArray.from_arrays(
-                offsets=[0, len(shape_dims)],
-                values=pa.StructArray.from_arrays(
-                    [
-                        tensor_data_arrow[0].value["shape"].values.field(0),
-                        shape_names,
-                    ],
-                    fields=[shape_data_type.field("size"), shape_data_type.field("name")],
-                ),
-            ).cast(tensor_data_type.field("shape").type)
-
-            return TensorDataBatch(
-                pa.StructArray.from_arrays(
-                    [
-                        new_shape,
-                        tensor_data_arrow.storage.field(1),
-                    ],
-                    fields=[
-                        tensor_data_type.field("shape"),
-                        tensor_data_type.field("buffer"),
-                    ],
-                ).cast(tensor_data_arrow.storage.type)
-            )
-        # TODO(jleibs): Should we enforce specific names on images? Specifically, what if the existing names are wrong.
-        return tensor_data

@@ -18,7 +18,21 @@ The constructs have changed to now expect the shape in `[width, height]` order.
 #### Python
 In Python we already had a `ImageEncoded` class, but this has now been replaced with the new archetype.
 
-* Python: `NV12/YUY2` are now logged with the new `ImageChromaDownsampled`
+* Python: `NV12/YUY2` are now logged with the new `Image`:
+
+
+```py
+rr.log(
+    "my_image",
+    rr.Image(
+        bytes=.…,
+        width=.…,
+        height=.…,
+        pixel_format=rr.PixelFormat.Nv12,
+    ),
+)
+```
+
 * `ImageEncoded`:s `format` parameter has been replaced with `media_type` (MIME)
     * `ImageFormat` is now only for `NV12/YUY2`
 

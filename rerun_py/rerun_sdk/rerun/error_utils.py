@@ -82,7 +82,7 @@ def _build_warning_context_string(skip_first: int) -> str:
 
 def _send_warning_or_raise(
     message: str,
-    depth_to_user_code: int,
+    depth_to_user_code: int = 1,
     recording: RecordingStream | None = None,
     exception_type: type[Exception] = ValueError,
 ) -> None:

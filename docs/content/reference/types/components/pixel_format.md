@@ -26,3 +26,6 @@ For more compressed image formats, see [`archetypes.ImageEncoded`](https://rerun
  * 🦀 [Rust API docs for `PixelFormat`](https://docs.rs/rerun/latest/rerun/components/enum.PixelFormat.html?speculative-link)
 
 
+## Used by
+
+* [`Image`](../archetypes/image.md)

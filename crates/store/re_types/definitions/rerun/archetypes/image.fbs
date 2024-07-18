@@ -15,7 +15,6 @@ namespace rerun.archetypes;
 /// Rerun also supports compressed images (JPEG, PNG, …), using [archetypes.ImageEncoded].
 ///
 /// \py You can compress an `Image` using [`rerun.Image.compress`][].
-/// \py To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageChromaDownsampled`][].
 ///
 /// See also [components.TensorData] and [datatypes.TensorBuffer].
 ///
