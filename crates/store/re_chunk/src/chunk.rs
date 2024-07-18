@@ -266,7 +266,7 @@ impl Chunk {
             return vec![(time_range.min(), self.num_events_cumulative() as u64)];
         }
 
-        let counts = if self.is_sorted() {
+        let counts = if time_chunk.is_sorted() {
             self.num_events_cumulative_per_unique_time_sorted(time_chunk)
         } else {
             self.num_events_cumulative_per_unique_time_unsorted(time_chunk)
@@ -286,7 +286,7 @@ impl Chunk {
     ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
-        debug_assert!(self.is_sorted());
+        debug_assert!(time_chunk.is_sorted());
 
         // NOTE: This is used on some very hot paths (time panel rendering).
         // Performance trumps readability. Optimized empirically.
@@ -335,7 +335,7 @@ impl Chunk {
     ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
-        debug_assert!(!self.is_sorted());
+        debug_assert!(!time_chunk.is_sorted());
 
         self.components
             .values()
