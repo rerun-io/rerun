@@ -86,17 +86,13 @@ jobs:
           name: ${{ inputs.wheel-artifact-name }}
           path: wheel
 
-      - name: Install example dependencies
-        run: |
-          pixi run -e wheel-test build-examples install --channel "release"
-
       - name: Install built wheel
         run: |
-          pixi run -e wheel-test pip uninstall rerun-sdk -y
-          pixi run -e wheel-test pip install rerun-sdk --no-index --find-links wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
 
       - name: Print wheel version
         run: |
+          pixi list -e wheel-test | grep rerun_sdk
           pixi run -e wheel-test python -m rerun --version
           pixi run -e wheel-test which rerun
 
@@ -110,7 +106,7 @@ jobs:
             --channel "release" \
             web_viewer/examples
 
-      - name: Build snippets
+      - name: Build & run snippets
         run: |
           pixi run -e wheel-test build-examples snippets \
             web_viewer/examples/snippets

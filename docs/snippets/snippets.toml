@@ -31,7 +31,10 @@ views = [
 ]
 
 "archetypes/annotation_context_connections" = ["cpp"] # TODO(#6925)
-"archetypes/image_advanced" = ["cpp", "rust"] # Missing examples
+"archetypes/image_advanced" = [
+  "cpp",  # Missing examples
+  "rust", # Missing examples
+]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",

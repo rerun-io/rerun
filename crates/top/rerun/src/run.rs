@@ -480,6 +480,8 @@ fn run_rrd_commands(cmd: &RrdCommands) -> anyhow::Result<()> {
             let path_to_rrd1 = PathBuf::from(path_to_rrd1);
             let path_to_rrd2 = PathBuf::from(path_to_rrd2);
             run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
+                // Print current directory, this can be useful for debugging issues with relative paths.
+                .with_context(|| format!("current directory {:?}", std::env::current_dir()))
         }
 
         RrdCommands::Print(print_command) => print_command.run(),
