@@ -80,7 +80,7 @@ pub struct ImageInfo {
     pub format: ImageFormat,
 
     /// Color, Depth, or Segmentation?
-    pub meaning: TensorDataMeaning, // TOOD(emilk): rename `ImageKind` or similar
+    pub meaning: TensorDataMeaning, // TODO(emilk): rename `ImageKind` or similar
 
     /// Primarily for depth images atm
     pub colormap: Option<Colormap>,
