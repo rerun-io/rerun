@@ -16,7 +16,6 @@ use re_log_types::Timeline;
 use re_time_panel::__bench::{
     build_density_graph, DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi,
 };
-use re_viewer_context::TimeView;
 
 fn run(
     b: &mut Bencher<'_, WallTime>,
@@ -32,6 +31,7 @@ fn run(
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();
+        let timeline = re_log_types::Timeline::log_time();
 
         for ChunkEntry {
             num_chunks,
@@ -47,6 +47,7 @@ fn run(
                 num_rows_per_chunk,
                 sorted,
                 time_start_ms,
+                timeline,
             )
             .unwrap();
         }
@@ -56,29 +57,19 @@ fn run(
             component_name: None,
         };
 
-        let times = db.times_per_timeline().get(&Timeline::log_time()).unwrap();
-        let time_range = ResolvedTimeRange::new(
-            times
-                .keys()
-                .next()
-                .copied()
-                .unwrap_or(re_log_types::TimeInt::MIN),
-            times
-                .keys()
-                .next_back()
-                .copied()
-                .unwrap_or(re_log_types::TimeInt::MIN),
-        );
+        let times = db.times_per_timeline().get(&timeline).unwrap();
+        let mut lens = vec![];
+        for timeline in db.timelines() {
+            if let Some(v) = db.times_per_timeline().get(timeline) {
+                lens.push(format!("{}:{}", timeline.name().as_str(), v.len()));
+            }
+        }
+        panic!("{}", lens.join(", "));
+        let time_range = ResolvedTimeRange::EVERYTHING;
 
-        let time_ranges_ui = TimeRangesUi::new(
-            row_rect.x_range(),
-            TimeView {
-                min: time_range.min().into(),
-                time_spanned: time_range.abs_length() as f64,
-            },
-            &[time_range],
-        );
-        let timeline = re_log_types::Timeline::log_time();
+        /* let time_range = db.time_range_for(&timeline).unwrap(); */
+        let time_ranges_ui =
+            TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
 
         b.iter(|| {
             black_box(build_density_graph(
@@ -101,25 +92,12 @@ fn add_data(
     num_rows_per_chunk: i64,
     sorted: bool,
     time_start_ms: i64,
+    timeline: Timeline,
 ) -> anyhow::Result<()> {
     // empty chunk
     if num_chunks == 0 || num_rows_per_chunk == 0 {
         return Ok(());
     }
-
-    // log points
-    db.add_chunk(&Arc::new(
-        re_chunk_store::Chunk::builder(entity_path.clone())
-            .with_archetype(
-                re_chunk_store::RowId::new(),
-                re_log_types::TimePoint::default().with(
-                    re_log_types::Timeline::log_time(),
-                    re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::ZERO),
-                ),
-                &re_types::archetypes::Points3D::new([(10.0, 10.0, 10.0)]),
-            )
-            .build()?,
-    ))?;
 
     let mut time = time_start_ms;
     for _ in 0..num_chunks {
@@ -143,7 +121,7 @@ fn add_data(
                 re_types::datatypes::Rotation3D::AxisAngle(
                     (
                         (0.0, 0.0, 1.0),
-                        re_types::datatypes::Angle::Degrees(angle_deg),
+                        re_types::datatypes::Angle::from_degrees(angle_deg),
                     )
                         .into(),
                 ),
@@ -151,11 +129,23 @@ fn add_data(
         });
 
         let mut chunk = re_chunk_store::Chunk::builder(entity_path.clone());
+
+        // points
+        chunk = chunk.with_archetype(
+            re_chunk_store::RowId::new(),
+            re_log_types::TimePoint::default().with(
+                timeline,
+                re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::ZERO),
+            ),
+            &re_types::archetypes::Points3D::new([(10.0, 10.0, 10.0)]),
+        );
+
+        // transforms
         for (time, component) in log_times.iter().zip(components) {
             chunk = chunk.with_archetype(
                 re_chunk_store::RowId::new(),
                 re_log_types::TimePoint::default().with(
-                    re_log_types::Timeline::log_time(),
+                    timeline,
                     re_log_types::TimeInt::from_milliseconds(
                         (*time).try_into().unwrap_or_default(),
                     ),
@@ -197,10 +187,13 @@ const fn many_chunks(num_chunks: i64, num_rows_per_chunk: i64) -> ChunkEntry {
 }
 
 const SCENARIOS: [(&str, DensityGraphBuilderConfig); 2] = [
-    ("split_never", DensityGraphBuilderConfig::NEVER_SPLIT_CHUNKS),
     (
-        "split_sorted_always",
-        DensityGraphBuilderConfig::ALWAYS_SPLIT_SORTED_CHUNKS,
+        "split_never",
+        DensityGraphBuilderConfig::NEVER_SHOW_INDIVIDUAL_EVENTS,
+    ),
+    (
+        "split_all",
+        DensityGraphBuilderConfig::ALWAYS_SPLIT_ALL_CHUNKS,
     ),
 ];
 
