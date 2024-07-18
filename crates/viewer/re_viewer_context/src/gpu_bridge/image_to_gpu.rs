@@ -110,6 +110,10 @@ fn color_image_to_gpu(
         [0.0, 1.0]
     } else if texture_format == TextureFormat::R8Snorm {
         [-1.0, 1.0]
+    } else if let Some(shader_decoding) = shader_decoding {
+        match shader_decoding {
+            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => [0.0, 1.0],
+        }
     } else {
         // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
         image_data_range_heuristic(tensor_stats, image_format)?
@@ -152,7 +156,7 @@ fn color_image_to_gpu(
         multiply_rgb_with_alpha,
         gamma,
         color_mapper,
-        shader_decoding: None,
+        shader_decoding,
     })
 }
 
@@ -225,12 +229,26 @@ fn texture_creation_desc_from_color_image<'a>(
 
     let (data, format) = match image.format {
         ImageFormat::PixelFormat(pixel_format) => match pixel_format {
-            PixelFormat::Nv12 | PixelFormat::Yuy2 => {
-                // They are decoded in the shader.
-                (
-                    cast_slice_to_cow(image.blob.as_slice()),
-                    TextureFormat::R8Unorm,
-                )
+            PixelFormat::Nv12 => {
+                // Decoded in the shader.
+                return Texture2DCreationDesc {
+                    label: debug_name.into(),
+                    data: cast_slice_to_cow(image.blob.as_slice()),
+                    format: TextureFormat::R8Uint,
+                    width: image.width(),
+                    height: image.height() + image.height() / 2, // !
+                };
+            }
+
+            PixelFormat::Yuy2 => {
+                // Decoded in the shader.
+                return Texture2DCreationDesc {
+                    label: debug_name.into(),
+                    data: cast_slice_to_cow(image.blob.as_slice()),
+                    format: TextureFormat::R8Uint,
+                    width: 2 * image.width(), // !
+                    height: image.height(),
+                };
             }
         },
         ImageFormat::ColorModel {
