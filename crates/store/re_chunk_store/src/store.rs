@@ -95,8 +95,15 @@ impl ChunkStoreConfig {
     /// Default configuration, applicable to most use cases, according to empirical testing.
     pub const DEFAULT: Self = Self {
         enable_changelog: true,
-        chunk_max_bytes: 8 * 1024 * 1024,
+
+        // Empirical testing shows that 4MiB is good middle-ground, big tensors and buffers can
+        // become a bit too costly to concatenate beyond that.
+        chunk_max_bytes: 4 * 1024 * 1024,
+
+        // Empirical testing shows that 1024 is the threshold after which we really start to get
+        // dimishing returns space-wise.
         chunk_max_rows: 1024,
+
         chunk_max_rows_if_unsorted: 256,
     };
 
