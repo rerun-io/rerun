@@ -21,6 +21,15 @@ pub struct TimeView {
     pub time_spanned: f64,
 }
 
+impl From<ResolvedTimeRange> for TimeView {
+    fn from(value: ResolvedTimeRange) -> Self {
+        Self {
+            min: value.min().into(),
+            time_spanned: value.abs_length() as f64,
+        }
+    }
+}
+
 /// State per timeline.
 #[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 struct TimeState {

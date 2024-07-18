@@ -3,7 +3,6 @@
 //! The data density is the number of data points per unit of time.
 //! We collect this into a histogram, blur it, and then paint it.
 
-use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
@@ -89,7 +88,7 @@ impl DataDensityGraphPainter {
 
 // ----------------------------------------------------------------------------
 
-struct DensityGraph {
+pub struct DensityGraph {
     /// Number of datapoints per bucket.
     /// 0 == min_x, n-1 == max_x.
     buckets: Vec<f32>,
@@ -390,28 +389,15 @@ pub fn data_density_graph_ui2(
 
     let timeline = *time_ctrl.timeline();
 
-    let mut data = DensityDataAggregate::new(ui, time_ranges_ui, row_rect);
-
-    // Collect all relevant chunks in the visible time range.
-    // We do this as a separate step so that we can also deduplicate chunks.
-    let visible_time_range = time_ranges_ui
-        .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
-    let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
-
-    visit_relevant_chunks(
+    let mut data = build_density_graph(
+        ui,
+        time_ranges_ui,
+        row_rect,
         db,
-        &item.entity_path,
-        item.component_name,
+        item,
         timeline,
-        visible_time_range,
-        |chunk, time_range, num_events| {
-            chunk_ranges.push((chunk, time_range, num_events));
-        },
+        DensityGraphBuilderConfig::default(),
     );
-
-    for (_, time_range, num_events) in chunk_ranges {
-        data.add_chunk_range(time_range, num_events);
-    }
 
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
 
@@ -438,6 +424,137 @@ pub fn data_density_graph_ui2(
                     show_row_ids_tooltip2(ctx, ui, time_ctrl, db, item, hovered_time);
                 },
             );
+        }
+    }
+}
+
+pub fn build_density_graph<'a>(
+    ui: &'a egui::Ui,
+    time_ranges_ui: &'a TimeRangesUi,
+    row_rect: Rect,
+    db: &re_entity_db::EntityDb,
+    item: &TimePanelItem,
+    timeline: Timeline,
+    config: DensityGraphBuilderConfig,
+) -> DensityGraphBuilder<'a> {
+    re_tracing::profile_function!();
+
+    let mut data = DensityGraphBuilder::new(ui, time_ranges_ui, row_rect);
+
+    // Collect all relevant chunks in the visible time range.
+    // We do this as a separate step so that we can also deduplicate chunks.
+    let visible_time_range = time_ranges_ui
+        .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
+
+    // NOTE: These chunks are guaranteed to have data on the current timeline
+    let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, usize)> = vec![];
+    let mut total_events = 0;
+
+    {
+        visit_relevant_chunks(
+            db,
+            &item.entity_path,
+            item.component_name,
+            timeline,
+            visible_time_range,
+            |chunk, time_range, num_events| {
+                chunk_ranges.push((chunk, time_range, num_events));
+                total_events += num_events;
+            },
+        );
+    }
+
+    // Small chunk heuristics:
+    // We want to render chunks as individual events, but it may be prohibitively expensive
+    // for larger chunks, or if the visible time range contains many chunks.
+    //
+    // We split a large chunk if:
+    // 1. The total number of events is less than some threshold
+    // 2. The number of events in the chunks is less than N, where:
+    //    N is relatively large for sorted chunks
+    //    N is much smaller for unsorted chunks
+
+    {
+        re_tracing::profile_scope!("add_data");
+
+        let can_render_individual_events = total_events < config.max_total_chunk_events;
+
+        for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
+            let should_render_individual_events = can_render_individual_events
+                && if chunk.is_time_sorted() {
+                    num_events_in_chunk < config.max_events_in_sorted_chunk
+                } else {
+                    num_events_in_chunk < config.max_events_in_unsorted_chunk
+                };
+
+            if should_render_individual_events {
+                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(&timeline) {
+                    data.add_chunk_point(time, num_events as usize);
+                }
+            } else {
+                data.add_chunk_range(time_range, num_events_in_chunk);
+            }
+        }
+    }
+
+    data
+}
+
+#[derive(Clone, Copy)]
+pub struct DensityGraphBuilderConfig {
+    /// If there are more chunks than this then we NEVER show individual events of any chunk.
+    pub max_total_chunk_events: usize,
+
+    /// If a sorted chunk has fewer events than this we show its individual events.
+    pub max_events_in_sorted_chunk: usize,
+
+    /// If an unsorted chunk has fewer events than this we show its individual events.
+    pub max_events_in_unsorted_chunk: usize,
+}
+
+impl DensityGraphBuilderConfig {
+    /// All chunks will be rendered whole.
+    pub const NEVER_SHOW_INDIVIDUAL_EVENTS: Self = Self {
+        max_total_chunk_events: 0,
+        max_events_in_unsorted_chunk: 0,
+        max_events_in_sorted_chunk: 0,
+    };
+
+    /// All sorted chunks will be rendered as individual events,
+    /// and all unsorted chunks will be rendered whole.
+    pub const ALWAYS_SPLIT_SORTED_CHUNKS: Self = Self {
+        max_total_chunk_events: usize::MAX,
+        max_events_in_unsorted_chunk: 0,
+        max_events_in_sorted_chunk: usize::MAX,
+    };
+
+    /// All chunks will be rendered as individual events.
+    pub const ALWAYS_SPLIT_ALL_CHUNKS: Self = Self {
+        max_total_chunk_events: usize::MAX,
+        max_events_in_unsorted_chunk: usize::MAX,
+        max_events_in_sorted_chunk: usize::MAX,
+    };
+}
+
+impl Default for DensityGraphBuilderConfig {
+    fn default() -> Self {
+        Self {
+            // This is an arbitrary threshold meant to ensure that building a data density graph never takes too long.
+            //
+            // Our very basic benchmarks suggest that at 100k sorted events the graph building takes on average 1.5ms,
+            // measured on a high-end x86_64 CPU from 2022 (Ryzen 9 7950x).
+            // It does not seem to matter how many chunks there are, only how many total events we're showing.
+            //
+            // We want to stay around 1ms if possible, preferring to instead spend our frame budget on actually
+            // visualizing the data, so we undershoot the limit here by a good amount:
+            max_total_chunk_events: 50_000,
+
+            // For individual chunks, the limits are completely arbitrary, and help preserve visual clarity of the data
+            // when there are too many events in a given chunk.
+            max_events_in_sorted_chunk: 10_000,
+
+            // Processing unsorted events is about 20% slower than sorted events.
+            max_events_in_unsorted_chunk: 8_000,
         }
     }
 }
@@ -473,18 +590,18 @@ fn show_row_ids_tooltip2(
     }
 }
 
-struct DensityDataAggregate<'a> {
+pub struct DensityGraphBuilder<'a> {
     time_ranges_ui: &'a TimeRangesUi,
     row_rect: Rect,
 
     pointer_pos: Option<egui::Pos2>,
     interact_radius: f32,
 
-    density_graph: DensityGraph,
-    hovered_time: Option<TimeInt>,
+    pub density_graph: DensityGraph,
+    pub hovered_time: Option<TimeInt>,
 }
 
-impl<'a> DensityDataAggregate<'a> {
+impl<'a> DensityGraphBuilder<'a> {
     fn new(ui: &'a egui::Ui, time_ranges_ui: &'a TimeRangesUi, row_rect: Rect) -> Self {
         let pointer_pos = ui.input(|i| i.pointer.hover_pos());
         let interact_radius = ui.style().interaction.resize_grab_radius_side;
@@ -498,6 +615,27 @@ impl<'a> DensityDataAggregate<'a> {
 
             density_graph: DensityGraph::new(row_rect.x_range()),
             hovered_time: None,
+        }
+    }
+
+    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize) {
+        let Some(x) = self.time_ranges_ui.x_from_time_f32(time.into()) else {
+            return;
+        };
+
+        self.density_graph.add_point(x, num_events as _);
+
+        if let Some(pointer_pos) = self.pointer_pos {
+            let is_hovered = {
+                // Are we close enough to the point?
+                let distance_sq = pos2(x, self.row_rect.center().y).distance_sq(pointer_pos);
+
+                distance_sq < self.interact_radius.powi(2)
+            };
+
+            if is_hovered {
+                self.hovered_time = Some(time);
+            }
         }
     }
 
@@ -578,38 +716,23 @@ fn visit_relevant_chunks(
 
             visitor(Arc::clone(&chunk), chunk_timeline.time_range(), num_events);
         }
-    } else {
-        let mut seen = HashSet::new();
-        if let Some(subtree) = db.tree().subtree(entity_path) {
-            subtree.visit_children_recursively(&mut |entity_path, _| {
-                let Some(components) = db.store().all_components(&timeline, entity_path) else {
-                    return;
+    } else if let Some(subtree) = db.tree().subtree(entity_path) {
+        subtree.visit_children_recursively(&mut |entity_path, _| {
+            for chunk in db
+                .store()
+                .range_relevant_chunks_for_all_components(&query, entity_path)
+            {
+                let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                    continue;
                 };
 
-                for component_name in components {
-                    let chunks =
-                        db.store()
-                            .range_relevant_chunks(&query, entity_path, component_name);
-
-                    for chunk in chunks {
-                        let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                            continue;
-                        };
-
-                        if seen.contains(&chunk.id()) {
-                            continue;
-                        }
-                        seen.insert(chunk.id());
-
-                        visitor(
-                            Arc::clone(&chunk),
-                            chunk_timeline.time_range(),
-                            chunk.num_events_cumulative(),
-                        );
-                    }
-                }
-            });
-        }
+                visitor(
+                    Arc::clone(&chunk),
+                    chunk_timeline.time_range(),
+                    chunk.num_events_cumulative(),
+                );
+            }
+        });
     }
 }
 

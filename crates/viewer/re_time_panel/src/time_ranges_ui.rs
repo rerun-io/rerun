@@ -57,6 +57,7 @@ pub struct Segment {
 /// It does so by breaking up the timeline in linear [`Segment`]s.
 ///
 /// Recreated each frame.
+#[doc(hidden)] // Not actually public API
 #[derive(Debug)]
 pub struct TimeRangesUi {
     /// The total UI x-range we are viewing.
