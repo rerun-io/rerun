@@ -247,24 +247,46 @@ impl Chunk {
     /// Keep in mind that a timestamp can appear multiple times in a [`Chunk`].
     /// This method will do a sum accumulation to account for these cases (i.e. every timestamp in
     /// the returned vector is guaranteed to be unique).
-    #[inline]
     pub fn num_events_cumulative_per_unique_time(
         &self,
         timeline: &Timeline,
     ) -> Vec<(TimeInt, u64)> {
         re_tracing::profile_function!();
 
-        let iter_times = || {
-            if self.is_static() {
-                arrow2::Either::Left(std::iter::repeat(TimeInt::STATIC))
-            } else {
-                let times = self.timelines.get(timeline).map_or_else(
-                    || arrow2::Either::Left(std::iter::empty()),
-                    |time_chunk| arrow2::Either::Right(time_chunk.times()),
-                );
-                arrow2::Either::Right(times)
-            }
+        if self.is_static() {
+            return vec![(TimeInt::STATIC, self.num_events_cumulative() as u64)];
+        }
+
+        let Some(time_chunk) = self.timelines().get(timeline) else {
+            return Vec::new();
         };
+
+        let time_range = time_chunk.time_range();
+        if time_range.min() == time_range.max() {
+            return vec![(time_range.min(), self.num_events_cumulative() as u64)];
+        }
+
+        let counts = if self.is_sorted() {
+            self.num_events_cumulative_per_unique_time_sorted(time_chunk)
+        } else {
+            self.num_events_cumulative_per_unique_time_unsorted(time_chunk)
+        };
+
+        debug_assert!(counts
+            .iter()
+            .tuple_windows::<(_, _)>()
+            .all(|((time1, _), (time2, _))| time1 < time2));
+
+        counts
+    }
+
+    fn num_events_cumulative_per_unique_time_sorted(
+        &self,
+        time_chunk: &ChunkTimeline,
+    ) -> Vec<(TimeInt, u64)> {
+        re_tracing::profile_function!();
+
+        debug_assert!(self.is_sorted());
 
         // NOTE: This is used on some very hot paths (time panel rendering).
         // Performance trumps readability. Optimized empirically.
@@ -286,11 +308,11 @@ impl Chunk {
 
         let mut counts = Vec::with_capacity(counts_raw.len());
 
-        let Some(mut cur_time) = iter_times().next() else {
+        let Some(mut cur_time) = time_chunk.times().next() else {
             return Vec::new();
         };
         let mut cur_count = 0;
-        izip!(iter_times(), counts_raw).for_each(|(time, count)| {
+        izip!(time_chunk.times(), counts_raw).for_each(|(time, count)| {
             if time == cur_time {
                 cur_count += count;
             } else {
@@ -304,12 +326,35 @@ impl Chunk {
             counts.push((cur_time, cur_count));
         }
 
-        debug_assert!(counts
-            .iter()
-            .tuple_windows::<(_, _)>()
-            .all(|((time1, _), (time2, _))| time1 != time2));
-
         counts
+    }
+
+    fn num_events_cumulative_per_unique_time_unsorted(
+        &self,
+        time_chunk: &ChunkTimeline,
+    ) -> Vec<(TimeInt, u64)> {
+        re_tracing::profile_function!();
+
+        debug_assert!(!self.is_sorted());
+
+        self.components
+            .values()
+            .flat_map(move |list_array| {
+                izip!(
+                    time_chunk.times(),
+                    // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
+                    list_array.validity().map_or_else(
+                        || arrow2::Either::Left(std::iter::repeat(1).take(self.num_rows())),
+                        |validity| arrow2::Either::Right(validity.iter().map(|b| b as u64)),
+                    )
+                )
+            })
+            .fold(BTreeMap::default(), |mut acc, (time, is_valid)| {
+                *acc.entry(time).or_default() += is_valid;
+                acc
+            })
+            .into_iter()
+            .collect()
     }
 
     /// The number of events in this chunk for the specified component.
