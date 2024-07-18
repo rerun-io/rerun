@@ -9,8 +9,8 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange,
-    ResolvedTimeRangeF, SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
+    ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -56,6 +56,9 @@ pub struct EntityDb {
     /// A tree-view (split on path components) of the entities.
     tree: crate::EntityTree,
 
+    /// Holds a [`TimeHistogram`][`crate::TimeHistogram`] spanning the whole entity tree for each [`Timeline`].
+    time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
+
     /// Stores all components for all entities for all timelines.
     data_store: ChunkStore,
 
@@ -85,6 +88,7 @@ impl EntityDb {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
+            time_histogram_per_timeline: Default::default(),
             data_store,
             resolver: re_query::PromiseResolver::default(),
             query_caches,
@@ -267,25 +271,7 @@ impl EntityDb {
 
     /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.tree().subtree.time_histogram.get(timeline)
-    }
-
-    /// Total number of static messages for any entity.
-    pub fn num_static_messages(&self) -> u64 {
-        self.tree.num_static_messages_recursive()
-    }
-
-    /// Returns whether a component is static.
-    pub fn is_component_static(&self, component_path: &ComponentPath) -> Option<bool> {
-        if let Some(entity_tree) = self.tree().subtree(component_path.entity_path()) {
-            entity_tree
-                .entity
-                .components
-                .get(&component_path.component_name)
-                .map(|component_histogram| component_histogram.is_static())
-        } else {
-            None
-        }
+        self.time_histogram_per_timeline.get(timeline)
     }
 
     #[inline]
@@ -451,6 +437,7 @@ impl EntityDb {
             entity_path_from_hash: _,
             times_per_timeline,
             tree,
+            time_histogram_per_timeline,
             data_store: _,
             resolver: _,
             query_caches,
@@ -459,6 +446,7 @@ impl EntityDb {
 
         times_per_timeline.on_events(store_events);
         query_caches.on_events(store_events);
+        time_histogram_per_timeline.on_events(store_events);
 
         tree.on_store_deletions(store_events);
     }

@@ -6,14 +6,12 @@ use nohash_hasher::IntMap;
 
 use re_chunk::RowId;
 use re_chunk_store::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
-use re_log_types::{ComponentPath, EntityPath, EntityPathHash, EntityPathPart, TimeInt, Timeline};
+use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt, Timeline};
 use re_types_core::ComponentName;
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
 use re_chunk_store::ChunkStore;
-
-use crate::TimeHistogramPerTimeline;
 
 // ----------------------------------------------------------------------------
 
@@ -26,12 +24,6 @@ pub struct EntityTree {
 
     /// Direct descendants of this (sub)tree.
     pub children: BTreeMap<EntityPathPart, EntityTree>,
-
-    /// Information about this specific entity (excluding children).
-    pub entity: EntityInfo,
-
-    /// Info about this subtree, including all children, recursively.
-    pub subtree: SubtreeInfo,
 }
 
 // NOTE: This is only to let people know that this is in fact a [`ChunkStoreSubscriber`], so they A) don't try
@@ -54,86 +46,6 @@ impl ChunkStoreSubscriber for EntityTree {
         unimplemented!(
             r"EntityTree view is maintained manually, see `EntityTree::on_store_{{additions|deletions}}`"
         );
-    }
-}
-
-/// Information about this specific entity (excluding children).
-#[derive(Default)]
-pub struct EntityInfo {
-    /// Flat time histograms for each component of this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of times a component is logged_ per time per timeline, only for
-    /// this specific [`EntityTree`].
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub components: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
-}
-
-/// Info about stuff at a given [`EntityPath`], including all of its children, recursively.
-#[derive(Default)]
-pub struct SubtreeInfo {
-    /// Recursive time histogram for this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of components logged_ per time per timeline, recursively across
-    /// all of the [`EntityTree`]'s children.
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub time_histogram: TimeHistogramPerTimeline,
-
-    /// Number of bytes used by all arrow data
-    data_bytes: u64,
-}
-
-impl SubtreeInfo {
-    /// Assumes the event has been filtered to be part of this subtree.
-    fn on_event(&mut self, event: &ChunkStoreEvent) {
-        use re_types_core::SizeBytes as _;
-
-        match event.kind {
-            ChunkStoreDiffKind::Addition => {
-                let times = event
-                    .chunk
-                    .timelines()
-                    .iter()
-                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times_raw()))
-                    .collect_vec();
-                self.time_histogram.add(&times, event.num_components() as _);
-
-                self.data_bytes += event.chunk.total_size_bytes();
-            }
-            ChunkStoreDiffKind::Deletion => {
-                let times = event
-                    .chunk
-                    .timelines()
-                    .iter()
-                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times_raw()))
-                    .collect_vec();
-                self.time_histogram
-                    .remove(&times, event.num_components() as _);
-
-                let removed_bytes = event.chunk.total_size_bytes();
-                self.data_bytes
-                    .checked_sub(removed_bytes)
-                    .unwrap_or_else(|| {
-                        re_log::debug!(
-                            store_id = %event.store_id,
-                            entity_path = %event.chunk.entity_path(),
-                            current = self.data_bytes,
-                            removed = removed_bytes,
-                            "book keeping underflowed"
-                        );
-                        u64::MIN
-                    });
-            }
-        }
-    }
-
-    /// Number of bytes used by all arrow data in this tree (including their schemas, but otherwise ignoring book-keeping overhead).
-    #[inline]
-    pub fn data_bytes(&self) -> u64 {
-        self.data_bytes
     }
 }
 
@@ -206,8 +118,6 @@ impl EntityTree {
         Self {
             path,
             children: Default::default(),
-            entity: Default::default(),
-            subtree: Default::default(),
         }
     }
 
@@ -216,24 +126,8 @@ impl EntityTree {
         self.children.is_empty()
     }
 
-    pub fn num_children_and_fields(&self) -> usize {
-        self.children.len() + self.entity.components.len()
-    }
-
-    /// Number of timeless messages in this tree, or any child, recursively.
-    pub fn num_static_messages_recursive(&self) -> u64 {
-        self.subtree.time_histogram.num_static_messages()
-    }
-
-    pub fn time_histogram_for_component(
-        &self,
-        timeline: &Timeline,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<&crate::TimeHistogram> {
-        self.entity
-            .components
-            .get(&component_name.into())
-            .and_then(|per_timeline| per_timeline.get(timeline))
+    pub fn num_children(&self) -> usize {
+        self.children.len()
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
@@ -256,14 +150,12 @@ impl EntityTree {
 
         // Book-keeping for each level in the hierarchy:
         let mut tree = self;
-        tree.subtree.on_event(event);
 
         for (i, part) in entity_path.iter().enumerate() {
             tree = tree
                 .children
                 .entry(part.clone())
                 .or_insert_with(|| Self::new(entity_path.as_slice()[..=i].into()));
-            tree.subtree.on_event(event);
         }
 
         // Finally book-keeping for the entity where data was actually added:
@@ -272,25 +164,7 @@ impl EntityTree {
 
     /// Handles the addition of new data into the tree.
     fn on_added_data(&mut self, store_diff: &ChunkStoreDiff) {
-        for component_name in store_diff.chunk.component_names() {
-            let component_path =
-                ComponentPath::new(store_diff.chunk.entity_path().clone(), component_name);
-
-            let per_component = self
-                .entity
-                .components
-                .entry(component_path.component_name)
-                .or_default();
-            per_component.add(
-                &store_diff
-                    .chunk
-                    .timelines()
-                    .iter()
-                    .map(|(&timeline, time_chunk)| (timeline, time_chunk.times_raw()))
-                    .collect_vec(),
-                1,
-            );
-        }
+        let _ = (self, store_diff);
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s.
@@ -299,12 +173,7 @@ impl EntityTree {
     pub fn on_store_deletions(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let Self {
-            path,
-            children,
-            entity,
-            subtree,
-        } = self;
+        let Self { path, children } = self;
 
         // Only keep events relevant to this branch of the tree.
         let subtree_events = store_events
@@ -314,61 +183,29 @@ impl EntityTree {
             .cloned()
             .collect_vec();
 
-        {
-            re_tracing::profile_scope!("entity");
-            for event in subtree_events
-                .iter()
-                .filter(|e| e.chunk.entity_path() == path)
-            {
-                for component_name in event.chunk.component_names() {
-                    if let Some(histo) = entity.components.get_mut(&component_name) {
-                        histo.remove(
-                            &event
-                                .chunk
-                                .timelines()
-                                .iter()
-                                .map(|(timeline, time_chunk)| (*timeline, time_chunk.times_raw()))
-                                .collect_vec(),
-                            1,
-                        );
-                        if histo.is_empty() {
-                            entity.components.remove(&component_name);
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            re_tracing::profile_scope!("subtree");
-            for event in &subtree_events {
-                subtree.on_event(event);
-            }
-        }
-
         children.retain(|_, child| {
             child.on_store_deletions(&subtree_events);
-            child.num_children_and_fields() > 0
+            child.num_children() > 0
         });
     }
 
     pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {
-        fn subtree_recursive<'tree>(
-            this: &'tree EntityTree,
-            path: &[EntityPathPart],
-        ) -> Option<&'tree EntityTree> {
+        let mut this = self;
+        let mut path = path.as_slice();
+        loop {
             match path {
-                [] => Some(this),
-                [first, rest @ ..] => subtree_recursive(this.children.get(first)?, rest),
+                [] => return Some(this),
+                [first, rest @ ..] => {
+                    this = this.children.get(first)?;
+                    path = rest;
+                }
             }
         }
-
-        subtree_recursive(self, path.as_slice())
     }
 
     // Invokes visitor for `self` and all children recursively.
-    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&EntityPath, &EntityInfo)) {
-        visitor(&self.path, &self.entity);
+    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&EntityPath)) {
+        visitor(&self.path);
         for child in self.children.values() {
             child.visit_children_recursively(visitor);
         }

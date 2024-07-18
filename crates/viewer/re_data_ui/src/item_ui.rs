@@ -291,11 +291,16 @@ pub fn instance_path_parts_buttons(
     .response
 }
 
-fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTree) {
+fn entity_tree_stats_ui(
+    ui: &mut egui::Ui,
+    timeline: &Timeline,
+    db: &re_entity_db::EntityDb,
+    tree: &EntityTree,
+) {
     use re_format::format_bytes;
 
     // Show total bytes used in whole subtree
-    let total_bytes = tree.subtree.data_bytes();
+    let total_bytes = db.store().size_of_entity_on_timeline(timeline, &tree.path);
 
     let subtree_caveat = if tree.children.is_empty() {
         ""
@@ -310,14 +315,16 @@ fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTre
     let mut data_rate = None;
 
     // Try to estimate data-rate
-    if let Some(time_histogram) = tree.subtree.time_histogram.get(timeline) {
+    if db.store().entity_has_data_on_timeline(timeline, &tree.path) {
         // `num_events` is approximate - we could be logging a Tensor image and a transform
         // at _almost_ approximately the same time, but it should only count as one fence-post.
-        let num_events = time_histogram.total_count(); // TODO(emilk): we should ask the histogram to count the number of non-zero keys instead.
+        let num_events = db
+            .store()
+            .num_events_on_timeline_for_all_components(timeline, &tree.path);
 
-        if let (Some(min_time), Some(max_time)) =
-            (time_histogram.min_key(), time_histogram.max_key())
-        {
+        if let Some(time_range) = db.store().time_range_for_entity(timeline, &tree.path) {
+            let min_time = time_range.min();
+            let max_time = time_range.max();
             if min_time < max_time && 1 < num_events {
                 // Let's do our best to avoid fencepost errors.
                 // If we log 1 MiB once every second, then after three
@@ -328,9 +335,9 @@ fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTre
                 // t:       0s      1s      2s
                 // data:   1MiB    1MiB    1MiB
 
-                let duration = max_time - min_time;
+                let duration = max_time.as_f64() - min_time.as_f64();
 
-                let mut bytes_per_time = total_bytes as f64 / duration as f64;
+                let mut bytes_per_time = total_bytes as f64 / duration;
 
                 // Fencepost adjustment:
                 bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
@@ -393,7 +400,10 @@ pub fn component_path_button_to(
     db: &re_entity_db::EntityDb,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let is_static = db.is_component_static(component_path).unwrap_or_default();
+    let is_static = db.store().entity_has_static_component(
+        component_path.entity_path(),
+        component_path.component_name(),
+    );
     let icon = if is_static {
         &icons::COMPONENT_STATIC
     } else {
@@ -548,7 +558,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline(), subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), db, subtree);
         }
     } else {
         // TODO(emilk): per-component stats
