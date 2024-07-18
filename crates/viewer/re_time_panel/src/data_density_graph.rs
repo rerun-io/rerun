@@ -477,17 +477,14 @@ pub fn build_density_graph<'a>(
     {
         re_tracing::profile_scope!("add_data");
 
-        let can_render_individual_events =
-            config.max_total_chunk_events != 0 && total_events < config.max_total_chunk_events;
+        let can_render_individual_events = total_events < config.max_total_chunk_events;
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
             let should_render_individual_events = can_render_individual_events
                 && if chunk.is_time_sorted() {
-                    config.max_events_in_sorted_chunk != 0
-                        && num_events_in_chunk < config.max_events_in_sorted_chunk
+                    num_events_in_chunk < config.max_events_in_sorted_chunk
                 } else {
-                    config.max_events_in_unsorted_chunk != 0
-                        && num_events_in_chunk < config.max_events_in_unsorted_chunk
+                    num_events_in_chunk < config.max_events_in_unsorted_chunk
                 };
 
             if should_render_individual_events {
@@ -505,14 +502,19 @@ pub fn build_density_graph<'a>(
 
 #[derive(Clone, Copy)]
 pub struct DensityGraphBuilderConfig {
+    /// If there are more chunks than this then we NEVER show individual events of any chunk.
     pub max_total_chunk_events: usize,
+
+    /// If a sorted chunk has fewer events than this we show its individual events.
     pub max_events_in_sorted_chunk: usize,
+
+    /// If an unsorted chunk has fewer events than this we show its individual events.
     pub max_events_in_unsorted_chunk: usize,
 }
 
 impl DensityGraphBuilderConfig {
     /// All chunks will be rendered whole.
-    pub const NEVER_SPLIT_CHUNKS: Self = Self {
+    pub const NEVER_SHOW_INDIVIDUAL_EVENTS: Self = Self {
         max_total_chunk_events: 0,
         max_events_in_unsorted_chunk: 0,
         max_events_in_sorted_chunk: 0,
@@ -537,9 +539,10 @@ impl DensityGraphBuilderConfig {
 impl Default for DensityGraphBuilderConfig {
     fn default() -> Self {
         Self {
-            // benchmarks report that this scales linearly,
-            // with ~1ms cost for a single chunk with 100k events
-            max_total_chunk_events: 100_000,
+            // Building a density graph consisting of 100k sorted events costs roughly 1.5ms on a high-end CPU from 2023.
+            //
+            // We do not want to spend that much time building a density graph, so we go under that limit somewhat arbitrarily:
+            max_total_chunk_events: 65_536,
             max_events_in_sorted_chunk: 10_000,
             max_events_in_unsorted_chunk: 1_000,
         }
@@ -621,9 +624,7 @@ impl<'a> DensityGraphBuilder<'a> {
             };
 
             if is_hovered {
-                if let Some(at_time) = self.time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                    self.hovered_time = Some(at_time.round());
-                }
+                self.hovered_time = Some(time);
             }
         }
     }
