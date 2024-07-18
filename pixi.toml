@@ -60,7 +60,7 @@ cpp = ["base", "cpp"]
 # The wheel-test environment is for testing the python package when built from a wheel.
 # Thistenvironment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
-wheel-test = ["base", "cpp", "wheel-test", "py-test-deps"]
+wheel-test = ["base", "cpp", "wheel-test", "py-test-deps", "examples-common"]
 
 # Example environments
 

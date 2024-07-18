@@ -86,10 +86,6 @@ jobs:
           name: ${{ inputs.wheel-artifact-name }}
           path: wheel
 
-      - name: Install example dependencies
-        run: |
-          pixi run -e wheel-test build-examples install --channel "release"
-
       - name: Install built wheel
         run: |
           pixi run -e wheel-test pip uninstall rerun-sdk -y
