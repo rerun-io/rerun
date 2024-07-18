@@ -541,9 +541,12 @@ impl Default for DensityGraphBuilderConfig {
         Self {
             // This is an arbitrary threshold meant to ensure that building a data density graph never takes too long.
             //
-            // Our very basic benchmarks suggest that at 100k events the graph building takes on average 1.5ms, measured on a high-end x86_64 CPU from 2023.
+            // Our very basic benchmarks suggest that at 100k sorted events the graph building takes on average 1.5ms,
+            // measured on a high-end x86_64 CPU from 2023 (Ryzen 9 7950x).
             // It does not seem to matter how many chunks there are, only how many total events we're showing.
-            // We want to stay around 1ms if possible, so we undershoot the limit here by a good amount:
+            //
+            // We want to stay around 1ms if possible, preferring to instead spend our frame budget on actually
+            // visualizing the data, so we undershoot the limit here by a good amount:
             max_total_chunk_events: 50_000,
 
             // For individual chunks, the limits are completely arbitrary.
