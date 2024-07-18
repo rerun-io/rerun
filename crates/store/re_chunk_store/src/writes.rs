@@ -5,7 +5,7 @@ use arrow2::array::{Array as _, ListArray as ArrowListArray};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, EntityPath, RowId};
-use re_types_core::SizeBytes as _;
+use re_types_core::SizeBytes;
 
 use crate::{
     store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
@@ -113,12 +113,17 @@ impl ChunkStore {
                     let elected_rowid_min = elected_chunk.row_id_range().map(|(min, _)| min);
 
                     let mut compacted = if elected_rowid_min < chunk_rowid_min {
+                        re_tracing::profile_scope!("concat");
                         elected_chunk.concatenated(chunk)?
                     } else {
+                        re_tracing::profile_scope!("concat");
                         chunk.concatenated(elected_chunk)?
                     };
 
-                    compacted.sort_if_unsorted();
+                    {
+                        re_tracing::profile_scope!("sort");
+                        compacted.sort_if_unsorted();
+                    }
 
                     re_log::trace!(
                         "compacted {} ({} rows) and {} ({} rows) together, resulting in {} ({} rows)",
@@ -294,8 +299,8 @@ impl ChunkStore {
                                     return false;
                                 }
 
-                                let total_bytes =
-                                    chunk.total_size_bytes() + candidate.total_size_bytes();
+                                let total_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk)
+                                    + <Chunk as SizeBytes>::total_size_bytes(candidate);
                                 let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
 
                                 let total_rows = (chunk.num_rows() + candidate.num_rows()) as u64;
