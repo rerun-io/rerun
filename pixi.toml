@@ -60,7 +60,14 @@ cpp = ["base", "cpp"]
 # The wheel-test environment is for testing the python package when built from a wheel.
 # Thistenvironment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
-wheel-test = ["base", "cpp", "wheel-test", "py-test-deps", "examples-common"]
+wheel-test = [
+  "base",
+  "cpp",
+  "wheel-test",
+  "py-test-deps",
+  "examples-common",
+  "python-pypi",
+]
 
 # Example environments
 
@@ -455,9 +462,8 @@ pip = ">=23"
 platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
 [feature.python-pypi.pypi-dependencies]
-rerun-sdk = "==0.16.1"
-# TODO(jprochazk): Uncomment this once we have published the notebook package to pypi
-#rerun-notebook = "==0.16.1"
+rerun-sdk = "==0.17.0"
+rerun-notebook = "==0.17.0"
 
 # EXAMPLES ENVIRONMENT
 [feature.examples-common]
