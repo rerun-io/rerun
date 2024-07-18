@@ -211,7 +211,8 @@ jobs:
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
-            --compat ${{ needs.set-config.outputs.COMPAT }}
+            --compat ${{ needs.set-config.outputs.COMPAT }} \
+            --upload-gcs
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
