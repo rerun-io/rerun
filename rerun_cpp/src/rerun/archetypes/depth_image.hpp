@@ -119,9 +119,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'depth_image_ext.cpp'
-
+      public: // START of extensions from depth_image_ext.cpp:
         /// Row-major. Borrows.
         ///
         /// The length of the data should be `W * H`.
@@ -161,6 +159,8 @@ namespace rerun::archetypes {
             components::ChannelDataType data_type_
         )
             : data{data_}, resolution{resolution_}, data_type{data_type_} {}
+
+        // END of extensions from depth_image_ext.cpp, start of generated code:
 
       public:
         DepthImage() = default;

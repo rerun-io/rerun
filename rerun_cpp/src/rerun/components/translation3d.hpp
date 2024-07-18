@@ -15,9 +15,7 @@ namespace rerun::components {
     struct Translation3D {
         rerun::datatypes::Vec3D vector;
 
-      public:
-        // Extensions to generated type defined in 'translation3d_ext.cpp'
-
+      public: // START of extensions from translation3d_ext.cpp:
         /// Construct `Translation3D` from x/y/z values.
         Translation3D(float x, float y, float z) : vector{x, y, z} {}
 
@@ -35,6 +33,8 @@ namespace rerun::components {
         float z() const {
             return vector.z();
         }
+
+        // END of extensions from translation3d_ext.cpp, start of generated code:
 
       public:
         Translation3D() = default;

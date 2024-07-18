@@ -21,12 +21,12 @@ namespace rerun::datatypes {
     struct Utf8 {
         std::string value;
 
-      public:
-        // Extensions to generated type defined in 'utf8_ext.cpp'
-
+      public: // START of extensions from utf8_ext.cpp:
         const char* c_str() const {
             return value.c_str();
         }
+
+        // END of extensions from utf8_ext.cpp, start of generated code:
 
       public:
         Utf8() = default;

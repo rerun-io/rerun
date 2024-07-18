@@ -25,9 +25,7 @@ namespace rerun::components {
     struct TextLogLevel {
         rerun::datatypes::Utf8 value;
 
-      public:
-        // Extensions to generated type defined in 'text_log_level_ext.cpp'
-
+      public: // START of extensions from text_log_level_ext.cpp:
         /// Designates catastrophic failures.
         RERUN_SDK_EXPORT static const TextLogLevel Critical;
 
@@ -52,6 +50,8 @@ namespace rerun::components {
         const char* c_str() const {
             return value.c_str();
         }
+
+        // END of extensions from text_log_level_ext.cpp, start of generated code:
 
       public:
         TextLogLevel() = default;

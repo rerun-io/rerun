@@ -25,9 +25,7 @@ namespace rerun::components {
     struct TensorData {
         rerun::datatypes::TensorData data;
 
-      public:
-        // Extensions to generated type defined in 'tensor_data_ext.cpp'
-
+      public: // START of extensions from tensor_data_ext.cpp:
         /// New tensor data from shape and tensor buffer.
         ///
         /// \param shape Shape of the tensor.
@@ -46,6 +44,8 @@ namespace rerun::components {
         template <typename TElement>
         explicit TensorData(Collection<datatypes::TensorDimension> shape, const TElement* data_)
             : data(rerun::datatypes::TensorData(std::move(shape), data_)) {}
+
+        // END of extensions from tensor_data_ext.cpp, start of generated code:
 
       public:
         TensorData() = default;

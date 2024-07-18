@@ -20,9 +20,7 @@ namespace rerun::datatypes {
     struct Vec4D {
         std::array<float, 4> xyzw;
 
-      public:
-        // Extensions to generated type defined in 'vec4d_ext.cpp'
-
+      public: // START of extensions from vec4d_ext.cpp:
         /// Construct Vec4D from x/y/z/w values.
         Vec4D(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
 
@@ -44,6 +42,8 @@ namespace rerun::datatypes {
         float w() const {
             return xyzw[3];
         }
+
+        // END of extensions from vec4d_ext.cpp, start of generated code:
 
       public:
         Vec4D() = default;

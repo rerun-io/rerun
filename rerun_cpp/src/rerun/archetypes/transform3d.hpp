@@ -170,9 +170,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'transform3d_ext.cpp'
-
+      public: // START of extensions from transform3d_ext.cpp:
         /// Identity transformation.
         ///
         /// Applying this transform does not alter an entity's transformation.
@@ -484,6 +482,8 @@ namespace rerun::archetypes {
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
+
+        // END of extensions from transform3d_ext.cpp, start of generated code:
 
       public:
         Transform3D() = default;

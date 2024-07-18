@@ -67,9 +67,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'ellipsoids_ext.cpp'
-
+      public: // START of extensions from ellipsoids_ext.cpp:
         /// Creates new `Ellipsoids` that are spheres, with `half_sizes` created from radii.
         //
         // TODO(andreas): This should not take an std::vector.
@@ -100,6 +98,8 @@ namespace rerun::archetypes {
             ellipsoids.centers = std::move(centers);
             return ellipsoids;
         }
+
+        // END of extensions from ellipsoids_ext.cpp, start of generated code:
 
       public:
         Ellipsoids() = default;

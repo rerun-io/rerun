@@ -49,9 +49,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'bar_chart_ext.cpp'
-
+      public: // START of extensions from bar_chart_ext.cpp:
         BarChart(rerun::datatypes::TensorBuffer buffer) {
             auto num_elems = buffer.num_elems();
             this->values = rerun::components::TensorData({num_elems}, std::move(buffer));
@@ -161,6 +159,8 @@ namespace rerun::archetypes {
         static BarChart f64(Collection<double> f64) {
             return BarChart(std::move(f64));
         }
+
+        // END of extensions from bar_chart_ext.cpp, start of generated code:
 
       public:
         BarChart() = default;

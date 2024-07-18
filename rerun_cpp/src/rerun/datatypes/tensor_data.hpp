@@ -36,9 +36,7 @@ namespace rerun::datatypes {
         /// The content/data.
         rerun::datatypes::TensorBuffer buffer;
 
-      public:
-        // Extensions to generated type defined in 'tensor_data_ext.cpp'
-
+      public: // START of extensions from tensor_data_ext.cpp:
         /// New tensor data from shape and tensor buffer.
         ///
         /// \param shape_ Shape of the tensor.
@@ -62,6 +60,8 @@ namespace rerun::datatypes {
             }
             buffer = rerun::Collection<TElement>::borrow(data, num_elements);
         }
+
+        // END of extensions from tensor_data_ext.cpp, start of generated code:
 
       public:
         TensorData() = default;

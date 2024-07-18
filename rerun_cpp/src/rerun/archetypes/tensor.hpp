@@ -59,9 +59,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'tensor_ext.cpp'
-
+      public: // START of extensions from tensor_ext.cpp:
         /// New Tensor from dimensions and tensor buffer.
         Tensor(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
@@ -84,6 +82,8 @@ namespace rerun::archetypes {
         /// If too many, or too few names are provided, this function will call
         /// Error::handle and then proceed to only update the subset of names that it can.
         Tensor with_dim_names(Collection<std::string> names) &&;
+
+        // END of extensions from tensor_ext.cpp, start of generated code:
 
       public:
         Tensor() = default;

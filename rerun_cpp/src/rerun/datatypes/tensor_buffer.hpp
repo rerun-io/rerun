@@ -217,9 +217,7 @@ namespace rerun::datatypes {
             }
         }
 
-      public:
-        // Extensions to generated type defined in 'tensor_buffer_ext.cpp'
-
+      public: // START of extensions from tensor_buffer_ext.cpp:
         /// Construct a `TensorBuffer` from a `Collection<uint8_t>`.
         TensorBuffer(Collection<uint8_t> u8) : TensorBuffer(TensorBuffer::u8(std::move(u8))) {}
 
@@ -268,6 +266,8 @@ namespace rerun::datatypes {
         ///
         /// You may NOT call this for NV12 or YUY2.
         size_t num_elems() const;
+
+        // END of extensions from tensor_buffer_ext.cpp, start of generated code:
 
         void swap(TensorBuffer& other) noexcept {
             std::swap(this->_tag, other._tag);

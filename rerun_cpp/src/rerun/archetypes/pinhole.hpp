@@ -128,9 +128,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'pinhole_ext.cpp'
-
+      public: // START of extensions from pinhole_ext.cpp:
         /// Creates a pinhole from the camera focal length and resolution, both specified in pixels.
         ///
         /// The focal length is the diagonal of the projection matrix.
@@ -182,6 +180,8 @@ namespace rerun::archetypes {
             resolution = rerun::components::Resolution(width, height);
             return std::move(*this);
         }
+
+        // END of extensions from pinhole_ext.cpp, start of generated code:
 
       public:
         Pinhole() = default;

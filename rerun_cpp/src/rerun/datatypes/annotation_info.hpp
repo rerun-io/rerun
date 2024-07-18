@@ -32,9 +32,7 @@ namespace rerun::datatypes {
         /// The color that will be applied to the annotated entity.
         std::optional<rerun::datatypes::Rgba32> color;
 
-      public:
-        // Extensions to generated type defined in 'annotation_info_ext.cpp'
-
+      public: // START of extensions from annotation_info_ext.cpp:
         AnnotationInfo(
             uint16_t _id, std::optional<std::string> _label = std::nullopt,
             std::optional<datatypes::Rgba32> _color = std::nullopt
@@ -43,6 +41,8 @@ namespace rerun::datatypes {
 
         AnnotationInfo(uint16_t _id, datatypes::Rgba32 _color)
             : id(_id), label(std::nullopt), color(_color) {}
+
+        // END of extensions from annotation_info_ext.cpp, start of generated code:
 
       public:
         AnnotationInfo() = default;

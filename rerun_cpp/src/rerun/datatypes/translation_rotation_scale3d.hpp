@@ -38,9 +38,7 @@ namespace rerun::datatypes {
         /// i.e. the translation is the position in the parent space.
         bool from_parent;
 
-      public:
-        // Extensions to generated type defined in 'translation_rotation_scale3d_ext.cpp'
-
+      public: // START of extensions from translation_rotation_scale3d_ext.cpp:
         /// Identity transformation.
         ///
         /// Applying this transform does not alter an entity's transformation.
@@ -200,6 +198,8 @@ namespace rerun::datatypes {
               rotation(std::nullopt),
               scale(std::nullopt),
               from_parent(from_parent_) {}
+
+        // END of extensions from translation_rotation_scale3d_ext.cpp, start of generated code:
 
       public:
         TranslationRotationScale3D() = default;

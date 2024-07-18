@@ -113,9 +113,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'image_ext.cpp'
-
+      public: // START of extensions from image_ext.cpp:
         static Image from_pixel_format(
             components::Resolution2D resolution, components::PixelFormat pixel_format,
             Collection<uint8_t> bytes
@@ -178,6 +176,8 @@ namespace rerun::archetypes {
                 bytes
             );
         }
+
+        // END of extensions from image_ext.cpp, start of generated code:
 
       public:
         Image() = default;

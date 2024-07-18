@@ -15,9 +15,7 @@ namespace rerun::components {
     struct Position2D {
         rerun::datatypes::Vec2D xy;
 
-      public:
-        // Extensions to generated type defined in 'position2d_ext.cpp'
-
+      public: // START of extensions from position2d_ext.cpp:
         /// Construct Position2D from x/y values.
         Position2D(float x, float y) : xy{x, y} {}
 
@@ -28,6 +26,8 @@ namespace rerun::components {
         float y() const {
             return xy.y();
         }
+
+        // END of extensions from position2d_ext.cpp, start of generated code:
 
       public:
         Position2D() = default;

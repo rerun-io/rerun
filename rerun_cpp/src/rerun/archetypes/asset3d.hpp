@@ -77,9 +77,7 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
-      public:
-        // Extensions to generated type defined in 'asset3d_ext.cpp'
-
+      public: // START of extensions from asset3d_ext.cpp:
         /// Creates a new `Asset3D` from the file contents at `path`.
         ///
         /// The `MediaType` will be guessed from the file extension.
@@ -105,6 +103,8 @@ namespace rerun::archetypes {
         static std::optional<rerun::components::MediaType> guess_media_type(
             const std::filesystem::path& path
         );
+
+        // END of extensions from asset3d_ext.cpp, start of generated code:
 
       public:
         Asset3D() = default;

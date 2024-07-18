@@ -82,10 +82,10 @@ namespace rerun::datatypes {
             return *this;
         }
 
-      public:
-        // Extensions to generated type defined in 'rotation3d_ext.cpp'
-
+      public: // START of extensions from rotation3d_ext.cpp:
         RERUN_SDK_EXPORT static const Rotation3D IDENTITY;
+
+        // END of extensions from rotation3d_ext.cpp, start of generated code:
 
         void swap(Rotation3D& other) noexcept {
             std::swap(this->_tag, other._tag);
