@@ -291,7 +291,7 @@ namespace rerun::archetypes {
         /// Creates a new 3D transform from translation/rotation/scale.
         ///
         /// \param translation_ \copydoc Transform3D::translation
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale_ \copydoc Transform3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
@@ -307,7 +307,7 @@ namespace rerun::archetypes {
         /// Creates a new 3D transform from translation/rotation/uniform-scale.
         ///
         /// \param translation_ \copydoc Transform3D::translation
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         ///
@@ -323,7 +323,7 @@ namespace rerun::archetypes {
         /// From a translation, applied after a rotation & scale, known as an affine transformation.
         ///
         /// \param translation \copydoc Transform3D::translation
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale \copydoc Transform3D::scale
         static Transform3D from_translation_rotation_scale(
             const components::Translation3D& translation, const Rotation3D& rotation,
@@ -335,7 +335,7 @@ namespace rerun::archetypes {
         /// From a translation, applied after a rotation & scale, known as an affine transformation.
         ///
         /// \param translation \copydoc Transform3D::translation
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         static Transform3D from_translation_rotation_scale(
             const components::Translation3D& translation, const Rotation3D& rotation,
@@ -347,7 +347,7 @@ namespace rerun::archetypes {
         /// Creates a new rigid transform (translation & rotation only).
         ///
         /// \param translation_ \copydoc Transform3D::translation
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
             const components::Translation3D& translation_, const Rotation3D& rotation,
@@ -361,7 +361,7 @@ namespace rerun::archetypes {
         /// From a rotation & scale.
         ///
         /// \param translation \copydoc Transform3D::translation
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         static Transform3D from_translation_rotation(
             const components::Translation3D& translation, const Rotation3D& rotation
         ) {
@@ -407,7 +407,7 @@ namespace rerun::archetypes {
 
         /// From rotation & scale.
         ///
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale_ Transform3D::scale
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(
@@ -420,7 +420,7 @@ namespace rerun::archetypes {
 
         /// From rotation & uniform scale.
         ///
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         ///
@@ -431,7 +431,7 @@ namespace rerun::archetypes {
 
         /// From a rotation & scale.
         ///
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale Transform3D::scale
         static Transform3D from_rotation_scale(
             const Rotation3D& rotation, const components::Scale3D& scale
@@ -441,7 +441,7 @@ namespace rerun::archetypes {
 
         /// From a rotation & uniform scale.
         ///
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         static Transform3D from_rotation_scale(const Rotation3D& rotation, float uniform_scale) {
             return Transform3D(rotation, components::Scale3D(uniform_scale), false);
@@ -449,7 +449,7 @@ namespace rerun::archetypes {
 
         /// From rotation only.
         ///
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
         Transform3D(const Rotation3D& rotation, bool from_parent = false)
             : transform(datatypes::TranslationRotationScale3D(from_parent)) {
@@ -458,7 +458,7 @@ namespace rerun::archetypes {
 
         /// From rotation only.
         ///
-        /// \param rotation \copydoc Rotation represented either as a quaternion or axis + angle rotation.
+        /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         static Transform3D from_rotation(const Rotation3D& rotation) {
             return Transform3D(rotation, false);
         }
