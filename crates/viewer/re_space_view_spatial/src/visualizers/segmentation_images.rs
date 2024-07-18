@@ -115,6 +115,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             resolution: first_copied(resolution)?.0 .0,
                             color_model: None,
                             data_type: first_copied(data_type)?,
+                            meaning: TensorDataMeaning::ClassId,
                             colormap: None,
                         },
                         opacity: first_copied(opacity),
@@ -135,7 +136,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         entity_path,
                         spatial_ctx,
                         &image,
-                        meaning,
                         multiplicative_tint,
                     ) {
                         // Only update the bounding box if this is a 2D space view.

@@ -4,7 +4,7 @@ use re_chunk::RowId;
 use re_types::{
     components::{ChannelDataType, ColorModel, Colormap},
     datatypes::Blob,
-    tensor_data::TensorElement,
+    tensor_data::{TensorDataMeaning, TensorElement},
 };
 
 /// Represents an `Image`, `SegmentationImage` or `DepthImage`.
@@ -29,6 +29,9 @@ pub struct ImageInfo {
     /// `None` for depth images and segmentation images,
     /// `Some` for color images.
     pub color_model: Option<ColorModel>,
+
+    /// Color, Depth, or Segmentation?
+    pub meaning: TensorDataMeaning, // TOOD(emilk): rename `ImageKind` or similar
 
     /// Primarily for depth images atm
     pub colormap: Option<Colormap>,

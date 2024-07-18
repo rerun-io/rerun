@@ -710,6 +710,7 @@ fn picked_image_from_image_query(
         resolution: resolution.0.into(),
         data_type,
         color_model: None,
+        meaning,
         colormap: Some(colormap),
     };
 
@@ -816,7 +817,6 @@ fn image_hover_ui(
                     image,
                     &tensor_stats,
                     &annotations,
-                    meaning,
                     depth_meter,
                     &tensor_name,
                     [coordinates[0] as _, coordinates[1] as _],

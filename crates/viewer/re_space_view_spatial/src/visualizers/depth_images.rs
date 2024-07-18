@@ -61,7 +61,6 @@ impl DepthImageVisualizer {
             ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier();
 
         let entity_path = ctx.target_entity_path;
-        let meaning = TensorDataMeaning::Depth;
 
         for data in images {
             let DepthImageComponentData {
@@ -114,7 +113,6 @@ impl DepthImageVisualizer {
                 entity_path,
                 ent_context,
                 &image,
-                meaning,
                 re_renderer::Rgba::WHITE,
             ) {
                 // Only update the bounding box if this is a 2D space view.
@@ -194,7 +192,6 @@ impl DepthImageVisualizer {
             render_ctx,
             &debug_name,
             image,
-            TensorDataMeaning::Depth,
             &tensor_stats,
             &ent_context.annotations,
         )?;
@@ -306,6 +303,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                                 resolution: first_copied(resolution)?.0 .0,
                                 color_model: None,
                                 data_type: first_copied(data_type)?,
+                                meaning: TensorDataMeaning::Depth,
                                 colormap: first_copied(colormap),
                             },
                             depth_meter: first_copied(depth_meter),

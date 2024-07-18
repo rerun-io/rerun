@@ -7,13 +7,11 @@ use re_viewer_context::{gpu_bridge, ImageInfo, ImageStatsCache, TensorStatsCache
 
 use crate::contexts::SpatialSceneEntityContext;
 
-#[allow(clippy::too_many_arguments)]
 pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
     image: &ImageInfo,
-    meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
 ) -> Option<renderer::TexturedRect> {
     let render_ctx = ctx.render_ctx?;
@@ -25,7 +23,6 @@ pub fn textured_rect_from_image(
         render_ctx,
         &debug_name,
         image,
-        meaning,
         &tensor_stats,
         &ent_context.annotations,
     ) {

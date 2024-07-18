@@ -24,7 +24,7 @@ use super::get_or_create_texture;
 /// Returns a texture key for the given image.
 ///
 /// If the key changes, we upload a new texture.
-fn generate_texture_key(image: &ImageInfo, meaning: TensorDataMeaning) -> u64 {
+fn generate_texture_key(image: &ImageInfo) -> u64 {
     // We need to inclde anything that, if changes, should result in a new texture being uploaded.
     let ImageInfo {
         blob_row_id,
@@ -33,6 +33,8 @@ fn generate_texture_key(image: &ImageInfo, meaning: TensorDataMeaning) -> u64 {
         resolution,
         data_type,
         color_model,
+
+        meaning,
 
         colormap: _, // No need to upload new texture when this changes
     } = image;
@@ -44,18 +46,17 @@ pub fn image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     image: &ImageInfo,
-    meaning: TensorDataMeaning,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!(format!(
         "{:?} resolution: {:?}, {:?}, {}",
-        meaning, image.resolution, image.color_model, image.data_type,
+        image.meaning, image.resolution, image.color_model, image.data_type,
     ));
 
-    let texture_key = generate_texture_key(image, meaning);
+    let texture_key = generate_texture_key(image);
 
-    match meaning {
+    match image.meaning {
         TensorDataMeaning::Unknown => {
             color_image_to_gpu(render_ctx, debug_name, texture_key, image, tensor_stats)
         }

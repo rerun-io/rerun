@@ -531,25 +531,18 @@ pub fn show_zoomed_image_region(
     image: &ImageInfo,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
-    meaning: TensorDataMeaning,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
 ) {
-    let texture = match gpu_bridge::image_to_gpu(
-        render_ctx,
-        debug_name,
-        image,
-        meaning,
-        tensor_stats,
-        annotations,
-    ) {
-        Ok(texture) => texture,
-        Err(err) => {
-            ui.label(format!("Error: {err}"));
-            return;
-        }
-    };
+    let texture =
+        match gpu_bridge::image_to_gpu(render_ctx, debug_name, image, tensor_stats, annotations) {
+            Ok(texture) => texture,
+            Err(err) => {
+                ui.label(format!("Error: {err}"));
+                return;
+            }
+        };
 
     if let Err(err) = try_show_zoomed_image_region(
         render_ctx,
@@ -557,7 +550,6 @@ pub fn show_zoomed_image_region(
         image,
         texture,
         annotations,
-        meaning,
         meter,
         debug_name,
         center_texel,
@@ -574,7 +566,6 @@ fn try_show_zoomed_image_region(
     image: &ImageInfo,
     texture: ColormappedTexture,
     annotations: &Annotations,
-    meaning: TensorDataMeaning,
     meter: Option<f32>,
     debug_name: &str,
     center_texel: [isize; 2],
@@ -626,7 +617,7 @@ fn try_show_zoomed_image_region(
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-            image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meaning, meter);
+            image_pixel_value_ui(ui, image, annotations, [x as _, y as _], meter);
 
             // Show a big sample of the color of the middle texel:
             let (rect, _) =
@@ -656,7 +647,6 @@ fn image_pixel_value_ui(
     image: &ImageInfo,
     annotations: &Annotations,
     [x, y]: [u32; 2],
-    meaning: TensorDataMeaning,
     meter: Option<f32>,
 ) {
     egui::Grid::new("hovered pixel properties").show(ui, |ui| {
@@ -665,10 +655,10 @@ fn image_pixel_value_ui(
         ui.end_row();
 
         // Check for annotations on any single-channel image
-        if meaning == TensorDataMeaning::ClassId {
+        if image.meaning == TensorDataMeaning::ClassId {
             if let Some(raw_value) = image.get_xyc(x, y, 0) {
                 if let (TensorDataMeaning::ClassId, Some(u16_val)) =
-                    (meaning, raw_value.try_as_u16())
+                    (image.meaning, raw_value.try_as_u16())
                 {
                     ui.label("Label:");
                     ui.label(
