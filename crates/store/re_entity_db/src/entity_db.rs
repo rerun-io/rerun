@@ -65,6 +65,10 @@ pub struct EntityDb {
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query::Caches,
 
+    // TODO
+    /// Query caches for the data in [`Self::data_store`].
+    query_caches2: re_query2::Caches,
+
     stats: IngestionStatistics,
 }
 
@@ -73,9 +77,10 @@ impl EntityDb {
         Self::with_store_config(store_id, ChunkStoreConfig::from_env().unwrap_or_default())
     }
 
-    pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
+    pub fn with_store_config(store_id: StoreId, mut store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStore::new(store_id.clone(), store_config);
         let query_caches = re_query::Caches::new(&data_store);
+        let query_caches2 = re_query2::Caches::new(&data_store);
 
         Self {
             data_source: None,
@@ -88,6 +93,7 @@ impl EntityDb {
             data_store,
             resolver: re_query::PromiseResolver::default(),
             query_caches,
+            query_caches2,
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -117,6 +123,11 @@ impl EntityDb {
     #[inline]
     pub fn query_caches(&self) -> &re_query::Caches {
         &self.query_caches
+    }
+
+    #[inline]
+    pub fn query_caches2(&self) -> &re_query2::Caches {
+        &self.query_caches2
     }
 
     #[inline]
@@ -454,11 +465,13 @@ impl EntityDb {
             data_store: _,
             resolver: _,
             query_caches,
+            query_caches2,
             stats: _,
         } = self;
 
         times_per_timeline.on_events(store_events);
         query_caches.on_events(store_events);
+        query_caches2.on_events(store_events);
 
         tree.on_store_deletions(store_events);
     }

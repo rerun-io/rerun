@@ -33,6 +33,22 @@ impl Chunk {
             .all(|time_chunk| time_chunk.is_sorted())
     }
 
+    // TODO
+    #[inline]
+    pub fn is_timeline_sorted(&self, timeline: &Timeline) -> bool {
+        self.timelines
+            .get(timeline)
+            .map_or(false, |time_chunk| time_chunk.is_sorted())
+    }
+
+    // TODO
+    #[inline]
+    pub fn is_timeline_sorted_uncached(&self, timeline: &Timeline) -> bool {
+        self.timelines
+            .get(timeline)
+            .map_or(false, |time_chunk| time_chunk.is_sorted_uncached())
+    }
+
     /// Like [`Self::is_sorted`], but actually checks the entire dataset rather than relying on the
     /// cached value.
     ///

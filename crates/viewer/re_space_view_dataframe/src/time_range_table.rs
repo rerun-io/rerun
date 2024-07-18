@@ -102,14 +102,10 @@ pub(crate) fn time_range_table_ui(
             // 1) Filter out instances where `chunk.iter_indices()` returns `None`.
             // 2) Exploit the fact that the returned iterator (if any) is *not* bound to the
             //    lifetime of the chunk (it has an internal Arc).
-            .filter_map(move |chunk| {
+            .map(move |chunk| {
                 //TODO(ab, cmc): remove this line when a range-aware, iter_indices API is available.
                 let chunk = Arc::new(chunk.range(&range_query, *component));
-
-                chunk
-                    .clone()
-                    .iter_indices(&timeline)
-                    .map(|iter_indices| (iter_indices, chunk))
+                (Arc::clone(&chunk).iter_indices(&timeline), chunk)
             })
             .flat_map(move |(indices_iter, chunk)| {
                 map_chunk_indices_to_key_value_iter(

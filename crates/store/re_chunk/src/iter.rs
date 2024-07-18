@@ -1,12 +1,17 @@
 use std::sync::Arc;
 
-use arrow2::array::Array as ArrowArray;
+use arrow2::{
+    array::{Array as ArrowArray, PrimitiveArray},
+    Either,
+};
 use itertools::Itertools as _;
 
 use re_log_types::{TimeInt, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::{Component, ComponentName};
 
 use crate::{Chunk, ChunkTimeline, RowId};
+
+// TODO: these really need tests
 
 // ---
 
@@ -18,12 +23,14 @@ impl Chunk {
     /// Iterating a [`Chunk`] on a row basis is very wasteful, performance-wise.
     /// Prefer columnar access when possible.
     //
-    // TODO(cmc): a row-based iterator is obviously not what we want -- one of the benefits of
+    // TODO: a row-based iterator is obviously not what we want -- one of the benefits of
     // chunks is to amortize the cost of downcasting & "deserialization".
     // But at the moment we still need to run with the native deserialization cache, which expects
     // row-based data.
     // As soon as we remove the native cache and start exposing `Chunk`s directly to downstream
     // systems, we will look into ergonomic ways to do columnar access.
+    //
+    // TODO: this is probably wrong too
     pub fn iter_rows(
         &self,
         timeline: &Timeline,
@@ -136,22 +143,230 @@ impl Chunk {
     ///
     /// The returned iterator outlives `self`, thus it can be passed around freely.
     #[inline]
-    pub fn iter_indices(self: Arc<Self>, timeline: &Timeline) -> Option<ChunkIndicesIter> {
+    pub fn iter_indices(
+        self: Arc<Self>,
+        timeline: &Timeline,
+    ) -> impl Iterator<Item = (TimeInt, RowId)> {
         if self.is_static() {
-            Some(ChunkIndicesIter {
+            Either::Left(ChunkIndicesIter {
                 chunk: self,
                 time_chunk: None,
                 index: 0,
             })
         } else {
-            self.timelines
-                .get(timeline)
-                .cloned()
-                .map(|time_chunk| ChunkIndicesIter {
-                    chunk: self,
-                    time_chunk: Some(time_chunk),
-                    index: 0,
-                })
+            self.timelines.get(timeline).cloned().map_or_else(
+                || Either::Right(Either::Left(std::iter::empty())),
+                |time_chunk| {
+                    Either::Right(Either::Right(ChunkIndicesIter {
+                        chunk: self,
+                        time_chunk: Some(time_chunk),
+                        index: 0,
+                    }))
+                },
+            )
+        }
+    }
+
+    /// Returns an iterator over the indices (`(TimeInt, RowId)`) of a [`Chunk`], for a given timeline.
+    ///
+    /// If the chunk is static, `timeline` will be ignored.
+    ///
+    /// The returned iterator outlives `self`, thus it can be passed around freely.
+    //
+    // TODO: explain why we have that one too
+    #[inline]
+    pub fn iter_component_indices(
+        &self,
+        timeline: &Timeline,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        if self.is_static() {
+            let indices = itertools::izip!(std::iter::repeat(TimeInt::STATIC), self.row_ids());
+
+            if let Some(validity) = list_array.validity() {
+                Either::Right(Either::Left(Either::Left(
+                    indices
+                        .enumerate()
+                        .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+                )))
+            } else {
+                Either::Right(Either::Left(Either::Right(indices)))
+            }
+        } else {
+            let Some(time_chunk) = self.timelines.get(timeline) else {
+                return Either::Left(std::iter::empty());
+            };
+
+            let indices = itertools::izip!(time_chunk.times(), self.row_ids());
+
+            if let Some(validity) = list_array.validity() {
+                Either::Right(Either::Right(Either::Left(
+                    indices
+                        .enumerate()
+                        .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+                )))
+            } else {
+                Either::Right(Either::Right(Either::Right(indices)))
+            }
+        }
+    }
+
+    #[inline]
+    pub fn iter_primitive<T: arrow2::types::NativeType>(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = ((usize, usize), &[T])> + '_ {
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        let Some(values) = list_array
+            .values()
+            .as_any()
+            .downcast_ref::<PrimitiveArray<T>>()
+        else {
+            // TODO: warn
+            todo!();
+            return Either::Left(std::iter::empty());
+        };
+        let values = values.values().as_slice();
+
+        // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
+        Either::Right(
+            self.iter_offsets(component_name)
+                .map(move |(idx, len)| ((idx, len), &values[idx..idx + len])),
+        )
+    }
+
+    // TODO
+    pub fn iter_offsets(
+        &self,
+        component_name: &ComponentName,
+    ) -> impl Iterator<Item = (usize, usize)> + '_ {
+        // TODO: let's imagine we're densified and sorted and everything -- what now?
+        // TODO: what if we're static though
+        // TODO: unless maybe we want both?
+
+        let Some(list_array) = self.components.get(component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        let offsets = list_array.offsets().iter().map(|idx| *idx as usize);
+        let lengths = list_array.offsets().lengths();
+
+        if let Some(validity) = list_array.validity() {
+            Either::Right(Either::Left(
+                itertools::izip!(offsets, lengths)
+                    .enumerate()
+                    .filter_map(|(i, o)| validity.get_bit(i).then_some(o)),
+            ))
+        } else {
+            Either::Right(Either::Right(itertools::izip!(offsets, lengths)))
+        }
+    }
+
+    // TODO
+    #[cfg(TODO)]
+    pub fn for_each<F>(&self, timeline: &Timeline, component_name: &ComponentName, f: F)
+    where
+        F: FnMut((TimeInt, RowId), (usize, usize)),
+    {
+        // TODO: let's imagine we're densified and sorted and everything -- what now?
+        // TODO: what if we're static though
+        // TODO: unless maybe we want both?
+
+        let Some(list_array) = self.components.get(component_name) else {
+            return;
+        };
+
+        let mut all = C::from_arrow(&**list_array.values()).unwrap();
+        let splits = list_array.offsets().lengths().map(move |len| {
+            // TODO: makes no sense whatsoever
+            let new = all.split_off(len);
+            let yielded = std::mem::take(&mut all);
+            all = new;
+            yielded
+        });
+
+        let mut i = 0;
+        izip!(self.indices(timeline).unwrap(), splits).filter(move |(index, batch)| {
+            let is_valid = list_array.is_valid(i);
+            i += 1;
+            is_valid
+        })
+    }
+}
+
+pub struct ChunkComponentIter<C, IO> {
+    values: Vec<C>,
+    offsets: IO,
+}
+
+pub struct ChunkComponentIterRef<'a, C, IO> {
+    values: &'a [C],
+    offsets: &'a mut IO,
+}
+
+impl<'a, C: Component, IO: Iterator<Item = (usize, usize)>> IntoIterator
+    for &'a mut ChunkComponentIter<C, IO>
+{
+    type Item = ((usize, usize), &'a [C]);
+
+    type IntoIter = ChunkComponentIterRef<'a, C, IO>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        ChunkComponentIterRef {
+            values: &self.values,
+            offsets: &mut self.offsets,
+        }
+    }
+}
+
+impl<'a, C: Component, IO: Iterator<Item = (usize, usize)>> Iterator
+    for ChunkComponentIterRef<'a, C, IO>
+{
+    type Item = ((usize, usize), &'a [C]);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.offsets
+            .next()
+            .map(move |(idx, len)| ((idx, len), &self.values[idx..idx + len]))
+    }
+}
+
+impl Chunk {
+    #[inline]
+    pub fn iter_component<C: Component>(
+        &self,
+    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_> {
+        let Some(list_array) = self.components.get(&C::name()) else {
+            return ChunkComponentIter {
+                values: vec![],
+                offsets: Either::Left(std::iter::empty()),
+            };
+        };
+
+        // TODO: what do with error? just log?
+        let values = list_array.values();
+        let Ok(values) = C::from_arrow(&**values) else {
+            // TODO: warn
+            todo!();
+            return ChunkComponentIter {
+                values: vec![],
+                offsets: Either::Left(std::iter::empty()),
+            };
+        };
+
+        // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
+        ChunkComponentIter {
+            values,
+            offsets: Either::Right(self.iter_offsets(&C::name())),
         }
     }
 }

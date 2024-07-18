@@ -5,6 +5,7 @@ use arrow2::array::{
     StructArray as ArrowStructArray,
 };
 use itertools::{izip, Itertools};
+use re_types_core::SizeBytes;
 
 use crate::{Chunk, ChunkError, ChunkId, ChunkResult, ChunkTimeline};
 
@@ -95,7 +96,6 @@ impl Chunk {
                             .as_any()
                             .downcast_ref::<ArrowListArray<i32>>()?
                             .clone();
-
                         Some((*component_name, list_array))
                     } else {
                         re_tracing::profile_scope!("pad");

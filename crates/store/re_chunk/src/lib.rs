@@ -10,6 +10,7 @@ mod id;
 mod iter;
 mod latest_at;
 mod merge;
+mod mono;
 mod range;
 mod shuffle;
 mod slice;
@@ -23,6 +24,7 @@ pub use self::builder::{ChunkBuilder, ChunkTimelineBuilder};
 pub use self::chunk::{Chunk, ChunkError, ChunkResult, ChunkTimeline};
 pub use self::id::{ChunkId, RowId};
 pub use self::latest_at::LatestAtQuery;
+pub use self::mono::{ChunkShared, ChunkSharedMono};
 pub use self::range::RangeQuery;
 pub use self::transport::TransportChunk;
 

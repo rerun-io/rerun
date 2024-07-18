@@ -61,6 +61,16 @@ impl ChunkStore {
         }
     }
 
+    // TODO
+    pub fn all_timelines(&self, entity_path: &EntityPath) -> impl Iterator<Item = Timeline> + '_ {
+        self.temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .into_iter()
+            .flat_map(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.keys().copied()
+            })
+    }
+
     /// Check whether a given entity has a specific [`ComponentName`] either on the specified
     /// timeline, or in its static data.
     #[inline]

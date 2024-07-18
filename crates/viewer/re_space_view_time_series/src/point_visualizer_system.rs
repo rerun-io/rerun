@@ -1,10 +1,11 @@
-use itertools::Itertools as _;
+use itertools::{Either, Itertools as _};
 
-use re_query::{PromiseResult, QueryError};
-use re_space_view::range_with_blueprint_resolved_data;
+use re_query2::{PromiseResult, QueryError};
+use re_space_view::range_with_blueprint_resolved_data2;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
+    external::arrow2::array::PrimitiveArray,
     Archetype as _, Loggable as _,
 };
 use re_viewer_context::{
@@ -98,8 +99,6 @@ impl SeriesPointSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let resolver = ctx.recording().resolver();
-
         let (plot_bounds, time_per_pixel) =
             determine_plot_bounds_and_time_per_pixel(ctx.viewer_ctx, view_query);
 
@@ -144,14 +143,14 @@ impl SeriesPointSystem {
             );
 
             {
-                use re_space_view::RangeResultsExt as _;
+                use re_space_view::RangeResultsExt2 as _;
 
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
                 let entity_path = &data_result.entity_path;
                 let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
-                let results = range_with_blueprint_resolved_data(
+                let results = range_with_blueprint_resolved_data2(
                     ctx,
                     None,
                     &query,
@@ -166,31 +165,24 @@ impl SeriesPointSystem {
                 );
 
                 // If we have no scalars, we can't do anything.
-                let Some(all_scalars) = results.get_required_component_dense::<Scalar>(resolver)
-                else {
+                let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
                     return Ok(());
                 };
 
-                let all_scalars = all_scalars?;
-
-                let all_scalars_entry_range = all_scalars.entry_range();
-
-                if !matches!(
-                    all_scalars.status(),
-                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                ) {
-                    // TODO(#5607): what should happen if the promise is still pending?
-                }
-
                 // Allocate all points.
-                points = all_scalars
-                    .range_indices(all_scalars_entry_range.clone())
+                points = all_scalar_chunks
+                    .iter()
+                    .flat_map(|chunk| {
+                        // TODO: this should proabably be a helper method, really
+                        chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                    })
                     .map(|(data_time, _)| PlotPoint {
                         time: data_time.as_i64(),
                         ..default_point.clone()
                     })
                     .collect_vec();
 
+                // TODO: probably doesnt make sense anymore
                 if cfg!(debug_assertions) {
                     for ps in points.windows(2) {
                         assert!(
@@ -203,18 +195,22 @@ impl SeriesPointSystem {
                 }
 
                 // Fill in values.
-                for (i, scalars) in all_scalars
-                    .range_data(all_scalars_entry_range.clone())
-                    .enumerate()
-                {
-                    if scalars.len() > 1 {
-                        re_log::warn_once!(
-                            "found a scalar batch in {entity_path:?} -- those have no effect"
-                        );
-                    } else if scalars.is_empty() {
-                        points[i].attrs.kind = PlotSeriesKind::Clear;
-                    } else {
-                        points[i].value = scalars.first().map_or(0.0, |s| *s.0);
+                let mut i = 0;
+                for chunk in all_scalar_chunks.iter() {
+                    for ((_idx, len), values) in chunk.iter_primitive::<f64>(&Scalar::name()) {
+                        if len > 0 {
+                            if len > 1 {
+                                re_log::warn_once!(
+                                "found a scalar batch in {entity_path:?} -- those have no effect"
+                            );
+                            }
+
+                            points[i].value = values[0];
+                        } else {
+                            points[i].attrs.kind = PlotSeriesKind::Clear;
+                        }
+
+                        i += 1;
                     }
                 }
 
@@ -223,26 +219,31 @@ impl SeriesPointSystem {
 
                 // Fill in colors.
                 // TODO(jleibs): Handle Err values.
-                if let Ok(all_colors) = results.get_or_empty_dense::<Color>(resolver) {
-                    if !matches!(
-                        all_colors.status(),
-                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                    ) {
-                        // TODO(#5607): what should happen if the promise is still pending?
-                    }
-
-                    let all_scalars_indexed = all_scalars
-                        .range_indices(all_scalars_entry_range.clone())
+                // TODO: asserting Color == u32 would be nice.
+                if let Some(all_color_chunks) = results.get_required_chunks(&Color::name()) {
+                    let all_scalars_indexed = all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| {
+                            chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        })
                         .map(|index| (index, ()));
 
+                    let all_colors = all_color_chunks.iter().flat_map(|chunk| {
+                        itertools::izip!(
+                            chunk.iter_component_indices(&query.timeline(), &Color::name()),
+                            chunk
+                                .iter_primitive::<u32>(&Color::name())
+                                .map(|(_offsets, values)| values)
+                        )
+                    });
+
                     let all_frames =
-                        re_query::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
-                            .enumerate();
+                        re_query2::range_zip_1x1(all_scalars_indexed, all_colors).enumerate();
 
                     for (i, (_index, _scalars, colors)) in all_frames {
                         if let Some(color) = colors.and_then(|colors| {
                             colors.first().map(|c| {
-                                let [r, g, b, a] = c.to_array();
+                                let [a, b, g, r] = c.to_le_bytes();
                                 if a == 255 {
                                     // Common-case optimization
                                     re_renderer::Color32::from_rgb(r, g, b)
@@ -258,52 +259,74 @@ impl SeriesPointSystem {
 
                 // Fill in marker sizes
                 // TODO(jleibs): Handle Err values.
-                if let Ok(all_marker_sizes) = results.get_or_empty_dense::<MarkerSize>(resolver) {
-                    if !matches!(
-                        all_marker_sizes.status(),
-                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                    ) {
-                        // TODO(#5607): what should happen if the promise is still pending?
-                    }
-
-                    let all_scalars_indexed = all_scalars
-                        .range_indices(all_scalars_entry_range.clone())
+                // TODO: asserting MarkerSize == f32 would be nice.
+                if let Some(all_marker_size_chunks) =
+                    results.get_required_chunks(&MarkerSize::name())
+                {
+                    let all_scalars_indexed = all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| {
+                            chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        })
                         .map(|index| (index, ()));
 
-                    let all_frames = re_query::range_zip_1x1(
-                        all_scalars_indexed,
-                        all_marker_sizes.range_indexed(),
-                    )
-                    .enumerate();
+                    let all_marker_sizes = all_marker_size_chunks.iter().flat_map(|chunk| {
+                        itertools::izip!(
+                            chunk.iter_component_indices(&query.timeline(), &MarkerSize::name()),
+                            chunk
+                                .iter_primitive::<f32>(&MarkerSize::name())
+                                .map(|(_offsets, values)| values)
+                        )
+                    });
+
+                    let all_frames =
+                        re_query2::range_zip_1x1(all_scalars_indexed, all_marker_sizes).enumerate();
 
                     for (i, (_index, _scalars, marker_sizes)) in all_frames {
                         if let Some(marker_size) =
                             marker_sizes.and_then(|marker_sizes| marker_sizes.first().copied())
                         {
-                            points[i].attrs.radius_ui = *marker_size.0;
+                            points[i].attrs.radius_ui = marker_size;
                         }
                     }
                 }
 
-                // Fill in marker sizes
+                // Fill in marker shapes
                 // TODO(jleibs): Handle Err values.
-                if let Ok(all_marker_shapes) = results.get_or_empty_dense::<MarkerShape>(resolver) {
-                    if !matches!(
-                        all_marker_shapes.status(),
-                        (PromiseResult::Ready(()), PromiseResult::Ready(()))
-                    ) {
-                        // TODO(#5607): what should happen if the promise is still pending?
-                    }
-
-                    let all_scalars_indexed = all_scalars
-                        .range_indices(all_scalars_entry_range.clone())
+                if let Some(all_marker_shape_chunks) =
+                    results.get_required_chunks(&MarkerShape::name())
+                {
+                    let all_scalars_indexed = all_scalar_chunks
+                        .iter()
+                        .flat_map(|chunk| {
+                            chunk.iter_component_indices(&query.timeline(), &Scalar::name())
+                        })
                         .map(|index| (index, ()));
 
-                    let all_frames = re_query::range_zip_1x1(
-                        all_scalars_indexed,
-                        all_marker_shapes.range_indexed(),
-                    )
-                    .enumerate();
+                    let mut all_marker_shape_iters = all_marker_shape_chunks
+                        .iter()
+                        .map(|chunk| chunk.iter_component::<MarkerShape>())
+                        .collect_vec();
+                    let all_marker_shape_iters = all_marker_shape_iters
+                        .iter_mut()
+                        .map(|iter| iter.into_iter())
+                        .collect_vec();
+
+                    let all_marker_shapes =
+                        itertools::izip!(all_marker_shape_chunks.iter(), all_marker_shape_iters)
+                            .flat_map(|(chunk, iter)| {
+                                itertools::izip!(
+                                    chunk.iter_component_indices(
+                                        &query.timeline(),
+                                        &MarkerShape::name()
+                                    ),
+                                    iter.map(|(_offsets, values)| values)
+                                )
+                            });
+
+                    let all_frames =
+                        re_query2::range_zip_1x1(all_scalars_indexed, all_marker_shapes)
+                            .enumerate();
 
                     for (i, (_index, _scalars, marker_shapes)) in all_frames {
                         if let Some(marker) =
@@ -316,14 +339,10 @@ impl SeriesPointSystem {
 
                 // Extract the series name
                 let series_name = results
-                    .get_or_empty_dense::<Name>(resolver)
-                    .ok()
-                    .and_then(|all_series_name| {
-                        all_series_name
-                            .range_data(all_scalars_entry_range.clone())
-                            .next()
-                            .and_then(|name| name.first().cloned())
-                    })
+                    .get_optional_chunks(&Name::name())
+                    .iter()
+                    .find(|chunk| !chunk.is_empty())
+                    .and_then(|chunk| chunk.component_mono::<Name>(0))
                     .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
                 // Now convert the `PlotPoints` into `Vec<PlotSeries>`

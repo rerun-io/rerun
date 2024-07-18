@@ -306,6 +306,8 @@ impl Chunk {
                 .collect(),
             components: components
                 .iter()
+                // TODO: for the component in question, this should drop the bitmap, not filter it.
+                // tests should make sure that this is the case, too.
                 .map(|(&component_name, list_array)| {
                     (
                         component_name,
