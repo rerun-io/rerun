@@ -14,8 +14,8 @@ This combined with [`components.ChannelDataType`](https://rerun.io/docs/referenc
 * RGBA
 
 ## API reference links
- * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ColorModel)
- * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/components/enum.ColorModel.html)
+ * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
+ * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.ColorModel)
+ * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/components/enum.ColorModel.html?speculative-link)
 
 

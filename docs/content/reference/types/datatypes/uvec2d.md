@@ -17,4 +17,4 @@ A uint32 vector in 2D space.
 
 ## Used by
 
-* [`Resolution2D`](../components/resolution2d.md)
+* [`Resolution2D`](../components/resolution2d.md?speculative-link)
