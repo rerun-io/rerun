@@ -49,6 +49,8 @@ impl ChunkStore {
 
         self.insert_id += 1;
 
+        let non_compacted_chunk = Arc::clone(chunk); // we'll need it to create the store event
+
         let (chunk, diffs) = if chunk.is_static() {
             // Static data: make sure to keep the most recent chunk available for each component column.
             re_tracing::profile_scope!("static");
@@ -97,7 +99,10 @@ impl ChunkStore {
 
             (
                 Arc::clone(chunk),
-                vec![ChunkStoreDiff::addition(Arc::clone(chunk))],
+                vec![ChunkStoreDiff::addition(
+                    non_compacted_chunk, /* added */
+                    None,                /* compacted */
+                )],
             )
         } else {
             // Temporal data: just index the chunk on every dimension of interest.
@@ -222,12 +227,34 @@ impl ChunkStore {
 
             self.temporal_chunks_stats += ChunkStoreChunkStats::from_chunk(&chunk_or_compacted);
 
-            let mut diffs = vec![ChunkStoreDiff::addition(Arc::clone(&chunk_or_compacted))];
+            let mut diff = ChunkStoreDiff::addition(
+                // NOTE: We are advertising only the non-compacted chunk as "added", i.e. only the new data.
+                //
+                // This makes sure that downstream subscribers only have to process what is new,
+                // instead of needlessly reprocessing old rows that would appear to have been
+                // removed and reinserted due to compaction.
+                //
+                // Subscribers will still be capable of tracking which chunks have been merged with which
+                // by using the compaction report that we fill below.
+                Arc::clone(&non_compacted_chunk), /* added */
+                None,                             /* compacted */
+            );
             if let Some(elected_chunk) = &elected_chunk {
-                diffs.extend(self.remove_chunk(elected_chunk.id()));
+                // NOTE: The just that we've just added has been compacted already!
+                let srcs = std::iter::once(non_compacted_chunk.id())
+                    .chain(
+                        self.remove_chunk(elected_chunk.id())
+                            .into_iter()
+                            .filter(|diff| diff.kind == crate::ChunkStoreDiffKind::Deletion)
+                            .map(|diff| diff.chunk.id()),
+                    )
+                    .collect();
+                let dst = chunk_or_compacted.id();
+
+                diff.compacted = Some((srcs, dst));
             }
 
-            (chunk_or_compacted, diffs)
+            (chunk_or_compacted, vec![diff])
         };
 
         self.chunks_per_chunk_id.insert(chunk.id(), chunk.clone());

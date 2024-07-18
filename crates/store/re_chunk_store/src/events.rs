@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use re_chunk::Chunk;
 use re_log_types::StoreId;
@@ -106,18 +106,39 @@ pub struct ChunkStoreDiff {
     pub kind: ChunkStoreDiffKind,
 
     /// The chunk that was added or removed.
+    ///
+    /// If the addition of a chunk to the store triggered a compaction, that chunk _pre-compaction_ is
+    /// what will be exposed here.
+    /// This allows subscribers to only process data that is new, as opposed to having to reprocess
+    /// old rows that appear to have been removed and then reinserted due to compaction.
+    ///
+    /// To keep track of what chunks were merged with what chunks, use the [`ChunkStoreDiff::compacted`]
+    /// field below.
     //
     // NOTE: We purposefully use an `Arc` instead of a `ChunkId` here because we want to make sure that all
     // downstream subscribers get a chance to inspect the data in the chunk before it gets permanently
     // deallocated.
     pub chunk: Arc<Chunk>,
+
+    /// Reports which [`ChunkId`]s were merged into a new [`ChunkId`] (srcs, dst) during a compaction.
+    ///
+    /// This is only specified if an addition to the store triggered a compaction.
+    /// When that happens, it is guaranteed that [`ChunkStoreDiff::chunk`] will be present in the
+    /// set of source chunks below, since it was compacted on arrival.
+    ///
+    /// A corollary to that is that the destination [`ChunkId`] must have never been seen before.
+    pub compacted: Option<(BTreeSet<ChunkId>, ChunkId)>,
 }
 
 impl PartialEq for ChunkStoreDiff {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {
-        let Self { kind, chunk } = self;
-        *kind == rhs.kind && chunk.id() == rhs.chunk.id()
+        let Self {
+            kind,
+            chunk,
+            compacted,
+        } = self;
+        *kind == rhs.kind && chunk.id() == rhs.chunk.id() && compacted == &rhs.compacted
     }
 }
 
@@ -125,10 +146,11 @@ impl Eq for ChunkStoreDiff {}
 
 impl ChunkStoreDiff {
     #[inline]
-    pub fn addition(chunk: Arc<Chunk>) -> Self {
+    pub fn addition(chunk: Arc<Chunk>, compacted: Option<(BTreeSet<ChunkId>, ChunkId)>) -> Self {
         Self {
             kind: ChunkStoreDiffKind::Addition,
             chunk,
+            compacted,
         }
     }
 
@@ -137,6 +159,7 @@ impl ChunkStoreDiff {
         Self {
             kind: ChunkStoreDiffKind::Deletion,
             chunk,
+            compacted: None,
         }
     }
 
