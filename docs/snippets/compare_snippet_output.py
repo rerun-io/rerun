@@ -147,7 +147,7 @@ def main() -> None:
         active_languages.append("py")
 
     # Running CMake in parallel causes failures during rerun_sdk & arrow build.
-    if not args.no_cpp_build:
+    if not args.no_cpp:
         print(f"Running {len(examples)} C++ examples…")
         for example in examples:
             if "cpp" not in example.opt_out_entirely() and "cpp" in active_languages:
@@ -266,11 +266,6 @@ def check_non_empty_rrd(path: str) -> None:
 
     assert Path(path).stat().st_size > 0
     print(f"Confirmed output written to {Path(path).absolute()}")
-
-    # TODO(andreas): does this make sense? If so maybe sdk should make sure on shutdown.
-    fd = os.open(path, os.O_RDONLY)
-    os.fsync(fd)
-    os.close(fd)
 
 
 if __name__ == "__main__":

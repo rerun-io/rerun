@@ -558,18 +558,10 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
         ))
     }
 
-    let (app_id1, chunks1) = compute_uber_table(path_to_rrd1).with_context(|| {
-        format!(
-            "path: {path_to_rrd1:?} (absolute: {:?})",
-            std::fs::canonicalize(path_to_rrd1) // Print absolute path as well, since we encountered issues with this on CI.
-        )
-    })?;
-    let (app_id2, chunks2) = compute_uber_table(path_to_rrd2).with_context(|| {
-        format!(
-            "path: {path_to_rrd2:?} (absolute: {:?})",
-            std::fs::canonicalize(path_to_rrd2) // Print absolute path as well, since we encountered issues with this on CI.
-        )
-    })?;
+    let (app_id1, chunks1) =
+        compute_uber_table(path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
+    let (app_id2, chunks2) =
+        compute_uber_table(path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
     if full_dump {
         println!("{app_id1}");
