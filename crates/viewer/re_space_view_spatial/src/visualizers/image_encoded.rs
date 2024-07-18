@@ -5,7 +5,6 @@ use re_space_view::HybridResults;
 use re_types::{
     archetypes::ImageEncoded,
     components::{Blob, DrawOrder, MediaType, Opacity},
-    tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext, SpaceViewClass,
@@ -194,12 +193,9 @@ impl ImageEncodedVisualizer {
 
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
-                    row_id: tensor_data_row_id,
+                    image,
                     textured_rect,
-                    meaning: TensorDataMeaning::Unknown,
                     depth_meter: None,
-                    tensor: None,
-                    image: Some(image),
                 });
             }
         }

@@ -217,12 +217,9 @@ impl ImageVisualizer {
 
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
-                    row_id: image.blob_row_id,
+                    image,
                     textured_rect,
-                    meaning: TensorDataMeaning::Unknown,
                     depth_meter: None,
-                    tensor: None,
-                    image: Some(image),
                 });
             }
         }

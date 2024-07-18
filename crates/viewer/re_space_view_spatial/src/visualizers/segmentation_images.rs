@@ -121,8 +121,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     })
                 });
 
-                let meaning = TensorDataMeaning::ClassId;
-
                 for data in data {
                     let SegmentationImageComponentData { image, opacity } = data;
 
@@ -153,12 +151,9 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                         self.images.push(PickableImageRect {
                             ent_path: entity_path.clone(),
-                            row_id: image.blob_row_id,
+                            image,
                             textured_rect,
-                            meaning,
                             depth_meter: None,
-                            tensor: None,
-                            image: Some(image),
                         });
                     }
                 }

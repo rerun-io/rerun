@@ -129,12 +129,9 @@ impl DepthImageVisualizer {
 
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
-                    row_id: image.blob_row_id,
+                    image,
                     textured_rect,
-                    meaning: TensorDataMeaning::Depth,
                     depth_meter: Some(depth_meter),
-                    tensor: None,
-                    image: Some(image),
                 });
             }
         }
