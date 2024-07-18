@@ -542,7 +542,7 @@ impl Default for DensityGraphBuilderConfig {
             // This is an arbitrary threshold meant to ensure that building a data density graph never takes too long.
             //
             // Our very basic benchmarks suggest that at 100k sorted events the graph building takes on average 1.5ms,
-            // measured on a high-end x86_64 CPU from 2023 (Ryzen 9 7950x).
+            // measured on a high-end x86_64 CPU from 2022 (Ryzen 9 7950x).
             // It does not seem to matter how many chunks there are, only how many total events we're showing.
             //
             // We want to stay around 1ms if possible, preferring to instead spend our frame budget on actually
