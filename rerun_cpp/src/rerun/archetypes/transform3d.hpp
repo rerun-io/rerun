@@ -9,8 +9,8 @@
 #include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
-#include "../components/transform3d.hpp"
 #include "../components/transform_mat3x3.hpp"
+#include "../components/transform_relation.hpp"
 #include "../components/translation3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -148,9 +148,6 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Transform3D {
-        /// The transform
-        rerun::components::Transform3D transform;
-
         /// Translation vectors.
         std::optional<Collection<rerun::components::Translation3D>> translation;
 
@@ -165,6 +162,9 @@ namespace rerun::archetypes {
 
         /// 3x3 transformation matrices.
         std::optional<Collection<rerun::components::TransformMat3x3>> mat3x3;
+
+        /// Specifies the relation this transform establishes between this entity and its parent.
+        std::optional<rerun::components::TransformRelation> relation;
 
         /// Visual length of the 3 axes.
         ///
@@ -516,9 +516,6 @@ namespace rerun::archetypes {
         Transform3D() = default;
         Transform3D(Transform3D&& other) = default;
 
-        explicit Transform3D(rerun::components::Transform3D _transform)
-            : transform(std::move(_transform)) {}
-
         /// Translation vectors.
         Transform3D with_translation(Collection<rerun::components::Translation3D> _translation) && {
             translation = std::move(_translation);
@@ -552,6 +549,13 @@ namespace rerun::archetypes {
         /// 3x3 transformation matrices.
         Transform3D with_mat3x3(Collection<rerun::components::TransformMat3x3> _mat3x3) && {
             mat3x3 = std::move(_mat3x3);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Specifies the relation this transform establishes between this entity and its parent.
+        Transform3D with_relation(rerun::components::TransformRelation _relation) && {
+            relation = std::move(_relation);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

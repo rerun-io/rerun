@@ -53,6 +53,7 @@
 #include "components/text_log_level.hpp"
 #include "components/transform3d.hpp"
 #include "components/transform_mat3x3.hpp"
+#include "components/transform_relation.hpp"
 #include "components/translation3d.hpp"
 #include "components/triangle_indices.hpp"
 #include "components/vector2d.hpp"

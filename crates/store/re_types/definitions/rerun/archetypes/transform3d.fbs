@@ -20,10 +20,6 @@ table Transform3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
-  /// The transform
-  // TODO(#6831): remove.
-  transform: rerun.components.Transform3D ("attr.rerun.component_optional", order: 1000);
-
   /// Translation vectors.
   translation: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1100);
 
@@ -38,6 +34,9 @@ table Transform3D (
 
   /// 3x3 transformation matrices.
   mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
+
+  /// Specifies the relation this transform establishes between this entity and its parent.
+  relation: rerun.components.TransformRelation ("attr.rerun.component_optional", nullable, order: 1600);
 
   // --- visual representation
 

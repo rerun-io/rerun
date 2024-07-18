@@ -137,12 +137,12 @@ class Transform3D(Transform3DExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            transform=None,  # type: ignore[arg-type]
             translation=None,  # type: ignore[arg-type]
             rotation_axis_angle=None,  # type: ignore[arg-type]
             quaternion=None,  # type: ignore[arg-type]
             scale=None,  # type: ignore[arg-type]
             mat3x3=None,  # type: ignore[arg-type]
+            relation=None,  # type: ignore[arg-type]
             axis_length=None,  # type: ignore[arg-type]
         )
 
@@ -152,14 +152,6 @@ class Transform3D(Transform3DExt, Archetype):
         inst = cls.__new__(cls)
         inst.__attrs_clear__()
         return inst
-
-    transform: components.Transform3DBatch = field(
-        metadata={"component": "required"},
-        converter=components.Transform3DBatch._required,  # type: ignore[misc]
-    )
-    # The transform
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
 
     translation: components.Translation3DBatch | None = field(
         metadata={"component": "optional"},
@@ -203,6 +195,15 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.TransformMat3x3Batch._optional,  # type: ignore[misc]
     )
     # 3x3 transformation matrices.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    relation: components.TransformRelationBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.TransformRelationBatch._optional,  # type: ignore[misc]
+    )
+    # Specifies the relation this transform establishes between this entity and its parent.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
