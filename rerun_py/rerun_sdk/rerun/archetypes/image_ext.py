@@ -16,6 +16,16 @@ if TYPE_CHECKING:
     from . import Image
 
 
+# TODO: add to constructor docs
+# As such, the shape of the [components.TensorData] must be mappable to:
+# - A `HxW` tensor, treated as a grayscale image.
+# - A `HxWx3` tensor, treated as an RGB image.
+# - A `HxWx4` tensor, treated as an RGBA image.
+#
+# Leading and trailing unit-dimensions are ignored, so that
+# `1x480x640x3x1` is treated as a `480x640x3` RGB image.
+
+
 class ImageExt:
     """Extension for [Image][rerun.archetypes.Image]."""
 

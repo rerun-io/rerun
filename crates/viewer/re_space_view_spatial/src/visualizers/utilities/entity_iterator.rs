@@ -135,7 +135,7 @@ pub fn query_archetype_with_history<'a, A: Archetype>(
 
 /// Iterates through all entity views for a given archetype.
 ///
-/// The callback passed in gets passed along an [`SpatialSceneEntityContext`] which contains
+/// The callback passed in gets passed along a [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,

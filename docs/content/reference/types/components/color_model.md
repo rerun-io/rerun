@@ -19,3 +19,6 @@ This combined with [`components.ChannelDataType`](https://rerun.io/docs/referenc
  * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/components/enum.ColorModel.html?speculative-link)
 
 
+## Used by
+
+* [`Image`](../archetypes/image.md)

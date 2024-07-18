@@ -5,9 +5,13 @@
 
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
+#include "../components/blob.hpp"
+#include "../components/channel_data_type.hpp"
+#include "../components/color_model.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/opacity.hpp"
-#include "../components/tensor_data.hpp"
+#include "../components/pixel_format.hpp"
+#include "../components/resolution2d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -18,22 +22,18 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A monochrome or color image.
+    /// **Archetype**: A monochrome or color image with optional alpha (opacity).
     ///
+    /// For compressed images and image files (JPEG, PNG, …), use `archetypes::ImageEncoded`.
+    /// Compressing images can save a lot of bandwidth and memory.
+    ///
+    /// See also `archetypes::DepthImage` and `archetypes::SegmentationImage`.
+    ///
+    /// The image type
     /// The order of dimensions in the underlying `components::TensorData` follows the typical
-    /// row-major, interleaved-pixel image format. Additionally, Rerun orders the
-    /// `datatypes::TensorDimension`s within the shape description from outer-most to inner-most.
-    ///
-    /// As such, the shape of the `components::TensorData` must be mappable to:
-    /// - A `HxW` tensor, treated as a grayscale image.
-    /// - A `HxWx3` tensor, treated as an RGB image.
-    /// - A `HxWx4` tensor, treated as an RGBA image.
-    ///
-    /// Leading and trailing unit-dimensions are ignored, so that
-    /// `1x480x640x3x1` is treated as a `480x640x3` RGB image.
+    /// row-major, interleaved-pixel image format.
     ///
     /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::ImageEncoded`.
-    /// Compressing images can save a lot of bandwidth and memory.
     ///
     /// See also `components::TensorData` and `datatypes::TensorBuffer`.
     ///
@@ -74,8 +74,28 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct Image {
-        /// The image data. Should always be a 2- or 3-dimensional tensor.
-        rerun::components::TensorData data;
+        /// The raw image data.
+        rerun::components::Blob data;
+
+        /// The size of the image.
+        ///
+        /// For chroma downsampled formats, this is the size of the full image (the luminance channel).
+        rerun::components::Resolution2D resolution;
+
+        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
+        ///
+        /// If specified, this takes precedence over `both components::ColorModel` and `components::ChannelDataType` (which are ignored).
+        std::optional<rerun::components::PixelFormat> pixel_format;
+
+        /// L, RGB, RGBA, …
+        ///
+        /// Also requires a `components::ChannelDataType` to fully specify the pixel format.
+        std::optional<rerun::components::ColorModel> color_model;
+
+        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
+        ///
+        /// Also requires a `components::ColorModel` to fully specify the pixel format.
+        std::optional<rerun::components::ChannelDataType> data_type;
 
         /// Opacity of the image, useful for layering several images.
         ///
@@ -130,6 +150,33 @@ namespace rerun::archetypes {
       public:
         Image() = default;
         Image(Image&& other) = default;
+
+        /// Used mainly for chroma downsampled formats and differing number of bits per channel.
+        ///
+        /// If specified, this takes precedence over `both components::ColorModel` and `components::ChannelDataType` (which are ignored).
+        Image with_pixel_format(rerun::components::PixelFormat _pixel_format) && {
+            pixel_format = std::move(_pixel_format);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// L, RGB, RGBA, …
+        ///
+        /// Also requires a `components::ChannelDataType` to fully specify the pixel format.
+        Image with_color_model(rerun::components::ColorModel _color_model) && {
+            color_model = std::move(_color_model);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
+        ///
+        /// Also requires a `components::ColorModel` to fully specify the pixel format.
+        Image with_data_type(rerun::components::ChannelDataType _data_type) && {
+            data_type = std::move(_data_type);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Opacity of the image, useful for layering several images.
         ///

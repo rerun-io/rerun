@@ -23,9 +23,9 @@ mod prelude {
     // Also import any component or datatype that has a unique name:
     pub use re_chunk::ChunkTimeline;
     pub use re_types::components::{
-        AlbedoFactor, Color, HalfSize2D, HalfSize3D, LineStrip2D, LineStrip3D, MediaType,
-        OutOfTreeTransform3D, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
-        TriangleIndices, Vector2D, Vector3D,
+        AlbedoFactor, ChannelDataType, Color, ColorModel, HalfSize2D, HalfSize3D, LineStrip2D,
+        LineStrip3D, MediaType, OutOfTreeTransform3D, PixelFormat, Position2D, Position3D, Radius,
+        Resolution2D, Scale3D, Text, TextLogLevel, TriangleIndices, Vector2D, Vector3D,
     };
     pub use re_types::datatypes::{
         Angle, AnnotationInfo, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32,

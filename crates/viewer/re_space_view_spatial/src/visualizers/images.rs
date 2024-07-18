@@ -1,29 +1,27 @@
 use itertools::Itertools as _;
 
-use re_chunk_store::{ChunkStoreEvent, RowId};
-use re_log_types::TimeInt;
-use re_query::range_zip_1x1;
-use re_space_view::{diff_component_filter, HybridResults};
+use re_space_view::HybridResults;
 use re_types::{
     archetypes::Image,
-    components::{DrawOrder, Opacity, TensorData},
+    components::{self, ChannelDataType, ColorModel, DrawOrder, Opacity, PixelFormat},
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewClass,
+    ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext, SpaceViewClass,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
-    visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
+    contexts::SpatialSceneEntityContext,
+    view_kind::SpatialSpaceViewKind,
+    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    PickableImageRect, SpatialSpaceView2D,
 };
 
 use super::{
-    bounding_box_for_textured_rect, entity_iterator::process_archetype, textured_rect_from_tensor,
-    SpatialViewVisualizerData,
+    bounding_box_for_textured_rect, entity_iterator::process_archetype, SpatialViewVisualizerData,
 };
 
 pub struct ImageVisualizer {
@@ -40,11 +38,9 @@ impl Default for ImageVisualizer {
     }
 }
 
-struct ImageComponentData<'a> {
-    index: (TimeInt, RowId),
-
-    tensor: &'a TensorData,
-    opacity: Option<&'a Opacity>,
+struct ImageComponentData {
+    image: ImageInfo,
+    opacity: Option<Opacity>,
 }
 
 impl IdentifiedViewSystem for ImageVisualizer {
@@ -53,23 +49,9 @@ impl IdentifiedViewSystem for ImageVisualizer {
     }
 }
 
-struct ImageVisualizerEntityFilter;
-
-impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_shaped_like_an_image()
-        })
-    }
-}
-
 impl VisualizerSystem for ImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<Image>()
-    }
-
-    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(ImageVisualizerEntityFilter))
     }
 
     fn filter_visualizable_entities(
@@ -157,54 +139,69 @@ impl ImageVisualizer {
         let resolver = ctx.recording().resolver();
         let entity_path = ctx.target_entity_path;
 
-        let tensors = match results.get_required_component_dense::<TensorData>(resolver) {
-            Some(tensors) => tensors?,
+        let blobs = match results.get_required_component_dense::<components::Blob>(resolver) {
+            Some(blobs) => blobs?,
             _ => return Ok(()),
         };
+        let resolutions =
+            match results.get_required_component_dense::<components::Resolution2D>(resolver) {
+                Some(resolutions) => resolutions?,
+                _ => return Ok(()),
+            };
 
+        let pixel_formats = results.get_or_empty_dense::<PixelFormat>(resolver)?;
+        let color_models = results.get_or_empty_dense::<ColorModel>(resolver)?;
+        let data_types = results.get_or_empty_dense::<ChannelDataType>(resolver)?;
         let opacity = results.get_or_empty_dense(resolver)?;
 
-        let data = range_zip_1x1(tensors.range_indexed(), opacity.range_indexed()).filter_map(
-            |(&index, tensors, opacity)| {
-                tensors.first().map(|tensor| ImageComponentData {
-                    index,
-                    tensor,
-                    opacity: opacity.and_then(|opacity| opacity.first()),
+        let data = re_query::range_zip_1x5(
+            blobs.range_indexed(),
+            resolutions.range_indexed(),
+            pixel_formats.range_indexed(),
+            color_models.range_indexed(),
+            data_types.range_indexed(),
+            opacity.range_indexed(),
+        )
+        .filter_map(
+            |(&index, blobs, resolutions, pixel_formats, color_models, data_types, opacities)| {
+                let blob = blobs.first()?.0.clone();
+
+                let format = if let Some(pixel_format) = first_copied(pixel_formats) {
+                    ImageFormat::PixelFormat(pixel_format)
+                } else {
+                    let color_model = first_copied(color_models)?;
+                    let data_type = first_copied(data_types)?;
+                    ImageFormat::ColorModel {
+                        color_model,
+                        data_type,
+                    }
+                };
+
+                Some(ImageComponentData {
+                    image: ImageInfo {
+                        blob_row_id: index.1,
+                        blob,
+                        resolution: first_copied(resolutions)?.0 .0,
+                        format,
+                        meaning: TensorDataMeaning::Unknown,
+                        colormap: None,
+                    },
+                    opacity: first_copied(opacities),
                 })
             },
         );
 
-        // Unknown is currently interpreted as "Some Color" in most cases.
-        // TODO(jleibs): Make this more explicit
-        let meaning = TensorDataMeaning::Unknown;
-
-        for data in data {
-            if !data.tensor.is_shaped_like_an_image() {
-                continue;
-            }
-
-            let tensor_data_row_id = data.index.1;
-            let tensor = data.tensor.0.clone();
-
-            // TODO(andreas): We only support colormap for depth image at this point.
-            let colormap = None;
-
-            let opacity = data
-                .opacity
-                .copied()
-                .unwrap_or_else(|| self.fallback_for(ctx));
+        for ImageComponentData { image, opacity } in data {
+            let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-            if let Some(textured_rect) = textured_rect_from_tensor(
+            if let Some(textured_rect) = textured_rect_from_image(
                 ctx.viewer_ctx,
                 entity_path,
                 spatial_ctx,
-                tensor_data_row_id,
-                &tensor,
-                meaning,
+                &image,
                 multiplicative_tint,
-                colormap,
             ) {
                 // Only update the bounding box if this is a 2D space view.
                 // This is avoids a cyclic relationship where the image plane grows
@@ -220,12 +217,12 @@ impl ImageVisualizer {
 
                 self.images.push(PickableImageRect {
                     ent_path: entity_path.clone(),
-                    row_id: tensor_data_row_id,
+                    row_id: image.blob_row_id,
                     textured_rect,
                     meaning: TensorDataMeaning::Unknown,
                     depth_meter: None,
-                    tensor: Some(tensor),
-                    image: None,
+                    tensor: None,
+                    image: Some(image),
                 });
             }
         }
@@ -247,3 +244,7 @@ impl TypedComponentFallbackProvider<DrawOrder> for ImageVisualizer {
 }
 
 re_viewer_context::impl_component_fallback_provider!(ImageVisualizer => [DrawOrder, Opacity]);
+
+fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
+    slice.and_then(|element| element.first()).copied()
+}

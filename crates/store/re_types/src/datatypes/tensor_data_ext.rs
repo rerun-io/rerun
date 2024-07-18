@@ -613,7 +613,7 @@ impl TensorData {
 
     /// Construct a tensor from the contents of an image file.
     ///
-    /// This will spend CPU cycles reading the file and decoding the image.
+    /// This will spend CPU cycles decoding the image.
     /// To save CPU time and storage, we recommend you instead use
     /// [`ImageEncoded::from_file_contents`].
     ///

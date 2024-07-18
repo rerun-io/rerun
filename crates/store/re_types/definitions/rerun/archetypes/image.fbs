@@ -1,24 +1,20 @@
 namespace rerun.archetypes;
 
 
-/// A monochrome or color image.
+/// A monochrome or color image with optional alpha (opacity).
 ///
-/// The order of dimensions in the underlying [components.TensorData] follows the typical
-/// row-major, interleaved-pixel image format. Additionally, Rerun orders the
-/// [datatypes.TensorDimension]s within the shape description from outer-most to inner-most.
-///
-/// As such, the shape of the [components.TensorData] must be mappable to:
-/// - A `HxW` tensor, treated as a grayscale image.
-/// - A `HxWx3` tensor, treated as an RGB image.
-/// - A `HxWx4` tensor, treated as an RGBA image.
-///
-/// Leading and trailing unit-dimensions are ignored, so that
-/// `1x480x640x3x1` is treated as a `480x640x3` RGB image.
-///
-/// Rerun also supports compressed images (JPEG, PNG, …), using [archetypes.ImageEncoded].
+/// For compressed images and image files (JPEG, PNG, …), use [archetypes.ImageEncoded].
 /// Compressing images can save a lot of bandwidth and memory.
 ///
-/// \py You can compress an image using [`rerun.Image.compress`][].
+/// See also [archetypes.DepthImage] and [archetypes.SegmentationImage].
+///
+/// The image type
+/// The order of dimensions in the underlying [components.TensorData] follows the typical
+/// row-major, interleaved-pixel image format.
+///
+/// Rerun also supports compressed images (JPEG, PNG, …), using [archetypes.ImageEncoded].
+///
+/// \py You can compress an `Image` using [`rerun.Image.compress`][].
 /// \py To pass in a chroma-encoded image (NV12, YUY2), use [`rerun.ImageChromaDownsampled`][].
 ///
 /// See also [components.TensorData] and [datatypes.TensorBuffer].
@@ -36,8 +32,30 @@ table Image (
 ) {
   // --- Required ---
 
-  /// The image data. Should always be a 2- or 3-dimensional tensor.
-  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);
+  /// The raw image data.
+  data: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  /// The size of the image.
+  ///
+  /// For chroma downsampled formats, this is the size of the full image (the luminance channel).
+  resolution: rerun.components.Resolution2D ("attr.rerun.component_required", order: 1200);
+
+  // --- Image format ---
+
+  /// Used mainly for chroma downsampled formats and differing number of bits per channel.
+  ///
+  /// If specified, this takes precedence over [both components.ColorModel] and [components.ChannelDataType] (which are ignored).
+  pixel_format: rerun.components.PixelFormat ("attr.rerun.component_optional", nullable, order: 2000);
+
+  /// L, RGB, RGBA, …
+  ///
+  /// Also requires a [components.ChannelDataType] to fully specify the pixel format.
+  color_model: rerun.components.ColorModel ("attr.rerun.component_optional", nullable, order: 2100);
+
+  /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
+  ///
+  /// Also requires a [components.ColorModel] to fully specify the pixel format.
+  data_type: rerun.components.ChannelDataType ("attr.rerun.component_optional", nullable, order: 2200);
 
   // --- Optional ---
 

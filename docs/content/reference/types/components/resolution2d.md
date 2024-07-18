@@ -18,4 +18,5 @@ The width and height of a 2D image.
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`Image`](../archetypes/image.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
