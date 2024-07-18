@@ -15,13 +15,14 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
-    visualizers::filter_visualizable_2d_entities, PickableImageRect, SpatialSpaceView2D,
+    contexts::SpatialSceneEntityContext,
+    view_kind::SpatialSpaceViewKind,
+    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    PickableImageRect, SpatialSpaceView2D,
 };
 
 use super::{
-    bounding_box_for_textured_rect, entity_iterator::process_archetype, textured_rect_from_tensor,
-    SpatialViewVisualizerData,
+    bounding_box_for_textured_rect, entity_iterator::process_archetype, SpatialViewVisualizerData,
 };
 
 pub struct ImageEncodedVisualizer {
@@ -139,10 +140,6 @@ impl ImageEncodedVisualizer {
             _ => return Ok(()),
         };
 
-        // Unknown is currently interpreted as "Some Color" in most cases.
-        // TODO(jleibs): Make this more explicit
-        let meaning = TensorDataMeaning::Unknown;
-
         let media_types = results.get_or_empty_dense::<MediaType>(resolver)?;
         let opacities = results.get_or_empty_dense::<Opacity>(resolver)?;
 
@@ -156,12 +153,12 @@ impl ImageEncodedVisualizer {
             };
             let media_type = media_types.and_then(|media_types| media_types.first());
 
-            let tensor = ctx.viewer_ctx.cache.entry(|c: &mut ImageDecodeCache| {
+            let image = ctx.viewer_ctx.cache.entry(|c: &mut ImageDecodeCache| {
                 c.entry(tensor_data_row_id, blob, media_type.map(|mt| mt.as_str()))
             });
 
-            let tensor = match tensor {
-                Ok(tensor) => tensor,
+            let image = match image {
+                Ok(image) => image,
                 Err(err) => {
                     re_log::warn_once!(
                         "Failed to decode ImageEncoded at path {entity_path}: {err}"
@@ -170,24 +167,18 @@ impl ImageEncodedVisualizer {
                 }
             };
 
-            // TODO(andreas): We only support colormap for depth image at this point.
-            let colormap = None;
-
             let opacity = opacities.and_then(|opacity| opacity.first());
 
             let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
 
-            if let Some(textured_rect) = textured_rect_from_tensor(
+            if let Some(textured_rect) = textured_rect_from_image(
                 ctx.viewer_ctx,
                 entity_path,
                 spatial_ctx,
-                tensor_data_row_id,
-                &tensor,
-                meaning,
+                &image,
                 multiplicative_tint,
-                colormap,
             ) {
                 // Only update the bounding box if this is a 2D space view.
                 // This is avoids a cyclic relationship where the image plane grows
@@ -207,8 +198,8 @@ impl ImageEncodedVisualizer {
                     textured_rect,
                     meaning: TensorDataMeaning::Unknown,
                     depth_meter: None,
-                    tensor: Some(tensor.data.0),
-                    image: None,
+                    tensor: None,
+                    image: Some(image),
                 });
             }
         }
