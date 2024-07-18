@@ -243,6 +243,28 @@ impl EntityDb {
         }
     }
 
+    /// Returns the time range of data on the given timeline.
+    ///
+    /// This is O(N) in the number of times on the timeline.
+    pub fn time_range_for(&self, timeline: &Timeline) -> Option<ResolvedTimeRange> {
+        let (mut start, mut end) = (None, None);
+        for time in self
+            .times_per_timeline()
+            .get(timeline)?
+            .keys()
+            .filter(|v| !v.is_static())
+            .copied()
+        {
+            if start.is_none() || Some(time) < start {
+                start = Some(time);
+            }
+            if end.is_none() || Some(time) > end {
+                end = Some(time);
+            }
+        }
+        Some(ResolvedTimeRange::new(start?, end?))
+    }
+
     /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
         self.tree().subtree.time_histogram.get(timeline)

@@ -539,12 +539,18 @@ impl DensityGraphBuilderConfig {
 impl Default for DensityGraphBuilderConfig {
     fn default() -> Self {
         Self {
-            // Building a density graph consisting of 100k sorted events costs roughly 1.5ms on a high-end CPU from 2023.
+            // This is an arbitrary threshold meant to ensure that building a data density graph never takes too long.
             //
-            // We do not want to spend that much time building a density graph, so we go under that limit somewhat arbitrarily:
-            max_total_chunk_events: 65_536,
+            // Our very basic benchmarks suggest that at 100k events the graph building takes on average 1.5ms, measured on a high-end x86_64 CPU from 2023.
+            // It does not seem to matter how many chunks there are, only how many total events we're showing.
+            // We want to stay around 1ms if possible, so we undershoot the limit here by a good amount:
+            max_total_chunk_events: 50_000,
+
+            // For individual chunks, the limits are completely arbitrary.
             max_events_in_sorted_chunk: 10_000,
-            max_events_in_unsorted_chunk: 1_000,
+
+            // Processing unsorted events is about 20% slower than sorted events.
+            max_events_in_unsorted_chunk: 8_000,
         }
     }
 }

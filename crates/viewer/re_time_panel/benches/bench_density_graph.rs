@@ -17,11 +17,7 @@ use re_time_panel::__bench::{
     build_density_graph, DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi,
 };
 
-fn run(
-    b: &mut Bencher<'_, WallTime>,
-    config: DensityGraphBuilderConfig,
-    data_entries: &[ChunkEntry],
-) {
+fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: ChunkEntry) {
     egui::__run_test_ui(|ui| {
         let row_rect = ui.max_rect();
         assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
@@ -33,41 +29,25 @@ fn run(
         let entity_path = re_log_types::EntityPath::parse_strict("/data").unwrap();
         let timeline = re_log_types::Timeline::log_time();
 
-        for ChunkEntry {
-            num_chunks,
-            num_rows_per_chunk,
-            sorted,
-            time_start_ms,
-        } in data_entries.iter().copied()
-        {
-            add_data(
-                &mut db,
-                &entity_path,
-                num_chunks,
-                num_rows_per_chunk,
-                sorted,
-                time_start_ms,
-                timeline,
-            )
-            .unwrap();
-        }
+        add_data(
+            &mut db,
+            &entity_path,
+            entry.num_chunks,
+            entry.num_rows_per_chunk,
+            entry.sorted,
+            entry.time_start_ms,
+            timeline,
+        )
+        .unwrap();
 
         let item = TimePanelItem {
             entity_path,
             component_name: None,
         };
 
-        let times = db.times_per_timeline().get(&timeline).unwrap();
-        let mut lens = vec![];
-        for timeline in db.timelines() {
-            if let Some(v) = db.times_per_timeline().get(timeline) {
-                lens.push(format!("{}:{}", timeline.name().as_str(), v.len()));
-            }
-        }
-        panic!("{}", lens.join(", "));
-        let time_range = ResolvedTimeRange::EVERYTHING;
-
-        /* let time_range = db.time_range_for(&timeline).unwrap(); */
+        let time_range = db
+            .time_range_for(&timeline)
+            .unwrap_or(ResolvedTimeRange::EMPTY);
         let time_ranges_ui =
             TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
 
@@ -210,7 +190,7 @@ fn bench_single_chunks(c: &mut Criterion) {
                     format!("{size}/unsorted")
                 };
                 group.bench_with_input(id, &single_chunk(size, sorted), |b, &entry| {
-                    run(b, config, &[entry]);
+                    run(b, config, entry);
                 });
             }
         }
@@ -227,7 +207,7 @@ fn bench_many_chunks(c: &mut Criterion) {
                 format!("{num_chunks}x{num_rows_per_chunk}"),
                 &many_chunks(num_chunks, num_rows_per_chunk),
                 |b, &entry| {
-                    run(b, config, &[entry]);
+                    run(b, config, entry);
                 },
             );
         }
