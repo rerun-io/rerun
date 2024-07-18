@@ -99,7 +99,7 @@ jobs:
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
-      - name: Build snippets
+      - name: Build & run snippets
         run: |
           pixi run -e wheel-test build-examples snippets \
             example_data/snippets
