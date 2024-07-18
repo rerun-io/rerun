@@ -30,3 +30,4 @@ How individual color channel components are encoded.
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`SegmentationImage`](../archetypes/segmentation_image.md)

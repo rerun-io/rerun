@@ -10,11 +10,12 @@ The width and height of a 2D image.
 * wh: [`UVec2D`](../datatypes/uvec2d.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Resolution2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Resolution2D.html)
- * 🐍 [Python API docs for `Resolution2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Resolution2D)
- * 🦀 [Rust API docs for `Resolution2D`](https://docs.rs/rerun/latest/rerun/components/struct.Resolution2D.html)
+ * 🌊 [C++ API docs for `Resolution2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Resolution2D.html?speculative-link)
+ * 🐍 [Python API docs for `Resolution2D`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Resolution2D)
+ * 🦀 [Rust API docs for `Resolution2D`](https://docs.rs/rerun/latest/rerun/components/struct.Resolution2D.html?speculative-link)
 
 
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`SegmentationImage`](../archetypes/segmentation_image.md)

@@ -59,7 +59,7 @@ namespace rerun::archetypes {
     ///         std::fill_n(data.begin() + y * WIDTH + 130, 150, static_cast<uint8_t>(2));
     ///     }
     ///
-    ///     rec.log("segmentation/image", rerun::SegmentationImage({HEIGHT, WIDTH}, std::move(data)));
+    ///     rec.log("segmentation/image", rerun::SegmentationImage(std::move(data), {WIDTH, HEIGHT}));
     /// }
     /// ```
     struct AnnotationContext {

@@ -19,10 +19,9 @@ __all__ = ["DepthImage"]
 @define(str=False, repr=False, init=False)
 class DepthImage(DepthImageExt, Archetype):
     """
-    **Archetype**: A depth image.
+    **Archetype**: A depth image, i.e. as captured by a depth camera.
 
-    The shape of the [`components.TensorData`][rerun.components.TensorData] must be mappable to an `HxW` tensor.
-    Each pixel corresponds to a depth value in units specified by `meter`.
+    Each pixel corresponds to a depth value in units specified by [`components.DepthMeter`][rerun.components.DepthMeter].
 
     Example
     -------

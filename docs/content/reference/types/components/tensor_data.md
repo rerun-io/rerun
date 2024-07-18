@@ -30,5 +30,4 @@ For chroma downsampled formats the shape has to be the shape of the decoded imag
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
-* [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`Tensor`](../archetypes/tensor.md)

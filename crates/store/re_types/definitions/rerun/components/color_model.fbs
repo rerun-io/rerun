@@ -5,7 +5,9 @@ namespace rerun.components;
 /// Specified what color components are present in an [archetypes.Image].
 ///
 /// This combined with [components.ChannelDataType] determines the pixel format of an image.
-enum ColorModel: byte {
+enum ColorModel: byte (
+    "attr.docs.unreleased"
+) {
     /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
     L (default),
 

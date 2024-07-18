@@ -23,10 +23,9 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A depth image.
+    /// **Archetype**: A depth image, i.e. as captured by a depth camera.
     ///
-    /// The shape of the `components::TensorData` must be mappable to an `HxW` tensor.
-    /// Each pixel corresponds to a depth value in units specified by `meter`.
+    /// Each pixel corresponds to a depth value in units specified by `components::DepthMeter`.
     ///
     /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
@@ -156,8 +155,6 @@ namespace rerun::archetypes {
               resolution{resolution_},
               data_type{data_type_} {}
 
-        /// New depth image from an `ChannelDataType` and a pointer.
-        ///
         /// The length of the data should be `W * H * data_type.size`
         DepthImage(
             Collection<uint8_t> data_, components::Resolution2D resolution_,
