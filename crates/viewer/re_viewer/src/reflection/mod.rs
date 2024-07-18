@@ -303,7 +303,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ColorModel as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type) determines the pixel format of an image.",
+                docstring_md: "Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nThis combined with [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type?speculative-link) determines the pixel format of an image.",
                 placeholder: Some(ColorModel::default().to_arrow()?),
             },
         ),
