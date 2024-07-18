@@ -481,47 +481,26 @@ fn general_texture_creation_desc_from_image<'a>(
                     pad_rgb_to_rgba(buf, u8::MAX).into(),
                     TextureFormat::Rgba8Uint,
                 ),
-                ChannelDataType::U16 => (
-                    pad_and_cast(&image.to_slice(), u16::MAX),
-                    TextureFormat::Rgba16Uint,
-                ),
-                ChannelDataType::U32 => (
-                    pad_and_cast(&image.to_slice(), u32::MAX),
-                    TextureFormat::Rgba32Uint,
-                ),
+                ChannelDataType::U16 => (pad_cast_img(image, u16::MAX), TextureFormat::Rgba16Uint),
+                ChannelDataType::U32 => (pad_cast_img(image, u32::MAX), TextureFormat::Rgba32Uint),
                 ChannelDataType::U64 => (
                     pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: u64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
-                ChannelDataType::I8 => (
-                    pad_and_cast(&image.to_slice(), i8::MAX),
-                    TextureFormat::Rgba8Sint,
-                ),
-                ChannelDataType::I16 => (
-                    pad_and_cast(&image.to_slice(), i16::MAX),
-                    TextureFormat::Rgba16Sint,
-                ),
-                ChannelDataType::I32 => (
-                    pad_and_cast(&image.to_slice(), i32::MAX),
-                    TextureFormat::Rgba32Sint,
-                ),
+                ChannelDataType::I8 => (pad_cast_img(image, i8::MAX), TextureFormat::Rgba8Sint),
+                ChannelDataType::I16 => (pad_cast_img(image, i16::MAX), TextureFormat::Rgba16Sint),
+                ChannelDataType::I32 => (pad_cast_img(image, i32::MAX), TextureFormat::Rgba32Sint),
                 ChannelDataType::I64 => (
                     pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: i64| x as f32),
                     TextureFormat::Rgba32Float,
                 ),
 
                 ChannelDataType::F16 => (
-                    pad_and_cast(
-                        &image.to_slice(),
-                        re_log_types::external::arrow2::types::f16::from_f32(1.0),
-                    ),
+                    pad_cast_img(image, half::f16::from_f32(1.0)),
                     TextureFormat::Rgba16Float,
                 ),
-                ChannelDataType::F32 => (
-                    pad_and_cast(&image.to_slice(), 1.0),
-                    TextureFormat::Rgba32Float,
-                ),
+                ChannelDataType::F32 => (pad_cast_img(image, 1.0_f32), TextureFormat::Rgba32Float),
                 ChannelDataType::F64 => (
                     pad_and_narrow_and_cast(&image.to_slice(), 1.0, |x: f64| x as f32),
                     TextureFormat::Rgba32Float,
@@ -605,12 +584,18 @@ fn narrow_f64_to_f32s(slice: &[f64]) -> Cow<'static, [u8]> {
     bytes.into()
 }
 
+/// Pad an RGB image to RGBA and cast the results to bytes.
 fn pad_and_cast<T: Copy + bytemuck::Pod>(data: &[T], pad: T) -> Cow<'static, [u8]> {
     re_tracing::profile_function!();
     // TODO(emilk): optimize by combining the two steps into one; avoiding one allocation and memcpy
     let padded: Vec<T> = pad_rgb_to_rgba(data, pad);
     let bytes: Vec<u8> = bytemuck::pod_collect_to_vec(&padded);
     bytes.into()
+}
+
+/// Pad an RGB image to RGBA and cast the results to bytes.
+fn pad_cast_img<T: Copy + bytemuck::Pod>(img: &ImageInfo, pad: T) -> Cow<'static, [u8]> {
+    pad_and_cast(&img.to_slice(), pad)
 }
 
 fn pad_and_narrow_and_cast<T: Copy + bytemuck::Pod>(
