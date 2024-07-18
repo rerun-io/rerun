@@ -687,56 +687,60 @@ fn image_pixel_value_ui(
         }
     });
 
-    let text = match image.color_model {
-        None => image.get_xyc(x, y, 0).map(|v| format!("Val: {v}")),
+    let text = match image.meaning {
+        TensorDataMeaning::ClassId | TensorDataMeaning::Depth => {
+            image.get_xyc(x, y, 0).map(|v| format!("Val: {v}"))
+        }
 
-        Some(ColorModel::L) => image.get_xyc(x, y, 0).map(|v| format!("L: {v}")),
+        TensorDataMeaning::Unknown => match image.color_model() {
+            ColorModel::L => image.get_xyc(x, y, 0).map(|v| format!("L: {v}")),
 
-        Some(ColorModel::Rgb) => {
-            if let Some([r, g, b]) = {
-                if let [Some(r), Some(g), Some(b)] = [
-                    image.get_xyc(x, y, 0),
-                    image.get_xyc(x, y, 1),
-                    image.get_xyc(x, y, 2),
-                ] {
-                    Some([r, g, b])
+            ColorModel::Rgb => {
+                if let Some([r, g, b]) = {
+                    if let [Some(r), Some(g), Some(b)] = [
+                        image.get_xyc(x, y, 0),
+                        image.get_xyc(x, y, 1),
+                        image.get_xyc(x, y, 2),
+                    ] {
+                        Some([r, g, b])
+                    } else {
+                        None
+                    }
+                } {
+                    match (r, g, b) {
+                        (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
+                            Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
+                        }
+                        _ => Some(format!("R: {r}, G: {g}, B: {b}")),
+                    }
                 } else {
                     None
                 }
-            } {
-                match (r, g, b) {
-                    (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
-                        Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))
-                    }
-                    _ => Some(format!("R: {r}, G: {g}, B: {b}")),
-                }
-            } else {
-                None
             }
-        }
 
-        Some(ColorModel::Rgba) => {
-            if let (Some(r), Some(g), Some(b), Some(a)) = (
-                image.get_xyc(x, y, 0),
-                image.get_xyc(x, y, 1),
-                image.get_xyc(x, y, 2),
-                image.get_xyc(x, y, 3),
-            ) {
-                match (r, g, b, a) {
-                    (
-                        TensorElement::U8(r),
-                        TensorElement::U8(g),
-                        TensorElement::U8(b),
-                        TensorElement::U8(a),
-                    ) => Some(format!(
-                        "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
-                    )),
-                    _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+            ColorModel::Rgba => {
+                if let (Some(r), Some(g), Some(b), Some(a)) = (
+                    image.get_xyc(x, y, 0),
+                    image.get_xyc(x, y, 1),
+                    image.get_xyc(x, y, 2),
+                    image.get_xyc(x, y, 3),
+                ) {
+                    match (r, g, b, a) {
+                        (
+                            TensorElement::U8(r),
+                            TensorElement::U8(g),
+                            TensorElement::U8(b),
+                            TensorElement::U8(a),
+                        ) => Some(format!(
+                            "R: {r}, G: {g}, B: {b}, A: {a}, #{r:02X}{g:02X}{b:02X}{a:02X}"
+                        )),
+                        _ => Some(format!("R: {r}, G: {g}, B: {b}, A: {a}")),
+                    }
+                } else {
+                    None
                 }
-            } else {
-                None
             }
-        }
+        },
     };
 
     if let Some(text) = text {

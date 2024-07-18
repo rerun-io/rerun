@@ -1,9 +1,12 @@
 use half::f16;
 use ndarray::ArrayViewD;
 
-use re_types::{components::ChannelDataType, tensor_data::TensorDataType};
+use re_types::{
+    components::{ChannelDataType, PixelFormat},
+    tensor_data::TensorDataType,
+};
 
-use crate::ImageInfo;
+use crate::{image_info::ImageFormat, ImageInfo};
 
 /// Stats about a tensor or image.
 #[derive(Clone, Copy, Debug)]
@@ -118,7 +121,18 @@ impl TensorStats {
 
         // ---------------------------
 
-        let data_type = image.data_type;
+        let data_type = match image.format {
+            ImageFormat::PixelFormat(pixel_format) => match pixel_format {
+                PixelFormat::Nv12 | PixelFormat::Yuy2 => {
+                    // We do the lazy thing here:
+                    return Self {
+                        range: Some((0.0, 255.0)),
+                        finite_range: Some((0.0, 255.0)),
+                    };
+                }
+            },
+            ImageFormat::ColorModel { data_type, .. } => data_type,
+        };
 
         let range = match data_type {
             ChannelDataType::U8 => slice_range_u8(&image.to_slice()),

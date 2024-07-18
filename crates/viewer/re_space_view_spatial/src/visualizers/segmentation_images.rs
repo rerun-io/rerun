@@ -6,7 +6,7 @@ use re_types::{
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext, SpaceViewClass,
+    ApplicableEntities, IdentifiedViewSystem, ImageFormat, ImageInfo, QueryContext, SpaceViewClass,
     SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
@@ -113,8 +113,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                             blob_row_id: index.1,
                             blob: blob.0.clone(),
                             resolution: first_copied(resolution)?.0 .0,
-                            color_model: None,
-                            data_type: first_copied(data_type)?,
+                            format: ImageFormat::segmentation(first_copied(data_type)?),
                             meaning: TensorDataMeaning::ClassId,
                             colormap: None,
                         },

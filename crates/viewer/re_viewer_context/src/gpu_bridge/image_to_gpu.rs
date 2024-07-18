@@ -8,16 +8,19 @@ use wgpu::TextureFormat;
 
 use re_renderer::{
     pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture},
+    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::Texture2DCreationDesc,
     RenderContext,
 };
-use re_types::components::{ClassId, ColorModel, Colormap};
+use re_types::components::{ClassId, ColorModel, Colormap, PixelFormat};
 use re_types::{components::ChannelDataType, tensor_data::TensorDataMeaning};
 
-use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageInfo, TensorStats};
+use crate::{
+    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ImageFormat, Annotations, ImageInfo,
+    TensorStats,
+};
 
-use super::get_or_create_texture;
+use super::{get_or_create_texture, RangeError};
 
 // ----------------------------------------------------------------------------
 
@@ -31,15 +34,13 @@ fn generate_texture_key(image: &ImageInfo) -> u64 {
         blob: _, // we hash `blob_row_id` instead; much faster!
 
         resolution,
-        data_type,
-        color_model,
-
+        format: image_format,
         meaning,
 
         colormap: _, // No need to upload new texture when this changes
     } = image;
 
-    hash((blob_row_id, resolution, data_type, color_model, meaning))
+    hash((blob_row_id, resolution, image_format, meaning))
 }
 
 pub fn image_to_gpu(
@@ -49,10 +50,7 @@ pub fn image_to_gpu(
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
-    re_tracing::profile_function!(format!(
-        "{:?} resolution: {:?}, {:?}, {}",
-        image.meaning, image.resolution, image.color_model, image.data_type,
-    ));
+    re_tracing::profile_function!();
 
     let texture_key = generate_texture_key(image);
 
@@ -83,43 +81,26 @@ fn color_image_to_gpu(
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
-    let data_type = image.data_type;
-    let color_model = image.color_model.unwrap_or_default();
+    let image_format = image.format;
 
     let texture_handle = get_or_create_texture(render_ctx, texture_key, || {
-        // Profile creation of the texture, but not cache hits (those take close to no time, which would just add profiler overhead).
-        re_tracing::profile_function!();
-
-        let (data, format) = match (color_model, data_type) {
-            // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
-            // Why? Because premul must happen _before_ sRGB decode, so we can't
-            // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
-            (ColorModel::Rgb, ChannelDataType::U8) => (
-                pad_rgb_to_rgba(&image.blob, u8::MAX).into(),
-                TextureFormat::Rgba8Unorm,
-            ),
-
-            (ColorModel::Rgba, ChannelDataType::U8) => {
-                (cast_slice_to_cow(&image.blob), TextureFormat::Rgba8Unorm)
-            }
-
-            _ => {
-                // Fallback to general case:
-                return general_texture_creation_desc_from_image(debug_name, image);
-            }
-        };
-
-        Texture2DCreationDesc {
-            label: debug_name.into(),
-            data,
-            format,
-            width: image.width(),
-            height: image.height(),
-        }
+        texture_creation_desc_from_color_image(image, debug_name)
     })
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     let texture_format = texture_handle.format();
+
+    let shader_decoding = match image_format {
+        ImageFormat::PixelFormat(pixel_format) => match pixel_format {
+            PixelFormat::Nv12 => Some(ShaderDecoding::Nv12),
+            PixelFormat::Yuy2 => Some(ShaderDecoding::Yuy2),
+        },
+        ImageFormat::ColorModel { .. } => None,
+    };
+
+    // TODO(emilk): let the user specify the color space.
+    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
+        || image_decode_srgb_gamma_heuristic(tensor_stats, image_format)?;
 
     // Special casing for normalized textures used above:
     let range = if matches!(
@@ -131,14 +112,14 @@ fn color_image_to_gpu(
         [-1.0, 1.0]
     } else {
         // TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
-        super::image_data_range_heuristic(tensor_stats, data_type)?
+        image_data_range_heuristic(tensor_stats, image_format)?
     };
 
-    // TODO(emilk): let the user specify the color space.
-    let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || super::image_decode_srgb_gamma_heuristic(tensor_stats, data_type, color_model)?;
-
-    let color_mapper = if texture_format.components() == 1 {
+    let color_mapper = if let Some(shader_decoding) = shader_decoding {
+        match shader_decoding {
+            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => ColorMapper::OffRGB,
+        }
+    } else if texture_format.components() == 1 {
         // TODO(andreas): support colormap property
         if decode_srgb {
             // Leave grayscale images unmolested - don't apply a colormap to them.
@@ -154,12 +135,10 @@ fn color_image_to_gpu(
         ColorMapper::OffRGB
     };
 
+    // Assume that the texture has a separate (non-pre-multiplied) alpha.
     // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
-    let multiply_rgb_with_alpha = match color_model {
-        ColorModel::L | ColorModel::Rgb => false, // No alpha
+    let multiply_rgb_with_alpha = image_format.has_alpha();
 
-        ColorModel::Rgba => true, // Assume that the texture is not pre-multiplied
-    };
     let gamma = 1.0;
 
     re_log::trace_once!(
@@ -177,6 +156,122 @@ fn color_image_to_gpu(
     })
 }
 
+/// Get a valid, finite range for the gpu to use.
+fn image_data_range_heuristic(
+    tensor_stats: &TensorStats,
+    image_format: ImageFormat,
+) -> Result<[f32; 2], RangeError> {
+    let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
+
+    let min = min as f32;
+    let max = max as f32;
+
+    // Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
+    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
+    if image_format.is_float() && 0.0 <= min && max <= 1.0 {
+        // Float values that are all between 0 and 1, assume that this is the range.
+        Ok([0.0, 1.0])
+    } else if 0.0 <= min && max <= 255.0 {
+        // If all values are between 0 and 255, assume this is the range.
+        // (This is very common, independent of the data type)
+        Ok([0.0, 255.0])
+    } else if min == max {
+        // uniform range. This can explode the colormapping, so let's map all colors to the middle:
+        Ok([min - 1.0, max + 1.0])
+    } else {
+        // Use range as is if nothing matches.
+        Ok([min, max])
+    }
+}
+
+/// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
+fn image_decode_srgb_gamma_heuristic(
+    tensor_stats: &TensorStats,
+    image_format: ImageFormat,
+) -> Result<bool, RangeError> {
+    match image_format {
+        ImageFormat::PixelFormat(pixel_format) => match pixel_format {
+            PixelFormat::Nv12 | PixelFormat::Yuy2 => Ok(true),
+        },
+        ImageFormat::ColorModel {
+            color_model,
+            data_type,
+        } => {
+            match color_model {
+                ColorModel::L | ColorModel::Rgb | ColorModel::Rgba => {
+                    let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
+
+                    #[allow(clippy::if_same_then_else)]
+                    if 0.0 <= min && max <= 255.0 {
+                        // If the range is suspiciously reminding us of a "regular image", assume sRGB.
+                        Ok(true)
+                    } else if data_type.is_float() && 0.0 <= min && max <= 1.0 {
+                        // Floating point images between 0 and 1 are often sRGB as well.
+                        Ok(true)
+                    } else {
+                        Ok(false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn texture_creation_desc_from_color_image<'a>(
+    image: &'a ImageInfo,
+    debug_name: &'a str,
+) -> Texture2DCreationDesc<'a> {
+    re_tracing::profile_function!();
+
+    let (data, format) = match image.format {
+        ImageFormat::PixelFormat(pixel_format) => match pixel_format {
+            PixelFormat::Nv12 | PixelFormat::Yuy2 => {
+                // They are decoded in the shader.
+                (
+                    cast_slice_to_cow(image.blob.as_slice()),
+                    TextureFormat::R8Unorm,
+                )
+            }
+        },
+        ImageFormat::ColorModel {
+            color_model,
+            data_type,
+        } => {
+            match (color_model, data_type) {
+                // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
+                // Why? Because premul must happen _before_ sRGB decode, so we can't
+                // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
+                (ColorModel::Rgb, ChannelDataType::U8) => (
+                    pad_rgb_to_rgba(&image.blob, u8::MAX).into(),
+                    TextureFormat::Rgba8Unorm,
+                ),
+
+                (ColorModel::Rgba, ChannelDataType::U8) => {
+                    (cast_slice_to_cow(&image.blob), TextureFormat::Rgba8Unorm)
+                }
+
+                _ => {
+                    // Fallback to general case:
+                    return general_texture_creation_desc_from_image(
+                        debug_name,
+                        image,
+                        color_model,
+                        data_type,
+                    );
+                }
+            }
+        }
+    };
+
+    Texture2DCreationDesc {
+        label: debug_name.into(),
+        data,
+        format,
+        width: image.width(),
+        height: image.height(),
+    }
+}
+
 fn depth_image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
@@ -186,10 +281,17 @@ fn depth_image_to_gpu(
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
-    let range = data_range(tensor_stats, image.data_type);
+    let data_type = match image.format {
+        ImageFormat::PixelFormat(pixel_format) => {
+            anyhow::bail!("Depth images does not support the PixelFormat {pixel_format}");
+        }
+        ImageFormat::ColorModel { data_type, .. } => data_type,
+    };
+
+    let range = data_range(tensor_stats, data_type);
 
     let texture = get_or_create_texture(render_ctx, texture_key, || {
-        general_texture_creation_desc_from_image(debug_name, image)
+        general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, data_type)
     })
     .map_err(|err| anyhow::anyhow!("Failed to create depth texture: {err}"))?;
 
@@ -215,6 +317,13 @@ fn segmentation_image_to_gpu(
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
+
+    let data_type = match image.format {
+        ImageFormat::PixelFormat(pixel_format) => {
+            anyhow::bail!("Segmentation images does not support the PixelFormat {pixel_format}");
+        }
+        ImageFormat::ColorModel { data_type, .. } => data_type,
+    };
 
     let colormap_key = hash(annotations.row_id());
 
@@ -255,7 +364,7 @@ fn segmentation_image_to_gpu(
     .context("Failed to create class_id_colormap.")?;
 
     let main_texture_handle = get_or_create_texture(render_ctx, texture_key, || {
-        general_texture_creation_desc_from_image(debug_name, image)
+        general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, data_type)
     })
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
@@ -303,6 +412,8 @@ fn data_range(tensor_stats: &TensorStats, data_type: ChannelDataType) -> [f32; 2
 fn general_texture_creation_desc_from_image<'a>(
     debug_name: &str,
     image: &'a ImageInfo,
+    color_model: ColorModel,
+    data_type: ChannelDataType,
 ) -> Texture2DCreationDesc<'a> {
     re_tracing::profile_function!();
 
@@ -310,11 +421,9 @@ fn general_texture_creation_desc_from_image<'a>(
 
     let buf: &[u8] = image.blob.as_ref();
 
-    let color_model = image.color_model.unwrap_or(ColorModel::L);
-
     let (data, format) = match color_model {
         ColorModel::L => {
-            match image.data_type {
+            match data_type {
                 ChannelDataType::U8 => (Cow::Borrowed(buf), TextureFormat::R8Uint),
                 ChannelDataType::U16 => (Cow::Borrowed(buf), TextureFormat::R16Uint),
                 ChannelDataType::U32 => (Cow::Borrowed(buf), TextureFormat::R32Uint),
@@ -349,7 +458,7 @@ fn general_texture_creation_desc_from_image<'a>(
             // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
             // TODO(emilk): tell the shader to ignore the alpha channel instead!
 
-            match image.data_type {
+            match data_type {
                 ChannelDataType::U8 => (
                     pad_rgb_to_rgba(buf, u8::MAX).into(),
                     TextureFormat::Rgba8Uint,
@@ -405,7 +514,7 @@ fn general_texture_creation_desc_from_image<'a>(
         ColorModel::Rgba => {
             // TODO(emilk): premultiply alpha, or tell the shader to assume unmultiplied alpha
 
-            match image.data_type {
+            match data_type {
                 ChannelDataType::U8 => (Cow::Borrowed(buf), TextureFormat::Rgba8Uint),
                 ChannelDataType::U16 => (Cow::Borrowed(buf), TextureFormat::Rgba16Uint),
                 ChannelDataType::U32 => (Cow::Borrowed(buf), TextureFormat::Rgba32Uint),

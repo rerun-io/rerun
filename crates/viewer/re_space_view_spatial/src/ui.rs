@@ -506,9 +506,10 @@ pub fn picking(
                     // (the back-projection property may be true despite this not being a depth image!)
                     None
                 } else {
-                    picked_image_from_image_query(&view_ctx, data_result, hit, meaning).or_else(
-                        || picked_image_from_tensor_query(&view_ctx, data_result, hit, meaning),
-                    )
+                    picked_image_from_depth_image_query(&view_ctx, data_result, hit, meaning)
+                        .or_else(|| {
+                            picked_image_from_tensor_query(&view_ctx, data_result, hit, meaning)
+                        })
                 }
             }
         } else {
@@ -666,7 +667,7 @@ fn picked_image_from_tensor_query(
     })
 }
 
-fn picked_image_from_image_query(
+fn picked_image_from_depth_image_query(
     view_ctx: &ViewContext<'_>,
     data_result: &re_viewer_context::DataResult,
     hit: &crate::picking::PickingRayHit,
@@ -708,8 +709,7 @@ fn picked_image_from_image_query(
         blob_row_id,
         blob,
         resolution: resolution.0.into(),
-        data_type,
-        color_model: None,
+        format: re_viewer_context::ImageFormat::depth(data_type),
         meaning,
         colormap: Some(colormap),
     };

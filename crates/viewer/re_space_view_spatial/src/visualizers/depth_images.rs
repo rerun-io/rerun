@@ -10,8 +10,8 @@ use re_types::{
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageInfo,
-    ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
+    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageFormat,
+    ImageInfo, ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
@@ -301,8 +301,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                                 blob_row_id: index.1,
                                 blob: blob.0.clone(),
                                 resolution: first_copied(resolution)?.0 .0,
-                                color_model: None,
-                                data_type: first_copied(data_type)?,
+                                format: ImageFormat::depth(first_copied(data_type)?),
                                 meaning: TensorDataMeaning::Depth,
                                 colormap: first_copied(colormap),
                             },

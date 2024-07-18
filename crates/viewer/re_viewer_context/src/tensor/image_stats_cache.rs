@@ -9,7 +9,7 @@ pub struct ImageStatsCache(ahash::HashMap<u64, TensorStats>);
 
 impl ImageStatsCache {
     pub fn entry(&mut self, image: &ImageInfo) -> TensorStats {
-        let key = hash((image.blob_row_id, image.data_type));
+        let key = hash((image.blob_row_id, image.format));
         *self
             .0
             .entry(key)

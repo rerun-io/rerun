@@ -53,6 +53,7 @@ mod out_of_tree_transform3d;
 mod pinhole_projection;
 mod pinhole_projection_ext;
 mod pixel_format;
+mod pixel_format_ext;
 mod position2d;
 mod position2d_ext;
 mod position3d;

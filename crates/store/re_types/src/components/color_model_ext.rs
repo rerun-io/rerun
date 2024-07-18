@@ -12,4 +12,13 @@ impl ColorModel {
             Self::Rgba => 4,
         }
     }
+
+    /// Do we have an alpha channel?
+    #[inline]
+    pub fn has_alpha(&self) -> bool {
+        match self {
+            Self::L | Self::Rgb => false,
+            Self::Rgba => true,
+        }
+    }
 }
