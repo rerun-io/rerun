@@ -549,7 +549,8 @@ impl Default for DensityGraphBuilderConfig {
             // visualizing the data, so we undershoot the limit here by a good amount:
             max_total_chunk_events: 50_000,
 
-            // For individual chunks, the limits are completely arbitrary.
+            // For individual chunks, the limits are completely arbitrary, and help preserve visual clarity of the data
+            // when there are too many events in a given chunk.
             max_events_in_sorted_chunk: 10_000,
 
             // Processing unsorted events is about 20% slower than sorted events.
