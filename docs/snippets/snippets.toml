@@ -34,7 +34,7 @@ views = [
 "archetypes/image_advanced" = [
   "cpp",  # Missing examples
   "rust", # Missing examples
-  "py",   # Can't run on CI due to libEGL.so.1 not being found
+  "py",   # Can't run on CI due to libEGL.so.1 not being found. TODO(#2340): Don't need opencv once we have BGR support.
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
