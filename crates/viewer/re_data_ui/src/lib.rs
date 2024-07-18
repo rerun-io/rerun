@@ -19,7 +19,6 @@ mod data_source;
 mod entity_db;
 mod entity_path;
 mod image;
-mod image_meaning;
 mod instance_path;
 mod log_msg;
 mod pinhole;
@@ -30,7 +29,7 @@ mod transform3d;
 pub mod item_ui;
 
 pub use crate::image::{
-    show_zoomed_image_region, show_zoomed_image_region_area_outline, show_zoomed_tensor_region,
+    show_zoomed_image_region, show_zoomed_image_region_area_outline,
     tensor_summary_ui_grid_contents,
 };
 pub use component::EntityLatestAtResults;

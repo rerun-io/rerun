@@ -12,7 +12,6 @@ use re_types::{
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::{TensorData, TensorDimension},
-    tensor_data::TensorDataMeaning,
     SpaceViewClassIdentifier, View,
 };
 use re_ui::{list_item, ContextExt as _, UiExt as _};
@@ -131,10 +130,7 @@ Note: select the space view to configure which dimensions are shown."
                     .cache
                     .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
 
-                // We are in a bare Tensor view -- meaning / meter is unknown.
-                let meaning = TensorDataMeaning::Unknown;
-                let meter = None;
-                tensor_summary_ui_grid_contents(ui, tensor, meaning, meter, &tensor_stats);
+                tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
             }
         });
 
