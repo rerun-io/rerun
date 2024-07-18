@@ -191,7 +191,7 @@ namespace rerun::archetypes {
         ///
         /// \param translation_ \çopydoc Transform3D::translation
         /// \param columns Column vectors of 3x3 matrix.
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         ///
         /// _Implementation note:_ This overload is necessary, otherwise the array may be
         /// interpreted as bool and call the wrong overload.
@@ -199,24 +199,23 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const datatypes::Vec3D (&columns)[3],
             bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(translation_)),
-              mat3x3(Collection<components::TransformMat3x3>::take_ownership(
-                  components::TransformMat3x3(columns)
-              )) {}
+            : Transform3D(translation_, components::TransformMat3x3(columns), from_parent) {}
 
         /// Creates a new 3D transform from translation/matrix.
         ///
         /// \param translation_ \çopydoc Transform3D::translation
         /// \param mat3x3_ \copydoc Transform3D::mat3x3
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(
             const components::Translation3D& translation_,
             const components::TransformMat3x3& mat3x3_, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(translation_)),
-              mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {}
+            : translation(Collection<components::Translation3D>::take_ownership(translation_)),
+              mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
+        }
 
         /// From a translation applied after a 3x3 matrix.
         ///
@@ -244,10 +243,13 @@ namespace rerun::archetypes {
         /// From translation only.
         ///
         /// \param translation_ \çopydoc Transform3D::translation
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::Translation3D& translation_, bool from_parent = false)
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(translation_)) {}
+            : translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
+        }
 
         /// From a translation.
         ///
@@ -259,10 +261,13 @@ namespace rerun::archetypes {
         /// From 3x3 matrix only.
         ///
         /// \param mat3x3_ \copydoc Transform3D::mat3x3
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false)
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {}
+            : mat3x3(Collection<components::TransformMat3x3>::take_ownership(mat3x3_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
+        }
 
         /// From 3x3 matrix only.
         ///
@@ -274,18 +279,15 @@ namespace rerun::archetypes {
         /// From 3x3 matrix provided as 3 columns only.
         ///
         /// \param columns Column vectors of 3x3 matrix.
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const datatypes::Vec3D (&columns)[3], bool from_parent = false)
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              mat3x3(Collection<components::TransformMat3x3>::take_ownership(
-                  components::TransformMat3x3(columns)
-              )) {}
+            : Transform3D(components::TransformMat3x3(columns), from_parent) {}
 
         /// From 3x3 matrix provided as 3 columns only.
         ///
         /// \param columns Column vectors of 3x3 matrix.
         static Transform3D from_mat3x3(const datatypes::Vec3D (&columns)[3]) {
-            return Transform3D::from_mat3x3(components::TransformMat3x3(columns));
+            return Transform3D(components::TransformMat3x3(columns), false);
         }
 
         /// Creates a new 3D transform from translation/rotation/scale.
@@ -293,14 +295,16 @@ namespace rerun::archetypes {
         /// \param translation_ \copydoc Transform3D::translation
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale_ \copydoc Transform3D::scale
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(
             const components::Translation3D& translation_, const Rotation3D& rotation,
             const components::Scale3D& scale_, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(translation_)),
+            : translation(Collection<components::Translation3D>::take_ownership(translation_)),
               scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
             set_rotation(rotation);
         }
 
@@ -309,7 +313,7 @@ namespace rerun::archetypes {
         /// \param translation_ \copydoc Transform3D::translation
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         ///
         /// _Implementation note:_ This explicit overload prevents interpretation of the float as
         /// bool, leading to a call to the wrong overload.
@@ -348,13 +352,15 @@ namespace rerun::archetypes {
         ///
         /// \param translation_ \copydoc Transform3D::translation
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(
             const components::Translation3D& translation_, const Rotation3D& rotation,
             bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+            : translation(Collection<components::Translation3D>::take_ownership(translation_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
             set_rotation(rotation);
         }
 
@@ -372,14 +378,17 @@ namespace rerun::archetypes {
         ///
         /// \param translation_ \copydoc Transform3D::translation
         /// \param scale_ Transform3D::scale
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(
             const components::Translation3D& translation_, const components::Scale3D& scale_,
             bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              translation(Collection<components::Translation3D>::take_ownership(translation_)),
-              scale(Collection<components::Scale3D>::take_ownership(scale_)) {}
+            : translation(Collection<components::Translation3D>::take_ownership(translation_)),
+              scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
+        }
 
         /// From a translation applied after a scale.
         ///
@@ -395,7 +404,7 @@ namespace rerun::archetypes {
         ///
         /// \param translation_ \copydoc Transform3D::translation
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         ///
         /// _Implementation note:_ This explicit overload prevents interpretation of the float as
         /// bool, leading to a call to the wrong overload.
@@ -409,12 +418,14 @@ namespace rerun::archetypes {
         ///
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param scale_ Transform3D::scale
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(
             const Rotation3D& rotation, const components::Scale3D& scale_, bool from_parent = false
         )
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            : scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
             set_rotation(rotation);
         }
 
@@ -422,7 +433,7 @@ namespace rerun::archetypes {
         ///
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         ///
         /// _Implementation note:_ This explicit overload prevents interpretation of the float as
         /// bool, leading to a call to the wrong overload.
@@ -450,9 +461,11 @@ namespace rerun::archetypes {
         /// From rotation only.
         ///
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
-        /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
-        Transform3D(const Rotation3D& rotation, bool from_parent = false)
-            : transform(datatypes::TranslationRotationScale3D(from_parent)) {
+        /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
+        Transform3D(const Rotation3D& rotation, bool from_parent = false) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
             set_rotation(rotation);
         }
 
@@ -465,11 +478,14 @@ namespace rerun::archetypes {
 
         /// From scale only.
         ///
-        /// \param scale_ \copydoc datatypes::TranslationRotationScale3D::from_parent
+        /// \param scale_ If true, the transform relation to `TransformRelation::ChildFromParent`.
         /// \param from_parent \copydoc Transform3D::scale
         Transform3D(const components::Scale3D& scale_, bool from_parent = false)
-            : transform(datatypes::TranslationRotationScale3D(from_parent)),
-              scale(Collection<components::Scale3D>::take_ownership(scale_)) {}
+            : scale(Collection<components::Scale3D>::take_ownership(scale_)) {
+            if (from_parent) {
+                relation = components::TransformRelation::ChildFromParent;
+            }
+        }
 
         /// From scale only.
         ///
@@ -483,18 +499,6 @@ namespace rerun::archetypes {
         /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
         static Transform3D from_scale(float uniform_scale) {
             return Transform3D(components::Scale3D(uniform_scale), false);
-        }
-
-        /// TODO(#6831): Should be autogenerated once from_parent component is introduced
-        Transform3D with_from_parent(bool from_parent) && {
-            auto translation_rotation_scale = transform.repr.get_translation_rotation_scale();
-            if (translation_rotation_scale != nullptr) {
-                auto cpy = *translation_rotation_scale;
-                cpy.from_parent = from_parent;
-                transform = cpy;
-            }
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
       private:
