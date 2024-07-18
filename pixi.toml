@@ -60,6 +60,16 @@ cpp = ["base", "cpp"]
 # The wheel-test environment is for testing the python package when built from a wheel.
 # Thistenvironment is specifically used for validation of the wheel artifact in CI.
 # It does not include the features necessary for a source-build of the wheel.
+#
+# WARNING: wheel-test default depends on a published `rerun-sdk` version which will
+# be installed from pypi and not from the local source code.
+#
+# To update the wheel artifact that is registered with pixi, you can use `pixi_install_wheel.py`.
+# For example:
+# ```
+# pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+# ```
+
 wheel-test = [
   "base",
   "cpp",
