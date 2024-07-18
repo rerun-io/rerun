@@ -53,7 +53,7 @@ impl ImageFormat {
     pub fn is_float(&self) -> bool {
         match self {
             Self::PixelFormat(pixel_format) => match pixel_format {
-                PixelFormat::Nv12 | PixelFormat::Yuy2 => false,
+                PixelFormat::NV12 | PixelFormat::YUY2 => false,
             },
             Self::ColorModel { data_type, .. } => data_type.is_float(),
         }
@@ -120,12 +120,12 @@ impl ImageInfo {
 
     /// Returns [`ColorModel::L`] for depth and segmentation images.
     ///
-    /// Currently return [`ColorModel::Rgb`] for chroma-subsampled images,
+    /// Currently return [`ColorModel::RGB`] for chroma-subsampled images,
     /// but this may change in the future when we add YUV support to [`ColorModel`].
     pub fn color_model(&self) -> ColorModel {
         match self.format {
             ImageFormat::PixelFormat(pixel_format) => match pixel_format {
-                PixelFormat::Nv12 | PixelFormat::Yuy2 => ColorModel::Rgb,
+                PixelFormat::NV12 | PixelFormat::YUY2 => ColorModel::RGB,
             },
             ImageFormat::ColorModel { color_model, .. } => color_model,
         }
@@ -149,7 +149,7 @@ impl ImageInfo {
 
                 // NOTE: the name `y` is already taken for the coordinate, so we use `luma` here.
                 let [luma, u, v] = match pixel_format {
-                    PixelFormat::Nv12 => {
+                    PixelFormat::NV12 => {
                         let uv_offset = w * h;
                         let luma = buf[(y * w + x) as usize];
                         let u = buf[(uv_offset + (y / 2) * w + x) as usize];
@@ -157,7 +157,7 @@ impl ImageInfo {
                         [luma, u, v]
                     }
 
-                    PixelFormat::Yuy2 => {
+                    PixelFormat::YUY2 => {
                         let index = ((y * w + x) * 2) as usize;
                         if x % 2 == 0 {
                             [buf[index], buf[index + 1], buf[index + 3]]
@@ -170,7 +170,7 @@ impl ImageInfo {
                 match self.color_model() {
                     ColorModel::L => Some(TensorElement::U8(luma)),
 
-                    ColorModel::Rgb | ColorModel::Rgba => {
+                    ColorModel::RGB | ColorModel::RGBA => {
                         if channel < 3 {
                             let rgb = rgb_from_yuv(luma, u, v);
                             Some(TensorElement::U8(rgb[channel as usize]))

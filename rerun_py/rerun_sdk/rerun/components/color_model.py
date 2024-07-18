@@ -31,10 +31,10 @@ class ColorModel(Enum):
     L = 1
     """Grayscale luminance intencity/brightness/value, sometimes called `Y`"""
 
-    Rgb = 2
+    RGB = 2
     """Red, Green, Blue"""
 
-    Rgba = 3
+    RGBA = 3
     """Red, Green, Blue, Alpha"""
 
 
@@ -81,9 +81,9 @@ class ColorModelBatch(BaseBatch[ColorModelArrayLike], ComponentBatchMixin):
                 elif value.lower() == "l":
                     types.append(ColorModel.L.value)
                 elif value.lower() == "rgb":
-                    types.append(ColorModel.Rgb.value)
+                    types.append(ColorModel.RGB.value)
                 elif value.lower() == "rgba":
-                    types.append(ColorModel.Rgba.value)
+                    types.append(ColorModel.RGBA.value)
                 else:
                     raise ValueError(f"Unknown ColorModel kind: {value}")
             else:

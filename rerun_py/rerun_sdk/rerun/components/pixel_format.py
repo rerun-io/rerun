@@ -36,7 +36,7 @@ class PixelFormat(Enum):
     For more compressed image formats, see [`archetypes.ImageEncoded`][rerun.archetypes.ImageEncoded].
     """
 
-    Nv12 = 1
+    NV12 = 1
     """
     NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 8 bits per channel.
 
@@ -44,7 +44,7 @@ class PixelFormat(Enum):
     followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
     """
 
-    Yuy2 = 2
+    YUY2 = 2
     """
     YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
 
@@ -92,9 +92,9 @@ class PixelFormatBatch(BaseBatch[PixelFormatArrayLike], ComponentBatchMixin):
                 if hasattr(PixelFormat, value):
                     types.append(PixelFormat[value].value)  # fast path
                 elif value.lower() == "nv12":
-                    types.append(PixelFormat.Nv12.value)
+                    types.append(PixelFormat.NV12.value)
                 elif value.lower() == "yuy2":
-                    types.append(PixelFormat.Yuy2.value)
+                    types.append(PixelFormat.YUY2.value)
                 else:
                     raise ValueError(f"Unknown PixelFormat kind: {value}")
             else:

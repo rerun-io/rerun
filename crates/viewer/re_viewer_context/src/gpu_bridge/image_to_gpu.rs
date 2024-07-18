@@ -92,8 +92,8 @@ fn color_image_to_gpu(
 
     let shader_decoding = match image_format {
         ImageFormat::PixelFormat(pixel_format) => match pixel_format {
-            PixelFormat::Nv12 => Some(ShaderDecoding::Nv12),
-            PixelFormat::Yuy2 => Some(ShaderDecoding::Yuy2),
+            PixelFormat::NV12 => Some(ShaderDecoding::Nv12),
+            PixelFormat::YUY2 => Some(ShaderDecoding::Yuy2),
         },
         ImageFormat::ColorModel { .. } => None,
     };
@@ -195,14 +195,14 @@ fn image_decode_srgb_gamma_heuristic(
 ) -> Result<bool, RangeError> {
     match image_format {
         ImageFormat::PixelFormat(pixel_format) => match pixel_format {
-            PixelFormat::Nv12 | PixelFormat::Yuy2 => Ok(true),
+            PixelFormat::NV12 | PixelFormat::YUY2 => Ok(true),
         },
         ImageFormat::ColorModel {
             color_model,
             data_type,
         } => {
             match color_model {
-                ColorModel::L | ColorModel::Rgb | ColorModel::Rgba => {
+                ColorModel::L | ColorModel::RGB | ColorModel::RGBA => {
                     let (min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)?;
 
                     #[allow(clippy::if_same_then_else)]
@@ -229,7 +229,7 @@ fn texture_creation_desc_from_color_image<'a>(
 
     let (data, format) = match image.format {
         ImageFormat::PixelFormat(pixel_format) => match pixel_format {
-            PixelFormat::Nv12 => {
+            PixelFormat::NV12 => {
                 // Decoded in the shader.
                 return Texture2DCreationDesc {
                     label: debug_name.into(),
@@ -240,7 +240,7 @@ fn texture_creation_desc_from_color_image<'a>(
                 };
             }
 
-            PixelFormat::Yuy2 => {
+            PixelFormat::YUY2 => {
                 // Decoded in the shader.
                 return Texture2DCreationDesc {
                     label: debug_name.into(),
@@ -259,12 +259,12 @@ fn texture_creation_desc_from_color_image<'a>(
                 // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
                 // Why? Because premul must happen _before_ sRGB decode, so we can't
                 // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
-                (ColorModel::Rgb, ChannelDataType::U8) => (
+                (ColorModel::RGB, ChannelDataType::U8) => (
                     pad_rgb_to_rgba(&image.blob, u8::MAX).into(),
                     TextureFormat::Rgba8Unorm,
                 ),
 
-                (ColorModel::Rgba, ChannelDataType::U8) => {
+                (ColorModel::RGBA, ChannelDataType::U8) => {
                     (cast_slice_to_cow(&image.blob), TextureFormat::Rgba8Unorm)
                 }
 
@@ -470,7 +470,7 @@ fn general_texture_creation_desc_from_image<'a>(
             }
         }
 
-        ColorModel::Rgb => {
+        ColorModel::RGB => {
             // There are no 3-channel textures in wgpu, so we need to pad to 4 channels.
             // What should we pad with? It depends on whether or not the shader interprets these as alpha.
             // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
@@ -529,7 +529,7 @@ fn general_texture_creation_desc_from_image<'a>(
             }
         }
 
-        ColorModel::Rgba => {
+        ColorModel::RGBA => {
             // TODO(emilk): premultiply alpha, or tell the shader to assume unmultiplied alpha
 
             match data_type {

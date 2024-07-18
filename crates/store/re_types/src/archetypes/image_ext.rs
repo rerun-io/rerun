@@ -37,10 +37,10 @@ impl Image {
 
         let is_shape_correct = match color_model {
             ColorModel::L => non_empty_dim_inds.len() == 2,
-            ColorModel::Rgb => {
+            ColorModel::RGB => {
                 non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]].size == 3
             }
-            ColorModel::Rgba => {
+            ColorModel::RGBA => {
                 non_empty_dim_inds.len() == 3 && shape[non_empty_dim_inds[2]].size == 4
             }
         };
@@ -128,7 +128,7 @@ impl Image {
 
     /// Assumes RGBA, 8-bit per channel, with separate alpha.
     pub fn from_rgba32(resolution: Resolution2D, bytes: impl Into<Blob>) -> Self {
-        Self::from_color_model_and_bytes(resolution, ColorModel::Rgba, ChannelDataType::U8, bytes)
+        Self::from_color_model_and_bytes(resolution, ColorModel::RGBA, ChannelDataType::U8, bytes)
     }
 
     /// Creates a new [`Image`] from a file.
@@ -212,23 +212,23 @@ impl Image {
             }
 
             image::DynamicImage::ImageRgb8(image) => {
-                Ok(Self::from_elements(res, ColorModel::Rgb, image.as_raw()))
+                Ok(Self::from_elements(res, ColorModel::RGB, image.as_raw()))
             }
             image::DynamicImage::ImageRgb16(image) => {
-                Ok(Self::from_elements(res, ColorModel::Rgb, image.as_raw()))
+                Ok(Self::from_elements(res, ColorModel::RGB, image.as_raw()))
             }
             image::DynamicImage::ImageRgb32F(image) => {
-                Ok(Self::from_elements(res, ColorModel::Rgb, image.as_raw()))
+                Ok(Self::from_elements(res, ColorModel::RGB, image.as_raw()))
             }
 
             image::DynamicImage::ImageRgba8(image) => {
-                Ok(Self::from_elements(res, ColorModel::Rgba, image.as_raw()))
+                Ok(Self::from_elements(res, ColorModel::RGBA, image.as_raw()))
             }
             image::DynamicImage::ImageRgba16(image) => {
-                Ok(Self::from_elements(res, ColorModel::Rgba, image.as_raw()))
+                Ok(Self::from_elements(res, ColorModel::RGBA, image.as_raw()))
             }
             image::DynamicImage::ImageRgba32F(image) => {
-                Ok(Self::from_elements(res, ColorModel::Rgba, image.as_raw()))
+                Ok(Self::from_elements(res, ColorModel::RGBA, image.as_raw()))
             }
 
             _ => {

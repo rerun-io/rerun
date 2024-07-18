@@ -36,27 +36,29 @@ pub enum PixelFormat {
     /// First comes entire image in Y in one plane,
     /// followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
     #[default]
-    Nv12 = 1,
+    #[allow(clippy::upper_case_acronyms)]
+    NV12 = 1,
 
     /// YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
     ///
     /// The order of the channels is Y0, U0, Y1, V0, all in the same plane.
-    Yuy2 = 2,
+    #[allow(clippy::upper_case_acronyms)]
+    YUY2 = 2,
 }
 
 impl ::re_types_core::reflection::Enum for PixelFormat {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::Nv12, Self::Yuy2]
+        &[Self::NV12, Self::YUY2]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Nv12 => {
+            Self::NV12 => {
                 "NV12 (aka Y_UV12) is a YUV 4:2:0 chroma downsampled format with 8 bits per channel.\n\nFirst comes entire image in Y in one plane,\nfollowed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc."
             }
-            Self::Yuy2 => {
+            Self::YUY2 => {
                 "YUY2 (aka YUYV or YUYV16), is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.\n\nThe order of the channels is Y0, U0, Y1, V0, all in the same plane."
             }
         }
@@ -78,8 +80,8 @@ impl ::re_types_core::SizeBytes for PixelFormat {
 impl std::fmt::Display for PixelFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Nv12 => write!(f, "Nv12"),
-            Self::Yuy2 => write!(f, "Yuy2"),
+            Self::NV12 => write!(f, "NV12"),
+            Self::YUY2 => write!(f, "YUY2"),
         }
     }
 }
@@ -167,8 +169,8 @@ impl ::re_types_core::Loggable for PixelFormat {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(Self::Nv12)),
-                    2 => Ok(Some(Self::Yuy2)),
+                    1 => Ok(Some(Self::NV12)),
+                    2 => Ok(Some(Self::YUY2)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

@@ -123,7 +123,7 @@ impl TensorStats {
 
         let data_type = match image.format {
             ImageFormat::PixelFormat(pixel_format) => match pixel_format {
-                PixelFormat::Nv12 | PixelFormat::Yuy2 => {
+                PixelFormat::NV12 | PixelFormat::YUY2 => {
                     // We do the lazy thing here:
                     return Self {
                         range: Some((0.0, 255.0)),

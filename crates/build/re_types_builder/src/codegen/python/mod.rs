@@ -843,11 +843,13 @@ fn code_for_enum(
     for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
 
-        // NOTE: we use PascalCase for the enum variants for consistency across:
+        // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
+        // or else `RGBA` would become `Rgba` and so on.
+        // Note that we want consistency across:
         // * all languages (C++, Python, Rust)
         // * the arrow datatype
         // * the GUI
-        let variant_name = variant.pascal_case_name();
+        let variant_name = &variant.name;
         code.push_indented(1, format!("{variant_name} = {arrow_type_index}"), 1);
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
@@ -875,7 +877,7 @@ fn code_for_enum(
         "Literal[{}]",
         obj.fields
             .iter()
-            .map(|v| format!("{:?}", v.pascal_case_name().to_lowercase()))
+            .map(|v| format!("{:?}", v.name.to_lowercase()))
             .join(", ")
     );
     code.push_unindented(format!("{name}Like = Union[{name}, {variants}]"), 1);
@@ -1999,7 +2001,7 @@ fn quote_arrow_serialization(
                 .iter()
                 .map(|f| {
                     let newline = '\n';
-                    let variant = f.pascal_case_name();
+                    let variant = &f.name;
                     let lowercase_variant = variant.to_lowercase();
                     format!(
                         r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#

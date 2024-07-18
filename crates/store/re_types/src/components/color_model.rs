@@ -28,24 +28,26 @@ pub enum ColorModel {
     L = 1,
 
     /// Red, Green, Blue
-    Rgb = 2,
+    #[allow(clippy::upper_case_acronyms)]
+    RGB = 2,
 
     /// Red, Green, Blue, Alpha
-    Rgba = 3,
+    #[allow(clippy::upper_case_acronyms)]
+    RGBA = 3,
 }
 
 impl ::re_types_core::reflection::Enum for ColorModel {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::L, Self::Rgb, Self::Rgba]
+        &[Self::L, Self::RGB, Self::RGBA]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
             Self::L => "Grayscale luminance intencity/brightness/value, sometimes called `Y`",
-            Self::Rgb => "Red, Green, Blue",
-            Self::Rgba => "Red, Green, Blue, Alpha",
+            Self::RGB => "Red, Green, Blue",
+            Self::RGBA => "Red, Green, Blue, Alpha",
         }
     }
 }
@@ -66,8 +68,8 @@ impl std::fmt::Display for ColorModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::L => write!(f, "L"),
-            Self::Rgb => write!(f, "Rgb"),
-            Self::Rgba => write!(f, "Rgba"),
+            Self::RGB => write!(f, "RGB"),
+            Self::RGBA => write!(f, "RGBA"),
         }
     }
 }
@@ -157,8 +159,8 @@ impl ::re_types_core::Loggable for ColorModel {
                 .map(|typ| match typ {
                     0 => Ok(None),
                     1 => Ok(Some(Self::L)),
-                    2 => Ok(Some(Self::Rgb)),
-                    3 => Ok(Some(Self::Rgba)),
+                    2 => Ok(Some(Self::RGB)),
+                    3 => Ok(Some(Self::RGBA)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",

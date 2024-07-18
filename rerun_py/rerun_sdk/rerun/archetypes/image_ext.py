@@ -166,9 +166,9 @@ class ImageExt:
             if channels == 1:
                 color_model = ColorModel.L
             elif channels == 3:
-                color_model = ColorModel.Rgb  # TODO(#2340): change default to BGR
+                color_model = ColorModel.RGB  # TODO(#2340): change default to BGR
             elif channels == 4:
-                color_model = ColorModel.Rgba  # TODO(#2340): change default to BGRA
+                color_model = ColorModel.RGBA  # TODO(#2340): change default to BGRA
             else:
                 _send_warning_or_raise(f"Expected 1, 3, or 4 channels; got {channels}")
         else:

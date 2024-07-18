@@ -38,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///     rec.log(
 ///         "world/image",
-///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::Rgb, image)?,
+///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
 ///     )?;
 ///
 ///     Ok(())

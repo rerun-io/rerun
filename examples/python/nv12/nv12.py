@@ -49,7 +49,7 @@ def main() -> None:
                 bytes=bytes(bgr2nv12(frame)),
                 width=frame.shape[1],
                 height=frame.shape[0],
-                pixel_format=rr.PixelFormat.Nv12,
+                pixel_format=rr.PixelFormat.NV12,
             ),
         )
         time.sleep(0.01)

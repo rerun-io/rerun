@@ -5,7 +5,7 @@ impl PixelFormat {
     #[inline]
     pub fn has_alpha(&self) -> bool {
         match self {
-            Self::Nv12 | Self::Yuy2 => false,
+            Self::NV12 | Self::YUY2 => false,
         }
     }
 }

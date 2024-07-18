@@ -695,7 +695,7 @@ fn image_pixel_value_ui(
         TensorDataMeaning::Unknown => match image.color_model() {
             ColorModel::L => image.get_xyc(x, y, 0).map(|v| format!("L: {v}")),
 
-            ColorModel::Rgb => {
+            ColorModel::RGB => {
                 if let Some([r, g, b]) = {
                     if let [Some(r), Some(g), Some(b)] = [
                         image.get_xyc(x, y, 0),
@@ -718,7 +718,7 @@ fn image_pixel_value_ui(
                 }
             }
 
-            ColorModel::Rgba => {
+            ColorModel::RGBA => {
                 if let (Some(r), Some(g), Some(b), Some(a)) = (
                     image.get_xyc(x, y, 0),
                     image.get_xyc(x, y, 1),
@@ -818,8 +818,8 @@ fn try_show_zoomed_tensor_region(
         TensorDataMeaning::Unknown => match num_channels {
             // TODO(#6386): remove this code
             1 => Some(ColorModel::L),
-            3 => Some(ColorModel::Rgb),
-            4 => Some(ColorModel::Rgba),
+            3 => Some(ColorModel::RGB),
+            4 => Some(ColorModel::RGBA),
             _ => {
                 return Ok(());
             }
@@ -962,7 +962,7 @@ fn tensor_pixel_value_ui(
             .get_with_image_coords(x, y, 0)
             .map(|v| format!("L: {v}")),
 
-        Some(ColorModel::Rgb) => {
+        Some(ColorModel::RGB) => {
             if let Some([r, g, b]) = match &tensor.buffer {
                 TensorBuffer::Nv12(_) => tensor
                     .get_nv12_pixel(x, y)
@@ -994,7 +994,7 @@ fn tensor_pixel_value_ui(
             }
         }
 
-        Some(ColorModel::Rgba) => {
+        Some(ColorModel::RGBA) => {
             if let (Some(r), Some(g), Some(b), Some(a)) = (
                 tensor.get_with_image_coords(x, y, 0),
                 tensor.get_with_image_coords(x, y, 1),
