@@ -448,6 +448,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PixelFormat as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).\n\nMost images can be described by a [`components.ColorModel`](https://rerun.io/docs/reference/types/components/color_model?speculative-link) and a [`components.ChannelDataType`](https://rerun.io/docs/reference/types/components/channel_data_type),\ne.g. `RGB` and `U8` respectively.\n\nHowever, some image formats has chroma downsampling and/or\nuse differing number of bits per channel, and that is what this [`archetypes.PixelFormat`](https://rerun.io/docs/reference/types/archetypes/pixel_format) is for.\n\nAll these formats support random access.\n\nFor more compressed image formats, see [`archetypes.ImageEncoded`](https://rerun.io/docs/reference/types/archetypes/image_encoded?speculative-link).",
+                placeholder: Some(PixelFormat::default().to_arrow()?),
+            },
+        ),
+        (
             <Position2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",

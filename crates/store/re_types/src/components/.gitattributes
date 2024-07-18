@@ -31,6 +31,7 @@ name.rs linguist-generated=true
 opacity.rs linguist-generated=true
 out_of_tree_transform3d.rs linguist-generated=true
 pinhole_projection.rs linguist-generated=true
+pixel_format.rs linguist-generated=true
 position2d.rs linguist-generated=true
 position3d.rs linguist-generated=true
 radius.rs linguist-generated=true

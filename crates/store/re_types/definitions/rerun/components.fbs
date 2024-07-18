@@ -30,6 +30,7 @@ include "./components/name.fbs";
 include "./components/opacity.fbs";
 include "./components/out_of_tree_transform3d.fbs";
 include "./components/pinhole_projection.fbs";
+include "./components/pixel_format.fbs";
 include "./components/position2d.fbs";
 include "./components/position3d.fbs";
 include "./components/radius.fbs";

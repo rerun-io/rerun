@@ -56,6 +56,7 @@ from .name import Name, NameBatch, NameType
 from .opacity import Opacity, OpacityBatch, OpacityType
 from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
+from .pixel_format import PixelFormat, PixelFormatArrayLike, PixelFormatBatch, PixelFormatLike, PixelFormatType
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusBatch, RadiusType
@@ -194,6 +195,11 @@ __all__ = [
     "PinholeProjection",
     "PinholeProjectionBatch",
     "PinholeProjectionType",
+    "PixelFormat",
+    "PixelFormatArrayLike",
+    "PixelFormatBatch",
+    "PixelFormatLike",
+    "PixelFormatType",
     "Position2D",
     "Position2DBatch",
     "Position2DType",

@@ -43,6 +43,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 * [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md): An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
+* [`PixelFormat`](components/pixel_format.md): Specifieds a particular format of an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
 * [`Position2D`](components/position2d.md): A position in 2D space.
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
