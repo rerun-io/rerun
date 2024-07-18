@@ -31,16 +31,20 @@ namespace rerun {
 
     // Also import any component or datatype that has a unique name:
     using components::AlbedoFactor;
+    using components::ChannelDataType;
     using components::Color;
+    using components::ColorModel;
     using components::HalfSize2D;
     using components::HalfSize3D;
     using components::LineStrip2D;
     using components::LineStrip3D;
     using components::MediaType;
     using components::OutOfTreeTransform3D;
+    using components::PixelFormat;
     using components::Position2D;
     using components::Position3D;
     using components::Radius;
+    using components::Resolution2D;
     using components::Text;
     using components::TextLogLevel;
     using components::TriangleIndices;

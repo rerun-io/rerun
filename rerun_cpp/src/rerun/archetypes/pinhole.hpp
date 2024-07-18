@@ -46,7 +46,7 @@ namespace rerun::archetypes {
     ///         return static_cast<uint8_t>(std::rand());
     ///     });
     ///
-    ///     rec.log("world/image", rerun::Image({3, 3, 3}, random_data));
+    ///     rec.log("world/image", rerun::Image::from_rgb24({3, 3}, random_data));
     /// }
     /// ```
     ///
