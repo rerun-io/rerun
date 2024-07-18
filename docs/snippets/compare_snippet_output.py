@@ -265,7 +265,12 @@ def check_non_empty_rrd(path: str) -> None:
     from pathlib import Path
 
     assert Path(path).stat().st_size > 0
-    print(f"Confirmed output written to {Path(path).absolute}")
+    print(f"Confirmed output written to {Path(path).absolute()}")
+
+    # TODO(andreas): does this make sense? If so maybe sdk should make sure on shutdown.
+    fd = os.open(path, os.O_RDONLY)
+    os.fsync(fd)
+    os.close(fd)
 
 
 if __name__ == "__main__":
