@@ -168,7 +168,7 @@ impl ImageInfo {
                 };
 
                 match self.color_model() {
-                    ColorModel::L => Some(TensorElement::U8(luma)),
+                    ColorModel::L => (channel == 0).then_some(TensorElement::U8(luma)),
 
                     ColorModel::RGB | ColorModel::RGBA => {
                         if channel < 3 {

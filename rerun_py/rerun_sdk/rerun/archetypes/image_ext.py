@@ -120,8 +120,13 @@ class ImageExt:
         }
 
         channel_count_from_color_model = {
+            "a": 1,
             "l": 1,
+            "la": 1,
+            "bgr": 3,
             "rgb": 3,
+            "yuv": 3,
+            "bgra": 4,
             "rgba": 4,
         }
 
