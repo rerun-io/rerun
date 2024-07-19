@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_entity_db::{TimeCounts, TimesPerTimeline};
+use re_entity_db::{EntityTree, TimeCounts, TimeHistogramPerTimeline, TimesPerTimeline};
 use re_log_types::{
     Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
 };
@@ -570,6 +570,22 @@ impl TimeControl {
         if let Some(state) = self.states.get_mut(&self.timeline) {
             state.view = None;
         }
+    }
+
+    /// Returns whether the given tree has any data logged in the current timeline,
+    /// or has any timeless messages.
+    pub fn tree_has_data_in_current_timeline(&self, tree: &EntityTree) -> bool {
+        let top_time_histogram = &tree.subtree.time_histogram;
+        top_time_histogram.has_timeline(self.timeline())
+            || top_time_histogram.num_static_messages() > 0
+    }
+
+    /// Returns whether the given component has any data logged in the current timeline.
+    pub fn component_has_data_in_current_timeline(
+        &self,
+        component_stat: &TimeHistogramPerTimeline,
+    ) -> bool {
+        component_stat.has_timeline(self.timeline())
     }
 }
 

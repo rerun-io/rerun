@@ -251,7 +251,7 @@ impl SpaceViewBlueprint {
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
         if let Some(tree) = blueprint.tree().subtree(&current_path) {
-            tree.visit_children_recursively(&mut |path| {
+            tree.visit_children_recursively(&mut |path, info| {
                 let sub_path: EntityPath = new_path
                     .iter()
                     .chain(&path[current_path.len()..])
@@ -262,11 +262,8 @@ impl SpaceViewBlueprint {
                     .with_row(
                         RowId::new(),
                         store_context.blueprint_timepoint_for_writes(),
-                        blueprint
-                            .store()
-                            .all_components(&query.timeline(), path)
-                            .into_iter()
-                            .flat_map(|v| v.into_iter())
+                        info.components
+                            .keys()
                             // It's important that we don't include the SpaceViewBlueprint's components
                             // since those will be updated separately and may contain different data.
                             .filter(|component| {
@@ -274,7 +271,7 @@ impl SpaceViewBlueprint {
                                     || !blueprint_archetypes::SpaceViewBlueprint::all_components()
                                         .contains(component)
                             })
-                            .filter_map(|component_name| {
+                            .filter_map(|&component_name| {
                                 let results = blueprint.query_caches().latest_at(
                                     blueprint.store(),
                                     query,

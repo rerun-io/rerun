@@ -72,38 +72,36 @@ impl<'a> DataUi for EntityLatestAtResults<'a> {
 
             // if the component is static, we display extra diagnostic information
             if self.results.is_static() {
-                let num_static_messages = db
-                    .store()
-                    .num_events_for_static_component(&self.entity_path, component_name);
-                if num_static_messages > 1 {
-                    ui.label(ui.ctx().warning_text(format!(
-                        "Static component value was overridden {} times",
-                        num_static_messages.saturating_sub(1),
-                    )))
-                    .on_hover_text(
-                        "When a static component is logged multiple times, only the last value \
-                        is stored. Previously logged values are overwritten and not \
-                        recoverable.",
-                    );
-                }
+                if let Some(histogram) = db
+                    .tree()
+                    .subtree(&self.entity_path)
+                    .and_then(|tree| tree.entity.components.get(&component_name))
+                {
+                    if histogram.num_static_messages() > 1 {
+                        ui.label(ui.ctx().warning_text(format!(
+                            "Static component value was overridden {} times",
+                            histogram.num_static_messages().saturating_sub(1),
+                        )))
+                        .on_hover_text(
+                            "When a static component is logged multiple times, only the last value \
+                            is stored. Previously logged values are overwritten and not \
+                            recoverable.",
+                        );
+                    }
 
-                let timeline_message_count =
-                    db.store().num_events_on_timeline_for_temporal_component(
-                        &query.timeline(),
-                        &self.entity_path,
-                        component_name,
-                    );
-                if timeline_message_count > 0 {
-                    ui.label(ui.ctx().error_text(format!(
-                        "Static component has {} event{} logged on timelines",
-                        timeline_message_count,
-                        if timeline_message_count > 1 { "s" } else { "" }
-                    )))
-                    .on_hover_text(
-                        "Components should be logged either as static or on timelines, but \
-                        never both. Values for static components logged to timelines cannot be \
-                        displayed.",
-                    );
+                    let timeline_message_count = histogram.num_temporal_messages();
+                    if timeline_message_count > 0 {
+                        ui.label(ui.ctx().error_text(format!(
+                            "Static component has {} event{} logged on timelines",
+                            timeline_message_count,
+                            if timeline_message_count > 1 { "s" } else { "" }
+                        )))
+                        .on_hover_text(
+                            "Components should be logged either as static or on timelines, but \
+                            never both. Values for static components logged to timelines cannot be \
+                            displayed.",
+                        );
+                    }
                 }
             }
         }

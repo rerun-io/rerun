@@ -274,15 +274,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
 fn count_non_nested_images_with_component(
     image_dimensions: &IntMap<EntityPath, ImageDimensions>,
     entity_bucket: &IntSet<EntityPath>,
-    entity_db: &re_entity_db::EntityDb,
     subtree: &EntityTree,
     component_name: &ComponentName,
 ) -> usize {
     if image_dimensions.contains_key(&subtree.path) {
         // bool true -> 1
-        entity_db
-            .store()
-            .entity_has_component_on_any_timeline(&subtree.path, component_name) as usize
+        subtree.entity.components.contains_key(component_name) as usize
     } else if !entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
@@ -296,7 +293,6 @@ fn count_non_nested_images_with_component(
                 count_non_nested_images_with_component(
                     image_dimensions,
                     entity_bucket,
-                    entity_db,
                     child,
                     component_name,
                 )
@@ -365,7 +361,6 @@ fn recommended_space_views_with_image_splits(
     let image_count = count_non_nested_images_with_component(
         image_dimensions,
         entities,
-        ctx.recording(),
         subtree,
         &Image::indicator().name(),
     );
@@ -373,7 +368,6 @@ fn recommended_space_views_with_image_splits(
     let depth_count = count_non_nested_images_with_component(
         image_dimensions,
         entities,
-        ctx.recording(),
         subtree,
         &DepthImage::indicator().name(),
     );

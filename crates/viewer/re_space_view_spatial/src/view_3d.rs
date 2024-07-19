@@ -279,12 +279,8 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
         ctx.recording()
             .tree()
-            .visit_children_recursively(&mut |path| {
-                if ctx
-                    .recording()
-                    .store()
-                    .entity_has_component_on_any_timeline(path, &ViewCoordinates::name())
-                {
+            .visit_children_recursively(&mut |path, info| {
+                if info.components.contains_key(&ViewCoordinates::name()) {
                     indicated_entities.insert(path.clone());
                 }
             });

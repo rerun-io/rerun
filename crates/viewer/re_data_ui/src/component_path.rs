@@ -32,11 +32,8 @@ impl DataUi for ComponentPath {
                     results: results.as_ref(),
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
-            } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                if db
-                    .store()
-                    .entity_has_component(&query.timeline(), entity_path, component_name)
-                {
+            } else if let Some(entity_tree) = ctx.recording().tree().subtree(entity_path) {
+                if entity_tree.entity.components.contains_key(component_name) {
                     ui.label("<unset>");
                 } else {
                     ui.label(format!(

@@ -155,12 +155,9 @@ impl SelectionPanel {
         match item {
             Item::ComponentPath(component_path) => {
                 let entity_path = &component_path.entity_path;
-                let component_name = &component_path.component_name;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let is_static = db
-                    .store()
-                    .entity_has_static_component(entity_path, component_name);
+                let is_static = db.is_component_static(component_path).unwrap_or_default();
 
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Component type").value_text(if is_static {
@@ -721,9 +718,7 @@ fn item_tile(
             let component_name = &component_path.component_name;
 
             let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-            let is_static = db
-                .store()
-                .entity_has_static_component(entity_path, component_name);
+            let is_static = db.is_component_static(component_path).unwrap_or_default();
 
             Some(
                 ItemTitle::new(component_name.short_name())

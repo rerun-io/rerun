@@ -19,7 +19,7 @@ use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shap
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
-use re_entity_db::{EntityTree, InstancePath};
+use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal,
@@ -574,6 +574,8 @@ impl TimePanel {
         ui: &mut egui::Ui,
         show_root_as: &str,
     ) {
+        let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
+
         let db = match self.source {
             TimePanelSource::Recording => ctx.recording(),
             TimePanelSource::Blueprint => ctx.store_context.blueprint,
@@ -691,9 +693,6 @@ impl TimePanel {
         // ----------------------------------------------
 
         // show the data in the time area:
-        let tree_has_data_in_current_timeline = entity_db
-            .store()
-            .entity_has_data_on_timeline(time_ctrl.timeline(), &tree.path);
         if is_visible && tree_has_data_in_current_timeline {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
@@ -745,29 +744,17 @@ impl TimePanel {
         }
 
         // If this is an entity:
-        if let Some(components) = entity_db
-            .store()
-            .all_components_on_all_timelines(&tree.path)
-        {
-            for component_name in sorted_component_list_for_ui(components.iter()) {
-                let is_static = entity_db
-                    .store()
-                    .entity_has_static_component(&tree.path, &component_name);
+        if !tree.entity.components.is_empty() {
+            for component_name in sorted_component_list_for_ui(tree.entity.components.keys()) {
+                let data = &tree.entity.components[&component_name];
+
+                let is_static = data.is_static();
+                let component_has_data_in_current_timeline =
+                    time_ctrl.component_has_data_in_current_timeline(data);
 
                 let component_path = ComponentPath::new(tree.path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
-                let timeline = time_ctrl.timeline();
-
-                let component_has_data_in_current_timeline = entity_db
-                    .store()
-                    .entity_has_component(time_ctrl.timeline(), &tree.path, &component_name);
-
-                let total_num_messages = entity_db.store().num_events_on_timeline_for_component(
-                    time_ctrl.timeline(),
-                    &tree.path,
-                    component_name,
-                );
 
                 let response = ui
                     .list_item()
@@ -799,6 +786,14 @@ impl TimePanel {
 
                 let response_rect = response.rect;
 
+                let timeline = time_ctrl.timeline();
+
+                let empty_messages_over_time = TimeHistogram::default();
+                let messages_over_time = data.get(timeline).unwrap_or(&empty_messages_over_time);
+
+                // `data.times` does not contain static. Need to add those manually:
+                let total_num_messages =
+                    messages_over_time.total_count() + data.num_static_messages();
                 response.on_hover_ui(|ui| {
                     if total_num_messages == 0 {
                         ui.label(ui.ctx().warning_text(format!(

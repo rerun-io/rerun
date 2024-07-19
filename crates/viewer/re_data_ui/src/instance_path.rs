@@ -81,9 +81,7 @@ impl DataUi for InstancePath {
                 }
 
                 let component_path = ComponentPath::new(entity_path.clone(), component_name);
-                let is_static = db
-                    .store()
-                    .entity_has_static_component(entity_path, &component_name);
+                let is_static = db.is_component_static(&component_path).unwrap_or_default();
                 let icon = if is_static {
                     &re_ui::icons::COMPONENT_STATIC
                 } else {
