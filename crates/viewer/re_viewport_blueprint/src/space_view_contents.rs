@@ -428,7 +428,11 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(recursive_override_subtree) =
                     blueprint.tree().subtree(&recursive_override_path)
                 {
-                    for &component_name in recursive_override_subtree.entity.components.keys() {
+                    for component_name in blueprint
+                        .store()
+                        .all_components_on_all_timelines(&recursive_override_subtree.path)
+                        .unwrap_or_default()
+                    {
                         let results = blueprint.query_caches().latest_at(
                             blueprint.store(),
                             blueprint_query,
@@ -459,7 +463,11 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(individual_override_subtree) =
                     blueprint.tree().subtree(&individual_override_path)
                 {
-                    for &component_name in individual_override_subtree.entity.components.keys() {
+                    for component_name in blueprint
+                        .store()
+                        .all_components_on_all_timelines(&individual_override_subtree.path)
+                        .unwrap_or_default()
+                    {
                         let results = blueprint.query_caches().latest_at(
                             blueprint.store(),
                             blueprint_query,
