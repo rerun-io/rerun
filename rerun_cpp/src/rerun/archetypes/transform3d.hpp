@@ -142,7 +142,7 @@ namespace rerun::archetypes {
     ///             rerun::Transform3D::from_translation(
     ///                 {std::cos(r_moon) * d_moon, std::sin(r_moon) * d_moon, 0.0f}
     ///             )
-    ///                 .with_from_parent(true)
+    ///                 .with_relation(rerun::components::TransformRelation::ChildFromParent)
     ///         );
     ///     }
     /// }
