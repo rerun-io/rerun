@@ -377,4 +377,30 @@ impl EntityTree {
 
         visit(self, &mut visitor);
     }
+
+    pub fn find_child_recursive(
+        &self,
+        mut predicate: impl FnMut(&EntityPath, &EntityInfo) -> bool,
+    ) -> Option<&Self> {
+        use std::ops::ControlFlow;
+
+        fn visit<'a>(
+            this: &'a EntityTree,
+            predicate: &mut impl FnMut(&EntityPath, &EntityInfo) -> bool,
+        ) -> ControlFlow<&'a EntityTree> {
+            if predicate(&this.path, &this.entity) {
+                return ControlFlow::Break(this);
+            };
+            for child in this.children.values() {
+                visit(child, predicate)?;
+            }
+            ControlFlow::Continue(())
+        }
+
+        let result = visit(self, &mut predicate);
+        match result {
+            ControlFlow::Continue(()) => None,
+            ControlFlow::Break(v) => Some(v),
+        }
+    }
 }

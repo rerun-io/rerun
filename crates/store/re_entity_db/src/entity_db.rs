@@ -593,6 +593,24 @@ impl EntityDb {
 
         size
     }
+
+    pub fn subtree_has_data_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        let Some(subtree) = self.tree.subtree(entity_path) else {
+            return false;
+        };
+
+        subtree
+            .find_child_recursive(|path, _| {
+                self.store().entity_has_data_on_timeline(timeline, path)
+            })
+            .is_some()
+    }
 }
 
 impl re_types_core::SizeBytes for EntityDb {
