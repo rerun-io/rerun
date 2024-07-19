@@ -33,13 +33,12 @@ pub use utilities::{
 
 // ---
 
+use core::ops::Deref;
+
 use ahash::HashMap;
 
 use re_entity_db::EntityPath;
-use re_types::{
-    components::Color,
-    datatypes::{KeypointId, KeypointPair},
-};
+use re_types::datatypes::{KeypointId, KeypointPair, Rgba32};
 use re_viewer_context::{
     auto_color_egui, Annotations, ApplicableEntities, IdentifiedViewSystem, QueryContext,
     ResolvedAnnotationInfos, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
@@ -141,14 +140,18 @@ pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
     ui_labels
 }
 
-/// Process [`Color`] components using annotations and default colors.
-pub fn process_color_slice<'a>(
+/// Process [`Color`] or equivalent components using annotations and default colors.
+pub fn process_color_slice<'a, C>(
     ctx: &QueryContext<'_>,
-    fallback_provider: &'a dyn re_viewer_context::TypedComponentFallbackProvider<Color>,
+    fallback_provider: &'a dyn re_viewer_context::TypedComponentFallbackProvider<C>,
     num_instances: usize,
     annotation_infos: &'a ResolvedAnnotationInfos,
-    colors: &'a [Color],
-) -> Vec<egui::Color32> {
+    // accept any of the multiple components that contain colors
+    colors: &'a [C],
+) -> Vec<egui::Color32>
+where
+    C: re_types::Component + Deref<Target = Rgba32>,
+{
     // NOTE: Do not put tracing scopes here, this is called for every entity/timestamp in a frame.
 
     if let Some(last_color) = colors.last() {
@@ -170,12 +173,12 @@ pub fn process_color_slice<'a>(
                 re_tracing::profile_scope!("no colors, same annotation");
                 let color = annotation_info
                     .color()
-                    .unwrap_or_else(|| fallback_provider.fallback_for(ctx).into());
+                    .unwrap_or_else(|| to_egui_color(&fallback_provider.fallback_for(ctx)));
                 vec![color; *count]
             }
             ResolvedAnnotationInfos::Many(annotation_info) => {
                 re_tracing::profile_scope!("no-colors, many annotations");
-                let fallback = fallback_provider.fallback_for(ctx).into();
+                let fallback = to_egui_color(&fallback_provider.fallback_for(ctx));
                 annotation_info
                     .iter()
                     .map(|annotation_info| annotation_info.color().unwrap_or(fallback))
@@ -186,8 +189,8 @@ pub fn process_color_slice<'a>(
 }
 
 #[inline]
-fn to_egui_color(color: &Color) -> egui::Color32 {
-    let [r, g, b, a] = color.to_array();
+fn to_egui_color(color: &impl Deref<Target = Rgba32>) -> egui::Color32 {
+    let [r, g, b, a] = (*color).to_array();
     egui::Color32::from_rgba_unmultiplied(r, g, b, a)
 }
 
