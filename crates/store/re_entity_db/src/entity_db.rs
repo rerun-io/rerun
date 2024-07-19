@@ -385,7 +385,6 @@ impl EntityDb {
             self.times_per_timeline.on_events(&store_events);
             self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
-            self.tree.on_store_deletions(&store_events);
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
