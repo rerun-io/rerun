@@ -15,10 +15,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             rerun::RotationAxisAngle::new((0.0, 1.0, 0.0), rerun::Angle::from_degrees(30.0)).into(),
         ])
         .with_radii([0.025])
-        .with_colors([
-            rerun::Color::from_rgb(255, 0, 0),
-            rerun::Color::from_rgb(0, 255, 0),
-            rerun::Color::from_rgb(0, 0, 255),
+        .with_colors([rerun::Color::WHITE])
+        .with_solid_colors([
+            rerun::SolidColor::from_rgb(255, 0, 0),
+            rerun::SolidColor::from_rgb(0, 255, 0),
+            rerun::SolidColor::from_rgb(0, 0, 255),
         ])
         .with_labels(["red", "green", "blue"]),
     )?;

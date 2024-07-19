@@ -16,7 +16,8 @@ rr.log(
             RotationAxisAngle(axis=[0, 1, 0], angle=Angle(deg=30)),
         ],
         radii=0.025,
-        colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)],
+        colors=(255, 255, 255),
+        solid_colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)],
         labels=["red", "green", "blue"],
     ),
 )
